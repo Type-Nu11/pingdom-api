@@ -1,0 +1,33 @@
+package com.typenull.pingdom.domain.auth.controller;
+
+import com.typenull.pingdom.domain.auth.dto.LoginRequest;
+import com.typenull.pingdom.domain.auth.dto.LoginResponse;
+import com.typenull.pingdom.domain.auth.dto.SignupRequest;
+import com.typenull.pingdom.domain.auth.dto.UserResponse;
+import com.typenull.pingdom.domain.auth.service.AuthService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/api/auth")
+@RequiredArgsConstructor
+public class AuthController {
+
+    private final AuthService authService;
+
+    @PostMapping("/signup")
+//    @ResponseStatus(HttpStatus.CREATED)
+    public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
+        return ResponseEntity.ok(authService.signup(request));
+    }
+
+    @PostMapping("/login")
+    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+        return authService.login(request);
+    }
+}
