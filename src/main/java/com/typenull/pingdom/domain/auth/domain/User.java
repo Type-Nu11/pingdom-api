@@ -28,10 +28,4 @@ public class User {
 
     @Column(nullable = false)
     private String password;
-
-    public User(String username, String name, String password) {
-        this.username = username;
-        this.name = name;
-        this.password = password;
-    }
 }
