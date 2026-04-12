@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.auth.dto;
+package com.typenull.pingdom.domain.auth.dto.request;
 
 import jakarta.validation.constraints.NotBlank;
 
