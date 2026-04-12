@@ -1,9 +1,9 @@
 package com.typenull.pingdom.domain.auth.service;
 
-import com.typenull.pingdom.domain.auth.dto.request.LoginRequest;
-import com.typenull.pingdom.domain.auth.dto.response.LoginResponse;
-import com.typenull.pingdom.domain.auth.dto.request.SignupRequest;
-import com.typenull.pingdom.domain.auth.dto.response.UserResponse;
+import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
+import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
+import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
+import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
 
 public interface AuthService {
     public UserResponse signup(SignupRequest request);

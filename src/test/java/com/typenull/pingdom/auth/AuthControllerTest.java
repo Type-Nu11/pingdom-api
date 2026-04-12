@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.auth.dto.request.LoginRequest;
-import com.typenull.pingdom.domain.auth.dto.request.SignupRequest;
+import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
+import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

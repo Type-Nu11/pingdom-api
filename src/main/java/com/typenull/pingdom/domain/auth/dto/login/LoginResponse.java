@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.auth.dto.response;
+package com.typenull.pingdom.domain.auth.dto.login;
 
 public record LoginResponse(
         Long id,
