@@ -23,6 +23,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    // 이메일 포함 회원가입 저장 기능
     public UserResponse signup(SignupRequest request) {
         if (userRepository.existsByUsername(request.username())) {
             throw new AuthException(AuthErrorCode.DUPLICATE_USERNAME);
@@ -31,6 +32,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.save(User.builder()
                 .username(request.username())
                 .name(request.name())
+                .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
                 .build());
 
