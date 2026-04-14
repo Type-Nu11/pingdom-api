@@ -1,5 +1,6 @@
 package com.typenull.pingdom.domain.auth.controller;
 
+import com.typenull.pingdom.domain.auth.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
@@ -30,5 +31,12 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/email/verify")
+    // 이메일 인증 요청 처리 메서드
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody EmailVerifyRequest request) {
+        authService.verifyEmail(request);
+        return ResponseEntity.ok().build();
     }
 }
