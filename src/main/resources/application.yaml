@@ -19,3 +19,8 @@ spring:
   h2:
     console:
       enabled: true
+
+jwt:
+  secret: ${JWT_SECRET:01234567890123456789012345678901}
+  access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}
+  refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:1209600}
