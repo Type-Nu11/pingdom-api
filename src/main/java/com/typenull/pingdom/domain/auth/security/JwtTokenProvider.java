@@ -43,6 +43,16 @@ public class JwtTokenProvider {
         }
     }
 
+    // Access Token 유효성 검사 메서드
+    public boolean validateAccessToken(String accessToken) {
+        try {
+            Claims claims = parseClaims(accessToken);
+            return "access".equals(claims.get("type", String.class));
+        } catch (JwtException | IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
     // Refresh Token 사용자 ID 추출 메서드
     public Long getUserIdFromRefreshToken(String refreshToken) {
         Claims claims = parseClaims(refreshToken);
@@ -52,6 +62,28 @@ public class JwtTokenProvider {
         }
 
         return Long.valueOf(claims.getSubject());
+    }
+
+    // Access Token 사용자 ID 추출 메서드
+    public Long getUserIdFromAccessToken(String accessToken) {
+        Claims claims = parseClaims(accessToken);
+
+        if (!"access".equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("액세스 토큰 타입이 아닙니다.");
+        }
+
+        return Long.valueOf(claims.getSubject());
+    }
+
+    // Access Token 사용자명 추출 메서드
+    public String getUsernameFromAccessToken(String accessToken) {
+        Claims claims = parseClaims(accessToken);
+
+        if (!"access".equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("액세스 토큰 타입이 아닙니다.");
+        }
+
+        return claims.get("username", String.class);
     }
 
     // JWT 공통 생성 메서드
