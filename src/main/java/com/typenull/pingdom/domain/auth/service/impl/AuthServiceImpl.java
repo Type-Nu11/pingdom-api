@@ -9,6 +9,7 @@ import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -21,6 +22,7 @@ public class AuthServiceImpl implements AuthService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final JwtTokenProvider jwtTokenProvider;
 
     @Override
     @Transactional
@@ -50,7 +52,18 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        return new LoginResponse(user.getId(), user.getUsername(), user.getName(), "로그인에 성공했습니다.");
+        // 로그인 성공 시 JWT 발급 호출
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+        return new LoginResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getName(),
+                "로그인에 성공했습니다.",
+                accessToken,
+                refreshToken
+        );
     }
 
     @Override
