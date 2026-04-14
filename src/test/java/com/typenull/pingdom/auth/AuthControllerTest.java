@@ -42,7 +42,7 @@ class AuthControllerTest {
     void signupCreatesUser() throws Exception {
         SignupRequest request = new SignupRequest("tester01", "tester", "tester01@example.com", "password123");
 
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
@@ -53,13 +53,13 @@ class AuthControllerTest {
     @Test
     void loginReturnsTokensWhenCredentialsAreValid() throws Exception {
         SignupRequest signupRequest = new SignupRequest("loginuser", "tester", "loginuser@example.com", "password123");
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
         LoginRequest loginRequest = new LoginRequest("loginuser", "password123");
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -72,13 +72,13 @@ class AuthControllerTest {
     @Test
     void loginFailsWhenPasswordIsInvalid() throws Exception {
         SignupRequest signupRequest = new SignupRequest("failuser", "tester", "failuser@example.com", "password123");
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
         LoginRequest loginRequest = new LoginRequest("failuser", "wrongpass");
 
-        mockMvc.perform(post("/api/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
@@ -88,13 +88,13 @@ class AuthControllerTest {
     @Test
     void verifyEmailMarksUserAsVerified() throws Exception {
         SignupRequest signupRequest = new SignupRequest("emailuser", "tester", "emailuser@example.com", "password123");
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
         EmailVerifyRequest verifyRequest = new EmailVerifyRequest("emailuser@example.com");
 
-        mockMvc.perform(post("/api/auth/email/verify")
+        mockMvc.perform(post("/auth/email/verify")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(verifyRequest)))
                 .andExpect(status().isOk());
@@ -106,13 +106,13 @@ class AuthControllerTest {
     @Test
     void refreshTokenReissuesTokensWhenRefreshTokenIsValid() throws Exception {
         SignupRequest signupRequest = new SignupRequest("refreshuser", "tester", "refreshuser@example.com", "password123");
-        mockMvc.perform(post("/api/auth/signup")
+        mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
         LoginRequest loginRequest = new LoginRequest("refreshuser", "password123");
 
-        MvcResult loginResult = mockMvc.perform(post("/api/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -124,7 +124,7 @@ class AuthControllerTest {
 
         RefreshTokenRequest refreshTokenRequest = new RefreshTokenRequest(refreshToken);
 
-        mockMvc.perform(post("/api/auth/token/refresh")
+        mockMvc.perform(post("/auth/token/refresh")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(refreshTokenRequest)))
                 .andExpect(status().isOk())
