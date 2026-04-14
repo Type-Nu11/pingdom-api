@@ -1,6 +1,8 @@
 package com.typenull.pingdom.domain.auth.security;
 
 import com.typenull.pingdom.domain.auth.config.JwtProperties;
+import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
@@ -31,6 +33,27 @@ public class JwtTokenProvider {
         return buildToken(userId, null, jwtProperties.refreshTokenExpirationSeconds(), "refresh");
     }
 
+    // Refresh Token 유효성 검사 메서드
+    public boolean validateRefreshToken(String refreshToken) {
+        try {
+            Claims claims = parseClaims(refreshToken);
+            return "refresh".equals(claims.get("type", String.class));
+        } catch (JwtException | IllegalArgumentException exception) {
+            return false;
+        }
+    }
+
+    // Refresh Token 사용자 ID 추출 메서드
+    public Long getUserIdFromRefreshToken(String refreshToken) {
+        Claims claims = parseClaims(refreshToken);
+
+        if (!"refresh".equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("리프레시 토큰 타입이 아닙니다.");
+        }
+
+        return Long.valueOf(claims.getSubject());
+    }
+
     // JWT 공통 생성 메서드
     private String buildToken(Long userId, String username, long expirationSeconds, String tokenType) {
         Instant now = Instant.now();
@@ -48,5 +71,14 @@ public class JwtTokenProvider {
         }
 
         return builder.compact();
+    }
+
+    // JWT Claims 파싱 메서드
+    private Claims parseClaims(String token) {
+        return Jwts.parser()
+                .verifyWith(secretKey)
+                .build()
+                .parseSignedClaims(token)
+                .getPayload();
     }
 }
