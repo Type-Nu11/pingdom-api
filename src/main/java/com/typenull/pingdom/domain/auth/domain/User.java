@@ -30,6 +30,16 @@ public class User {
     @Column(length = 255)
     private String email;
 
+    // 이메일 인증 완료 상태
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean emailVerified = false;
+
     @Column(nullable = false)
     private String password;
+
+    // 이메일 인증 완료 처리 메서드
+    public void verifyEmail() {
+        this.emailVerified = true;
+    }
 }
