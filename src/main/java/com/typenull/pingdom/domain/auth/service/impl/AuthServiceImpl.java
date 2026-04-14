@@ -6,6 +6,8 @@ import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
+import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenRequest;
+import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
@@ -75,5 +77,24 @@ public class AuthServiceImpl implements AuthService {
 
         // 이메일 인증 상태 반영 호출
         user.verifyEmail();
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    // Refresh Token 기준 토큰 재발급 메서드
+    public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+        if (!jwtTokenProvider.validateRefreshToken(request.refreshToken())) {
+            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        // 재발급용 Access Token, Refresh Token 생성 호출
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+        return new RefreshTokenResponse(accessToken, refreshToken);
     }
 }
