@@ -5,6 +5,8 @@ import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
+import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenRequest;
+import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -38,5 +40,11 @@ public class AuthController {
     public ResponseEntity<Void> verifyEmail(@Valid @RequestBody EmailVerifyRequest request) {
         authService.verifyEmail(request);
         return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/token/refresh")
+    // 리프레시 토큰 재발급 요청 처리 메서드
+    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request));
     }
 }
