@@ -84,7 +84,7 @@ public class AuthServiceImpl implements AuthService {
     // Refresh Token 기준 토큰 재발급 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         if (!jwtTokenProvider.validateRefreshToken(request.refreshToken())) {
-            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
 
         Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
