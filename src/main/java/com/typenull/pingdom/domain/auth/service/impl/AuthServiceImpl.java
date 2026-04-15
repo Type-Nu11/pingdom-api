@@ -67,7 +67,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public LoginResponse login(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
@@ -79,6 +79,9 @@ public class AuthServiceImpl implements AuthService {
         // 로그인 성공 시 JWT 발급 호출
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+        // 현재 활성 Refresh Token 저장 호출
+        user.issueRefreshToken(refreshToken);
 
         return new LoginResponse(
                 user.getId(),
@@ -110,7 +113,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
         if (!jwtTokenProvider.validateRefreshToken(request.refreshToken())) {
@@ -121,9 +124,16 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
+        if (!user.matchesRefreshToken(request.refreshToken())) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+
         // 재발급용 Access Token, Refresh Token 생성 호출
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+        // 새 Refresh Token 회전 반영 호출
+        user.issueRefreshToken(refreshToken);
 
         return new RefreshTokenResponse(accessToken, refreshToken);
     }

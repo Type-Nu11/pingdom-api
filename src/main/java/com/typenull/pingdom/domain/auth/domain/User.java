@@ -47,6 +47,10 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    // 현재 활성 Refresh Token 저장 필드
+    @Column(length = 1000)
+    private String refreshToken;
+
     // 이메일 인증 코드 발급 메서드
     public void issueEmailVerification(String verificationCode, LocalDateTime expiresAt) {
         this.emailVerificationCode = verificationCode;
@@ -69,5 +73,20 @@ public class User {
         this.emailVerified = true;
         this.emailVerificationCode = null;
         this.emailVerificationExpiresAt = null;
+    }
+
+    // Refresh Token 발급 상태 반영 메서드
+    public void issueRefreshToken(String refreshToken) {
+        this.refreshToken = refreshToken;
+    }
+
+    // Refresh Token 일치 여부 확인 메서드
+    public boolean matchesRefreshToken(String refreshToken) {
+        return Objects.equals(this.refreshToken, refreshToken);
+    }
+
+    // Refresh Token 제거 메서드
+    public void clearRefreshToken() {
+        this.refreshToken = null;
     }
 }
