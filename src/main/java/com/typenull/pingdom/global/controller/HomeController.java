@@ -11,7 +11,7 @@ public class HomeController {
     public Map<String, Object> home() {
         return Map.of(
                 "message", "Pingdom Backend is running.",
-                "availableEndpoints", new String[]{"/auth/signup", "/auth/login", "/auth/email/verify", "/auth/token/refresh"},
+                "availableEndpoints", new String[]{"/auth/signup", "/auth/login", "/auth/email/verify", "/auth/token/refresh", "/users/me"},
                 "signupFields", new String[]{"username", "name", "email", "password"},
                 "loginFields", new String[]{"username", "password"}
         );
