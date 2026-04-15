@@ -18,4 +18,7 @@ public interface AuthService {
 
     // Refresh Token 재발급 처리 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request);
+
+    // 회원탈퇴 처리 메서드
+    public void withdraw(Long userId);
 }

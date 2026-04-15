@@ -129,4 +129,15 @@ public class AuthServiceImpl implements AuthService {
     private String generateVerificationCode() {
         return "%06d".formatted(ThreadLocalRandom.current().nextInt(1_000_000));
     }
+
+    @Override
+    @Transactional
+    // 회원탈퇴 하드 딜리트 메서드
+    public void withdraw(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        // 사용자 데이터 완전 삭제 호출
+        userRepository.delete(user);
+    }
 }
