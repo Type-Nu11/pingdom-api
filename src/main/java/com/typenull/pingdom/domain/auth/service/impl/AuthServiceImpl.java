@@ -2,13 +2,13 @@ package com.typenull.pingdom.domain.auth.service.impl;
 
 import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.dto.email.EmailVerifyRequest;
-import com.typenull.pingdom.domain.auth.email.EmailSender;
 import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
 import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenResponse;
+import com.typenull.pingdom.domain.auth.event.EmailVerificationRequestedEvent;
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
@@ -17,6 +17,7 @@ import com.typenull.pingdom.domain.auth.service.AuthService;
 import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,7 +32,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
-    private final EmailSender emailSender;
+    private final ApplicationEventPublisher applicationEventPublisher;
 
     @Override
     @Transactional
@@ -56,8 +57,10 @@ public class AuthServiceImpl implements AuthService {
         User savedUser = userRepository.save(user);
 
         if (StringUtils.hasText(savedUser.getEmail()) && StringUtils.hasText(savedUser.getEmailVerificationCode())) {
-            // 회원가입 후 인증 메일 발송 호출
-            emailSender.sendVerificationEmail(savedUser.getEmail(), savedUser.getEmailVerificationCode());
+            // 트랜잭션 커밋 후 인증 메일 발송 이벤트 발행
+            applicationEventPublisher.publishEvent(
+                    new EmailVerificationRequestedEvent(savedUser.getEmail(), savedUser.getEmailVerificationCode())
+            );
         }
 
         return new UserResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getName());
