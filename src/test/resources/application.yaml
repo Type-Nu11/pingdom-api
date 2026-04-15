@@ -13,3 +13,8 @@ jwt:
   secret: 01234567890123456789012345678901
   access-token-expiration-seconds: 3600
   refresh-token-expiration-seconds: 1209600
+
+postmark:
+  server-token: test-postmark-token
+  from-email: no-reply@pingdom.local
+  verification-base-url: http://localhost:8080/auth/email/verify

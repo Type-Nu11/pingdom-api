@@ -8,6 +8,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "postmark")
 public record PostmarkProperties(
+        @NotBlank(message = "Postmark 서버 토큰은 필수입니다.")
         String serverToken,
 
         @NotBlank(message = "Postmark 발신자 이메일은 필수입니다.")
