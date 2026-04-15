@@ -6,6 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.dto.email.EmailVerifyRequest;
+import com.typenull.pingdom.domain.auth.email.EmailSender;
 import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
@@ -14,7 +15,10 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.webmvc.test.autoconfigure.AutoConfigureMockMvc;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -23,6 +27,18 @@ import tools.jackson.databind.ObjectMapper;
 @SpringBootTest
 @AutoConfigureMockMvc
 class AuthControllerTest {
+
+    @TestConfiguration
+    static class TestEmailSenderConfig {
+
+        @Bean
+        @Primary
+        // 테스트용 메일 발송 대체 빈
+        EmailSender emailSender() {
+            return (recipientEmail, verificationCode) -> {
+            };
+        }
+    }
 
     @Autowired
     private MockMvc mockMvc;
@@ -48,6 +64,10 @@ class AuthControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("tester01"))
                 .andExpect(jsonPath("$.name").value("tester"));
+
+        User user = userRepository.findByUsername("tester01").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNotNull(user.getEmailVerificationCode());
+        org.junit.jupiter.api.Assertions.assertFalse(user.isEmailVerified());
     }
 
     @Test
@@ -92,7 +112,8 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
-        EmailVerifyRequest verifyRequest = new EmailVerifyRequest("emailuser@example.com");
+        User issuedUser = userRepository.findByUsername("emailuser").orElseThrow();
+        EmailVerifyRequest verifyRequest = new EmailVerifyRequest("emailuser@example.com", issuedUser.getEmailVerificationCode());
 
         mockMvc.perform(post("/auth/email/verify")
                         .contentType(MediaType.APPLICATION_JSON)

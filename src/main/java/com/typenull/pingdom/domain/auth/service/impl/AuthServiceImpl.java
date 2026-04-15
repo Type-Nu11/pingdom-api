@@ -2,6 +2,7 @@ package com.typenull.pingdom.domain.auth.service.impl;
 
 import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.dto.email.EmailVerifyRequest;
+import com.typenull.pingdom.domain.auth.email.EmailSender;
 import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
@@ -13,18 +14,24 @@ import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.auth.service.AuthService;
+import java.time.LocalDateTime;
+import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 public class AuthServiceImpl implements AuthService {
 
+    private static final long EMAIL_VERIFICATION_EXPIRATION_MINUTES = 10L;
+
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
+    private final EmailSender emailSender;
 
     @Override
     @Transactional
@@ -34,14 +41,26 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.DUPLICATE_USERNAME);
         }
 
-        User user = userRepository.save(User.builder()
+        User user = User.builder()
                 .username(request.username())
                 .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .build());
+                .build();
 
-        return new UserResponse(user.getId(), user.getUsername(), user.getName());
+        if (StringUtils.hasText(request.email())) {
+            // 이메일 인증 코드 발급 처리
+            user.issueEmailVerification(generateVerificationCode(), LocalDateTime.now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES));
+        }
+
+        User savedUser = userRepository.save(user);
+
+        if (StringUtils.hasText(savedUser.getEmail()) && StringUtils.hasText(savedUser.getEmailVerificationCode())) {
+            // 회원가입 후 인증 메일 발송 호출
+            emailSender.sendVerificationEmail(savedUser.getEmail(), savedUser.getEmailVerificationCode());
+        }
+
+        return new UserResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getName());
     }
 
     @Override
@@ -75,6 +94,14 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
+        if (user.isEmailVerificationExpired(LocalDateTime.now())) {
+            throw new AuthException(AuthErrorCode.EXPIRED_EMAIL_VERIFICATION_CODE);
+        }
+
+        if (!user.matchesEmailVerificationCode(request.code())) {
+            throw new AuthException(AuthErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
+        }
+
         // 이메일 인증 상태 반영 호출
         user.verifyEmail();
     }
@@ -96,5 +123,10 @@ public class AuthServiceImpl implements AuthService {
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
         return new RefreshTokenResponse(accessToken, refreshToken);
+    }
+
+    // 6자리 이메일 인증 코드 생성 메서드
+    private String generateVerificationCode() {
+        return "%06d".formatted(ThreadLocalRandom.current().nextInt(1_000_000));
     }
 }
