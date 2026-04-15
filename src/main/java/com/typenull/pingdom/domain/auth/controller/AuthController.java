@@ -1,9 +1,12 @@
 package com.typenull.pingdom.domain.auth.controller;
 
+import com.typenull.pingdom.domain.auth.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.login.LoginResponse;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
+import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenRequest;
+import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.domain.auth.service.AuthService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +18,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/api/auth")
+@RequestMapping("/auth")
 @RequiredArgsConstructor
 public class AuthController {
 
@@ -30,5 +33,18 @@ public class AuthController {
     @PostMapping("/login")
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
+    }
+
+    @PostMapping("/email/verify")
+    // 이메일 인증 요청 처리 메서드
+    public ResponseEntity<Void> verifyEmail(@Valid @RequestBody EmailVerifyRequest request) {
+        authService.verifyEmail(request);
+        return ResponseEntity.ok().build();
+    }
+
+    @PostMapping("/token/refresh")
+    // 리프레시 토큰 재발급 요청 처리 메서드
+    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+        return ResponseEntity.ok(authService.refreshToken(request));
     }
 }

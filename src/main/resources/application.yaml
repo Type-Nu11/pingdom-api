@@ -19,3 +19,16 @@ spring:
   h2:
     console:
       enabled: true
+
+jwt:
+  secret: ${JWT_SECRET}
+  access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}
+  refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:1209600}
+
+postmark:
+  # Postmark 서버 토큰 설정
+  server-token: ${POSTMARK_SERVER_TOKEN:}
+  # 인증 메일 발신자 주소 설정
+  from-email: ${MAIL_FROM:no-reply@pingdom.local}
+  # 인증 메일 링크 기본 URL 설정
+  verification-base-url: ${MAIL_VERIFICATION_BASE_URL:http://localhost:8080/auth/email/verify}
