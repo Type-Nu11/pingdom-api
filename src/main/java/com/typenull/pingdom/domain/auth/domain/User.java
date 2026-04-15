@@ -6,6 +6,8 @@ import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
+import java.time.LocalDateTime;
+import java.util.Objects;
 import lombok.*;
 
 @Getter
@@ -35,11 +37,37 @@ public class User {
     @Column(nullable = false)
     private boolean emailVerified = false;
 
+    // 이메일 인증 코드 저장 필드
+    @Column(length = 20)
+    private String emailVerificationCode;
+
+    // 이메일 인증 코드 만료 시각 필드
+    private LocalDateTime emailVerificationExpiresAt;
+
     @Column(nullable = false)
     private String password;
+
+    // 이메일 인증 코드 발급 메서드
+    public void issueEmailVerification(String verificationCode, LocalDateTime expiresAt) {
+        this.emailVerificationCode = verificationCode;
+        this.emailVerificationExpiresAt = expiresAt;
+        this.emailVerified = false;
+    }
+
+    // 이메일 인증 코드 일치 여부 확인 메서드
+    public boolean matchesEmailVerificationCode(String verificationCode) {
+        return Objects.equals(this.emailVerificationCode, verificationCode);
+    }
+
+    // 이메일 인증 코드 만료 여부 확인 메서드
+    public boolean isEmailVerificationExpired(LocalDateTime now) {
+        return this.emailVerificationExpiresAt == null || now.isAfter(this.emailVerificationExpiresAt);
+    }
 
     // 이메일 인증 완료 처리 메서드
     public void verifyEmail() {
         this.emailVerified = true;
+        this.emailVerificationCode = null;
+        this.emailVerificationExpiresAt = null;
     }
 }
