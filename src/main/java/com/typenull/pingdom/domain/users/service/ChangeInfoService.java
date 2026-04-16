@@ -1,0 +1,49 @@
+package com.typenull.pingdom.domain.users.service;
+
+import com.typenull.pingdom.domain.auth.domain.User;
+import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
+import com.typenull.pingdom.domain.auth.exception.AuthException;
+import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
+import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
+import com.typenull.pingdom.domain.users.dto.ChangeUsernameRequest;
+import com.typenull.pingdom.domain.users.exception.MyPageErrorCode;
+import com.typenull.pingdom.domain.users.exception.MyPageException;
+import lombok.RequiredArgsConstructor;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class ChangeInfoService {
+
+    private final JwtTokenProvider jwtTokenProvider;
+    private final UserRepository userRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    private User getUser(String token) {
+        Long userId = jwtTokenProvider.getUserIdFromAccessToken(token);
+        return userRepository.findById(userId)
+                .orElseThrow(() -> new MyPageException(MyPageErrorCode.USER_NOT_FOUND));
+    }
+
+    @Transactional
+    public void changeUsername(ChangeUsernameRequest request, String token) {
+        User user = getUser(token);
+
+        user.changeUsername(request.getNewUsername());
+    }
+
+    @Transactional
+    public void changePassword(ChangePasswordRequest request, String token) {
+        User user = getUser(token);
+
+        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        request.validatePassword();
+        user.changePassword(passwordEncoder.encode(request.getNewPassword()));
+    }
+}
