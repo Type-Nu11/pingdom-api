@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MyPageService { // 마이페이지는 하나로 될 것 같아서 impl추가 안했습니다.
 
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)

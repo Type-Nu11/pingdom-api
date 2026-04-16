@@ -1,6 +1,7 @@
 package com.typenull.pingdom.users;
 
 import com.typenull.pingdom.domain.auth.domain.User;
+import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.service.ChangeInfoService;
@@ -54,7 +55,7 @@ class ChangeInfoServiceTest {
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(passwordEncoder.matches(eq("wrong"), any())).thenReturn(false);
 
-        assertThrows(RuntimeException.class, () -> {
+        assertThrows(AuthException.class, () -> {
             changeInfoService.changePassword(request, userId);
         });
     }

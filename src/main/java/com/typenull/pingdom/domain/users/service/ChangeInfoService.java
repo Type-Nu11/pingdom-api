@@ -29,11 +29,11 @@ public class ChangeInfoService {
     public void changeUsername(ChangeUsernameRequest request, Long userId) {
         User user = getUser(userId);
 
-        if(userRepository.existsByUsername(request.getNewUsername())){
+        if(user.getUsername().equals(request.newUsername()) && userRepository.existsByUsername(request.newUsername())){
             throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
         }
 
-        user.changeUsername(request.getNewUsername());
+        user.changeUsername(request.newUsername());
     }
 
     @Transactional
