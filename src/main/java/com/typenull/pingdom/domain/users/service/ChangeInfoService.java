@@ -4,7 +4,6 @@ import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.dto.ChangeUsernameRequest;
 import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
@@ -18,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class ChangeInfoService {
 
-    private final JwtTokenProvider jwtTokenProvider;
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
