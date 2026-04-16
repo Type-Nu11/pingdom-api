@@ -1,7 +1,6 @@
 package com.typenull.pingdom.domain.users.dto;
 
 import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.dto.signup.UserResponse;
 import lombok.Builder;
 
 @Builder

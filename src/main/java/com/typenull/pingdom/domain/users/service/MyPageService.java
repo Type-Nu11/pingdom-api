@@ -23,7 +23,7 @@ public class MyPageService { // 마이페이지는 하나로 될 것 같아서 i
         Long userId = jwtTokenProvider.getUserIdFromAccessToken(request.getAccessToken());
 
         return userRepository.findById(userId)
-                .map(MyPageResponse::from) //
+                .map(MyPageResponse::from)
                 .orElseThrow(() -> new MyPageException(MyPageErrorCode.USER_NOT_FOUND));
     }
 }
