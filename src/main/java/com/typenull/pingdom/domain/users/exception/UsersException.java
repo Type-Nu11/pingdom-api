@@ -1,15 +1,14 @@
 package com.typenull.pingdom.domain.users.exception;
 
-import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
 @Getter
-public class MyPageException extends RuntimeException {
+public class UsersException extends RuntimeException {
 
-    private final MyPageErrorCode errorCode;
+    private final UsersErrorCode errorCode;
 
-  public MyPageException(MyPageErrorCode errorCode) {
+  public UsersException(UsersErrorCode errorCode) {
     super(errorCode.getMessage());
     this.errorCode = errorCode;
   }

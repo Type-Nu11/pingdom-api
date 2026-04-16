@@ -3,8 +3,8 @@ package com.typenull.pingdom.domain.users.service;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.users.dto.MyPageResponse;
-import com.typenull.pingdom.domain.users.exception.MyPageErrorCode;
-import com.typenull.pingdom.domain.users.exception.MyPageException;
+import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
+import com.typenull.pingdom.domain.users.exception.UsersException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,6 +23,6 @@ public class MyPageService { // 마이페이지는 하나로 될 것 같아서 i
 
         return userRepository.findById(userId)
                 .map(MyPageResponse::from)
-                .orElseThrow(() -> new MyPageException(MyPageErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
     }
 }

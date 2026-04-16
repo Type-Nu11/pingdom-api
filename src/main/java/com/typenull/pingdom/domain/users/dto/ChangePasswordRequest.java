@@ -1,7 +1,7 @@
 package com.typenull.pingdom.domain.users.dto;
 
-import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
-import com.typenull.pingdom.domain.auth.exception.AuthException;
+import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
+import com.typenull.pingdom.domain.users.exception.UsersException;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 import lombok.Getter;
@@ -23,7 +23,7 @@ public class ChangePasswordRequest {
 
     public void validatePassword() {
         if (!newPassword.equals(confirmPassword)) {
-            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+            throw new UsersException(UsersErrorCode.PASSWORD_MISMATCH);
         }
     }
 }

@@ -7,8 +7,8 @@ import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.dto.ChangeUsernameRequest;
-import com.typenull.pingdom.domain.users.exception.MyPageErrorCode;
-import com.typenull.pingdom.domain.users.exception.MyPageException;
+import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
+import com.typenull.pingdom.domain.users.exception.UsersException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
@@ -25,12 +25,16 @@ public class ChangeInfoService {
     private User getUser(String token) {
         Long userId = jwtTokenProvider.getUserIdFromAccessToken(token);
         return userRepository.findById(userId)
-                .orElseThrow(() -> new MyPageException(MyPageErrorCode.USER_NOT_FOUND));
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
     }
 
     @Transactional
     public void changeUsername(ChangeUsernameRequest request, String token) {
         User user = getUser(token);
+
+        if(userRepository.existsByUsername(request.getNewUsername())){
+            throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
+        }
 
         user.changeUsername(request.getNewUsername());
     }

@@ -3,10 +3,11 @@ package com.typenull.pingdom.domain.users.controller;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.dto.ChangeUsernameRequest;
 import com.typenull.pingdom.domain.users.dto.MyPageResponse;
-import com.typenull.pingdom.domain.users.exception.MyPageErrorCode;
-import com.typenull.pingdom.domain.users.exception.MyPageException;
+import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
+import com.typenull.pingdom.domain.users.exception.UsersException;
 import com.typenull.pingdom.domain.users.service.ChangeInfoService;
 import com.typenull.pingdom.domain.users.service.MyPageService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -21,7 +22,7 @@ public class UsersController {
 
     private String extractToken(String authorization) {
         if (authorization == null || !authorization.startsWith("Bearer ")) {
-            throw new MyPageException(MyPageErrorCode.INVALID_TOKEN);
+            throw new UsersException(UsersErrorCode.INVALID_TOKEN);
         }
         return authorization.substring(7);
     }
@@ -37,7 +38,7 @@ public class UsersController {
 
     @PostMapping("/change-pw")
     public ResponseEntity<String> changePassword(
-            @RequestBody ChangePasswordRequest request,
+            @Valid @RequestBody ChangePasswordRequest request,
             @RequestHeader("Authorization") String authorization){
 
         String token = extractToken(authorization);
@@ -48,7 +49,7 @@ public class UsersController {
 
     @PostMapping("/change-id")
     public ResponseEntity<String> changeUsername(
-            @RequestBody ChangeUsernameRequest request,
+            @Valid @RequestBody ChangeUsernameRequest request,
             @RequestHeader("Authorization") String authorization){
 
         String token = extractToken(authorization);
