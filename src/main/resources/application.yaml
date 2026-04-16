@@ -5,10 +5,10 @@ spring:
     compose:
       enabled: false
   datasource:
-    url: ${DB_URL:jdbc:h2:mem:pingdom;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE}
-    driver-class-name: ${DB_DRIVER_CLASS_NAME:org.h2.Driver}
-    username: ${DB_USERNAME:sa}
-    password: ${DB_PASSWORD:}
+    url: ${DB_URL}
+    driver-class-name: ${DB_DRIVER_CLASS_NAME}
+    username: ${DB_USERNAME}
+    password: ${DB_PASSWORD}
   jpa:
     hibernate:
       ddl-auto: update
@@ -22,13 +22,13 @@ spring:
 
 jwt:
   secret: ${JWT_SECRET}
-  access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}
-  refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:1209600}
+  access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS}
+  refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS}
 
 postmark:
   # Postmark 서버 토큰 설정
-  server-token: ${POSTMARK_SERVER_TOKEN:}
+  server-token: ${POSTMARK_SERVER_TOKEN}
   # 인증 메일 발신자 주소 설정
-  from-email: ${MAIL_FROM:no-reply@pingdom.local}
+  from-email: ${MAIL_FROM}
   # 인증 메일 링크 기본 URL 설정
-  verification-base-url: ${MAIL_VERIFICATION_BASE_URL:http://localhost:8080/auth/email/verify}
+  verification-base-url: ${MAIL_VERIFICATION_BASE_URL}
