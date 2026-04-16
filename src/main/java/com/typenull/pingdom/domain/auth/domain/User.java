@@ -89,4 +89,13 @@ public class User {
     public void clearRefreshToken() {
         this.refreshToken = null;
     }
+
+
+    public void changePassword(String password) {
+        this.password = password;
+    }
+
+    public void changeUsername(String username) {
+        this.username = username;
+    }
 }
