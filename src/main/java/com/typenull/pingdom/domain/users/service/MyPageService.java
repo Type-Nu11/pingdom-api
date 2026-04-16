@@ -18,8 +18,7 @@ public class MyPageService { // 마이페이지는 하나로 될 것 같아서 i
 
     @Transactional(readOnly = true)
     //마이페이지 정보 반환 메서드
-    public MyPageResponse getMyPageInfo(String token){
-        Long userId = jwtTokenProvider.getUserIdFromAccessToken(token);
+    public MyPageResponse getMyPageInfo(Long userId){
 
         return userRepository.findById(userId)
                 .map(MyPageResponse::from)

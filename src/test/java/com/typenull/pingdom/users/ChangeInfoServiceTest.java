@@ -2,7 +2,6 @@ package com.typenull.pingdom.users;
 
 import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.service.ChangeInfoService;
 import org.junit.jupiter.api.Test;
@@ -21,9 +20,6 @@ import static org.mockito.Mockito.*;
 class ChangeInfoServiceTest {
 
     @Mock
-    private JwtTokenProvider jwtTokenProvider;
-
-    @Mock
     private UserRepository userRepository;
 
     @Mock
@@ -33,43 +29,33 @@ class ChangeInfoServiceTest {
     private ChangeInfoService changeInfoService;
 
     @Test
-     void 비밀번호_변경_성공() {
-        String token = "token";
+    void 비밀번호_변경_성공() {
         Long userId = 1L;
-
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setCurrentPassword("1234");
-        request.setNewPassword("abcd");
-        request.setConfirmPassword("abcd");
+        ChangePasswordRequest request = new ChangePasswordRequest("1234", "abcd1234", "abcd1234");
 
         User user = mock(User.class);
+        when(user.getPassword()).thenReturn("encoded_1234");
 
-        when(jwtTokenProvider.getUserIdFromAccessToken(token)).thenReturn(userId);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches("1234", user.getPassword())).thenReturn(true);
-        when(passwordEncoder.encode("abcd")).thenReturn("encoded");
+        when(passwordEncoder.matches("1234", "encoded_1234")).thenReturn(true);
+        when(passwordEncoder.encode("abcd1234")).thenReturn("encoded_abcd1234");
 
-        changeInfoService.changePassword(request, token);
+        changeInfoService.changePassword(request, userId);
 
-        verify(user).changePassword("encoded");
+        verify(user).changePassword("encoded_abcd1234");
     }
 
     @Test
     void 비밀번호_불일치_실패() {
-        String token = "token";
         Long userId = 1L;
-
-        ChangePasswordRequest request = new ChangePasswordRequest();
-        request.setCurrentPassword("wrong");
+        ChangePasswordRequest request = new ChangePasswordRequest("wrong", "abcd1234", "abcd1234");
 
         User user = mock(User.class);
-
-        when(jwtTokenProvider.getUserIdFromAccessToken(token)).thenReturn(userId);
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
-        when(passwordEncoder.matches(any(), any())).thenReturn(false);
+        when(passwordEncoder.matches(eq("wrong"), any())).thenReturn(false);
 
         assertThrows(RuntimeException.class, () -> {
-            changeInfoService.changePassword(request, token);
+            changeInfoService.changePassword(request, userId);
         });
     }
 }

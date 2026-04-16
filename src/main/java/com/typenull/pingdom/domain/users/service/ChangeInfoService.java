@@ -22,15 +22,14 @@ public class ChangeInfoService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
 
-    private User getUser(String token) {
-        Long userId = jwtTokenProvider.getUserIdFromAccessToken(token);
+    private User getUser(Long userId) {
         return userRepository.findById(userId)
                 .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
     }
 
     @Transactional
-    public void changeUsername(ChangeUsernameRequest request, String token) {
-        User user = getUser(token);
+    public void changeUsername(ChangeUsernameRequest request, Long userId) {
+        User user = getUser(userId);
 
         if(userRepository.existsByUsername(request.getNewUsername())){
             throw new UsersException(UsersErrorCode.USERNAME_ALREADY_EXISTS);
@@ -40,14 +39,14 @@ public class ChangeInfoService {
     }
 
     @Transactional
-    public void changePassword(ChangePasswordRequest request, String token) {
-        User user = getUser(token);
+    public void changePassword(ChangePasswordRequest request, Long userId) {
+        User user = getUser(userId);
 
-        if (!passwordEncoder.matches(request.getCurrentPassword(), user.getPassword())) {
+        if (!passwordEncoder.matches(request.currentPassword(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
         request.validatePassword();
-        user.changePassword(passwordEncoder.encode(request.getNewPassword()));
+        user.changePassword(passwordEncoder.encode(request.newPassword()));
     }
 }
