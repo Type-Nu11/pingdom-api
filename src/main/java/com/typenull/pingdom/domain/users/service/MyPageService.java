@@ -2,7 +2,6 @@ package com.typenull.pingdom.domain.users.service;
 
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
-import com.typenull.pingdom.domain.users.dto.MyPageRequest;
 import com.typenull.pingdom.domain.users.dto.MyPageResponse;
 import com.typenull.pingdom.domain.users.exception.MyPageErrorCode;
 import com.typenull.pingdom.domain.users.exception.MyPageException;
@@ -19,8 +18,8 @@ public class MyPageService { // 마이페이지는 하나로 될 것 같아서 i
 
     @Transactional(readOnly = true)
     //마이페이지 정보 반환 메서드
-    public MyPageResponse getMyPageInfo(MyPageRequest request){
-        Long userId = jwtTokenProvider.getUserIdFromAccessToken(request.getAccessToken());
+    public MyPageResponse getMyPageInfo(String token){
+        Long userId = jwtTokenProvider.getUserIdFromAccessToken(token);
 
         return userRepository.findById(userId)
                 .map(MyPageResponse::from)
