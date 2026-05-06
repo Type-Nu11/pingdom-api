@@ -3,13 +3,15 @@ package com.typenull.pingdom.domain.map.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.typenull.pingdom.domain.map.domain.MapImage;
-import com.typenull.pingdom.domain.map.dto.MapImageRequest;
+import com.typenull.pingdom.domain.map.dto.ImageDeleteRequest;
+import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
+import com.typenull.pingdom.domain.map.exception.MapErrorCode;
+import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import com.typenull.pingdom.global.properties.AwsProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -23,7 +25,7 @@ public class S3Service {
     private final MapImageRepository mapImageRepository;
 
     @Transactional
-    public void upload(MapImageRequest request) throws IOException {
+    public void upload(ImageUploadRequest request, long userId) throws IOException {
         // 파일명 중복 방지 (UUID + 원본파일명)
         String s3FileName = UUID.randomUUID() + "-" + request.file().getOriginalFilename();
 
@@ -43,8 +45,34 @@ public class S3Service {
         // 파일의 URL 저장
         MapImage mapImage = MapImage.builder()
                 .ImageUrl(amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString())
+                .userId(userId)
                 .build();
 
         mapImageRepository.save(mapImage);
+    }
+
+
+    @Transactional
+    public void deleteImage(ImageDeleteRequest request, Long userId) {
+        MapImage mapImage = mapImageRepository.findById(request.imageId())
+                .orElseThrow(() -> new MapException(MapErrorCode.Image_NOT_FOUND));
+
+        if (!mapImage.getUserId().equals(userId)) {
+            throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
+        }
+
+        String imageUrl = mapImage.getImageUrl();
+        String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+
+        deleteFromS3(fileName);
+        mapImageRepository.delete(mapImage);
+    }
+
+    public void deleteFromS3(String fileName) {
+        try {
+            amazonS3.deleteObject(awsProperties.getS3().getBucket(), fileName);
+        } catch (Exception e) {
+            throw new MapException(MapErrorCode.DELETE_ERROR);
+        }
     }
 }
