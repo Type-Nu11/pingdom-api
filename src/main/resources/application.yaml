@@ -32,3 +32,14 @@ postmark:
   from-email: ${MAIL_FROM}
   # 인증 메일 링크 기본 URL 설정
   verification-base-url: ${MAIL_VERIFICATION_BASE_URL}
+cloud:
+  aws:
+    s3:
+      bucket: pingdom-profile-pictures
+    region:
+      static: ap-northeast-2
+    stack:
+      auto: false
+    credentials:
+      access-key: ${AWS_ACCESS_KEY_ID}
+      secret-key: ${AWS_SECRET_ACCESS_KEY}
