@@ -29,12 +29,15 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
             HttpServletResponse response,
             AuthenticationException authException
     ) throws IOException, ServletException {
-        response.setStatus(AuthErrorCode.INVALID_TOKEN.getStatus().value());
+        boolean expired = Boolean.TRUE.equals(request.getAttribute(JwtAuthenticationFilter.ACCESS_TOKEN_EXPIRED_ATTRIBUTE));
+        AuthErrorCode errorCode = expired ? AuthErrorCode.EXPIRED_TOKEN : AuthErrorCode.INVALID_TOKEN;
+
+        response.setStatus(errorCode.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
         response.getWriter().write(objectMapper.writeValueAsString(Map.of(
-                "message", AuthErrorCode.INVALID_TOKEN.getMessage(),
-                "code", AuthErrorCode.INVALID_TOKEN.name()
+                "message", errorCode.getMessage(),
+                "code", errorCode.name()
         )));
     }
 }

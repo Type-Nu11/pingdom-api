@@ -51,6 +51,18 @@ public class User {
     @Column(length = 1000)
     private String refreshToken;
 
+    // 관리자 밴 여부
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean banned = false;
+
+    // 밴 처리 시각
+    private LocalDateTime bannedAt;
+
+    // 밴 사유
+    @Column(length = 255)
+    private String banReason;
+
     // 이메일 인증 코드 발급 메서드
     public void issueEmailVerification(String verificationCode, LocalDateTime expiresAt) {
         this.emailVerificationCode = verificationCode;
@@ -87,6 +99,14 @@ public class User {
 
     // Refresh Token 제거 메서드
     public void clearRefreshToken() {
+        this.refreshToken = null;
+    }
+
+    public void ban(String reason, LocalDateTime now) {
+        this.banned = true;
+        this.bannedAt = now;
+        this.banReason = reason;
+        // 밴되면 기존 리프레시 토큰도 무효화
         this.refreshToken = null;
     }
 

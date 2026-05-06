@@ -18,6 +18,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
     private static final String BEARER_PREFIX = "Bearer ";
+    static final String ACCESS_TOKEN_EXPIRED_ATTRIBUTE = "ACCESS_TOKEN_EXPIRED";
 
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -33,6 +34,13 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             FilterChain filterChain
     ) throws ServletException, IOException {
         String accessToken = resolveAccessToken(request);
+
+        if (accessToken != null) {
+            JwtTokenProvider.TokenStatus status = jwtTokenProvider.validateAccessTokenStatus(accessToken);
+            if (status == JwtTokenProvider.TokenStatus.EXPIRED) {
+                request.setAttribute(ACCESS_TOKEN_EXPIRED_ATTRIBUTE, true);
+            }
+        }
 
         if (accessToken != null && jwtTokenProvider.validateAccessToken(accessToken)) {
             String username = jwtTokenProvider.getUsernameFromAccessToken(accessToken);

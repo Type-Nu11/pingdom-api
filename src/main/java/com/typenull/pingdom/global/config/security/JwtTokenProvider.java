@@ -1,6 +1,7 @@
 package com.typenull.pingdom.global.config.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -44,11 +45,17 @@ public class JwtTokenProvider {
 
     // Access Token 유효성 검사 메서드
     public boolean validateAccessToken(String accessToken) {
+        return validateAccessTokenStatus(accessToken) == TokenStatus.VALID;
+    }
+
+    public TokenStatus validateAccessTokenStatus(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);
-            return "access".equals(claims.get("type", String.class));
+            return "access".equals(claims.get("type", String.class)) ? TokenStatus.VALID : TokenStatus.INVALID;
+        } catch (ExpiredJwtException exception) {
+            return TokenStatus.EXPIRED;
         } catch (JwtException | IllegalArgumentException exception) {
-            return false;
+            return TokenStatus.INVALID;
         }
     }
 
@@ -111,5 +118,11 @@ public class JwtTokenProvider {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public enum TokenStatus {
+        VALID,
+        EXPIRED,
+        INVALID
     }
 }

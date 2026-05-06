@@ -72,6 +72,10 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
+        if (user.isBanned()) {
+            throw new AuthException(AuthErrorCode.USER_BANNED);
+        }
+
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
