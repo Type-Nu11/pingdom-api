@@ -30,7 +30,8 @@ public class S3Service {
     @Transactional
     public void uploadImage(ImageUploadRequest request, long userId) throws IOException {
         // 파일명 중복 방지 (UUID + 원본파일명)
-        String s3FileName = UUID.randomUUID() + "-" + request.file().getOriginalFilename();
+        String originalFilename = request.file().getOriginalFilename();
+        String s3FileName = UUID.randomUUID() + "-" + (originalFilename != null ? originalFilename : "unnamed");
 
         // S3에 저장할 데이터
         ObjectMetadata objMeta = new ObjectMetadata();
@@ -50,6 +51,7 @@ public class S3Service {
             // DB 저장 시도
             MapImage mapImage = MapImage.builder()
                     .imageUrl(amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString())
+                    .s3Key(s3FileName)
                     .userId(userId)
                     .build();
 
@@ -74,21 +76,14 @@ public class S3Service {
             throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
         }
 
-        // 디비에 저장해둔 imageURl
-        String imageUrl = mapImage.getImageUrl();
-        String encodedFileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
-
-        // 디코딩
-        String fileName = URLDecoder.decode(encodedFileName, StandardCharsets.UTF_8);
-
-        deleteFromS3(fileName);
+        deleteFromS3(mapImage.getS3Key());
         mapImageRepository.delete(mapImage);
     }
 
     // 삭제 메서드
-    public void deleteFromS3(String fileName) {
+    private void deleteFromS3(String s3Key) {
         try {
-            amazonS3.deleteObject(awsProperties.getS3().getBucket(), fileName);
+            amazonS3.deleteObject(awsProperties.getS3().getBucket(), s3Key);
 
         } catch (com.amazonaws.AmazonServiceException e) {
             // AWS 서버 에러 (권한 부족, 네트워크 문제 등)
