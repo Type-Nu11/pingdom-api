@@ -21,8 +21,19 @@ spring:
       enabled: true
   servlet:
     multipart:
-      max-file-size: 10MB      # 파일 한 개당 최대 용량
-      max-request-size: 10MB   # 한 번의 요청에 담길 최대 용량
+      max-file-size: 10MB
+      max-request-size: 10MB
+  cloud:
+    aws:
+      s3:
+        bucket: pingdom-profile-pictures
+      region:
+        static: ap-northeast-2
+      stack:
+        auto: false
+      credentials:
+        access-key: ${AWS_ACCESS_KEY_ID}
+        secret-key: ${AWS_SECRET_ACCESS_KEY}
 
 jwt:
   secret: ${JWT_SECRET}
@@ -30,20 +41,6 @@ jwt:
   refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS}
 
 postmark:
-  # Postmark 서버 토큰 설정
   server-token: ${POSTMARK_SERVER_TOKEN}
-  # 인증 메일 발신자 주소 설정
   from-email: ${MAIL_FROM}
-  # 인증 메일 링크 기본 URL 설정
   verification-base-url: ${MAIL_VERIFICATION_BASE_URL}
-cloud:
-  aws:
-    s3:
-      bucket: pingdom-profile-pictures
-    region:
-      static-region: ap-northeast-2
-    stack:
-      auto: false
-    credentials:
-      access-key: ${AWS_ACCESS_KEY_ID}
-      secret-key: ${AWS_SECRET_ACCESS_KEY}

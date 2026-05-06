@@ -1,17 +1,21 @@
 package com.typenull.pingdom.domain.map.service;
 
-import com.amazonaws.services.s3.AmazonS3;
-import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
-import com.typenull.pingdom.global.properties.AwsProperties;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.core.exception.SdkException;
+import software.amazon.awssdk.core.sync.RequestBody;
+import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.PutObjectRequest;
+import software.amazon.awssdk.services.s3.model.S3Exception;
 
 import java.io.IOException;
 import java.util.UUID;
@@ -21,9 +25,11 @@ import java.util.UUID;
 @Slf4j
 public class S3Service {
 
-    private final AmazonS3 amazonS3;
-    private final AwsProperties awsProperties;
+    private final S3Client s3Client;
     private final MapImageRepository mapImageRepository;
+
+    @Value("${spring.cloud.aws.s3.bucket}")
+    private String bucket;
 
     @Transactional
     public void uploadImage(ImageUploadRequest request, long userId) throws IOException {
@@ -32,23 +38,29 @@ public class S3Service {
         String s3FileName = UUID.randomUUID() + "-" + (originalFilename != null ? originalFilename : "unnamed");
 
         // S3에 저장할 데이터
-        ObjectMetadata objMeta = new ObjectMetadata();
-        objMeta.setContentLength(request.file().getSize()); // 파일 사이즈, 최대치는 yml에서 조절
-        objMeta.setContentType(request.file().getContentType()); // 파일 타입
+        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(s3FileName)
+                .contentLength(request.file().getSize())
+                .contentType(request.file().getContentType())
+                .build();
 
         // 업로드할 오브젝트
-        amazonS3.putObject(
-                awsProperties.getS3().getBucket(),
-                s3FileName,
+        s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(
                 request.file().getInputStream(),
-                objMeta
-        );
+                request.file().getSize()
+        ));
 
         // 파일의 URL 저장
         try {
             // DB 저장 시도
+            String imageUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
+                    bucket,
+                    s3Client.serviceClientConfiguration().region().id(),
+                    s3FileName);
+
             MapImage mapImage = MapImage.builder()
-                    .imageUrl(amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString())
+                    .imageUrl(imageUrl)
                     .s3Key(s3FileName)
                     .userId(userId)
                     .build();
@@ -57,11 +69,13 @@ public class S3Service {
 
         } catch (Exception e) {
             // DB 저장 실패 시 S3 파일 삭제
-            amazonS3.deleteObject(awsProperties.getS3().getBucket(), s3FileName);
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(s3FileName)
+                    .build());
             throw new MapException(MapErrorCode.UPLOAD_ERROR);
         }
     }
-
 
     @Transactional
     public void deleteImage(Long imageId, Long userId) {
@@ -81,14 +95,17 @@ public class S3Service {
     // 삭제 메서드
     private void deleteFromS3(String s3Key) {
         try {
-            amazonS3.deleteObject(awsProperties.getS3().getBucket(), s3Key);
+            s3Client.deleteObject(DeleteObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(s3Key)
+                    .build());
 
-        } catch (com.amazonaws.AmazonServiceException e) {
+        } catch (S3Exception e) {
             // AWS 서버 에러 (권한 부족, 네트워크 문제 등)
-            log.error("S3 삭제 실패: {}", e.getErrorMessage());
+            log.error("S3 삭제 실패: {}", e.awsErrorDetails().errorMessage());
             throw new MapException(MapErrorCode.DELETE_ERROR);
 
-        } catch (com.amazonaws.SdkClientException e) {
+        } catch (SdkException e) {
             // 클라이언트 측 네트워크 문제
             log.error("S3 연결 실패: {}", e.getMessage());
             throw new MapException(MapErrorCode.S3_CONNECTION_ERROR);
