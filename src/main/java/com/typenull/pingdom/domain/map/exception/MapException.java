@@ -1,6 +1,5 @@
 package com.typenull.pingdom.domain.map.exception;
 
-import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
 
