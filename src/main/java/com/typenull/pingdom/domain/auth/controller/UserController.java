@@ -1,6 +1,6 @@
 package com.typenull.pingdom.domain.auth.controller;
 
-import com.typenull.pingdom.domain.auth.security.JwtAuthenticationFilter.JwtAuthenticatedUser;
+import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.auth.service.AuthService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;

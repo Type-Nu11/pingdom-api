@@ -1,6 +1,6 @@
 package com.typenull.pingdom.domain.users.controller;
 
-import com.typenull.pingdom.domain.auth.security.JwtAuthenticationFilter;
+import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.dto.ChangeUsernameRequest;
 import com.typenull.pingdom.domain.users.dto.MyPageResponse;
@@ -23,7 +23,7 @@ public class UsersController {
     private final ChangeInfoService changeInfoService;
 
     @GetMapping("/me")
-    public ResponseEntity<MyPageResponse> getMyPageInfo(@AuthenticationPrincipal JwtAuthenticationFilter.JwtAuthenticatedUser user) {
+    public ResponseEntity<MyPageResponse> getMyPageInfo(@AuthenticationPrincipal JwtAuthenticatedUser user) {
         Long userId = user.userId();
         return ResponseEntity.ok(myPageService.getMyPageInfo(userId));
     }
@@ -31,7 +31,7 @@ public class UsersController {
     @PostMapping("/change-pw")
     public ResponseEntity<String> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
-            @AuthenticationPrincipal JwtAuthenticationFilter.JwtAuthenticatedUser user){
+            @AuthenticationPrincipal JwtAuthenticatedUser user){
 
         Long userId = user.userId();
         changeInfoService.changePassword(request,userId);
@@ -42,7 +42,7 @@ public class UsersController {
     @PostMapping("/change-id")
     public ResponseEntity<String> changeUsername(
             @Valid @RequestBody ChangeUsernameRequest request,
-            @AuthenticationPrincipal JwtAuthenticationFilter.JwtAuthenticatedUser user){
+            @AuthenticationPrincipal JwtAuthenticatedUser user){
 
         Long userId = user.userId();
         changeInfoService.changeUsername(request,userId);
