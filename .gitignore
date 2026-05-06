@@ -22,6 +22,8 @@ bin/
 *.iws
 *.iml
 *.ipr
+*.env
+
 out/
 !**/src/main/**/out/
 !**/src/test/**/out/
@@ -35,3 +37,6 @@ out/
 
 ### VS Code ###
 .vscode/
+
+### Mac OS ###
+.DS_Store
