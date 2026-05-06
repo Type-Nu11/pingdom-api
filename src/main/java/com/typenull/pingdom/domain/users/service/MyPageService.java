@@ -1,7 +1,7 @@
 package com.typenull.pingdom.domain.users.service;
 
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
+import com.typenull.pingdom.global.config.security.JwtTokenProvider;
 import com.typenull.pingdom.domain.users.dto.MyPageResponse;
 import com.typenull.pingdom.domain.users.exception.UsersErrorCode;
 import com.typenull.pingdom.domain.users.exception.UsersException;
