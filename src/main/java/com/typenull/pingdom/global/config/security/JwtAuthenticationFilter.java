@@ -1,5 +1,6 @@
-package com.typenull.pingdom.domain.auth.security;
+package com.typenull.pingdom.global.config.security;
 
+import com.typenull.pingdom.domain.auth.security.JwtTokenProvider;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -62,7 +63,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return authorizationHeader.substring(BEARER_PREFIX.length());
     }
 
-    // 인증 사용자 정보 전달용 record
-    public record JwtAuthenticatedUser(Long userId, String username) {
-    }
 }
