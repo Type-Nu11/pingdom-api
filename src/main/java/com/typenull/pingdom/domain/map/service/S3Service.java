@@ -3,21 +3,24 @@ package com.typenull.pingdom.domain.map.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.typenull.pingdom.domain.map.domain.MapImage;
-import com.typenull.pingdom.domain.map.dto.ImageDeleteRequest;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import com.typenull.pingdom.global.properties.AwsProperties;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.io.IOException;
+import java.net.URLDecoder;
+import java.nio.charset.StandardCharsets;
 import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class S3Service {
 
     private final AmazonS3 amazonS3;
@@ -25,7 +28,7 @@ public class S3Service {
     private final MapImageRepository mapImageRepository;
 
     @Transactional
-    public void upload(ImageUploadRequest request, long userId) throws IOException {
+    public void uploadImage(ImageUploadRequest request, long userId) throws IOException {
         // 파일명 중복 방지 (UUID + 원본파일명)
         String s3FileName = UUID.randomUUID() + "-" + request.file().getOriginalFilename();
 
@@ -53,26 +56,41 @@ public class S3Service {
 
 
     @Transactional
-    public void deleteImage(ImageDeleteRequest request, Long userId) {
-        MapImage mapImage = mapImageRepository.findById(request.imageId())
+    public void deleteImage(Long imageId, Long userId) {
+        // 지우려는 이미지가 있는지
+        MapImage mapImage = mapImageRepository.findById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.Image_NOT_FOUND));
 
+        // 본인이 맞는지
         if (!mapImage.getUserId().equals(userId)) {
             throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
         }
 
+        // 디비에 저장해둔 imageURl
         String imageUrl = mapImage.getImageUrl();
-        String fileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+        String encodedFileName = imageUrl.substring(imageUrl.lastIndexOf("/") + 1);
+
+        // 디코딩
+        String fileName = URLDecoder.decode(encodedFileName, StandardCharsets.UTF_8);
 
         deleteFromS3(fileName);
         mapImageRepository.delete(mapImage);
     }
 
+    // 삭제 메서드
     public void deleteFromS3(String fileName) {
         try {
             amazonS3.deleteObject(awsProperties.getS3().getBucket(), fileName);
-        } catch (Exception e) {
+
+        } catch (com.amazonaws.AmazonServiceException e) {
+            // AWS 서버 에러 (권한 부족, 네트워크 문제 등)
+            log.error("S3 삭제 실패: {}", e.getErrorMessage());
             throw new MapException(MapErrorCode.DELETE_ERROR);
+
+        } catch (com.amazonaws.SdkClientException e) {
+            // 클라이언트 측 네트워크 문제
+            log.error("S3 연결 실패: {}", e.getMessage());
+            throw new MapException(MapErrorCode.S3_CONNECTION_ERROR);
         }
     }
 }

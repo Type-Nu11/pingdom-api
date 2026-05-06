@@ -7,10 +7,7 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.ModelAttribute;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 import java.io.IOException;
 
@@ -25,7 +22,15 @@ public class MapImageController {
     public ResponseEntity<String> upload(@Valid @ModelAttribute ImageUploadRequest request,
                                          @AuthenticationPrincipal JwtAuthenticationFilter.JwtAuthenticatedUser user) throws IOException {
         Long userId = user.userId();
-        s3Service.upload(request,userId);
+        s3Service.uploadImage(request,userId);
         return ResponseEntity.ok("사진을 저장했습니다.");
+    }
+
+    @DeleteMapping("/pictures/{id}/delete")
+    public ResponseEntity<String> delete(@Valid @PathVariable("id") Long imageId,
+                                         @AuthenticationPrincipal JwtAuthenticationFilter.JwtAuthenticatedUser user) throws IOException {
+        Long userId = user.userId();
+        s3Service.deleteImage(imageId,userId);
+        return ResponseEntity.ok(("사진을 삭제했습니다."));
     }
 }
