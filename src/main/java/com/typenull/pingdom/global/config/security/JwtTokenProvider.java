@@ -1,6 +1,5 @@
-package com.typenull.pingdom.domain.auth.security;
+package com.typenull.pingdom.global.config.security;
 
-import com.typenull.pingdom.domain.auth.config.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;

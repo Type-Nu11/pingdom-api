@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.auth.config;
+package com.typenull.pingdom.global.config.security;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

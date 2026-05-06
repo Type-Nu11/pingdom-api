@@ -1,7 +1,5 @@
-package com.typenull.pingdom.global.config;
+package com.typenull.pingdom.global.config.security;
 
-import com.typenull.pingdom.domain.auth.security.JwtAuthenticationEntryPoint;
-import com.typenull.pingdom.domain.auth.security.JwtAuthenticationFilter;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;

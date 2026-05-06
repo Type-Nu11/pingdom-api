@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.auth.security;
+package com.typenull.pingdom.global.config.security;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
