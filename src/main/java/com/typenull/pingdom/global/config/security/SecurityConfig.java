@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config;
+package com.typenull.pingdom.global.config.security;
 
 import com.typenull.pingdom.domain.auth.security.JwtAuthenticationEntryPoint;
 import com.typenull.pingdom.domain.auth.security.JwtAuthenticationFilter;
