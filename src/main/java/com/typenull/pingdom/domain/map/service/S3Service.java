@@ -46,12 +46,20 @@ public class S3Service {
         );
 
         // 파일의 URL 저장
-        MapImage mapImage = MapImage.builder()
-                .ImageUrl(amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString())
-                .userId(userId)
-                .build();
+        try {
+            // DB 저장 시도
+            MapImage mapImage = MapImage.builder()
+                    .imageUrl(amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString())
+                    .userId(userId)
+                    .build();
 
-        mapImageRepository.save(mapImage);
+            mapImageRepository.save(mapImage);
+
+        } catch (Exception e) {
+            // DB 저장 실패 시 S3 파일 삭제
+            amazonS3.deleteObject(awsProperties.getS3().getBucket(), s3FileName);
+            throw new MapException(MapErrorCode.UPLOAD_ERROR);
+        }
     }
 
 
@@ -59,7 +67,7 @@ public class S3Service {
     public void deleteImage(Long imageId, Long userId) {
         // 지우려는 이미지가 있는지
         MapImage mapImage = mapImageRepository.findById(imageId)
-                .orElseThrow(() -> new MapException(MapErrorCode.Image_NOT_FOUND));
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         // 본인이 맞는지
         if (!mapImage.getUserId().equals(userId)) {

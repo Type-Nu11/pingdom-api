@@ -12,10 +12,10 @@ public class MapImage {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
-    private Long Id;
+    private Long id;
 
     @Column(name = "image_url", length = 500, nullable = false)
-    private String ImageUrl;
+    private String imageUrl;
 
     @Column(name = "user_id")
     private Long userId;

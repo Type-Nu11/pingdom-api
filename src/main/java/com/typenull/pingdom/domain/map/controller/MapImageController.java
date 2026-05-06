@@ -31,6 +31,6 @@ public class MapImageController {
                                          @AuthenticationPrincipal JwtAuthenticationFilter.JwtAuthenticatedUser user) throws IOException {
         Long userId = user.userId();
         s3Service.deleteImage(imageId,userId);
-        return ResponseEntity.ok(("사진을 삭제했습니다."));
+        return ResponseEntity.ok("사진을 삭제했습니다.");
     }
 }
