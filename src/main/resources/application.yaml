@@ -19,6 +19,10 @@ spring:
   h2:
     console:
       enabled: true
+  servlet:
+    multipart:
+      max-file-size: 10MB      # 파일 한 개당 최대 용량
+      max-request-size: 10MB   # 한 번의 요청에 담길 최대 용량
 
 jwt:
   secret: ${JWT_SECRET}
