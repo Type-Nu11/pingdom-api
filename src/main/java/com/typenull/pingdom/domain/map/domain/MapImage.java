@@ -16,4 +16,7 @@ public class MapImage {
 
     @Column(name = "image_url", length = 500, nullable = false)
     private String ImageUrl;
+
+    @Column(name = "user_id")
+    private Long userId;
 }
