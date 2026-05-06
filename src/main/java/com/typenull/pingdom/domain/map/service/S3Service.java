@@ -2,9 +2,12 @@ package com.typenull.pingdom.domain.map.service;
 
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
+import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import com.typenull.pingdom.global.properties.AwsProperties;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 import java.io.IOException;
@@ -16,8 +19,10 @@ public class S3Service {
 
     private final AmazonS3 amazonS3;
     private final AwsProperties awsProperties;
+    private final MapImageRepository mapImageRepository;
 
-    public String upload(MultipartFile multipartFile) throws IOException {
+    @Transactional
+    public void upload(MultipartFile multipartFile) throws IOException {
         // 파일명 중복 방지 (UUID + 원본파일명)
         String s3FileName = UUID.randomUUID() + "-" + multipartFile.getOriginalFilename();
 
@@ -34,7 +39,11 @@ public class S3Service {
                 objMeta
         );
 
-        // 파일의 URL 반환
-        return amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString();
+        // 파일의 URL 저장
+        MapImage mapImage = MapImage.builder()
+                .ImageUrl(amazonS3.getUrl(awsProperties.getS3().getBucket(), s3FileName).toString())
+                .build();
+
+        mapImageRepository.save(mapImage);
     }
 }
