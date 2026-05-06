@@ -1,9 +1,6 @@
 package com.typenull.pingdom.domain.map.domain;
 
-import jakarta.persistence.Entity;
-import jakarta.persistence.GeneratedValue;
-import jakarta.persistence.GenerationType;
-import jakarta.persistence.Id;
+import jakarta.persistence.*;
 import lombok.*;
 
 @Entity
@@ -17,5 +14,6 @@ public class MapImage {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long Id;
 
+    @Column(name = "image_url", length = 500, nullable = false)
     private String ImageUrl;
 }

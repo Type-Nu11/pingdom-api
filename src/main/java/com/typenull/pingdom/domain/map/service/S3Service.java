@@ -3,6 +3,7 @@ package com.typenull.pingdom.domain.map.service;
 import com.amazonaws.services.s3.AmazonS3;
 import com.amazonaws.services.s3.model.ObjectMetadata;
 import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.domain.map.dto.MapImageRequest;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import com.typenull.pingdom.global.properties.AwsProperties;
 import lombok.RequiredArgsConstructor;
@@ -22,20 +23,20 @@ public class S3Service {
     private final MapImageRepository mapImageRepository;
 
     @Transactional
-    public void upload(MultipartFile multipartFile) throws IOException {
+    public void upload(MapImageRequest request) throws IOException {
         // 파일명 중복 방지 (UUID + 원본파일명)
-        String s3FileName = UUID.randomUUID() + "-" + multipartFile.getOriginalFilename();
+        String s3FileName = UUID.randomUUID() + "-" + request.file().getOriginalFilename();
 
         // S3에 저장할 데이터
         ObjectMetadata objMeta = new ObjectMetadata();
-        objMeta.setContentLength(multipartFile.getSize()); // 파일 사이즈, 최대치는 yml에서 조절
-        objMeta.setContentType(multipartFile.getContentType()); // 파일 타입
+        objMeta.setContentLength(request.file().getSize()); // 파일 사이즈, 최대치는 yml에서 조절
+        objMeta.setContentType(request.file().getContentType()); // 파일 타입
 
         // 업로드할 오브젝트
         amazonS3.putObject(
                 awsProperties.getS3().getBucket(),
                 s3FileName,
-                multipartFile.getInputStream(),
+                request.file().getInputStream(),
                 objMeta
         );
 
