@@ -17,6 +17,8 @@ import org.springframework.util.StringUtils;
 @Component
 public class PostmarkEmailSender implements EmailSender {
 
+    private static final String POSTMARK_API_HOST = "api.postmarkapp.com";
+    private static final String POSTMARK_SERVER_TOKEN_HEADER = "X-Postmark-Server-Token";
     private static final String VERIFICATION_SUBJECT = "Pingdom 이메일 인증";
 
     private final PostmarkProperties postmarkProperties;
@@ -24,7 +26,10 @@ public class PostmarkEmailSender implements EmailSender {
 
     public PostmarkEmailSender(PostmarkProperties postmarkProperties) {
         this.postmarkProperties = postmarkProperties;
-        this.apiClient = new ApiClient(postmarkProperties.serverToken(), Map.of());
+        this.apiClient = new ApiClient(
+                POSTMARK_API_HOST,
+                Map.of(POSTMARK_SERVER_TOKEN_HEADER, postmarkProperties.serverToken())
+        );
     }
 
     @Override
