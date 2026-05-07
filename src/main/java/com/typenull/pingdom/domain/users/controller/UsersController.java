@@ -131,9 +131,68 @@ public class UsersController {
     }
 
     @PostMapping("/change-id")
+    @Operation(
+            summary = "아이디 변경",
+            description = "현재 인증된 사용자의 아이디를 새 아이디로 변경합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "아이디 변경 성공",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = "\"이름 변경 완료\""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "newUsername": "아이디는 4자 이상 50자 이하여야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 사용 중인 아이디",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "이미 있는 이름입니다.",
+                                              "code": "USERNAME_ALREADY_EXISTS"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<String> changeUsername(
             @Valid @RequestBody ChangeUsernameRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user){
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user){
 
         Long userId = user.userId();
         changeInfoService.changeUsername(request,userId);
