@@ -83,7 +83,5 @@ public class AdminPictureServiceImpl implements AdminPictureService {
         } catch (URISyntaxException ignored) {
             return null;
         }
-
-        return null;
     }
 }

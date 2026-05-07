@@ -1,14 +1,11 @@
 spring:
   application:
     name: Pingdom
-  docker:
-    compose:
-      enabled: false
   datasource:
-    url: ${DB_URL}
-    driver-class-name: ${DB_DRIVER_CLASS_NAME}
-    username: ${DB_USERNAME}
-    password: ${DB_PASSWORD}
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pingdom}
+    driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
+    username: ${DB_USERNAME:pingdom}
+    password: ${DB_PASSWORD:pingdom}
   jpa:
     hibernate:
       ddl-auto: update
@@ -16,9 +13,6 @@ spring:
       hibernate:
         format_sql: true
     open-in-view: false
-  h2:
-    console:
-      enabled: true
   servlet:
     multipart:
       max-file-size: 10MB
