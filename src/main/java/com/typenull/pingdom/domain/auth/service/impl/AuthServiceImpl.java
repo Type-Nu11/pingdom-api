@@ -81,7 +81,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 로그인 성공 시 JWT 발급 호출
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
         // 현재 활성 Refresh Token 저장 호출
@@ -133,7 +133,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         // 재발급용 Access Token, Refresh Token 생성 호출
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername());
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
         // 새 Refresh Token 회전 반영 호출

@@ -1,6 +1,5 @@
 package com.typenull.pingdom.global.config.security;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -11,6 +10,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
+import tools.jackson.databind.ObjectMapper;
 
 // JWT 인증 실패 시 401 JSON 응답 생성 클래스
 @Component

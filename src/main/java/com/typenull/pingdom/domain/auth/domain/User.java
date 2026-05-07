@@ -1,6 +1,8 @@
 package com.typenull.pingdom.domain.auth.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -50,6 +52,11 @@ public class User {
     // 현재 활성 Refresh Token 저장 필드
     @Column(length = 1000)
     private String refreshToken;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
 
     // 관리자 밴 여부
     @Builder.Default
@@ -117,5 +124,9 @@ public class User {
 
     public void changeUsername(String username) {
         this.username = username;
+    }
+
+    public boolean isAdmin() {
+        return this.role == UserRole.ADMIN;
     }
 }

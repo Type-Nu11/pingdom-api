@@ -1,5 +1,6 @@
 package com.typenull.pingdom.global.config.security;
 
+import com.typenull.pingdom.domain.auth.config.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
@@ -24,13 +25,13 @@ public class JwtTokenProvider {
     }
 
     // Access Token 생성 메서드
-    public String generateAccessToken(Long userId, String username) {
-        return buildToken(userId, username, jwtProperties.accessTokenExpirationSeconds(), "access");
+    public String generateAccessToken(Long userId, String username, String role) {
+        return buildToken(userId, username, role, jwtProperties.accessTokenExpirationSeconds(), "access");
     }
 
     // Refresh Token 생성 메서드
     public String generateRefreshToken(Long userId) {
-        return buildToken(userId, null, jwtProperties.refreshTokenExpirationSeconds(), "refresh");
+        return buildToken(userId, null, null, jwtProperties.refreshTokenExpirationSeconds(), "refresh");
     }
 
     // Refresh Token 유효성 검사 메서드
@@ -92,8 +93,18 @@ public class JwtTokenProvider {
         return claims.get("username", String.class);
     }
 
+    public String getRoleFromAccessToken(String accessToken) {
+        Claims claims = parseClaims(accessToken);
+
+        if (!"access".equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("액세스 토큰 타입이 아닙니다.");
+        }
+
+        return claims.get("role", String.class);
+    }
+
     // JWT 공통 생성 메서드
-    private String buildToken(Long userId, String username, long expirationSeconds, String tokenType) {
+    private String buildToken(Long userId, String username, String role, long expirationSeconds, String tokenType) {
         Instant now = Instant.now();
         Instant expiration = now.plusSeconds(expirationSeconds);
 
@@ -106,6 +117,9 @@ public class JwtTokenProvider {
 
         if (username != null) {
             builder.claim("username", username);
+        }
+        if (role != null) {
+            builder.claim("role", role);
         }
 
         return builder.compact();
