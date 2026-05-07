@@ -100,8 +100,93 @@ public class MapImageController {
     }
 
     @DeleteMapping("/pictures/{id}/delete")
-    public ResponseEntity<String> delete(@Valid @PathVariable("id") Long imageId,
-                                         @AuthenticationPrincipal JwtAuthenticatedUser user) throws IOException {
+    @Operation(
+            summary = "사진 삭제",
+            description = "지정한 이미지 ID의 사진을 삭제합니다. 본인 소유 사진만 삭제할 수 있습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사진 삭제 성공",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = "\"사진을 삭제했습니다.\""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "본인 소유가 아닌 사진 삭제 시도",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "자신의 사진만 삭제할 수 있습니다.",
+                                              "code": "OTHERS_NOT_DELETED"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이미지를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "이미지를 찾을 수 없습니다.",
+                                              "code": "IMAGE_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "500",
+                    description = "S3 삭제 또는 연결 실패",
+                    content = @Content(
+                            examples = {
+                                    @ExampleObject(
+                                            name = "delete-error",
+                                            value = """
+                                                    {
+                                                      "message": "이미지를 삭제하는 데 실패했습니다. 잠시 후 다시 시도해 주세요.",
+                                                      "code": "DELETE_ERROR"
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "s3-connection-error",
+                                            value = """
+                                                    {
+                                                      "message": "S3 서버 연결에 실패했습니다.",
+                                                      "code": "S3_CONNECTION_ERROR"
+                                                    }
+                                                    """
+                                    )
+                            }
+                    )
+            )
+    })
+    public ResponseEntity<String> delete(
+            @Parameter(description = "삭제할 이미지 ID", example = "1") @Valid @PathVariable("id") Long imageId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) throws IOException {
         Long userId = user.userId();
         s3Service.deleteImage(imageId,userId);
         return ResponseEntity.ok("사진을 삭제했습니다.");
