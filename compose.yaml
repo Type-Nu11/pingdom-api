@@ -1,9 +1,9 @@
 services:
   postgres:
-    image: 'postgres:latest'
+    image: 'postgres:16.13'
     environment:
-      - 'POSTGRES_DB=mydatabase'
-      - 'POSTGRES_PASSWORD=secret'
-      - 'POSTGRES_USER=myuser'
+      - 'POSTGRES_DB=pingdom'
+      - 'POSTGRES_PASSWORD=pingdom'
+      - 'POSTGRES_USER=pingdom'
     ports:
       - '5432:5432'

@@ -29,7 +29,6 @@ public class SecurityConfig {
                                 "/swagger-ui/**",
                                 "/v3/api-docs/**"
                         ).permitAll()
-                        .requestMatchers("/h2-console/**").permitAll()
                         .requestMatchers("/admin/**").permitAll()
                         .anyRequest().authenticated()
                 )
