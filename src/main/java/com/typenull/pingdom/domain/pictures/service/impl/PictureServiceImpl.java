@@ -10,18 +10,20 @@ import java.io.IOException;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
 @RequiredArgsConstructor
 public class PictureServiceImpl implements PictureService {
 
-    private final S3Client s3Client;
+    private final ObjectProvider<S3Client> s3ClientProvider;
     private final AwsS3Properties awsS3Properties;
     private final PictureRepository pictureRepository;
 
@@ -30,6 +32,11 @@ public class PictureServiceImpl implements PictureService {
     public PictureUploadResponse upload(PictureUploadRequest request) throws IOException {
         if (!StringUtils.hasText(awsS3Properties.bucket())) {
             throw new IllegalStateException("S3 bucket 설정이 필요합니다.");
+        }
+
+        S3Client s3Client = s3ClientProvider.getIfAvailable();
+        if (s3Client == null) {
+            throw new IllegalStateException("S3 설정이 누락되었습니다.");
         }
 
         String originalFilename = request.file().getOriginalFilename();
@@ -47,12 +54,9 @@ public class PictureServiceImpl implements PictureService {
                 RequestBody.fromInputStream(request.file().getInputStream(), request.file().getSize())
         );
 
-        String url = String.format(
-                "https://%s.s3.%s.amazonaws.com/%s",
-                awsS3Properties.bucket(),
-                s3Client.serviceClientConfiguration().region().id(),
-                s3Key
-        );
+        String url = s3Client.utilities()
+                .getUrl(GetUrlRequest.builder().bucket(awsS3Properties.bucket()).key(s3Key).build())
+                .toExternalForm();
 
         Picture saved = pictureRepository.save(Picture.builder()
                 .url(url)
@@ -63,4 +67,3 @@ public class PictureServiceImpl implements PictureService {
         return new PictureUploadResponse(saved.getId(), saved.getUrl(), saved.getS3Key());
     }
 }
-
