@@ -193,9 +193,84 @@ public class MapImageController {
     }
 
     @PostMapping("/pictures/{id}/report")
-    public ResponseEntity<String> report(@PathVariable("id") Long imageId,
-                                         @Valid @RequestBody PictureReportRequest request,
-                                         @AuthenticationPrincipal JwtAuthenticatedUser user) {
+    @Operation(
+            summary = "사진 신고",
+            description = "지정한 이미지 ID의 사진을 신고합니다. 동일 사용자는 같은 사진을 한 번만 신고할 수 있습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "사진 신고 등록 성공",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = "\"사진 신고를 등록했습니다.\""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "요청값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "reason": "신고 사유는 필수입니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이미지를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "이미지를 찾을 수 없습니다.",
+                                              "code": "IMAGE_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 신고한 사진",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "같은 사진은 한 번만 신고할 수 있습니다.",
+                                              "code": "ALREADY_REPORTED_IMAGE"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<String> report(
+            @Parameter(description = "신고할 이미지 ID", example = "1") @PathVariable("id") Long imageId,
+            @Valid @RequestBody PictureReportRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
         pictureReportService.report(imageId, user.userId(), user.username(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body("사진 신고를 등록했습니다.");
     }
