@@ -28,6 +28,8 @@ spring:
       credentials:
         access-key: ${AWS_ACCESS_KEY_ID}
         secret-key: ${AWS_SECRET_ACCESS_KEY}
+  config:
+    import: optional:file:.env[.properties]
 
 jwt:
   secret: ${JWT_SECRET}
