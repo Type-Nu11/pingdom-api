@@ -191,7 +191,61 @@ public class AuthController {
     }
 
     @PostMapping("/token/refresh")
-    // 리프레시 토큰 재발급 요청 처리 메서드
+    @Operation(
+            summary = "토큰 재발급",
+            description = "Refresh Token을 검증한 뒤 새로운 Access Token과 Refresh Token을 재발급합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "토큰 재발급 성공",
+                    content = @Content(schema = @Schema(implementation = RefreshTokenResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "refreshToken": "리프레시 토큰은 필수입니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 리프레시 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "토큰에 해당하는 사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
         return ResponseEntity.ok(authService.refreshToken(request));
     }
