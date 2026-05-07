@@ -11,6 +11,7 @@ public enum MapErrorCode {
     ALREADY_REPORTED_IMAGE(HttpStatus.CONFLICT, "같은 사진은 한 번만 신고할 수 있습니다."),
     OTHERS_NOT_DELETED(HttpStatus.FORBIDDEN,"자신의 사진만 삭제할 수 있습니다."),
     DELETE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"이미지를 삭제하는 데 실패했습니다. 잠시 후 다시 시도해 주세요."),
+    S3_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR,"S3 설정이 누락되었습니다."),
     S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"S3 서버 연결에 실패했습니다."),
     UPLOAD_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "업로드 과정에서 오류가 발생하였습니다.");
 
