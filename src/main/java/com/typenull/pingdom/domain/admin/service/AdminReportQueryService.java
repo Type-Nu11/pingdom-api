@@ -6,7 +6,7 @@ import java.util.List;
 
 public interface AdminReportQueryService {
 
-    List<AdminReportSummaryResponse> listReports(int limit);
+    List<AdminReportSummaryResponse> listReports(int page, int limit);
 
     AdminReportDetailResponse getReport(Long reportId);
 }

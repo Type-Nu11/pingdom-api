@@ -22,9 +22,12 @@ public class AdminReportQueryServiceImpl implements AdminReportQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AdminReportSummaryResponse> listReports(int limit) {
+    public List<AdminReportSummaryResponse> listReports(int page, int limit) {
+        int safePage = Math.max(0, page);
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        return pictureReportRepository.findAll(PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "id")))
+        return pictureReportRepository.findAllBy(
+                        PageRequest.of(safePage, safeLimit, Sort.by(Sort.Direction.DESC, "id"))
+                )
                 .stream()
                 .map(this::toSummaryResponse)
                 .toList();

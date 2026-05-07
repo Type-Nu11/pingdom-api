@@ -59,14 +59,40 @@ class AdminReportControllerTest {
     void listReportsReturnsRegisteredReports() throws Exception {
         User owner = createUser("owner01");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-1.jpg");
-        createPictureReport(11L, "reporter01", mapImage, "부적절한 사진입니다.");
+        PictureReport pictureReport = createPictureReport(11L, "reporter01", mapImage, "부적절한 사진입니다.");
 
-        mockMvc.perform(get("/admin/reports"))
+        mockMvc.perform(get("/admin/reports")
+                        .param("page", "0")
+                        .param("limit", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].reportId").value(pictureReportRepository.findAll().get(0).getId()))
+                .andExpect(jsonPath("$[0].reportId").value(pictureReport.getId()))
                 .andExpect(jsonPath("$[0].imageId").value(mapImage.getId()))
                 .andExpect(jsonPath("$[0].reportedUserId").value(owner.getId()))
                 .andExpect(jsonPath("$[0].status").value(PictureReportStatus.PENDING.name()));
+    }
+
+    @Test
+    void listReportsAppliesPageParameter() throws Exception {
+        User firstOwner = createUser("ownerPage01");
+        User secondOwner = createUser("ownerPage02");
+        MapImage firstImage = createMapImage(firstOwner.getId(), "https://example.com/page-image-1.jpg");
+        MapImage secondImage = createMapImage(secondOwner.getId(), "https://example.com/page-image-2.jpg");
+        PictureReport firstReport = createPictureReport(21L, "reporterPage01", firstImage, "첫 번째 신고");
+        PictureReport latestReport = createPictureReport(22L, "reporterPage02", secondImage, "두 번째 신고");
+
+        mockMvc.perform(get("/admin/reports")
+                        .param("page", "0")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].reportId").value(latestReport.getId()));
+
+        mockMvc.perform(get("/admin/reports")
+                        .param("page", "1")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(1))
+                .andExpect(jsonPath("$[0].reportId").value(firstReport.getId()));
     }
 
     @Test

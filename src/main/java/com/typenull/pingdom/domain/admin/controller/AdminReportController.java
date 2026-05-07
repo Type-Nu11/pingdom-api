@@ -23,8 +23,11 @@ public class AdminReportController {
     private final AdminReportService adminReportService;
 
     @GetMapping
-    public List<AdminReportSummaryResponse> listReports(@RequestParam(defaultValue = "20") int limit) {
-        return adminReportQueryService.listReports(limit);
+    public List<AdminReportSummaryResponse> listReports(
+            @RequestParam(defaultValue = "0") int page,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return adminReportQueryService.listReports(page, limit);
     }
 
     @GetMapping("/{id}")
