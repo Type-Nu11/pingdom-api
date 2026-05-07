@@ -63,9 +63,66 @@ public class UsersController {
     }
 
     @PostMapping("/change-pw")
+    @Operation(
+            summary = "비밀번호 변경",
+            description = "현재 비밀번호를 확인한 뒤 새 비밀번호로 변경합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "비밀번호 변경 성공",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = "\"비밀번호 변경 완료\""
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "newPassword": "비밀번호는 8자 이상이어야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "현재 비밀번호 불일치 또는 유효하지 않은 토큰",
+                    content = @Content(
+                            examples = {
+                                    @ExampleObject(
+                                            name = "invalid-credentials",
+                                            value = """
+                                                    {
+                                                      "message": "아이디 또는 비밀번호가 올바르지 않습니다.",
+                                                      "code": "INVALID_CREDENTIALS"
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "invalid-token",
+                                            value = """
+                                                    {
+                                                      "message": "유효하지 않은 토큰입니다.",
+                                                      "code": "INVALID_TOKEN"
+                                                    }
+                                                    """
+                                    )
+                            }
+                    )
+            )
+    })
     public ResponseEntity<String> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user){
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user){
 
         Long userId = user.userId();
         changeInfoService.changePassword(request,userId);
