@@ -44,3 +44,9 @@ postmark:
   server-token: ${POSTMARK_SERVER_TOKEN}
   from-email: ${MAIL_FROM}
   verification-base-url: ${MAIL_VERIFICATION_BASE_URL}
+
+springdoc:
+  api-docs:
+    enabled: false
+  swagger-ui:
+    enabled: false
