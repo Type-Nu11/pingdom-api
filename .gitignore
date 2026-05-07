@@ -22,6 +22,7 @@ bin/
 *.iws
 *.iml
 *.ipr
+.env
 *.env
 
 out/
