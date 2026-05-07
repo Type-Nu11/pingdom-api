@@ -75,7 +75,7 @@ class PictureReportControllerTest {
                 .andExpect(status().isCreated());
 
         assertEquals(1L, pictureReportRepository.count());
-        PictureReport pictureReport = pictureReportRepository.findAll().getFirst();
+        PictureReport pictureReport = pictureReportRepository.findAll().get(0);
         assertEquals("reporter01", pictureReport.getReporterUsername());
         assertEquals("부적절한 사진입니다.", pictureReport.getReason());
         assertEquals(mapImage.getId(), pictureReport.getMapImage().getId());
