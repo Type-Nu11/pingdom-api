@@ -2,6 +2,7 @@ package com.typenull.pingdom.global.exception.handler;
 
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
+import com.typenull.pingdom.domain.map.exception.MapException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -18,6 +19,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<Map<String, String>> handleAuthException(AuthException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(MapException.class)
+    public ResponseEntity<Map<String, String>> handleMapException(MapException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }
