@@ -78,12 +78,113 @@ public class AuthController {
     }
 
     @PostMapping("/login")
+    @Operation(
+            summary = "로그인",
+            description = "아이디와 비밀번호를 검증한 뒤 사용자 정보와 Access Token, Refresh Token을 반환합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "로그인 성공",
+                    content = @Content(schema = @Schema(implementation = LoginResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "password": "비밀번호는 8자 이상이어야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "아이디 또는 비밀번호 불일치",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "아이디 또는 비밀번호가 올바르지 않습니다.",
+                                              "code": "INVALID_CREDENTIALS"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
 
     @PostMapping("/email/verify")
-    // 이메일 인증 요청 처리 메서드
+    @Operation(
+            summary = "이메일 인증",
+            description = "이메일과 인증 코드를 검증해 사용자의 이메일 인증 상태를 완료 처리합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "이메일 인증 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패 또는 유효하지 않은 인증 코드",
+                    content = @Content(
+                            examples = {
+                                    @ExampleObject(
+                                            name = "validation-failure",
+                                            value = """
+                                                    {
+                                                      "message": "입력값을 확인해주세요.",
+                                                      "errors": {
+                                                        "email": "이메일 형식이 올바르지 않습니다."
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "invalid-code",
+                                            value = """
+                                                    {
+                                                      "message": "이메일 인증 코드가 올바르지 않습니다.",
+                                                      "code": "INVALID_EMAIL_VERIFICATION_CODE"
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "expired-code",
+                                            value = """
+                                                    {
+                                                      "message": "이메일 인증 코드가 만료되었습니다.",
+                                                      "code": "EXPIRED_EMAIL_VERIFICATION_CODE"
+                                                    }
+                                                    """
+                                    )
+                            }
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이메일에 해당하는 사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<Void> verifyEmail(@Valid @RequestBody EmailVerifyRequest request) {
         authService.verifyEmail(request);
         return ResponseEntity.ok().build();
