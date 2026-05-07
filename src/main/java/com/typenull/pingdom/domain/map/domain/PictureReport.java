@@ -45,8 +45,17 @@ public class PictureReport {
     @Column(name = "reporter_username", nullable = false, length = 50)
     private String reporterUsername;
 
-    @ManyToOne(fetch = FetchType.LAZY, optional = false)
-    @JoinColumn(name = "map_image_id", nullable = false)
+    @Column(name = "reported_image_id", nullable = false)
+    private Long reportedImageId;
+
+    @Column(name = "reported_user_id", nullable = false)
+    private Long reportedUserId;
+
+    @Column(name = "reported_image_url", nullable = false, length = 500)
+    private String reportedImageUrl;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "map_image_id")
     private MapImage mapImage;
 
     @Column(name = "reason", nullable = false, length = 500)
@@ -72,5 +81,9 @@ public class PictureReport {
     public void decline(LocalDateTime processedAt) {
         this.status = PictureReportStatus.DECLINED;
         this.processedAt = processedAt;
+    }
+
+    public void detachMapImage() {
+        this.mapImage = null;
     }
 }

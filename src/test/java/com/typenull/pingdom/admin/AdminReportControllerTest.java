@@ -149,6 +149,7 @@ class AdminReportControllerTest {
         assertEquals(PictureReportStatus.ACCEPTED, persistedReport.getStatus());
         assertTrue(persistedOwner.isBanned());
         assertEquals("욕설이 포함된 이미지입니다.", persistedOwner.getBanReason());
+        assertTrue(mapImageRepository.findById(mapImage.getId()).isEmpty());
     }
 
     @Test
@@ -229,6 +230,9 @@ class AdminReportControllerTest {
         return pictureReportRepository.save(PictureReport.builder()
                 .reporterUserId(reporterUserId)
                 .reporterUsername(reporterUsername)
+                .reportedImageId(mapImage.getId())
+                .reportedUserId(mapImage.getUserId())
+                .reportedImageUrl(mapImage.getImageUrl())
                 .mapImage(mapImage)
                 .reason(reason)
                 .build());

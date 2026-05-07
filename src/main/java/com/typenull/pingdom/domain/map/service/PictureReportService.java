@@ -31,6 +31,9 @@ public class PictureReportService {
         PictureReport pictureReport = PictureReport.builder()
                 .reporterUserId(reporterUserId)
                 .reporterUsername(reporterUsername)
+                .reportedImageId(mapImage.getId())
+                .reportedUserId(mapImage.getUserId())
+                .reportedImageUrl(mapImage.getImageUrl())
                 .mapImage(mapImage)
                 .reason(request.reason())
                 .build();

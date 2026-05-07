@@ -45,8 +45,8 @@ public class AdminReportQueryServiceImpl implements AdminReportQueryService {
     private AdminReportSummaryResponse toSummaryResponse(PictureReport pictureReport) {
         return new AdminReportSummaryResponse(
                 pictureReport.getId(),
-                pictureReport.getMapImage().getId(),
-                pictureReport.getMapImage().getUserId(),
+                pictureReport.getReportedImageId(),
+                pictureReport.getReportedUserId(),
                 pictureReport.getReporterUserId(),
                 pictureReport.getReporterUsername(),
                 pictureReport.getReason(),
@@ -58,9 +58,9 @@ public class AdminReportQueryServiceImpl implements AdminReportQueryService {
     private AdminReportDetailResponse toDetailResponse(PictureReport pictureReport) {
         return new AdminReportDetailResponse(
                 pictureReport.getId(),
-                pictureReport.getMapImage().getId(),
-                pictureReport.getMapImage().getUserId(),
-                pictureReport.getMapImage().getImageUrl(),
+                pictureReport.getReportedImageId(),
+                pictureReport.getReportedUserId(),
+                pictureReport.getReportedImageUrl(),
                 pictureReport.getReporterUserId(),
                 pictureReport.getReporterUsername(),
                 pictureReport.getReason(),
