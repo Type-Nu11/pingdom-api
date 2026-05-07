@@ -1,6 +1,7 @@
 package com.typenull.pingdom.global.config.security;
 
 import io.jsonwebtoken.Claims;
+import io.jsonwebtoken.ExpiredJwtException;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
@@ -23,13 +24,13 @@ public class JwtTokenProvider {
     }
 
     // Access Token 생성 메서드
-    public String generateAccessToken(Long userId, String username) {
-        return buildToken(userId, username, jwtProperties.accessTokenExpirationSeconds(), "access");
+    public String generateAccessToken(Long userId, String username, String role) {
+        return buildToken(userId, username, role, jwtProperties.accessTokenExpirationSeconds(), "access");
     }
 
     // Refresh Token 생성 메서드
     public String generateRefreshToken(Long userId) {
-        return buildToken(userId, null, jwtProperties.refreshTokenExpirationSeconds(), "refresh");
+        return buildToken(userId, null, null, jwtProperties.refreshTokenExpirationSeconds(), "refresh");
     }
 
     // Refresh Token 유효성 검사 메서드
@@ -44,11 +45,36 @@ public class JwtTokenProvider {
 
     // Access Token 유효성 검사 메서드
     public boolean validateAccessToken(String accessToken) {
+        return validateAccessTokenStatus(accessToken) == TokenStatus.VALID;
+    }
+
+    public AccessTokenParseResult parseAccessToken(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);
-            return "access".equals(claims.get("type", String.class));
+            if (!"access".equals(claims.get("type", String.class))) {
+                return new AccessTokenParseResult(TokenStatus.INVALID, null);
+            }
+
+            Long userId = Long.valueOf(claims.getSubject());
+            String username = claims.get("username", String.class);
+            String role = claims.get("role", String.class);
+
+            return new AccessTokenParseResult(TokenStatus.VALID, new AccessTokenPayload(userId, username, role));
+        } catch (ExpiredJwtException exception) {
+            return new AccessTokenParseResult(TokenStatus.EXPIRED, null);
         } catch (JwtException | IllegalArgumentException exception) {
-            return false;
+            return new AccessTokenParseResult(TokenStatus.INVALID, null);
+        }
+    }
+
+    public TokenStatus validateAccessTokenStatus(String accessToken) {
+        try {
+            Claims claims = parseClaims(accessToken);
+            return "access".equals(claims.get("type", String.class)) ? TokenStatus.VALID : TokenStatus.INVALID;
+        } catch (ExpiredJwtException exception) {
+            return TokenStatus.EXPIRED;
+        } catch (JwtException | IllegalArgumentException exception) {
+            return TokenStatus.INVALID;
         }
     }
 
@@ -85,8 +111,18 @@ public class JwtTokenProvider {
         return claims.get("username", String.class);
     }
 
+    public String getRoleFromAccessToken(String accessToken) {
+        Claims claims = parseClaims(accessToken);
+
+        if (!"access".equals(claims.get("type", String.class))) {
+            throw new IllegalArgumentException("액세스 토큰 타입이 아닙니다.");
+        }
+
+        return claims.get("role", String.class);
+    }
+
     // JWT 공통 생성 메서드
-    private String buildToken(Long userId, String username, long expirationSeconds, String tokenType) {
+    private String buildToken(Long userId, String username, String role, long expirationSeconds, String tokenType) {
         Instant now = Instant.now();
         Instant expiration = now.plusSeconds(expirationSeconds);
 
@@ -100,6 +136,9 @@ public class JwtTokenProvider {
         if (username != null) {
             builder.claim("username", username);
         }
+        if (role != null) {
+            builder.claim("role", role);
+        }
 
         return builder.compact();
     }
@@ -111,5 +150,17 @@ public class JwtTokenProvider {
                 .build()
                 .parseSignedClaims(token)
                 .getPayload();
+    }
+
+    public enum TokenStatus {
+        VALID,
+        EXPIRED,
+        INVALID
+    }
+
+    public record AccessTokenPayload(Long userId, String username, String role) {
+    }
+
+    public record AccessTokenParseResult(TokenStatus status, AccessTokenPayload payload) {
     }
 }

@@ -2,6 +2,7 @@ package com.typenull.pingdom.global.exception.handler;
 
 import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
+import com.typenull.pingdom.domain.admin.exception.AdminException;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
@@ -16,6 +17,12 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(AdminException.class)
+    public ResponseEntity<Map<String, String>> handleAdminException(AdminException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<Map<String, String>> handleAuthException(AuthException exception) {

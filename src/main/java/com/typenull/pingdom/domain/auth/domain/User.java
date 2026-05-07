@@ -1,6 +1,8 @@
 package com.typenull.pingdom.domain.auth.domain;
 
 import jakarta.persistence.Column;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
@@ -51,6 +53,23 @@ public class User {
     @Column(length = 1000)
     private String refreshToken;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserRole role = UserRole.USER;
+
+    // 관리자 밴 여부
+    @Builder.Default
+    @Column(nullable = false)
+    private boolean banned = false;
+
+    // 밴 처리 시각
+    private LocalDateTime bannedAt;
+
+    // 밴 사유
+    @Column(length = 255)
+    private String banReason;
+
     // 이메일 인증 코드 발급 메서드
     public void issueEmailVerification(String verificationCode, LocalDateTime expiresAt) {
         this.emailVerificationCode = verificationCode;
@@ -90,6 +109,14 @@ public class User {
         this.refreshToken = null;
     }
 
+    public void ban(String reason, LocalDateTime now) {
+        this.banned = true;
+        this.bannedAt = now;
+        this.banReason = reason;
+        // 밴되면 기존 리프레시 토큰도 무효화
+        this.refreshToken = null;
+    }
+
 
     public void changePassword(String password) {
         this.password = password;
@@ -97,5 +124,9 @@ public class User {
 
     public void changeUsername(String username) {
         this.username = username;
+    }
+
+    public boolean isAdmin() {
+        return this.role == UserRole.ADMIN;
     }
 }
