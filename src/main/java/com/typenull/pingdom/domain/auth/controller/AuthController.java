@@ -59,16 +59,28 @@ public class AuthController {
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = "이미 사용 중인 아이디",
+                    description = "이미 사용 중인 아이디 또는 이메일",
                     content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "이미 사용 중인 아이디입니다.",
-                                              "code": "DUPLICATE_USERNAME"
-                                            }
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "duplicate-username",
+                                            value = """
+                                                    {
+                                                      "message": "이미 사용 중인 아이디입니다.",
+                                                      "code": "DUPLICATE_USERNAME"
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "duplicate-email",
+                                            value = """
+                                                    {
+                                                      "message": "이미 사용 중인 이메일입니다.",
+                                                      "code": "DUPLICATE_EMAIL"
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
             )
     })
