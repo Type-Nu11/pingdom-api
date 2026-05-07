@@ -38,29 +38,28 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         String accessToken = resolveAccessToken(request);
 
         if (accessToken != null) {
-            JwtTokenProvider.TokenStatus status = jwtTokenProvider.validateAccessTokenStatus(accessToken);
+            JwtTokenProvider.AccessTokenParseResult parsed = jwtTokenProvider.parseAccessToken(accessToken);
+            JwtTokenProvider.TokenStatus status = parsed.status();
+
             if (status == JwtTokenProvider.TokenStatus.EXPIRED) {
                 request.setAttribute(ACCESS_TOKEN_EXPIRED_ATTRIBUTE, true);
             }
-        }
 
-        if (accessToken != null && jwtTokenProvider.validateAccessToken(accessToken)) {
-            String username = jwtTokenProvider.getUsernameFromAccessToken(accessToken);
-            Long userId = jwtTokenProvider.getUserIdFromAccessToken(accessToken);
-            String role = jwtTokenProvider.getRoleFromAccessToken(accessToken);
+            if (status == JwtTokenProvider.TokenStatus.VALID && parsed.payload() != null) {
+                String role = parsed.payload().role();
+                List<SimpleGrantedAuthority> authorities = (role == null)
+                        ? Collections.emptyList()
+                        : List.of(new SimpleGrantedAuthority("ROLE_" + role));
 
-            List<SimpleGrantedAuthority> authorities = (role == null)
-                    ? Collections.emptyList()
-                    : List.of(new SimpleGrantedAuthority("ROLE_" + role));
+                UsernamePasswordAuthenticationToken authentication =
+                        new UsernamePasswordAuthenticationToken(
+                                new JwtAuthenticatedUser(parsed.payload().userId(), parsed.payload().username()),
+                                null,
+                                authorities
+                        );
 
-            UsernamePasswordAuthenticationToken authentication =
-                    new UsernamePasswordAuthenticationToken(
-                            new JwtAuthenticatedUser(userId, username),
-                            null,
-                            authorities
-                    );
-
-            SecurityContextHolder.getContext().setAuthentication(authentication);
+                SecurityContextHolder.getContext().setAuthentication(authentication);
+            }
         }
 
         filterChain.doFilter(request, response);

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.global.config.aws;
 
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.util.StringUtils;
@@ -11,6 +12,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 public class S3ClientConfig {
 
     @Bean
+    @ConditionalOnProperty(name = "spring.cloud.aws.s3.bucket")
     public S3Client s3Client(AwsRegionProperties awsRegionProperties) {
         String region = StringUtils.hasText(awsRegionProperties.region())
                 ? awsRegionProperties.region()
@@ -22,4 +24,3 @@ public class S3ClientConfig {
                 .build();
     }
 }
-

@@ -13,8 +13,12 @@ public class AdminException extends RuntimeException {
         this.errorCode = errorCode;
     }
 
+    public AdminException(AdminErrorCode errorCode, Throwable cause) {
+        super(errorCode.getMessage(), cause);
+        this.errorCode = errorCode;
+    }
+
     public HttpStatus getStatus() {
         return errorCode.getStatus();
     }
 }
-

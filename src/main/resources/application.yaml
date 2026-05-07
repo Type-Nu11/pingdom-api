@@ -26,7 +26,7 @@ spring:
   cloud:
     aws:
       s3:
-        bucket: ${AWS_S3_BUCKET:pingdom-profile-pictures}
+        bucket: ${AWS_S3_BUCKET:}
       region:
         static: ${AWS_REGION:ap-northeast-2}
       stack:

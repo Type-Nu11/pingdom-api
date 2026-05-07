@@ -48,6 +48,25 @@ public class JwtTokenProvider {
         return validateAccessTokenStatus(accessToken) == TokenStatus.VALID;
     }
 
+    public AccessTokenParseResult parseAccessToken(String accessToken) {
+        try {
+            Claims claims = parseClaims(accessToken);
+            if (!"access".equals(claims.get("type", String.class))) {
+                return new AccessTokenParseResult(TokenStatus.INVALID, null);
+            }
+
+            Long userId = Long.valueOf(claims.getSubject());
+            String username = claims.get("username", String.class);
+            String role = claims.get("role", String.class);
+
+            return new AccessTokenParseResult(TokenStatus.VALID, new AccessTokenPayload(userId, username, role));
+        } catch (ExpiredJwtException exception) {
+            return new AccessTokenParseResult(TokenStatus.EXPIRED, null);
+        } catch (JwtException | IllegalArgumentException exception) {
+            return new AccessTokenParseResult(TokenStatus.INVALID, null);
+        }
+    }
+
     public TokenStatus validateAccessTokenStatus(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);
@@ -137,5 +156,11 @@ public class JwtTokenProvider {
         VALID,
         EXPIRED,
         INVALID
+    }
+
+    public record AccessTokenPayload(Long userId, String username, String role) {
+    }
+
+    public record AccessTokenParseResult(TokenStatus status, AccessTokenPayload payload) {
     }
 }

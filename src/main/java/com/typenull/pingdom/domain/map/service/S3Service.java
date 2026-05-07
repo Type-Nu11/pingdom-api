@@ -8,11 +8,13 @@ import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
@@ -25,7 +27,7 @@ import java.util.UUID;
 @Slf4j
 public class S3Service {
 
-    private final S3Client s3Client;
+    private final ObjectProvider<S3Client> s3ClientProvider;
     private final MapImageRepository mapImageRepository;
 
     @Value("${spring.cloud.aws.s3.bucket}")
@@ -33,6 +35,15 @@ public class S3Service {
 
     @Transactional
     public void uploadImage(ImageUploadRequest request, long userId) throws IOException {
+        if (!StringUtils.hasText(bucket)) {
+            throw new MapException(MapErrorCode.S3_NOT_CONFIGURED);
+        }
+
+        S3Client s3Client = s3ClientProvider.getIfAvailable();
+        if (s3Client == null) {
+            throw new MapException(MapErrorCode.S3_NOT_CONFIGURED);
+        }
+
         // 파일명 중복 방지 (UUID + 원본파일명)
         String originalFilename = request.file().getOriginalFilename();
         String s3FileName = UUID.randomUUID() + "-" + (originalFilename != null ? originalFilename : "unnamed");
@@ -54,10 +65,9 @@ public class S3Service {
         // 파일의 URL 저장
         try {
             // DB 저장 시도
-            String imageUrl = String.format("https://%s.s3.%s.amazonaws.com/%s",
-                    bucket,
-                    s3Client.serviceClientConfiguration().region().id(),
-                    s3FileName);
+            String imageUrl = s3Client.utilities()
+                    .getUrl(GetUrlRequest.builder().bucket(bucket).key(s3FileName).build())
+                    .toExternalForm();
 
             MapImage mapImage = MapImage.builder()
                     .imageUrl(imageUrl)
@@ -94,6 +104,15 @@ public class S3Service {
 
     // 삭제 메서드
     private void deleteFromS3(String s3Key) {
+        if (!StringUtils.hasText(bucket)) {
+            throw new MapException(MapErrorCode.S3_NOT_CONFIGURED);
+        }
+
+        S3Client s3Client = s3ClientProvider.getIfAvailable();
+        if (s3Client == null) {
+            throw new MapException(MapErrorCode.S3_NOT_CONFIGURED);
+        }
+
         try {
             s3Client.deleteObject(DeleteObjectRequest.builder()
                     .bucket(bucket)
