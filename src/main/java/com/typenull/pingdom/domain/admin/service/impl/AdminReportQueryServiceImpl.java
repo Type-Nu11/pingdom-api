@@ -7,8 +7,8 @@ import com.typenull.pingdom.domain.admin.exception.AdminException;
 import com.typenull.pingdom.domain.admin.service.AdminReportQueryService;
 import com.typenull.pingdom.domain.map.domain.PictureReport;
 import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
-import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -22,15 +22,13 @@ public class AdminReportQueryServiceImpl implements AdminReportQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AdminReportSummaryResponse> listReports(int page, int limit) {
+    public Page<AdminReportSummaryResponse> listReports(int page, int limit) {
         int safePage = Math.max(0, page);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         return pictureReportRepository.findAllBy(
                         PageRequest.of(safePage, safeLimit, Sort.by(Sort.Direction.DESC, "id"))
                 )
-                .stream()
-                .map(this::toSummaryResponse)
-                .toList();
+                .map(this::toSummaryResponse);
     }
 
     @Override
