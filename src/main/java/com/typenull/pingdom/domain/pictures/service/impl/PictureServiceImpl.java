@@ -5,62 +5,34 @@ import com.typenull.pingdom.domain.pictures.dto.PictureUploadRequest;
 import com.typenull.pingdom.domain.pictures.dto.PictureUploadResponse;
 import com.typenull.pingdom.domain.pictures.repository.PictureRepository;
 import com.typenull.pingdom.domain.pictures.service.PictureService;
-import com.typenull.pingdom.global.config.aws.AwsS3Properties;
+import com.typenull.pingdom.global.s3.S3ObjectStorage;
+import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
 import java.io.IOException;
 import java.time.LocalDateTime;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
-import software.amazon.awssdk.core.sync.RequestBody;
-import software.amazon.awssdk.services.s3.S3Client;
-import software.amazon.awssdk.services.s3.model.GetUrlRequest;
-import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 
 @Service
 @RequiredArgsConstructor
 public class PictureServiceImpl implements PictureService {
 
-    private final ObjectProvider<S3Client> s3ClientProvider;
-    private final AwsS3Properties awsS3Properties;
+    private final S3ObjectStorage s3ObjectStorage;
     private final PictureRepository pictureRepository;
 
     @Override
     @Transactional
     public PictureUploadResponse upload(PictureUploadRequest request) throws IOException {
-        if (!StringUtils.hasText(awsS3Properties.bucket())) {
-            throw new IllegalStateException("S3 bucket 설정이 필요합니다.");
+        S3ObjectStorage.S3PutResult putResult;
+        try {
+            putResult = s3ObjectStorage.put(request.file(), "pictures");
+        } catch (S3StorageException exception) {
+            throw new IllegalStateException("S3 업로드에 실패했습니다.", exception);
         }
-
-        S3Client s3Client = s3ClientProvider.getIfAvailable();
-        if (s3Client == null) {
-            throw new IllegalStateException("S3 설정이 누락되었습니다.");
-        }
-
-        String originalFilename = request.file().getOriginalFilename();
-        String s3Key = "pictures/" + UUID.randomUUID() + "-" + (originalFilename != null ? originalFilename : "unnamed");
-
-        PutObjectRequest putObjectRequest = PutObjectRequest.builder()
-                .bucket(awsS3Properties.bucket())
-                .key(s3Key)
-                .contentLength(request.file().getSize())
-                .contentType(request.file().getContentType())
-                .build();
-
-        s3Client.putObject(
-                putObjectRequest,
-                RequestBody.fromInputStream(request.file().getInputStream(), request.file().getSize())
-        );
-
-        String url = s3Client.utilities()
-                .getUrl(GetUrlRequest.builder().bucket(awsS3Properties.bucket()).key(s3Key).build())
-                .toExternalForm();
 
         Picture saved = pictureRepository.save(Picture.builder()
-                .url(url)
-                .s3Key(s3Key)
+                .url(putResult.url())
+                .s3Key(putResult.key())
                 .createdAt(LocalDateTime.now())
                 .build());
 
