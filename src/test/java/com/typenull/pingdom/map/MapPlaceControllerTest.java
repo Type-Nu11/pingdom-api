@@ -59,7 +59,9 @@ class MapPlaceControllerTest {
                                   "longitude": 127.039
                                 }
                                 """))
-                .andExpect(status().isCreated());
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.id").isNumber())
+                .andExpect(jsonPath("$.message").value("장소를 저장했습니다."));
 
         assertEquals(1L, mapPlaceRepository.count());
         MapPlace saved = mapPlaceRepository.findAll().get(0);
@@ -165,4 +167,3 @@ class MapPlaceControllerTest {
                 .textValue();
     }
 }
-

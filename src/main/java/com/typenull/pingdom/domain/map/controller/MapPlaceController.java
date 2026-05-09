@@ -1,6 +1,7 @@
 package com.typenull.pingdom.domain.map.controller;
 
 import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
+import com.typenull.pingdom.domain.map.dto.PlaceCreateResponse;
 import com.typenull.pingdom.domain.map.service.MapPlaceService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -73,12 +74,12 @@ public class MapPlaceController {
                     )
             )
     })
-    public ResponseEntity<String> create(
+    public ResponseEntity<PlaceCreateResponse> create(
             @Valid @RequestBody PlaceCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        mapPlaceService.createPlace(request, user.userId());
-        return ResponseEntity.status(201).body("장소를 저장했습니다.");
+        Long placeId = mapPlaceService.createPlace(request, user.userId());
+        return ResponseEntity.status(201).body(new PlaceCreateResponse(placeId, "장소를 저장했습니다."));
     }
 
     @DeleteMapping("/places/{id}/delete")
@@ -147,4 +148,3 @@ public class MapPlaceController {
         return ResponseEntity.ok("장소를 삭제했습니다.");
     }
 }
-
