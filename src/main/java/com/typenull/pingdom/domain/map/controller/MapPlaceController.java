@@ -51,7 +51,6 @@ public class MapPlaceController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         mapPlaceService.deletePlace(placeId, user.userId());
-        // 삭제 성공 시 204 No Content가 가장 표준적입니다.
         return ResponseEntity.noContent().build();
     }
 }
