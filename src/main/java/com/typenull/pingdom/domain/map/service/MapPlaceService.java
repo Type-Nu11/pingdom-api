@@ -5,6 +5,7 @@ import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -33,11 +34,10 @@ public class MapPlaceService {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
-        if (!mapPlace.getUserId().equals(userId)) {
+        if (!Objects.equals(mapPlace.getUserId(), userId)) {
             throw new MapException(MapErrorCode.OTHERS_PLACE_NOT_DELETED);
         }
 
         mapPlaceRepository.delete(mapPlace);
     }
 }
-
