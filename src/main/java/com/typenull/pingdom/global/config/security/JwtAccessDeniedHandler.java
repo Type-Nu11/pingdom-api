@@ -10,21 +10,19 @@ import org.springframework.http.MediaType;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
-import org.springframework.web.cors.CorsConfiguration;
-import org.springframework.web.cors.CorsConfigurationSource;
 
 @Component
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
     private final ObjectMapper objectMapper;
-    private final CorsConfigurationSource corsConfigurationSource;
+    private final CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter;
 
     public JwtAccessDeniedHandler(
             ObjectMapper objectMapper,
-            CorsConfigurationSource corsConfigurationSource
+            CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter
     ) {
         this.objectMapper = objectMapper;
-        this.corsConfigurationSource = corsConfigurationSource;
+        this.corsErrorResponseHeaderWriter = corsErrorResponseHeaderWriter;
     }
 
     @Override
@@ -33,7 +31,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletResponse response,
             AccessDeniedException accessDeniedException
     ) throws IOException, ServletException {
-        applyCorsHeaders(request, response);
+        corsErrorResponseHeaderWriter.apply(request, response);
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
@@ -41,25 +39,5 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
                 "message", "관리자 권한이 필요합니다.",
                 "code", "ACCESS_DENIED"
         )));
-    }
-
-    private void applyCorsHeaders(HttpServletRequest request, HttpServletResponse response) {
-        CorsConfiguration corsConfiguration = corsConfigurationSource.getCorsConfiguration(request);
-        if (corsConfiguration == null) {
-            return;
-        }
-
-        String origin = request.getHeader("Origin");
-        String allowedOrigin = corsConfiguration.checkOrigin(origin);
-        if (allowedOrigin == null) {
-            return;
-        }
-
-        response.setHeader("Access-Control-Allow-Origin", allowedOrigin);
-        response.setHeader("Vary", "Origin");
-
-        if (Boolean.TRUE.equals(corsConfiguration.getAllowCredentials())) {
-            response.setHeader("Access-Control-Allow-Credentials", "true");
-        }
     }
 }
