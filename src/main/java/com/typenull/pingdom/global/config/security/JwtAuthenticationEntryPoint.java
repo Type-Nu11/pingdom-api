@@ -16,9 +16,14 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
+    private final CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter;
 
-    public JwtAuthenticationEntryPoint(ObjectMapper objectMapper) {
+    public JwtAuthenticationEntryPoint(
+            ObjectMapper objectMapper,
+            CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter
+    ) {
         this.objectMapper = objectMapper;
+        this.corsErrorResponseHeaderWriter = corsErrorResponseHeaderWriter;
     }
 
     @Override
@@ -31,6 +36,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         boolean expired = Boolean.TRUE.equals(request.getAttribute(JwtAuthenticationFilter.ACCESS_TOKEN_EXPIRED_ATTRIBUTE));
         AuthErrorCode errorCode = expired ? AuthErrorCode.EXPIRED_TOKEN : AuthErrorCode.INVALID_TOKEN;
 
+        corsErrorResponseHeaderWriter.apply(request, response);
         response.setStatus(errorCode.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
