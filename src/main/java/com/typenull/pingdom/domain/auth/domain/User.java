@@ -70,7 +70,7 @@ public class User {
     @Column(length = 255)
     private String banReason;
 
-    // pcm 디바이스 아이디
+    // fcm 디바이스 아이디
     private String fcmToken;
 
     // 이메일 인증 코드 발급 메서드
