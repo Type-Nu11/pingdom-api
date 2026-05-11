@@ -24,6 +24,7 @@ bin/
 *.ipr
 src/main/resources/.env
 *.env
+src/main/resources/fcm-key.json
 
 out/
 !**/src/main/**/out/

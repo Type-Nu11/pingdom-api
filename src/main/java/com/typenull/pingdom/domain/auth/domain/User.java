@@ -70,6 +70,9 @@ public class User {
     @Column(length = 255)
     private String banReason;
 
+    // fcm 디바이스 아이디
+    private String fcmToken;
+
     // 이메일 인증 코드 발급 메서드
     public void issueEmailVerification(String verificationCode, LocalDateTime expiresAt) {
         this.emailVerificationCode = verificationCode;
@@ -128,5 +131,9 @@ public class User {
 
     public boolean isAdmin() {
         return this.role == UserRole.ADMIN;
+    }
+
+    public void updateFcmToken(String token) {
+        this.fcmToken = token;
     }
 }
