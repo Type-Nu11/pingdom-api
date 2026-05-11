@@ -27,8 +27,8 @@ public class FcmController {
 
     // 맵 id로 오너 감별, userId로 좋아요 한 사람 감별
     @PostMapping("/like")
-    public ResponseEntity<Void> likePlace(FcmImageIdRequest request, @AuthenticationPrincipal JwtAuthenticatedUser user)  {
-        fcmService.likePlace(request.ImageId(), user.userId());
+    public ResponseEntity<Void> likePlace(@RequestBody FcmImageIdRequest request, @AuthenticationPrincipal JwtAuthenticatedUser user)  {
+        fcmService.likePlace(request.imageId(), user.userId());
         return ResponseEntity.ok().build();
     }
 }
