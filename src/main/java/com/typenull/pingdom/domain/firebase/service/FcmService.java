@@ -9,6 +9,9 @@ import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.firebase.enums.NotificationType;
+import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.domain.map.exception.MapErrorCode;
+import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -40,35 +43,27 @@ public class FcmService {
 
         FirebaseMessaging.getInstance().send(message);
     }
-//미 완성된 코드
-//    public void likePlace(Long imageId, Long userId){
-//        MapImage mapImage = mapImageRepository.findById(imageId)
-//                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
-//
-//        User owner = userRepository.findById(mapImage.getUserId())
-//                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-//
-//        User liker = userRepository.findById(userId)
-//                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-//
-//        if (owner.getFcmToken() != null) {
-//            try {
-//                sendNotification(
-//                        owner.getFcmToken(),
-//                        NotificationType.NEW_LIKE,
-//                        liker.getName()
-//                );
-//            } catch (FirebaseMessagingException e) {
-//                log.error("FCM 전송 실패: {}", e.getMessage());
-//            }
-//        }
-//
-//        if (owner.getFcmToken() != null) {
-//            sendNotification(
-//                    owner.getFcmToken(),
-//                    NotificationType.NEW_LIKE,
-//                    liker.getName()
-//            );
-//        }
-//    }
+
+    public void likePlace(Long imageId, Long userId){
+        MapImage mapImage = mapImageRepository.findById(imageId)
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+
+        User owner = userRepository.findById(mapImage.getUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        User liker = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (owner.getFcmToken() != null) {
+            try {
+                sendNotification(
+                        owner.getFcmToken(),
+                        NotificationType.NEW_LIKE,
+                        liker.getName()
+                );
+            } catch (FirebaseMessagingException e) {
+                log.error("FCM 전송 실패: {}", e.getMessage());
+            }
+        }
+    }
 }
