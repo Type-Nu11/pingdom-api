@@ -2,27 +2,35 @@ package com.typenull.pingdom.domain.map.service;
 
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
+import com.typenull.pingdom.domain.map.dto.MapImageUploadResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class S3Service {
 
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
+    private final PictureReportRepository pictureReportRepository;
 
     @Transactional
-    public void uploadImage(ImageUploadRequest request, long userId) throws IOException {
+    public MapImageUploadResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
         S3ObjectStorage.S3PutResult putResult;
         try {
             putResult = s3ObjectStorage.put(request.file(), "map");
@@ -38,7 +46,13 @@ public class S3Service {
                     .userId(userId)
                     .build();
 
-            mapImageRepository.save(mapImage);
+            MapImage saved = mapImageRepository.save(mapImage);
+            return new MapImageUploadResponse(
+                    saved.getId(),
+                    saved.getImageUrl(),
+                    saved.getS3Key(),
+                    "사진을 저장했습니다."
+            );
         } catch (Exception e) {
             // DB 저장 실패 시 S3 파일 삭제
             try {
@@ -57,12 +71,29 @@ public class S3Service {
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         // 본인이 맞는지
-        if (!mapImage.getUserId().equals(userId)) {
+        if (!Objects.equals(mapImage.getUserId(), userId)) {
             throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
         }
 
-        deleteFromS3(mapImage.getS3Key());
+        // 신고 테이블이 map_image_id(FK)로 참조 중일 수 있어 먼저 참조를 끊는다.
+        pictureReportRepository.detachMapImageByMapImageId(mapImage.getId());
+
+        String s3Key = mapImage.getS3Key();
         mapImageRepository.delete(mapImage);
+        // DB 제약 위반이 있으면 여기서 즉시 예외가 터지도록 flush
+        mapImageRepository.flush();
+
+        // 커밋 성공 후 S3 삭제(실패해도 DB 롤백은 불가하므로 로그만 남김)
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                try {
+                    deleteFromS3(s3Key);
+                } catch (RuntimeException exception) {
+                    log.warn("Failed to delete S3 object after DB commit. key={}", s3Key, exception);
+                }
+            }
+        });
     }
 
     // 삭제 메서드

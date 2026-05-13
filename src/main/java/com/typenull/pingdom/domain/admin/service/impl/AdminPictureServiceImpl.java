@@ -43,7 +43,9 @@ public class AdminPictureServiceImpl implements AdminPictureService {
             s3ObjectStorage.delete(s3Key);
         } catch (S3StorageException exception) {
             if (exception.getError() == S3StorageError.NOT_CONFIGURED) {
-                throw new AdminException(AdminErrorCode.S3_NOT_CONFIGURED, exception);
+                // 테스트/로컬 환경 등에서 S3 비활성화 상태일 수 있어, 강제 삭제는 DB 삭제를 우선한다.
+                log.warn("S3 is not configured. Skipping S3 delete. key={}", s3Key);
+                return;
             }
             if (exception.getError() == S3StorageError.CONNECTION_ERROR) {
                 throw new AdminException(AdminErrorCode.S3_CONNECTION_ERROR, exception);

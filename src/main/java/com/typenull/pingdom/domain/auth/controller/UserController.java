@@ -14,11 +14,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 // 현재 인증 사용자 탈퇴 처리 컨트롤러
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
+@Tag(name = "App", description = "앱 전용 API")
 public class UserController {
 
     private final AuthService authService;
