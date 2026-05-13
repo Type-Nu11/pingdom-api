@@ -2,9 +2,11 @@ package com.typenull.pingdom.domain.map.service;
 
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
+import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.domain.pictures.dto.PictureUploadResponse;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
@@ -22,7 +24,7 @@ public class S3Service {
     private final MapImageRepository mapImageRepository;
 
     @Transactional
-    public void uploadImage(ImageUploadRequest request, long userId) throws IOException {
+    public MapImageResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
         S3ObjectStorage.S3PutResult putResult;
         try {
             putResult = s3ObjectStorage.put(request.file(), "map");
@@ -39,6 +41,8 @@ public class S3Service {
                     .build();
 
             mapImageRepository.save(mapImage);
+
+            return new MapImageResponse(mapImage.getId(), "사진을 저장했습니다.");
         } catch (Exception e) {
             // DB 저장 실패 시 S3 파일 삭제
             try {
@@ -51,7 +55,7 @@ public class S3Service {
     }
 
     @Transactional
-    public void deleteImage(Long imageId, Long userId) {
+    public MapImageResponse deleteImage(Long imageId, Long userId) {
         // 지우려는 이미지가 있는지
         MapImage mapImage = mapImageRepository.findById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
@@ -63,6 +67,8 @@ public class S3Service {
 
         deleteFromS3(mapImage.getS3Key());
         mapImageRepository.delete(mapImage);
+
+        return new MapImageResponse(imageId, "사진을 삭제했습니다");
     }
 
     // 삭제 메서드

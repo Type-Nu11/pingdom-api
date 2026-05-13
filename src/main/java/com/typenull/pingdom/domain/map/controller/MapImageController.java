@@ -1,5 +1,6 @@
 package com.typenull.pingdom.domain.map.controller;
 
+import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
 import com.typenull.pingdom.domain.map.dto.PictureReportRequest;
@@ -90,13 +91,12 @@ public class MapImageController {
                     )
             )
     })
-    public ResponseEntity<String> upload(
+    public ResponseEntity<MapImageResponse> upload(
             @Valid @ModelAttribute ImageUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) throws IOException {
         Long userId = user.userId();
-        s3Service.uploadImage(request,userId);
-        return ResponseEntity.ok("사진을 저장했습니다.");
+        return ResponseEntity.ok(s3Service.uploadImage(request,userId));
     }
 
     @DeleteMapping("/pictures/{id}/delete")
