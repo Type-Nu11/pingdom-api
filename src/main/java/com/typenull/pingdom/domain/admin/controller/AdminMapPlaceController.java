@@ -1,6 +1,6 @@
 package com.typenull.pingdom.domain.admin.controller;
 
-import com.typenull.pingdom.domain.admin.service.AdminPictureService;
+import com.typenull.pingdom.domain.admin.service.AdminMapPlaceService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
@@ -13,24 +13,24 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/admin/map-images")
+@RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
-public class AdminMapImageController {
+public class AdminMapPlaceController {
 
-    private final AdminPictureService adminPictureService;
+    private final AdminMapPlaceService adminMapPlaceService;
 
-    @DeleteMapping("/{id}")
-    public ResponseEntity<Void> forceDeleteMapImage(
+    @DeleteMapping("/{id}/delete")
+    public ResponseEntity<Void> forceDeletePlace(
             @PathVariable Long id,
             @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        adminPictureService.deletePicture(id);
+        adminMapPlaceService.deletePlace(id);
         if (adminUser != null) {
-            log.info("Admin force deleted map image. adminUserId={}, imageId={}", adminUser.userId(), id);
+            log.info("Admin force deleted place. adminUserId={}, placeId={}", adminUser.userId(), id);
         } else {
-            log.info("Admin force deleted map image. adminUserId=unknown, imageId={}", id);
+            log.info("Admin force deleted place. adminUserId=unknown, placeId={}", id);
         }
         return ResponseEntity.noContent().build();
     }

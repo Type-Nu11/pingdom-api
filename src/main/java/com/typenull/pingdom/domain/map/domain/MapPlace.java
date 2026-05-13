@@ -9,6 +9,9 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.JdbcTypeCode;
+import org.hibernate.type.SqlTypes;
+import org.locationtech.jts.geom.Point;
 
 @Entity
 @Getter
@@ -33,7 +36,11 @@ public class MapPlace {
     @Column(name = "longitude", nullable = false)
     private Double longitude;
 
+    // PostGIS geometry (WGS84, lon/lat). Nullable for backward compatibility with existing rows.
+    @JdbcTypeCode(SqlTypes.GEOMETRY)
+    @Column(name = "location", columnDefinition = "geometry(Point,4326)")
+    private Point location;
+
     @Column(name = "user_id", nullable = false)
     private Long userId;
 }
-

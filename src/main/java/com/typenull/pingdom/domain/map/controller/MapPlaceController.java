@@ -16,10 +16,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
 @RequestMapping("/map")
 @RequiredArgsConstructor
+@Tag(name = "App", description = "앱 전용 API")
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;
@@ -31,11 +33,10 @@ public class MapPlaceController {
                     content = @Content(examples = @ExampleObject(value = """
                             {
                               "id": 1,
-                              "name": "테스트 장소",
-                              "address": "서울특별시 강남구 테헤란로 1",
-                              "latitude": 37.501,
-                              "longitude": 127.039,
-                              "message": "장소를 저장했습니다."
+                              "name": "카페",
+                              "address": "서울특별시 ...",
+                              "latitude": 37.5665,
+                              "longitude": 126.978
                             }
                             """)))
     })
@@ -43,17 +44,8 @@ public class MapPlaceController {
             @Valid @RequestBody PlaceCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long placeId = mapPlaceService.createPlace(request, user.userId());
-        // 201 Created 응답
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new PlaceCreateResponse(
-                        placeId,
-                        request.name(),
-                        request.address(),
-                        request.latitude(),
-                        request.longitude(),
-                        "장소를 저장했습니다."
-                ));
+        PlaceCreateResponse response = mapPlaceService.createPlace(request, user.userId());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @DeleteMapping("/places/{id}/delete")
@@ -62,11 +54,11 @@ public class MapPlaceController {
             @ApiResponse(responseCode = "204", description = "장소 삭제 성공 (반환 값 없음)"),
             @ApiResponse(responseCode = "403", description = "권한 없음")
     })
-    public ResponseEntity<Void> delete(
+    public ResponseEntity<String> delete(
             @Parameter(description = "삭제할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         mapPlaceService.deletePlace(placeId, user.userId());
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok("장소를 삭제했습니다.");
     }
 }
