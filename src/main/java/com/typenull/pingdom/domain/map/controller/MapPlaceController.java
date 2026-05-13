@@ -18,13 +18,13 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/map/places") // 경로 단순화: /map/places/create -> /map/places
+@RequestMapping("/map")
 @RequiredArgsConstructor
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;
 
-    @PostMapping
+    @PostMapping("/places/create")
     @Operation(summary = "장소 업로드", description = "사용자가 지도에 표시할 장소를 등록합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "장소 등록 성공",
@@ -56,7 +56,7 @@ public class MapPlaceController {
                 ));
     }
 
-    @DeleteMapping("/{id}") // 경로 단순화: /map/places/{id}/delete -> /map/places/{id}
+    @DeleteMapping("/places/{id}/delete")
     @Operation(summary = "장소 삭제", description = "지정한 장소 ID를 삭제합니다. 본인 소유 장소만 삭제 가능합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "204", description = "장소 삭제 성공 (반환 값 없음)"),
