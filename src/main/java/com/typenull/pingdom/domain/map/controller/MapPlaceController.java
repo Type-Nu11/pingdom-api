@@ -28,7 +28,16 @@ public class MapPlaceController {
     @Operation(summary = "장소 업로드", description = "사용자가 지도에 표시할 장소를 등록합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "장소 등록 성공",
-                    content = @Content(examples = @ExampleObject(value = "{\"id\": 1, \"message\": \"장소를 저장했습니다.\"}")))
+                    content = @Content(examples = @ExampleObject(value = """
+                            {
+                              "id": 1,
+                              "name": "테스트 장소",
+                              "address": "서울특별시 강남구 테헤란로 1",
+                              "latitude": 37.501,
+                              "longitude": 127.039,
+                              "message": "장소를 저장했습니다."
+                            }
+                            """)))
     })
     public ResponseEntity<PlaceCreateResponse> create(
             @Valid @RequestBody PlaceCreateRequest request,
@@ -37,7 +46,14 @@ public class MapPlaceController {
         Long placeId = mapPlaceService.createPlace(request, user.userId());
         // 201 Created 응답
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(new PlaceCreateResponse(placeId, "장소를 저장했습니다."));
+                .body(new PlaceCreateResponse(
+                        placeId,
+                        request.name(),
+                        request.address(),
+                        request.latitude(),
+                        request.longitude(),
+                        "장소를 저장했습니다."
+                ));
     }
 
     @DeleteMapping("/{id}") // 경로 단순화: /map/places/{id}/delete -> /map/places/{id}
