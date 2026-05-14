@@ -3,6 +3,7 @@ package com.typenull.pingdom.domain.map.controller;
 import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
+import com.typenull.pingdom.domain.map.dto.MapImageUploadResponse;
 import com.typenull.pingdom.domain.map.dto.PictureReportRequest;
 import com.typenull.pingdom.domain.map.service.PictureReportService;
 import com.typenull.pingdom.domain.map.service.S3Service;
@@ -10,7 +11,6 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
-import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
@@ -20,12 +20,14 @@ import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
+import io.swagger.v3.oas.annotations.tags.Tag;
 
 import java.io.IOException;
 
 @RestController
 @RequestMapping("/map")
 @RequiredArgsConstructor
+@Tag(name = "App", description = "앱 전용 API")
 public class MapImageController {
 
     private final S3Service s3Service;

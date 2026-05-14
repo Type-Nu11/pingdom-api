@@ -11,17 +11,23 @@ import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
+import java.util.Objects;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class S3Service {
 
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
+    private final PictureReportRepository pictureReportRepository;
 
     @Transactional
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
@@ -61,11 +67,14 @@ public class S3Service {
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         // 본인이 맞는지
-        if (!mapImage.getUserId().equals(userId)) {
+        if (!Objects.equals(mapImage.getUserId(), userId)) {
             throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
         }
 
-        deleteFromS3(mapImage.getS3Key());
+        // 신고 테이블이 map_image_id(FK)로 참조 중일 수 있어 먼저 참조를 끊는다.
+        pictureReportRepository.detachMapImageByMapImageId(mapImage.getId());
+
+        String s3Key = mapImage.getS3Key();
         mapImageRepository.delete(mapImage);
 
         return new MapImageResponse(imageId, "사진을 삭제했습니다");
