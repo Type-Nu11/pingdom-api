@@ -54,4 +54,4 @@ jobs:
           script: |
             cd ~/Pingdom_Backend
             docker compose pull
-            docker compose up -d
+            docker compose --env-file .env up -d
