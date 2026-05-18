@@ -41,6 +41,9 @@ public class AuthServiceImpl implements AuthService {
         if (userRepository.existsByUsername(request.username())) {
             throw new AuthException(AuthErrorCode.DUPLICATE_USERNAME);
         }
+        if (StringUtils.hasText(request.email()) && userRepository.existsByEmail(request.email())) {
+            throw new AuthException(AuthErrorCode.DUPLICATE_EMAIL);
+        }
 
         User user = User.builder()
                 .username(request.username())
@@ -101,15 +104,11 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // 이메일 기준 사용자 인증 처리 메서드
     public void verifyEmail(EmailVerifyRequest request) {
-        User user = userRepository.findByEmail(request.email())
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User user = userRepository.findByEmailAndEmailVerificationCode(request.email(), request.code())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_EMAIL_VERIFICATION_CODE));
 
         if (user.isEmailVerificationExpired(LocalDateTime.now())) {
             throw new AuthException(AuthErrorCode.EXPIRED_EMAIL_VERIFICATION_CODE);
-        }
-
-        if (!user.matchesEmailVerificationCode(request.code())) {
-            throw new AuthException(AuthErrorCode.INVALID_EMAIL_VERIFICATION_CODE);
         }
 
         // 이메일 인증 상태 반영 호출

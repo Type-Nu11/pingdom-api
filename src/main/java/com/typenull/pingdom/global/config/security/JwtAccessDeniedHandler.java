@@ -15,9 +15,14 @@ import org.springframework.stereotype.Component;
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
     private final ObjectMapper objectMapper;
+    private final CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter;
 
-    public JwtAccessDeniedHandler(ObjectMapper objectMapper) {
+    public JwtAccessDeniedHandler(
+            ObjectMapper objectMapper,
+            CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter
+    ) {
         this.objectMapper = objectMapper;
+        this.corsErrorResponseHeaderWriter = corsErrorResponseHeaderWriter;
     }
 
     @Override
@@ -26,6 +31,7 @@ public class JwtAccessDeniedHandler implements AccessDeniedHandler {
             HttpServletResponse response,
             AccessDeniedException accessDeniedException
     ) throws IOException, ServletException {
+        corsErrorResponseHeaderWriter.apply(request, response);
         response.setStatus(HttpServletResponse.SC_FORBIDDEN);
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");

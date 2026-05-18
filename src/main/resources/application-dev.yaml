@@ -8,6 +8,7 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+<<<<<<< feat/admin-account-seed
     urls-primary-name: web
     urls:
       - name: app
@@ -21,3 +22,6 @@ seed:
     name: ${SEED_ADMIN_NAME:관리자}
     email: ${SEED_ADMIN_EMAIL:admin@local}
     password: ${SEED_ADMIN_PASSWORD:admin1234!}
+=======
+    path: /swagger-ui
+>>>>>>> main
