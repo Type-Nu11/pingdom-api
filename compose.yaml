@@ -11,3 +11,12 @@ services:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - './docker/postgres/initdb:/docker-entrypoint-initdb.d'
+
+  app:
+    build: .
+    ports:
+      - '8080:8080'
+    env_file:
+      - src/main/resources/.env
+    depends_on:
+      - postgres
