@@ -6,6 +6,7 @@ import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
 import com.typenull.pingdom.domain.pictures.dto.PictureUploadResponse;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
