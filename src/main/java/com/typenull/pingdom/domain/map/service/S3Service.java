@@ -2,11 +2,11 @@ package com.typenull.pingdom.domain.map.service;
 
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
-import com.typenull.pingdom.domain.map.dto.MapImageUploadResponse;
+import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
-import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
+import com.typenull.pingdom.domain.pictures.dto.PictureUploadResponse;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
@@ -30,7 +30,7 @@ public class S3Service {
     private final PictureReportRepository pictureReportRepository;
 
     @Transactional
-    public MapImageUploadResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
+    public MapImageResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
         S3ObjectStorage.S3PutResult putResult;
         try {
             putResult = s3ObjectStorage.put(request.file(), "map");
@@ -46,13 +46,9 @@ public class S3Service {
                     .userId(userId)
                     .build();
 
-            MapImage saved = mapImageRepository.save(mapImage);
-            return new MapImageUploadResponse(
-                    saved.getId(),
-                    saved.getImageUrl(),
-                    saved.getS3Key(),
-                    "사진을 저장했습니다."
-            );
+            mapImageRepository.save(mapImage);
+
+            return new MapImageResponse(mapImage.getId(), "사진을 저장했습니다.");
         } catch (Exception e) {
             // DB 저장 실패 시 S3 파일 삭제
             try {
@@ -65,7 +61,7 @@ public class S3Service {
     }
 
     @Transactional
-    public void deleteImage(Long imageId, Long userId) {
+    public MapImageResponse deleteImage(Long imageId, Long userId) {
         // 지우려는 이미지가 있는지
         MapImage mapImage = mapImageRepository.findById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
@@ -80,20 +76,8 @@ public class S3Service {
 
         String s3Key = mapImage.getS3Key();
         mapImageRepository.delete(mapImage);
-        // DB 제약 위반이 있으면 여기서 즉시 예외가 터지도록 flush
-        mapImageRepository.flush();
 
-        // 커밋 성공 후 S3 삭제(실패해도 DB 롤백은 불가하므로 로그만 남김)
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                try {
-                    deleteFromS3(s3Key);
-                } catch (RuntimeException exception) {
-                    log.warn("Failed to delete S3 object after DB commit. key={}", s3Key, exception);
-                }
-            }
-        });
+        return new MapImageResponse(imageId, "사진을 삭제했습니다");
     }
 
     // 삭제 메서드
