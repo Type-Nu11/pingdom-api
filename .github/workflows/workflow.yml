@@ -2,10 +2,10 @@ name: Pingdom on AWS EC2
 
 on:
   push:
-    branches: ["main"]
+    branches: ["feat-git-action"]
   pull_request:
     branches:
-      - main
+      - feat-git-action
 
 permissions:
   contents: read
