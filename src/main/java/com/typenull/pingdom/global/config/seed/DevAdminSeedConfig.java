@@ -4,8 +4,7 @@ package com.typenull.pingdom.global.config.seed;
 import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.domain.UserRole;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
@@ -15,9 +14,8 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 
 @Configuration
 @Profile("dev")
+@Slf4j
 public class DevAdminSeedConfig {
-
-    private static final Logger log = LoggerFactory.getLogger(DevAdminSeedConfig.class);
 
     @Value("${seed.admin.username}")
     private String adminUsername;
@@ -38,6 +36,11 @@ public class DevAdminSeedConfig {
     ) {
         return args -> {
             if (userRepository.existsByUsername(adminUsername)) {
+                log.info("Dev admin seed skipped (username already exists). username={}", adminUsername);
+                return;
+            }
+            if (userRepository.existsByEmail(adminEmail)) {
+                log.info("Dev admin seed skipped (email already exists). email={}", adminEmail);
                 return;
             }
 
