@@ -53,5 +53,5 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd ~/Pingdom_Backend
-            docker compose pull
-            docker compose --env-file .env up -d
+            docker compose --env-file ${{ secrets.ENV_FILE_PATH }} pull
+            docker compose --env-file ${{ secrets.ENV_FILE_PATH }} up -d
