@@ -12,6 +12,8 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 @Configuration
 @Profile("dev")
@@ -33,36 +35,41 @@ public class DevAdminSeedConfig {
     @Bean
     public ApplicationRunner devAdminSeeder(
             UserRepository userRepository,
-            PasswordEncoder passwordEncoder
+            PasswordEncoder passwordEncoder,
+            PlatformTransactionManager transactionManager
     ) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+
         return args -> {
-            if (!StringUtils.hasText(adminUsername)
-                    || !StringUtils.hasText(adminEmail)
-                    || !StringUtils.hasText(adminPassword)
-                    || !StringUtils.hasText(adminName)) {
-                log.warn("Dev admin seed 스킵: 필수 관리자 정보(username, email, password, name) 중 일부가 비어있습니다.");
-                return;
-            }
-            if (userRepository.existsByUsername(adminUsername)) {
-                log.info("Dev admin seed skipped (username already exists). username={}", adminUsername);
-                return;
-            }
-            if (userRepository.existsByEmail(adminEmail)) {
-                log.info("Dev admin seed skipped (email already exists). email={}", adminEmail);
-                return;
-            }
+            transactionTemplate.executeWithoutResult(status -> {
+                if (!StringUtils.hasText(adminUsername)
+                        || !StringUtils.hasText(adminEmail)
+                        || !StringUtils.hasText(adminPassword)
+                        || !StringUtils.hasText(adminName)) {
+                    log.warn("Dev admin seed 스킵: 필수 관리자 정보(username, email, password, name) 중 일부가 비어있습니다.");
+                    return;
+                }
+                if (userRepository.existsByUsername(adminUsername)) {
+                    log.info("Dev admin seed skipped (username already exists). username={}", adminUsername);
+                    return;
+                }
+                if (userRepository.existsByEmail(adminEmail)) {
+                    log.info("Dev admin seed skipped (email already exists). email={}", adminEmail);
+                    return;
+                }
 
-            User admin = User.builder()
-                    .username(adminUsername)
-                    .name(adminName)
-                    .email(adminEmail)
-                    .emailVerified(true)
-                    .password(passwordEncoder.encode(adminPassword))
-                    .role(UserRole.ADMIN)
-                    .build();
+                User admin = User.builder()
+                        .username(adminUsername)
+                        .name(adminName)
+                        .email(adminEmail)
+                        .emailVerified(true)
+                        .password(passwordEncoder.encode(adminPassword))
+                        .role(UserRole.ADMIN)
+                        .build();
 
-            userRepository.save(admin);
-            log.info("Dev admin user seeded. username={} (password configurable via seed.admin.* properties)", adminUsername);
+                userRepository.save(admin);
+                log.info("Dev admin user seeded. username={} (password configurable via seed.admin.* properties)", adminUsername);
+            });
         };
     }
 }
