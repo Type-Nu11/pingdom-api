@@ -2,10 +2,10 @@ name: Pingdom on AWS EC2
 
 on:
   push:
-    branches: ["feat/git-action"]
+    branches: [main]
   pull_request:
     branches:
-      - feat/git-action
+      - main
 
 permissions:
   contents: read
@@ -42,8 +42,7 @@ jobs:
   deploy:
     needs: build
     runs-on: ubuntu-latest
-#    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/git-action'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
