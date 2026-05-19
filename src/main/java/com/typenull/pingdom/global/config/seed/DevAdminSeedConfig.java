@@ -50,11 +50,11 @@ public class DevAdminSeedConfig {
                     return;
                 }
                 if (userRepository.existsByUsername(adminUsername)) {
-                    log.info("Dev admin seed skipped (username already exists). username={}", adminUsername);
+                    log.info("Dev admin seed 스킵: 이미 존재하는 username 입니다. username={}", adminUsername);
                     return;
                 }
                 if (userRepository.existsByEmail(adminEmail)) {
-                    log.info("Dev admin seed skipped (email already exists). email={}", adminEmail);
+                    log.info("Dev admin seed 스킵: 이미 존재하는 email 입니다. email={}", adminEmail);
                     return;
                 }
 
@@ -68,7 +68,7 @@ public class DevAdminSeedConfig {
                         .build();
 
                 userRepository.save(admin);
-                log.info("Dev admin user seeded. username={} (password configurable via seed.admin.* properties)", adminUsername);
+                log.info("Dev admin user seeded. username={} (password는 seed.admin.* 설정으로 변경 가능합니다)", adminUsername);
             });
         };
     }
