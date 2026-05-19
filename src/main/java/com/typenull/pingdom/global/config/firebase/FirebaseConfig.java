@@ -14,15 +14,10 @@ import java.nio.charset.StandardCharsets;
 @Configuration
 public class FirebaseConfig {
 
-    @Value("${FCM_KEY_JSON}")
-    private String fcmKeyJson;
-
     @PostConstruct
     public void init() throws IOException {
         String fcmKeyJson = System.getenv("FCM_KEY_JSON");
-        if (fcmKeyJson == null || fcmKeyJson.isEmpty()) {
-            throw new IllegalStateException("FCM_KEY_JSON 환경변수가 없습니다.");
-        }
+        fcmKeyJson = fcmKeyJson.replace("\\n", "\n");  // 이 줄 추가
         InputStream stream = new ByteArrayInputStream(fcmKeyJson.getBytes(StandardCharsets.UTF_8));
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(stream))
