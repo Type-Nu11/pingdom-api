@@ -53,5 +53,6 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd ~/Pingdom_Backend
-            docker compose --env-file ${{ secrets.ENV_FILE_PATH }} pull
-            docker compose --env-file ${{ secrets.ENV_FILE_PATH }} up -d
+            echo '${{ secrets.FCM_KEY_JSON }}' > src/main/resources/fcm-key.json
+            docker compose pull
+            docker compose up -d
