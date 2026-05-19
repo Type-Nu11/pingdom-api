@@ -37,7 +37,7 @@ public class DevAdminSeedConfig {
     ) {
         return args -> {
             if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminEmail)) {
-                log.warn("Dev admin seed skipped: adminUsername or adminEmail is empty.");
+                log.warn("Dev admin seed 스킵: adminUsername 또는 adminEmail이 비어있습니다.");
                 return;
             }
             if (userRepository.existsByUsername(adminUsername)) {
