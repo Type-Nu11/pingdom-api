@@ -1,6 +1,6 @@
-# 배포용 컴포즈
+#로컬용 컴포즈
 
-name: pingdom
+name: pingdom-local
 
 services:
   postgres:
@@ -15,14 +15,3 @@ services:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - './docker/postgres/initdb:/docker-entrypoint-initdb.d'
-
-  app:
-    image: yongin1212/pingdom:latest
-    ports:
-      - '8080:8080'
-    env_file:
-      - src/main/resources/.env
-    environment:
-      - FCM_KEY_JSON=${FCM_KEY_JSON}
-    depends_on:
-      - postgres
