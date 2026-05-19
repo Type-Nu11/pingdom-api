@@ -3,6 +3,8 @@ name: pingdom
 services:
   postgres:
     image: 'postgis/postgis:16-3.4'
+    env_file:
+      - src/main/resources/.env
     environment:
       - 'POSTGRES_DB=${POSTGRES_DB}'
       - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
@@ -13,10 +15,12 @@ services:
       - './docker/postgres/initdb:/docker-entrypoint-initdb.d'
 
   app:
-    build: .
+    image: yongin1212/pingdom:latest
     ports:
       - '8080:8080'
     env_file:
       - src/main/resources/.env
+    volumes:
+      - ./src/main/resources/fcm-key.json:/app/fcm-key.json
     depends_on:
       - postgres
