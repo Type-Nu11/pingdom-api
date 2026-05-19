@@ -43,7 +43,7 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
 #    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
-    if: github.event_name == 'push' && github.ref == 'refs/heads/feat-git-action'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/git-action'
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
