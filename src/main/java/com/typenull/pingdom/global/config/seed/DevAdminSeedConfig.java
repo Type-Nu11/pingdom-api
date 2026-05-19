@@ -36,8 +36,11 @@ public class DevAdminSeedConfig {
             PasswordEncoder passwordEncoder
     ) {
         return args -> {
-            if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminEmail)) {
-                log.warn("Dev admin seed 스킵: adminUsername 또는 adminEmail이 비어있습니다.");
+            if (!StringUtils.hasText(adminUsername)
+                    || !StringUtils.hasText(adminEmail)
+                    || !StringUtils.hasText(adminPassword)
+                    || !StringUtils.hasText(adminName)) {
+                log.warn("Dev admin seed 스킵: 필수 관리자 정보(username, email, password, name) 중 일부가 비어있습니다.");
                 return;
             }
             if (userRepository.existsByUsername(adminUsername)) {
