@@ -46,3 +46,6 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+fcm:
+  key-json: ${FCM_KEY_JSON}
