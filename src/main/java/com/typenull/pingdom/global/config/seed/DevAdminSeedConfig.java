@@ -11,6 +11,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.util.StringUtils;
 
 @Configuration
 @Profile("dev")
@@ -35,6 +36,10 @@ public class DevAdminSeedConfig {
             PasswordEncoder passwordEncoder
     ) {
         return args -> {
+            if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminEmail)) {
+                log.warn("Dev admin seed skipped: adminUsername or adminEmail is empty.");
+                return;
+            }
             if (userRepository.existsByUsername(adminUsername)) {
                 log.info("Dev admin seed skipped (username already exists). username={}", adminUsername);
                 return;
