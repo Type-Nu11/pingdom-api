@@ -19,6 +19,10 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void init() throws IOException {
+        String fcmKeyJson = System.getenv("FCM_KEY_JSON");
+        if (fcmKeyJson == null || fcmKeyJson.isEmpty()) {
+            throw new IllegalStateException("FCM_KEY_JSON 환경변수가 없습니다.");
+        }
         InputStream stream = new ByteArrayInputStream(fcmKeyJson.getBytes(StandardCharsets.UTF_8));
         FirebaseOptions options = FirebaseOptions.builder()
                 .setCredentials(GoogleCredentials.fromStream(stream))
