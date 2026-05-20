@@ -30,6 +30,10 @@ spring:
         secret-key: ${AWS_SECRET_ACCESS_KEY}
   config:
     import: optional:file:.env[.properties]
+#로컬용 컴포즈 설정
+  docker:
+    compose:
+      file: docker-compose-local.yml
 
 jwt:
   secret: ${JWT_SECRET}
@@ -46,3 +50,6 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+fcm:
+  key-json: ${FCM_KEY_JSON}
