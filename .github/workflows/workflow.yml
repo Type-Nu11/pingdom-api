@@ -2,10 +2,10 @@ name: Pingdom on AWS EC2
 
 on:
   push:
-    branches: [main]
+    branches: [feat/git-action]
   pull_request:
     branches:
-      - main
+      - feat/git-action
 
 permissions:
   contents: read
@@ -26,7 +26,7 @@ jobs:
       - name: Build with Gradle
         run: |
           chmod +x ./gradlew
-          ./gradlew bootJar -x test
+          ./gradlew bootJar
 
       - name: Docker Hub login
         uses: docker/login-action@v2
@@ -35,14 +35,19 @@ jobs:
           password: ${{ secrets.DOCKER_TOKEN }}
 
       - name: Build and Push Docker image
+        if: github.event_name == 'push' && github.ref == 'refs/heads/feat/git-action' # 메인 푸쉬일때만 이미지 푸쉬
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/pingdom:latest .
+          docker build \
+            -t ${{ secrets.DOCKER_USERNAME }}/pingdom:latest \
+            -t ${{ secrets.DOCKER_USERNAME }}/pingdom:${{ github.sha }} \
+            .
           docker push ${{ secrets.DOCKER_USERNAME }}/pingdom:latest
+          docker push ${{ secrets.DOCKER_USERNAME }}/pingdom:${{ github.sha }}
 
   deploy:
     needs: build
     runs-on: ubuntu-latest
-    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/feat/git-action'
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
