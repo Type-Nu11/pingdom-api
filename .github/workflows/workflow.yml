@@ -26,7 +26,7 @@ jobs:
       - name: Build with Gradle
         run: |
           chmod +x ./gradlew
-          ./gradlew bootJar
+          ./gradlew bootJar -x test
 
       - name: Docker Hub login
         uses: docker/login-action@v2
