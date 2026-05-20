@@ -84,4 +84,3 @@ public class MapFavoriteController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 }
-
