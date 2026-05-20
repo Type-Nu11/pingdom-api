@@ -6,9 +6,10 @@ import com.google.firebase.FirebaseOptions;
 import jakarta.annotation.PostConstruct;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.core.io.ClassPathResource;
-
+import java.io.ByteArrayInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.charset.StandardCharsets;
 
 @Configuration
 @Slf4j
@@ -16,17 +17,15 @@ public class FirebaseConfig {
 
     @PostConstruct
     public void init() throws IOException {
-        ClassPathResource resource = new ClassPathResource("fcm-key.json");
-
-        if (!resource.exists()) {
-            log.warn("Firebase 초기화 스킵: classpath에 fcm-key.json이 없습니다. (로컬 개발 환경에서는 정상일 수 있습니다)");
-            return;
+        String fcmKeyJson = System.getenv("FCM_KEY_JSON");
+        if (fcmKeyJson == null || fcmKeyJson.isEmpty()) {
+            throw new IllegalStateException("FCM_KEY_JSON 환경변수가 없습니다.");
         }
-
+        fcmKeyJson = fcmKeyJson.replace("\\n", "\n");
+        InputStream stream = new ByteArrayInputStream(fcmKeyJson.getBytes(StandardCharsets.UTF_8));
         FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(resource.getInputStream()))
+                .setCredentials(GoogleCredentials.fromStream(stream))
                 .build();
-
         if (FirebaseApp.getApps().isEmpty()) {
             FirebaseApp.initializeApp(options);
         }
