@@ -184,7 +184,7 @@ public class UsersController {
                     description = "아이디 변경 성공",
                     content = @Content(
                             examples = @ExampleObject(
-                                    value = "\"이름 변경 완료\""
+                                    value = "\"아이디 변경 완료\""
                             )
                     )
             ),
@@ -239,7 +239,7 @@ public class UsersController {
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "이미 있는 이름입니다.",
+                                              "message": "이미 있는 아이디입니다.",
                                               "code": "USERNAME_ALREADY_EXISTS"
                                             }
                                             """
@@ -253,6 +253,6 @@ public class UsersController {
     ) {
         Long userId = user.userId();
         changeInfoService.changeUsername(request, userId);
-        return ResponseEntity.ok("이름 변경 완료");
+        return ResponseEntity.ok("아이디 변경 완료");
     }
 }
