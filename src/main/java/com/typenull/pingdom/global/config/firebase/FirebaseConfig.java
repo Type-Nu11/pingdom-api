@@ -17,15 +17,15 @@ public class FirebaseConfig {
 
     @Bean
     public FirebaseApp firebaseApp() throws IOException {
-        InputStream stream = new ClassPathResource("fcm-key.json").getInputStream();
+        try (InputStream stream = new ClassPathResource("fcm-key.json").getInputStream()) {
+            FirebaseOptions options = FirebaseOptions.builder()
+                    .setCredentials(GoogleCredentials.fromStream(stream))
+                    .build();
 
-        FirebaseOptions options = FirebaseOptions.builder()
-                .setCredentials(GoogleCredentials.fromStream(stream))
-                .build();
-
-        if (FirebaseApp.getApps().isEmpty()) {
-            return FirebaseApp.initializeApp(options);
+            if (FirebaseApp.getApps().isEmpty()) {
+                return FirebaseApp.initializeApp(options);
+            }
+            return FirebaseApp.getInstance();
         }
-        return FirebaseApp.getInstance();
     }
 }
