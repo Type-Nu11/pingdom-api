@@ -21,7 +21,7 @@ services:
     ports:
       - '8080:8080'
     env_file:
-      - src/main/resources/.env
+      - src/main/resources/..env
     environment:
       - FCM_KEY_JSON=${FCM_KEY_JSON}
     depends_on:

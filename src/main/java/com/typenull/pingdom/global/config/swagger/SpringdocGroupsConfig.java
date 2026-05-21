@@ -14,9 +14,11 @@ public class SpringdocGroupsConfig {
         return GroupedOpenApi.builder()
                 .group("app")
                 .pathsToMatch(
+                        "/",
                         "/auth/**",
                         "/users/**",
-                        "/map/**"
+                        "/map/**",
+                        "/firebase/**"
                 )
                 .pathsToExclude("/admin/**")
                 .build();
@@ -27,10 +29,10 @@ public class SpringdocGroupsConfig {
         return GroupedOpenApi.builder()
                 .group("web")
                 .pathsToMatch(
+                        "/",
                         "/auth/**",
                         "/admin/**"
                 )
-                .pathsToExclude("/admin/reports/**")
                 .build();
     }
 }
