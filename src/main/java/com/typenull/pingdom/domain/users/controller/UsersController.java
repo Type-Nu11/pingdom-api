@@ -1,11 +1,11 @@
 package com.typenull.pingdom.domain.users.controller;
 
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
 import com.typenull.pingdom.domain.users.dto.ChangeUsernameRequest;
 import com.typenull.pingdom.domain.users.dto.MyPageResponse;
 import com.typenull.pingdom.domain.users.service.ChangeInfoService;
 import com.typenull.pingdom.domain.users.service.MyPageService;
+import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,14 +13,16 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
-import io.swagger.v3.oas.annotations.tags.Tag;
-
-import java.security.Principal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/users")
@@ -55,6 +57,20 @@ public class UsersController {
                                             """
                             )
                     )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
             )
     })
     public ResponseEntity<MyPageResponse> getMyPageInfo(
@@ -81,18 +97,30 @@ public class UsersController {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "입력값 검증 실패",
+                    description = "입력값 검증 실패 또는 새 비밀번호 확인 불일치",
                     content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "입력값을 확인해주세요.",
-                                              "errors": {
-                                                "newPassword": "비밀번호는 8자 이상이어야 합니다."
-                                              }
-                                            }
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "validation-failure",
+                                            value = """
+                                                    {
+                                                      "message": "입력값을 확인해주세요.",
+                                                      "errors": {
+                                                        "newPassword": "비밀번호는 8자 이상이어야 합니다."
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "password-mismatch",
+                                            value = """
+                                                    {
+                                                      "message": "비밀번호가 서로 다릅니다.",
+                                                      "code": "PASSWORD_MISMATCH"
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
             ),
             @ApiResponse(
@@ -120,15 +148,28 @@ public class UsersController {
                                     )
                             }
                     )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
             )
     })
     public ResponseEntity<String> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user){
-
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
         Long userId = user.userId();
-        changeInfoService.changePassword(request,userId);
-
+        changeInfoService.changePassword(request, userId);
         return ResponseEntity.ok("비밀번호 변경 완료");
     }
 
@@ -178,6 +219,20 @@ public class UsersController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "409",
                     description = "이미 사용 중인 아이디",
                     content = @Content(
@@ -194,11 +249,10 @@ public class UsersController {
     })
     public ResponseEntity<String> changeUsername(
             @Valid @RequestBody ChangeUsernameRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user){
-
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
         Long userId = user.userId();
-        changeInfoService.changeUsername(request,userId);
-
-        return ResponseEntity.ok("이름 변경 완료");
+        changeInfoService.changeUsername(request, userId);
+        return ResponseEntity.ok("아이디 변경 완료");
     }
 }
