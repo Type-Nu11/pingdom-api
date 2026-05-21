@@ -33,39 +33,40 @@ public class FcmService {
         user.updateFcmToken(token);
     }
 
-    public void sendNotification(String token, NotificationType type, String... args) throws FirebaseMessagingException {
-        Message message = Message.builder()
-                .setToken(token)
-                .setNotification(Notification.builder()
-                        .setTitle(type.getTitle())
-                        .setBody(type.formatBody(args))
-                        .build())
-                .putData("type", type.name())
-                .build();
+    public void sendNotification(String token, NotificationType type, String... args) {
+        try {
+            Message message = Message.builder()
+                    .setToken(token)
+                    .setNotification(Notification.builder()
+                            .setTitle(type.getTitle())
+                            .setBody(type.formatBody(args))
+                            .build())
+                    .putData("type", type.name())
+                    .build();
 
-        FirebaseMessaging.getInstance().send(message);
+            FirebaseMessaging.getInstance().send(message);
+        } catch (FirebaseMessagingException e) {
+            log.error("FCM 전송 실패 - type: {}, reason: {}", type, e.getMessage());
+        }
     }
 
-    public void likePlace(Long imageId, Long userId){
+    public void sendLikeNotification(Long imageId, Long likerId) {
         MapImage mapImage = mapImageRepository.findById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
-        User owner = userRepository.findById(mapImage.getUserId())
+        Long ownerId = mapImage.getUserId();
+
+        // 본인 좋아요는 알림 생략
+        if (ownerId.equals(likerId)) return;
+
+        User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        User liker = userRepository.findById(userId)
+        if (owner.getFcmToken() == null) return;
+
+        User liker = userRepository.findById(likerId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (owner.getFcmToken() != null) {
-            try {
-                sendNotification(
-                        owner.getFcmToken(),
-                        NotificationType.NEW_LIKE,
-                        liker.getName()
-                );
-            } catch (FirebaseMessagingException e) {
-                log.error("FCM 전송 실패: {}", e.getMessage());
-            }
-        }
+        sendNotification(owner.getFcmToken(), NotificationType.NEW_LIKE, liker.getName());
     }
 }

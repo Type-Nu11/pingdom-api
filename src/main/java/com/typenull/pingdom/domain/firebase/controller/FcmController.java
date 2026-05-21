@@ -78,7 +78,7 @@ public class FcmController {
             )
             @RequestBody FcmImageIdRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
-        fcmService.likePlace(request.imageId(), user.userId());
+        fcmService.sendLikeNotification(request.imageId(), user.userId());
         return ResponseEntity.ok().build();
     }
 }
