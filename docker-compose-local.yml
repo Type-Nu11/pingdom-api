@@ -6,7 +6,7 @@ services:
   postgres:
     image: 'postgis/postgis:16-3.4'
     env_file:
-      - src/main/resources/.env
+      - src/main/resources/..env
     environment:
       - 'POSTGRES_DB=${POSTGRES_DB}'
       - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
