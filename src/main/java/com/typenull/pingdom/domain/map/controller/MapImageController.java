@@ -3,7 +3,6 @@ package com.typenull.pingdom.domain.map.controller;
 import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
-import com.typenull.pingdom.domain.map.dto.MapImageUploadResponse;
 import com.typenull.pingdom.domain.map.dto.PictureReportRequest;
 import com.typenull.pingdom.domain.map.service.PictureReportService;
 import com.typenull.pingdom.domain.map.service.S3Service;
@@ -11,6 +10,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
@@ -42,11 +42,7 @@ public class MapImageController {
             @ApiResponse(
                     responseCode = "200",
                     description = "사진 업로드 성공",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = "\"사진을 저장했습니다.\""
-                            )
-                    )
+                    content = @Content(schema = @Schema(implementation = MapImageResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -156,32 +152,6 @@ public class MapImageController {
                                             }
                                             """
                             )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "S3 삭제 또는 연결 실패",
-                    content = @Content(
-                            examples = {
-                                    @ExampleObject(
-                                            name = "delete-error",
-                                            value = """
-                                                    {
-                                                      "message": "이미지를 삭제하는 데 실패했습니다. 잠시 후 다시 시도해 주세요.",
-                                                      "code": "DELETE_ERROR"
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "s3-connection-error",
-                                            value = """
-                                                    {
-                                                      "message": "S3 서버 연결에 실패했습니다.",
-                                                      "code": "S3_CONNECTION_ERROR"
-                                                    }
-                                                    """
-                                    )
-                            }
                     )
             )
     })
