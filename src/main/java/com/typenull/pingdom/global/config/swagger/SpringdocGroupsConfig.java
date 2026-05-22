@@ -14,8 +14,6 @@ public class SpringdocGroupsConfig {
         return GroupedOpenApi.builder()
                 .group("app")
                 .pathsToMatch(
-                        "/",
-                        "/auth/**",
                         "/users/**",
                         "/map/**",
                         "/firebase/**"
@@ -29,9 +27,18 @@ public class SpringdocGroupsConfig {
         return GroupedOpenApi.builder()
                 .group("web")
                 .pathsToMatch(
-                        "/",
-                        "/auth/**",
                         "/admin/**"
+                )
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi commonApi() {
+        return GroupedOpenApi.builder()
+                .group("common")
+                .pathsToMatch(
+                        "/",
+                        "/auth/**"
                 )
                 .build();
     }
