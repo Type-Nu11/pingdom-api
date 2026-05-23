@@ -1,5 +1,8 @@
 package com.typenull.pingdom.domain.map.service;
 
+import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
+import com.typenull.pingdom.domain.auth.exception.AuthException;
+import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
 import com.typenull.pingdom.domain.map.dto.MapImageResponse;
@@ -7,7 +10,6 @@ import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
-import com.typenull.pingdom.domain.pictures.dto.PictureUploadResponse;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
@@ -15,8 +17,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -29,9 +29,15 @@ public class S3Service {
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
     private final PictureReportRepository pictureReportRepository;
+    private final UserRepository userRepository;
 
     @Transactional
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
+
+        String username = userRepository.findById(userId)
+                .map(user -> user.getUsername())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
         S3ObjectStorage.S3PutResult putResult;
         try {
             putResult = s3ObjectStorage.put(request.file(), "map");
@@ -45,6 +51,7 @@ public class S3Service {
                     .imageUrl(putResult.url())
                     .s3Key(putResult.key())
                     .userId(userId)
+                    .username(username)
                     .build();
 
             mapImageRepository.save(mapImage);

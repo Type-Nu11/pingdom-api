@@ -1,11 +1,14 @@
 package com.typenull.pingdom.domain.admin.service.impl;
 
+import com.typenull.pingdom.domain.admin.dto.picture.AdminPictureItem;
 import com.typenull.pingdom.domain.admin.dto.picture.AdminPictureResponse;
+import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.admin.service.AdminPictureQueryService;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
@@ -19,15 +22,42 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public List<AdminPictureResponse> listPictures(int limit) {
+    public AdminPictureResponse listPictures(int limit, int page, SortParam sortParam) {
+        // 리미트 값을 1~100사이로 고정
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        return mapImageRepository.findAll(PageRequest.of(0, safeLimit, Sort.by(Sort.Direction.DESC, "id")))
+        int targetPage = Math.max(page - 1, 0);
+
+        Sort sort = switch (sortParam) {
+            case OLDEST -> Sort.by(Sort.Direction.ASC, "createdAt");
+            case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
+        };
+
+        Page<MapImage> mapImagePage = mapImageRepository.findAll(
+                PageRequest.of(targetPage, safeLimit, sort)
+        );
+
+        List<AdminPictureItem> pictures = mapImagePage.getContent()
                 .stream()
-                .map(this::toResponse)
+                .map(this::toItem)
                 .toList();
+
+        return AdminPictureResponse.of(
+                pictures,
+                page,
+                safeLimit,
+                mapImagePage.getTotalElements(),     // totalCount
+                mapImagePage.getTotalPages()        // totalPages
+        );
     }
 
-    private AdminPictureResponse toResponse(MapImage mapImage) {
-        return new AdminPictureResponse(mapImage.getId(), mapImage.getImageUrl(), mapImage.getS3Key(), mapImage.getUserId());
+    private AdminPictureItem toItem(MapImage mapImage) {
+        return new AdminPictureItem(
+                mapImage.getId(),
+                mapImage.getImageUrl(), // thumbnailUrl
+                mapImage.getImageUrl(), // imageUrl
+                mapImage.getUserId(),
+                mapImage.getUsername(),
+                mapImage.getCreatedAt()
+        );
     }
 }
