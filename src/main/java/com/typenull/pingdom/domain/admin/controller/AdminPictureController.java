@@ -67,7 +67,7 @@ public class AdminPictureController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue =  "1") int page,
             @Parameter(description = "정렬 기준", example = "latest")
-            @RequestParam(defaultValue = "latest") SortParam sortParam
+            @RequestParam(defaultValue = "LATEST") SortParam sortParam
     ) {
         return adminPictureQueryService.listPictures(limit, page, sortParam);
     }

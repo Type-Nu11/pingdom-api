@@ -28,8 +28,8 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
         int targetPage = Math.max(page - 1, 0);
 
         Sort sort = switch (sortParam) {
-            case oldest -> Sort.by(Sort.Direction.ASC, "createdAt");
-            case latest -> Sort.by(Sort.Direction.DESC, "createdAt");
+            case OLDEST -> Sort.by(Sort.Direction.ASC, "createdAt");
+            case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
 
         Page<MapImage> mapImagePage = mapImageRepository.findAll(
