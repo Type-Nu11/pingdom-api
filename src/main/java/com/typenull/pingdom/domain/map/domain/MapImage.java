@@ -2,6 +2,9 @@ package com.typenull.pingdom.domain.map.domain;
 
 import jakarta.persistence.*;
 import lombok.*;
+import org.hibernate.annotations.CreationTimestamp;
+
+import java.time.LocalDateTime;
 
 @Entity
 @Getter
@@ -22,4 +25,11 @@ public class MapImage {
 
     @Column(name = "user_id")
     private Long userId;
+
+    @Column(name = "username")
+    private String username;
+
+    @Column(name = "created_time")
+    @CreationTimestamp // save시 자동으로 현재시간 저장
+    private LocalDateTime createdAt;
 }

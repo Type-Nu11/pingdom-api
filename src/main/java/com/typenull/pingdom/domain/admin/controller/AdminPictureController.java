@@ -1,17 +1,16 @@
 package com.typenull.pingdom.domain.admin.controller;
 
 import com.typenull.pingdom.domain.admin.dto.picture.AdminPictureResponse;
+import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.admin.service.AdminPictureQueryService;
 import com.typenull.pingdom.domain.admin.service.AdminPictureService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.media.ArraySchema;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import java.util.List;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -40,42 +39,37 @@ public class AdminPictureController {
             @ApiResponse(
                     responseCode = "200",
                     description = "사진 목록 조회 성공",
-                    content = @Content(array = @ArraySchema(schema = @Schema(implementation = AdminPictureResponse.class)))
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "인증 실패",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "유효하지 않은 토큰입니다.",
-                                              "code": "INVALID_TOKEN"
-                                            }
-                                            """
-                            )
+                    content = @Content(schema = @Schema(implementation = AdminPictureResponse.class),
+                            examples = @ExampleObject(value = """
+                        {
+                          "pictures": [
+                            {
+                              "id": 1,
+                              "thumbnailUrl": "https://example.com/thumb.jpg",
+                              "imageUrl": "https://example.com/original.jpg",
+                              "userId": 1,
+                              "username": "pingdom_user",
+                              "createdAt": "2026-05-21T11:37:53.336Z"
+                            }
+                          ],
+                          "page": 1,
+                          "limit": 20,
+                          "totalCount": 123,
+                          "totalPages": 7,
+                          "hasNext": true
+                        }
+                        """)
                     )
             ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "관리자 권한 없음",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "관리자 권한이 필요합니다.",
-                                              "code": "ACCESS_DENIED"
-                                            }
-                                            """
-                            )
-                    )
-            )
     })
-    public List<AdminPictureResponse> listPictures(
+    public AdminPictureResponse listPictures(
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @RequestParam(defaultValue =  "1") int page,
+            @Parameter(description = "정렬 기준", example = "latest")
+            @RequestParam(defaultValue = "latest") SortParam sortParam
     ) {
-        return adminPictureQueryService.listPictures(limit);
+        return adminPictureQueryService.listPictures(limit, page, sortParam);
     }
 
     @DeleteMapping("/pictures/{id}/delete")
