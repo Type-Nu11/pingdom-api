@@ -58,4 +58,4 @@ jobs:
           script: |
             cd ~/Pingdom_Backend
             docker compose pull
-            docker compose up -d
+            docker compose up -d --force-recreate
