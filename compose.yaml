@@ -6,7 +6,7 @@ services:
   postgres:
     image: 'postgis/postgis:16-3.4'
     env_file:
-      - src/main/resources/.env
+      - .env
     environment:
       - 'POSTGRES_DB=${POSTGRES_DB}'
       - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
@@ -21,7 +21,7 @@ services:
     ports:
       - '8080:8080'
     env_file:
-      - src/main/resources/.env
+      - .env
     environment:
       - FCM_KEY_JSON=${FCM_KEY_JSON}
     depends_on:
