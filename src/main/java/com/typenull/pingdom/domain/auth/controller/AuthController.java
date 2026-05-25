@@ -35,7 +35,7 @@ public class AuthController {
     @PostMapping("/signup")
     @Operation(
             summary = "회원가입",
-            description = "아이디, 이름, 이메일, 비밀번호를 입력받아 새 사용자를 생성합니다. 이메일이 포함되면 인증 메일 발송 절차가 함께 시작됩니다."
+            description = "아이디, 이메일, 비밀번호와 기본 프로필 정보를 입력받아 새 사용자를 생성합니다."
     )
     @ApiResponses({
             @ApiResponse(

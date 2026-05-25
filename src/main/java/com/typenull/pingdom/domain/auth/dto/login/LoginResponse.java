@@ -9,8 +9,16 @@ public record LoginResponse(
         Long id,
         @Schema(description = "사용자 아이디", example = "pingdom_user")
         String username,
-        @Schema(description = "사용자 이름", example = "홍길동")
-        String name,
+        @Schema(description = "사용자 이메일", example = "pingdom@example.com")
+        String email,
+        @Schema(description = "출생 연도", example = "1998", nullable = true)
+        Integer birthYear,
+        @Schema(description = "프로필 이미지 URL", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
+        String profileImageUrl,
+        @Schema(description = "언어", example = "ko", nullable = true)
+        String language,
+        @Schema(description = "국가", example = "KR", nullable = true)
+        String country,
         @Schema(description = "로그인 결과 메시지", example = "로그인에 성공했습니다.")
         String message,
         @Schema(description = "인증에 사용할 Access Token", example = "eyJhbGciOiJIUzI1NiJ9.access.token")
@@ -18,8 +26,8 @@ public record LoginResponse(
         @Schema(description = "토큰 재발급에 사용할 Refresh Token", example = "eyJhbGciOiJIUzI1NiJ9.refresh.token")
         String refreshToken
 ) {
-    // 기존 응답 호출 호환 생성자
-    public LoginResponse(Long id, String username, String name, String message) {
-        this(id, username, name, message, null, null);
+    // 토큰 미포함 호출 호환 생성자
+    public LoginResponse(Long id, String username, String email, Integer birthYear, String profileImageUrl, String language, String country, String message) {
+        this(id, username, email, birthYear, profileImageUrl, language, country, message, null, null);
     }
 }

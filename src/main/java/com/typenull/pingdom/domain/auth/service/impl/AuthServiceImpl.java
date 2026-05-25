@@ -47,9 +47,13 @@ public class AuthServiceImpl implements AuthService {
 
         User user = User.builder()
                 .username(request.username())
-                .name(request.name())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
+                .name(request.username())
+                .birthYear(request.birthYear())
+                .profileImageUrl(request.profileImageUrl())
+                .language(request.language())
+                .country(request.country())
                 .build();
 
         if (StringUtils.hasText(request.email())) {
@@ -66,7 +70,15 @@ public class AuthServiceImpl implements AuthService {
             );
         }
 
-        return new UserResponse(savedUser.getId(), savedUser.getUsername(), savedUser.getName());
+        return new UserResponse(
+                savedUser.getId(),
+                savedUser.getUsername(),
+                savedUser.getEmail(),
+                savedUser.getBirthYear(),
+                savedUser.getProfileImageUrl(),
+                savedUser.getLanguage(),
+                savedUser.getCountry()
+        );
     }
 
     @Override
@@ -93,7 +105,11 @@ public class AuthServiceImpl implements AuthService {
         return new LoginResponse(
                 user.getId(),
                 user.getUsername(),
-                user.getName(),
+                user.getEmail(),
+                user.getBirthYear(),
+                user.getProfileImageUrl(),
+                user.getLanguage(),
+                user.getCountry(),
                 "로그인에 성공했습니다.",
                 accessToken,
                 refreshToken
