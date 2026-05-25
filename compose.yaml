@@ -22,9 +22,9 @@ services:
       - '8080:8080'
     env_file:
       - .env
-    environment:
-      - FCM_KEY_JSON=${FCM_KEY_JSON}
     depends_on:
       - postgres
     volumes:
-      - ./src/main/resources/fcm-key.json:/app/BOOT-INF/classes/fcm-key.json
+      - ./src/main/resources/fcm-key.json:/app/fcm-key.json
+    environment:
+      - FCM_KEY_PATH=/app/fcm-key.json
