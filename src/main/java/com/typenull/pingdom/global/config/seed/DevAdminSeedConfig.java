@@ -23,9 +23,6 @@ public class DevAdminSeedConfig {
     @Value("${seed.admin.username}")
     private String adminUsername;
 
-    @Value("${seed.admin.name}")
-    private String adminName;
-
     @Value("${seed.admin.email}")
     private String adminEmail;
 
@@ -44,9 +41,8 @@ public class DevAdminSeedConfig {
             transactionTemplate.executeWithoutResult(status -> {
                 if (!StringUtils.hasText(adminUsername)
                         || !StringUtils.hasText(adminEmail)
-                        || !StringUtils.hasText(adminPassword)
-                        || !StringUtils.hasText(adminName)) {
-                    log.warn("Dev admin seed 스킵: 필수 관리자 정보(username, email, password, name) 중 일부가 비어있습니다.");
+                        || !StringUtils.hasText(adminPassword)) {
+                    log.warn("Dev admin seed 스킵: 필수 관리자 정보(username, email, password) 중 일부가 비어있습니다.");
                     return;
                 }
                 if (userRepository.existsByUsername(adminUsername)) {
@@ -60,7 +56,7 @@ public class DevAdminSeedConfig {
 
                 User admin = User.builder()
                         .username(adminUsername)
-                        .name(adminName)
+                        .name(adminUsername)
                         .email(adminEmail)
                         .emailVerified(true)
                         .password(passwordEncoder.encode(adminPassword))

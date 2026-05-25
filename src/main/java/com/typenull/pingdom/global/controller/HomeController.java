@@ -29,7 +29,7 @@ public class HomeController {
                                             {
                                               "message": "Pingdom Backend is running.",
                                               "availableEndpoints": ["/auth/signup", "/auth/login", "/auth/email/verify", "/auth/token/refresh", "/users/me"],
-                                              "signupFields": ["username", "name", "email", "password"],
+                                              "signupFields": ["username", "email", "password", "birthYear", "profileImageUrl", "language", "country"],
                                               "loginFields": ["username", "password"]
                                             }
                                             """
@@ -41,7 +41,7 @@ public class HomeController {
         return Map.of(
                 "message", "Pingdom Backend is running.",
                 "availableEndpoints", new String[]{"/auth/signup", "/auth/login", "/auth/email/verify", "/auth/token/refresh", "/users/me"},
-                "signupFields", new String[]{"username", "name", "email", "password"},
+                "signupFields", new String[]{"username", "email", "password", "birthYear", "profileImageUrl", "language", "country"},
                 "loginFields", new String[]{"username", "password"}
         );
     }

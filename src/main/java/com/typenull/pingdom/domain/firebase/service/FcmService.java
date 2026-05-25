@@ -61,7 +61,7 @@ public class FcmService {
                 sendNotification(
                         owner.getFcmToken(),
                         NotificationType.NEW_LIKE,
-                        liker.getName()
+                        liker.getUsername()
                 );
             } catch (FirebaseMessagingException e) {
                 log.error("FCM 전송 실패: {}", e.getMessage());
