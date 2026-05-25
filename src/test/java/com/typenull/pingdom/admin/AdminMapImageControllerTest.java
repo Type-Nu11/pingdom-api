@@ -65,7 +65,6 @@ class AdminMapImageControllerTest {
     private void createUser(String username, UserRole role) {
         userRepository.save(User.builder()
                 .username(username)
-                .name("tester")
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .role(role)
@@ -85,4 +84,3 @@ class AdminMapImageControllerTest {
                 .textValue();
     }
 }
-

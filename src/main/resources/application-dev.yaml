@@ -19,6 +19,5 @@ springdoc:
 seed:
   admin:
     username: ${SEED_ADMIN_USERNAME:admin}
-    name: ${SEED_ADMIN_NAME:관리자}
     email: ${SEED_ADMIN_EMAIL:admin@local}
     password: ${SEED_ADMIN_PASSWORD:admin1234!}

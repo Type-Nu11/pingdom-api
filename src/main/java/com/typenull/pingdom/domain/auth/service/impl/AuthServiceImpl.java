@@ -49,7 +49,6 @@ public class AuthServiceImpl implements AuthService {
                 .username(request.username())
                 .email(request.email())
                 .password(passwordEncoder.encode(request.password()))
-                .name(request.username())
                 .birthYear(request.birthYear())
                 .profileImageUrl(request.profileImageUrl())
                 .language(request.language())

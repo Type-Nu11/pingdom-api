@@ -56,7 +56,6 @@ public class DevAdminSeedConfig {
 
                 User admin = User.builder()
                         .username(adminUsername)
-                        .name(adminUsername)
                         .email(adminEmail)
                         .emailVerified(true)
                         .password(passwordEncoder.encode(adminPassword))
