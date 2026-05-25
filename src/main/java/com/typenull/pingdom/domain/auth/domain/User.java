@@ -7,6 +7,8 @@ import jakarta.persistence.Entity;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.PrePersist;
+import jakarta.persistence.PreUpdate;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -31,7 +33,7 @@ public class User {
     private String name;
 
     // 이메일 인증 연계용 메일 주소
-    @Column(length = 255)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
     // 이메일 인증 완료 상태
@@ -48,6 +50,24 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(name = "birth_year")
+    private Integer birthYear;
+
+    @Column(name = "profile_image_url", length = 500)
+    private String profileImageUrl;
+
+    @Column(length = 20)
+    private String language;
+
+    @Column(length = 100)
+    private String country;
+
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     // 현재 활성 Refresh Token 저장 필드
     @Column(length = 1000)
@@ -135,5 +155,17 @@ public class User {
 
     public void updateFcmToken(String token) {
         this.fcmToken = token;
+    }
+
+    @PrePersist
+    public void onCreate() {
+        LocalDateTime now = LocalDateTime.now();
+        this.createdAt = now;
+        this.updatedAt = now;
+    }
+
+    @PreUpdate
+    public void onUpdate() {
+        this.updatedAt = LocalDateTime.now();
     }
 }
