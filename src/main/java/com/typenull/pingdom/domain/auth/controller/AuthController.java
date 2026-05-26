@@ -35,28 +35,68 @@ public class AuthController {
     @PostMapping("/signup")
     @Operation(
             summary = "회원가입",
-            description = "아이디, 이름, 이메일, 비밀번호를 입력받아 새 사용자를 생성합니다. 이메일이 포함되면 인증 메일 발송 절차가 함께 시작됩니다."
+            description = "아이디, 이메일, 비밀번호와 기본 프로필 정보를 입력받아 새 사용자를 생성합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
                     description = "회원가입 성공",
-                    content = @Content(schema = @Schema(implementation = UserResponse.class))
+                    content = @Content(
+                            schema = @Schema(implementation = UserResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "id": 1,
+                                              "username": "pingdom_user",
+                                              "email": "pingdom@example.com",
+                                              "birthYear": 1998,
+                                              "profileImageUrl": "https://cdn.pingdom.com/profiles/user1.png",
+                                              "language": "ko",
+                                              "country": "KR"
+                                            }
+                                            """
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "400",
                     description = "입력값 검증 실패",
                     content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "입력값을 확인해주세요.",
-                                              "errors": {
-                                                "username": "아이디는 4자 이상 50자 이하여야 합니다."
-                                              }
-                                            }
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "invalid-username",
+                                            value = """
+                                                    {
+                                                      "message": "입력값을 확인해주세요.",
+                                                      "errors": {
+                                                        "username": "아이디는 4자 이상 50자 이하여야 합니다."
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "invalid-email",
+                                            value = """
+                                                    {
+                                                      "message": "입력값을 확인해주세요.",
+                                                      "errors": {
+                                                        "email": "이메일 형식이 올바르지 않습니다."
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "invalid-language",
+                                            value = """
+                                                    {
+                                                      "message": "입력값을 확인해주세요.",
+                                                      "errors": {
+                                                        "language": "언어는 20자 이하여야 합니다."
+                                                      }
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
             ),
             @ApiResponse(
@@ -100,7 +140,25 @@ public class AuthController {
             @ApiResponse(
                     responseCode = "200",
                     description = "로그인 성공",
-                    content = @Content(schema = @Schema(implementation = LoginResponse.class))
+                    content = @Content(
+                            schema = @Schema(implementation = LoginResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "id": 1,
+                                              "username": "pingdom_user",
+                                              "email": "pingdom@example.com",
+                                              "birthYear": 1998,
+                                              "profileImageUrl": "https://cdn.pingdom.com/profiles/user1.png",
+                                              "language": "ko",
+                                              "country": "KR",
+                                              "message": "로그인에 성공했습니다.",
+                                              "accessToken": "eyJhbGciOiJIUzI1NiJ9.access.token",
+                                              "refreshToken": "eyJhbGciOiJIUzI1NiJ9.refresh.token"
+                                            }
+                                            """
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "400",

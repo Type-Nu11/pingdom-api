@@ -42,7 +42,22 @@ public class UsersController {
             @ApiResponse(
                     responseCode = "200",
                     description = "조회 성공",
-                    content = @Content(schema = @Schema(implementation = MyPageResponse.class))
+                    content = @Content(
+                            schema = @Schema(implementation = MyPageResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "id": 1,
+                                              "username": "pingdom_user",
+                                              "email": "pingdom@example.com",
+                                              "birthYear": 1998,
+                                              "profileImageUrl": "https://cdn.pingdom.com/profiles/user1.png",
+                                              "language": "ko",
+                                              "country": "KR"
+                                            }
+                                            """
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "401",

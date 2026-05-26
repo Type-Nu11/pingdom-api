@@ -11,17 +11,26 @@ public record MyPageResponse(
         Long id,
         @Schema(description = "사용자 아이디", example = "pingdom_user")
         String username,
-        @Schema(description = "사용자 이름", example = "홍길동")
-        String name,
         @Schema(description = "사용자 이메일", example = "pingdom@example.com")
-        String email){
+        String email,
+        @Schema(description = "출생 연도", example = "1998", nullable = true)
+        Integer birthYear,
+        @Schema(description = "프로필 이미지 URL", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
+        String profileImageUrl,
+        @Schema(description = "언어", example = "ko", nullable = true)
+        String language,
+        @Schema(description = "국가", example = "KR", nullable = true)
+        String country){
 
     public static MyPageResponse from(User user) {
         return MyPageResponse.builder()
                 .id(user.getId())
                 .username(user.getUsername())
-                .name(user.getName())
                 .email(user.getEmail())
+                .birthYear(user.getBirthYear())
+                .profileImageUrl(user.getProfileImageUrl())
+                .language(user.getLanguage())
+                .country(user.getCountry())
                 .build();
     }
 }

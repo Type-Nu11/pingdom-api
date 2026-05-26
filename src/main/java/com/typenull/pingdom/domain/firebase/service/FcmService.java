@@ -1,7 +1,6 @@
 package com.typenull.pingdom.domain.firebase.service;
 
 import com.google.firebase.messaging.FirebaseMessaging;
-import com.google.firebase.messaging.FirebaseMessagingException;
 import com.google.firebase.messaging.Message;
 import com.google.firebase.messaging.Notification;
 import com.typenull.pingdom.domain.auth.domain.User;
@@ -67,6 +66,6 @@ public class FcmService {
         User liker = userRepository.findById(likerId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        sendNotification(owner.getFcmToken(), NotificationType.NEW_LIKE, liker.getName());
+        sendNotification(owner.getFcmToken(), NotificationType.NEW_LIKE, liker.getUsername());
     }
 }

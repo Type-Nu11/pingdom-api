@@ -190,7 +190,6 @@ class AdminReportControllerTest {
     private User createUser(String username) {
         return userRepository.save(User.builder()
                 .username(username)
-                .name("tester")
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .role(UserRole.USER)
@@ -200,7 +199,6 @@ class AdminReportControllerTest {
     private String createAdminAndLogin() throws Exception {
         userRepository.save(User.builder()
                 .username("adminTester")
-                .name("admin")
                 .email("admin@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .role(UserRole.ADMIN)

@@ -64,7 +64,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.username").value("tester01"))
-                .andExpect(jsonPath("$.name").value("tester"));
+                .andExpect(jsonPath("$.email").value("tester01@example.com"));
 
         User user = userRepository.findByUsername("tester01").orElseThrow();
         org.junit.jupiter.api.Assertions.assertNotNull(user.getEmailVerificationCode());

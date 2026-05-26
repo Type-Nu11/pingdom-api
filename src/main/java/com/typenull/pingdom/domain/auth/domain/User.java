@@ -4,6 +4,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Entity;
+import jakarta.persistence.EntityListeners;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -11,10 +12,14 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.Objects;
 import lombok.*;
+import org.springframework.data.annotation.CreatedDate;
+import org.springframework.data.annotation.LastModifiedDate;
+import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 @Getter
 @Entity
 @Table(name = "users")
+@EntityListeners(AuditingEntityListener.class)
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
@@ -27,11 +32,8 @@ public class User {
     @Column(nullable = false, unique = true, length = 50)
     private String username;
 
-    @Column(nullable = false, length = 100)
-    private String name;
-
     // 이메일 인증 연계용 메일 주소
-    @Column(length = 255)
+    @Column(nullable = false, unique = true, length = 255)
     private String email;
 
     // 이메일 인증 완료 상태
@@ -48,6 +50,26 @@ public class User {
 
     @Column(nullable = false)
     private String password;
+
+    @Column(name = "birth_year")
+    private Integer birthYear;
+
+    @Column(name = "profile_image_url", length = 2048)
+    private String profileImageUrl;
+
+    @Column(length = 20)
+    private String language;
+
+    @Column(length = 100)
+    private String country;
+
+    @CreatedDate
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
+
+    @LastModifiedDate
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
 
     // 현재 활성 Refresh Token 저장 필드
     @Column(length = 1000)
