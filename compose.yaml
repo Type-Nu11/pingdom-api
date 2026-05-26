@@ -26,5 +26,3 @@ services:
       - postgres
     volumes:
       - ./src/main/resources/fcm-key.json:/app/fcm-key.json
-    environment:
-      - FCM_KEY_PATH=/app/fcm-key.json
