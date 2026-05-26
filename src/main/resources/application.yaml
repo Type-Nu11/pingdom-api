@@ -50,3 +50,6 @@ springdoc:
     enabled: false
   swagger-ui:
     enabled: false
+
+fcm:
+  key-path: src/main/resources/fcm-key.json
