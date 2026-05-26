@@ -22,7 +22,7 @@ bin/
 *.iws
 *.iml
 *.ipr
-src/main/resources/.env
+.env
 *.env
 src/main/resources/fcm-key.json
 

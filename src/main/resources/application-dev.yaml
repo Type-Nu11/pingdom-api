@@ -21,3 +21,6 @@ seed:
     username: ${SEED_ADMIN_USERNAME:admin}
     email: ${SEED_ADMIN_EMAIL:admin@local}
     password: ${SEED_ADMIN_PASSWORD:admin1234!}
+
+fcm:
+  key-path: /app/fcm-key.json

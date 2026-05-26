@@ -52,4 +52,4 @@ springdoc:
     enabled: false
 
 fcm:
-  key-json: ${FCM_KEY_JSON}
+  key-path: src/main/resources/fcm-key.json
