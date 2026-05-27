@@ -100,6 +100,43 @@ class MapPostUploadControllerTest {
                 .andExpect(jsonPath("$.errors.title").value("제목은 필수입니다."));
     }
 
+    @Test
+    void uploadPostFailsWhenTitleExceedsColumnLimit() throws Exception {
+        String accessToken = signupAndLogin("writer03");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "post.jpg",
+                "image/jpeg",
+                "image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/map/posts/create")
+                        .file(file)
+                        .param("title", "a".repeat(101))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.title").value("제목은 100자 이하여야 합니다."));
+    }
+
+    @Test
+    void uploadPostFailsWhenDescriptionExceedsColumnLimit() throws Exception {
+        String accessToken = signupAndLogin("writer04");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "post.jpg",
+                "image/jpeg",
+                "image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/map/posts/create")
+                        .file(file)
+                        .param("title", "정상 제목")
+                        .param("description", "a".repeat(1001))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.description").value("부가 설명은 1000자 이하여야 합니다."));
+    }
+
     private String signupAndLogin(String username) throws Exception {
         SignupRequest signupRequest = new SignupRequest(
                 username,

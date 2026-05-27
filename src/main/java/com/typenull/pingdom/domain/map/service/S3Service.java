@@ -56,7 +56,7 @@ public class S3Service {
                     .username(username)
                     .build();
 
-            mapImageRepository.save(mapImage);
+            mapImageRepository.saveAndFlush(mapImage);
 
             return new MapImageResponse(mapImage.getId(), "게시글을 저장했습니다.");
         } catch (Exception e) {
@@ -87,7 +87,7 @@ public class S3Service {
         String s3Key = mapImage.getS3Key();
         mapImageRepository.delete(mapImage);
 
-        return new MapImageResponse(imageId, "사진을 삭제했습니다");
+        return new MapImageResponse(imageId, "게시글을 삭제했습니다");
     }
 
     // 삭제 메서드

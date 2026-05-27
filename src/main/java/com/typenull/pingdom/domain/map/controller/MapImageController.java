@@ -98,18 +98,18 @@ public class MapImageController {
         return ResponseEntity.ok(s3Service.uploadImage(request,userId));
     }
 
-    @DeleteMapping("/pictures/{id}/delete")
+    @DeleteMapping("/posts/{id}/delete")
     @Operation(
-            summary = "사진 삭제",
-            description = "지정한 이미지 ID의 사진을 삭제합니다. 본인 소유 사진만 삭제할 수 있습니다."
+            summary = "게시글 삭제",
+            description = "지정한 게시글 ID의 사진 게시글을 삭제합니다. 본인 소유 게시글만 삭제할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "사진 삭제 성공",
+                    description = "게시글 삭제 성공",
                     content = @Content(
                             examples = @ExampleObject(
-                                    value = "\"사진을 삭제했습니다.\""
+                                    value = "\"게시글을 삭제했습니다.\""
                             )
                     )
             ),
@@ -129,12 +129,12 @@ public class MapImageController {
             ),
             @ApiResponse(
                     responseCode = "403",
-                    description = "본인 소유가 아닌 사진 삭제 시도",
+                    description = "본인 소유가 아닌 게시글 삭제 시도",
                     content = @Content(
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "자신의 사진만 삭제할 수 있습니다.",
+                                              "message": "자신의 게시글만 삭제할 수 있습니다.",
                                               "code": "OTHERS_NOT_DELETED"
                                             }
                                             """
@@ -157,26 +157,26 @@ public class MapImageController {
             )
     })
     public ResponseEntity<String> delete(
-            @Parameter(description = "삭제할 이미지 ID", example = "1") @Valid @PathVariable("id") Long imageId,
+            @Parameter(description = "삭제할 게시글 ID", example = "1") @Valid @PathVariable("id") Long imageId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) throws IOException {
         Long userId = user.userId();
         s3Service.deleteImage(imageId,userId);
-        return ResponseEntity.ok("사진을 삭제했습니다.");
+        return ResponseEntity.ok("게시글을 삭제했습니다.");
     }
 
-    @PostMapping("/pictures/{id}/report")
+    @PostMapping("/posts/{id}/report")
     @Operation(
-            summary = "사진 신고",
-            description = "지정한 이미지 ID의 사진을 신고합니다. 동일 사용자는 같은 사진을 한 번만 신고할 수 있습니다."
+            summary = "게시글 신고",
+            description = "지정한 게시글 ID의 사진 게시글을 신고합니다. 동일 사용자는 같은 게시글을 한 번만 신고할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
-                    description = "사진 신고 등록 성공",
+                    description = "게시글 신고 등록 성공",
                     content = @Content(
                             examples = @ExampleObject(
-                                    value = "\"사진 신고를 등록했습니다.\""
+                                    value = "\"게시글 신고를 등록했습니다.\""
                             )
                     )
             ),
@@ -226,12 +226,12 @@ public class MapImageController {
             ),
             @ApiResponse(
                     responseCode = "409",
-                    description = "이미 신고한 사진",
+                    description = "이미 신고한 게시글",
                     content = @Content(
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "같은 사진은 한 번만 신고할 수 있습니다.",
+                                              "message": "같은 게시글은 한 번만 신고할 수 있습니다.",
                                               "code": "ALREADY_REPORTED_IMAGE"
                                             }
                                             """
@@ -240,11 +240,11 @@ public class MapImageController {
             )
     })
     public ResponseEntity<String> report(
-            @Parameter(description = "신고할 이미지 ID", example = "1") @PathVariable("id") Long imageId,
+            @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Valid @RequestBody PictureReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         pictureReportService.report(imageId, user.userId(), user.username(), request);
-        return ResponseEntity.status(HttpStatus.CREATED).body("사진 신고를 등록했습니다.");
+        return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
 }

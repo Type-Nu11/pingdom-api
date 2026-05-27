@@ -64,7 +64,7 @@ class PictureReportControllerTest {
         String accessToken = signupAndLogin("reporter01");
         MapImage mapImage = createMapImage(101L);
 
-        mockMvc.perform(post("/map/pictures/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -86,7 +86,7 @@ class PictureReportControllerTest {
         String accessToken = signupAndLogin("reporter02");
         MapImage mapImage = createMapImage(102L);
 
-        mockMvc.perform(post("/map/pictures/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -96,7 +96,7 @@ class PictureReportControllerTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/map/pictures/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -112,7 +112,7 @@ class PictureReportControllerTest {
     void reportFailsWhenPictureDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reporter03");
 
-        mockMvc.perform(post("/map/pictures/{id}/report", 9999L)
+        mockMvc.perform(post("/map/posts/{id}/report", 9999L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -129,7 +129,7 @@ class PictureReportControllerTest {
         String accessToken = signupAndLogin("reporter04");
         MapImage mapImage = createMapImage(104L);
 
-        mockMvc.perform(post("/map/pictures/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
