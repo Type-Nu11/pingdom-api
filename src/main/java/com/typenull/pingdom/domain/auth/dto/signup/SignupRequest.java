@@ -25,13 +25,9 @@ public record SignupRequest(
         @Schema(description = "로그인 비밀번호", example = "securePass123!")
         String password,
 
-<<<<<<< Updated upstream
         @NotNull(message = "출생 연도는 필수입니다.")
-        @Schema(description = "출생 연도", example = "1998")
-=======
         @Min(value = 1900, message = "출생 연도는 1900년 이후여야 합니다.")
         @Schema(description = "출생 연도", example = "1998", nullable = true)
->>>>>>> Stashed changes
         Integer birthYear,
 
         @Schema(description = "프로필 이미지 URL", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
