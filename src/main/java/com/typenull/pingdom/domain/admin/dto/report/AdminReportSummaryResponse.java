@@ -8,7 +8,7 @@ import java.time.LocalDateTime;
 public record AdminReportSummaryResponse(
         @Schema(description = "신고 ID", example = "1")
         Long reportId,
-        @Schema(description = "신고 대상 이미지 ID", example = "10")
+        @Schema(description = "신고 대상 게시글 ID", example = "10")
         Long imageId,
         @Schema(description = "신고 대상 사용자 ID", example = "5")
         Long reportedUserId,
@@ -16,7 +16,7 @@ public record AdminReportSummaryResponse(
         Long reporterUserId,
         @Schema(description = "신고자 아이디", example = "reporter01")
         String reporterUsername,
-        @Schema(description = "신고 사유", example = "부적절한 사진입니다.")
+        @Schema(description = "신고 사유", example = "부적절한 게시글입니다.")
         String reason,
         @Schema(description = "신고 처리 상태", example = "PENDING")
         PictureReportStatus status,

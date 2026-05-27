@@ -36,7 +36,7 @@ public class MapImageController {
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
-            description = "multipart/form-data로 제목, 부가 설명, 사진 파일을 함께 업로드하고 저장합니다."
+            description = "multipart/form-data로 제목, 부가 설명, 첨부 파일을 함께 업로드해 게시글로 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -101,7 +101,7 @@ public class MapImageController {
     @DeleteMapping("/post/{id}/delete")
     @Operation(
             summary = "게시글 삭제",
-            description = "지정한 게시글 ID의 사진 게시글을 삭제합니다. 본인 소유 게시글만 삭제할 수 있습니다."
+            description = "지정한 게시글 ID의 게시글을 삭제합니다. 본인 소유 게시글만 삭제할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -143,12 +143,12 @@ public class MapImageController {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "이미지를 찾을 수 없음",
+                    description = "게시글을 찾을 수 없음",
                     content = @Content(
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "이미지를 찾을 수 없습니다.",
+                                              "message": "게시글을 찾을 수 없습니다.",
                                               "code": "IMAGE_NOT_FOUND"
                                             }
                                             """
@@ -168,7 +168,7 @@ public class MapImageController {
     @PostMapping("/post/{id}/report")
     @Operation(
             summary = "게시글 신고",
-            description = "지정한 게시글 ID의 사진 게시글을 신고합니다. 동일 사용자는 같은 게시글을 한 번만 신고할 수 있습니다."
+            description = "지정한 게시글 ID의 게시글을 신고합니다. 동일 사용자는 같은 게시글을 한 번만 신고할 수 있습니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -212,12 +212,12 @@ public class MapImageController {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "이미지를 찾을 수 없음",
+                    description = "게시글을 찾을 수 없음",
                     content = @Content(
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "이미지를 찾을 수 없습니다.",
+                                              "message": "게시글을 찾을 수 없습니다.",
                                               "code": "IMAGE_NOT_FOUND"
                                             }
                                             """

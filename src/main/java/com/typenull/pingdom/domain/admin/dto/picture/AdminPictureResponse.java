@@ -4,7 +4,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 import java.util.List;
 
-@Schema(description = "관리자 사진 조회 응답")
+@Schema(description = "관리자 게시글 조회 응답")
 public record AdminPictureResponse(
         List<AdminPictureItem> pictures,
         int page,

@@ -32,13 +32,13 @@ public class AdminPictureController {
 
     @GetMapping("/pictures")
     @Operation(
-            summary = "관리자 사진 목록 조회",
-            description = "관리자가 최근 사진 목록을 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            summary = "관리자 게시글 목록 조회",
+            description = "관리자가 최근 게시글 목록을 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "사진 목록 조회 성공",
+                    description = "게시글 목록 조회 성공",
                     content = @Content(schema = @Schema(implementation = AdminPictureResponse.class),
                             examples = @ExampleObject(value = """
                         {
@@ -74,13 +74,13 @@ public class AdminPictureController {
 
     @DeleteMapping("/pictures/{id}/delete")
     @Operation(
-            summary = "관리자 사진 삭제",
-            description = "관리자가 사진을 강제로 삭제합니다."
+            summary = "관리자 게시글 삭제",
+            description = "관리자가 게시글을 강제로 삭제합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "204",
-                    description = "사진 삭제 성공"
+                    description = "게시글 삭제 성공"
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -112,12 +112,12 @@ public class AdminPictureController {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "사진을 찾을 수 없음",
+                    description = "게시글을 찾을 수 없음",
                     content = @Content(
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "사진을 찾을 수 없습니다.",
+                                              "message": "게시글을 찾을 수 없습니다.",
                                               "code": "PICTURE_NOT_FOUND"
                                             }
                                             """
@@ -126,14 +126,14 @@ public class AdminPictureController {
             ),
             @ApiResponse(
                     responseCode = "500",
-                    description = "사진 삭제 처리 실패",
+                    description = "게시글 삭제 처리 실패",
                     content = @Content(
                             examples = {
                                     @ExampleObject(
                                             name = "delete-failed",
                                             value = """
                                                     {
-                                                      "message": "사진 삭제에 실패했습니다.",
+                                                      "message": "게시글 삭제에 실패했습니다.",
                                                       "code": "PICTURE_DELETE_FAILED"
                                                     }
                                                     """
@@ -152,7 +152,7 @@ public class AdminPictureController {
             )
     })
     public ResponseEntity<Void> deletePicture(
-            @Parameter(description = "삭제할 사진 ID", example = "10") @PathVariable Long id
+            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable Long id
     ) {
         adminPictureService.deletePicture(id);
         return ResponseEntity.noContent().build();

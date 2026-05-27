@@ -18,6 +18,6 @@ public record ImageUploadRequest(
         String description,
 
         @NotNull(message = "파일은 필수입니다.")
-        @Schema(description = "업로드할 이미지 파일", type = "string", format = "binary")
+        @Schema(description = "업로드할 게시글 첨부 파일", type = "string", format = "binary")
         MultipartFile file) {
 }
