@@ -20,11 +20,12 @@ public class OAuth2TokenController {
 
     @GetMapping("/auth/oauth2/success")
     public ResponseEntity<?> oauth2Success(HttpServletRequest request, HttpServletResponse response) {
+        boolean secureCookie = isSecureCookieRequest(request);
         String accessToken = readCookie(request, ACCESS_COOKIE);
         String refreshToken = readCookie(request, REFRESH_COOKIE);
 
-        clearCookie(response, ACCESS_COOKIE);
-        clearCookie(response, REFRESH_COOKIE);
+        clearCookie(response, ACCESS_COOKIE, secureCookie);
+        clearCookie(response, REFRESH_COOKIE, secureCookie);
 
         if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(refreshToken)) {
             Map<String, Object> body = new LinkedHashMap<>();
@@ -54,13 +55,23 @@ public class OAuth2TokenController {
         return null;
     }
 
-    private void clearCookie(HttpServletResponse response, String name) {
+    private void clearCookie(HttpServletResponse response, String name, boolean secureCookie) {
         ResponseCookie cookie = ResponseCookie.from(name, "")
                 .path("/auth/oauth2/success")
                 .httpOnly(true)
-                .sameSite("Lax")
+                .secure(secureCookie)
+                .sameSite(secureCookie ? "None" : "Lax")
                 .maxAge(0)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private boolean isSecureCookieRequest(HttpServletRequest request) {
+        if (request.isSecure()) {
+            return true;
+        }
+
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        return forwardedProto != null && forwardedProto.equalsIgnoreCase("https");
     }
 }

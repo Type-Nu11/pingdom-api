@@ -57,22 +57,34 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
         user.issueRefreshToken(refreshToken);
 
-        // access/refresh token을 URL에 노출하지 않고, 짧은 URL로 이동 후 JSON을 반환하기 위해 쿠키로 전달한다.
-        addShortLivedCookie(response, ACCESS_COOKIE, accessToken);
-        addShortLivedCookie(response, REFRESH_COOKIE, refreshToken);
+        boolean secureCookie = isSecureCookieRequest(request);
+
+        // access/refresh token을 URL에 노출하지 않고, /auth/oauth2/success 호출로 토큰을 회수할 수 있도록 쿠키로 전달한다.
+        addShortLivedCookie(response, ACCESS_COOKIE, accessToken, secureCookie);
+        addShortLivedCookie(response, REFRESH_COOKIE, refreshToken, secureCookie);
         response.sendRedirect(normalizeRedirectUri(redirectUri));
     }
 
-    private void addShortLivedCookie(HttpServletResponse response, String name, String value) {
+    private void addShortLivedCookie(HttpServletResponse response, String name, String value, boolean secureCookie) {
         ResponseCookie cookie = ResponseCookie.from(name, value)
                 .path("/auth/oauth2/success")
                 .httpOnly(true)
-                // 개발환경에서 크로스 오리진 쿠키 전달이 필요하면 sameSite/secure 조합이 필요함.
-                // (HTTPS가 아닐 경우 브라우저가 Secure 쿠키를 거부할 수 있으니 환경에 맞게 조정)
-                .sameSite("Lax")
+                // Cross-site 쿠키 전달을 위해서는 SameSite=None + Secure=true 조합이 필요함.
+                // 단, HTTP(localhost 등)에서는 브라우저가 Secure 쿠키를 거부하므로 요청 스킴에 맞춰 동적으로 설정한다.
+                .secure(secureCookie)
+                .sameSite(secureCookie ? "None" : "Lax")
                 .maxAge(COOKIE_EXPIRE_SECONDS)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
+    }
+
+    private boolean isSecureCookieRequest(HttpServletRequest request) {
+        if (request.isSecure()) {
+            return true;
+        }
+
+        String forwardedProto = request.getHeader("X-Forwarded-Proto");
+        return forwardedProto != null && forwardedProto.equalsIgnoreCase("https");
     }
 
     private String normalizeRedirectUri(String value) {
