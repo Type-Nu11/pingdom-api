@@ -172,6 +172,8 @@ class PictureReportControllerTest {
                 MapImage.builder()
                         .imageUrl("https://example.com/image.jpg")
                         .s3Key("test-image-key")
+                        .title("테스트 제목")
+                        .description("테스트 설명")
                         .userId(userId)
                         .build()
         );

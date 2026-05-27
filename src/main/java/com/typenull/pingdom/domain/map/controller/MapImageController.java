@@ -33,15 +33,15 @@ public class MapImageController {
     private final S3Service s3Service;
     private final PictureReportService pictureReportService;
 
-    @PostMapping(value = "/pictures/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/posts/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
-            summary = "사진 업로드",
-            description = "multipart/form-data로 사진 파일을 업로드하고 저장합니다."
+            summary = "게시글 업로드",
+            description = "multipart/form-data로 제목, 부가 설명, 사진 파일을 함께 업로드하고 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
-                    description = "사진 업로드 성공",
+                    description = "게시글 업로드 성공",
                     content = @Content(schema = @Schema(implementation = MapImageResponse.class))
             ),
             @ApiResponse(
@@ -53,6 +53,7 @@ public class MapImageController {
                                             {
                                               "message": "입력값을 확인해주세요.",
                                               "errors": {
+                                                "title": "제목은 필수입니다.",
                                                 "file": "파일은 필수입니다."
                                               }
                                             }
@@ -89,7 +90,7 @@ public class MapImageController {
                     )
             )
     })
-    public ResponseEntity<MapImageResponse> upload(
+    public ResponseEntity<MapImageResponse> uploadPost(
             @Valid @ModelAttribute ImageUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) throws IOException {

@@ -220,6 +220,8 @@ class AdminReportControllerTest {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl(imageUrl)
                 .s3Key("test-key-" + userId)
+                .title("신고 대상 제목")
+                .description("신고 대상 설명")
                 .userId(userId)
                 .build());
     }

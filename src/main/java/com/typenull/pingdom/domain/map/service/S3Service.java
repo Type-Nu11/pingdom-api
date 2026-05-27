@@ -50,13 +50,15 @@ public class S3Service {
             MapImage mapImage = MapImage.builder()
                     .imageUrl(putResult.url())
                     .s3Key(putResult.key())
+                    .title(request.title())
+                    .description(request.description())
                     .userId(userId)
                     .username(username)
                     .build();
 
             mapImageRepository.save(mapImage);
 
-            return new MapImageResponse(mapImage.getId(), "사진을 저장했습니다.");
+            return new MapImageResponse(mapImage.getId(), "게시글을 저장했습니다.");
         } catch (Exception e) {
             // DB 저장 실패 시 S3 파일 삭제
             try {
