@@ -3,6 +3,7 @@ package com.typenull.pingdom.domain.auth.dto.signup;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Email;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 @Schema(description = "회원가입 요청 정보")
@@ -23,22 +24,21 @@ public record SignupRequest(
         @Schema(description = "로그인 비밀번호", example = "securePass123!")
         String password,
 
-        @Schema(description = "출생 연도", example = "1998", nullable = true)
+        @NotNull(message = "출생 연도는 필수입니다.")
+        @Schema(description = "출생 연도", example = "1998")
         Integer birthYear,
 
         @Schema(description = "프로필 이미지 URL", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
         String profileImageUrl,
 
+        @NotBlank(message = "언어는 필수입니다.")
         @Size(max = 20, message = "언어는 20자 이하여야 합니다.")
-        @Schema(description = "언어 코드 또는 언어명", example = "ko", nullable = true)
+        @Schema(description = "언어 코드 또는 언어명", example = "ko")
         String language,
 
+        @NotBlank(message = "국가는 필수입니다.")
         @Size(max = 100, message = "국가는 100자 이하여야 합니다.")
-        @Schema(description = "국가 코드 또는 국가명", example = "KR", nullable = true)
+        @Schema(description = "국가 코드 또는 국가명", example = "KR")
         String country
 ) {
-    // 기존 테스트 호출 호환 생성자
-    public SignupRequest(String username, String ignoredName, String email, String password) {
-        this(username, email, password, null, null, null, null);
-    }
 }

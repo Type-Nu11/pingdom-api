@@ -192,6 +192,9 @@ class AdminReportControllerTest {
                 .username(username)
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
                 .role(UserRole.USER)
                 .build());
     }
@@ -201,6 +204,9 @@ class AdminReportControllerTest {
                 .username("adminTester")
                 .email("admin@example.com")
                 .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
                 .role(UserRole.ADMIN)
                 .build());
 

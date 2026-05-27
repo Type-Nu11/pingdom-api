@@ -59,6 +59,9 @@ public class DevAdminSeedConfig {
                         .email(adminEmail)
                         .emailVerified(true)
                         .password(passwordEncoder.encode(adminPassword))
+                        .birthYear(2000)
+                        .language("ko")
+                        .country("KR")
                         .role(UserRole.ADMIN)
                         .build();
 
