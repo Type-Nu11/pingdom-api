@@ -66,7 +66,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/posts/create")
+        mockMvc.perform(multipart("/map/post/create")
                         .file(file)
                         .param("title", "새 게시글 제목")
                         .param("description", "게시글 부가 설명")
@@ -92,7 +92,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/posts/create")
+        mockMvc.perform(multipart("/map/post/create")
                         .file(file)
                         .param("title", "   ")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -110,7 +110,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/posts/create")
+        mockMvc.perform(multipart("/map/post/create")
                         .file(file)
                         .param("title", "a".repeat(101))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -128,7 +128,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/posts/create")
+        mockMvc.perform(multipart("/map/post/create")
                         .file(file)
                         .param("title", "정상 제목")
                         .param("description", "a".repeat(1001))

@@ -33,7 +33,7 @@ public class MapImageController {
     private final S3Service s3Service;
     private final PictureReportService pictureReportService;
 
-    @PostMapping(value = "/posts/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
             description = "multipart/form-data로 제목, 부가 설명, 사진 파일을 함께 업로드하고 저장합니다."
@@ -98,7 +98,7 @@ public class MapImageController {
         return ResponseEntity.ok(s3Service.uploadImage(request,userId));
     }
 
-    @DeleteMapping("/posts/{id}/delete")
+    @DeleteMapping("/post/{id}/delete")
     @Operation(
             summary = "게시글 삭제",
             description = "지정한 게시글 ID의 사진 게시글을 삭제합니다. 본인 소유 게시글만 삭제할 수 있습니다."
@@ -165,7 +165,7 @@ public class MapImageController {
         return ResponseEntity.ok("게시글을 삭제했습니다.");
     }
 
-    @PostMapping("/posts/{id}/report")
+    @PostMapping("/post/{id}/report")
     @Operation(
             summary = "게시글 신고",
             description = "지정한 게시글 ID의 사진 게시글을 신고합니다. 동일 사용자는 같은 게시글을 한 번만 신고할 수 있습니다."
