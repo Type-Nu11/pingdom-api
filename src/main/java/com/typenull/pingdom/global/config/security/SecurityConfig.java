@@ -17,6 +17,10 @@ import org.springframework.security.web.authentication.UsernamePasswordAuthentic
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import com.typenull.pingdom.domain.auth.service.oauth.CookieOAuth2AuthorizationRequestRepository;
+import com.typenull.pingdom.domain.auth.service.oauth.CustomOAuth2UserService;
+import com.typenull.pingdom.domain.auth.service.oauth.OAuth2FailureHandler;
+import com.typenull.pingdom.domain.auth.service.oauth.OAuth2SuccessHandler;
 
 @Configuration
 @EnableWebSecurity
@@ -29,7 +33,11 @@ public class    SecurityConfig {
             HttpSecurity http,
             JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
-            JwtAccessDeniedHandler jwtAccessDeniedHandler
+            JwtAccessDeniedHandler jwtAccessDeniedHandler,
+            CookieOAuth2AuthorizationRequestRepository cookieOAuth2AuthorizationRequestRepository,
+            CustomOAuth2UserService customOAuth2UserService,
+            OAuth2SuccessHandler oAuth2SuccessHandler,
+            OAuth2FailureHandler oAuth2FailureHandler
     ) throws Exception {
         http
                 .cors(Customizer.withDefaults())
@@ -38,6 +46,8 @@ public class    SecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/auth/**",
+                                "/oauth2/**",
+                                "/login/oauth2/**",
                                 "/swagger-ui",
                                 "/swagger-ui.html",
                                 "/swagger-ui/**",
@@ -45,6 +55,16 @@ public class    SecurityConfig {
                         ).permitAll()
                         .requestMatchers("/admin/**").permitAll()
                         .anyRequest().authenticated()
+                )
+                .oauth2Login(oauth2 -> oauth2
+                        .authorizationEndpoint(authorization -> authorization
+                                .authorizationRequestRepository(cookieOAuth2AuthorizationRequestRepository)
+                        )
+                        .userInfoEndpoint(userInfo -> userInfo
+                                .userService(customOAuth2UserService)
+                        )
+                        .successHandler(oAuth2SuccessHandler)
+                        .failureHandler(oAuth2FailureHandler)
                 )
                 // JWT 인증/인가 실패 응답 처리 설정
                 .exceptionHandling(exception -> exception
