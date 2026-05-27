@@ -8,11 +8,12 @@ import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.global.config.security.JwtTokenProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
-import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
@@ -63,11 +64,15 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     }
 
     private void addShortLivedCookie(HttpServletResponse response, String name, String value) {
-        Cookie cookie = new Cookie(name, value);
-        cookie.setPath("/auth/oauth2/success");
-        cookie.setHttpOnly(true);
-        cookie.setMaxAge(COOKIE_EXPIRE_SECONDS);
-        response.addCookie(cookie);
+        ResponseCookie cookie = ResponseCookie.from(name, value)
+                .path("/auth/oauth2/success")
+                .httpOnly(true)
+                // 개발환경에서 크로스 오리진 쿠키 전달이 필요하면 sameSite/secure 조합이 필요함.
+                // (HTTPS가 아닐 경우 브라우저가 Secure 쿠키를 거부할 수 있으니 환경에 맞게 조정)
+                .sameSite("Lax")
+                .maxAge(COOKIE_EXPIRE_SECONDS)
+                .build();
+        response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
     private String normalizeRedirectUri(String value) {
