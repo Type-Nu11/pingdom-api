@@ -14,10 +14,12 @@ import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
+import org.springframework.security.oauth2.client.web.HttpSessionOAuth2AuthorizationRequestRepository;
+import org.springframework.security.oauth2.client.web.AuthorizationRequestRepository;
+import org.springframework.security.oauth2.core.endpoint.OAuth2AuthorizationRequest;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import com.typenull.pingdom.domain.auth.service.oauth.CookieOAuth2AuthorizationRequestRepository;
 import com.typenull.pingdom.domain.auth.service.oauth.CustomOAuth2UserService;
 import com.typenull.pingdom.domain.auth.service.oauth.OAuth2FailureHandler;
 import com.typenull.pingdom.domain.auth.service.oauth.OAuth2SuccessHandler;
@@ -34,7 +36,6 @@ public class    SecurityConfig {
             JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
             JwtAccessDeniedHandler jwtAccessDeniedHandler,
-            CookieOAuth2AuthorizationRequestRepository cookieOAuth2AuthorizationRequestRepository,
             CustomOAuth2UserService customOAuth2UserService,
             OAuth2SuccessHandler oAuth2SuccessHandler,
             OAuth2FailureHandler oAuth2FailureHandler
@@ -58,7 +59,7 @@ public class    SecurityConfig {
                 )
                 .oauth2Login(oauth2 -> oauth2
                         .authorizationEndpoint(authorization -> authorization
-                                .authorizationRequestRepository(cookieOAuth2AuthorizationRequestRepository)
+                                .authorizationRequestRepository(authorizationRequestRepository())
                         )
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
@@ -77,6 +78,11 @@ public class    SecurityConfig {
                 .formLogin(form -> form.disable());
 
         return http.build();
+    }
+
+    @Bean
+    public AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository() {
+        return new HttpSessionOAuth2AuthorizationRequestRepository();
     }
 
     @Bean

@@ -42,7 +42,8 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         }
 
         Map<String, Object> attributes = oAuth2User.getAttributes();
-        String providerId = String.valueOf(attributes.get("sub"));
+        Object subAttribute = attributes.get("sub");
+        String providerId = (subAttribute != null) ? String.valueOf(subAttribute) : null;
         String email = (String) attributes.get("email");
 
         if (providerId == null || providerId.isBlank()) {
@@ -103,4 +104,3 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
         return candidate + "_" + suffix;
     }
 }
-

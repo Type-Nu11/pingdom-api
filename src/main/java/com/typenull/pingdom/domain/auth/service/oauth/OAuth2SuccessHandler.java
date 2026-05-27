@@ -11,14 +11,10 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.net.URLEncoder;
-import java.nio.charset.StandardCharsets;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.core.user.OAuth2User;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,7 +26,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
     private final OAuthAccountRepository oAuthAccountRepository;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
-    private final PasswordEncoder passwordEncoder;
 
     @Value("${oauth2.redirect-uri:http://localhost:5173/oauth2/redirect}")
     private String redirectUri;
@@ -53,30 +48,8 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
 
         String providerId = resolveProviderId(oAuth2User);
-        String email = resolveEmail(oAuth2User);
-
         OAuthAccount account = oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
-                .orElse(null);
-
-        if (account == null) {
-            if (email == null || email.isBlank()) {
-                throw new IllegalStateException("Google 사용자 이메일을 찾을 수 없습니다.");
-            }
-
-            User user = userRepository.findByEmail(email)
-                    .orElseGet(() -> userRepository.save(User.builder()
-                            .username(generateUniqueUsername(email))
-                            .email(email)
-                            .emailVerified(true)
-                            .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                            .build()));
-
-            account = oAuthAccountRepository.save(OAuthAccount.builder()
-                    .provider(AuthProvider.GOOGLE)
-                    .providerId(providerId)
-                    .user(user)
-                    .build());
-        }
+                .orElseThrow(() -> new IllegalStateException("OAuthAccount를 찾을 수 없습니다."));
 
         User user = account.getUser();
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
@@ -86,7 +59,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // access/refresh token을 URL에 노출하지 않고, 짧은 URL로 이동 후 JSON을 반환하기 위해 쿠키로 전달한다.
         addShortLivedCookie(response, ACCESS_COOKIE, accessToken);
         addShortLivedCookie(response, REFRESH_COOKIE, refreshToken);
-        response.sendRedirect("/auth/oauth2/success");
+        response.sendRedirect(normalizeRedirectUri(redirectUri));
     }
 
     private void addShortLivedCookie(HttpServletResponse response, String name, String value) {
@@ -114,10 +87,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         return trimmed;
     }
 
-    private String urlEncode(String value) {
-        return URLEncoder.encode(value, StandardCharsets.UTF_8);
-    }
-
     private String resolveProviderId(OAuth2User oAuth2User) {
         Object sub = oAuth2User.getAttributes().get("sub");
         if (sub != null) {
@@ -130,28 +99,5 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
 
         throw new IllegalStateException("Google 사용자 식별자를 찾을 수 없습니다.");
-    }
-
-    private String resolveEmail(OAuth2User oAuth2User) {
-        Object email = oAuth2User.getAttributes().get("email");
-        return (email == null) ? null : String.valueOf(email);
-    }
-
-    private String generateUniqueUsername(String email) {
-        String base = (email == null) ? "google_user" : email;
-        if (base.length() > 50) {
-            base = base.substring(0, 50);
-        }
-
-        if (!userRepository.existsByUsername(base)) {
-            return base;
-        }
-
-        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        int maxBaseLength = Math.max(1, 50 - 1 - suffix.length());
-        if (base.length() > maxBaseLength) {
-            base = base.substring(0, maxBaseLength);
-        }
-        return base + "_" + suffix;
     }
 }
