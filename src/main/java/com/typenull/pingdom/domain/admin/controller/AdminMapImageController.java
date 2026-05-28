@@ -29,13 +29,13 @@ public class AdminMapImageController {
 
     @DeleteMapping("/{id}")
     @Operation(
-            summary = "관리자 지도 이미지 삭제",
-            description = "관리자가 지도 이미지 리소스를 강제로 삭제합니다."
+            summary = "관리자 지도 게시글 삭제",
+            description = "관리자가 지도 게시글 리소스를 강제로 삭제합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "204",
-                    description = "지도 이미지 삭제 성공"
+                    description = "지도 게시글 삭제 성공"
             ),
             @ApiResponse(
                     responseCode = "401",
@@ -67,12 +67,12 @@ public class AdminMapImageController {
             ),
             @ApiResponse(
                     responseCode = "404",
-                    description = "사진을 찾을 수 없음",
+                    description = "게시글을 찾을 수 없음",
                     content = @Content(
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "사진을 찾을 수 없습니다.",
+                                              "message": "게시글을 찾을 수 없습니다.",
                                               "code": "PICTURE_NOT_FOUND"
                                             }
                                             """
@@ -81,7 +81,7 @@ public class AdminMapImageController {
             )
     })
     public ResponseEntity<Void> forceDeleteMapImage(
-            @Parameter(description = "강제 삭제할 지도 이미지 ID", example = "10") @PathVariable Long id,
+            @Parameter(description = "강제 삭제할 지도 게시글 ID", example = "10") @PathVariable Long id,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         adminPictureService.deletePicture(id);
