@@ -13,6 +13,8 @@ public interface AuthService {
 
     public LoginResponse login(LoginRequest request);
 
+    public LoginResponse adminLogin(LoginRequest request);
+
     // 이메일 인증 처리 메서드
     public void verifyEmail(EmailVerifyRequest request);
 

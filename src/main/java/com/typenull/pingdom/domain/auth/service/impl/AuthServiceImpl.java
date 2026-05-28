@@ -83,8 +83,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse login(LoginRequest request) {
+        User user = authenticateUser(request);
+        return issueLoginResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public LoginResponse adminLogin(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
+
+        if (!user.isAdmin()) {
+            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
 
         if (user.isBanned()) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
@@ -94,25 +105,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        // 로그인 성공 시 JWT 발급 호출
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-
-        // 현재 활성 Refresh Token 저장 호출
-        user.issueRefreshToken(refreshToken);
-
-        return new LoginResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getBirthYear(),
-                user.getProfileImageUrl(),
-                user.getLanguage(),
-                user.getCountry(),
-                "로그인에 성공했습니다.",
-                accessToken,
-                refreshToken
-        );
+        return issueLoginResponse(user);
     }
 
     @Override
@@ -170,5 +163,42 @@ public class AuthServiceImpl implements AuthService {
 
         // 사용자 데이터 완전 삭제 호출
         userRepository.delete(user);
+    }
+
+    private User authenticateUser(LoginRequest request) {
+        User user = userRepository.findByUsername(request.username())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
+
+        if (user.isBanned()) {
+            throw new AuthException(AuthErrorCode.USER_BANNED);
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        return user;
+    }
+
+    private LoginResponse issueLoginResponse(User user) {
+        // 로그인 성공 시 JWT 발급 호출
+        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
+        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+        // 현재 활성 Refresh Token 저장 호출
+        user.issueRefreshToken(refreshToken);
+
+        return new LoginResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getBirthYear(),
+                user.getProfileImageUrl(),
+                user.getLanguage(),
+                user.getCountry(),
+                "로그인에 성공했습니다.",
+                accessToken,
+                refreshToken
+        );
     }
 }
