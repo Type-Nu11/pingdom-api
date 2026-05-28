@@ -1,6 +1,7 @@
 package com.typenull.pingdom.domain.map.repository;
 
 import com.typenull.pingdom.domain.map.domain.MapImage;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,4 +18,6 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     WHERE m.id = :imageId
 """)
     void increaseLikeCount(@Param("imageId") Long imageId);
+
+    List<MapImage> findByMapPlace_IdOrderByCreatedAtDesc(Long placeId);
 }
