@@ -43,7 +43,8 @@ public class FcmService {
                     .putData("type", type.name())
                     .build();
 
-            FirebaseMessaging.getInstance().send(message);
+            String response = FirebaseMessaging.getInstance().send(message);
+            log.info("FCM 전송 성공: {}", response);
         } catch (Exception e) {
             log.error("FCM 전송 실패 - type: {}, reason: {}", type, e.getMessage());
         }

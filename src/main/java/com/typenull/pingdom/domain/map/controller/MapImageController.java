@@ -1,9 +1,8 @@
 package com.typenull.pingdom.domain.map.controller;
 
-import com.typenull.pingdom.domain.map.dto.MapImageResponse;
+import com.typenull.pingdom.domain.map.dto.*;
+import com.typenull.pingdom.domain.map.service.MapImageLikeService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
-import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
-import com.typenull.pingdom.domain.map.dto.PictureReportRequest;
 import com.typenull.pingdom.domain.map.service.PictureReportService;
 import com.typenull.pingdom.domain.map.service.S3Service;
 import io.swagger.v3.oas.annotations.Operation;
@@ -32,6 +31,7 @@ public class MapImageController {
 
     private final S3Service s3Service;
     private final PictureReportService pictureReportService;
+    private final MapImageLikeService mapImageLikeService;
 
     @PostMapping(value = "/pictures/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
@@ -245,5 +245,16 @@ public class MapImageController {
     ) {
         pictureReportService.report(imageId, user.userId(), user.username(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body("사진 신고를 등록했습니다.");
+    }
+
+    @PostMapping("/like")
+    public ResponseEntity<MapImageLikeResponse> like(
+            @RequestBody MapImageLikeRequest request,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        Long userId = user.userId();
+        MapImageLikeResponse response =
+                mapImageLikeService.like(request, userId);
+        return ResponseEntity.ok(response);
     }
 }
