@@ -43,7 +43,11 @@ public class MapImageLikeService {
 
         mapImageLikeRepository.save(mapImageLike);
         mapImageRepository.increaseLikeCount(mapImageLikeRequest.mapImageId());
-        fcmService.sendLikeNotification(mapImage.getUserId(), userId);
+        try {
+            fcmService.sendLikeNotification(mapImage, userId);
+        } catch (Exception e) {
+            log.error("FCM 알림 보내기 실패", e);
+        }
 
         return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId());
     }

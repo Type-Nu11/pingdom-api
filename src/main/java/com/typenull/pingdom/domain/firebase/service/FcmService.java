@@ -8,6 +8,8 @@ import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.firebase.enums.NotificationType;
+import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -47,7 +49,9 @@ public class FcmService {
     }
 
     @Async
-    public void sendLikeNotification(Long ownerId, Long likerId) {
+    public void sendLikeNotification(MapImage mapImage, Long likerId) {
+
+        Long ownerId = mapImage.getUserId();
 
         // 본인 좋아요는 알림 생략
         if (ownerId.equals(likerId)) return;
