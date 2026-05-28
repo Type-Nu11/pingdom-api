@@ -32,6 +32,43 @@ public class MapPlaceController {
 
     @PostMapping("/places/coordinates")
     @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 좌표를 발급합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "좌표 토큰 발급 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceCoordinateCreateResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "baseLatitude": "위도는 -90.0 이상이어야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<PlaceCoordinateCreateResponse> createCoordinates(
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
@@ -43,6 +80,43 @@ public class MapPlaceController {
 
     @PostMapping("/places/upload")
     @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소와 좌표 토큰으로 장소를 저장합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "장소 업로드 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceCreateResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "name": "장소 이름은 100자 이하여야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "좌표 토큰 만료/유효하지 않음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 좌표 토큰입니다.",
+                                              "code": "PLACE_COORDINATE_TOKEN_INVALID"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public ResponseEntity<PlaceCreateResponse> upload(
             @Valid @RequestBody PlaceUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
