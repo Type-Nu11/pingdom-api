@@ -22,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class FcmService {
 
     private final UserRepository userRepository;
-    private final MapImageRepository mapImageRepository;
 
     @Transactional
     public void updateFcmToken(Long userId, String token) {
