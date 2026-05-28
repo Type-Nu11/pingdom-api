@@ -32,7 +32,7 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
             case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
         };
 
-        Page<MapImage> mapImagePage = mapImageRepository.findAll(
+        Page<MapImage> mapImagePage = mapImageRepository.findAllBy(
                 PageRequest.of(targetPage, safeLimit, sort)
         );
 
@@ -61,7 +61,7 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
                 mapImage.getCreatedAt(),
                 mapImage.getDescription(),
                 mapImage.getLikeCount(),
-                mapImage.getMapPlace().getName()
+                mapImage.getMapPlace() != null ? mapImage.getMapPlace().getName() : null
         );
     }
 }

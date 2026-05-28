@@ -39,6 +39,8 @@ public class S3Service {
     private final PlatformTransactionManager transactionManager;
 
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(request.mapPlaceId())
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())
@@ -52,9 +54,6 @@ public class S3Service {
         } catch (S3StorageException exception) {
             throw toMapException(exception);
         }
-
-        MapPlace mapPlace = mapPlaceRepository.findById(request.mapPlaceId())
-                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         try {
             MapImage mapImage = MapImage.builder()
