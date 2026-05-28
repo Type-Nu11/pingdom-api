@@ -22,8 +22,6 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
-import java.io.IOException;
-
 @RestController
 @RequestMapping("/map")
 @RequiredArgsConstructor
@@ -93,7 +91,7 @@ public class MapImageController {
     public ResponseEntity<MapImageResponse> uploadPost(
             @Valid @ModelAttribute ImageUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
-    ) throws IOException {
+    ) {
         Long userId = user.userId();
         return ResponseEntity.ok(s3Service.uploadImage(request,userId));
     }
@@ -157,9 +155,9 @@ public class MapImageController {
             )
     })
     public ResponseEntity<String> delete(
-            @Parameter(description = "삭제할 게시글 ID", example = "1") @Valid @PathVariable("id") Long imageId,
+            @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
-    ) throws IOException {
+    ) {
         Long userId = user.userId();
         s3Service.deleteImage(imageId,userId);
         return ResponseEntity.ok("게시글을 삭제했습니다.");

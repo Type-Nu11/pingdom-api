@@ -16,7 +16,8 @@ import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -30,9 +31,9 @@ public class S3Service {
     private final MapImageRepository mapImageRepository;
     private final PictureReportRepository pictureReportRepository;
     private final UserRepository userRepository;
+    private final PlatformTransactionManager transactionManager;
 
-    @Transactional
-    public MapImageResponse uploadImage(ImageUploadRequest request, long userId) throws IOException {
+    public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
 
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())
@@ -41,6 +42,8 @@ public class S3Service {
         S3ObjectStorage.S3PutResult putResult;
         try {
             putResult = s3ObjectStorage.put(request.file(), "map");
+        } catch (IOException exception) {
+            throw new MapException(MapErrorCode.UPLOAD_ERROR);
         } catch (S3StorageException exception) {
             throw toMapException(exception);
         }
@@ -56,7 +59,7 @@ public class S3Service {
                     .username(username)
                     .build();
 
-            mapImageRepository.saveAndFlush(mapImage);
+            savePost(mapImage);
 
             return new MapImageResponse(mapImage.getId(), "게시글을 저장했습니다.");
         } catch (Exception e) {
@@ -70,7 +73,6 @@ public class S3Service {
         }
     }
 
-    @Transactional
     public MapImageResponse deleteImage(Long imageId, Long userId) {
         // 지우려는 이미지가 있는지
         MapImage mapImage = mapImageRepository.findById(imageId)
@@ -81,16 +83,26 @@ public class S3Service {
             throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
         }
 
-        // 신고 테이블이 map_image_id(FK)로 참조 중일 수 있어 먼저 참조를 끊는다.
-        pictureReportRepository.detachMapImageByMapImageId(mapImage.getId());
-
         String s3Key = mapImage.getS3Key();
-        mapImageRepository.delete(mapImage);
+        deleteFromS3(s3Key);
+        deletePostRecord(mapImage);
 
         return new MapImageResponse(imageId, "게시글을 삭제했습니다");
     }
 
-    // 삭제 메서드
+    private void savePost(MapImage mapImage) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.executeWithoutResult(status -> mapImageRepository.saveAndFlush(mapImage));
+    }
+
+    private void deletePostRecord(MapImage mapImage) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        transactionTemplate.executeWithoutResult(status -> {
+            pictureReportRepository.detachMapImageByMapImageId(mapImage.getId());
+            mapImageRepository.delete(mapImage);
+        });
+    }
+
     private void deleteFromS3(String s3Key) {
         try {
             s3ObjectStorage.delete(s3Key);

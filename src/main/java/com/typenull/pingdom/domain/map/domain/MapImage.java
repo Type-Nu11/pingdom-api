@@ -23,7 +23,7 @@ public class MapImage {
     @Column(name = "s3_key", length = 500, nullable = false)
     private String s3Key;
 
-    @Column(name = "title", length = 100, nullable = false)
+    @Column(name = "title", length = 100)
     private String title;
 
     @Column(name = "description", length = 1000)

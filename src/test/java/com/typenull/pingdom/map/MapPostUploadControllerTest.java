@@ -23,6 +23,8 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.verify;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -135,6 +137,27 @@ class MapPostUploadControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.description").value("부가 설명은 1000자 이하여야 합니다."));
+    }
+
+    @Test
+    void deletePostRemovesDatabaseRecordAndS3Object() throws Exception {
+        String accessToken = signupAndLogin("writer05");
+        Long userId = userRepository.findByUsername("writer05").orElseThrow().getId();
+        MapImage mapImage = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/delete-post.jpg")
+                .s3Key("map/delete-post.jpg")
+                .title("삭제 테스트 제목")
+                .description("삭제 테스트 설명")
+                .userId(userId)
+                .build());
+
+        mockMvc.perform(delete("/map/post/{id}/delete", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
+
+        verify(s3ObjectStorage).delete("map/delete-post.jpg");
+        assertEquals(0L, mapImageRepository.count());
     }
 
     private String signupAndLogin(String username) throws Exception {
