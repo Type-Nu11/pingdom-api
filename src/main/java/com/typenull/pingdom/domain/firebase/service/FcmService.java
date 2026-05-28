@@ -43,15 +43,14 @@ public class FcmService {
                     .putData("type", type.name())
                     .build();
 
-            FirebaseMessaging.getInstance().send(message);
+            String response = FirebaseMessaging.getInstance().send(message);
+            log.info("FCM 전송 성공: {}", response);
         } catch (Exception e) {
             log.error("FCM 전송 실패 - type: {}, reason: {}", type, e.getMessage());
         }
     }
 
-    public void sendLikeNotification(Long imageId, Long likerId) {
-        MapImage mapImage = mapImageRepository.findById(imageId)
-                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+    public void sendLikeNotification(MapImage mapImage, Long likerId) {
 
         Long ownerId = mapImage.getUserId();
 

@@ -30,7 +30,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Common", description = "앱/웹 공통")
 public class AuthController {
 
-    private final AuthService authService;
+    private final  AuthService authService;
 
     @PostMapping("/signup")
     @Operation(
