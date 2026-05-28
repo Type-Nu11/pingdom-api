@@ -36,7 +36,7 @@ import software.amazon.awssdk.services.s3.S3Client;
         "spring.cloud.aws.credentials.access-key=test-access-key",
         "spring.cloud.aws.credentials.secret-key=test-secret-key",
         "fcm.enabled=false",
-        "fcm.key-path=/tmp/firebase-test.json"
+        "fcm.key-path=dummy"
 })
 @AutoConfigureMockMvc
 class AdminReportControllerTest {
