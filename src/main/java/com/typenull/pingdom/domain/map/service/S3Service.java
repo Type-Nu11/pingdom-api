@@ -39,7 +39,7 @@ public class S3Service {
     private final PlatformTransactionManager transactionManager;
 
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
-        MapPlace mapPlace = mapPlaceRepository.findById(request.mapPlaceId())
+        MapPlace mapPlace = mapPlaceRepository.findById(request.placeId())
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
         String username = userRepository.findById(userId)
