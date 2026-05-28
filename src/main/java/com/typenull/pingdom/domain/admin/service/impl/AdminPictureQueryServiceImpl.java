@@ -30,6 +30,7 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
         Sort sort = switch (sortParam) {
             case OLDEST -> Sort.by(Sort.Direction.ASC, "createdAt");
             case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
+            case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
         Page<MapImage> mapImagePage = mapImageRepository.findAllBy(
