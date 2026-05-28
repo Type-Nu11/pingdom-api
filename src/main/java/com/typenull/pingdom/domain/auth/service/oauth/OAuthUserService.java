@@ -23,7 +23,7 @@ public class OAuthUserService {
 
     @Transactional
     public User provisionGoogleUser(String providerId, String email) {
-        OAuthAccount account = oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
+        OAuthAccount account = oAuthAccountRepository.findWithUserByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
                 .orElse(null);
 
         if (account != null) {
