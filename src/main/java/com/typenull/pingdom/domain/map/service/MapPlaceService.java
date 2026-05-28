@@ -3,6 +3,7 @@ package com.typenull.pingdom.domain.map.service;
 import com.typenull.pingdom.domain.map.domain.MapPlace;
 import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
 import com.typenull.pingdom.domain.map.dto.PlaceCreateResponse;
+import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
@@ -20,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MapPlaceService {
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Transactional
@@ -30,6 +32,41 @@ public class MapPlaceService {
                 .address(request.address())
                 .latitude(request.latitude())
                 .longitude(request.longitude())
+                .location(location)
+                .userId(userId)
+                .build();
+
+        MapPlace saved = mapPlaceRepository.save(mapPlace);
+        return new PlaceCreateResponse(
+                saved.getId(),
+                saved.getName(),
+                saved.getAddress(),
+                saved.getLatitude(),
+                saved.getLongitude()
+        );
+    }
+
+    public PlaceCoordinateCreateResponse createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
+        // TODO: ±a 오차 적용 로직은 별도 이슈에서 구현 예정 (현재는 기준 좌표를 그대로 사용)
+        double finalLatitude = baseLatitude;
+        double finalLongitude = baseLongitude;
+        String token = placeCoordinateTokenStore.put(userId, finalLatitude, finalLongitude);
+        return new PlaceCoordinateCreateResponse(token, finalLatitude, finalLongitude);
+    }
+
+    @Transactional
+    public PlaceCreateResponse uploadPlaceByToken(String name, String address, String coordinateToken, long userId) {
+        PlaceCoordinateTokenStore.Entry entry = placeCoordinateTokenStore.consume(coordinateToken);
+        if (entry == null || entry.userId() != userId) {
+            throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
+        }
+
+        Point location = toPoint(entry.latitude(), entry.longitude());
+        MapPlace mapPlace = MapPlace.builder()
+                .name(name)
+                .address(address)
+                .latitude(entry.latitude())
+                .longitude(entry.longitude())
                 .location(location)
                 .userId(userId)
                 .build();
