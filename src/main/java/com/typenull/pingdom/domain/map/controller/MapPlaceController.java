@@ -2,6 +2,9 @@ package com.typenull.pingdom.domain.map.controller;
 
 import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
 import com.typenull.pingdom.domain.map.dto.PlaceCreateResponse;
+import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateRequest;
+import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateResponse;
+import com.typenull.pingdom.domain.map.dto.PlaceUploadRequest;
 import com.typenull.pingdom.domain.map.service.MapPlaceService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -26,6 +29,32 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;
+
+    @PostMapping("/places/coordinates")
+    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 좌표를 발급합니다.")
+    public ResponseEntity<PlaceCoordinateCreateResponse> createCoordinates(
+            @Valid @RequestBody PlaceCoordinateCreateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        String token = mapPlaceService.createCoordinateToken(request.baseLatitude(), request.baseLongitude(), user.userId());
+        PlaceCoordinateCreateResponse response = new PlaceCoordinateCreateResponse(token, request.baseLatitude(), request.baseLongitude());
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @PostMapping("/places/upload")
+    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소와 좌표 토큰으로 장소를 저장합니다.")
+    public ResponseEntity<PlaceCreateResponse> upload(
+            @Valid @RequestBody PlaceUploadRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
+                request.name(),
+                request.address(),
+                request.coordinateToken(),
+                user.userId()
+        );
+        return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
 
     @PostMapping("/places/create")
     @Operation(summary = "장소 업로드", description = "사용자가 지도에 표시할 장소를 등록합니다.")
