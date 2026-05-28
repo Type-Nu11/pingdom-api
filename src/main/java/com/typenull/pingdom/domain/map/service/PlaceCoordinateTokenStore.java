@@ -6,6 +6,7 @@ import java.time.Instant;
 import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -39,7 +40,12 @@ public class PlaceCoordinateTokenStore {
         return entry;
     }
 
+    @Scheduled(fixedDelayString = "PT1M", initialDelayString = "PT1M")
+    public void evictExpiredTokens() {
+        Instant now = Instant.now(clock);
+        store.entrySet().removeIf(entry -> now.isAfter(entry.getValue().expiresAt()));
+    }
+
     public record Entry(long userId, double latitude, double longitude, Instant expiresAt) {
     }
 }
-
