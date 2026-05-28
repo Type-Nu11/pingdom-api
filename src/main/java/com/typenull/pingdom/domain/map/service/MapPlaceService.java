@@ -3,6 +3,7 @@ package com.typenull.pingdom.domain.map.service;
 import com.typenull.pingdom.domain.map.domain.MapPlace;
 import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
 import com.typenull.pingdom.domain.map.dto.PlaceCreateResponse;
+import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
@@ -45,9 +46,12 @@ public class MapPlaceService {
         );
     }
 
-    public String createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
+    public PlaceCoordinateCreateResponse createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
         // TODO: ±a 오차 적용 로직은 별도 이슈에서 구현 예정 (현재는 기준 좌표를 그대로 사용)
-        return placeCoordinateTokenStore.put(userId, baseLatitude, baseLongitude);
+        double finalLatitude = baseLatitude;
+        double finalLongitude = baseLongitude;
+        String token = placeCoordinateTokenStore.put(userId, finalLatitude, finalLongitude);
+        return new PlaceCoordinateCreateResponse(token, finalLatitude, finalLongitude);
     }
 
     @Transactional

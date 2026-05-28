@@ -36,8 +36,8 @@ public class MapPlaceController {
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        String token = mapPlaceService.createCoordinateToken(request.baseLatitude(), request.baseLongitude(), user.userId());
-        PlaceCoordinateCreateResponse response = new PlaceCoordinateCreateResponse(token, request.baseLatitude(), request.baseLongitude());
+        PlaceCoordinateCreateResponse response =
+                mapPlaceService.createCoordinateToken(request.baseLatitude(), request.baseLongitude(), user.userId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
