@@ -7,6 +7,7 @@ import java.io.IOException;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
+import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.web.authentication.AuthenticationFailureHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
@@ -30,18 +31,40 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
                 exception.getMessage(),
                 exception);
 
-        String message = exception.getMessage();
-        if (message == null || message.isBlank()) {
-            message = "OAUTH2_LOGIN_FAILED";
+        String errorCode = "OAUTH2_LOGIN_FAILED";
+        String message = "로그인에 실패했습니다. 다시 시도해주세요.";
+
+        if (exception instanceof OAuth2AuthenticationException oauthException) {
+            errorCode = oauthException.getError().getErrorCode();
+            if (oauthException.getMessage() != null && !oauthException.getMessage().isBlank()) {
+                message = oauthException.getMessage();
+            }
         }
 
-        String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
-                .queryParam("error", "OAUTH2_LOGIN_FAILED")
+        String targetUrl = UriComponentsBuilder.fromUriString(normalizeRedirectUri(redirectUri))
+                .queryParam("error", errorCode)
                 .queryParam("message", message)
                 .encode()
                 .build()
                 .toUriString();
 
         response.sendRedirect(targetUrl);
+    }
+
+    private String normalizeRedirectUri(String value) {
+        if (value == null) {
+            return "http://localhost:5173/oauth2/redirect";
+        }
+
+        String trimmed = value.trim();
+        if (trimmed.isEmpty()) {
+            return "http://localhost:5173/oauth2/redirect";
+        }
+
+        if (trimmed.endsWith("/")) {
+            trimmed = trimmed.substring(0, trimmed.length() - 1);
+        }
+
+        return trimmed;
     }
 }
