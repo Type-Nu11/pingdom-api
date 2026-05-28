@@ -23,10 +23,6 @@ public record ImageUploadRequest(
 
         @NotNull(message = "파일은 필수입니다.")
         @Schema(description = "업로드할 게시글 첨부 파일", type = "string", format = "binary")
-        MultipartFile file,
-
-        @NotNull(message = "장소 아이디는 필수입니다.")
-        @Schema(description = "사진을 업로드할 장소 아이디", type = "Long", example = "1")
-        Long mapPlaceId
+        MultipartFile file
 ) {
 }

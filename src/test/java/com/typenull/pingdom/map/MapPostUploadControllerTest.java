@@ -82,7 +82,7 @@ class MapPostUploadControllerTest {
                         .file(file)
                         .param("title", "새 게시글 제목")
                         .param("description", "게시글 부가 설명")
-                        .param("mapPlaceId", mapPlace.getId().toString())
+                        .param("placeId", mapPlace.getId().toString())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("게시글을 저장했습니다."));
@@ -110,7 +110,7 @@ class MapPostUploadControllerTest {
         mockMvc.perform(multipart("/map/post/create")
                         .file(file)
                         .param("title", "   ")
-                        .param("mapPlaceId", mapPlace.getId().toString())
+                        .param("placeId", mapPlace.getId().toString())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").value("제목은 필수입니다."));
@@ -130,7 +130,7 @@ class MapPostUploadControllerTest {
         mockMvc.perform(multipart("/map/post/create")
                         .file(file)
                         .param("title", "a".repeat(101))
-                        .param("mapPlaceId", mapPlace.getId().toString())
+                        .param("placeId", mapPlace.getId().toString())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.title").value("제목은 100자 이하여야 합니다."));
@@ -151,7 +151,7 @@ class MapPostUploadControllerTest {
                         .file(file)
                         .param("title", "정상 제목")
                         .param("description", "a".repeat(1001))
-                        .param("mapPlaceId", mapPlace.getId().toString())
+                        .param("placeId", mapPlace.getId().toString())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.description").value("부가 설명은 1000자 이하여야 합니다."));
