@@ -38,6 +38,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
         String targetUrl = UriComponentsBuilder.fromUriString(redirectUri)
                 .queryParam("error", "OAUTH2_LOGIN_FAILED")
                 .queryParam("message", message)
+                .encode()
                 .build()
                 .toUriString();
 
