@@ -15,6 +15,7 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
@@ -42,14 +43,16 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             HttpServletResponse response,
             Authentication authentication
     ) throws IOException, ServletException {
-        Object principal = authentication.getPrincipal();
-        if (!(principal instanceof OAuth2User oAuth2User)) {
-            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth2 principal이 아닙니다.");
+        if (!(authentication instanceof OAuth2AuthenticationToken oauthToken)) {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth2 인증 객체가 아닙니다.");
             return;
         }
 
-        String providerId = resolveProviderId(oAuth2User);
-        OAuthAccount account = oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
+        OAuth2User oAuth2User = oauthToken.getPrincipal();
+        String providerId = oAuth2User.getName();
+        AuthProvider provider = AuthProvider.fromRegistrationId(oauthToken.getAuthorizedClientRegistrationId());
+
+        OAuthAccount account = oAuthAccountRepository.findByProviderAndProviderId(provider, providerId)
                 .orElseThrow(() -> new IllegalStateException("OAuthAccount를 찾을 수 없습니다."));
 
         User user = account.getUser();
@@ -104,17 +107,5 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         return trimmed;
     }
 
-    private String resolveProviderId(OAuth2User oAuth2User) {
-        Object sub = oAuth2User.getAttributes().get("sub");
-        if (sub != null) {
-            return String.valueOf(sub);
-        }
-
-        Object id = oAuth2User.getAttributes().get("id");
-        if (id != null) {
-            return String.valueOf(id);
-        }
-
-        throw new IllegalStateException("Google 사용자 식별자를 찾을 수 없습니다.");
-    }
+    // providerId는 CustomOAuth2UserService에서 nameAttributeKey(sub)로 지정했으므로 getName()으로 가져온다.
 }
