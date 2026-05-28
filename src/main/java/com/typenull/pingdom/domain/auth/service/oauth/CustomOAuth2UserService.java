@@ -1,16 +1,11 @@
 package com.typenull.pingdom.domain.auth.service.oauth;
 
 import com.typenull.pingdom.domain.auth.domain.AuthProvider;
-import com.typenull.pingdom.domain.auth.domain.OAuthAccount;
 import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.repository.OAuthAccountRepository;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
-import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.oauth2.client.userinfo.DefaultOAuth2UserService;
 import org.springframework.security.oauth2.client.userinfo.OAuth2UserRequest;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
@@ -23,9 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final OAuthAccountRepository oAuthAccountRepository;
-    private final UserRepository userRepository;
-    private final PasswordEncoder passwordEncoder;
+    private final OAuthUserService oAuthUserService;
 
     @Override
     @Transactional
@@ -52,30 +45,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException(new OAuth2Error("missing_email"), "Google 사용자 이메일을 찾을 수 없습니다.");
         }
 
-        OAuthAccount account = oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, providerId)
-                .orElse(null);
-
-        User user;
-        if (account != null) {
-            user = account.getUser();
-        } else {
-            if (userRepository.existsByEmail(email)) {
-                throw new OAuth2AuthenticationException(new OAuth2Error("email_conflict"), "이미 로컬 계정으로 가입된 이메일입니다.");
-            }
-
-            user = userRepository.save(User.builder()
-                    .username(generateUniqueUsername(email))
-                    .email(email)
-                    .emailVerified(true)
-                    .password(passwordEncoder.encode(UUID.randomUUID().toString()))
-                    .build());
-
-            oAuthAccountRepository.save(OAuthAccount.builder()
-                    .provider(AuthProvider.GOOGLE)
-                    .providerId(providerId)
-                    .user(user)
-                    .build());
-        }
+        User user = oAuthUserService.provisionGoogleUser(providerId, email);
 
         return new CustomOAuth2User(
                 user.getId(),
@@ -87,24 +57,5 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
                 attributes,
                 "sub"
         );
-    }
-
-    private String generateUniqueUsername(String email) {
-        String base = email;
-        if (base.length() > 50) {
-            base = base.substring(0, 50);
-        }
-
-        if (!userRepository.existsByUsername(base)) {
-            return base;
-        }
-
-        String suffix = UUID.randomUUID().toString().replace("-", "").substring(0, 8);
-        String candidate = base;
-        int maxBaseLength = Math.max(1, 50 - 1 - suffix.length());
-        if (candidate.length() > maxBaseLength) {
-            candidate = candidate.substring(0, maxBaseLength);
-        }
-        return candidate + "_" + suffix;
     }
 }
