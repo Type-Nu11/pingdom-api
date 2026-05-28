@@ -26,10 +26,12 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
         // 리미트 값을 1~100사이로 고정
         int safeLimit = Math.max(1, Math.min(limit, 100));
         int targetPage = Math.max(page - 1, 0);
+        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
 
-        Sort sort = switch (sortParam) {
+        Sort sort = switch (safeSortParam) {
             case OLDEST -> Sort.by(Sort.Direction.ASC, "createdAt");
             case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
+            case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
         Page<MapImage> mapImagePage = mapImageRepository.findAllBy(
