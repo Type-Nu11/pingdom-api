@@ -10,11 +10,13 @@ import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageLikeRepository;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+@Slf4j
 public class MapImageLikeService {
 
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -40,7 +42,12 @@ public class MapImageLikeService {
                 .build();
 
         mapImageLikeRepository.save(mapImageLike);
-        fcmService.sendLikeNotification(mapImage, userId);
+        mapImageRepository.increaseLikeCount(mapImageLikeRequest.mapImageId());
+        try {
+            fcmService.sendLikeNotification(mapImage, userId);
+        } catch (Exception e) {
+            log.error("FCM 알림 보내기 실패", e);
+        }
 
         return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId());
     }

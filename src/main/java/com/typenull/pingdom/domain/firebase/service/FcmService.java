@@ -9,11 +9,10 @@ import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.firebase.enums.NotificationType;
 import com.typenull.pingdom.domain.map.domain.MapImage;
-import com.typenull.pingdom.domain.map.exception.MapErrorCode;
-import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -50,6 +49,7 @@ public class FcmService {
         }
     }
 
+    @Async
     public void sendLikeNotification(MapImage mapImage, Long likerId) {
 
         Long ownerId = mapImage.getUserId();
