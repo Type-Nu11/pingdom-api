@@ -72,9 +72,9 @@ class AdminSecurityTest {
         mockMvc.perform(post("/auth/admin/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("ADMIN_ACCESS_REQUIRED"))
-                .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("아이디 또는 비밀번호가 올바르지 않습니다."));
     }
 
     @Test

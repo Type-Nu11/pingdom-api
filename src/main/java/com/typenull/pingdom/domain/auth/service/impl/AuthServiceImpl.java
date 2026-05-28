@@ -90,10 +90,19 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResponse adminLogin(LoginRequest request) {
-        User user = authenticateUser(request);
+        User user = userRepository.findByUsername(request.username())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
         if (!user.isAdmin()) {
-            throw new AuthException(AuthErrorCode.ADMIN_ACCESS_REQUIRED);
+            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
+        }
+
+        if (user.isBanned()) {
+            throw new AuthException(AuthErrorCode.USER_BANNED);
+        }
+
+        if (!passwordEncoder.matches(request.password(), user.getPassword())) {
+            throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
         return issueLoginResponse(user);
