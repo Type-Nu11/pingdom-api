@@ -1,6 +1,5 @@
 package com.typenull.pingdom.domain.map.domain;
 
-import jakarta.annotation.Nullable;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
@@ -42,17 +41,9 @@ public class MapImage {
     private LocalDateTime createdAt;
 
     @Column(nullable = false, name = "like_count")
-    private Long likeCount = 0L;
+    private long likeCount = 0L;
 
-    public void increaseLikeCount() {
-        this.likeCount++;
-    }
-
-    public void decreaseLikeCount() {
-        this.likeCount--;
-    }
-
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
 }
