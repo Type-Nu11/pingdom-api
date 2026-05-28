@@ -42,7 +42,7 @@ public class MapImageLikeService {
                 .build();
 
         mapImageLikeRepository.save(mapImageLike);
-        mapImage.increaseLikeCount();
+        mapImageRepository.increaseLikeCount(mapImageLikeRequest.mapImageId());
         try {
             fcmService.sendLikeNotification(mapImage, userId);
         } catch (Exception e) {
