@@ -53,11 +53,15 @@ public class AdminPictureQueryServiceImpl implements AdminPictureQueryService {
     private AdminPictureItem toItem(MapImage mapImage) {
         return new AdminPictureItem(
                 mapImage.getId(),
+                mapImage.getTitle(),
                 mapImage.getImageUrl(), // thumbnailUrl
                 mapImage.getImageUrl(), // imageUrl
                 mapImage.getUserId(),
                 mapImage.getUsername(),
-                mapImage.getCreatedAt()
+                mapImage.getCreatedAt(),
+                mapImage.getDescription(),
+                mapImage.getLikeCount(),
+                mapImage.getMapPlace().getName()
         );
     }
 }

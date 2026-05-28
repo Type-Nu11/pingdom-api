@@ -4,9 +4,13 @@ import java.time.LocalDateTime;
 
 public record AdminPictureItem(
         Long id,
+        String name,
         String thumbnailUrl,
         String imageUrl,
         Long userId,
         String username,
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        String description,
+        Long likeCount,
+        String placeName
 ) {}
