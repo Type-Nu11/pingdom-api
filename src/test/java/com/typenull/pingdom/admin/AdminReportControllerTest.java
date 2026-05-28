@@ -34,7 +34,9 @@ import software.amazon.awssdk.services.s3.S3Client;
         "spring.cloud.aws.s3.bucket=test-bucket",
         "spring.cloud.aws.region.static=ap-northeast-2",
         "spring.cloud.aws.credentials.access-key=test-access-key",
-        "spring.cloud.aws.credentials.secret-key=test-secret-key"
+        "spring.cloud.aws.credentials.secret-key=test-secret-key",
+        "fcm.enabled=false",
+        "fcm.key-path=/tmp/firebase-test.json"
 })
 @AutoConfigureMockMvc
 class AdminReportControllerTest {
@@ -79,10 +81,14 @@ class AdminReportControllerTest {
                         .param("page", "0")
                         .param("limit", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$[0].reportId").value(pictureReport.getId()))
-                .andExpect(jsonPath("$[0].imageId").value(mapImage.getId()))
-                .andExpect(jsonPath("$[0].reportedUserId").value(owner.getId()))
-                .andExpect(jsonPath("$[0].status").value(PictureReportStatus.PENDING.name()));
+                .andExpect(jsonPath("$.content[0].reportId").value(pictureReport.getId()))
+                .andExpect(jsonPath("$.content[0].imageId").value(mapImage.getId()))
+                .andExpect(jsonPath("$.content[0].reporterUsername").value("reporter01"))
+                .andExpect(jsonPath("$.content[0].reason").value("부적절한 사진입니다."))
+                .andExpect(jsonPath("$.content[0].reportedUserId").doesNotExist())
+                .andExpect(jsonPath("$.content[0].reporterUserId").doesNotExist())
+                .andExpect(jsonPath("$.content[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.content[0].status").value(PictureReportStatus.PENDING.name()));
     }
 
     @Test
@@ -100,16 +106,16 @@ class AdminReportControllerTest {
                         .param("page", "0")
                         .param("limit", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].reportId").value(latestReport.getId()));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].reportId").value(latestReport.getId()));
 
         mockMvc.perform(get("/admin/reports")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
                         .param("page", "1")
                         .param("limit", "1"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(1))
-                .andExpect(jsonPath("$[0].reportId").value(firstReport.getId()));
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].reportId").value(firstReport.getId()));
     }
 
     @Test

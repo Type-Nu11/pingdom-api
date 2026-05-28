@@ -44,12 +44,9 @@ public class AdminReportQueryServiceImpl implements AdminReportQueryService {
         return new AdminReportSummaryResponse(
                 pictureReport.getId(),
                 pictureReport.getReportedImageId(),
-                pictureReport.getReportedUserId(),
-                pictureReport.getReporterUserId(),
                 pictureReport.getReporterUsername(),
                 pictureReport.getReason(),
-                pictureReport.getStatus(),
-                pictureReport.getProcessedAt()
+                pictureReport.getStatus()
         );
     }
 
