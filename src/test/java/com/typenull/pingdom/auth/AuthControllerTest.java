@@ -25,7 +25,10 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import com.fasterxml.jackson.databind.ObjectMapper;
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
+        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
+})
 @AutoConfigureMockMvc
 class AuthControllerTest {
 

@@ -21,7 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
+        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
+})
 @AutoConfigureMockMvc
 class AdminSecurityTest {
 
@@ -59,6 +62,33 @@ class AdminSecurityTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
+    }
+
+    @Test
+    void adminLoginRejectsNonAdminUser() throws Exception {
+        createUser("normalAdminPageUser", UserRole.USER);
+        LoginRequest loginRequest = new LoginRequest("normalAdminPageUser", "password123");
+
+        mockMvc.perform(post("/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("아이디 또는 비밀번호가 올바르지 않습니다."));
+    }
+
+    @Test
+    void adminLoginAllowsAdminUser() throws Exception {
+        createUser("adminLoginUser", UserRole.ADMIN);
+        LoginRequest loginRequest = new LoginRequest("adminLoginUser", "password123");
+
+        mockMvc.perform(post("/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("adminLoginUser"))
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.refreshToken").isString());
     }
 
     @Test
