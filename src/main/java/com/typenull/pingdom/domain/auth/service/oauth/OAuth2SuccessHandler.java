@@ -65,9 +65,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         String accessToken = jwtTokenProvider.generateAccessToken(userId, username, roleName);
         String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
 
-        // refreshToken 저장은 select 없이 reference로 반영한다.
-        User userRef = userRepository.getReferenceById(userId);
-        userRef.issueRefreshToken(refreshToken);
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new IllegalStateException("User를 찾을 수 없습니다."));
+        user.issueRefreshToken(refreshToken);
 
         boolean secureCookie = request.isSecure();
 
