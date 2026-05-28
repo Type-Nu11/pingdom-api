@@ -11,13 +11,13 @@ public record LoginResponse(
         String username,
         @Schema(description = "사용자 이메일", example = "pingdom@example.com")
         String email,
-        @Schema(description = "출생 연도", example = "1998", nullable = true)
+        @Schema(description = "출생 연도", example = "1998")
         Integer birthYear,
         @Schema(description = "프로필 이미지 URL", example = "https://cdn.pingdom.com/profiles/user1.png", nullable = true)
         String profileImageUrl,
-        @Schema(description = "언어", example = "ko", nullable = true)
+        @Schema(description = "언어", example = "ko")
         String language,
-        @Schema(description = "국가", example = "KR", nullable = true)
+        @Schema(description = "국가", example = "KR")
         String country,
         @Schema(description = "로그인 결과 메시지", example = "로그인에 성공했습니다.")
         String message,

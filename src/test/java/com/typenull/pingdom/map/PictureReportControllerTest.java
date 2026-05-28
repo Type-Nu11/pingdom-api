@@ -144,9 +144,12 @@ class PictureReportControllerTest {
     private String signupAndLogin(String username) throws Exception {
         SignupRequest signupRequest = new SignupRequest(
                 username,
-                "tester",
                 username + "@example.com",
-                "password123"
+                "password123",
+                1998,
+                null,
+                "ko",
+                "KR"
         );
 
         mockMvc.perform(post("/auth/signup")

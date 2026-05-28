@@ -51,16 +51,16 @@ public class User {
     @Column(nullable = false)
     private String password;
 
-    @Column(name = "birth_year")
+    @Column(name = "birth_year", nullable = false)
     private Integer birthYear;
 
     @Column(name = "profile_image_url", length = 2048)
     private String profileImageUrl;
 
-    @Column(length = 20)
+    @Column(nullable = false, length = 20)
     private String language;
 
-    @Column(length = 100)
+    @Column(nullable = false, length = 100)
     private String country;
 
     @CreatedDate
