@@ -17,6 +17,8 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 
 import java.io.IOException;
@@ -48,7 +50,6 @@ public class S3Service {
             throw toMapException(exception);
         }
 
-        // 파일의 URL 저장
         try {
             MapImage mapImage = MapImage.builder()
                     .imageUrl(putResult.url())
@@ -59,16 +60,9 @@ public class S3Service {
                     .username(username)
                     .build();
 
-            savePost(mapImage);
-
-            return new MapImageResponse(mapImage.getId(), "게시글을 저장했습니다.");
+            Long savedPostId = savePost(mapImage, putResult.key());
+            return new MapImageResponse(savedPostId, "게시글을 저장했습니다.");
         } catch (Exception e) {
-            // DB 저장 실패 시 S3 파일 삭제
-            try {
-                s3ObjectStorage.delete(putResult.key());
-            } catch (RuntimeException ignored) {
-                // 이미 업로드된 객체 정리 실패는 로깅은 공통 컴포넌트에서 처리됨
-            }
             throw new MapException(MapErrorCode.UPLOAD_ERROR);
         }
     }
@@ -90,9 +84,13 @@ public class S3Service {
         return new MapImageResponse(imageId, "게시글을 삭제했습니다");
     }
 
-    private void savePost(MapImage mapImage) {
+    private Long savePost(MapImage mapImage, String uploadedS3Key) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-        transactionTemplate.executeWithoutResult(status -> mapImageRepository.saveAndFlush(mapImage));
+        return transactionTemplate.execute(status -> {
+            registerRollbackCleanup(uploadedS3Key);
+            MapImage saved = mapImageRepository.save(mapImage);
+            return saved.getId();
+        });
     }
 
     private void deletePostRecord(MapImage mapImage) {
@@ -100,6 +98,26 @@ public class S3Service {
         transactionTemplate.executeWithoutResult(status -> {
             pictureReportRepository.detachMapImageByMapImageId(mapImage.getId());
             mapImageRepository.delete(mapImage);
+        });
+    }
+
+    private void registerRollbackCleanup(String uploadedS3Key) {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCompletion(int status) {
+                if (status != STATUS_ROLLED_BACK) {
+                    return;
+                }
+                try {
+                    s3ObjectStorage.delete(uploadedS3Key);
+                } catch (RuntimeException exception) {
+                    log.warn("게시글 업로드 롤백 후 S3 정리에 실패했습니다. key={}", uploadedS3Key, exception);
+                }
+            }
         });
     }
 
