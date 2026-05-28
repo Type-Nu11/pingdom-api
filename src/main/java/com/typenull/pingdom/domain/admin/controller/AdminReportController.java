@@ -48,8 +48,9 @@ public class AdminReportController {
                                                   "reportId": 1,
                                                   "imageId": 10,
                                                   "reporterUsername": "reporter01",
-                                                  "reason": "부적절한 사진입니다.",
-                                                  "status": "PENDING"
+                                                  "reason": "부적절한 게시글입니다.",
+                                                  "status": "PENDING",
+                                                  "processedAt": null
                                                 }
                                               ],
                                               "totalElements": 1,
@@ -118,7 +119,7 @@ public class AdminReportController {
                                               "imageUrl": "https://example.com/image.jpg",
                                               "reporterUserId": 7,
                                               "reporterUsername": "reporter01",
-                                              "reason": "부적절한 사진입니다.",
+                                              "reason": "부적절한 게시글입니다.",
                                               "status": "PENDING",
                                               "processedAt": null
                                             }
@@ -176,7 +177,7 @@ public class AdminReportController {
     @PostMapping("/{id}/accept")
     @Operation(
             summary = "신고 수락 처리",
-            description = "관리자가 신고를 수락하고 대상 사용자를 제재하며 신고 대상 사진을 삭제합니다."
+            description = "관리자가 신고를 수락하고 대상 사용자를 제재하며 신고 대상 게시글을 삭제합니다."
     )
     @ApiResponses({
             @ApiResponse(

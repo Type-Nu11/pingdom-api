@@ -22,3 +22,7 @@ postmark:
   server-token: test-postmark-token
   from-email: no-reply@pingdom.local
   verification-base-url: http://localhost:8080/auth/email/verify
+
+fcm:
+  enabled: false
+  key-path: src/test/resources/firebase-test-key.json

@@ -54,6 +54,8 @@ class AdminMapImageControllerTest {
         MapImage mapImage = mapImageRepository.save(MapImage.builder()
                 .imageUrl("https://example.com/test.jpg")
                 .s3Key("map/test.jpg")
+                .title("관리자 테스트 제목")
+                .description("관리자 테스트 설명")
                 .userId(123L)
                 .build());
 
@@ -67,6 +69,9 @@ class AdminMapImageControllerTest {
                 .username(username)
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
                 .role(role)
                 .build());
     }

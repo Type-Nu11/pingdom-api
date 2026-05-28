@@ -57,7 +57,7 @@ class AuthControllerTest {
 
     @Test
     void signupCreatesUser() throws Exception {
-        SignupRequest request = new SignupRequest("tester01", "tester", "tester01@example.com", "password123");
+        SignupRequest request = new SignupRequest("tester01", "tester01@example.com", "password123", 1998, null, "ko", "KR");
 
         mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)
@@ -73,7 +73,7 @@ class AuthControllerTest {
 
     @Test
     void loginReturnsTokensWhenCredentialsAreValid() throws Exception {
-        SignupRequest signupRequest = new SignupRequest("loginuser", "tester", "loginuser@example.com", "password123");
+        SignupRequest signupRequest = new SignupRequest("loginuser", "loginuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
@@ -92,7 +92,7 @@ class AuthControllerTest {
 
     @Test
     void loginFailsWhenPasswordIsInvalid() throws Exception {
-        SignupRequest signupRequest = new SignupRequest("failuser", "tester", "failuser@example.com", "password123");
+        SignupRequest signupRequest = new SignupRequest("failuser", "failuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
@@ -108,7 +108,7 @@ class AuthControllerTest {
 
     @Test
     void verifyEmailMarksUserAsVerified() throws Exception {
-        SignupRequest signupRequest = new SignupRequest("emailuser", "tester", "emailuser@example.com", "password123");
+        SignupRequest signupRequest = new SignupRequest("emailuser", "emailuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
@@ -127,7 +127,7 @@ class AuthControllerTest {
 
     @Test
     void refreshTokenReissuesTokensWhenRefreshTokenIsValid() throws Exception {
-        SignupRequest signupRequest = new SignupRequest("refreshuser", "tester", "refreshuser@example.com", "password123");
+        SignupRequest signupRequest = new SignupRequest("refreshuser", "refreshuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
@@ -156,7 +156,7 @@ class AuthControllerTest {
 
     @Test
     void withdrawDeletesUserWhenAccessTokenIsValid() throws Exception {
-        SignupRequest signupRequest = new SignupRequest("withdrawuser", "tester", "withdrawuser@example.com", "password123");
+        SignupRequest signupRequest = new SignupRequest("withdrawuser", "withdrawuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
