@@ -1,9 +1,7 @@
 package com.typenull.pingdom.domain.auth.service.oauth;
 
 import com.typenull.pingdom.domain.auth.domain.AuthProvider;
-import com.typenull.pingdom.domain.auth.domain.OAuthAccount;
 import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.repository.OAuthAccountRepository;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.global.config.security.JwtTokenProvider;
 import jakarta.servlet.ServletException;
@@ -16,7 +14,6 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
-import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
@@ -25,7 +22,6 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
-    private final OAuthAccountRepository oAuthAccountRepository;
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
 
@@ -48,17 +44,30 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
-        OAuth2User oAuth2User = oauthToken.getPrincipal();
-        String providerId = oAuth2User.getName();
-        AuthProvider provider = AuthProvider.fromRegistrationId(oauthToken.getAuthorizedClientRegistrationId());
+        Object principal = oauthToken.getPrincipal();
+        Long userId;
+        String username;
+        String roleName;
 
-        OAuthAccount account = oAuthAccountRepository.findByProviderAndProviderId(provider, providerId)
-                .orElseThrow(() -> new IllegalStateException("OAuthAccount를 찾을 수 없습니다."));
+        if (principal instanceof CustomOAuth2User customUser) {
+            userId = customUser.getUserId();
+            username = customUser.getUsername();
+            roleName = customUser.getRole().name();
+        } else if (principal instanceof CustomOidcUser customOidcUser) {
+            userId = customOidcUser.getUserId();
+            username = customOidcUser.getUsername();
+            roleName = customOidcUser.getRole().name();
+        } else {
+            response.sendError(HttpServletResponse.SC_UNAUTHORIZED, "OAuth2 principal 타입이 올바르지 않습니다.");
+            return;
+        }
 
-        User user = account.getUser();
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-        user.issueRefreshToken(refreshToken);
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, username, roleName);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
+
+        // refreshToken 저장은 select 없이 reference로 반영한다.
+        User userRef = userRepository.getReferenceById(userId);
+        userRef.issueRefreshToken(refreshToken);
 
         boolean secureCookie = isSecureCookieRequest(request);
 

@@ -24,6 +24,7 @@ import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 import com.typenull.pingdom.domain.auth.service.oauth.CustomOAuth2UserService;
+import com.typenull.pingdom.domain.auth.service.oauth.CustomOidcUserService;
 import com.typenull.pingdom.domain.auth.service.oauth.OAuth2FailureHandler;
 import com.typenull.pingdom.domain.auth.service.oauth.OAuth2SuccessHandler;
 
@@ -43,6 +44,7 @@ public class SecurityConfig {
     public SecurityFilterChain oauth2SecurityFilterChain(
             HttpSecurity http,
             CustomOAuth2UserService customOAuth2UserService,
+            CustomOidcUserService customOidcUserService,
             OAuth2SuccessHandler oAuth2SuccessHandler,
             OAuth2FailureHandler oAuth2FailureHandler
     ) throws Exception {
@@ -59,6 +61,7 @@ public class SecurityConfig {
                         )
                         .userInfoEndpoint(userInfo -> userInfo
                                 .userService(customOAuth2UserService)
+                                .oidcUserService(customOidcUserService)
                         )
                         .successHandler(oAuth2SuccessHandler)
                         .failureHandler(oAuth2FailureHandler)
