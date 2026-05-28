@@ -2,6 +2,7 @@ package com.typenull.pingdom.domain.map.repository;
 
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import java.util.List;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -19,5 +20,7 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 """)
     void increaseLikeCount(@Param("imageId") Long imageId);
 
-    List<MapImage> findByMapPlace_IdOrderByCreatedAtDesc(Long placeId);
+    long countByMapPlace_Id(Long placeId);
+
+    List<MapImage> findByMapPlace_Id(Long placeId, Pageable pageable);
 }

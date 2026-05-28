@@ -64,7 +64,7 @@ class AdminMapPlaceControllerTest {
                 .userId(11L)
                 .build());
 
-        mockMvc.perform(get("/admin/map/places")
+        mockMvc.perform(get("/admin/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
@@ -99,7 +99,7 @@ class AdminMapPlaceControllerTest {
                 .mapPlace(mapPlace)
                 .build());
 
-        mockMvc.perform(get("/admin/map/places/{id}", mapPlace.getId())
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
@@ -114,7 +114,7 @@ class AdminMapPlaceControllerTest {
     void getPlaceReturnsNotFoundWhenPlaceDoesNotExist() throws Exception {
         String accessToken = createAdminAndLogin();
 
-        mockMvc.perform(get("/admin/map/places/{id}", 9999L)
+        mockMvc.perform(get("/admin/places/{id}", 9999L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));

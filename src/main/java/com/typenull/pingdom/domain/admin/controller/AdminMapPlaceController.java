@@ -15,6 +15,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
+@RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @Slf4j
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
@@ -32,7 +34,7 @@ public class AdminMapPlaceController {
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
     private final AdminMapPlaceService adminMapPlaceService;
 
-    @GetMapping("/admin/map/places")
+    @GetMapping
     @Operation(
             summary = "관리자 장소 목록 조회",
             description = "관리자가 등록된 장소 목록을 페이지 단위로 조회합니다."
@@ -76,7 +78,7 @@ public class AdminMapPlaceController {
         return adminMapPlaceQueryService.listPlaces(page, limit);
     }
 
-    @GetMapping("/admin/map/places/{id}")
+    @GetMapping("/{id}")
     @Operation(
             summary = "관리자 장소 상세 조회",
             description = "관리자가 특정 장소의 기본 정보와 연결된 게시글 목록을 조회합니다."
@@ -135,7 +137,7 @@ public class AdminMapPlaceController {
         return adminMapPlaceQueryService.getPlace(id);
     }
 
-    @DeleteMapping("/admin/places/{id}/delete")
+    @DeleteMapping("/{id}/delete")
     @Operation(
             summary = "관리자 장소 삭제",
             description = "관리자가 장소를 강제로 삭제합니다."

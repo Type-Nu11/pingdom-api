@@ -15,6 +15,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -22,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService {
+
+    private static final int PLACE_DETAIL_POST_LIMIT = 20;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageRepository mapImageRepository;
@@ -56,7 +59,10 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
-        List<AdminMapPlaceImageItem> posts = mapImageRepository.findByMapPlace_IdOrderByCreatedAtDesc(placeId)
+        long totalPostCount = mapImageRepository.countByMapPlace_Id(placeId);
+        Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
+
+        List<AdminMapPlaceImageItem> posts = mapImageRepository.findByMapPlace_Id(placeId, latestPosts)
                 .stream()
                 .map(this::toImageItem)
                 .toList();
@@ -68,7 +74,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
-                posts.size(),
+                Math.toIntExact(totalPostCount),
                 posts
         );
     }
