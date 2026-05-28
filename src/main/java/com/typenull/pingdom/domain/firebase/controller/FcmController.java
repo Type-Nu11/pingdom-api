@@ -57,28 +57,4 @@ public class FcmController {
         fcmService.updateFcmToken(user.userId(), request.token());
         return ResponseEntity.ok().build();
     }
-//
-//    @Operation(summary = "장소 좋아요 알림 전송", description = "특정 이미지에 좋아요를 누르면 해당 장소 소유자에게 푸시 알림을 보냅니다.")
-//    @ApiResponses({
-//            @ApiResponse(responseCode = "200", description = "알림 전송 요청 성공"),
-//            @ApiResponse(responseCode = "401", description = "인증 실패",
-//                    content = @Content(examples = @ExampleObject(value = "{\"message\": \"유효하지 않은 토큰입니다.\", \"code\": \"INVALID_TOKEN\"}"))),
-//            @ApiResponse(responseCode = "404", description = "사용자 또는 이미지를 찾을 수 없음",
-//                    content = @Content(examples = {
-//                            @ExampleObject(name = "image-not-found", value = "{\"message\": \"이미지를 찾을 수 없습니다.\", \"code\": \"IMAGE_NOT_FOUND\"}"),
-//                            @ExampleObject(name = "user-not-found", value = "{\"message\": \"사용자를 찾을 수 없습니다.\", \"code\": \"USER_NOT_FOUND\"}")
-//                    }))
-//    })
-//    @PostMapping("/like")
-//    public ResponseEntity<Void> likePlace(
-//            @io.swagger.v3.oas.annotations.parameters.RequestBody(
-//                    description = "좋아요 알림을 보낼 대상 이미지 ID",
-//                    required = true,
-//                    content = @Content(schema = @Schema(implementation = FcmImageIdRequest.class))
-//            )
-//            @RequestBody FcmImageIdRequest request,
-//            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
-//        fcmService.sendLikeNotification(request.imageId(), user.userId());
-//        return ResponseEntity.ok().build();
-//    }
 }

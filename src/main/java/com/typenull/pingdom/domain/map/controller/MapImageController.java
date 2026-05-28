@@ -249,7 +249,7 @@ public class MapImageController {
 
     @PostMapping("/like")
     public ResponseEntity<MapImageLikeResponse> like(
-            @RequestBody MapImageLikeRequest request,
+            @Valid @RequestBody MapImageLikeRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         Long userId = user.userId();

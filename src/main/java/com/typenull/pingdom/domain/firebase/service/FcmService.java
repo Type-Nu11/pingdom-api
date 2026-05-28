@@ -50,9 +50,7 @@ public class FcmService {
         }
     }
 
-    public void sendLikeNotification(Long imageId, Long likerId) {
-        MapImage mapImage = mapImageRepository.findById(imageId)
-                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+    public void sendLikeNotification(MapImage mapImage, Long likerId) {
 
         Long ownerId = mapImage.getUserId();
 
