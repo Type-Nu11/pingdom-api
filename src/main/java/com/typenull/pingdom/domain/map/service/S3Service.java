@@ -4,11 +4,13 @@ import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
 import com.typenull.pingdom.domain.auth.exception.AuthException;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.domain.map.domain.MapPlace;
 import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
 import com.typenull.pingdom.domain.map.dto.MapImageResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
 import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
@@ -31,11 +33,14 @@ public class S3Service {
 
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
+    private final MapPlaceRepository mapPlaceRepository;
     private final PictureReportRepository pictureReportRepository;
     private final UserRepository userRepository;
     private final PlatformTransactionManager transactionManager;
 
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(request.placeId())
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())
@@ -58,6 +63,7 @@ public class S3Service {
                     .description(request.description())
                     .userId(userId)
                     .username(username)
+                    .mapPlace(mapPlace)
                     .build();
 
             Long savedPostId = savePost(mapImage, putResult.key());
