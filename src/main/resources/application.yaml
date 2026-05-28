@@ -1,6 +1,8 @@
 spring:
   application:
     name: Pingdom
+  server:
+    forward-headers-strategy: framework
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/pingdom}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}

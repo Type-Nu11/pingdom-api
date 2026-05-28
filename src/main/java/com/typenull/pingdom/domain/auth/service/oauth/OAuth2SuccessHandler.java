@@ -69,7 +69,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         User userRef = userRepository.getReferenceById(userId);
         userRef.issueRefreshToken(refreshToken);
 
-        boolean secureCookie = isSecureCookieRequest(request);
+        boolean secureCookie = request.isSecure();
 
         // access/refresh token을 URL에 노출하지 않고, /auth/oauth2/success 호출로 토큰을 회수할 수 있도록 쿠키로 전달한다.
         addShortLivedCookie(response, ACCESS_COOKIE, accessToken, secureCookie);
@@ -88,15 +88,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .maxAge(COOKIE_EXPIRE_SECONDS)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private boolean isSecureCookieRequest(HttpServletRequest request) {
-        if (request.isSecure()) {
-            return true;
-        }
-
-        String forwardedProto = request.getHeader("X-Forwarded-Proto");
-        return forwardedProto != null && forwardedProto.equalsIgnoreCase("https");
     }
 
     private String normalizeRedirectUri(String value) {

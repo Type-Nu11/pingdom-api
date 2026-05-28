@@ -20,7 +20,7 @@ public class OAuth2TokenController {
 
     @GetMapping("/auth/oauth2/success")
     public ResponseEntity<?> oauth2Success(HttpServletRequest request, HttpServletResponse response) {
-        boolean secureCookie = isSecureCookieRequest(request);
+        boolean secureCookie = request.isSecure();
         String accessToken = readCookie(request, ACCESS_COOKIE);
         String refreshToken = readCookie(request, REFRESH_COOKIE);
 
@@ -66,12 +66,4 @@ public class OAuth2TokenController {
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
     }
 
-    private boolean isSecureCookieRequest(HttpServletRequest request) {
-        if (request.isSecure()) {
-            return true;
-        }
-
-        String forwardedProto = request.getHeader("X-Forwarded-Proto");
-        return forwardedProto != null && forwardedProto.equalsIgnoreCase("https");
-    }
 }
