@@ -47,8 +47,6 @@ public class AdminReportController {
                                                 {
                                                   "reportId": 1,
                                                   "imageId": 10,
-                                                  "reportedUserId": 5,
-                                                  "reporterUserId": 7,
                                                   "reporterUsername": "reporter01",
                                                   "reason": "부적절한 게시글입니다.",
                                                   "status": "PENDING",
