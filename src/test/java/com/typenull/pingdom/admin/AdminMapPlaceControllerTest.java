@@ -81,7 +81,7 @@ class AdminMapPlaceControllerTest {
     @Test
     void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
-        userRepository.save(User.builder()
+        User placeOwner = userRepository.save(User.builder()
                 .username("placeOwner")
                 .email("place-owner@example.com")
                 .password(passwordEncoder.encode("password123"))
@@ -96,7 +96,7 @@ class AdminMapPlaceControllerTest {
                 .address("경상남도 진주시 남강변")
                 .latitude(35.1801)
                 .longitude(128.1078)
-                .userId(userRepository.findByUsername("placeOwner").orElseThrow().getId())
+                .userId(placeOwner.getId())
                 .build());
 
         mapImageRepository.save(MapImage.builder()

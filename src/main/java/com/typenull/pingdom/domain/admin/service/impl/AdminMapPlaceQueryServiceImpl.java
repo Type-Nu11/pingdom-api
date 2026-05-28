@@ -62,10 +62,12 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
+        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
         long totalPostCount = mapImageRepository.countByMapPlace_Id(placeId);
-        Sort sort = toSort(sortParam);
+        Sort sort = toSort(safeSortParam);
         Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
-        String username = userRepository.findById(mapPlace.getUserId())
+        String username = mapPlace.getUserId() == null ? null
+                : userRepository.findById(mapPlace.getUserId())
                 .map(user -> user.getUsername())
                 .orElse(null);
 
@@ -82,7 +84,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
                 username,
-                sortParam,
+                safeSortParam,
                 Math.toIntExact(totalPostCount),
                 posts
         );
