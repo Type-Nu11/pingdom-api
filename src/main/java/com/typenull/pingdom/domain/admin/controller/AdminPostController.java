@@ -162,7 +162,7 @@ public class AdminPostController {
             )
     })
     public ResponseEntity<Void> deletePost(
-            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable Long id
+            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable("id") Long id
     ) {
         adminPostService.deletePost(id);
         return ResponseEntity.noContent().build();

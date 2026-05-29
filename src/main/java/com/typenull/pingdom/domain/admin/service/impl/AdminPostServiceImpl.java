@@ -5,6 +5,7 @@ import com.typenull.pingdom.domain.admin.exception.AdminException;
 import com.typenull.pingdom.domain.admin.service.AdminPostService;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.domain.map.repository.PostReportRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
@@ -22,6 +23,7 @@ import org.springframework.util.StringUtils;
 public class AdminPostServiceImpl implements AdminPostService {
 
     private final MapImageRepository mapImageRepository;
+    private final PostReportRepository postReportRepository;
     private final S3ObjectStorage s3ObjectStorage;
 
     @Override
@@ -29,6 +31,9 @@ public class AdminPostServiceImpl implements AdminPostService {
     public void deletePost(Long postId) {
         MapImage mapImage = mapImageRepository.findById(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+
+        // 게시글 삭제 전에 신고 연관을 먼저 끊어 FK 제약 위반을 방지한다.
+        postReportRepository.detachMapImageByMapImageId(postId);
 
         String keyToDelete = resolveS3Key(mapImage);
         if (StringUtils.hasText(keyToDelete)) {

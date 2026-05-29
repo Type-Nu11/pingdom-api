@@ -69,7 +69,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                         mapImages.stream().map(MapImage::getId).toList()
                 ).stream()
                 .collect(groupingBy(
-                        postReport -> postReport.getMapImage().getId(),
+                        PostReport::getReportedImageId,
                         java.util.stream.Collectors.mapping(this::toReportItem, java.util.stream.Collectors.toList())
                 ));
     }
