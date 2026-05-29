@@ -33,7 +33,7 @@ public class AdminPictureController {
     @GetMapping("/pictures")
     @Operation(
             summary = "관리자 게시글 목록 조회",
-            description = "관리자가 최근 게시글 목록을 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            description = "관리자가 최근 게시글 목록을 조회합니다. 각 게시글에는 연결된 신고 목록이 함께 포함됩니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -49,7 +49,17 @@ public class AdminPictureController {
                               "imageUrl": "https://example.com/original.jpg",
                               "userId": 1,
                               "username": "pingdom_user",
-                              "createdAt": "2026-05-21T11:37:53.336Z"
+                              "createdAt": "2026-05-21T11:37:53.336Z",
+                              "reports": [
+                                {
+                                  "reportId": 10,
+                                  "reporterUserId": 3,
+                                  "reporterUsername": "reporter01",
+                                  "reason": "부적절한 게시글입니다.",
+                                  "status": "PENDING",
+                                  "processedAt": null
+                                }
+                              ]
                             }
                           ],
                           "page": 1,
