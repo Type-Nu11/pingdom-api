@@ -47,7 +47,7 @@ class AdminSecurityTest {
 
     @Test
     void adminEndpointRejectsUnauthenticatedUser() throws Exception {
-        mockMvc.perform(get("/admin/pictures"))
+        mockMvc.perform(get("/admin/posts"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
@@ -57,7 +57,7 @@ class AdminSecurityTest {
         createUser("normalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("normalUser");
 
-        mockMvc.perform(get("/admin/pictures")
+        mockMvc.perform(get("/admin/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
@@ -96,7 +96,7 @@ class AdminSecurityTest {
         createUser("adminUser", UserRole.ADMIN);
         String accessToken = loginAndGetAccessToken("adminUser");
 
-        mockMvc.perform(get("/admin/pictures")
+        mockMvc.perform(get("/admin/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk());
     }

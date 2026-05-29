@@ -1,8 +1,6 @@
 package com.typenull.pingdom.admin;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
-import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -40,7 +38,7 @@ import software.amazon.awssdk.services.s3.S3Client;
         "fcm.key-path=dummy"
 })
 @AutoConfigureMockMvc
-class AdminReportControllerTest {
+class AdminPostControllerTest {
 
     @MockBean
     private S3Client s3Client;
@@ -71,62 +69,42 @@ class AdminReportControllerTest {
     }
 
     @Test
-    void acceptReportMarksAcceptedAndBansReportedUser() throws Exception {
+    void listPostsIncludesReportsInSamePostItem() throws Exception {
         String adminAccessToken = createAdminAndLogin();
-        User owner = createUser("owner03");
-        MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-3.jpg");
-        PostReport postReport = createPostReport(13L, "reporter03", mapImage, "욕설이 포함된 이미지입니다.");
+        User owner = createUser("postOwner01");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-1.jpg");
+        PostReport olderReport = createPostReport(11L, "reporter01", mapImage, "첫 번째 신고");
+        PostReport newerReport = createPostReport(12L, "reporter02", mapImage, "두 번째 신고");
 
-        mockMvc.perform(post("/admin/reports/{id}/accept", postReport.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reportId").value(postReport.getId()))
-                .andExpect(jsonPath("$.status").value(PostReportStatus.ACCEPTED.name()))
-                .andExpect(jsonPath("$.reportedUserId").value(owner.getId()))
-                .andExpect(jsonPath("$.banned").value(true));
-
-        PostReport persistedReport = postReportRepository.findById(postReport.getId()).orElseThrow();
-        User persistedOwner = userRepository.findById(owner.getId()).orElseThrow();
-
-        assertEquals(PostReportStatus.ACCEPTED, persistedReport.getStatus());
-        assertTrue(persistedOwner.isBanned());
-        assertEquals("욕설이 포함된 이미지입니다.", persistedOwner.getBanReason());
-        assertTrue(mapImageRepository.findById(mapImage.getId()).isEmpty());
+                .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.posts[0].reports.length()").value(2))
+                .andExpect(jsonPath("$.posts[0].reports[0].reportId").value(newerReport.getId()))
+                .andExpect(jsonPath("$.posts[0].reports[0].reporterUserId").value(12L))
+                .andExpect(jsonPath("$.posts[0].reports[0].reporterUsername").value("reporter02"))
+                .andExpect(jsonPath("$.posts[0].reports[0].reason").value("두 번째 신고"))
+                .andExpect(jsonPath("$.posts[0].reports[0].status").value(PostReportStatus.PENDING.name()))
+                .andExpect(jsonPath("$.posts[0].reports[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.posts[0].reports[1].reportId").value(olderReport.getId()));
     }
 
     @Test
-    void declineReportMarksDeclinedWithoutBanningUser() throws Exception {
+    void listPostsReturnsEmptyReportsWhenNoReportExists() throws Exception {
         String adminAccessToken = createAdminAndLogin();
-        User owner = createUser("owner04");
-        MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-4.jpg");
-        PostReport postReport = createPostReport(14L, "reporter04", mapImage, "잘못된 위치 정보입니다.");
+        User owner = createUser("postOwner02");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-2.jpg");
 
-        mockMvc.perform(post("/admin/reports/{id}/decline", postReport.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(PostReportStatus.DECLINED.name()))
-                .andExpect(jsonPath("$.banned").value(false));
-
-        PostReport persistedReport = postReportRepository.findById(postReport.getId()).orElseThrow();
-        User persistedOwner = userRepository.findById(owner.getId()).orElseThrow();
-
-        assertEquals(PostReportStatus.DECLINED, persistedReport.getStatus());
-        assertTrue(!persistedOwner.isBanned());
-    }
-
-    @Test
-    void acceptReportFailsWhenReportAlreadyProcessed() throws Exception {
-        String adminAccessToken = createAdminAndLogin();
-        User owner = createUser("owner05");
-        MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-5.jpg");
-        PostReport postReport = createPostReport(15L, "reporter05", mapImage, "중복 이미지입니다.");
-        postReport.decline(java.time.LocalDateTime.now());
-        postReportRepository.save(postReport);
-
-        mockMvc.perform(post("/admin/reports/{id}/accept", postReport.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
-                .andExpect(status().isConflict())
-                .andExpect(jsonPath("$.code").value("REPORT_ALREADY_PROCESSED"));
+                .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.posts[0].reports.length()").value(0));
     }
 
     private User createUser(String username) {
@@ -153,7 +131,7 @@ class AdminReportControllerTest {
                 .build());
 
         LoginRequest loginRequest = new LoginRequest("adminTester", "password123");
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+        MvcResult loginResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
@@ -164,13 +142,14 @@ class AdminReportControllerTest {
                 .textValue();
     }
 
-    private MapImage createMapImage(Long userId, String imageUrl) {
+    private MapImage createMapImage(Long userId, String username, String imageUrl) {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl(imageUrl)
                 .s3Key("test-key-" + userId)
                 .title("신고 대상 제목")
                 .description("신고 대상 설명")
                 .userId(userId)
+                .username(username)
                 .build());
     }
 
