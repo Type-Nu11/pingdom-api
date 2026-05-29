@@ -1,6 +1,7 @@
 package com.typenull.pingdom.domain.admin.dto.picture;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
 public record AdminPictureItem(
         Long id,
@@ -12,5 +13,6 @@ public record AdminPictureItem(
         LocalDateTime createdAt,
         String description,
         Long likeCount,
-        String placeName
+        String placeName,
+        List<AdminPictureReportItem> reports
 ) {}
