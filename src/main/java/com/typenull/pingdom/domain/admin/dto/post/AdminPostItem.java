@@ -1,8 +1,9 @@
-package com.typenull.pingdom.domain.admin.dto.picture;
+package com.typenull.pingdom.domain.admin.dto.post;
 
 import java.time.LocalDateTime;
+import java.util.List;
 
-public record AdminPictureItem(
+public record AdminPostItem(
         Long id,
         String name,
         String thumbnailUrl,
@@ -12,5 +13,6 @@ public record AdminPictureItem(
         LocalDateTime createdAt,
         String description,
         Long likeCount,
-        String placeName
+        String placeName,
+        List<AdminPostReportItem> reports
 ) {}

@@ -1,9 +1,9 @@
 package com.typenull.pingdom.domain.admin.controller;
 
-import com.typenull.pingdom.domain.admin.dto.picture.AdminPictureResponse;
+import com.typenull.pingdom.domain.admin.dto.post.AdminPostResponse;
 import com.typenull.pingdom.domain.admin.enums.SortParam;
-import com.typenull.pingdom.domain.admin.service.AdminPictureQueryService;
-import com.typenull.pingdom.domain.admin.service.AdminPictureService;
+import com.typenull.pingdom.domain.admin.service.AdminPostQueryService;
+import com.typenull.pingdom.domain.admin.service.AdminPostService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -25,31 +25,41 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
-public class AdminPictureController {
+public class AdminPostController {
 
-    private final AdminPictureService adminPictureService;
-    private final AdminPictureQueryService adminPictureQueryService;
+    private final AdminPostService adminPostService;
+    private final AdminPostQueryService adminPostQueryService;
 
-    @GetMapping("/pictures")
+    @GetMapping("/posts")
     @Operation(
             summary = "관리자 게시글 목록 조회",
-            description = "관리자가 최근 게시글 목록을 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            description = "관리자가 최근 게시글 목록을 조회합니다. 각 게시글에는 연결된 신고 목록이 함께 포함됩니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "게시글 목록 조회 성공",
-                    content = @Content(schema = @Schema(implementation = AdminPictureResponse.class),
+                    content = @Content(schema = @Schema(implementation = AdminPostResponse.class),
                             examples = @ExampleObject(value = """
                         {
-                          "pictures": [
+                          "posts": [
                             {
                               "id": 1,
                               "thumbnailUrl": "https://example.com/thumb.jpg",
                               "imageUrl": "https://example.com/original.jpg",
                               "userId": 1,
                               "username": "pingdom_user",
-                              "createdAt": "2026-05-21T11:37:53.336Z"
+                              "createdAt": "2026-05-21T11:37:53.336Z",
+                              "reports": [
+                                {
+                                  "reportId": 10,
+                                  "reporterUserId": 3,
+                                  "reporterUsername": "reporter01",
+                                  "reason": "부적절한 게시글입니다.",
+                                  "status": "PENDING",
+                                  "processedAt": null
+                                }
+                              ]
                             }
                           ],
                           "page": 1,
@@ -62,17 +72,17 @@ public class AdminPictureController {
                     )
             ),
     })
-    public AdminPictureResponse listPictures(
+    public AdminPostResponse listPosts(
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue =  "1") int page,
             @Parameter(description = "정렬 기준", example = "latest")
             @RequestParam(defaultValue = "LATEST") SortParam sortParam
     ) {
-        return adminPictureQueryService.listPictures(limit, page, sortParam);
+        return adminPostQueryService.listPosts(limit, page, sortParam);
     }
 
-    @DeleteMapping("/pictures/{id}/delete")
+    @DeleteMapping("/posts/{id}/delete")
     @Operation(
             summary = "관리자 게시글 삭제",
             description = "관리자가 게시글을 강제로 삭제합니다."
@@ -118,7 +128,7 @@ public class AdminPictureController {
                                     value = """
                                             {
                                               "message": "게시글을 찾을 수 없습니다.",
-                                              "code": "PICTURE_NOT_FOUND"
+                                              "code": "POST_NOT_FOUND"
                                             }
                                             """
                             )
@@ -134,7 +144,7 @@ public class AdminPictureController {
                                             value = """
                                                     {
                                                       "message": "게시글 삭제에 실패했습니다.",
-                                                      "code": "PICTURE_DELETE_FAILED"
+                                                      "code": "POST_DELETE_FAILED"
                                                     }
                                                     """
                                     ),
@@ -151,10 +161,10 @@ public class AdminPictureController {
                     )
             )
     })
-    public ResponseEntity<Void> deletePicture(
-            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable Long id
+    public ResponseEntity<Void> deletePost(
+            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable("id") Long id
     ) {
-        adminPictureService.deletePicture(id);
+        adminPostService.deletePost(id);
         return ResponseEntity.noContent().build();
     }
 }

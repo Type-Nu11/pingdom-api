@@ -25,15 +25,15 @@ import lombok.NoArgsConstructor;
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(
-        name = "picture_report",
+        name = "post_report",
         uniqueConstraints = {
                 @UniqueConstraint(
-                        name = "uk_picture_report_user_image",
+                        name = "uk_post_report_user_image",
                         columnNames = {"reporter_user_id", "map_image_id"}
                 )
         }
 )
-public class PictureReport {
+public class PostReport {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -64,22 +64,22 @@ public class PictureReport {
     @Builder.Default
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
-    private PictureReportStatus status = PictureReportStatus.PENDING;
+    private PostReportStatus status = PostReportStatus.PENDING;
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
     public boolean isPending() {
-        return status == PictureReportStatus.PENDING;
+        return status == PostReportStatus.PENDING;
     }
 
     public void accept(LocalDateTime processedAt) {
-        this.status = PictureReportStatus.ACCEPTED;
+        this.status = PostReportStatus.ACCEPTED;
         this.processedAt = processedAt;
     }
 
     public void decline(LocalDateTime processedAt) {
-        this.status = PictureReportStatus.DECLINED;
+        this.status = PostReportStatus.DECLINED;
         this.processedAt = processedAt;
     }
 

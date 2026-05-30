@@ -5,9 +5,9 @@ import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
 import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
 import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.map.domain.MapImage;
-import com.typenull.pingdom.domain.map.domain.PictureReport;
+import com.typenull.pingdom.domain.map.domain.PostReport;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
-import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
+import com.typenull.pingdom.domain.map.repository.PostReportRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -32,7 +32,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.cloud.aws.credentials.secret-key=test-secret-key"
 })
 @AutoConfigureMockMvc
-class PictureReportControllerTest {
+class PostReportControllerTest {
 
     @MockBean
     private S3Client s3Client;
@@ -50,17 +50,17 @@ class PictureReportControllerTest {
     private MapImageRepository mapImageRepository;
 
     @Autowired
-    private PictureReportRepository pictureReportRepository;
+    private PostReportRepository postReportRepository;
 
     @BeforeEach
     void setUp() {
-        pictureReportRepository.deleteAll();
+        postReportRepository.deleteAll();
         mapImageRepository.deleteAll();
         userRepository.deleteAll();
     }
 
     @Test
-    void reportRegistersPictureReport() throws Exception {
+    void reportRegistersPostReport() throws Exception {
         String accessToken = signupAndLogin("reporter01");
         MapImage mapImage = createMapImage(101L);
 
@@ -74,15 +74,15 @@ class PictureReportControllerTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        assertEquals(1L, pictureReportRepository.count());
-        PictureReport pictureReport = pictureReportRepository.findAll().get(0);
-        assertEquals("reporter01", pictureReport.getReporterUsername());
-        assertEquals("부적절한 사진입니다.", pictureReport.getReason());
-        assertEquals(mapImage.getId(), pictureReport.getMapImage().getId());
+        assertEquals(1L, postReportRepository.count());
+        PostReport postReport = postReportRepository.findAll().get(0);
+        assertEquals("reporter01", postReport.getReporterUsername());
+        assertEquals("부적절한 사진입니다.", postReport.getReason());
+        assertEquals(mapImage.getId(), postReport.getMapImage().getId());
     }
 
     @Test
-    void reportFailsWhenUserReportsSamePictureTwice() throws Exception {
+    void reportFailsWhenUserReportsSamePostTwice() throws Exception {
         String accessToken = signupAndLogin("reporter02");
         MapImage mapImage = createMapImage(102L);
 
@@ -109,7 +109,7 @@ class PictureReportControllerTest {
     }
 
     @Test
-    void reportFailsWhenPictureDoesNotExist() throws Exception {
+    void reportFailsWhenPostDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reporter03");
 
         mockMvc.perform(post("/map/post/{id}/report", 9999L)

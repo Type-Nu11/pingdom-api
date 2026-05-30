@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.pictures.domain;
+package com.typenull.pingdom.domain.posts.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
@@ -15,11 +15,11 @@ import lombok.NoArgsConstructor;
 
 @Getter
 @Entity
-@Table(name = "pictures")
+@Table(name = "posts")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-public class Picture {
+public class Post {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
