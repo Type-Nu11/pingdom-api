@@ -279,7 +279,7 @@ public class MapImageController {
     ) {
         Long userId = user.userId();
         MapImageLikeResponse response =
-                mapImageLikeService.likeClear(request, userId);
+                mapImageLikeService.notLike(request, userId);
         return ResponseEntity.ok(response);
     }
 }

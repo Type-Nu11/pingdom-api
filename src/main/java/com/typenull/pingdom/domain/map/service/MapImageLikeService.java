@@ -53,16 +53,16 @@ public class MapImageLikeService {
     }
 
     @Transactional
-    public MapImageLikeResponse likeClear(MapImageLikeRequest mapImageLikeRequest, Long userId){
+    public MapImageLikeResponse notLike(MapImageLikeRequest mapImageLikeRequest, Long userId){
         if(!mapImageLikeRepository.existsByUserIdAndMapImageId(
                 userId,
                 mapImageLikeRequest.mapImageId()
         )) {
-            throw new MapException(MapErrorCode.NOT_CLEAR);
+            throw new MapException(MapErrorCode.NOT_LIKED);
         }
 
-    mapImageLikeRepository.deleteLike(userId, mapImageLikeRequest.mapImageId());
-    mapImageRepository.decreaseLikeCount(mapImageLikeRequest.mapImageId());
+        mapImageLikeRepository.deleteLike(userId, mapImageLikeRequest.mapImageId());
+        mapImageRepository.decreaseLikeCount(mapImageLikeRequest.mapImageId());
 
     return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId(), "좋아요 취소되었습니다.");
     }

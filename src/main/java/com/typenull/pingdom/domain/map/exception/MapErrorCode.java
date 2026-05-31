@@ -19,7 +19,7 @@ public enum MapErrorCode {
     S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"S3 서버 연결에 실패했습니다."),
     UPLOAD_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "업로드 과정에서 오류가 발생하였습니다."),
     ALREADY_LIKED(HttpStatus.BAD_REQUEST,"이미 좋아요가 되어있습니다."),
-    NOT_CLEAR(HttpStatus.BAD_REQUEST,"좋아요가 되어있지 않습니다.");
+    NOT_LIKED(HttpStatus.BAD_REQUEST,"좋아요가 되어있지 않습니다.");
 
     private final HttpStatus status;
     private final String message;
