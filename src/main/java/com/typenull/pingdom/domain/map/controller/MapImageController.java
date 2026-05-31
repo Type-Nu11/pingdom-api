@@ -272,7 +272,7 @@ public class MapImageController {
         return ResponseEntity.ok(response);
     }
 
-    @PostMapping("/like/clear")
+    @DeleteMapping("/like")
     public ResponseEntity<MapImageLikeResponse> likeClear(
             @Valid @RequestBody MapImageLikeRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
