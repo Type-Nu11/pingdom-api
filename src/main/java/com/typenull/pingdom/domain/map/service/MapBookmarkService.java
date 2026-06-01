@@ -1,12 +1,12 @@
 package com.typenull.pingdom.domain.map.service;
 
 import com.typenull.pingdom.domain.map.constant.MapMessages;
-import com.typenull.pingdom.domain.map.domain.MapFavorite;
-import com.typenull.pingdom.domain.map.dto.FavoriteCreateRequest;
-import com.typenull.pingdom.domain.map.dto.FavoriteCreateResponse;
+import com.typenull.pingdom.domain.map.domain.MapBookmark;
+import com.typenull.pingdom.domain.map.dto.BookmarkCreateRequest;
+import com.typenull.pingdom.domain.map.dto.BookmarkCreateResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
-import com.typenull.pingdom.domain.map.repository.MapFavoriteRepository;
+import com.typenull.pingdom.domain.map.repository.MapBookmarkRepository;
 import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -15,13 +15,13 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-public class MapFavoriteService {
+public class MapBookmarkService {
 
-    private final MapFavoriteRepository mapFavoriteRepository;
+    private final MapBookmarkRepository mapBookmarkRepository;
     private final MapPlaceRepository mapPlaceRepository;
 
     @Transactional
-    public FavoriteCreateResponse createFavorite(FavoriteCreateRequest request, long userId) {
+    public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
         Long placeId = request.placeId();
 
         boolean placeExists = mapPlaceRepository.existsById(placeId);
@@ -29,17 +29,17 @@ public class MapFavoriteService {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
 
-        boolean alreadyExists = mapFavoriteRepository.existsByUserIdAndPlaceId(userId, placeId);
+        boolean alreadyExists = mapBookmarkRepository.existsByUserIdAndPlaceId(userId, placeId);
         if (alreadyExists) {
-            throw new MapException(MapErrorCode.FAVORITE_ALREADY_EXISTS);
+            throw new MapException(MapErrorCode.BOOKMARK_ALREADY_EXISTS);
         }
 
-        MapFavorite favorite = MapFavorite.builder()
+        MapBookmark bookmark = MapBookmark.builder()
                 .userId(userId)
                 .placeId(placeId)
                 .build();
 
-        MapFavorite saved = mapFavoriteRepository.save(favorite);
-        return new FavoriteCreateResponse(saved.getId(), saved.getPlaceId(), MapMessages.FAVORITE_CREATED);
+        MapBookmark saved = mapBookmarkRepository.save(bookmark);
+        return new BookmarkCreateResponse(saved.getId(), saved.getPlaceId(), MapMessages.BOOKMARK_CREATED);
     }
 }

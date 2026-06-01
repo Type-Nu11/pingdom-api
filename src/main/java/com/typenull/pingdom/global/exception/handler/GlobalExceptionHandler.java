@@ -66,9 +66,9 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("message", AuthErrorCode.DUPLICATE_USERNAME.getMessage(), "code", AuthErrorCode.DUPLICATE_USERNAME.name()));
             }
-            if (message.contains("map_favorite")) {
+            if (message.contains("map_bookmark")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
-                        .body(Map.of("message", MapErrorCode.FAVORITE_ALREADY_EXISTS.getMessage(), "code", MapErrorCode.FAVORITE_ALREADY_EXISTS.name()));
+                        .body(Map.of("message", MapErrorCode.BOOKMARK_ALREADY_EXISTS.getMessage(), "code", MapErrorCode.BOOKMARK_ALREADY_EXISTS.name()));
             }
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
