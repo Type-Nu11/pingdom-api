@@ -6,6 +6,11 @@ import jakarta.validation.constraints.Size;
 
 @Schema(description = "장소 업로드 요청(좌표 토큰 기반)")
 public record PlaceUploadRequest(
+        @NotBlank(message = "카카오 장소 ID는 필수입니다.")
+        @Size(max = 50, message = "카카오 장소 ID는 50자 이하여야 합니다.")
+        @Schema(description = "카카오 장소 ID", example = "27414316")
+        String kakaoPlaceId,
+
         @NotBlank(message = "장소 이름은 필수입니다.")
         @Size(max = 100, message = "장소 이름은 100자 이하여야 합니다.")
         @Schema(description = "장소 이름", example = "카페")

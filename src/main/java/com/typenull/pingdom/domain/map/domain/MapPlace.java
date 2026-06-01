@@ -14,6 +14,15 @@ import org.locationtech.jts.geom.Point;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+@Table(
+        name = "map_place",
+        indexes = {
+                @Index(name = "idx_map_place_kakao_place_id", columnList = "kakao_place_id")
+        },
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_map_place_kakao_place_id", columnNames = "kakao_place_id")
+        }
+)
 public class MapPlace {
 
     @Id
@@ -26,6 +35,9 @@ public class MapPlace {
 
     @Column(name = "address", length = 255, nullable = false)
     private String address;
+
+    @Column(name = "kakao_place_id", length = 50, unique = true)
+    private String kakaoPlaceId;
 
     @Column(name = "latitude", nullable = false)
     private Double latitude;

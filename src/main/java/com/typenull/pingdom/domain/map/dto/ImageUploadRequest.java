@@ -17,8 +17,11 @@ public record ImageUploadRequest(
         @Schema(description = "게시글 부가 설명", example = "비 온 뒤라 반사가 예쁘게 나왔습니다.")
         String description,
 
-        @NotNull(message = "placeId는 필수입니다.")
-        @Schema(description = "연결할 장소 ID", example = "17")
+        @Size(max = 50, message = "카카오 장소 ID는 50자 이하여야 합니다.")
+        @Schema(description = "카카오 장소 ID(권장)", example = "27414316")
+        String kakaoPlaceId,
+
+        @Schema(description = "연결할 장소 ID(레거시)", example = "17")
         Long placeId,
 
         @NotNull(message = "파일은 필수입니다.")

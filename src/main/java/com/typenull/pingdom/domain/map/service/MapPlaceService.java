@@ -55,7 +55,17 @@ public class MapPlaceService {
     }
 
     @Transactional
-    public PlaceCreateResponse uploadPlaceByToken(String name, String address, String coordinateToken, long userId) {
+    public PlaceCreateResponse uploadPlaceByToken(
+            String kakaoPlaceId,
+            String name,
+            String address,
+            String coordinateToken,
+            long userId
+    ) {
+        if (kakaoPlaceId != null && !kakaoPlaceId.isBlank() && mapPlaceRepository.existsByKakaoPlaceId(kakaoPlaceId)) {
+            throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
+        }
+
         PlaceCoordinateTokenStore.Entry entry = placeCoordinateTokenStore.consume(coordinateToken);
         if (entry == null || entry.userId() != userId) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
@@ -63,6 +73,7 @@ public class MapPlaceService {
 
         Point location = toPoint(entry.latitude(), entry.longitude());
         MapPlace mapPlace = MapPlace.builder()
+                .kakaoPlaceId(kakaoPlaceId)
                 .name(name)
                 .address(address)
                 .latitude(entry.latitude())
