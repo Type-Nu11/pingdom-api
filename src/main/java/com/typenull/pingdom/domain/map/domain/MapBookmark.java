@@ -20,12 +20,12 @@ import org.hibernate.annotations.CreationTimestamp;
 @NoArgsConstructor
 @Builder
 @Table(
-        name = "map_favorite",
+        name = "map_bookmark",
         uniqueConstraints = {
-                @UniqueConstraint(name = "uk_map_favorite_user_place", columnNames = {"user_id", "place_id"})
+                @UniqueConstraint(name = "uk_map_bookmark_user_place", columnNames = {"user_id", "place_id"})
         }
 )
-public class MapFavorite {
+public class MapBookmark {
 
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
