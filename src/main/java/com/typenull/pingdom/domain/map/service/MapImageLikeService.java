@@ -49,6 +49,21 @@ public class MapImageLikeService {
             log.error("FCM 알림 보내기 실패", e);
         }
 
-        return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId());
+        return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId(),"좋아요 추가되었습니다.");
+    }
+
+    @Transactional
+    public MapImageLikeResponse notLike(MapImageLikeRequest mapImageLikeRequest, Long userId){
+        if(!mapImageLikeRepository.existsByUserIdAndMapImageId(
+                userId,
+                mapImageLikeRequest.mapImageId()
+        )) {
+            throw new MapException(MapErrorCode.NOT_LIKED);
+        }
+
+        mapImageLikeRepository.deleteLike(userId, mapImageLikeRequest.mapImageId());
+        mapImageRepository.decreaseLikeCount(mapImageLikeRequest.mapImageId());
+
+    return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId(), "좋아요 취소되었습니다.");
     }
 }

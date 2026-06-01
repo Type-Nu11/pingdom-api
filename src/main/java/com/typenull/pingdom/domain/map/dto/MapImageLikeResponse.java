@@ -2,6 +2,7 @@ package com.typenull.pingdom.domain.map.dto;
 
 public record MapImageLikeResponse(
         long userId,
-        long mapImageId
+        long mapImageId,
+        String message
 ) {
 }
