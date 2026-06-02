@@ -272,7 +272,6 @@ public class MapImageController {
         return ResponseEntity.ok(response);
     }
 
-<<<<<<< feat/review-reflection
     @DeleteMapping("/like/{imageId}")
     public ResponseEntity<MapImageLikeResponse> likeClear(
             @PathVariable Long imageId,
@@ -280,16 +279,7 @@ public class MapImageController {
     ) {
         Long userId = user.userId();
         MapImageLikeRequest request = new MapImageLikeRequest(imageId);
-=======
-    @DeleteMapping("/like")
-    public ResponseEntity<MapImageLikeResponse> likeClear(
-            @Valid @RequestBody MapImageLikeRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
-    ) {
-        Long userId = user.userId();
->>>>>>> develop
-        MapImageLikeResponse response =
-                mapImageLikeService.notLike(request, userId);
+        MapImageLikeResponse response = mapImageLikeService.notLike(request, userId);
         return ResponseEntity.ok(response);
     }
 }
