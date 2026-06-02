@@ -122,6 +122,7 @@ public class MapPlaceController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
+                request.kakaoPlaceId(),
                 request.name(),
                 request.address(),
                 request.coordinateToken(),

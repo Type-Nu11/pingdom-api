@@ -22,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -39,8 +40,7 @@ public class S3Service {
     private final PlatformTransactionManager transactionManager;
 
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
-        MapPlace mapPlace = mapPlaceRepository.findById(request.placeId())
-                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        MapPlace mapPlace = resolveMapPlace(request);
 
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())
@@ -68,9 +68,31 @@ public class S3Service {
 
             Long savedPostId = savePost(mapImage, putResult.key());
             return new MapImageResponse(savedPostId, "게시글을 저장했습니다.");
+        } catch (MapException exception) {
+            throw exception;
         } catch (Exception e) {
             throw new MapException(MapErrorCode.UPLOAD_ERROR);
         }
+    }
+
+    private MapPlace resolveMapPlace(ImageUploadRequest request) {
+        String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
+        if (kakaoPlaceId != null) {
+            return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
+                    .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        }
+
+        Long placeId = request.placeId();
+        if (placeId == null) {
+            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
+        }
+
+        return mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+    }
+
+    private String normalizeKakaoPlaceId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     public MapImageResponse deleteImage(Long imageId, Long userId) {

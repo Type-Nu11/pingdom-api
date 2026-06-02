@@ -15,6 +15,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -55,7 +56,18 @@ public class MapPlaceService {
     }
 
     @Transactional
-    public PlaceCreateResponse uploadPlaceByToken(String name, String address, String coordinateToken, long userId) {
+    public PlaceCreateResponse uploadPlaceByToken(
+            String kakaoPlaceId,
+            String name,
+            String address,
+            String coordinateToken,
+            long userId
+    ) {
+        String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
+        if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
+            throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
+        }
+
         PlaceCoordinateTokenStore.Entry entry = placeCoordinateTokenStore.consume(coordinateToken);
         if (entry == null || entry.userId() != userId) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
@@ -63,6 +75,7 @@ public class MapPlaceService {
 
         Point location = toPoint(entry.latitude(), entry.longitude());
         MapPlace mapPlace = MapPlace.builder()
+                .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
                 .latitude(entry.latitude())
@@ -79,6 +92,10 @@ public class MapPlaceService {
                 saved.getLatitude(),
                 saved.getLongitude()
         );
+    }
+
+    private String normalizeKakaoPlaceId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     @Transactional

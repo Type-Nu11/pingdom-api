@@ -97,6 +97,72 @@ class MapPostUploadControllerTest {
     }
 
     @Test
+    void uploadPostStoresPlaceWhenKakaoPlaceIdIsProvided() throws Exception {
+        given(s3ObjectStorage.put(any(), eq("map")))
+                .willReturn(new S3ObjectStorage.S3PutResult("map/test-key-kakao.jpg", "https://example.com/test-key-kakao.jpg"));
+
+        String accessToken = signupAndLogin("writer-kakao-01");
+        MapPlace mapPlace = createMapPlaceWithKakaoPlaceId("27414316");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "post.jpg",
+                "image/jpeg",
+                "image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(file)
+                        .param("title", "카카오 장소 업로드")
+                        .param("kakaoPlaceId", "27414316")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("게시글을 저장했습니다."));
+
+        MapImage saved = mapImageRepository.findAll().get(0);
+        assertEquals(mapPlace.getId(), saved.getMapPlace().getId());
+    }
+
+    @Test
+    void uploadPostFailsWhenKakaoPlaceIdIsUnknown() throws Exception {
+        given(s3ObjectStorage.put(any(), eq("map")))
+                .willReturn(new S3ObjectStorage.S3PutResult("map/test-key-kakao.jpg", "https://example.com/test-key-kakao.jpg"));
+
+        String accessToken = signupAndLogin("writer-kakao-02");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "post.jpg",
+                "image/jpeg",
+                "image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(file)
+                        .param("title", "카카오 장소 업로드")
+                        .param("kakaoPlaceId", "unknown-place-id")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void uploadPostFailsWhenKakaoPlaceIdAndPlaceIdAreMissing() throws Exception {
+        String accessToken = signupAndLogin("writer-kakao-03");
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "post.jpg",
+                "image/jpeg",
+                "image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(file)
+                        .param("title", "카카오 장소 업로드")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.validPlace").value("장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다."));
+    }
+
+    @Test
     void uploadPostFailsWhenTitleIsBlank() throws Exception {
         String accessToken = signupAndLogin("writer02");
         MapPlace mapPlace = createMapPlace();
@@ -211,6 +277,17 @@ class MapPostUploadControllerTest {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name("테스트 장소")
                 .address("경상남도 진주시 테스트로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(1L)
+                .build());
+    }
+
+    private MapPlace createMapPlaceWithKakaoPlaceId(String kakaoPlaceId) {
+        return mapPlaceRepository.save(MapPlace.builder()
+                .name("카카오 장소")
+                .address("경상남도 진주시 테스트로 2")
+                .kakaoPlaceId(kakaoPlaceId)
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(1L)
