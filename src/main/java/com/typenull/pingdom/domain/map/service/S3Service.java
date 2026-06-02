@@ -83,7 +83,7 @@ public class S3Service {
 
         Long placeId = request.placeId();
         if (placeId == null) {
-            throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
         }
 
         return mapPlaceRepository.findById(placeId)
