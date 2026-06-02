@@ -22,6 +22,15 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 """)
     void increaseLikeCount(@Param("imageId") Long imageId);
 
+    @Modifying
+    @Query("""
+    UPDATE MapImage m
+    SET m.likeCount = m.likeCount - 1
+    WHERE m.id = :imageId
+    AND m.likeCount > 0
+""")
+    void decreaseLikeCount(@Param("imageId") Long imageId);
+
     @EntityGraph(attributePaths = "mapPlace")
     Page<MapImage> findAllBy(Pageable pageable);
            
