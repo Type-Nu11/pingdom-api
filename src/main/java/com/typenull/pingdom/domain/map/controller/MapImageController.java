@@ -274,7 +274,7 @@ public class MapImageController {
 
     @DeleteMapping("/like/{imageId}")
     public ResponseEntity<MapImageLikeResponse> likeClear(
-            @PathVariable Long imageId,
+            @PathVariable("imageId") Long imageId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         Long userId = user.userId();
