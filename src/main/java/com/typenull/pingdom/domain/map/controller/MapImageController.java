@@ -3,7 +3,7 @@ package com.typenull.pingdom.domain.map.controller;
 import com.typenull.pingdom.domain.map.dto.*;
 import com.typenull.pingdom.domain.map.service.MapImageLikeService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
-import com.typenull.pingdom.domain.map.service.PictureReportService;
+import com.typenull.pingdom.domain.map.service.PostReportService;
 import com.typenull.pingdom.domain.map.service.S3Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -28,13 +28,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class MapImageController {
 
     private final S3Service s3Service;
-    private final PictureReportService pictureReportService;
+    private final PostReportService postReportService;
     private final MapImageLikeService mapImageLikeService;
 
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
-            description = "multipart/form-data로 장소 ID, 제목, 부가 설명, 첨부 파일을 함께 업로드해 게시글로 저장합니다."
+            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시), 제목, 부가 설명, 첨부 파일을 함께 업로드해 게시글로 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -51,7 +51,7 @@ public class MapImageController {
                                             {
                                               "message": "입력값을 확인해주세요.",
                                               "errors": {
-                                                "placeId": "placeId는 필수입니다.",
+                                                "kakaoPlaceId": "카카오 장소 ID는 50자 이하여야 합니다.",
                                                 "title": "제목은 필수입니다.",
                                                 "file": "파일은 필수입니다."
                                               }
@@ -254,10 +254,10 @@ public class MapImageController {
     })
     public ResponseEntity<String> report(
             @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
-            @Valid @RequestBody PictureReportRequest request,
+            @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        pictureReportService.report(imageId, user.userId(), user.username(), request);
+        postReportService.report(imageId, user.userId(), user.username(), request);
         return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
 
@@ -269,6 +269,17 @@ public class MapImageController {
         Long userId = user.userId();
         MapImageLikeResponse response =
                 mapImageLikeService.like(request, userId);
+        return ResponseEntity.ok(response);
+    }
+
+    @DeleteMapping("/like/{imageId}")
+    public ResponseEntity<MapImageLikeResponse> likeClear(
+            @PathVariable("imageId") Long imageId,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        Long userId = user.userId();
+        MapImageLikeRequest request = new MapImageLikeRequest(imageId);
+        MapImageLikeResponse response = mapImageLikeService.notLike(request, userId);
         return ResponseEntity.ok(response);
     }
 }
