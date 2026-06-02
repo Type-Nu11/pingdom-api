@@ -272,12 +272,13 @@ public class MapImageController {
         return ResponseEntity.ok(response);
     }
 
-    @DeleteMapping("/like")
+    @DeleteMapping("/like/{imageId}")
     public ResponseEntity<MapImageLikeResponse> likeClear(
-            @Valid @RequestBody MapImageLikeRequest request,
+            @PathVariable Long imageId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         Long userId = user.userId();
+        MapImageLikeRequest request = new MapImageLikeRequest(imageId);
         MapImageLikeResponse response =
                 mapImageLikeService.notLike(request, userId);
         return ResponseEntity.ok(response);
