@@ -11,7 +11,7 @@ import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
 import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
-import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
+import com.typenull.pingdom.domain.map.repository.PostReportRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
@@ -34,7 +34,7 @@ public class S3Service {
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;
-    private final PictureReportRepository pictureReportRepository;
+    private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
     private final PlatformTransactionManager transactionManager;
 
@@ -127,7 +127,7 @@ public class S3Service {
     private void deletePostRecord(MapImage mapImage) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         transactionTemplate.executeWithoutResult(status -> {
-            pictureReportRepository.detachMapImageByMapImageId(mapImage.getId());
+            postReportRepository.detachMapImageByMapImageId(mapImage.getId());
             mapImageRepository.delete(mapImage);
         });
     }

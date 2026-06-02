@@ -12,6 +12,13 @@ spring:
     aws:
       s3:
         enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
 
 jwt:
   secret: 01234567890123456789012345678901

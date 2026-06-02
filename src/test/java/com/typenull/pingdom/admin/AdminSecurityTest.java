@@ -21,7 +21,10 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
-@SpringBootTest
+@SpringBootTest(properties = {
+        "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
+        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
+})
 @AutoConfigureMockMvc
 class AdminSecurityTest {
 
@@ -44,7 +47,7 @@ class AdminSecurityTest {
 
     @Test
     void adminEndpointRejectsUnauthenticatedUser() throws Exception {
-        mockMvc.perform(get("/admin/reports"))
+        mockMvc.perform(get("/admin/posts"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
@@ -54,7 +57,7 @@ class AdminSecurityTest {
         createUser("normalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("normalUser");
 
-        mockMvc.perform(get("/admin/reports")
+        mockMvc.perform(get("/admin/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
@@ -62,11 +65,38 @@ class AdminSecurityTest {
     }
 
     @Test
+    void adminLoginRejectsNonAdminUser() throws Exception {
+        createUser("normalAdminPageUser", UserRole.USER);
+        LoginRequest loginRequest = new LoginRequest("normalAdminPageUser", "password123");
+
+        mockMvc.perform(post("/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_CREDENTIALS"))
+                .andExpect(jsonPath("$.message").value("아이디 또는 비밀번호가 올바르지 않습니다."));
+    }
+
+    @Test
+    void adminLoginAllowsAdminUser() throws Exception {
+        createUser("adminLoginUser", UserRole.ADMIN);
+        LoginRequest loginRequest = new LoginRequest("adminLoginUser", "password123");
+
+        mockMvc.perform(post("/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.username").value("adminLoginUser"))
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.refreshToken").isString());
+    }
+
+    @Test
     void adminEndpointAllowsAdminUser() throws Exception {
         createUser("adminUser", UserRole.ADMIN);
         String accessToken = loginAndGetAccessToken("adminUser");
 
-        mockMvc.perform(get("/admin/reports")
+        mockMvc.perform(get("/admin/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk());
     }

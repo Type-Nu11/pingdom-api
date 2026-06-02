@@ -2,6 +2,7 @@ package com.typenull.pingdom.domain.admin.controller;
 
 import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceResponse;
+import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.admin.service.AdminMapPlaceQueryService;
 import com.typenull.pingdom.domain.admin.service.AdminMapPlaceService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
@@ -98,6 +99,8 @@ public class AdminMapPlaceController {
                                               "latitude": 35.1894,
                                               "longitude": 128.0789,
                                               "userId": 3,
+                                              "username": "placeOwner",
+                                              "sortParam": "LATEST",
                                               "postCount": 1,
                                               "posts": [
                                                 {
@@ -132,9 +135,11 @@ public class AdminMapPlaceController {
             )
     })
     public AdminMapPlaceDetailResponse getPlace(
-            @Parameter(description = "조회할 장소 ID", example = "1") @PathVariable Long id
+            @Parameter(description = "조회할 장소 ID", example = "1") @PathVariable Long id,
+            @Parameter(description = "게시글 정렬 기준", example = "LATEST")
+            @RequestParam(defaultValue = "LATEST") SortParam sortParam
     ) {
-        return adminMapPlaceQueryService.getPlace(id);
+        return adminMapPlaceQueryService.getPlace(id, sortParam);
     }
 
     @DeleteMapping("/{id}/delete")

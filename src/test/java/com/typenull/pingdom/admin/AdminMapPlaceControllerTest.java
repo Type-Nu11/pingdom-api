@@ -5,6 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.auth.domain.User;
 import com.typenull.pingdom.domain.auth.domain.UserRole;
 import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
@@ -80,12 +81,22 @@ class AdminMapPlaceControllerTest {
     @Test
     void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
+        User placeOwner = userRepository.save(User.builder()
+                .username("placeOwner")
+                .email("place-owner@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1997)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("남강")
                 .address("경상남도 진주시 남강변")
                 .latitude(35.1801)
                 .longitude(128.1078)
-                .userId(15L)
+                .userId(placeOwner.getId())
                 .build());
 
         mapImageRepository.save(MapImage.builder()
@@ -104,10 +115,65 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.username").value("placeOwner"))
+                .andExpect(jsonPath("$.sortParam").value(SortParam.LATEST.name()))
                 .andExpect(jsonPath("$.postCount").value(1))
                 .andExpect(jsonPath("$.posts[0].title").value("남강 야경"))
                 .andExpect(jsonPath("$.posts[0].likeCount").value(7))
                 .andExpect(jsonPath("$.posts[0].username").value("placeOwner"));
+    }
+
+    @Test
+    void getPlaceSortsPostsByMostLiked() throws Exception {
+        String accessToken = createAdminAndLogin();
+        User placeOwner = userRepository.save(User.builder()
+                .username("placeSortOwner")
+                .email("place-sort-owner@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1996)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("촉석루")
+                .address("경상남도 진주시 본성동")
+                .latitude(35.1880)
+                .longitude(128.0815)
+                .userId(placeOwner.getId())
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/low-like.jpg")
+                .s3Key("map/low-like.jpg")
+                .title("좋아요 적은 사진")
+                .description("첫 번째 사진")
+                .userId(placeOwner.getId())
+                .username("placeSortOwner")
+                .likeCount(2L)
+                .mapPlace(mapPlace)
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/high-like.jpg")
+                .s3Key("map/high-like.jpg")
+                .title("좋아요 많은 사진")
+                .description("두 번째 사진")
+                .userId(placeOwner.getId())
+                .username("placeSortOwner")
+                .likeCount(9L)
+                .mapPlace(mapPlace)
+                .build());
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortParam", SortParam.MOST_LIKED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortParam").value(SortParam.MOST_LIKED.name()))
+                .andExpect(jsonPath("$.posts[0].title").value("좋아요 많은 사진"))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(9))
+                .andExpect(jsonPath("$.posts[1].title").value("좋아요 적은 사진"));
     }
 
     @Test

@@ -4,9 +4,11 @@ import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceImageItem;
 import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceItem;
 import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceResponse;
+import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.admin.exception.AdminErrorCode;
 import com.typenull.pingdom.domain.admin.exception.AdminException;
 import com.typenull.pingdom.domain.admin.service.AdminMapPlaceQueryService;
+import com.typenull.pingdom.domain.auth.repository.UserRepository;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.domain.MapPlace;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
@@ -28,6 +30,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageRepository mapImageRepository;
+    private final UserRepository userRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -55,12 +58,18 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
     @Override
     @Transactional(readOnly = true)
-    public AdminMapPlaceDetailResponse getPlace(Long placeId) {
+    public AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
+        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
         long totalPostCount = mapImageRepository.countByMapPlace_Id(placeId);
-        Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, Sort.by(Sort.Direction.DESC, "createdAt"));
+        Sort sort = toSort(safeSortParam);
+        Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
+        String username = mapPlace.getUserId() == null ? null
+                : userRepository.findById(mapPlace.getUserId())
+                .map(user -> user.getUsername())
+                .orElse(null);
 
         List<AdminMapPlaceImageItem> posts = mapImageRepository.findByMapPlace_Id(placeId, latestPosts)
                 .stream()
@@ -74,9 +83,19 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
+                username,
+                safeSortParam,
                 Math.toIntExact(totalPostCount),
                 posts
         );
+    }
+
+    private Sort toSort(SortParam sortParam) {
+        return switch (sortParam) {
+            case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
+            case LATEST -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+            case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        };
     }
 
     private AdminMapPlaceItem toItem(MapPlace mapPlace) {
