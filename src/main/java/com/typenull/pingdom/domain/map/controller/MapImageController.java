@@ -271,4 +271,15 @@ public class MapImageController {
                 mapImageLikeService.like(request, userId);
         return ResponseEntity.ok(response);
     }
+
+    @DeleteMapping("/like")
+    public ResponseEntity<MapImageLikeResponse> likeClear(
+            @Valid @RequestBody MapImageLikeRequest request,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        Long userId = user.userId();
+        MapImageLikeResponse response =
+                mapImageLikeService.notLike(request, userId);
+        return ResponseEntity.ok(response);
+    }
 }
