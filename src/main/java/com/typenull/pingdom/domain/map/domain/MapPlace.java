@@ -33,7 +33,7 @@ public class MapPlace {
     @Column(name = "address", length = 255, nullable = false)
     private String address;
 
-    @Column(name = "kakao_place_id", length = 50, unique = true)
+    @Column(name = "kakao_place_id", length = 50)
     private String kakaoPlaceId;
 
     @Column(name = "latitude", nullable = false)
