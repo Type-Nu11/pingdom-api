@@ -75,8 +75,8 @@ public class S3Service {
     }
 
     private MapPlace resolveMapPlace(ImageUploadRequest request) {
-        String kakaoPlaceId = request.kakaoPlaceId();
-        if (kakaoPlaceId != null && !kakaoPlaceId.isBlank()) {
+        String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
+        if (kakaoPlaceId != null) {
             return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
                     .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
         }
@@ -88,6 +88,14 @@ public class S3Service {
 
         return mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+    }
+
+    private String normalizeKakaoPlaceId(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     public MapImageResponse deleteImage(Long imageId, Long userId) {

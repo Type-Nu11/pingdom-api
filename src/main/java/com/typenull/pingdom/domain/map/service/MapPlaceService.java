@@ -62,7 +62,8 @@ public class MapPlaceService {
             String coordinateToken,
             long userId
     ) {
-        if (kakaoPlaceId != null && !kakaoPlaceId.isBlank() && mapPlaceRepository.existsByKakaoPlaceId(kakaoPlaceId)) {
+        String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
+        if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
         }
 
@@ -73,7 +74,7 @@ public class MapPlaceService {
 
         Point location = toPoint(entry.latitude(), entry.longitude());
         MapPlace mapPlace = MapPlace.builder()
-                .kakaoPlaceId(kakaoPlaceId)
+                .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
                 .latitude(entry.latitude())
@@ -90,6 +91,14 @@ public class MapPlaceService {
                 saved.getLatitude(),
                 saved.getLongitude()
         );
+    }
+
+    private String normalizeKakaoPlaceId(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 
     @Transactional
