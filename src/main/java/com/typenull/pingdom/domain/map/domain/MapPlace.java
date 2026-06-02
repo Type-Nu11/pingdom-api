@@ -16,9 +16,6 @@ import org.locationtech.jts.geom.Point;
 @Builder
 @Table(
         name = "map_place",
-        indexes = {
-                @Index(name = "idx_map_place_kakao_place_id", columnList = "kakao_place_id")
-        },
         uniqueConstraints = {
                 @UniqueConstraint(name = "uk_map_place_kakao_place_id", columnNames = "kakao_place_id")
         }
