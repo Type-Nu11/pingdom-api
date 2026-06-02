@@ -272,7 +272,9 @@ src/main/java/com/typenull/pingdom
 ├─ moderation
 │  ├─ api
 │  ├─ application
-│  ├─ query
+│  │  ├─ command
+│  │  ├─ query
+│  │  └─ service
 │  ├─ domain
 │  ├─ infrastructure
 │  └─ event
