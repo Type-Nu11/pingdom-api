@@ -1,10 +1,12 @@
 package com.typenull.pingdom.domain.map.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import jakarta.validation.constraints.AssertTrue;
 import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import org.springframework.web.multipart.MultipartFile;
+import org.springframework.util.StringUtils;
 
 @Schema(description = "게시글 업로드 요청 정보")
 public record ImageUploadRequest(
@@ -28,4 +30,8 @@ public record ImageUploadRequest(
         @Schema(description = "업로드할 게시글 첨부 파일", type = "string", format = "binary")
         MultipartFile file
 ) {
+    @AssertTrue(message = "장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다.")
+    public boolean isValidPlace() {
+        return StringUtils.hasText(kakaoPlaceId) || placeId != null;
+    }
 }
