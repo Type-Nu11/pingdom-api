@@ -15,6 +15,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -94,11 +95,7 @@ public class MapPlaceService {
     }
 
     private String normalizeKakaoPlaceId(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     @Transactional

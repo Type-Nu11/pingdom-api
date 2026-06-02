@@ -22,6 +22,7 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 
 import java.io.IOException;
 import java.util.Objects;
@@ -91,11 +92,7 @@ public class S3Service {
     }
 
     private String normalizeKakaoPlaceId(String value) {
-        if (value == null) {
-            return null;
-        }
-        String trimmed = value.trim();
-        return trimmed.isEmpty() ? null : trimmed;
+        return StringUtils.hasText(value) ? value.trim() : null;
     }
 
     public MapImageResponse deleteImage(Long imageId, Long userId) {
