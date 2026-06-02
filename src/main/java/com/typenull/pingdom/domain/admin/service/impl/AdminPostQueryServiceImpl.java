@@ -35,8 +35,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
 
         Sort sort = switch (safeSortParam) {
-            case OLDEST -> Sort.by(Sort.Direction.ASC, "createdAt");
-            case LATEST -> Sort.by(Sort.Direction.DESC, "createdAt");
+            case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
+            case LATEST -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
             case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 

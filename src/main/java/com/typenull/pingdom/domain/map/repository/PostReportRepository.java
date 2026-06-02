@@ -20,7 +20,6 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
     @EntityGraph(attributePaths = "mapImage")
     Page<PostReport> findAllBy(Pageable pageable);
 
-    @EntityGraph(attributePaths = "mapImage")
     List<PostReport> findAllByMapImage_IdInOrderByIdDesc(Collection<Long> mapImageIds);
 
     @Modifying(clearAutomatically = true, flushAutomatically = true)
