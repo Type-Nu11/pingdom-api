@@ -56,15 +56,21 @@ public class FcmService {
             return;
         }
 
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User owner = userRepository.findById(ownerId).orElse(null);
+        if (owner == null) {
+            log.warn("좋아요 알림 수신자를 찾지 못해 전송을 생략합니다. ownerId={}", ownerId);
+            return;
+        }
 
         if (owner.getFcmToken() == null) {
             return;
         }
 
-        User liker = userRepository.findById(likerId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User liker = userRepository.findById(likerId).orElse(null);
+        if (liker == null) {
+            log.warn("좋아요 알림 발신자를 찾지 못해 전송을 생략합니다. likerId={}", likerId);
+            return;
+        }
 
         sendNotification(owner.getFcmToken(), NotificationType.NEW_LIKE, liker.getUsername());
     }

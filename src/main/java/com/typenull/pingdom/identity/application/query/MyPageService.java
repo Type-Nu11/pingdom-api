@@ -1,6 +1,5 @@
 package com.typenull.pingdom.identity.application.query;
 
-import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -15,9 +14,9 @@ public class MyPageService {
     private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
-    public MyPageResponse getMyPageInfo(Long userId) {
+    public MyPageQueryResult getMyPageInfo(Long userId) {
         return userRepository.findById(userId)
-                .map(MyPageResponse::from)
+                .map(MyPageQueryResult::from)
                 .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
     }
 }

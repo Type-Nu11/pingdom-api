@@ -1,6 +1,6 @@
 package com.typenull.pingdom.identity.api.dto.profile;
 
-import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -22,15 +22,15 @@ public record MyPageResponse(
         @Schema(description = "국가", example = "KR")
         String country){
 
-    public static MyPageResponse from(User user) {
+    public static MyPageResponse from(MyPageQueryResult result) {
         return MyPageResponse.builder()
-                .id(user.getId())
-                .username(user.getUsername())
-                .email(user.getEmail())
-                .birthYear(user.getBirthYear())
-                .profileImageUrl(user.getProfileImageUrl())
-                .language(user.getLanguage())
-                .country(user.getCountry())
+                .id(result.id())
+                .username(result.username())
+                .email(result.email())
+                .birthYear(result.birthYear())
+                .profileImageUrl(result.profileImageUrl())
+                .language(result.language())
+                .country(result.country())
                 .build();
     }
 }
