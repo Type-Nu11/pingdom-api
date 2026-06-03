@@ -13,7 +13,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.application.service.AuthService;
-import com.typenull.pingdom.global.config.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import java.time.LocalDateTime;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.firebase;
+package com.typenull.pingdom.shared.config.firebase;
 
 import com.google.auth.oauth2.GoogleCredentials;
 import com.google.firebase.FirebaseApp;

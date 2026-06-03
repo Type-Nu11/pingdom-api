@@ -3,7 +3,7 @@ package com.typenull.pingdom.place.api;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateResponse;
 import com.typenull.pingdom.place.application.service.MapBookmarkService;
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

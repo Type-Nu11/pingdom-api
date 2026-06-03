@@ -5,7 +5,7 @@ import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceResponse;
 import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.admin.service.AdminMapPlaceQueryService;
 import com.typenull.pingdom.domain.admin.service.AdminMapPlaceService;
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

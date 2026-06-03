@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.swagger;
+package com.typenull.pingdom.shared.config.swagger;
 
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.context.annotation.Bean;

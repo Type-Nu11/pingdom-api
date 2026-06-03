@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.s3;
+package com.typenull.pingdom.shared.support;
 
 import java.io.IOException;
 import java.util.UUID;

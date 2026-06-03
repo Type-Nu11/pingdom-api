@@ -1,6 +1,6 @@
 package com.typenull.pingdom.notification.api;
 
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.notification.api.dto.FcmTokenRequest;
 import com.typenull.pingdom.notification.application.service.FcmService;
 import io.swagger.v3.oas.annotations.Operation;

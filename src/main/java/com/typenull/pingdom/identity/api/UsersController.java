@@ -5,7 +5,7 @@ import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
 import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
 import com.typenull.pingdom.identity.application.service.ChangeInfoService;
 import com.typenull.pingdom.identity.application.service.MyPageService;
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

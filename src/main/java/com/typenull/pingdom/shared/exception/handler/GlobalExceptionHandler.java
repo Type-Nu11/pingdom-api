@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.exception.handler;
+package com.typenull.pingdom.shared.exception.handler;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;

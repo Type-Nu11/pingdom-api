@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.aws;
+package com.typenull.pingdom.shared.config.aws;
 
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;

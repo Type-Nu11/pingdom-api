@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.postgis;
+package com.typenull.pingdom.shared.config.postgis;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;

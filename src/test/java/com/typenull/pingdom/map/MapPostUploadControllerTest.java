@@ -8,7 +8,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
-import com.typenull.pingdom.global.s3.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

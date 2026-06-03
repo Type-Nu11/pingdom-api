@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.security;
+package com.typenull.pingdom.shared.security;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;

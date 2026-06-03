@@ -1,5 +1,5 @@
 
-package com.typenull.pingdom.global.config.seed;
+package com.typenull.pingdom.shared.config.seed;
 
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;

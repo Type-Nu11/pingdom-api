@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.map;
+package com.typenull.pingdom.shared.config.map;
 
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;

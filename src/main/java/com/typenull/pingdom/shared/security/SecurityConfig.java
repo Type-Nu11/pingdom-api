@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.security;
+package com.typenull.pingdom.shared.security;
 
 import java.util.List;
 import org.springframework.context.annotation.Bean;

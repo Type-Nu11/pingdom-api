@@ -1,4 +1,4 @@
-package com.typenull.pingdom.global.config.aws;
+package com.typenull.pingdom.shared.config.aws;
 
 import org.springframework.boot.context.properties.ConfigurationProperties;
 

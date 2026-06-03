@@ -1,6 +1,6 @@
 package com.typenull.pingdom.post.api;
 
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.MapImageResponse;
 import com.typenull.pingdom.post.application.service.S3Service;
