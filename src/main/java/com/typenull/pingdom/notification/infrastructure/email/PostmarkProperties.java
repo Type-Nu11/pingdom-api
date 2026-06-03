@@ -1,4 +1,4 @@
-package com.typenull.pingdom.identity.infrastructure.email;
+package com.typenull.pingdom.notification.infrastructure.email;
 
 import jakarta.validation.constraints.NotBlank;
 import org.springframework.boot.context.properties.ConfigurationProperties;

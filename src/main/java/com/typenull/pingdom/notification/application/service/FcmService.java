@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.firebase.service;
+package com.typenull.pingdom.notification.application.service;
 
 import com.google.firebase.messaging.FirebaseMessaging;
 import com.google.firebase.messaging.Message;
@@ -7,9 +7,8 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.domain.firebase.enums.NotificationType;
+import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -50,16 +49,19 @@ public class FcmService {
 
     @Async
     public void sendLikeNotification(MapImage mapImage, Long likerId) {
-
         Long ownerId = mapImage.getUserId();
 
         // 본인 좋아요는 알림 생략
-        if (ownerId.equals(likerId)) return;
+        if (ownerId.equals(likerId)) {
+            return;
+        }
 
         User owner = userRepository.findById(ownerId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (owner.getFcmToken() == null) return;
+        if (owner.getFcmToken() == null) {
+            return;
+        }
 
         User liker = userRepository.findById(likerId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));

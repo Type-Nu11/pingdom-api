@@ -1,12 +1,12 @@
 package com.typenull.pingdom.engagement.application.service;
 
-import com.typenull.pingdom.domain.firebase.service.FcmService;
 import com.typenull.pingdom.engagement.api.dto.MapImageLikeRequest;
 import com.typenull.pingdom.engagement.api.dto.MapImageLikeResponse;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.domain.repository.MapImageLikeRepository;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
+import com.typenull.pingdom.notification.application.service.FcmService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
@@ -49,7 +49,7 @@ public class MapImageLikeService {
             log.error("FCM 알림 보내기 실패", e);
         }
 
-        return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId(),"좋아요 추가되었습니다.");
+        return new MapImageLikeResponse(userId, mapImageLikeRequest.mapImageId(), "좋아요 추가되었습니다.");
     }
 
     @Transactional

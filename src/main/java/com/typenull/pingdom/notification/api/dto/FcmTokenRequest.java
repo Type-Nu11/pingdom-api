@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.firebase.dto;
+package com.typenull.pingdom.notification.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

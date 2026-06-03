@@ -1,9 +1,8 @@
-package com.typenull.pingdom.domain.firebase.controller;
+package com.typenull.pingdom.notification.api;
 
-import com.typenull.pingdom.domain.firebase.dto.FcmImageIdRequest;
-import com.typenull.pingdom.domain.firebase.dto.FcmTokenRequest;
-import com.typenull.pingdom.domain.firebase.service.FcmService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.notification.api.dto.FcmTokenRequest;
+import com.typenull.pingdom.notification.application.service.FcmService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,7 +14,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.PatchMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @Tag(name = "FCM/Notification", description = "푸시 알림 및 기기 토큰 관리 API")
 @RestController

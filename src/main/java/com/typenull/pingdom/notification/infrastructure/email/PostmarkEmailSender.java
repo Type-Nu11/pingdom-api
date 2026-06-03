@@ -1,4 +1,4 @@
-package com.typenull.pingdom.identity.infrastructure.email;
+package com.typenull.pingdom.notification.infrastructure.email;
 
 import com.postmarkapp.postmark.client.ApiClient;
 import com.postmarkapp.postmark.client.data.model.message.Message;
@@ -9,7 +9,6 @@ import java.nio.charset.StandardCharsets;
 import java.util.Map;
 
 import com.typenull.pingdom.identity.application.port.EmailSender;
-import com.typenull.pingdom.identity.infrastructure.email.PostmarkProperties;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 

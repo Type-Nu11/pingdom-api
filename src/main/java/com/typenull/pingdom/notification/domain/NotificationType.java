@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.firebase.enums;
+package com.typenull.pingdom.notification.domain;
 
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
