@@ -8,6 +8,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.notification.domain.NotificationType;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -47,7 +48,7 @@ public class FcmService {
 
     public void sendLikeNotification(Long ownerId, Long likerId) {
         // 본인 좋아요는 알림 생략
-        if (ownerId.equals(likerId)) {
+        if (Objects.equals(ownerId, likerId)) {
             return;
         }
 
