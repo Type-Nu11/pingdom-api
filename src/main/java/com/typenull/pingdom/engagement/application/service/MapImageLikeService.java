@@ -1,22 +1,17 @@
 package com.typenull.pingdom.engagement.application.service;
 
-import com.typenull.pingdom.engagement.api.dto.MapImageLikeRequest;
-import com.typenull.pingdom.engagement.api.dto.MapImageLikeResponse;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.notification.application.service.FcmService;
-import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class MapImageLikeService {
 
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -24,46 +19,43 @@ public class MapImageLikeService {
     private final FcmService fcmService;
 
     @Transactional
-    public MapImageLikeResponse like(MapImageLikeRequest mapImageLikeRequest, Long userId) {
+    public MapImageLikeResult like(Long mapImageId, Long userId) {
         if (mapImageLikeRepository.existsByUserIdAndMapImageId(
                 userId,
-                mapImageLikeRequest.mapImageId()
+                mapImageId
         )) {
             throw new MapException(MapErrorCode.ALREADY_LIKED);
         }
 
-        MapImage mapImage = mapImageRepository.findById(
-                mapImageLikeRequest.mapImageId()
-        ).orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        Long ownerId = mapImageRepository.findById(
+                mapImageId
+        ).map(mapImage -> mapImage.getUserId())
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         MapImageLike mapImageLike = MapImageLike.builder()
-                .mapImageId(mapImageLikeRequest.mapImageId())
+                .mapImageId(mapImageId)
                 .userId(userId)
                 .build();
 
         mapImageLikeRepository.save(mapImageLike);
-        mapImageRepository.increaseLikeCount(mapImageLikeRequest.mapImageId());
-        try {
-            fcmService.sendLikeNotification(mapImage, userId);
-        } catch (Exception e) {
-            log.error("FCM 알림 보내기 실패", e);
-        }
+        mapImageRepository.increaseLikeCount(mapImageId);
+        fcmService.sendLikeNotification(ownerId, userId);
 
-        return new MapImageLikeResponse(userId, mapImageLikeRequest.mapImageId(), "좋아요 추가되었습니다.");
+        return new MapImageLikeResult(userId, mapImageId, "좋아요 추가되었습니다.");
     }
 
     @Transactional
-    public MapImageLikeResponse notLike(MapImageLikeRequest mapImageLikeRequest, Long userId) {
+    public MapImageLikeResult notLike(Long mapImageId, Long userId) {
         if (!mapImageLikeRepository.existsByUserIdAndMapImageId(
                 userId,
-                mapImageLikeRequest.mapImageId()
+                mapImageId
         )) {
             throw new MapException(MapErrorCode.NOT_LIKED);
         }
 
-        mapImageLikeRepository.deleteLike(userId, mapImageLikeRequest.mapImageId());
-        mapImageRepository.decreaseLikeCount(mapImageLikeRequest.mapImageId());
+        mapImageLikeRepository.deleteLike(userId, mapImageId);
+        mapImageRepository.decreaseLikeCount(mapImageId);
 
-        return new MapImageLikeResponse(userId, mapImageLikeRequest.mapImageId(), "좋아요 취소되었습니다.");
+        return new MapImageLikeResult(userId, mapImageId, "좋아요 취소되었습니다.");
     }
 }

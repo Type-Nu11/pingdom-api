@@ -8,7 +8,6 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.notification.domain.NotificationType;
-import com.typenull.pingdom.post.domain.MapImage;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.scheduling.annotation.Async;
@@ -48,23 +47,27 @@ public class FcmService {
     }
 
     @Async
-    public void sendLikeNotification(MapImage mapImage, Long likerId) {
-        Long ownerId = mapImage.getUserId();
-
+    public void sendLikeNotification(Long ownerId, Long likerId) {
         // 본인 좋아요는 알림 생략
         if (ownerId.equals(likerId)) {
             return;
         }
 
-        User owner = userRepository.findById(ownerId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User owner = userRepository.findById(ownerId).orElse(null);
+        if (owner == null) {
+            log.warn("좋아요 알림 수신자를 찾지 못해 전송을 생략합니다. ownerId={}", ownerId);
+            return;
+        }
 
         if (owner.getFcmToken() == null) {
             return;
         }
 
-        User liker = userRepository.findById(likerId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User liker = userRepository.findById(likerId).orElse(null);
+        if (liker == null) {
+            log.warn("좋아요 알림 발신자를 찾지 못해 전송을 생략합니다. likerId={}", likerId);
+            return;
+        }
 
         sendNotification(owner.getFcmToken(), NotificationType.NEW_LIKE, liker.getUsername());
     }

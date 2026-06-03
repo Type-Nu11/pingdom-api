@@ -3,8 +3,11 @@ package com.typenull.pingdom.engagement.api;
 import com.typenull.pingdom.engagement.api.dto.MapImageLikeRequest;
 import com.typenull.pingdom.engagement.api.dto.MapImageLikeResponse;
 import com.typenull.pingdom.engagement.api.dto.PostReportRequest;
+import com.typenull.pingdom.engagement.application.service.MapImageLikeResult;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -113,7 +116,11 @@ public class EngagementController {
             @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        postReportService.report(imageId, user.userId(), user.username(), request);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
+        postReportService.report(imageId, authenticatedUser.userId(), authenticatedUser.username(), request.reason());
         return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
 
@@ -122,9 +129,12 @@ public class EngagementController {
             @Valid @RequestBody MapImageLikeRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = user.userId();
-        MapImageLikeResponse response = mapImageLikeService.like(request, userId);
-        return ResponseEntity.ok(response);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
+        MapImageLikeResult result = mapImageLikeService.like(request.mapImageId(), authenticatedUser.userId());
+        return ResponseEntity.ok(toResponse(result));
     }
 
     @DeleteMapping("/like/{imageId}")
@@ -132,9 +142,15 @@ public class EngagementController {
             @PathVariable("imageId") Long imageId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = user.userId();
-        MapImageLikeRequest request = new MapImageLikeRequest(imageId);
-        MapImageLikeResponse response = mapImageLikeService.notLike(request, userId);
-        return ResponseEntity.ok(response);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
+        MapImageLikeResult result = mapImageLikeService.notLike(imageId, authenticatedUser.userId());
+        return ResponseEntity.ok(toResponse(result));
+    }
+
+    private MapImageLikeResponse toResponse(MapImageLikeResult result) {
+        return new MapImageLikeResponse(result.userId(), result.mapImageId(), result.message());
     }
 }

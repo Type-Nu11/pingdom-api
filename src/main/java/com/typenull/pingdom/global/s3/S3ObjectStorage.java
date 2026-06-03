@@ -1,6 +1,5 @@
-package com.typenull.pingdom.shared.support;
+package com.typenull.pingdom.global.s3;
 
-import java.io.InputStream;
 import java.io.IOException;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
@@ -29,10 +28,6 @@ public class S3ObjectStorage {
     private String bucket;
 
     public S3PutResult put(MultipartFile file, String keyPrefix) throws IOException {
-        if (file == null || file.isEmpty()) {
-            throw new IllegalArgumentException("파일이 비어있거나 존재하지 않습니다.");
-        }
-
         if (!StringUtils.hasText(bucket)) {
             throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 bucket is not configured.", null);
         }
@@ -57,8 +52,8 @@ public class S3ObjectStorage {
                 .contentType(file.getContentType())
                 .build();
 
-        try (InputStream inputStream = file.getInputStream()) {
-            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(inputStream, file.getSize()));
+        try {
+            s3Client.putObject(putObjectRequest, RequestBody.fromInputStream(file.getInputStream(), file.getSize()));
             String url = s3Client.utilities()
                     .getUrl(GetUrlRequest.builder().bucket(bucket).key(key).build())
                     .toExternalForm();
@@ -119,3 +114,4 @@ public class S3ObjectStorage {
         }
     }
 }
+

@@ -1,6 +1,5 @@
 package com.typenull.pingdom.engagement.application.service;
 
-import com.typenull.pingdom.engagement.api.dto.PostReportRequest;
 import com.typenull.pingdom.engagement.domain.PostReport;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -20,7 +19,7 @@ public class PostReportService {
     private final PostReportRepository postReportRepository;
 
     @Transactional
-    public void report(Long imageId, Long reporterUserId, String reporterUsername, PostReportRequest request) {
+    public void report(Long imageId, Long reporterUserId, String reporterUsername, String reason) {
         MapImage mapImage = mapImageRepository.findById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
@@ -35,7 +34,7 @@ public class PostReportService {
                 .reportedUserId(mapImage.getUserId())
                 .reportedImageUrl(mapImage.getImageUrl())
                 .mapImage(mapImage)
-                .reason(request.reason())
+                .reason(reason)
                 .build();
 
         try {
