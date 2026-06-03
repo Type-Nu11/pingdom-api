@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.exception;
+package com.typenull.pingdom.moderation.domain.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;

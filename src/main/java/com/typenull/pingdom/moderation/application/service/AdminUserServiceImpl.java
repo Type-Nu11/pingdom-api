@@ -1,7 +1,7 @@
-package com.typenull.pingdom.domain.admin.service.impl;
+package com.typenull.pingdom.moderation.application.service;
 
-import com.typenull.pingdom.domain.admin.dto.ban.BanResponse;
-import com.typenull.pingdom.domain.admin.service.AdminUserService;
+import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
+import com.typenull.pingdom.moderation.application.AdminUserService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;

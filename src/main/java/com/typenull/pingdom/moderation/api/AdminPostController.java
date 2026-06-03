@@ -1,6 +1,6 @@
 package com.typenull.pingdom.moderation.api;
 
-import com.typenull.pingdom.domain.admin.enums.SortParam;
+import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;

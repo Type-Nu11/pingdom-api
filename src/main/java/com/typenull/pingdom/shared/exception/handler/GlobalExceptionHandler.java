@@ -2,7 +2,7 @@ package com.typenull.pingdom.shared.exception.handler;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
-import com.typenull.pingdom.domain.admin.exception.AdminException;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import jakarta.validation.ConstraintViolationException;

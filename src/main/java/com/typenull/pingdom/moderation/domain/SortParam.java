@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.enums;
+package com.typenull.pingdom.moderation.domain;
 
 public enum SortParam {
     LATEST,

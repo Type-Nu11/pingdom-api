@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.dto.ban;
+package com.typenull.pingdom.moderation.api.dto.ban;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 

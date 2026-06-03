@@ -5,7 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.domain.admin.enums.SortParam;
+import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;

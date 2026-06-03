@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.service;
+package com.typenull.pingdom.moderation.application.service;
 
 import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;

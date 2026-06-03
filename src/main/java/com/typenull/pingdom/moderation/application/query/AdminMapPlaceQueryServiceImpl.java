@@ -1,13 +1,13 @@
-package com.typenull.pingdom.domain.admin.service.impl;
+package com.typenull.pingdom.moderation.application.query;
 
-import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceDetailResponse;
-import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceImageItem;
-import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceItem;
-import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceResponse;
-import com.typenull.pingdom.domain.admin.enums.SortParam;
-import com.typenull.pingdom.domain.admin.exception.AdminErrorCode;
-import com.typenull.pingdom.domain.admin.exception.AdminException;
-import com.typenull.pingdom.domain.admin.service.AdminMapPlaceQueryService;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceImageItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
+import com.typenull.pingdom.moderation.domain.SortParam;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;

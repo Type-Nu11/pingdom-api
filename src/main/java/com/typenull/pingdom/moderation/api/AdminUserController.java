@@ -1,8 +1,8 @@
-package com.typenull.pingdom.domain.admin.controller;
+package com.typenull.pingdom.moderation.api;
 
-import com.typenull.pingdom.domain.admin.dto.ban.BanRequest;
-import com.typenull.pingdom.domain.admin.dto.ban.BanResponse;
-import com.typenull.pingdom.domain.admin.service.AdminUserService;
+import com.typenull.pingdom.moderation.api.dto.ban.BanRequest;
+import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
+import com.typenull.pingdom.moderation.application.AdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

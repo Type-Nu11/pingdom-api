@@ -1,7 +1,7 @@
-package com.typenull.pingdom.domain.admin.dto.place;
+package com.typenull.pingdom.moderation.api.dto.place;
 
 import java.util.List;
-import com.typenull.pingdom.domain.admin.enums.SortParam;
+import com.typenull.pingdom.moderation.domain.SortParam;
 
 public record AdminMapPlaceDetailResponse(
         Long id,

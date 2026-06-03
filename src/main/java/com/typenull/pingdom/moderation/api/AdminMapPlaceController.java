@@ -1,10 +1,10 @@
-package com.typenull.pingdom.domain.admin.controller;
+package com.typenull.pingdom.moderation.api;
 
-import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceDetailResponse;
-import com.typenull.pingdom.domain.admin.dto.place.AdminMapPlaceResponse;
-import com.typenull.pingdom.domain.admin.enums.SortParam;
-import com.typenull.pingdom.domain.admin.service.AdminMapPlaceQueryService;
-import com.typenull.pingdom.domain.admin.service.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
+import com.typenull.pingdom.moderation.domain.SortParam;
+import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
+import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
