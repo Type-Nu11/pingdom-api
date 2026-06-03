@@ -3,18 +3,15 @@ package com.typenull.pingdom.engagement.application.service;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.notification.application.service.FcmService;
-import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class MapImageLikeService {
 
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -30,9 +27,10 @@ public class MapImageLikeService {
             throw new MapException(MapErrorCode.ALREADY_LIKED);
         }
 
-        MapImage mapImage = mapImageRepository.findById(
+        Long ownerId = mapImageRepository.findById(
                 mapImageId
-        ).orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        ).map(mapImage -> mapImage.getUserId())
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         MapImageLike mapImageLike = MapImageLike.builder()
                 .mapImageId(mapImageId)
@@ -41,11 +39,7 @@ public class MapImageLikeService {
 
         mapImageLikeRepository.save(mapImageLike);
         mapImageRepository.increaseLikeCount(mapImageId);
-        try {
-            fcmService.sendLikeNotification(mapImage, userId);
-        } catch (Exception e) {
-            log.error("FCM 알림 보내기 실패", e);
-        }
+        fcmService.sendLikeNotification(ownerId, userId);
 
         return new MapImageLikeResult(userId, mapImageId, "좋아요 추가되었습니다.");
     }

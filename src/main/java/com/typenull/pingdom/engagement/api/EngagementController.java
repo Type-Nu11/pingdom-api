@@ -116,7 +116,10 @@ public class EngagementController {
             @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = requireAuthenticatedUser(user);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
         postReportService.report(imageId, authenticatedUser.userId(), authenticatedUser.username(), request.reason());
         return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
@@ -126,7 +129,10 @@ public class EngagementController {
             @Valid @RequestBody MapImageLikeRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = requireAuthenticatedUser(user);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
         MapImageLikeResult result = mapImageLikeService.like(request.mapImageId(), authenticatedUser.userId());
         return ResponseEntity.ok(toResponse(result));
     }
@@ -136,16 +142,12 @@ public class EngagementController {
             @PathVariable("imageId") Long imageId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = requireAuthenticatedUser(user);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
         MapImageLikeResult result = mapImageLikeService.notLike(imageId, authenticatedUser.userId());
         return ResponseEntity.ok(toResponse(result));
-    }
-
-    private JwtAuthenticatedUser requireAuthenticatedUser(JwtAuthenticatedUser user) {
-        if (user == null) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-        return user;
     }
 
     private MapImageLikeResponse toResponse(MapImageLikeResult result) {

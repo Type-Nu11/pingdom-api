@@ -94,7 +94,10 @@ public class UsersController {
     public ResponseEntity<MyPageResponse> getMyPageInfo(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = requireAuthenticatedUser(user);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
         MyPageQueryResult result = myPageService.getMyPageInfo(authenticatedUser.userId());
         return ResponseEntity.ok(MyPageResponse.from(result));
     }
@@ -187,7 +190,10 @@ public class UsersController {
             @Valid @RequestBody ChangePasswordRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = requireAuthenticatedUser(user);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
         changeInfoService.changePassword(request, authenticatedUser.userId());
         return ResponseEntity.ok("비밀번호 변경 완료");
     }
@@ -270,15 +276,11 @@ public class UsersController {
             @Valid @RequestBody ChangeUsernameRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = requireAuthenticatedUser(user);
+        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
+                user,
+                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
+        );
         changeInfoService.changeUsername(request, authenticatedUser.userId());
         return ResponseEntity.ok("아이디 변경 완료");
-    }
-
-    private JwtAuthenticatedUser requireAuthenticatedUser(JwtAuthenticatedUser user) {
-        if (user == null) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-        return user;
     }
 }
