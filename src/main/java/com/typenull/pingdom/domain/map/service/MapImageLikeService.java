@@ -1,14 +1,14 @@
 package com.typenull.pingdom.domain.map.service;
 
 import com.typenull.pingdom.domain.firebase.service.FcmService;
-import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.domain.map.domain.MapImageLike;
 import com.typenull.pingdom.domain.map.dto.MapImageLikeRequest;
 import com.typenull.pingdom.domain.map.dto.MapImageLikeResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.domain.map.repository.MapImageLikeRepository;
-import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

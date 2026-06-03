@@ -1,15 +1,15 @@
-package com.typenull.pingdom.domain.map.service;
+package com.typenull.pingdom.post.application.service;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.domain.map.dto.ImageUploadRequest;
-import com.typenull.pingdom.domain.map.dto.MapImageResponse;
+import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
+import com.typenull.pingdom.post.api.dto.MapImageResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
-import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
 import com.typenull.pingdom.domain.map.repository.PostReportRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;

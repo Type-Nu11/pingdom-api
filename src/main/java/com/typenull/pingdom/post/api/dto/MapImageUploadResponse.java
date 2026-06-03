@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.dto;
+package com.typenull.pingdom.post.api.dto;
 
 public record MapImageUploadResponse(
         Long id,
@@ -7,4 +7,3 @@ public record MapImageUploadResponse(
         String message
 ) {
 }
-

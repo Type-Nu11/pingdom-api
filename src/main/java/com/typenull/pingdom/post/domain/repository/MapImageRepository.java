@@ -1,6 +1,6 @@
-package com.typenull.pingdom.domain.map.repository;
+package com.typenull.pingdom.post.domain.repository;
 
-import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImage;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;

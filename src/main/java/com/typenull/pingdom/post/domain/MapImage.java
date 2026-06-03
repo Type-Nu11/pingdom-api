@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.domain;
+package com.typenull.pingdom.post.domain;
 
 import jakarta.persistence.*;
 import lombok.*;

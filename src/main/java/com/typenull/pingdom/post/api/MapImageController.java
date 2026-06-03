@@ -1,10 +1,14 @@
-package com.typenull.pingdom.place.api;
+package com.typenull.pingdom.post.api;
 
-import com.typenull.pingdom.domain.map.dto.*;
+import com.typenull.pingdom.domain.map.dto.MapImageLikeRequest;
+import com.typenull.pingdom.domain.map.dto.MapImageLikeResponse;
+import com.typenull.pingdom.domain.map.dto.PostReportRequest;
 import com.typenull.pingdom.domain.map.service.MapImageLikeService;
-import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.domain.map.service.PostReportService;
-import com.typenull.pingdom.domain.map.service.S3Service;
+import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
+import com.typenull.pingdom.post.api.dto.MapImageResponse;
+import com.typenull.pingdom.post.application.service.S3Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -18,8 +22,8 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/map")

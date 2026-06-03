@@ -18,6 +18,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import com.typenull.pingdom.post.domain.MapImage;
 
 @Entity
 @Getter
