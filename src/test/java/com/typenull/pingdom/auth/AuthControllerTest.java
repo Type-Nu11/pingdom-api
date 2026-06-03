@@ -5,13 +5,13 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.dto.email.EmailVerifyRequest;
-import com.typenull.pingdom.domain.auth.email.EmailSender;
-import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
-import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.auth.dto.token.RefreshTokenRequest;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
+import com.typenull.pingdom.identity.application.port.EmailSender;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

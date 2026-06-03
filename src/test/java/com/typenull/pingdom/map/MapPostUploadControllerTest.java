@@ -1,14 +1,14 @@
 package com.typenull.pingdom.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
-import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.map.domain.MapImage;
-import com.typenull.pingdom.domain.map.domain.MapPlace;
-import com.typenull.pingdom.domain.map.repository.MapImageRepository;
-import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
-import com.typenull.pingdom.global.s3.S3ObjectStorage;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
