@@ -3,6 +3,7 @@ package com.typenull.pingdom.post.application.service;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
@@ -11,7 +12,6 @@ import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
-import com.typenull.pingdom.domain.map.repository.PostReportRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.global.s3.S3ObjectStorage.S3StorageException;
@@ -23,7 +23,6 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
-
 import java.io.IOException;
 import java.util.Objects;
 

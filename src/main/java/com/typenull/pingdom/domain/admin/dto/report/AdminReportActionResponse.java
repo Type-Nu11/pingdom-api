@@ -1,6 +1,6 @@
 package com.typenull.pingdom.domain.admin.dto.report;
 
-import com.typenull.pingdom.domain.map.domain.PostReportStatus;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 

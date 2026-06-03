@@ -1,13 +1,13 @@
-package com.typenull.pingdom.domain.map.service;
+package com.typenull.pingdom.engagement.application.service;
 
 import com.typenull.pingdom.domain.firebase.service.FcmService;
-import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.domain.map.domain.MapImageLike;
-import com.typenull.pingdom.domain.map.dto.MapImageLikeRequest;
-import com.typenull.pingdom.domain.map.dto.MapImageLikeResponse;
+import com.typenull.pingdom.engagement.api.dto.MapImageLikeRequest;
+import com.typenull.pingdom.engagement.api.dto.MapImageLikeResponse;
+import com.typenull.pingdom.engagement.domain.MapImageLike;
+import com.typenull.pingdom.engagement.domain.repository.MapImageLikeRepository;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
-import com.typenull.pingdom.domain.map.repository.MapImageLikeRepository;
+import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -24,8 +24,8 @@ public class MapImageLikeService {
     private final FcmService fcmService;
 
     @Transactional
-    public MapImageLikeResponse like(MapImageLikeRequest mapImageLikeRequest, Long userId){
-        if(mapImageLikeRepository.existsByUserIdAndMapImageId(
+    public MapImageLikeResponse like(MapImageLikeRequest mapImageLikeRequest, Long userId) {
+        if (mapImageLikeRepository.existsByUserIdAndMapImageId(
                 userId,
                 mapImageLikeRequest.mapImageId()
         )) {
@@ -53,8 +53,8 @@ public class MapImageLikeService {
     }
 
     @Transactional
-    public MapImageLikeResponse notLike(MapImageLikeRequest mapImageLikeRequest, Long userId){
-        if(!mapImageLikeRepository.existsByUserIdAndMapImageId(
+    public MapImageLikeResponse notLike(MapImageLikeRequest mapImageLikeRequest, Long userId) {
+        if (!mapImageLikeRepository.existsByUserIdAndMapImageId(
                 userId,
                 mapImageLikeRequest.mapImageId()
         )) {
@@ -64,6 +64,6 @@ public class MapImageLikeService {
         mapImageLikeRepository.deleteLike(userId, mapImageLikeRequest.mapImageId());
         mapImageRepository.decreaseLikeCount(mapImageLikeRequest.mapImageId());
 
-    return new MapImageLikeResponse(userId,mapImageLikeRequest.mapImageId(), "좋아요 취소되었습니다.");
+        return new MapImageLikeResponse(userId, mapImageLikeRequest.mapImageId(), "좋아요 취소되었습니다.");
     }
 }

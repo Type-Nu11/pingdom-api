@@ -1,7 +1,7 @@
-package com.typenull.pingdom.domain.map.repository;
+package com.typenull.pingdom.engagement.domain.repository;
 
 
-import com.typenull.pingdom.domain.map.domain.MapImageLike;
+import com.typenull.pingdom.engagement.domain.MapImageLike;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;

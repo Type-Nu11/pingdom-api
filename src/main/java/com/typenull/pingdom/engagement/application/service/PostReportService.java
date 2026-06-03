@@ -1,12 +1,12 @@
-package com.typenull.pingdom.domain.map.service;
+package com.typenull.pingdom.engagement.application.service;
 
-import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.domain.map.domain.PostReport;
-import com.typenull.pingdom.domain.map.dto.PostReportRequest;
+import com.typenull.pingdom.engagement.api.dto.PostReportRequest;
+import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
+import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
-import com.typenull.pingdom.domain.map.repository.PostReportRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;

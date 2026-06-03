@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.domain;
+package com.typenull.pingdom.engagement.domain;
 
 import jakarta.persistence.*;
 import lombok.AllArgsConstructor;

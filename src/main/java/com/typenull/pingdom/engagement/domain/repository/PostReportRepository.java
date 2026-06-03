@@ -1,6 +1,6 @@
-package com.typenull.pingdom.domain.map.repository;
+package com.typenull.pingdom.engagement.domain.repository;
 
-import com.typenull.pingdom.domain.map.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReport;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;

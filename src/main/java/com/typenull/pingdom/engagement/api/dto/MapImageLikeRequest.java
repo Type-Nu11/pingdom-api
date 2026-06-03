@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.dto;
+package com.typenull.pingdom.engagement.api.dto;
 
 import jakarta.validation.constraints.NotNull;
 
