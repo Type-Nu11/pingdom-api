@@ -5,7 +5,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;

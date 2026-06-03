@@ -1,4 +1,4 @@
-package com.typenull.pingdom.post.application.service;
+package com.typenull.pingdom.post.infrastructure.storage;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -8,7 +8,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.MapImageResponse;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;

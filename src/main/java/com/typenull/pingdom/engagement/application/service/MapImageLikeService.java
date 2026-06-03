@@ -6,7 +6,7 @@ import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.domain.repository.MapImageLikeRepository;
 import com.typenull.pingdom.notification.application.service.FcmService;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import lombok.RequiredArgsConstructor;

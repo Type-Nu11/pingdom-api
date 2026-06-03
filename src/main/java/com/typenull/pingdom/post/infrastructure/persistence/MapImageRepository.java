@@ -1,4 +1,4 @@
-package com.typenull.pingdom.post.domain.repository;
+package com.typenull.pingdom.post.infrastructure.persistence;
 
 import com.typenull.pingdom.post.domain.MapImage;
 import org.springframework.data.domain.Page;

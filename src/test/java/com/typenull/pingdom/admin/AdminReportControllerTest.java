@@ -15,7 +15,7 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

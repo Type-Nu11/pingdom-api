@@ -3,7 +3,7 @@ package com.typenull.pingdom.post.api;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.MapImageResponse;
-import com.typenull.pingdom.post.application.service.S3Service;
+import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

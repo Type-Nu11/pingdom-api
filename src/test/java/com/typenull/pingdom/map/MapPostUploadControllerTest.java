@@ -6,7 +6,7 @@ import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import org.junit.jupiter.api.BeforeEach;

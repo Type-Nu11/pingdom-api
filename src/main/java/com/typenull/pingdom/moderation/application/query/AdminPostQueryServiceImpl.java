@@ -7,7 +7,7 @@ import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostReportItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.domain.repository.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
