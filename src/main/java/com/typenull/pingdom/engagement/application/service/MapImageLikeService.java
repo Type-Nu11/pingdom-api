@@ -3,7 +3,7 @@ package com.typenull.pingdom.engagement.application.service;
 import com.typenull.pingdom.engagement.api.dto.MapImageLikeRequest;
 import com.typenull.pingdom.engagement.api.dto.MapImageLikeResponse;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
-import com.typenull.pingdom.engagement.domain.repository.MapImageLikeRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.notification.application.service.FcmService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;

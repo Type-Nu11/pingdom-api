@@ -2,7 +2,7 @@ package com.typenull.pingdom.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.engagement.domain.PostReport;
-import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;

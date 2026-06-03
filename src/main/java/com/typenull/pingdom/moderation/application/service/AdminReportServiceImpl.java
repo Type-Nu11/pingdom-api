@@ -3,7 +3,7 @@ package com.typenull.pingdom.moderation.application.service;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.engagement.domain.PostReport;
-import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;

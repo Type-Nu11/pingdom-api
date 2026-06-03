@@ -2,7 +2,7 @@ package com.typenull.pingdom.moderation.application.query;
 
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.engagement.domain.PostReport;
-import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostReportItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;

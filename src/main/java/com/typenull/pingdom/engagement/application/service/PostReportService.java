@@ -2,7 +2,7 @@ package com.typenull.pingdom.engagement.application.service;
 
 import com.typenull.pingdom.engagement.api.dto.PostReportRequest;
 import com.typenull.pingdom.engagement.domain.PostReport;
-import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;

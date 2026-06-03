@@ -3,7 +3,7 @@ package com.typenull.pingdom.post.infrastructure.storage;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.engagement.domain.repository;
+package com.typenull.pingdom.engagement.infrastructure.persistence;
 
 
 import com.typenull.pingdom.engagement.domain.MapImageLike;
