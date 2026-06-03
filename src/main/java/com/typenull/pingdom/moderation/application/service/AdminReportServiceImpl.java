@@ -1,16 +1,16 @@
-package com.typenull.pingdom.domain.admin.service.impl;
+package com.typenull.pingdom.moderation.application.service;
 
-import com.typenull.pingdom.domain.admin.dto.report.AdminReportActionResponse;
 import com.typenull.pingdom.domain.admin.exception.AdminErrorCode;
 import com.typenull.pingdom.domain.admin.exception.AdminException;
-import com.typenull.pingdom.domain.admin.service.AdminPostService;
-import com.typenull.pingdom.domain.admin.service.AdminReportService;
 import com.typenull.pingdom.engagement.domain.PostReport;
 import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
+import com.typenull.pingdom.moderation.application.AdminPostService;
+import com.typenull.pingdom.moderation.application.AdminReportService;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

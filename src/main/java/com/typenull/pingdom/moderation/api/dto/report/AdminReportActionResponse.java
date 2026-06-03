@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.dto.report;
+package com.typenull.pingdom.moderation.api.dto.report;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import io.swagger.v3.oas.annotations.media.Schema;

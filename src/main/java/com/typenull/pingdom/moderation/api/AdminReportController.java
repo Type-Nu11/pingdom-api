@@ -1,7 +1,7 @@
-package com.typenull.pingdom.domain.admin.controller;
+package com.typenull.pingdom.moderation.api;
 
-import com.typenull.pingdom.domain.admin.dto.report.AdminReportActionResponse;
-import com.typenull.pingdom.domain.admin.service.AdminReportService;
+import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
+import com.typenull.pingdom.moderation.application.AdminReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.dto.post;
+package com.typenull.pingdom.moderation.api.dto.post;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import java.time.LocalDateTime;

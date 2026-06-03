@@ -1,6 +1,5 @@
-package com.typenull.pingdom.domain.admin.service;
+package com.typenull.pingdom.moderation.application;
 
 public interface AdminPostService {
     void deletePost(Long postId);
 }
-

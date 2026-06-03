@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.admin.dto.post;
+package com.typenull.pingdom.moderation.api.dto.post;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
@@ -13,7 +13,7 @@ public record AdminPostResponse(
         long totalPages,
         boolean hasNext
 ) {
-        public static AdminPostResponse of(List<AdminPostItem> posts, int page, int limit, long totalCount, long totalPages) {
-                return new AdminPostResponse(posts, page, limit, totalCount, totalPages, page < totalPages);
-        }
+    public static AdminPostResponse of(List<AdminPostItem> posts, int page, int limit, long totalCount, long totalPages) {
+        return new AdminPostResponse(posts, page, limit, totalCount, totalPages, page < totalPages);
+    }
 }

@@ -1,9 +1,9 @@
-package com.typenull.pingdom.domain.admin.controller;
+package com.typenull.pingdom.moderation.api;
 
-import com.typenull.pingdom.domain.admin.dto.post.AdminPostResponse;
 import com.typenull.pingdom.domain.admin.enums.SortParam;
-import com.typenull.pingdom.domain.admin.service.AdminPostQueryService;
-import com.typenull.pingdom.domain.admin.service.AdminPostService;
+import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
+import com.typenull.pingdom.moderation.application.AdminPostService;
+import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

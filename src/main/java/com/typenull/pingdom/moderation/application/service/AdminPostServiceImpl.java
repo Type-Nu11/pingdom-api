@@ -1,9 +1,9 @@
-package com.typenull.pingdom.domain.admin.service.impl;
+package com.typenull.pingdom.moderation.application.service;
 
 import com.typenull.pingdom.domain.admin.exception.AdminErrorCode;
 import com.typenull.pingdom.domain.admin.exception.AdminException;
-import com.typenull.pingdom.domain.admin.service.AdminPostService;
 import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import com.typenull.pingdom.global.s3.S3ObjectStorage;

@@ -1,6 +1,6 @@
-package com.typenull.pingdom.domain.admin.service;
+package com.typenull.pingdom.moderation.application;
 
-import com.typenull.pingdom.domain.admin.dto.report.AdminReportActionResponse;
+import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
 
 public interface AdminReportService {
 

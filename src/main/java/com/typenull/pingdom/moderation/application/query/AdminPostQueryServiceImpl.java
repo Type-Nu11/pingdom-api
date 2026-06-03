@@ -1,12 +1,11 @@
-package com.typenull.pingdom.domain.admin.service.impl;
+package com.typenull.pingdom.moderation.application.query;
 
-import com.typenull.pingdom.domain.admin.dto.post.AdminPostItem;
-import com.typenull.pingdom.domain.admin.dto.post.AdminPostReportItem;
-import com.typenull.pingdom.domain.admin.dto.post.AdminPostResponse;
 import com.typenull.pingdom.domain.admin.enums.SortParam;
-import com.typenull.pingdom.domain.admin.service.AdminPostQueryService;
 import com.typenull.pingdom.engagement.domain.PostReport;
 import com.typenull.pingdom.engagement.domain.repository.PostReportRepository;
+import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
+import com.typenull.pingdom.moderation.api.dto.post.AdminPostReportItem;
+import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
 import java.util.List;
@@ -17,6 +16,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+
 import static java.util.stream.Collectors.groupingBy;
 
 @Service
