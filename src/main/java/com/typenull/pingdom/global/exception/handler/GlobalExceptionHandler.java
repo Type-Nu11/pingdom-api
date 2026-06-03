@@ -1,7 +1,7 @@
 package com.typenull.pingdom.global.exception.handler;
 
-import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
-import com.typenull.pingdom.domain.auth.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.domain.admin.exception.AdminException;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;

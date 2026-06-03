@@ -1,6 +1,6 @@
 package com.typenull.pingdom.global.config.security;
 
-import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;

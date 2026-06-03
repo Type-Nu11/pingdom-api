@@ -1,9 +1,9 @@
 
 package com.typenull.pingdom.global.config.seed;
 
-import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.domain.UserRole;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.ApplicationRunner;
 import org.springframework.beans.factory.annotation.Value;

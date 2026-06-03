@@ -2,10 +2,10 @@ package com.typenull.pingdom.domain.admin.service.impl;
 
 import com.typenull.pingdom.domain.admin.dto.ban.BanResponse;
 import com.typenull.pingdom.domain.admin.service.AdminUserService;
-import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.exception.AuthErrorCode;
-import com.typenull.pingdom.domain.auth.exception.AuthException;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;

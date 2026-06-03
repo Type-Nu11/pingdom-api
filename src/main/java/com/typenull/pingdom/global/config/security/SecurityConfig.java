@@ -23,10 +23,10 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
-import com.typenull.pingdom.domain.auth.service.oauth.CustomOAuth2UserService;
-import com.typenull.pingdom.domain.auth.service.oauth.CustomOidcUserService;
-import com.typenull.pingdom.domain.auth.service.oauth.OAuth2FailureHandler;
-import com.typenull.pingdom.domain.auth.service.oauth.OAuth2SuccessHandler;
+import com.typenull.pingdom.identity.infrastructure.oauth.CustomOAuth2UserService;
+import com.typenull.pingdom.identity.infrastructure.oauth.CustomOidcUserService;
+import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2FailureHandler;
+import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2SuccessHandler;
 
 @Configuration
 @EnableWebSecurity

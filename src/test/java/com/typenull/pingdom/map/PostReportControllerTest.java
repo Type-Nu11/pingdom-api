@@ -1,9 +1,9 @@
 package com.typenull.pingdom.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
-import com.typenull.pingdom.domain.auth.dto.signup.SignupRequest;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.domain.PostReport;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;

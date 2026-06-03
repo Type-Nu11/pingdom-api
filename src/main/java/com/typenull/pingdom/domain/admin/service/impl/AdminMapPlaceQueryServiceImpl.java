@@ -8,7 +8,7 @@ import com.typenull.pingdom.domain.admin.enums.SortParam;
 import com.typenull.pingdom.domain.admin.exception.AdminErrorCode;
 import com.typenull.pingdom.domain.admin.exception.AdminException;
 import com.typenull.pingdom.domain.admin.service.AdminMapPlaceQueryService;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.domain.map.domain.MapImage;
 import com.typenull.pingdom.domain.map.domain.MapPlace;
 import com.typenull.pingdom.domain.map.repository.MapImageRepository;
