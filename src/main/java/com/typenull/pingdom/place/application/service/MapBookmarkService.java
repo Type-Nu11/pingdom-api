@@ -1,11 +1,11 @@
 package com.typenull.pingdom.place.application.service;
 
-import com.typenull.pingdom.place.support.MapMessages;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateResponse;
-import com.typenull.pingdom.place.domain.repository.MapBookmarkRepository;
-import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.support.MapMessages;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import lombok.RequiredArgsConstructor;

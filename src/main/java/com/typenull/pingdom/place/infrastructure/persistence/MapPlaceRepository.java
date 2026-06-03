@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.domain.repository;
+package com.typenull.pingdom.place.infrastructure.persistence;
 
 import com.typenull.pingdom.place.domain.MapPlace;
 import java.util.Optional;

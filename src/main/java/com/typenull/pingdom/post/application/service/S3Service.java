@@ -9,7 +9,7 @@ import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.MapImageResponse;
 import com.typenull.pingdom.post.domain.repository.MapImageRepository;
-import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
