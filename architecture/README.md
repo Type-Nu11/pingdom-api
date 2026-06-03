@@ -218,7 +218,7 @@ Pingdom Backend는 이벤트 기반 모듈러 모놀리스를 기본 구조로 �
 
 ## 10. 패키지 구조 예시
 
-다음은 목표 패키지 구조 예시다.
+다음은 현재 구조 기준 패키지 구조 예시다.
 
 ```text
 src/main/java/com/typenull/pingdom
@@ -230,58 +230,69 @@ src/main/java/com/typenull/pingdom
 ├─ identity
 │  ├─ api
 │  │  ├─ AuthController.java
-│  │  └─ UserController.java
+│  │  ├─ OAuthController.java
+│  │  └─ UsersController.java
 │  ├─ application
 │  │  ├─ command
-│  │  │  ├─ SignupCommand.java
-│  │  │  └─ RefreshTokenCommand.java
+│  │  │  ├─ ChangeInfoService.java
+│  │  │  └─ OAuthUserService.java
+│  │  ├─ query
+│  │  │  └─ MyPageService.java
 │  │  ├─ service
-│  │  │  └─ AuthCommandService.java
-│  │  └─ query
-│  │     └─ MyAccountQueryService.java
+│  │  │  ├─ AuthService.java
+│  │  │  └─ AuthServiceImpl.java
+│  │  └─ port
+│  │     └─ EmailSender.java
 │  ├─ domain
 │  │  ├─ User.java
 │  │  ├─ OAuthAccount.java
-│  │  └─ UserRepository.java
+│  │  ├─ exception
+│  │  └─ repository
 │  ├─ infrastructure
-│  │  ├─ jwt
-│  │  ├─ oauth
-│  │  ├─ persistence
-│  │  └─ email
+│  │  └─ oauth
 │  └─ event
-│     ├─ EmailVerificationRequested.java
-│     └─ UserSignedUp.java
+│     └─ EmailVerificationRequestedEvent.java
 ├─ place
 │  ├─ api
 │  ├─ application
+│  │  └─ service
 │  ├─ domain
 │  ├─ infrastructure
+│  │  ├─ persistence
+│  │  └─ support
 │  └─ event
 ├─ post
 │  ├─ api
 │  ├─ application
 │  ├─ domain
 │  ├─ infrastructure
+│  │  ├─ persistence
+│  │  └─ storage
 │  └─ event
 ├─ engagement
 │  ├─ api
 │  ├─ application
+│  │  └─ service
 │  ├─ domain
 │  ├─ infrastructure
+│  │  └─ persistence
 │  └─ event
 ├─ moderation
 │  ├─ api
 │  ├─ application
-│  │  ├─ command
 │  │  ├─ query
 │  │  └─ service
 │  ├─ domain
+│  │  └─ exception
 │  ├─ infrastructure
 │  └─ event
 └─ notification
+   ├─ api
    ├─ application
+   │  └─ service
    ├─ domain
    ├─ infrastructure
+   │  └─ email
    └─ event
 ```
 
