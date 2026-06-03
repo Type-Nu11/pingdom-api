@@ -1,12 +1,12 @@
-package com.typenull.pingdom.domain.map.service;
+package com.typenull.pingdom.place.application.service;
 
-import com.typenull.pingdom.domain.map.domain.MapPlace;
-import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
-import com.typenull.pingdom.domain.map.dto.PlaceCreateResponse;
-import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateResponse;
+import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.api.dto.PlaceCreateRequest;
+import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
+import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
-import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
+import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;

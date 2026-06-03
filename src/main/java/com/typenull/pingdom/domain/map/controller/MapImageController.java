@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.controller;
+package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.domain.map.dto.*;
 import com.typenull.pingdom.domain.map.service.MapImageLikeService;

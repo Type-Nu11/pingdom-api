@@ -1,13 +1,13 @@
-package com.typenull.pingdom.domain.map.service;
+package com.typenull.pingdom.place.application.service;
 
-import com.typenull.pingdom.domain.map.constant.MapMessages;
-import com.typenull.pingdom.domain.map.domain.MapBookmark;
-import com.typenull.pingdom.domain.map.dto.BookmarkCreateRequest;
-import com.typenull.pingdom.domain.map.dto.BookmarkCreateResponse;
+import com.typenull.pingdom.place.support.MapMessages;
+import com.typenull.pingdom.place.domain.MapBookmark;
+import com.typenull.pingdom.place.api.dto.BookmarkCreateRequest;
+import com.typenull.pingdom.place.api.dto.BookmarkCreateResponse;
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
-import com.typenull.pingdom.domain.map.repository.MapBookmarkRepository;
-import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
+import com.typenull.pingdom.place.domain.repository.MapBookmarkRepository;
+import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

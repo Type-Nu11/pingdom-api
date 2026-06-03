@@ -2,7 +2,7 @@ package com.typenull.pingdom.domain.admin.service;
 
 import com.typenull.pingdom.domain.map.exception.MapErrorCode;
 import com.typenull.pingdom.domain.map.exception.MapException;
-import com.typenull.pingdom.domain.map.repository.MapPlaceRepository;
+import com.typenull.pingdom.place.domain.repository.MapPlaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.constant;
+package com.typenull.pingdom.place.support;
 
 public final class MapMessages {
 

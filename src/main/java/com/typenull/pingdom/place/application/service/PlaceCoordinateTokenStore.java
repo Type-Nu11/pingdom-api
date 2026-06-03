@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.service;
+package com.typenull.pingdom.place.application.service;
 
 import java.time.Clock;
 import java.time.Duration;

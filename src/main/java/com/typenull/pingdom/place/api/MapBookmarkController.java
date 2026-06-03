@@ -1,8 +1,8 @@
-package com.typenull.pingdom.domain.map.controller;
+package com.typenull.pingdom.place.api;
 
-import com.typenull.pingdom.domain.map.dto.BookmarkCreateRequest;
-import com.typenull.pingdom.domain.map.dto.BookmarkCreateResponse;
-import com.typenull.pingdom.domain.map.service.MapBookmarkService;
+import com.typenull.pingdom.place.api.dto.BookmarkCreateRequest;
+import com.typenull.pingdom.place.api.dto.BookmarkCreateResponse;
+import com.typenull.pingdom.place.application.service.MapBookmarkService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

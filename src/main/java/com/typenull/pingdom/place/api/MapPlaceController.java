@@ -1,11 +1,11 @@
-package com.typenull.pingdom.domain.map.controller;
+package com.typenull.pingdom.place.api;
 
-import com.typenull.pingdom.domain.map.dto.PlaceCreateRequest;
-import com.typenull.pingdom.domain.map.dto.PlaceCreateResponse;
-import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateRequest;
-import com.typenull.pingdom.domain.map.dto.PlaceCoordinateCreateResponse;
-import com.typenull.pingdom.domain.map.dto.PlaceUploadRequest;
-import com.typenull.pingdom.domain.map.service.MapPlaceService;
+import com.typenull.pingdom.place.api.dto.PlaceCreateRequest;
+import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
+import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateRequest;
+import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateResponse;
+import com.typenull.pingdom.place.api.dto.PlaceUploadRequest;
+import com.typenull.pingdom.place.application.service.MapPlaceService;
 import com.typenull.pingdom.global.config.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

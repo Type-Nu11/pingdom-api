@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.domain;
+package com.typenull.pingdom.place.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
