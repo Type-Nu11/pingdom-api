@@ -5,15 +5,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.domain.UserRole;
-import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.map.domain.MapImage;
-import com.typenull.pingdom.domain.map.domain.PostReport;
-import com.typenull.pingdom.domain.map.domain.PostReportStatus;
-import com.typenull.pingdom.domain.map.repository.MapImageRepository;
-import com.typenull.pingdom.domain.map.repository.PostReportRepository;
+import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

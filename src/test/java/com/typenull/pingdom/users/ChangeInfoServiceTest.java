@@ -1,10 +1,10 @@
 package com.typenull.pingdom.users;
 
-import com.typenull.pingdom.domain.auth.domain.User;
-import com.typenull.pingdom.domain.auth.exception.AuthException;
-import com.typenull.pingdom.domain.auth.repository.UserRepository;
-import com.typenull.pingdom.domain.users.dto.ChangePasswordRequest;
-import com.typenull.pingdom.domain.users.service.ChangeInfoService;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
+import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
