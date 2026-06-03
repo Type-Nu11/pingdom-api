@@ -1,4 +1,4 @@
-package com.typenull.pingdom.identity.application.service;
+package com.typenull.pingdom.identity.application.command;
 
 import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.OAuthAccount;

@@ -1,6 +1,6 @@
 package com.typenull.pingdom.identity.infrastructure.oauth;
 
-import com.typenull.pingdom.identity.application.service.OAuthUserService;
+import com.typenull.pingdom.identity.application.command.OAuthUserService;
 import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.User;
 import java.util.List;

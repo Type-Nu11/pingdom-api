@@ -4,7 +4,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
-import com.typenull.pingdom.identity.application.service.ChangeInfoService;
+import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
