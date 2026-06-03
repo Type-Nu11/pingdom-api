@@ -6,8 +6,6 @@ import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
 import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import com.typenull.pingdom.identity.application.query.MyPageService;
-import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
-import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -94,11 +92,7 @@ public class UsersController {
     public ResponseEntity<MyPageResponse> getMyPageInfo(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
-                user,
-                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
-        );
-        MyPageQueryResult result = myPageService.getMyPageInfo(authenticatedUser.userId());
+        MyPageQueryResult result = myPageService.getMyPageInfo(user.userId());
         return ResponseEntity.ok(MyPageResponse.from(result));
     }
 
@@ -190,11 +184,7 @@ public class UsersController {
             @Valid @RequestBody ChangePasswordRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
-                user,
-                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
-        );
-        changeInfoService.changePassword(request, authenticatedUser.userId());
+        changeInfoService.changePassword(request, user.userId());
         return ResponseEntity.ok("비밀번호 변경 완료");
     }
 
@@ -276,11 +266,7 @@ public class UsersController {
             @Valid @RequestBody ChangeUsernameRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
-                user,
-                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
-        );
-        changeInfoService.changeUsername(request, authenticatedUser.userId());
+        changeInfoService.changeUsername(request, user.userId());
         return ResponseEntity.ok("아이디 변경 완료");
     }
 }

@@ -6,8 +6,6 @@ import com.typenull.pingdom.engagement.api.dto.PostReportRequest;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeResult;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
-import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
-import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -116,11 +114,7 @@ public class EngagementController {
             @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
-                user,
-                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
-        );
-        postReportService.report(imageId, authenticatedUser.userId(), authenticatedUser.username(), request.reason());
+        postReportService.report(imageId, user.userId(), user.username(), request.reason());
         return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
 
@@ -129,11 +123,7 @@ public class EngagementController {
             @Valid @RequestBody MapImageLikeRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
-                user,
-                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
-        );
-        MapImageLikeResult result = mapImageLikeService.like(request.mapImageId(), authenticatedUser.userId());
+        MapImageLikeResult result = mapImageLikeService.like(request.mapImageId(), user.userId());
         return ResponseEntity.ok(toResponse(result));
     }
 
@@ -142,11 +132,7 @@ public class EngagementController {
             @PathVariable("imageId") Long imageId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        JwtAuthenticatedUser authenticatedUser = JwtAuthenticatedUser.require(
-                user,
-                () -> new AuthException(AuthErrorCode.INVALID_TOKEN)
-        );
-        MapImageLikeResult result = mapImageLikeService.notLike(imageId, authenticatedUser.userId());
+        MapImageLikeResult result = mapImageLikeService.notLike(imageId, user.userId());
         return ResponseEntity.ok(toResponse(result));
     }
 
