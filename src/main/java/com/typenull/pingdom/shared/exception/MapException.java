@@ -1,4 +1,4 @@
-package com.typenull.pingdom.domain.map.exception;
+package com.typenull.pingdom.shared.exception;
 
 import lombok.Getter;
 import org.springframework.http.HttpStatus;
