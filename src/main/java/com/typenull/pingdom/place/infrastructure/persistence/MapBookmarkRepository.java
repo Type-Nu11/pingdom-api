@@ -6,4 +6,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> {
 
     boolean existsByUserIdAndPlaceId(Long userId, Long placeId);
+
+    void deleteByPlaceIdAndUserId(Long placeId, Long userId);
 }

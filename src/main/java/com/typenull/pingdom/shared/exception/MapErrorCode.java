@@ -16,6 +16,7 @@ public enum MapErrorCode {
     PLACE_ID_REQUIRED(HttpStatus.BAD_REQUEST, "장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다."),
     FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 즐겨찾기한 장소입니다."),
     BOOKMARK_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 북마크한 장소입니다."),
+    BOOKMARK_NOT_FOUND(HttpStatus.NOT_FOUND, "북마크 되어있지 않습니다."),
     OTHERS_PLACE_NOT_DELETED(HttpStatus.FORBIDDEN, "자신의 장소만 삭제할 수 있습니다."),
     DELETE_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"게시글을 삭제하는 데 실패했습니다. 잠시 후 다시 시도해 주세요."),
     S3_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR,"S3 설정이 누락되었습니다."),
