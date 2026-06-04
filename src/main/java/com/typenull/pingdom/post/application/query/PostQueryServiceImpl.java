@@ -20,16 +20,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PostQueryServiceImpl implements PostQueryService {
 
+    private static final int MIN_PAGE = 1;
+    private static final int MIN_LIMIT = 1;
+    private static final int MAX_LIMIT = 100;
+
     private final MapImageRepository mapImageRepository;
 
     @Override
     @Transactional(readOnly = true)
     public PostListResponse listPosts(int page, int limit) {
-        int safePage = Math.max(page, 1);
-        int safeLimit = Math.max(1, Math.min(limit, 100));
+        int safePage = Math.max(page, MIN_PAGE);
+        int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
 
         Page<MapImage> imagePage = mapImageRepository.findAllBy(
-                PageRequest.of(safePage - 1, safeLimit, latestFirstSort())
+                PageRequest.of(safePage - MIN_PAGE, safeLimit, latestFirstSort())
         );
 
         List<PostListItem> posts = imagePage.getContent()
@@ -71,7 +75,7 @@ public class PostQueryServiceImpl implements PostQueryService {
     }
 
     private Sort latestFirstSort() {
-        return Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        return Sort.by(Sort.Order.desc("id"));
     }
 
     private PostListItem toListItem(MapImage mapImage) {
