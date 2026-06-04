@@ -10,7 +10,10 @@ public final class PlaceLevelPolicy {
     private static final double GROWTH_FACTOR = 1.55d;
     private static final long[] LEVEL_THRESHOLDS = buildThresholds();
 
-    public PlaceGrowthSnapshot snapshot(long photoCount) {
+    private PlaceLevelPolicy() {
+    }
+
+    public static PlaceGrowthSnapshot snapshot(long photoCount) {
         long normalizedPhotoCount = Math.max(0L, photoCount);
         int thresholdIndex = findThresholdIndex(normalizedPhotoCount);
         int level = thresholdIndex + 1;

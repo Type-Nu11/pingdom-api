@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlaceGrowthService {
 
     private final MapPlaceRepository mapPlaceRepository;
-    private final PlaceLevelPolicy placeLevelPolicy = new PlaceLevelPolicy();
 
     @Transactional
     public PlaceGrowthSnapshot increasePhotoCount(Long placeId) {
@@ -49,6 +48,6 @@ public class PlaceGrowthService {
         if (mapPlace == null) {
             return null;
         }
-        return placeLevelPolicy.snapshot(mapPlace.currentPhotoCount());
+        return PlaceLevelPolicy.snapshot(mapPlace.currentPhotoCount());
     }
 }
