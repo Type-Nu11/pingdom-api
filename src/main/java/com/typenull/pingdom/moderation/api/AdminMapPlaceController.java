@@ -101,7 +101,7 @@ public class AdminMapPlaceController {
                                               "latitude": 35.1894,
                                               "longitude": 128.0789,
                                               "userId": 3,
-                                              "username": "placeOwner"
+                                              "username": "placeOwner",
                                               "sortParam": "LATEST",
                                               "postCount": 1,
                                               "posts": [

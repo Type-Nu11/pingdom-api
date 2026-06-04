@@ -65,12 +65,12 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
-        long totalPostCount = mapImageRepository.countByMapPlace_IdAndTitleContaining(placeId, keyword);
         Sort sort = toSort(safeSortParam);
         Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
 
-        List<AdminMapPlaceImageItem> posts = mapImageRepository.findByMapPlace_IdAndTitleContaining(placeId, keyword, latestPosts)
-                .stream()
+        Page<MapImage> postPage = mapImageRepository.findByMapPlace_IdAndTitleContaining(placeId, keyword, latestPosts);
+
+        List<AdminMapPlaceImageItem> posts = postPage.getContent().stream()
                 .map(this::toImageItem)
                 .toList();
 
@@ -83,7 +83,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getUserId(),
                 mapPlace.getRegistrant(),
                 safeSortParam,
-                Math.toIntExact(totalPostCount),
+                Math.toIntExact(postPage.getTotalElements()),
                 posts
         );
     }
