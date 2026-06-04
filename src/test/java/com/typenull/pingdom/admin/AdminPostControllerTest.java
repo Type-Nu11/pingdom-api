@@ -68,9 +68,9 @@ class AdminPostControllerTest {
     @BeforeEach
     void setUp() {
         // 💡 자식 테이블부터 안전하게 제거하는 순서로 배치 (또는 @Transactional에 의해 자동 롤백되므로 이중 안전장치)
-        postReportRepository.deleteAll();
-        mapImageRepository.deleteAll();
-        userRepository.deleteAll();
+        postReportRepository.deleteAllInBatch();
+        mapImageRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
     }
 
     @Test
