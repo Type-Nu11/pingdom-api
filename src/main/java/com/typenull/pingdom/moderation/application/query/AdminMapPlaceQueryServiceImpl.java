@@ -34,13 +34,13 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
     @Transactional(readOnly = true)
-    public AdminMapPlaceResponse listPlaces(int page, int limit, String keyword) {
+    public AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
 
         Page<MapPlace> placePage = mapPlaceRepository.findByNameContaining(
                 keyword,
-                PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "id"))
+                PageRequest.of(safePage - 1, safeLimit, toSort(sortParam == null ? SortParam.LATEST : sortParam))
         );
 
         List<AdminMapPlaceItem> places = placePage.getContent()
