@@ -33,8 +33,17 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     @EntityGraph(attributePaths = "mapPlace")
     Page<MapImage> findAllBy(Pageable pageable);
-           
-    long countByMapPlace_Id(Long placeId);
 
-    List<MapImage> findByMapPlace_Id(Long placeId, Pageable pageable);
+    @Query("SELECT COUNT(m) FROM MapImage m WHERE m.mapPlace.id = :placeId AND (:keyword = '' OR m.title LIKE %:keyword%)")
+    long countByMapPlace_IdAndTitleContaining(
+            @Param("placeId") Long placeId,
+            @Param("keyword") String keyword
+    );
+
+    @Query("SELECT m FROM MapImage m WHERE m.mapPlace.id = :placeId AND (:keyword = '' OR m.title LIKE %:keyword%)")
+    Page<MapImage> findByMapPlace_IdAndTitleContaining(
+            @Param("placeId") Long placeId,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 }
