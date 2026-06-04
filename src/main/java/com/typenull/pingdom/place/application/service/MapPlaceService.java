@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.application.service;
 
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.api.dto.PlaceCreateRequest;
 import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
@@ -23,12 +26,14 @@ import org.springframework.util.StringUtils;
 public class MapPlaceService {
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final UserRepository userRepository;
     private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
     @Transactional
     public PlaceCreateResponse createPlace(PlaceCreateRequest request, long userId) {
         Point location = toPoint(request.latitude(), request.longitude());
+        String username = userRepository.findById(userId).get().getUsername();
         MapPlace mapPlace = MapPlace.builder()
                 .name(request.name())
                 .address(request.address())
@@ -36,6 +41,7 @@ public class MapPlaceService {
                 .longitude(request.longitude())
                 .location(location)
                 .userId(userId)
+                .registrant(username)
                 .build();
 
         MapPlace saved = mapPlaceRepository.save(mapPlace);
@@ -64,6 +70,7 @@ public class MapPlaceService {
             String coordinateToken,
             long userId
     ) {
+        String username = userRepository.findById(userId).get().getUsername();
         String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
         if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
@@ -83,6 +90,7 @@ public class MapPlaceService {
                 .longitude(entry.longitude())
                 .location(location)
                 .userId(userId)
+                .registrant(username)
                 .build();
 
         MapPlace saved = mapPlaceRepository.save(mapPlace);
