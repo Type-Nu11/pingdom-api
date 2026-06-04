@@ -46,7 +46,7 @@ public class MapBookmarkService {
 
     @Transactional
     public BookmarkRemoveResponse removeBookmark(Long placeId, long userId) {
-        if(!mapBookmarkRepository.existsByUserIdAndPlaceId(placeId, userId)){
+        if(!mapBookmarkRepository.existsByUserIdAndPlaceId(userId, placeId)){
             throw new MapException(MapErrorCode.BOOKMARK_NOT_FOUND);
         }
 
