@@ -46,7 +46,6 @@ public class AdminPostController {
                           "posts": [
                             {
                               "id": 1,
-                              "thumbnailUrl": "https://example.com/thumb.jpg",
                               "imageUrl": "https://example.com/original.jpg",
                               "userId": 1,
                               "username": "pingdom_user",
@@ -97,7 +96,6 @@ public class AdminPostController {
                         {
                           "id": 1,
                           "name": "신고 대상 제목",
-                          "thumbnailUrl": "https://example.com/thumb.jpg",
                           "imageUrl": "https://example.com/original.jpg",
                           "userId": 1,
                           "username": "pingdom_user",
