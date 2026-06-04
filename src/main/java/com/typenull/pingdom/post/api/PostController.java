@@ -2,6 +2,7 @@ package com.typenull.pingdom.post.api;
 
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.MapImageResponse;
+import com.typenull.pingdom.post.api.dto.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.PostListResponse;
 import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.post.infrastructure.storage.S3Service;
@@ -97,6 +98,73 @@ public class PostController {
             @RequestParam(defaultValue = "20") int limit
     ) {
         return postQueryService.listPosts(page, limit);
+    }
+
+    @GetMapping("/posts/{id}")
+    @Operation(
+            summary = "게시글 상세 조회",
+            description = "앱에서 특정 게시글의 상세 정보와 연결된 장소 정보를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 상세 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = PostDetailResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "id": 10,
+                                              "title": "남강 야경",
+                                              "imageUrl": "https://example.com/images/post-10.jpg",
+                                              "description": "남강 산책 중 찍은 사진입니다.",
+                                              "userId": 3,
+                                              "username": "pingdom_user",
+                                              "createdAt": "2026-06-04T16:20:00",
+                                              "likeCount": 12,
+                                              "placeId": 5,
+                                              "placeName": "진주성",
+                                              "placeAddress": "경상남도 진주시 남강로 626",
+                                              "latitude": 35.1894,
+                                              "longitude": 128.0789
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "게시글을 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "게시글을 찾을 수 없습니다.",
+                                              "code": "IMAGE_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public PostDetailResponse getPost(
+            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId
+    ) {
+        return postQueryService.getPost(postId);
     }
 
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
