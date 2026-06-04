@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.application.service;
 
+import com.typenull.pingdom.place.api.dto.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateResponse;
@@ -41,5 +42,16 @@ public class MapBookmarkService {
 
         MapBookmark saved = mapBookmarkRepository.save(bookmark);
         return new BookmarkCreateResponse(saved.getId(), saved.getPlaceId(), MapMessages.BOOKMARK_CREATED);
+    }
+
+    @Transactional
+    public BookmarkRemoveResponse removeBookmark(Long placeId, long userId) {
+        if(!mapBookmarkRepository.existsByUserIdAndPlaceId(placeId, userId)){
+            throw new MapException(MapErrorCode.BOOKMARK_NOT_FOUND);
+        }
+
+        mapBookmarkRepository.deleteByPlaceIdAndUserId(placeId, userId);
+
+        return new BookmarkRemoveResponse(userId, placeId, MapMessages.BOOKMARK_REMOVED);
     }
 }
