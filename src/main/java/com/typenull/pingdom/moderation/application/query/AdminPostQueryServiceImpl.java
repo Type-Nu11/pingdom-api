@@ -6,6 +6,8 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepo
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostReportItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.List;
@@ -29,7 +31,6 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
     @Override
     @Transactional(readOnly = true)
     public AdminPostResponse listPosts(int limit, int page, SortParam sortParam) {
-        // 리미트 값을 1~100사이로 고정
         int safeLimit = Math.max(1, Math.min(limit, 100));
         int targetPage = Math.max(page - 1, 0);
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
@@ -55,9 +56,21 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 posts,
                 page,
                 safeLimit,
-                mapImagePage.getTotalElements(),     // totalCount
-                mapImagePage.getTotalPages()        // totalPages
+                mapImagePage.getTotalElements(),
+                mapImagePage.getTotalPages()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminPostItem getPost(Long postId) {
+        MapImage mapImage = mapImageRepository.findById(postId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+
+        List<AdminPostReportItem> reports = getReportsByImageId(List.of(mapImage))
+                .getOrDefault(mapImage.getId(), List.of());
+
+        return toItem(mapImage, reports);
     }
 
     private Map<Long, List<AdminPostReportItem>> getReportsByImageId(List<MapImage> mapImages) {
@@ -78,8 +91,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         return new AdminPostItem(
                 mapImage.getId(),
                 mapImage.getTitle(),
-                mapImage.getImageUrl(), // thumbnailUrl
-                mapImage.getImageUrl(), // imageUrl
+                mapImage.getImageUrl(),
+                mapImage.getImageUrl(),
                 mapImage.getUserId(),
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),

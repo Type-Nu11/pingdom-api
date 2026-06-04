@@ -1,6 +1,7 @@
 package com.typenull.pingdom.admin;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -25,6 +26,7 @@ import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
 @SpringBootTest(properties = {
@@ -35,9 +37,11 @@ import software.amazon.awssdk.services.s3.S3Client;
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret",
         "fcm.enabled=false",
-        "fcm.key-path=dummy"
+        "fcm.key-path=dummy",
+        "spring.main.allow-bean-definition-overriding=true"
 })
 @AutoConfigureMockMvc
+@Transactional // 💡 각 테스트 후 롤백을 보장하여 삭제 순서에 의한 외래키 예외 방지 및 격리성 확보
 class AdminPostControllerTest {
 
     @MockBean
@@ -63,6 +67,7 @@ class AdminPostControllerTest {
 
     @BeforeEach
     void setUp() {
+        // 💡 자식 테이블부터 안전하게 제거하는 순서로 배치 (또는 @Transactional에 의해 자동 롤백되므로 이중 안전장치)
         postReportRepository.deleteAll();
         mapImageRepository.deleteAll();
         userRepository.deleteAll();
@@ -73,8 +78,13 @@ class AdminPostControllerTest {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("postOwner01");
         MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-1.jpg");
-        PostReport olderReport = createPostReport(11L, "reporter01", mapImage, "첫 번째 신고");
-        PostReport newerReport = createPostReport(12L, "reporter02", mapImage, "두 번째 신고");
+
+        // 💡 가짜 ID 대신 실제 유저를 저장 후 영속화된 ID 사용
+        User reporter1 = createUser("reporter01");
+        User reporter2 = createUser("reporter02");
+
+        PostReport olderReport = createPostReport(reporter1.getId(), reporter1.getUsername(), mapImage, "첫 번째 신고");
+        PostReport newerReport = createPostReport(reporter2.getId(), reporter2.getUsername(), mapImage, "두 번째 신고");
 
         mockMvc.perform(get("/admin/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
@@ -84,7 +94,7 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
                 .andExpect(jsonPath("$.posts[0].reports.length()").value(2))
                 .andExpect(jsonPath("$.posts[0].reports[0].reportId").value(newerReport.getId()))
-                .andExpect(jsonPath("$.posts[0].reports[0].reporterUserId").value(12L))
+                .andExpect(jsonPath("$.posts[0].reports[0].reporterUserId").value(reporter2.getId()))
                 .andExpect(jsonPath("$.posts[0].reports[0].reporterUsername").value("reporter02"))
                 .andExpect(jsonPath("$.posts[0].reports[0].reason").value("두 번째 신고"))
                 .andExpect(jsonPath("$.posts[0].reports[0].status").value(PostReportStatus.PENDING.name()))
@@ -105,6 +115,43 @@ class AdminPostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
                 .andExpect(jsonPath("$.posts[0].reports.length()").value(0));
+    }
+
+    @Test
+    void getPostReturnsDetailWithReports() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("postOwner03");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-3.jpg");
+
+        User reporter = createUser("reporter03");
+        PostReport report = createPostReport(reporter.getId(), reporter.getUsername(), mapImage, "상세 신고");
+
+        // 💡 Controller 스펙(GET)에 맞춰 post() 메서드를 get()으로 수정
+        mockMvc.perform(get("/admin/posts/{id}", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.name").value("신고 대상 제목"))
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/image-3.jpg"))
+                .andExpect(jsonPath("$.userId").value(owner.getId()))
+                .andExpect(jsonPath("$.username").value(owner.getUsername()))
+                .andExpect(jsonPath("$.reports.length()").value(1))
+                .andExpect(jsonPath("$.reports[0].reportId").value(report.getId()))
+                .andExpect(jsonPath("$.reports[0].reporterUserId").value(reporter.getId()))
+                .andExpect(jsonPath("$.reports[0].reporterUsername").value("reporter03"))
+                .andExpect(jsonPath("$.reports[0].reason").value("상세 신고"))
+                .andExpect(jsonPath("$.reports[0].status").value(PostReportStatus.PENDING.name()));
+    }
+
+    @Test
+    void getPostReturnsNotFoundWhenPostDoesNotExist() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        // 💡 Controller 스펙(GET)에 맞춰 post() 메서드를 get()으로 수정
+        mockMvc.perform(get("/admin/posts/{id}", 999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
     }
 
     private User createUser(String username) {
@@ -131,7 +178,7 @@ class AdminPostControllerTest {
                 .build());
 
         LoginRequest loginRequest = new LoginRequest("adminTester", "password123");
-        MvcResult loginResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())

@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.moderation.domain.SortParam;
+import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;
@@ -80,6 +81,63 @@ public class AdminPostController {
             @RequestParam(defaultValue = "LATEST") SortParam sortParam
     ) {
         return adminPostQueryService.listPosts(limit, page, sortParam);
+    }
+
+    @GetMapping("/posts/{id}") // 💡 POST -> GET 으로 변경
+    @Operation(
+            summary = "관리자 게시글 상세 조회",
+            description = "관리자가 게시글 상세 정보와 연결된 신고 목록을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 상세 조회 성공",
+                    content = @Content(schema = @Schema(implementation = AdminPostItem.class),
+                            examples = @ExampleObject(value = """
+                        {
+                          "id": 1,
+                          "name": "신고 대상 제목",
+                          "thumbnailUrl": "https://example.com/thumb.jpg",
+                          "imageUrl": "https://example.com/original.jpg",
+                          "userId": 1,
+                          "username": "pingdom_user",
+                          "createdAt": "2026-05-21T11:37:53.336Z",
+                          "description": "신고 대상 설명",
+                          "likeCount": 10,
+                          "placeName": "대구소프트웨어마이스터고등학교",
+                          "reports": [
+                            {
+                              "reportId": 10,
+                              "reporterUserId": 3,
+                              "reporterUsername": "reporter01",
+                              "reason": "부적절한 게시글입니다.",
+                              "status": "PENDING",
+                              "processedAt": null
+                            }
+                          ]
+                        }
+                        """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "게시글을 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "게시글을 찾을 수 없습니다.",
+                                              "code": "POST_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public AdminPostItem getPost(
+            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long id
+    ) {
+        return adminPostQueryService.getPost(id);
     }
 
     @DeleteMapping("/posts/{id}/delete")
