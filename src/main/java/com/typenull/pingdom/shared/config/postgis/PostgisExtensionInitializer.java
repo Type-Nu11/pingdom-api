@@ -34,23 +34,43 @@ public class PostgisExtensionInitializer {
                         $$;
                         """);
                 log.info("map_place.location ensured (geometry(Point,4326)).");
+            } catch (Exception e) {
+                log.warn("Failed to ensure PostGIS extension. If 'geometry' type errors occur, run `CREATE EXTENSION postgis;` with sufficient DB privileges.", e);
+            }
 
+            try {
                 jdbcTemplate.execute("""
-                        ALTER TABLE map_place
-                        ADD COLUMN IF NOT EXISTS registrant varchar(255);
-                        """);
-                jdbcTemplate.update("""
-                        UPDATE map_place
-                        SET registrant = 'unknown'
-                        WHERE registrant IS NULL
-                        """);
-                jdbcTemplate.execute("""
-                        ALTER TABLE map_place
-                        ALTER COLUMN registrant SET NOT NULL
+                        DO $$
+                        BEGIN
+                          IF NOT EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_name = 'map_place'
+                              AND column_name = 'registrant'
+                          ) THEN
+                            ALTER TABLE map_place
+                              ADD COLUMN registrant varchar(255) DEFAULT 'unknown' NOT NULL;
+                          ELSIF EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_name = 'map_place'
+                              AND column_name = 'registrant'
+                              AND is_nullable = 'YES'
+                          ) THEN
+                            UPDATE map_place
+                            SET registrant = 'unknown'
+                            WHERE registrant IS NULL;
+
+                            ALTER TABLE map_place
+                              ALTER COLUMN registrant SET NOT NULL;
+                          END IF;
+                        END
+                        $$;
                         """);
                 log.info("map_place.registrant ensured and backfilled.");
             } catch (Exception e) {
-                log.warn("Failed to ensure PostGIS extension. If 'geometry' type errors occur, run `CREATE EXTENSION postgis;` with sufficient DB privileges.", e);
+                log.error("Failed to migrate map_place.registrant column. Application may fail to function correctly.", e);
+                throw e;
             }
         };
     }
