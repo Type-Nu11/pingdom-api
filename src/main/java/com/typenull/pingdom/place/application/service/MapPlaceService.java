@@ -4,7 +4,6 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.api.dto.PlaceCreateRequest;
 import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
 import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
@@ -29,32 +28,6 @@ public class MapPlaceService {
     private final UserRepository userRepository;
     private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
-
-    @Transactional
-    public PlaceCreateResponse createPlace(PlaceCreateRequest request, long userId) {
-        Point location = toPoint(request.latitude(), request.longitude());
-        String username = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
-                .getUsername();
-        MapPlace mapPlace = MapPlace.builder()
-                .name(request.name())
-                .address(request.address())
-                .latitude(request.latitude())
-                .longitude(request.longitude())
-                .location(location)
-                .userId(userId)
-                .registrant(username)
-                .build();
-
-        MapPlace saved = mapPlaceRepository.save(mapPlace);
-        return new PlaceCreateResponse(
-                saved.getId(),
-                saved.getName(),
-                saved.getAddress(),
-                saved.getLatitude(),
-                saved.getLongitude()
-        );
-    }
 
     public PlaceCoordinateCreateResponse createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
         // TODO: ±a 오차 적용 로직은 별도 이슈에서 구현 예정 (현재는 기준 좌표를 그대로 사용)
