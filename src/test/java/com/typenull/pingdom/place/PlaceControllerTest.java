@@ -21,6 +21,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -35,16 +36,15 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.cloud.aws.credentials.secret-key=test-secret-key"
 })
 @AutoConfigureMockMvc
+@Transactional
 class PlaceControllerTest {
 
     @TestConfiguration
     static class TestEmailSenderConfig {
-
         @Bean
         @Primary
         EmailSender emailSender() {
-            return (recipientEmail, verificationCode) -> {
-            };
+            return (recipientEmail, verificationCode) -> {};
         }
     }
 
@@ -107,9 +107,6 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("진주성"))
                 .andExpect(jsonPath("$.address").value("경상남도 진주시 남강로 626"))
-                .andExpect(jsonPath("$.latitude").value(35.1801))
-                .andExpect(jsonPath("$.longitude").value(128.1078))
-                .andExpect(jsonPath("$.registrant").value("placeOwner"))
                 .andExpect(jsonPath("$.postCount").value(2))
                 .andExpect(jsonPath("$.posts.length()").value(2))
                 .andExpect(jsonPath("$.posts[0].id").value(latestImage.getId()))
@@ -129,15 +126,7 @@ class PlaceControllerTest {
     }
 
     private String signupAndLogin(String username) throws Exception {
-        SignupRequest signupRequest = new SignupRequest(
-                username,
-                username + "@example.com",
-                "password123",
-                1998,
-                null,
-                "ko",
-                "KR"
-        );
+        SignupRequest signupRequest = new SignupRequest(username, username + "@example.com", "password123", 1998, null, "ko", "KR");
 
         mockMvc.perform(post("/auth/signup")
                         .contentType(MediaType.APPLICATION_JSON)

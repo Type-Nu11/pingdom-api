@@ -33,11 +33,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     public PlaceListResponse listPlaces(int page, int limit, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
+        Pageable pageable = PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "id"));
 
-        Page<MapPlace> placePage = mapPlaceRepository.findByNameContaining(
-                keyword,
-                PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "id"))
-        );
+        Page<MapPlace> placePage;
+        if (keyword == null || keyword.isBlank()) {
+            placePage = mapPlaceRepository.findAll(pageable);
+        } else {
+            placePage = mapPlaceRepository.findByNameContaining(keyword, pageable);
+        }
 
         List<PlaceListItem> places = placePage.getContent()
                 .stream()
@@ -66,7 +69,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         List<PlaceImageItem> posts = postPage.stream()
                 .map(this::toImageItem)
                 .toList();
-        long postCount = mapImageRepository.countByMapPlace_Id(placeId);
+
+        int postCount;
+        if (postPage.size() < PLACE_DETAIL_POST_LIMIT) {
+            postCount = postPage.size();
+        } else {
+            long totalCount = mapImageRepository.countByMapPlace_Id(placeId);
+            postCount = totalCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) totalCount;
+        }
 
         return new PlaceDetailResponse(
                 mapPlace.getId(),
@@ -75,7 +85,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant(),
-                postCount > Integer.MAX_VALUE ? Integer.MAX_VALUE : (int) postCount,
+                postCount,
                 posts
         );
     }
