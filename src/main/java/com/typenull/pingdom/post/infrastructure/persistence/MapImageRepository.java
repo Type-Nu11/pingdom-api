@@ -1,6 +1,7 @@
 package com.typenull.pingdom.post.infrastructure.persistence;
 
 import com.typenull.pingdom.post.domain.MapImage;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -33,6 +34,13 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     @EntityGraph(attributePaths = "mapPlace")
     Page<MapImage> findAllBy(Pageable pageable);
+
+    @EntityGraph(attributePaths = "mapPlace")
+    Optional<MapImage> findWithMapPlaceById(Long id);
+
+    long countByMapPlace_Id(Long placeId);
+
+    List<MapImage> findByMapPlace_Id(Long placeId, Pageable pageable);
 
     @Query("SELECT COUNT(m) FROM MapImage m WHERE m.mapPlace.id = :placeId AND (:keyword IS NULL OR :keyword = '' OR m.title LIKE %:keyword%)")
     long countByMapPlace_IdAndTitleContaining(
