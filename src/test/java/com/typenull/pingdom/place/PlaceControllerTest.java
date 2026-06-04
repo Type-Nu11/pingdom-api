@@ -7,8 +7,6 @@ import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
-import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -60,15 +58,11 @@ class PlaceControllerTest {
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
 
-    @Autowired
-    private MapImageRepository mapImageRepository;
-
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
     @BeforeEach
     void setUp() {
-        mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -95,11 +89,9 @@ class PlaceControllerTest {
     }
 
     @Test
-    void getPlaceReturnsDetailWithRecentPosts() throws Exception {
+    void getPlaceReturnsPlaceDetailOnly() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
-        createMapImage(22L, "writer-old", "이전 게시글", mapPlace, 3L);
-        MapImage latestImage = createMapImage(21L, "writer-detail", "상세 게시글", mapPlace, 12L);
 
         mockMvc.perform(get("/place/{id}", mapPlace.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -107,12 +99,7 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("진주성"))
                 .andExpect(jsonPath("$.address").value("경상남도 진주시 남강로 626"))
-                .andExpect(jsonPath("$.postCount").value(2))
-                .andExpect(jsonPath("$.posts.length()").value(2))
-                .andExpect(jsonPath("$.posts[0].id").value(latestImage.getId()))
-                .andExpect(jsonPath("$.posts[0].title").value("상세 게시글"))
-                .andExpect(jsonPath("$.posts[0].likeCount").value(12))
-                .andExpect(jsonPath("$.posts[1].title").value("이전 게시글"));
+                .andExpect(jsonPath("$.registrant").value("placeOwner"));
     }
 
     @Test
@@ -156,16 +143,4 @@ class PlaceControllerTest {
                 .build());
     }
 
-    private MapImage createMapImage(Long userId, String username, String title, MapPlace mapPlace, Long likeCount) {
-        return mapImageRepository.save(MapImage.builder()
-                .imageUrl("https://example.com/" + title + ".jpg")
-                .s3Key("test-key-" + title)
-                .title(title)
-                .description(title + " 설명")
-                .userId(userId)
-                .username(username)
-                .likeCount(likeCount)
-                .mapPlace(mapPlace)
-                .build());
-    }
 }
