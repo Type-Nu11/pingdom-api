@@ -92,7 +92,6 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 mapImage.getId(),
                 mapImage.getTitle(),
                 mapImage.getImageUrl(),
-                mapImage.getImageUrl(),
                 mapImage.getUserId(),
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),

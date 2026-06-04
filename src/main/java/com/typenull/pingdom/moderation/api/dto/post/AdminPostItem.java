@@ -6,7 +6,6 @@ import java.util.List;
 public record AdminPostItem(
         Long id,
         String name,
-        String thumbnailUrl,
         String imageUrl,
         Long userId,
         String username,
