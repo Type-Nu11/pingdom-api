@@ -35,11 +35,22 @@ public class JwtTokenProvider {
 
     // Refresh Token 유효성 검사 메서드
     public boolean validateRefreshToken(String refreshToken) {
+        return parseRefreshToken(refreshToken).status() == TokenStatus.VALID;
+    }
+
+    public RefreshTokenParseResult parseRefreshToken(String refreshToken) {
         try {
             Claims claims = parseClaims(refreshToken);
-            return "refresh".equals(claims.get("type", String.class));
+            if (!"refresh".equals(claims.get("type", String.class))) {
+                return new RefreshTokenParseResult(TokenStatus.INVALID, null);
+            }
+
+            Long userId = Long.valueOf(claims.getSubject());
+            return new RefreshTokenParseResult(TokenStatus.VALID, userId);
+        } catch (ExpiredJwtException exception) {
+            return new RefreshTokenParseResult(TokenStatus.EXPIRED, null);
         } catch (JwtException | IllegalArgumentException exception) {
-            return false;
+            return new RefreshTokenParseResult(TokenStatus.INVALID, null);
         }
     }
 
@@ -80,13 +91,12 @@ public class JwtTokenProvider {
 
     // Refresh Token 사용자 ID 추출 메서드
     public Long getUserIdFromRefreshToken(String refreshToken) {
-        Claims claims = parseClaims(refreshToken);
-
-        if (!"refresh".equals(claims.get("type", String.class))) {
-            throw new IllegalArgumentException("리프레시 토큰 타입이 아닙니다.");
+        RefreshTokenParseResult parsed = parseRefreshToken(refreshToken);
+        if (parsed.status() != TokenStatus.VALID || parsed.userId() == null) {
+            throw new IllegalArgumentException("유효한 리프레시 토큰이 아닙니다.");
         }
 
-        return Long.valueOf(claims.getSubject());
+        return parsed.userId();
     }
 
     // Access Token 사용자 ID 추출 메서드
@@ -162,5 +172,8 @@ public class JwtTokenProvider {
     }
 
     public record AccessTokenParseResult(TokenStatus status, AccessTokenPayload payload) {
+    }
+
+    public record RefreshTokenParseResult(TokenStatus status, Long userId) {
     }
 }

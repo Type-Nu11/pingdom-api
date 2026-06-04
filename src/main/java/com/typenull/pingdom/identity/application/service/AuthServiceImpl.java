@@ -127,11 +127,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
-        if (!jwtTokenProvider.validateRefreshToken(request.refreshToken())) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-
-        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
+        Long userId = extractValidRefreshTokenUserId(request.refreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
@@ -153,16 +149,12 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // Refresh Token 무효화 기반 로그아웃 메서드
     public void logout(RefreshTokenRequest request) {
-        if (!jwtTokenProvider.validateRefreshToken(request.refreshToken())) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-
-        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
+        Long userId = extractValidRefreshTokenUserId(request.refreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (!user.matchesRefreshToken(request.refreshToken())) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+            return;
         }
 
         // 현재 활성 Refresh Token 제거로 재발급 경로 차단
@@ -183,6 +175,14 @@ public class AuthServiceImpl implements AuthService {
 
         // 사용자 데이터 완전 삭제 호출
         userRepository.delete(user);
+    }
+
+    private Long extractValidRefreshTokenUserId(String refreshToken) {
+        JwtTokenProvider.RefreshTokenParseResult parsed = jwtTokenProvider.parseRefreshToken(refreshToken);
+        if (parsed.status() != JwtTokenProvider.TokenStatus.VALID || parsed.userId() == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return parsed.userId();
     }
 
     private User authenticateUser(LoginRequest request) {

@@ -158,7 +158,7 @@ class AuthControllerTest {
     }
 
     @Test
-    void logoutClearsRefreshTokenAndBlocksReissue() throws Exception {
+    void logoutIsIdempotentAndBlocksReissue() throws Exception {
         SignupRequest signupRequest = new SignupRequest("logoutuser", "logoutuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
                 .contentType(MediaType.APPLICATION_JSON)
@@ -177,6 +177,11 @@ class AuthControllerTest {
                 .textValue();
 
         RefreshTokenRequest logoutRequest = new RefreshTokenRequest(refreshToken);
+
+        mockMvc.perform(post("/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isNoContent());
 
         mockMvc.perform(post("/auth/logout")
                         .contentType(MediaType.APPLICATION_JSON)
