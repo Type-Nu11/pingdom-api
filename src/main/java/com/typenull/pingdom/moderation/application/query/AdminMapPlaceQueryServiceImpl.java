@@ -34,13 +34,13 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
     @Transactional(readOnly = true)
-    public AdminMapPlaceResponse listPlaces(int page, int limit, String keyword) {
+    public AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
 
         Page<MapPlace> placePage = mapPlaceRepository.findByNameContaining(
                 keyword,
-                PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "id"))
+                PageRequest.of(safePage - 1, safeLimit, toListSort(sortParam == null ? SortParam.LATEST : sortParam))
         );
 
         List<AdminMapPlaceItem> places = placePage.getContent()
@@ -94,6 +94,13 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
             case LATEST -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
             case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        };
+    }
+
+    private Sort toListSort(SortParam sortParam) {
+        return switch (sortParam) {
+            case OLDEST -> Sort.by(Sort.Order.asc("id"));
+            default -> Sort.by(Sort.Order.desc("id")); // MOST_LIKED나 LATEST는 기본적으로 id 역순 정렬로 대체하거나 적절히 처리
         };
     }
 
