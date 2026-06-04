@@ -30,7 +30,7 @@ public class MapPlaceController {
     private final MapPlaceService mapPlaceService;
 
     @PostMapping("/places/coordinates")
-    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 좌표를 발급합니다.")
+    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 카카오 장소 ID를 발급합니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -73,7 +73,12 @@ public class MapPlaceController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         PlaceCoordinateCreateResponse response =
-                mapPlaceService.createCoordinateToken(request.baseLatitude(), request.baseLongitude(), user.userId());
+                mapPlaceService.createCoordinateToken(
+                        request.baseLatitude(),
+                        request.baseLongitude(),
+                        request.kakaoPlaceId(),
+                        user.userId()
+                );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
