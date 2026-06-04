@@ -59,9 +59,9 @@ class MapPostUploadControllerTest {
 
     @BeforeEach
     void setUp() {
-        mapImageRepository.deleteAll();
-        mapPlaceRepository.deleteAll();
-        userRepository.deleteAll();
+        mapImageRepository.deleteAllInBatch();
+        mapPlaceRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
     }
 
     @Test
@@ -280,6 +280,7 @@ class MapPostUploadControllerTest {
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(1L)
+                .registrant("uploadTester")
                 .build());
     }
 
@@ -291,6 +292,7 @@ class MapPostUploadControllerTest {
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(1L)
+                .registrant("uploadTester")
                 .build());
     }
 }

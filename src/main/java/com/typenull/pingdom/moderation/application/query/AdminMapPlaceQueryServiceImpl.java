@@ -7,7 +7,6 @@ import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
-import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
@@ -32,13 +31,15 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final MapImageRepository mapImageRepository;
     private final UserRepository userRepository;
 
+    //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
     @Transactional(readOnly = true)
-    public AdminMapPlaceResponse listPlaces(int page, int limit) {
+    public AdminMapPlaceResponse listPlaces(int page, int limit, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
 
-        Page<MapPlace> placePage = mapPlaceRepository.findAll(
+        Page<MapPlace> placePage = mapPlaceRepository.findByNameContaining(
+                keyword,
                 PageRequest.of(safePage - 1, safeLimit, Sort.by(Sort.Direction.DESC, "id"))
         );
 
@@ -56,23 +57,20 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         );
     }
 
+    // 장소 상세 조회 기능 - 장소 정보를 불러오고 장소 내 사진들 키워드 검색 가능
     @Override
     @Transactional(readOnly = true)
-    public AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam) {
+    public AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
-        long totalPostCount = mapImageRepository.countByMapPlace_Id(placeId);
         Sort sort = toSort(safeSortParam);
         Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
-        String username = mapPlace.getUserId() == null ? null
-                : userRepository.findById(mapPlace.getUserId())
-                .map(user -> user.getUsername())
-                .orElse(null);
 
-        List<AdminMapPlaceImageItem> posts = mapImageRepository.findByMapPlace_Id(placeId, latestPosts)
-                .stream()
+        Page<MapImage> postPage = mapImageRepository.findByMapPlace_IdAndTitleContaining(placeId, keyword, latestPosts);
+
+        List<AdminMapPlaceImageItem> posts = postPage.getContent().stream()
                 .map(this::toImageItem)
                 .toList();
 
@@ -83,9 +81,9 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
-                username,
+                mapPlace.getRegistrant(),
                 safeSortParam,
-                Math.toIntExact(totalPostCount),
+                Math.toIntExact(postPage.getTotalElements()),
                 posts
         );
     }
@@ -105,7 +103,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getAddress(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
-                mapPlace.getUserId()
+                mapPlace.getUserId(),
+                mapPlace.getRegistrant()
         );
     }
 

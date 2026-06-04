@@ -6,7 +6,7 @@ import com.typenull.pingdom.moderation.domain.SortParam;
 
 public interface AdminMapPlaceQueryService {
 
-    AdminMapPlaceResponse listPlaces(int page, int limit);
+    AdminMapPlaceResponse listPlaces(int page, int limit, String keyword);
 
-    AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam);
+    AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword);
 }

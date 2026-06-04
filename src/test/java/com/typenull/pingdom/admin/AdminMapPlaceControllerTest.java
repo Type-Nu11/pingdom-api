@@ -49,9 +49,9 @@ class AdminMapPlaceControllerTest {
 
     @BeforeEach
     void setUp() {
-        mapImageRepository.deleteAll();
-        mapPlaceRepository.deleteAll();
-        userRepository.deleteAll();
+        mapImageRepository.deleteAllInBatch();
+        mapPlaceRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
     }
 
     @Test
@@ -63,6 +63,7 @@ class AdminMapPlaceControllerTest {
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(11L)
+                .registrant("placeRegistrar")
                 .build());
 
         mockMvc.perform(get("/admin/places")
@@ -97,6 +98,7 @@ class AdminMapPlaceControllerTest {
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(placeOwner.getId())
+                .registrant(placeOwner.getUsername())
                 .build());
 
         mapImageRepository.save(MapImage.builder()
@@ -142,6 +144,7 @@ class AdminMapPlaceControllerTest {
                 .latitude(35.1880)
                 .longitude(128.0815)
                 .userId(placeOwner.getId())
+                .registrant(placeOwner.getUsername())
                 .build());
 
         mapImageRepository.save(MapImage.builder()
