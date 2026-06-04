@@ -56,7 +56,15 @@ public class AdminMapPlaceController {
                                                   "address": "경상남도 진주시 남강로 626",
                                                   "latitude": 35.1894,
                                                   "longitude": 128.0789,
-                                                  "userId": 3
+                                                  "userId": 3,
+                                                  "registrant": "placeRegistrar",
+                                                  "placeGrowth": {
+                                                    "photoCount": 10,
+                                                    "level": 5,
+                                                    "currentLevelMinPhotoCount": 10,
+                                                    "nextLevelMinPhotoCount": 16,
+                                                    "progressPercent": 0
+                                                  }
                                                 }
                                               ],
                                               "page": 1,
@@ -104,6 +112,13 @@ public class AdminMapPlaceController {
                                               "username": "placeOwner",
                                               "sortParam": "LATEST",
                                               "postCount": 1,
+                                              "placeGrowth": {
+                                                "photoCount": 10,
+                                                "level": 5,
+                                                "currentLevelMinPhotoCount": 10,
+                                                "nextLevelMinPhotoCount": 16,
+                                                "progressPercent": 0
+                                              },
                                               "posts": [
                                                 {
                                                   "id": 10,

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.application.query;
 
+import com.typenull.pingdom.place.application.service.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.api.dto.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.PostListItem;
@@ -25,6 +26,7 @@ public class PostQueryServiceImpl implements PostQueryService {
     private static final int MAX_LIMIT = 100;
 
     private final MapImageRepository mapImageRepository;
+    private final PlaceGrowthService placeGrowthService;
 
     @Override
     @Transactional(readOnly = true)
@@ -70,7 +72,8 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapPlace != null ? mapPlace.getName() : null,
                 mapPlace != null ? mapPlace.getAddress() : null,
                 mapPlace != null ? mapPlace.getLatitude() : null,
-                mapPlace != null ? mapPlace.getLongitude() : null
+                mapPlace != null ? mapPlace.getLongitude() : null,
+                placeGrowthService.snapshot(mapPlace)
         );
     }
 

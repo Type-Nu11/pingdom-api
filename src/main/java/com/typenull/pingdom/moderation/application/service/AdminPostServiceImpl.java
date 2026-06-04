@@ -4,6 +4,8 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.moderation.application.AdminPostService;
+import com.typenull.pingdom.place.application.service.PlaceGrowthService;
+import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
@@ -25,11 +27,12 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
     private final S3ObjectStorage s3ObjectStorage;
+    private final PlaceGrowthService placeGrowthService;
 
     @Override
     @Transactional
     public void deletePost(Long postId) {
-        MapImage mapImage = mapImageRepository.findById(postId)
+        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
 
         // 게시글 삭제 전에 신고 연관을 먼저 끊어 FK 제약 위반을 방지한다.
@@ -40,6 +43,10 @@ public class AdminPostServiceImpl implements AdminPostService {
             deleteFromS3(keyToDelete);
         }
 
+        MapPlace mapPlace = mapImage.getMapPlace();
+        if (mapPlace != null) {
+            placeGrowthService.decreasePhotoCount(mapPlace.getId());
+        }
         mapImageRepository.delete(mapImage);
     }
 

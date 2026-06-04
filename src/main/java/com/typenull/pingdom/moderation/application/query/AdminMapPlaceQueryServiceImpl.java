@@ -7,7 +7,7 @@ import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
-import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.place.application.service.PlaceGrowthService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -29,7 +29,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageRepository mapImageRepository;
-    private final UserRepository userRepository;
+    private final PlaceGrowthService placeGrowthService;
 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
@@ -84,6 +84,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getRegistrant(),
                 safeSortParam,
                 Math.toIntExact(postPage.getTotalElements()),
+                placeGrowthService.snapshot(mapPlace),
                 posts
         );
     }
@@ -104,7 +105,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
-                mapPlace.getRegistrant()
+                mapPlace.getRegistrant(),
+                placeGrowthService.snapshot(mapPlace)
         );
     }
 

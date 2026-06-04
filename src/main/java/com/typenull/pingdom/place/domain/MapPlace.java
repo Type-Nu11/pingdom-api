@@ -5,6 +5,7 @@ import lombok.AllArgsConstructor;
 import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.ColumnDefault;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
@@ -52,4 +53,26 @@ public class MapPlace {
 
     @Column(name = "registrant", nullable = false)
     private String registrant;
+
+    // Store the aggregate once so place level reads do not trigger post count queries.
+    @Builder.Default
+    @ColumnDefault("0")
+    @Column(name = "photo_count", nullable = false)
+    private Long photoCount = 0L;
+
+    public long currentPhotoCount() {
+        return photoCount == null ? 0L : photoCount;
+    }
+
+    public long increasePhotoCount() {
+        long nextPhotoCount = currentPhotoCount() + 1;
+        this.photoCount = nextPhotoCount;
+        return nextPhotoCount;
+    }
+
+    public long decreasePhotoCount() {
+        long nextPhotoCount = Math.max(0L, currentPhotoCount() - 1);
+        this.photoCount = nextPhotoCount;
+        return nextPhotoCount;
+    }
 }
