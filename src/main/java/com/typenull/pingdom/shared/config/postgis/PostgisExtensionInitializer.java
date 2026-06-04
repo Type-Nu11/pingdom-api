@@ -37,6 +37,41 @@ public class PostgisExtensionInitializer {
             } catch (Exception e) {
                 log.warn("Failed to ensure PostGIS extension. If 'geometry' type errors occur, run `CREATE EXTENSION postgis;` with sufficient DB privileges.", e);
             }
+
+            try {
+                jdbcTemplate.execute("""
+                        DO $$
+                        BEGIN
+                          IF NOT EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_name = 'map_place'
+                              AND column_name = 'registrant'
+                          ) THEN
+                            ALTER TABLE map_place
+                              ADD COLUMN registrant varchar(255) DEFAULT 'unknown' NOT NULL;
+                          ELSIF EXISTS (
+                            SELECT 1
+                            FROM information_schema.columns
+                            WHERE table_name = 'map_place'
+                              AND column_name = 'registrant'
+                              AND is_nullable = 'YES'
+                          ) THEN
+                            UPDATE map_place
+                            SET registrant = 'unknown'
+                            WHERE registrant IS NULL;
+
+                            ALTER TABLE map_place
+                              ALTER COLUMN registrant SET NOT NULL;
+                          END IF;
+                        END
+                        $$;
+                        """);
+                log.info("map_place.registrant ensured and backfilled.");
+            } catch (Exception e) {
+                log.error("Failed to migrate map_place.registrant column. Application may fail to function correctly.", e);
+                throw e;
+            }
         };
     }
 }
