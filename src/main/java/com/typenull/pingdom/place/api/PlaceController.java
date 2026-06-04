@@ -3,7 +3,6 @@ package com.typenull.pingdom.place.api;
 import com.typenull.pingdom.place.api.dto.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.PlaceListResponse;
 import com.typenull.pingdom.place.application.service.PlaceQueryService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -14,7 +13,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -58,14 +56,13 @@ public class PlaceController {
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int limit,
             @Parameter(description = "장소명 검색어", example = "카페")
-            @RequestParam(required = false) String keyword,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @RequestParam(required = false) String keyword
     ) {
         return ResponseEntity.ok(placeQueryService.listPlaces(page, limit, keyword));
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "장소 상세 조회", description = "특정 장소의 상세 정보와 최근 게시글을 조회합니다.")
+    @Operation(summary = "장소 상세 조회", description = "특정 장소의 상세 정보를 조회합니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -103,8 +100,7 @@ public class PlaceController {
     })
     public ResponseEntity<PlaceDetailResponse> getPlace(
             @Parameter(description = "장소 ID", example = "1")
-            @PathVariable("id") Long placeId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @PathVariable("id") Long placeId
     ) {
         return ResponseEntity.ok(placeQueryService.getPlace(placeId));
     }
