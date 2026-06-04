@@ -83,12 +83,12 @@ public class AdminMapPlaceController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "게시글 정렬 기준. LATEST, OLDEST, MOST_LIKED", example = "LATEST")
+            @Parameter(description = "장소 정렬 기준. LATEST, OLDEST", example = "LATEST")
             @RequestParam(defaultValue = "LATEST") SortParam sortParam,
             @Parameter(description = "검색 키워드 설정", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.listPlaces(page, limit,sortParam, keyword);
+        return adminMapPlaceQueryService.listPlaces(page, limit, sortParam, keyword);
     }
 
     @GetMapping("/{id}")
