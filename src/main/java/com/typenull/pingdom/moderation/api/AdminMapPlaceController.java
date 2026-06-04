@@ -74,9 +74,11 @@ public class AdminMapPlaceController {
             @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(description = "검색 키워드 설정", example = "용인")
+            @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.listPlaces(page, limit);
+        return adminMapPlaceQueryService.listPlaces(page, limit, keyword);
     }
 
     @GetMapping("/{id}")
@@ -137,9 +139,11 @@ public class AdminMapPlaceController {
     public AdminMapPlaceDetailResponse getPlace(
             @Parameter(description = "조회할 장소 ID", example = "1") @PathVariable Long id,
             @Parameter(description = "게시글 정렬 기준", example = "LATEST")
-            @RequestParam(defaultValue = "LATEST") SortParam sortParam
+            @RequestParam(defaultValue = "LATEST") SortParam sortParam,
+            @Parameter(description = "게시글 검색", example = "용인")
+            @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.getPlace(id, sortParam);
+        return adminMapPlaceQueryService.getPlace(id, sortParam, keyword);
     }
 
     @DeleteMapping("/{id}/delete")

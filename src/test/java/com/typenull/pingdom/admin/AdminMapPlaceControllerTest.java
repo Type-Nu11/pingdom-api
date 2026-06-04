@@ -49,9 +49,9 @@ class AdminMapPlaceControllerTest {
 
     @BeforeEach
     void setUp() {
-        mapImageRepository.deleteAll();
-        mapPlaceRepository.deleteAll();
-        userRepository.deleteAll();
+        mapImageRepository.deleteAllInBatch();
+        mapPlaceRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
     }
 
     @Test

@@ -65,9 +65,9 @@ class AdminReportControllerTest {
 
     @BeforeEach
     void setUp() {
-        postReportRepository.deleteAll();
-        mapImageRepository.deleteAll();
-        userRepository.deleteAll();
+        postReportRepository.deleteAllInBatch();
+        mapImageRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
     }
 
     @Test
