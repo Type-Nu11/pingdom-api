@@ -83,7 +83,7 @@ public class AdminPostController {
         return adminPostQueryService.listPosts(limit, page, sortParam);
     }
 
-    @GetMapping("/posts/{id}") // 💡 POST -> GET 으로 변경
+    @GetMapping("/posts/{id}")
     @Operation(
             summary = "관리자 게시글 상세 조회",
             description = "관리자가 게시글 상세 정보와 연결된 신고 목록을 조회합니다."
