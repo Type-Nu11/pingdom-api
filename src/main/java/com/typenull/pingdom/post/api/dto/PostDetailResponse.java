@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.api.dto;
 
+import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
@@ -30,6 +31,8 @@ public record PostDetailResponse(
         @Schema(description = "장소 위도", example = "35.1894")
         Double latitude,
         @Schema(description = "장소 경도", example = "128.0789")
-        Double longitude
+        Double longitude,
+        @Schema(description = "연결된 장소 성장 상태")
+        PlaceGrowthSnapshot placeGrowth
 ) {
 }
