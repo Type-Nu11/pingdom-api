@@ -6,6 +6,7 @@ public record AdminMapPlaceItem(
         String address,
         Double latitude,
         Double longitude,
-        Long userId
+        Long userId,
+        String registrant
 ) {
 }

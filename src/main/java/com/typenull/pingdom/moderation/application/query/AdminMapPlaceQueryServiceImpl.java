@@ -68,10 +68,6 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         long totalPostCount = mapImageRepository.countByMapPlace_IdAndTitleContaining(placeId, keyword);
         Sort sort = toSort(safeSortParam);
         Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
-        String username = mapPlace.getUserId() == null ? null
-                : userRepository.findById(mapPlace.getUserId())
-                .map(user -> user.getUsername())
-                .orElse(null);
 
         List<AdminMapPlaceImageItem> posts = mapImageRepository.findByMapPlace_IdAndTitleContaining(placeId, keyword, latestPosts)
                 .stream()
@@ -85,7 +81,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
-                username,
+                mapPlace.getRegistrant(),
                 safeSortParam,
                 Math.toIntExact(totalPostCount),
                 posts
@@ -107,7 +103,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.getAddress(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
-                mapPlace.getUserId()
+                mapPlace.getUserId(),
+                mapPlace.getRegistrant()
         );
     }
 

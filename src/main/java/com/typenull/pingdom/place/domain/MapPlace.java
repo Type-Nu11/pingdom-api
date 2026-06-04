@@ -49,4 +49,7 @@ public class MapPlace {
 
     @Column(name = "user_id", nullable = false)
     private Long userId;
+
+    @Column(name = "registrant", nullable = false)
+    private String registrant;
 }
