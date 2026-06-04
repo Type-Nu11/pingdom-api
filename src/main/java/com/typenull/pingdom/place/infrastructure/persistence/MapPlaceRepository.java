@@ -11,6 +11,6 @@ import org.springframework.data.jpa.repository.Query;
 public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     Optional<MapPlace> findByKakaoPlaceId(String kakaoPlaceId);
     boolean existsByKakaoPlaceId(String kakaoPlaceId);
-    @Query("SELECT m FROM MapPlace m WHERE (:keyword = '' OR m.name LIKE %:keyword%)")
+    @Query("SELECT m FROM MapPlace m WHERE (:keyword IS NULL OR :keyword = '' OR m.name LIKE %:keyword%)")
     Page<MapPlace> findByNameContaining(@org.springframework.data.repository.query.Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 }
