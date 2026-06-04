@@ -55,7 +55,7 @@ class AuthControllerTest {
 
     @BeforeEach
     void setUp() {
-        userRepository.deleteAll();
+        userRepository.deleteAllInBatch();
     }
 
     @Test
