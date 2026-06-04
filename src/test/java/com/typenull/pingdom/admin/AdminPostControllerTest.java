@@ -41,7 +41,7 @@ import software.amazon.awssdk.services.s3.S3Client;
         "spring.main.allow-bean-definition-overriding=true"
 })
 @AutoConfigureMockMvc
-@Transactional // 💡 각 테스트 후 롤백을 보장하여 삭제 순서에 의한 외래키 예외 방지 및 격리성 확보
+@Transactional
 class AdminPostControllerTest {
 
     @MockBean
@@ -67,7 +67,6 @@ class AdminPostControllerTest {
 
     @BeforeEach
     void setUp() {
-        // 💡 자식 테이블부터 안전하게 제거하는 순서로 배치 (또는 @Transactional에 의해 자동 롤백되므로 이중 안전장치)
         postReportRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -79,7 +78,6 @@ class AdminPostControllerTest {
         User owner = createUser("postOwner01");
         MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-1.jpg");
 
-        // 💡 가짜 ID 대신 실제 유저를 저장 후 영속화된 ID 사용
         User reporter1 = createUser("reporter01");
         User reporter2 = createUser("reporter02");
 
@@ -126,7 +124,6 @@ class AdminPostControllerTest {
         User reporter = createUser("reporter03");
         PostReport report = createPostReport(reporter.getId(), reporter.getUsername(), mapImage, "상세 신고");
 
-        // 💡 Controller 스펙(GET)에 맞춰 post() 메서드를 get()으로 수정
         mockMvc.perform(get("/admin/posts/{id}", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isOk())
@@ -147,7 +144,6 @@ class AdminPostControllerTest {
     void getPostReturnsNotFoundWhenPostDoesNotExist() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
-        // 💡 Controller 스펙(GET)에 맞춰 post() 메서드를 get()으로 수정
         mockMvc.perform(get("/admin/posts/{id}", 999_999L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isNotFound())
