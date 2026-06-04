@@ -149,6 +149,26 @@ public class AuthServiceImpl implements AuthService {
         return new RefreshTokenResponse(accessToken, refreshToken);
     }
 
+    @Override
+    @Transactional
+    // Refresh Token 무효화 기반 로그아웃 메서드
+    public void logout(RefreshTokenRequest request) {
+        if (!jwtTokenProvider.validateRefreshToken(request.refreshToken())) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+
+        Long userId = jwtTokenProvider.getUserIdFromRefreshToken(request.refreshToken());
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (!user.matchesRefreshToken(request.refreshToken())) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+
+        // 현재 활성 Refresh Token 제거로 재발급 경로 차단
+        user.clearRefreshToken();
+    }
+
     // 6자리 이메일 인증 코드 생성 메서드
     private String generateVerificationCode() {
         return "%06d".formatted(ThreadLocalRandom.current().nextInt(1_000_000));

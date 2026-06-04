@@ -158,6 +158,42 @@ class AuthControllerTest {
     }
 
     @Test
+    void logoutClearsRefreshTokenAndBlocksReissue() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("logoutuser", "logoutuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        LoginRequest loginRequest = new LoginRequest("logoutuser", "password123");
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("refreshToken")
+                .textValue();
+
+        RefreshTokenRequest logoutRequest = new RefreshTokenRequest(refreshToken);
+
+        mockMvc.perform(post("/auth/logout")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isNoContent());
+
+        User user = userRepository.findByUsername("logoutuser").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertNull(user.getRefreshToken());
+
+        mockMvc.perform(post("/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void withdrawDeletesUserWhenAccessTokenIsValid() throws Exception {
         SignupRequest signupRequest = new SignupRequest("withdrawuser", "withdrawuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
