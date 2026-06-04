@@ -34,6 +34,21 @@ public class PostgisExtensionInitializer {
                         $$;
                         """);
                 log.info("map_place.location ensured (geometry(Point,4326)).");
+
+                jdbcTemplate.execute("""
+                        ALTER TABLE map_place
+                        ADD COLUMN IF NOT EXISTS registrant varchar(255);
+                        """);
+                jdbcTemplate.update("""
+                        UPDATE map_place
+                        SET registrant = 'unknown'
+                        WHERE registrant IS NULL
+                        """);
+                jdbcTemplate.execute("""
+                        ALTER TABLE map_place
+                        ALTER COLUMN registrant SET NOT NULL
+                        """);
+                log.info("map_place.registrant ensured and backfilled.");
             } catch (Exception e) {
                 log.warn("Failed to ensure PostGIS extension. If 'geometry' type errors occur, run `CREATE EXTENSION postgis;` with sufficient DB privileges.", e);
             }
