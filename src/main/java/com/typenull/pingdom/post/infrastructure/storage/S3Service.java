@@ -4,10 +4,12 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
-import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.application.service.PlaceGrowthService;
 import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.MapImageResponse;
+import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -37,9 +39,10 @@ public class S3Service {
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
     private final PlatformTransactionManager transactionManager;
+    private final PlaceGrowthService placeGrowthService;
 
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
-        MapPlace mapPlace = resolveMapPlace(request);
+        Long placeId = resolvePlaceId(request);
 
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())
@@ -55,6 +58,65 @@ public class S3Service {
         }
 
         try {
+            return savePost(request, userId, username, putResult, placeId);
+        } catch (MapException exception) {
+            throw exception;
+        } catch (Exception e) {
+            throw new MapException(MapErrorCode.UPLOAD_ERROR);
+        }
+    }
+
+    private Long resolvePlaceId(ImageUploadRequest request) {
+        String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
+        if (kakaoPlaceId != null) {
+            return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
+                    .map(MapPlace::getId)
+                    .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        }
+
+        Long placeId = request.placeId();
+        if (placeId == null) {
+            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
+        }
+
+        return mapPlaceRepository.findById(placeId)
+                .map(MapPlace::getId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+    }
+
+    private String normalizeKakaoPlaceId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    public MapImageResponse deleteImage(Long imageId, Long userId) {
+        // 지우려는 이미지가 있는지
+        MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+
+        // 본인이 맞는지
+        if (!Objects.equals(mapImage.getUserId(), userId)) {
+            throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
+        }
+
+        String s3Key = mapImage.getS3Key();
+        deleteFromS3(s3Key);
+        PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage);
+
+        return new MapImageResponse(imageId, "게시글을 삭제했습니다", placeGrowth);
+    }
+
+    private MapImageResponse savePost(
+            ImageUploadRequest request,
+            long userId,
+            String username,
+            S3ObjectStorage.S3PutResult putResult,
+            Long placeId
+    ) {
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        return transactionTemplate.execute(status -> {
+            registerRollbackCleanup(putResult.key());
+
+            MapPlace mapPlace = placeGrowthService.getPlaceForUpdate(placeId);
             MapImage mapImage = MapImage.builder()
                     .imageUrl(putResult.url())
                     .s3Key(putResult.key())
@@ -65,66 +127,23 @@ public class S3Service {
                     .mapPlace(mapPlace)
                     .build();
 
-            Long savedPostId = savePost(mapImage, putResult.key());
-            return new MapImageResponse(savedPostId, "게시글을 저장했습니다.");
-        } catch (MapException exception) {
-            throw exception;
-        } catch (Exception e) {
-            throw new MapException(MapErrorCode.UPLOAD_ERROR);
-        }
-    }
-
-    private MapPlace resolveMapPlace(ImageUploadRequest request) {
-        String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
-        if (kakaoPlaceId != null) {
-            return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
-                    .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
-        }
-
-        Long placeId = request.placeId();
-        if (placeId == null) {
-            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
-        }
-
-        return mapPlaceRepository.findById(placeId)
-                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
-    }
-
-    private String normalizeKakaoPlaceId(String value) {
-        return StringUtils.hasText(value) ? value.trim() : null;
-    }
-
-    public MapImageResponse deleteImage(Long imageId, Long userId) {
-        // 지우려는 이미지가 있는지
-        MapImage mapImage = mapImageRepository.findById(imageId)
-                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
-
-        // 본인이 맞는지
-        if (!Objects.equals(mapImage.getUserId(), userId)) {
-            throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
-        }
-
-        String s3Key = mapImage.getS3Key();
-        deleteFromS3(s3Key);
-        deletePostRecord(mapImage);
-
-        return new MapImageResponse(imageId, "게시글을 삭제했습니다");
-    }
-
-    private Long savePost(MapImage mapImage, String uploadedS3Key) {
-        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-        return transactionTemplate.execute(status -> {
-            registerRollbackCleanup(uploadedS3Key);
             MapImage saved = mapImageRepository.save(mapImage);
-            return saved.getId();
+            PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
+            return new MapImageResponse(saved.getId(), "게시글을 저장했습니다.", placeGrowth);
         });
     }
 
-    private void deletePostRecord(MapImage mapImage) {
+    private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-        transactionTemplate.executeWithoutResult(status -> {
+        return transactionTemplate.execute(status -> {
+            PlaceGrowthSnapshot placeGrowth = null;
+            MapPlace mapPlace = mapImage.getMapPlace();
+            if (mapPlace != null) {
+                placeGrowth = placeGrowthService.decreasePhotoCount(mapPlace.getId());
+            }
             postReportRepository.detachMapImageByMapImageId(mapImage.getId());
             mapImageRepository.delete(mapImage);
+            return placeGrowth;
         });
     }
 

@@ -1,6 +1,5 @@
 package com.typenull.pingdom.place.api;
 
-import com.typenull.pingdom.place.api.dto.PlaceCreateRequest;
 import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
 import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateRequest;
 import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateResponse;
@@ -128,53 +127,6 @@ public class MapPlaceController {
                 request.coordinateToken(),
                 user.userId()
         );
-        return ResponseEntity.status(HttpStatus.CREATED).body(response);
-    }
-
-    @PostMapping("/places/create")
-    @Operation(summary = "장소 업로드", description = "사용자가 지도에 표시할 장소를 등록합니다.")
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "201",
-                    description = "장소 등록 성공",
-                    content = @Content(schema = @Schema(implementation = PlaceCreateResponse.class))
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "입력값 검증 실패",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "입력값을 확인해주세요.",
-                                              "errors": {
-                                                "latitude": "위도는 -90.0 이상이어야 합니다."
-                                              }
-                                            }
-                                            """
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "401",
-                    description = "유효하지 않은 토큰",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "유효하지 않은 토큰입니다.",
-                                              "code": "INVALID_TOKEN"
-                                            }
-                                            """
-                            )
-                    )
-            )
-    })
-    public ResponseEntity<PlaceCreateResponse> create(
-            @Valid @RequestBody PlaceCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
-    ) {
-        PlaceCreateResponse response = mapPlaceService.createPlace(request, user.userId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.place.api.dto.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.BookmarkCreateResponse;
 import com.typenull.pingdom.place.application.service.MapBookmarkService;
@@ -16,10 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/map")
@@ -82,5 +80,46 @@ public class MapBookmarkController {
     ) {
         BookmarkCreateResponse response = mapBookmarkService.createBookmark(request, user.userId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
+    }
+
+    @DeleteMapping("/bookmarks")
+    @Operation(summary = "장소 북마크 해제", description = "placeId를 기반으로 장소 북마크를 해제합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "북마크 해제 성공",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "userId": 1,
+                                          "placeId": 17,
+                                          "message": "장소 북마크를 해제했습니다."
+                                        }
+                                        """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "북마크를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                        {
+                                          "message": "북마크를 찾을 수 없습니다.",
+                                          "code": "BOOKMARK_NOT_FOUND"
+                                        }
+                                        """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<BookmarkRemoveResponse> removeBookmark(
+            @RequestParam Long placeId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ){
+        BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, user.userId());
+        return ResponseEntity.ok().body(response);
     }
 }
