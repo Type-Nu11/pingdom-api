@@ -33,7 +33,9 @@ public class MapPlaceService {
     @Transactional
     public PlaceCreateResponse createPlace(PlaceCreateRequest request, long userId) {
         Point location = toPoint(request.latitude(), request.longitude());
-        String username = userRepository.findById(userId).get().getUsername();
+        String username = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
+                .getUsername();
         MapPlace mapPlace = MapPlace.builder()
                 .name(request.name())
                 .address(request.address())
@@ -70,7 +72,9 @@ public class MapPlaceService {
             String coordinateToken,
             long userId
     ) {
-        String username = userRepository.findById(userId).get().getUsername();
+        String username = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
+                .getUsername();
         String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
         if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
