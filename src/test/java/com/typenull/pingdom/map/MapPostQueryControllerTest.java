@@ -85,6 +85,36 @@ class MapPostQueryControllerTest {
                 .andExpect(jsonPath("$.posts[0].placeName").value("두 번째 장소"));
     }
 
+    @Test
+    void getPostReturnsPostDetailWithPlaceInformation() throws Exception {
+        String accessToken = signupAndLogin("reader02");
+        MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
+        MapImage mapImage = createMapImage(21L, "writer-detail", "상세 게시글", mapPlace, 12L);
+
+        mockMvc.perform(get("/map/posts/{id}", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.title").value("상세 게시글"))
+                .andExpect(jsonPath("$.username").value("writer-detail"))
+                .andExpect(jsonPath("$.likeCount").value(12))
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.placeName").value("진주성"))
+                .andExpect(jsonPath("$.placeAddress").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.latitude").value(35.1801))
+                .andExpect(jsonPath("$.longitude").value(128.1078));
+    }
+
+    @Test
+    void getPostFailsWhenPostDoesNotExist() throws Exception {
+        String accessToken = signupAndLogin("reader03");
+
+        mockMvc.perform(get("/map/posts/{id}", 9999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
+    }
+
     private String signupAndLogin(String username) throws Exception {
         SignupRequest signupRequest = new SignupRequest(
                 username,
