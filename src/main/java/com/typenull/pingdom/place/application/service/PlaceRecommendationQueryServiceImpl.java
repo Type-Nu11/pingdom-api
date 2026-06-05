@@ -43,11 +43,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final MapImageRepository mapImageRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+    private final PlaceRecommendationExposureService placeRecommendationExposureService;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationGraphAffinityService placeRecommendationGraphAffinityService;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
     @Override
+    @Transactional
     public PlaceRecommendationResponse recommendPlaces(
             Long userId,
             double latitude,
@@ -95,6 +97,12 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         Map<Long, PlaceAggregate> aggregateMap = loadAggregates(selection.candidates());
+        PlaceRecommendationExposureService.ExposureMetrics exposureMetrics =
+                placeRecommendationExposureService.loadExposureMetrics(
+                        selection.candidates().stream()
+                                .map(candidate -> candidate.place().getId())
+                                .toList()
+                );
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext = buildSimilarityContext(
                 selection.candidates(),
                 signalContext.interactedPlaceIds(),
@@ -121,6 +129,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         aggregateMap.getOrDefault(candidate.place().getId(), PlaceAggregate.empty()),
                         signalContext,
                         graphAffinityScores.getOrDefault(candidate.place().getId(), 0d),
+                        exposureMetrics,
                         globalAverageLikePerPhoto,
                         maxSeedWeight,
                         appliedRadiusKm,
@@ -146,6 +155,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         placeGrowthService.snapshot(candidate.place())
                 ))
                 .toList();
+
+        placeRecommendationExposureService.recordExposures(
+                userId,
+                latitude,
+                longitude,
+                scoredCandidates.stream()
+                        .map(candidate -> candidate.place().getId())
+                        .toList()
+        );
 
         return PlaceRecommendationResponse.of(places, safeLimit, safeRadiusKm, appliedRadiusKm);
     }
@@ -320,6 +338,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             PlaceAggregate aggregate,
             UserSignalContext signalContext,
             double graphAffinityScore,
+            PlaceRecommendationExposureService.ExposureMetrics exposureMetrics,
             double globalAverageLikePerPhoto,
             double maxSeedWeight,
             double appliedRadiusKm,
@@ -334,6 +353,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         );
 
         double geoScore = 1d - Math.min(candidate.distanceMeters() / 1_000d / appliedRadiusKm, 1d);
+        double rawExplorationScore = calculateExplorationScore(
+                exposureMetrics.totalExposureCount(),
+                exposureMetrics.exposureCountOf(candidate.place().getId())
+        );
 
         long photoCount = aggregate.resolvedPhotoCount(candidate.place().currentPhotoCount());
         double smoothedLikeAverage = (aggregate.likeSum + BAYESIAN_PRIOR_WEIGHT * globalAverageLikePerPhoto)
@@ -349,6 +372,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 geoScore,
                 personalScore,
                 rawQualityScore,
+                rawExplorationScore,
                 freshnessScore,
                 dominantSignalType
         );
@@ -454,18 +478,33 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 .mapToDouble(IntermediateCandidate::rawQualityScore)
                 .max()
                 .orElse(0d);
+        double minExploration = candidates.stream()
+                .mapToDouble(IntermediateCandidate::rawExplorationScore)
+                .min()
+                .orElse(0d);
+        double maxExploration = candidates.stream()
+                .mapToDouble(IntermediateCandidate::rawExplorationScore)
+                .max()
+                .orElse(0d);
 
         return candidates.stream()
                 .map(candidate -> {
                     double normalizedQuality = normalize(candidate.rawQualityScore(), minQuality, maxQuality);
+                    double normalizedExploration = normalize(
+                            candidate.rawExplorationScore(),
+                            minExploration,
+                            maxExploration
+                    );
                     double finalScore = hasPersonalSignals
-                            ? (0.35d * candidate.geoScore())
-                            + (0.35d * candidate.personalScore())
-                            + (0.20d * normalizedQuality)
-                            + (0.10d * candidate.freshnessScore())
-                            : (0.55d * candidate.geoScore())
-                            + (0.30d * normalizedQuality)
-                            + (0.15d * candidate.freshnessScore());
+                            ? (0.34d * candidate.geoScore())
+                            + (0.32d * candidate.personalScore())
+                            + (0.18d * normalizedQuality)
+                            + (0.08d * candidate.freshnessScore())
+                            + (0.08d * normalizedExploration)
+                            : (0.50d * candidate.geoScore())
+                            + (0.24d * normalizedQuality)
+                            + (0.14d * candidate.freshnessScore())
+                            + (0.12d * normalizedExploration);
 
                     return new ScoredCandidate(
                             candidate.place(),
@@ -473,6 +512,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                             candidate.geoScore(),
                             candidate.personalScore(),
                             normalizedQuality,
+                            normalizedExploration,
                             candidate.freshnessScore(),
                             candidate.dominantSignalType(),
                             finalScore
@@ -491,6 +531,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 Duration.between(latestCreatedAt, LocalDateTime.now()).toHours() / 24d
         );
         return Math.exp(-days / FRESHNESS_DECAY_DAYS);
+    }
+
+    private double calculateExplorationScore(long totalExposureCount, long placeExposureCount) {
+        return Math.sqrt(Math.log(totalExposureCount + 1d) / (placeExposureCount + 1d));
     }
 
     private double normalize(double value, double min, double max) {
@@ -514,6 +558,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         if (candidate.freshnessScore() >= 0.60d) {
             return "현재 위치 주변에서 최근 업로드가 활발한 장소입니다.";
+        }
+
+        if (candidate.explorationScore() >= 0.65d && candidate.qualityScore() < 0.45d) {
+            return "현재 위치 주변에서 새롭게 탐색 중인 장소입니다.";
         }
 
         if (candidate.qualityScore() >= 0.45d) {
@@ -580,6 +628,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double geoScore,
             double personalScore,
             double rawQualityScore,
+            double rawExplorationScore,
             double freshnessScore,
             PersonalSignalType dominantSignalType
     ) {
@@ -591,6 +640,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double geoScore,
             double personalScore,
             double qualityScore,
+            double explorationScore,
             double freshnessScore,
             PersonalSignalType dominantSignalType,
             double finalScore
