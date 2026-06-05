@@ -42,6 +42,7 @@ public class PlaceRecommendationSnapshotService {
                 mapPlace.currentPhotoCount(),
                 mapBookmarkRepository.countByPlaceId(placeId),
                 mapImageRepository.sumLikeCountByPlaceId(placeId),
+                snapshot.getClickCount(),
                 snapshot.getExposureCount(),
                 mapImageRepository.findLatestCreatedAtByPlaceId(placeId),
                 now
@@ -56,6 +57,15 @@ public class PlaceRecommendationSnapshotService {
 
     @Transactional
     public void increaseExposureCounts(List<Long> placeIds) {
+        increaseCounts(placeIds, CountType.EXPOSURE);
+    }
+
+    @Transactional
+    public void increaseClickCounts(List<Long> placeIds) {
+        increaseCounts(placeIds, CountType.CLICK);
+    }
+
+    private void increaseCounts(List<Long> placeIds, CountType countType) {
         if (placeIds.isEmpty()) {
             return;
         }
@@ -79,7 +89,11 @@ public class PlaceRecommendationSnapshotService {
                 snapshot = loadOrCreateSnapshot(incrementEntry.getKey(), now);
             }
 
-            snapshot.increaseExposureCount(incrementEntry.getValue(), now);
+            if (countType == CountType.CLICK) {
+                snapshot.increaseClickCount(incrementEntry.getValue(), now);
+            } else {
+                snapshot.increaseExposureCount(incrementEntry.getValue(), now);
+            }
             snapshotsToSave.add(snapshot);
         }
 
@@ -101,9 +115,15 @@ public class PlaceRecommendationSnapshotService {
                 .photoCount(mapPlace.currentPhotoCount())
                 .bookmarkCount(mapBookmarkRepository.countByPlaceId(placeId))
                 .totalLikeCount(mapImageRepository.sumLikeCountByPlaceId(placeId))
+                .clickCount(0L)
                 .exposureCount(0L)
                 .latestPostCreatedAt(mapImageRepository.findLatestCreatedAtByPlaceId(placeId))
                 .updatedAt(now)
                 .build();
+    }
+
+    private enum CountType {
+        CLICK,
+        EXPOSURE
     }
 }
