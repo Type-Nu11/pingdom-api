@@ -7,8 +7,8 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepo
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.application.service.PlaceGrowthService;
-import com.typenull.pingdom.post.api.dto.ImageUploadRequest;
-import com.typenull.pingdom.post.api.dto.MapImageResponse;
+import com.typenull.pingdom.post.api.dto.image.ImageUploadRequest;
+import com.typenull.pingdom.post.api.dto.image.MapImageResponse;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;

@@ -1,10 +1,11 @@
-package com.typenull.pingdom.post.api.dto;
+package com.typenull.pingdom.post.api.dto.post;
 
+import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
-@Schema(description = "게시글 목록 항목")
-public record PostListItem(
+@Schema(description = "게시글 상세 조회 응답")
+public record PostDetailResponse(
         @Schema(description = "게시글 ID", example = "10")
         Long id,
         @Schema(description = "게시글 제목", example = "남강 야경")
@@ -24,6 +25,14 @@ public record PostListItem(
         @Schema(description = "연결된 장소 ID", example = "5")
         Long placeId,
         @Schema(description = "연결된 장소명", example = "진주성")
-        String placeName
+        String placeName,
+        @Schema(description = "연결된 장소 주소", example = "경상남도 진주시 남강로 626")
+        String placeAddress,
+        @Schema(description = "장소 위도", example = "35.1894")
+        Double latitude,
+        @Schema(description = "장소 경도", example = "128.0789")
+        Double longitude,
+        @Schema(description = "연결된 장소 성장 상태")
+        PlaceGrowthSnapshot placeGrowth
 ) {
 }

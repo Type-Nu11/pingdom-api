@@ -1,4 +1,4 @@
-package com.typenull.pingdom.engagement.api.dto;
+package com.typenull.pingdom.engagement.api.dto.like;
 
 import jakarta.validation.constraints.NotNull;
 

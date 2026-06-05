@@ -1,4 +1,4 @@
-package com.typenull.pingdom.post.api.dto;
+package com.typenull.pingdom.post.api.dto.post;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;

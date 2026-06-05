@@ -1,4 +1,4 @@
-package com.typenull.pingdom.engagement.api.dto;
+package com.typenull.pingdom.engagement.api.dto.report;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotBlank;

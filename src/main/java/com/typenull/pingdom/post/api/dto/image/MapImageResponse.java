@@ -1,4 +1,4 @@
-package com.typenull.pingdom.post.api.dto;
+package com.typenull.pingdom.post.api.dto.image;
 
 import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import io.swagger.v3.oas.annotations.media.Schema;
