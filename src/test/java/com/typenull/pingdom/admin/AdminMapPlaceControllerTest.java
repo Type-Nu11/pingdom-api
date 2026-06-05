@@ -17,8 +17,10 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -64,12 +66,16 @@ class AdminMapPlaceControllerTest {
     private PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
 
     @Autowired
+    private PlaceRecommendationClickRepository placeRecommendationClickRepository;
+
+    @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @BeforeEach
     void setUp() {
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -277,12 +283,17 @@ class AdminMapPlaceControllerTest {
                 .requestLongitude(128.1078)
                 .ranking(2)
                 .build());
+        placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                .placeId(mapPlace.getId())
+                .userId(400L)
+                .build());
 
         placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
                 .placeId(9999L)
                 .photoCount(99L)
                 .bookmarkCount(99L)
                 .totalLikeCount(99L)
+                .clickCount(99L)
                 .exposureCount(99L)
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
@@ -300,6 +311,7 @@ class AdminMapPlaceControllerTest {
         assertEquals(2L, snapshot.getPhotoCount());
         assertEquals(1L, snapshot.getBookmarkCount());
         assertEquals(10L, snapshot.getTotalLikeCount());
+        assertEquals(1L, snapshot.getClickCount());
         assertEquals(2L, snapshot.getExposureCount());
         assertNotNull(snapshot.getLatestPostCreatedAt());
         assertFalse(placeRecommendationSnapshotRepository.existsById(9999L));
