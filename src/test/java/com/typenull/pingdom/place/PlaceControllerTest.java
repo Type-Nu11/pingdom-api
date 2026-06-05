@@ -8,8 +8,10 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
@@ -30,6 +32,9 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.containsInAnyOrder;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -75,6 +80,9 @@ class PlaceControllerTest {
     @Autowired
     private MapImageLikeRepository mapImageLikeRepository;
 
+    @Autowired
+    private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
@@ -83,6 +91,7 @@ class PlaceControllerTest {
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -227,6 +236,64 @@ class PlaceControllerTest {
     }
 
     @Test
+    void createAndRemoveBookmarkRefreshRecommendationSnapshot() throws Exception {
+        String accessToken = signupAndLogin("reader08");
+        MapPlace mapPlace = createMapPlace("북마크 검증 장소", "경상남도 진주시 칠암동 1");
+
+        mockMvc.perform(post("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()));
+
+        PlaceRecommendationSnapshot createdSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
+                .orElseThrow();
+        assertEquals(1L, createdSnapshot.getBookmarkCount());
+        assertEquals(0L, createdSnapshot.getTotalLikeCount());
+
+        mockMvc.perform(delete("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("placeId", mapPlace.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()));
+
+        PlaceRecommendationSnapshot removedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
+                .orElseThrow();
+        assertEquals(0L, removedSnapshot.getBookmarkCount());
+    }
+
+    @Test
+    void likeAndUnlikeRefreshRecommendationSnapshot() throws Exception {
+        String accessToken = signupAndLogin("reader09");
+        MapPlace mapPlace = createMapPlace("좋아요 검증 장소", "경상남도 진주시 하대동 1", 35.1806, 128.1084, 1L);
+        MapImage mapImage = createMapImage(mapPlace, 0L, "좋아요 검증 사진");
+
+        mockMvc.perform(post("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", mapImage.getId()))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mapImageId").value(mapImage.getId()));
+
+        PlaceRecommendationSnapshot likedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
+                .orElseThrow();
+        assertEquals(1L, likedSnapshot.getPhotoCount());
+        assertEquals(1L, likedSnapshot.getTotalLikeCount());
+        assertNotNull(likedSnapshot.getLatestPostCreatedAt());
+
+        mockMvc.perform(delete("/map/like/{imageId}", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.mapImageId").value(mapImage.getId()));
+
+        PlaceRecommendationSnapshot unlikedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
+                .orElseThrow();
+        assertEquals(1L, unlikedSnapshot.getPhotoCount());
+        assertEquals(0L, unlikedSnapshot.getTotalLikeCount());
+    }
+
+    @Test
     void recommendPlacesAppliesDiversityReranking() throws Exception {
         String accessToken = signupAndLogin("reader07");
 
@@ -246,7 +313,7 @@ class PlaceControllerTest {
         createMapImage(diversePlace, 12L, "다양성 사진 2");
         createMapImage(diversePlace, 8L, "다양성 사진 3");
 
-                mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/place/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
