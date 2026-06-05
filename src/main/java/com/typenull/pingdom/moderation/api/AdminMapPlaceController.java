@@ -3,6 +3,8 @@ package com.typenull.pingdom.moderation.api;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationSnapshotResyncResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
+import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
@@ -182,6 +184,39 @@ public class AdminMapPlaceController {
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
         return adminMapPlaceQueryService.getPlace(id, sortParam, keyword);
+    }
+
+    @GetMapping("/recommendation-metrics")
+    @Operation(
+            summary = "관리자 추천 성과 조회",
+            description = "관리자가 장소별 추천 노출, 클릭, CTR 지표를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "추천 성과 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminPlaceRecommendationMetricsResponse.class)
+                    )
+            )
+    })
+    public AdminPlaceRecommendationMetricsResponse listRecommendationMetrics(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(
+                    description = "추천 성과 정렬 기준",
+                    example = "SMOOTHED_CTR",
+                    schema = @Schema(type = "string", allowableValues = {
+                            "SMOOTHED_CTR", "RAW_CTR", "EXPOSURE", "CLICK", "UPDATED_AT"
+                    })
+            )
+            @RequestParam(defaultValue = "SMOOTHED_CTR") RecommendationMetricSortBy sortBy,
+            @Parameter(description = "장소 검색 키워드", example = "진주")
+            @RequestParam(required = false, defaultValue = "") String keyword
+    ) {
+        return adminMapPlaceQueryService.listRecommendationMetrics(page, limit, sortBy, keyword);
     }
 
     @DeleteMapping("/{id}/delete")
