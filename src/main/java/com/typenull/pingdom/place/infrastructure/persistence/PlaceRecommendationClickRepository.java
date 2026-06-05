@@ -22,4 +22,6 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
             GROUP BY c.placeId
             """)
     List<PlaceClickCountProjection> countClicksByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
+
+    long countByPlaceId(Long placeId);
 }

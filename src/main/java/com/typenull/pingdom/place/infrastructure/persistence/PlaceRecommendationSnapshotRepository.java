@@ -10,6 +10,12 @@ public interface PlaceRecommendationSnapshotRepository extends JpaRepository<Pla
     List<PlaceRecommendationSnapshot> findByPlaceIdIn(Collection<Long> placeIds);
 
     @Query("""
+            SELECT COALESCE(SUM(s.clickCount), 0)
+            FROM PlaceRecommendationSnapshot s
+            """)
+    long sumClickCount();
+
+    @Query("""
             SELECT COALESCE(SUM(s.exposureCount), 0)
             FROM PlaceRecommendationSnapshot s
             """)
