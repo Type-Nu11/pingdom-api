@@ -60,19 +60,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
         double safeRadiusKm = Math.max(MIN_RADIUS_KM, Math.min(radiusKm, MAX_RADIUS_KM));
 
-        List<MapPlace> allPlaces = mapPlaceRepository.findAll().stream()
-                .filter(place -> place.getLatitude() != null && place.getLongitude() != null)
-                .toList();
+        UserSignalContext signalContext = loadUserSignals(userId);
+        List<MapPlace> candidatePool = loadCandidatePool(latitude, longitude, MAX_RADIUS_KM);
 
-        if (allPlaces.isEmpty()) {
+        if (candidatePool.isEmpty()) {
             return PlaceRecommendationResponse.of(List.of(), safeLimit, safeRadiusKm, safeRadiusKm);
         }
 
-        Map<Long, MapPlace> placeIndex = allPlaces.stream()
-                .collect(java.util.stream.Collectors.toMap(MapPlace::getId, place -> place));
-
-        UserSignalContext signalContext = loadUserSignals(userId);
-        List<PlaceDistance> placeDistances = allPlaces.stream()
+        Map<Long, MapPlace> placeIndex = buildPlaceIndex(candidatePool, signalContext.interactedPlaceIds());
+        List<PlaceDistance> placeDistances = candidatePool.stream()
                 .map(place -> new PlaceDistance(place, calculateDistanceMeters(
                         latitude,
                         longitude,
@@ -166,6 +162,51 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         );
 
         return PlaceRecommendationResponse.of(places, safeLimit, safeRadiusKm, appliedRadiusKm);
+    }
+
+    private List<MapPlace> loadCandidatePool(double latitude, double longitude, double maxRadiusKm) {
+        double latitudeDelta = toLatitudeDelta(maxRadiusKm);
+        double longitudeDelta = toLongitudeDelta(latitude, maxRadiusKm);
+
+        double minLatitude = Math.max(-90d, latitude - latitudeDelta);
+        double maxLatitude = Math.min(90d, latitude + latitudeDelta);
+        double minLongitude = longitude - longitudeDelta;
+        double maxLongitude = longitude + longitudeDelta;
+
+        if (minLongitude < -180d || maxLongitude > 180d || Double.isInfinite(longitudeDelta)) {
+            return mapPlaceRepository.findAllWithCoordinates();
+        }
+
+        return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+                minLatitude,
+                maxLatitude,
+                minLongitude,
+                maxLongitude
+        );
+    }
+
+    private Map<Long, MapPlace> buildPlaceIndex(List<MapPlace> candidatePool, Set<Long> interactedPlaceIds) {
+        Map<Long, MapPlace> placeIndex = new HashMap<>();
+        for (MapPlace candidate : candidatePool) {
+            placeIndex.put(candidate.getId(), candidate);
+        }
+
+        if (interactedPlaceIds.isEmpty()) {
+            return placeIndex;
+        }
+
+        Set<Long> missingPlaceIds = new HashSet<>(interactedPlaceIds);
+        missingPlaceIds.removeAll(placeIndex.keySet());
+
+        if (missingPlaceIds.isEmpty()) {
+            return placeIndex;
+        }
+
+        for (MapPlace seedPlace : mapPlaceRepository.findAllById(missingPlaceIds)) {
+            placeIndex.put(seedPlace.getId(), seedPlace);
+        }
+
+        return placeIndex;
     }
 
     private CandidateSelection selectCandidates(
@@ -587,6 +628,18 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 * Math.sin(longitudeDelta / 2d) * Math.sin(longitudeDelta / 2d);
         double c = 2d * Math.atan2(Math.sqrt(a), Math.sqrt(1d - a));
         return EARTH_RADIUS_METERS * c;
+    }
+
+    private double toLatitudeDelta(double radiusKm) {
+        return radiusKm / 111.32d;
+    }
+
+    private double toLongitudeDelta(double latitude, double radiusKm) {
+        double cosine = Math.cos(Math.toRadians(latitude));
+        if (Math.abs(cosine) < 1.0e-6d) {
+            return Double.POSITIVE_INFINITY;
+        }
+        return radiusKm / (111.32d * cosine);
     }
 
     private enum PersonalSignalType {
