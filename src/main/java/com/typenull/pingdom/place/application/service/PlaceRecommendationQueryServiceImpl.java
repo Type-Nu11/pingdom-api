@@ -44,6 +44,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final MapImageLikeRepository mapImageLikeRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final PlaceRecommendationGraphAffinityService placeRecommendationGraphAffinityService;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
     @Override
@@ -99,6 +100,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 signalContext.interactedPlaceIds(),
                 placeIndex
         );
+        Map<Long, Double> graphAffinityScores = placeRecommendationGraphAffinityService.score(
+                selection.candidates().stream()
+                        .map(candidate -> candidate.place().getId())
+                        .toList(),
+                signalContext.seedWeights(),
+                similarityContext
+        );
         double globalAverageLikePerPhoto = calculateGlobalAverageLikePerPhoto(selection.candidates(), aggregateMap);
         double maxSeedWeight = signalContext.seedWeights().values().stream()
                 .mapToDouble(Double::doubleValue)
@@ -112,6 +120,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         candidate,
                         aggregateMap.getOrDefault(candidate.place().getId(), PlaceAggregate.empty()),
                         signalContext,
+                        graphAffinityScores.getOrDefault(candidate.place().getId(), 0d),
                         globalAverageLikePerPhoto,
                         maxSeedWeight,
                         appliedRadiusKm,
@@ -310,28 +319,19 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             PlaceDistance candidate,
             PlaceAggregate aggregate,
             UserSignalContext signalContext,
+            double graphAffinityScore,
             double globalAverageLikePerPhoto,
             double maxSeedWeight,
             double appliedRadiusKm,
             PlaceRecommendationSimilarityService.SimilarityContext similarityContext
     ) {
-        double personalScore = 0d;
-        PersonalSignalType dominantSignalType = PersonalSignalType.NONE;
-
-        for (Map.Entry<Long, Double> seedWeightEntry : signalContext.seedWeights().entrySet()) {
-            double similarity = placeRecommendationSimilarityService.similarity(
-                    candidate.place().getId(),
-                    seedWeightEntry.getKey(),
-                    similarityContext
-            );
-            double normalizedSeedWeight = seedWeightEntry.getValue() / maxSeedWeight;
-            double contribution = normalizedSeedWeight * similarity;
-
-            if (contribution > personalScore) {
-                personalScore = contribution;
-                dominantSignalType = signalContext.signalTypes().getOrDefault(seedWeightEntry.getKey(), PersonalSignalType.NONE);
-            }
-        }
+        double personalScore = graphAffinityScore;
+        PersonalSignalType dominantSignalType = resolveDominantSignalType(
+                candidate.place().getId(),
+                signalContext,
+                maxSeedWeight,
+                similarityContext
+        );
 
         double geoScore = 1d - Math.min(candidate.distanceMeters() / 1_000d / appliedRadiusKm, 1d);
 
@@ -352,6 +352,43 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 freshnessScore,
                 dominantSignalType
         );
+    }
+
+    private PersonalSignalType resolveDominantSignalType(
+            Long candidatePlaceId,
+            UserSignalContext signalContext,
+            double maxSeedWeight,
+            PlaceRecommendationSimilarityService.SimilarityContext similarityContext
+    ) {
+        double maxContribution = 0d;
+        PersonalSignalType dominantSignalType = PersonalSignalType.NONE;
+
+        for (Map.Entry<Long, Double> seedWeightEntry : signalContext.seedWeights().entrySet()) {
+            double similarity = placeRecommendationSimilarityService.similarity(
+                    candidatePlaceId,
+                    seedWeightEntry.getKey(),
+                    similarityContext
+            );
+            double normalizedSeedWeight = maxSeedWeight > 0d ? seedWeightEntry.getValue() / maxSeedWeight : 0d;
+            double contribution = normalizedSeedWeight * similarity;
+
+            if (contribution > maxContribution) {
+                maxContribution = contribution;
+                dominantSignalType = signalContext.signalTypes().getOrDefault(
+                        seedWeightEntry.getKey(),
+                        PersonalSignalType.NONE
+                );
+            }
+        }
+
+        if (dominantSignalType != PersonalSignalType.NONE) {
+            return dominantSignalType;
+        }
+
+        return signalContext.seedWeights().entrySet().stream()
+                .max(Map.Entry.comparingByValue())
+                .map(entry -> signalContext.signalTypes().getOrDefault(entry.getKey(), PersonalSignalType.NONE))
+                .orElse(PersonalSignalType.NONE);
     }
 
     private List<ScoredCandidate> rerankWithMmr(
