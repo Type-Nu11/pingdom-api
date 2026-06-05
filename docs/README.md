@@ -4,9 +4,9 @@
 
 ## 디렉터리 구성
 
-- `architecture`
+- [`architecture`](./architecture/README.md)
   시스템 구조, 모듈 책임, 의존 규칙 같은 아키텍처 문서를 관리한다.
-- `algorithm`
+- [`algorithm`](./algorithm/README.md)
   추천, 랭킹, 탐색 정책처럼 알고리즘 설계 문서를 관리한다.
 
 ## 관리 원칙

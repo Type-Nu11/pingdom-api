@@ -157,6 +157,8 @@ upload = 0.3
 
 장소 `i`, `j` 사이 유사도는 아래처럼 계산한다.
 
+가중 합산 전에 각 구성 요소는 모두 `[0, 1]` 범위로 정규화한다고 가정한다. 그래야 특정 항목의 스케일이 전체 유사도를 과도하게 지배하지 않는다.
+
 ```text
 sim(i, j) =
   0.40 * geoKernel(i, j) +
@@ -227,6 +229,8 @@ k = 10~20
 예시:
 
 ```text
+m > 0
+
 quality(place) =
   (likeSum + m * globalLikeMean) / (photoCount + m)
 ```
