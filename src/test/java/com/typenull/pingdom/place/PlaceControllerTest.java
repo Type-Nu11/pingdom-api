@@ -9,11 +9,14 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversion;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -96,6 +99,9 @@ class PlaceControllerTest {
     @Autowired
     private PlaceRecommendationClickRepository placeRecommendationClickRepository;
 
+    @Autowired
+    private PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
+
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
@@ -104,6 +110,7 @@ class PlaceControllerTest {
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
@@ -332,6 +339,87 @@ class PlaceControllerTest {
                 .orElseThrow();
         assertEquals(1L, snapshot.getClickCount());
         assertEquals(0L, snapshot.getExposureCount());
+    }
+
+    @Test
+    void createBookmarkRecordsRecommendationBookmarkConversion() throws Exception {
+        String accessToken = signupAndLogin("reader15");
+        MapPlace mapPlace = createMapPlace("북마크 전환 장소", "경상남도 진주시 전환로 1", 35.1803, 128.1079, 1L);
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                .andExpect(status().isCreated());
+
+        List<PlaceRecommendationConversion> conversions = placeRecommendationConversionRepository.findAll();
+        assertEquals(1, conversions.size());
+        assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
+        assertEquals(PlaceRecommendationConversionType.BOOKMARK, conversions.get(0).getConversionType());
+        assertNotNull(conversions.get(0).getCreatedAt());
+        assertNotNull(conversions.get(0).getPlaceRecommendationClickId());
+    }
+
+    @Test
+    void likeRecordsRecommendationLikeConversion() throws Exception {
+        String accessToken = signupAndLogin("reader16");
+        MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);
+        MapImage mapImage = createMapImage(mapPlace, 0L, "좋아요 전환 사진");
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", mapImage.getId()))))
+                .andExpect(status().isOk());
+
+        List<PlaceRecommendationConversion> conversions = placeRecommendationConversionRepository.findAll();
+        assertEquals(1, conversions.size());
+        assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
+        assertEquals(PlaceRecommendationConversionType.LIKE, conversions.get(0).getConversionType());
+        assertNotNull(conversions.get(0).getPlaceRecommendationClickId());
+    }
+
+    @Test
+    void likeConversionIsRecordedOnlyOncePerUserAndPlace() throws Exception {
+        String accessToken = signupAndLogin("reader17");
+        MapPlace mapPlace = createMapPlace("중복 전환 장소", "경상남도 진주시 전환로 3", 35.1803, 128.1079, 2L);
+        MapImage firstImage = createMapImage(mapPlace, 0L, "중복 전환 사진 1");
+        MapImage secondImage = createMapImage(mapPlace, 0L, "중복 전환 사진 2");
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", firstImage.getId()))))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", secondImage.getId()))))
+                .andExpect(status().isOk());
+
+        List<PlaceRecommendationConversion> conversions = placeRecommendationConversionRepository.findAll();
+        assertEquals(1, conversions.size());
+        assertEquals(PlaceRecommendationConversionType.LIKE, conversions.get(0).getConversionType());
+        assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
     }
 
     @Test
