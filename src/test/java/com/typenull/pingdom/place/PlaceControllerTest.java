@@ -272,6 +272,13 @@ class PlaceControllerTest {
         assertNotNull(exposures.get(0).getCreatedAt());
         assertEquals(35.1801d, exposures.get(0).getRequestLatitude());
         assertEquals(128.1078d, exposures.get(0).getRequestLongitude());
+
+        PlaceRecommendationSnapshot firstSnapshot = placeRecommendationSnapshotRepository.findById(firstPlace.getId())
+                .orElseThrow();
+        PlaceRecommendationSnapshot secondSnapshot = placeRecommendationSnapshotRepository.findById(secondPlace.getId())
+                .orElseThrow();
+        assertEquals(1L, firstSnapshot.getExposureCount());
+        assertEquals(1L, secondSnapshot.getExposureCount());
     }
 
     @Test
