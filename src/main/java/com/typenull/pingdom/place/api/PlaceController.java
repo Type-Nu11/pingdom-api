@@ -2,7 +2,10 @@ package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.PlaceQueryService;
+import com.typenull.pingdom.place.application.service.PlaceRecommendationQueryService;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -11,8 +14,14 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.constraints.DecimalMax;
+import jakarta.validation.constraints.DecimalMin;
+import jakarta.validation.constraints.Max;
+import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -22,10 +31,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/place")
 @RequiredArgsConstructor
+@Validated
 @Tag(name = "App Place", description = "앱용 장소 조회 API")
 public class PlaceController {
 
     private final PlaceQueryService placeQueryService;
+    private final PlaceRecommendationQueryService placeRecommendationQueryService;
 
     @GetMapping
     @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
@@ -59,6 +70,66 @@ public class PlaceController {
             @RequestParam(required = false) String keyword
     ) {
         return ResponseEntity.ok(placeQueryService.listPlaces(page, limit, keyword));
+    }
+
+    @GetMapping("/recommendations")
+    @Operation(summary = "장소 추천 조회", description = "현재 위치와 사용자 반응 이력을 기반으로 추천 장소를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 추천 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceRecommendationResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "좌표 또는 요청값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "recommendPlaces.latitude: 위도는 -90.0 이상이어야 합니다."
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<PlaceRecommendationResponse> recommendPlaces(
+            @Parameter(description = "현재 위도", example = "35.1801")
+            @DecimalMin(value = "-90.0", message = "위도는 -90.0 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90.0 이하여야 합니다.")
+            @RequestParam double latitude,
+            @Parameter(description = "현재 경도", example = "128.1078")
+            @DecimalMin(value = "-180.0", message = "경도는 -180.0 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180.0 이하여야 합니다.")
+            @RequestParam double longitude,
+            @Parameter(description = "추천 최대 개수", example = "10")
+            @Min(value = 1, message = "limit는 1 이상이어야 합니다.")
+            @Max(value = 20, message = "limit는 20 이하여야 합니다.")
+            @RequestParam(defaultValue = "10") int limit,
+            @Parameter(description = "초기 탐색 반경(km)", example = "5.0")
+            @DecimalMin(value = "1.0", message = "radiusKm는 1.0 이상이어야 합니다.")
+            @DecimalMax(value = "20.0", message = "radiusKm는 20.0 이하여야 합니다.")
+            @RequestParam(defaultValue = "5.0") double radiusKm,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(
+                placeRecommendationQueryService.recommendPlaces(user.userId(), latitude, longitude, limit, radiusKm)
+        );
     }
 
     @GetMapping("/{id}")
