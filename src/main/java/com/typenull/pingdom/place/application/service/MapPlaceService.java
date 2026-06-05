@@ -64,8 +64,8 @@ public class MapPlaceService {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
         }
 
-        String tokenKakaoPlaceId = normalizeKakaoPlaceId(entry.kakaoPlaceId());
-        if (normalizedKakaoPlaceId != null && tokenKakaoPlaceId != null && !normalizedKakaoPlaceId.equals(tokenKakaoPlaceId)) {
+        String tokenKakaoPlaceId = entry.kakaoPlaceId();
+        if (!Objects.equals(normalizedKakaoPlaceId, tokenKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
         }
 
