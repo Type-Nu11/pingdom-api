@@ -9,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
@@ -226,6 +227,65 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void listRecommendationMetricsReturnsSortedCtrMetrics() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace highCtrPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("CTR 높은 장소")
+                .address("경상남도 진주시 성과로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(51L)
+                .registrant("metricOwner")
+                .photoCount(4L)
+                .build());
+
+        MapPlace lowCtrPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("CTR 낮은 장소")
+                .address("경상남도 진주시 성과로 2")
+                .latitude(35.1802)
+                .longitude(128.1079)
+                .userId(52L)
+                .registrant("metricOwner")
+                .photoCount(3L)
+                .build());
+
+        java.time.LocalDateTime updatedAt = java.time.LocalDateTime.now();
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(highCtrPlace.getId())
+                .photoCount(4L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(6L)
+                .exposureCount(20L)
+                .updatedAt(updatedAt)
+                .build());
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(lowCtrPlace.getId())
+                .photoCount(3L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(1L)
+                .exposureCount(20L)
+                .updatedAt(updatedAt.minusMinutes(5))
+                .build());
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20")
+                        .param("sortBy", RecommendationMetricSortBy.SMOOTHED_CTR.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortBy").value(RecommendationMetricSortBy.SMOOTHED_CTR.name()))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.metrics[0].name").value("CTR 높은 장소"))
+                .andExpect(jsonPath("$.metrics[0].exposureCount").value(20))
+                .andExpect(jsonPath("$.metrics[0].clickCount").value(6))
+                .andExpect(jsonPath("$.metrics[0].rawCtr").value(0.3d))
+                .andExpect(jsonPath("$.metrics[1].name").value("CTR 낮은 장소"));
     }
 
     @Test
