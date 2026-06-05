@@ -27,6 +27,7 @@ public class MapPlaceService {
     private final MapPlaceRepository mapPlaceRepository;
     private final UserRepository userRepository;
     private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
+    private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
     public PlaceCoordinateCreateResponse createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
@@ -71,6 +72,7 @@ public class MapPlaceService {
                 .build();
 
         MapPlace saved = mapPlaceRepository.save(mapPlace);
+        placeRecommendationSnapshotService.initialize(saved.getId());
         return new PlaceCreateResponse(
                 saved.getId(),
                 saved.getName(),
@@ -94,6 +96,7 @@ public class MapPlaceService {
         }
 
         mapPlaceRepository.delete(mapPlace);
+        placeRecommendationSnapshotService.delete(placeId);
     }
 
     private static Point toPoint(double latitude, double longitude) {

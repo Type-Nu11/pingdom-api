@@ -4,8 +4,10 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationItem;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -13,6 +15,7 @@ import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
@@ -39,6 +42,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
+    private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
@@ -244,15 +248,26 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 .toList();
 
         Map<Long, PlaceAggregate> aggregateMap = new HashMap<>();
+        Set<Long> missingPlaceIds = new HashSet<>(placeIds);
 
+        for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
+            aggregateMap.put(snapshot.getPlaceId(), PlaceAggregate.fromSnapshot(snapshot));
+            missingPlaceIds.remove(snapshot.getPlaceId());
+        }
+
+        if (missingPlaceIds.isEmpty()) {
+            return aggregateMap;
+        }
+
+        // snapshot이 아직 없는 기존 데이터는 기존 집계 쿼리로만 보완해 점진적으로 전환한다.
         for (MapBookmarkRepository.PlaceBookmarkCountProjection projection :
-                mapBookmarkRepository.findBookmarkCountsByPlaceIds(placeIds)) {
+                mapBookmarkRepository.findBookmarkCountsByPlaceIds(missingPlaceIds)) {
             aggregateMap.computeIfAbsent(projection.getPlaceId(), ignored -> PlaceAggregate.empty())
                     .bookmarkCount = projection.getBookmarkCount();
         }
 
         for (MapImageRepository.PlaceImageAggregateProjection projection :
-                mapImageRepository.findPlaceAggregatesByPlaceIds(placeIds)) {
+                mapImageRepository.findPlaceAggregatesByPlaceIds(missingPlaceIds)) {
             aggregateMap.computeIfAbsent(projection.getPlaceId(), ignored -> PlaceAggregate.empty())
                     .mergeImageAggregate(projection.getLikeSum(), projection.getLatestCreatedAt());
         }
@@ -280,7 +295,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         return candidates.stream()
                 .map(candidate -> {
                     PlaceAggregate aggregate = aggregateMap.getOrDefault(candidate.place().getId(), PlaceAggregate.empty());
-                    long photoCount = candidate.place().currentPhotoCount();
+                    long photoCount = aggregate.resolvedPhotoCount(candidate.place().currentPhotoCount());
                     if (photoCount <= 0L) {
                         return 0d;
                     }
@@ -320,7 +335,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         double geoScore = 1d - Math.min(candidate.distanceMeters() / 1_000d / appliedRadiusKm, 1d);
 
-        long photoCount = candidate.place().currentPhotoCount();
+        long photoCount = aggregate.resolvedPhotoCount(candidate.place().currentPhotoCount());
         double smoothedLikeAverage = (aggregate.likeSum + BAYESIAN_PRIOR_WEIGHT * globalAverageLikePerPhoto)
                 / (photoCount + BAYESIAN_PRIOR_WEIGHT);
         double rawQualityScore = smoothedLikeAverage
@@ -546,12 +561,28 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private static final class PlaceAggregate {
+        private long photoCount;
         private long bookmarkCount;
         private long likeSum;
         private LocalDateTime latestCreatedAt;
+        private boolean snapshotBacked;
 
         private static PlaceAggregate empty() {
             return new PlaceAggregate();
+        }
+
+        private static PlaceAggregate fromSnapshot(PlaceRecommendationSnapshot snapshot) {
+            PlaceAggregate aggregate = new PlaceAggregate();
+            aggregate.photoCount = snapshot.getPhotoCount();
+            aggregate.bookmarkCount = snapshot.getBookmarkCount();
+            aggregate.likeSum = snapshot.getTotalLikeCount();
+            aggregate.latestCreatedAt = snapshot.getLatestPostCreatedAt();
+            aggregate.snapshotBacked = true;
+            return aggregate;
+        }
+
+        private long resolvedPhotoCount(long fallbackPhotoCount) {
+            return snapshotBacked ? photoCount : fallbackPhotoCount;
         }
 
         private void mergeImageAggregate(Long likeSum, LocalDateTime latestCreatedAt) {

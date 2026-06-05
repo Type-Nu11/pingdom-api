@@ -20,6 +20,7 @@ public class MapBookmarkService {
 
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapPlaceRepository mapPlaceRepository;
+    private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
     @Transactional
     public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
@@ -41,6 +42,7 @@ public class MapBookmarkService {
                 .build();
 
         MapBookmark saved = mapBookmarkRepository.save(bookmark);
+        placeRecommendationSnapshotService.refresh(placeId);
         return new BookmarkCreateResponse(saved.getId(), saved.getPlaceId(), MapMessages.BOOKMARK_CREATED);
     }
 
@@ -51,6 +53,7 @@ public class MapBookmarkService {
         }
 
         mapBookmarkRepository.deleteByPlaceIdAndUserId(placeId, userId);
+        placeRecommendationSnapshotService.refresh(placeId);
 
         return new BookmarkRemoveResponse(userId, placeId, MapMessages.BOOKMARK_REMOVED);
     }
