@@ -8,13 +8,17 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
+import java.util.Comparator;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -83,6 +87,9 @@ class PlaceControllerTest {
     @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
+    @Autowired
+    private PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
+
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
@@ -91,6 +98,7 @@ class PlaceControllerTest {
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -233,6 +241,58 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("인기 장소"))
                 .andExpect(jsonPath("$.places[0].reason", containsString("현재 위치 주변")));
+    }
+
+    @Test
+    void recommendPlacesRecordsExposureLogs() throws Exception {
+        String accessToken = signupAndLogin("reader10");
+
+        MapPlace firstPlace = createMapPlace("노출 장소 A", "경상남도 진주시 본성동 1", 35.1802, 128.1078, 1L);
+        MapPlace secondPlace = createMapPlace("노출 장소 B", "경상남도 진주시 본성동 2", 35.1804, 128.1080, 1L);
+
+        createMapImage(firstPlace, 4L, "노출 사진 A");
+        createMapImage(secondPlace, 3L, "노출 사진 B");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(2));
+
+        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findAll().stream()
+                .sorted(Comparator.comparing(PlaceRecommendationExposure::getRanking))
+                .toList();
+
+        assertEquals(2, exposures.size());
+        assertEquals(1, exposures.get(0).getRanking());
+        assertEquals(2, exposures.get(1).getRanking());
+        assertNotNull(exposures.get(0).getCreatedAt());
+        assertEquals(35.1801d, exposures.get(0).getRequestLatitude());
+        assertEquals(128.1078d, exposures.get(0).getRequestLongitude());
+    }
+
+    @Test
+    void recommendPlacesAppliesExplorationBonusForLowExposurePlace() throws Exception {
+        String accessToken = signupAndLogin("reader11");
+
+        MapPlace lowExposurePlace = createMapPlace("저노출 장소", "경상남도 진주시 신안동 1", 35.1803, 128.1079, 1L);
+        MapPlace highExposurePlace = createMapPlace("고노출 장소", "경상남도 진주시 신안동 2", 35.1803, 128.1079, 1L);
+
+        createMapImage(lowExposurePlace, 5L, "저노출 사진");
+        createMapImage(highExposurePlace, 5L, "고노출 사진");
+        createExposureLogs(highExposurePlace.getId(), 30, 35.1801, 128.1078);
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("저노출 장소"));
     }
 
     @Test
@@ -388,6 +448,18 @@ class PlaceControllerTest {
                 .likeCount(likeCount)
                 .mapPlace(mapPlace)
                 .build());
+    }
+
+    private void createExposureLogs(Long placeId, int count, double latitude, double longitude) {
+        for (int index = 0; index < count; index++) {
+            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                    .placeId(placeId)
+                    .userId(1000L + index)
+                    .requestLatitude(latitude)
+                    .requestLongitude(longitude)
+                    .ranking(1)
+                    .build());
+        }
     }
 
 }
