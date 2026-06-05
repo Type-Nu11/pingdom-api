@@ -29,12 +29,17 @@ public class MapPlaceService {
     private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public PlaceCoordinateCreateResponse createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
-        // TODO: ±a 오차 적용 로직은 별도 이슈에서 구현 예정 (현재는 기준 좌표를 그대로 사용)
+    public PlaceCoordinateCreateResponse createCoordinateToken(
+            double baseLatitude,
+            double baseLongitude,
+            String kakaoPlaceId,
+            long userId
+    ) {
         double finalLatitude = baseLatitude;
         double finalLongitude = baseLongitude;
-        String token = placeCoordinateTokenStore.put(userId, finalLatitude, finalLongitude);
-        return new PlaceCoordinateCreateResponse(token, finalLatitude, finalLongitude);
+        String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
+        String token = placeCoordinateTokenStore.put(userId, normalizedKakaoPlaceId, finalLatitude, finalLongitude);
+        return new PlaceCoordinateCreateResponse(token, normalizedKakaoPlaceId);
     }
 
     @Transactional
@@ -55,6 +60,11 @@ public class MapPlaceService {
 
         PlaceCoordinateTokenStore.Entry entry = placeCoordinateTokenStore.consume(coordinateToken);
         if (entry == null || entry.userId() != userId) {
+            throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
+        }
+
+        String tokenKakaoPlaceId = entry.kakaoPlaceId();
+        if (!Objects.equals(normalizedKakaoPlaceId, tokenKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
         }
 
