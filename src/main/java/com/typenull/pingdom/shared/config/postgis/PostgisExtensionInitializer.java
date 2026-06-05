@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.config.postgis;
 
+import java.sql.DatabaseMetaData;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.boot.ApplicationRunner;
@@ -82,7 +83,9 @@ public class PostgisExtensionInitializer {
     }
 
     private boolean isPostgreSql(JdbcTemplate jdbcTemplate) {
-        return Boolean.TRUE.equals(jdbcTemplate.execute((ConnectionCallback<Boolean>) connection ->
-                "PostgreSQL".equalsIgnoreCase(connection.getMetaData().getDatabaseProductName())));
+        return Boolean.TRUE.equals(jdbcTemplate.execute((ConnectionCallback<Boolean>) connection -> {
+            DatabaseMetaData metaData = connection.getMetaData();
+            return metaData != null && "PostgreSQL".equalsIgnoreCase(metaData.getDatabaseProductName());
+        }));
     }
 }
