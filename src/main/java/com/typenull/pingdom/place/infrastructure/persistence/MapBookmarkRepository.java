@@ -15,6 +15,12 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
         long getBookmarkCount();
     }
 
+    interface PlaceBookmarkUserProjection {
+        Long getPlaceId();
+
+        Long getUserId();
+    }
+
     boolean existsByUserIdAndPlaceId(Long userId, Long placeId);
 
     void deleteByPlaceIdAndUserId(Long placeId, Long userId);
@@ -33,4 +39,11 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
             GROUP BY b.placeId
             """)
     List<PlaceBookmarkCountProjection> findBookmarkCountsByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
+
+    @Query("""
+            SELECT b.placeId as placeId, b.userId as userId
+            FROM MapBookmark b
+            WHERE b.placeId IN :placeIds
+            """)
+    List<PlaceBookmarkUserProjection> findBookmarkUsersByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
 }
