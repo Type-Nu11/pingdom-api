@@ -17,10 +17,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlaceRecommendationExposureService {
 
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
+    private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
-    public ExposureMetrics loadExposureMetrics(Collection<Long> placeIds) {
+    public Map<Long, Long> loadExposureCounts(Collection<Long> placeIds) {
         if (placeIds.isEmpty()) {
-            return ExposureMetrics.empty();
+            return Map.of();
         }
 
         Map<Long, Long> exposureCounts = new HashMap<>();
@@ -28,8 +29,11 @@ public class PlaceRecommendationExposureService {
                 placeRecommendationExposureRepository.countExposuresByPlaceIds(placeIds)) {
             exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
         }
+        return Map.copyOf(exposureCounts);
+    }
 
-        return new ExposureMetrics(Map.copyOf(exposureCounts), placeRecommendationExposureRepository.count());
+    public long countAllExposures() {
+        return placeRecommendationExposureRepository.count();
     }
 
     @Transactional
@@ -52,18 +56,6 @@ public class PlaceRecommendationExposureService {
         }
 
         placeRecommendationExposureRepository.saveAll(exposures);
-    }
-
-    public record ExposureMetrics(
-            Map<Long, Long> exposureCounts,
-            long totalExposureCount
-    ) {
-        private static ExposureMetrics empty() {
-            return new ExposureMetrics(Map.of(), 0L);
-        }
-
-        public long exposureCountOf(Long placeId) {
-            return exposureCounts.getOrDefault(placeId, 0L);
-        }
+        placeRecommendationSnapshotService.increaseExposureCounts(placeIds);
     }
 }

@@ -93,12 +93,11 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         Map<Long, PlaceAggregate> aggregateMap = loadAggregates(selection.candidates());
-        PlaceRecommendationExposureService.ExposureMetrics exposureMetrics =
-                placeRecommendationExposureService.loadExposureMetrics(
-                        selection.candidates().stream()
-                                .map(candidate -> candidate.place().getId())
-                                .toList()
-                );
+        long totalExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
+        if (totalExposureCount == 0L) {
+            totalExposureCount = placeRecommendationExposureService.countAllExposures();
+        }
+        final long resolvedTotalExposureCount = totalExposureCount;
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext = buildSimilarityContext(
                 selection.candidates(),
                 signalContext.interactedPlaceIds(),
@@ -125,7 +124,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         aggregateMap.getOrDefault(candidate.place().getId(), PlaceAggregate.empty()),
                         signalContext,
                         graphAffinityScores.getOrDefault(candidate.place().getId(), 0d),
-                        exposureMetrics,
+                        resolvedTotalExposureCount,
                         globalAverageLikePerPhoto,
                         maxSeedWeight,
                         appliedRadiusKm,
@@ -340,6 +339,12 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     .mergeImageAggregate(projection.getLikeSum(), projection.getLatestCreatedAt());
         }
 
+        Map<Long, Long> exposureCounts = placeRecommendationExposureService.loadExposureCounts(missingPlaceIds);
+        for (Map.Entry<Long, Long> exposureCountEntry : exposureCounts.entrySet()) {
+            aggregateMap.computeIfAbsent(exposureCountEntry.getKey(), ignored -> PlaceAggregate.empty())
+                    .exposureCount = exposureCountEntry.getValue();
+        }
+
         return aggregateMap;
     }
 
@@ -379,7 +384,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             PlaceAggregate aggregate,
             UserSignalContext signalContext,
             double graphAffinityScore,
-            PlaceRecommendationExposureService.ExposureMetrics exposureMetrics,
+            long totalExposureCount,
             double globalAverageLikePerPhoto,
             double maxSeedWeight,
             double appliedRadiusKm,
@@ -395,8 +400,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         double geoScore = 1d - Math.min(candidate.distanceMeters() / 1_000d / appliedRadiusKm, 1d);
         double rawExplorationScore = calculateExplorationScore(
-                exposureMetrics.totalExposureCount(),
-                exposureMetrics.exposureCountOf(candidate.place().getId())
+                totalExposureCount,
+                aggregate.exposureCount
         );
 
         long photoCount = aggregate.resolvedPhotoCount(candidate.place().currentPhotoCount());
@@ -704,6 +709,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         private long photoCount;
         private long bookmarkCount;
         private long likeSum;
+        private long exposureCount;
         private LocalDateTime latestCreatedAt;
         private boolean snapshotBacked;
 
@@ -716,6 +722,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             aggregate.photoCount = snapshot.getPhotoCount();
             aggregate.bookmarkCount = snapshot.getBookmarkCount();
             aggregate.likeSum = snapshot.getTotalLikeCount();
+            aggregate.exposureCount = snapshot.getExposureCount();
             aggregate.latestCreatedAt = snapshot.getLatestPostCreatedAt();
             aggregate.snapshotBacked = true;
             return aggregate;

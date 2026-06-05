@@ -32,6 +32,9 @@ public class PlaceRecommendationSnapshot {
     @Column(name = "total_like_count", nullable = false)
     private long totalLikeCount;
 
+    @Column(name = "exposure_count", nullable = false)
+    private long exposureCount;
+
     @Column(name = "latest_post_created_at")
     private LocalDateTime latestPostCreatedAt;
 
@@ -42,13 +45,20 @@ public class PlaceRecommendationSnapshot {
             long photoCount,
             long bookmarkCount,
             long totalLikeCount,
+            long exposureCount,
             LocalDateTime latestPostCreatedAt,
             LocalDateTime updatedAt
     ) {
         this.photoCount = photoCount;
         this.bookmarkCount = bookmarkCount;
         this.totalLikeCount = totalLikeCount;
+        this.exposureCount = exposureCount;
         this.latestPostCreatedAt = latestPostCreatedAt;
+        this.updatedAt = updatedAt;
+    }
+
+    public void increaseExposureCount(long delta, LocalDateTime updatedAt) {
+        this.exposureCount += delta;
         this.updatedAt = updatedAt;
     }
 }

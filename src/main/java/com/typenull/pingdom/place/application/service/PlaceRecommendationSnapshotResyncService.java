@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.LocalDateTime;
@@ -24,6 +25,7 @@ public class PlaceRecommendationSnapshotResyncService {
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
+    private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @Transactional
@@ -44,6 +46,7 @@ public class PlaceRecommendationSnapshotResyncService {
 
         Map<Long, Long> bookmarkCounts = loadBookmarkCounts(placeIds);
         Map<Long, ImageAggregate> imageAggregates = loadImageAggregates(placeIds);
+        Map<Long, Long> exposureCounts = loadExposureCounts(placeIds);
         Map<Long, PlaceRecommendationSnapshot> existingSnapshotsByPlaceId = new HashMap<>();
         for (PlaceRecommendationSnapshot existingSnapshot : existingSnapshots) {
             existingSnapshotsByPlaceId.put(existingSnapshot.getPlaceId(), existingSnapshot);
@@ -68,6 +71,7 @@ public class PlaceRecommendationSnapshotResyncService {
                     place.currentPhotoCount(),
                     bookmarkCounts.getOrDefault(placeId, 0L),
                     imageAggregate.totalLikeCount(),
+                    exposureCounts.getOrDefault(placeId, 0L),
                     imageAggregate.latestPostCreatedAt(),
                     syncedAt
             );
@@ -115,6 +119,15 @@ public class PlaceRecommendationSnapshotResyncService {
             );
         }
         return imageAggregates;
+    }
+
+    private Map<Long, Long> loadExposureCounts(List<Long> placeIds) {
+        Map<Long, Long> exposureCounts = new HashMap<>();
+        for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
+                placeRecommendationExposureRepository.countExposuresByPlaceIds(placeIds)) {
+            exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
+        }
+        return exposureCounts;
     }
 
     private record ImageAggregate(long totalLikeCount, LocalDateTime latestPostCreatedAt) {
