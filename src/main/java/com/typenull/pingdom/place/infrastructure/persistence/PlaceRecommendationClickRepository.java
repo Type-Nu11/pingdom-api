@@ -1,8 +1,10 @@
 package com.typenull.pingdom.place.infrastructure.persistence;
 
 import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
@@ -24,4 +26,10 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
     List<PlaceClickCountProjection> countClicksByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
 
     long countByPlaceId(Long placeId);
+
+    Optional<PlaceRecommendationClick> findFirstByUserIdAndPlaceIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
+            Long userId,
+            Long placeId,
+            LocalDateTime createdAt
+    );
 }

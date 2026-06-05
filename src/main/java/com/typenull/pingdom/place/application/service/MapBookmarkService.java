@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateResponse;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.domain.MapBookmark;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.support.MapMessages;
@@ -21,6 +22,7 @@ public class MapBookmarkService {
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationConversionService placeRecommendationConversionService;
 
     @Transactional
     public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
@@ -43,6 +45,11 @@ public class MapBookmarkService {
 
         MapBookmark saved = mapBookmarkRepository.save(bookmark);
         placeRecommendationSnapshotService.refresh(placeId);
+        placeRecommendationConversionService.recordConversionIfEligible(
+                userId,
+                placeId,
+                PlaceRecommendationConversionType.BOOKMARK
+        );
         return new BookmarkCreateResponse(saved.getId(), saved.getPlaceId(), MapMessages.BOOKMARK_CREATED);
     }
 

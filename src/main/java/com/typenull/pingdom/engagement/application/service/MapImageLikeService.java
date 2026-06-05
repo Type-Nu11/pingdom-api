@@ -2,6 +2,8 @@ package com.typenull.pingdom.engagement.application.service;
 
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.event.MapImageLikedEvent;
+import com.typenull.pingdom.place.application.service.PlaceRecommendationConversionService;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -21,6 +23,7 @@ public class MapImageLikeService {
     private final MapImageRepository mapImageRepository;
     private final ApplicationEventPublisher applicationEventPublisher;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationConversionService placeRecommendationConversionService;
 
     @Transactional
     public MapImageLikeResult like(Long mapImageId, Long userId) {
@@ -44,6 +47,11 @@ public class MapImageLikeService {
         mapImageRepository.increaseLikeCount(mapImageId);
         if (mapImage.getMapPlace() != null) {
             placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());
+            placeRecommendationConversionService.recordConversionIfEligible(
+                    userId,
+                    mapImage.getMapPlace().getId(),
+                    PlaceRecommendationConversionType.LIKE
+            );
         }
         // 좋아요 확정 이후 부수효과는 커밋 후 이벤트 리스너가 처리한다.
         applicationEventPublisher.publishEvent(new MapImageLikedEvent(mapImageId, ownerId, userId));
