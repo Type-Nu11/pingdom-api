@@ -5,6 +5,8 @@ import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
+import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -14,6 +16,14 @@ import org.springframework.stereotype.Repository;
 
 @Repository
 public interface MapImageRepository extends JpaRepository<MapImage,Long> {
+
+    interface PlaceImageAggregateProjection {
+        Long getPlaceId();
+
+        Long getLikeSum();
+
+        LocalDateTime getLatestCreatedAt();
+    }
 
     @Modifying
     @Query("""
@@ -54,4 +64,22 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
             @Param("keyword") String keyword,
             Pageable pageable
     );
+
+    @Query("""
+            SELECT DISTINCT m.mapPlace.id
+            FROM MapImage m
+            WHERE m.userId = :userId
+              AND m.mapPlace IS NOT NULL
+            """)
+    List<Long> findPlaceIdsByUserId(@Param("userId") Long userId);
+
+    @Query("""
+            SELECT m.mapPlace.id as placeId,
+                   COALESCE(SUM(m.likeCount), 0) as likeSum,
+                   MAX(m.createdAt) as latestCreatedAt
+            FROM MapImage m
+            WHERE m.mapPlace.id IN :placeIds
+            GROUP BY m.mapPlace.id
+            """)
+    List<PlaceImageAggregateProjection> findPlaceAggregatesByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
 }

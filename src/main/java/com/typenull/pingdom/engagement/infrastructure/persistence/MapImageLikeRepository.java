@@ -2,6 +2,7 @@ package com.typenull.pingdom.engagement.infrastructure.persistence;
 
 
 import com.typenull.pingdom.engagement.domain.MapImageLike;
+import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -22,4 +23,13 @@ public interface MapImageLikeRepository extends JpaRepository<MapImageLike, Long
     AND m.mapImageId = :mapImageId
 """)
     void deleteLike(@Param("userId") Long userId, @Param("mapImageId") Long mapImageId);
+
+    @Query("""
+            SELECT DISTINCT image.mapPlace.id
+            FROM MapImageLike likeHistory
+            JOIN MapImage image ON image.id = likeHistory.mapImageId
+            WHERE likeHistory.userId = :userId
+              AND image.mapPlace IS NOT NULL
+            """)
+    List<Long> findPlaceIdsByUserId(@Param("userId") Long userId);
 }
