@@ -1,8 +1,8 @@
 package com.typenull.pingdom.engagement.api;
 
-import com.typenull.pingdom.engagement.api.dto.MapImageLikeRequest;
-import com.typenull.pingdom.engagement.api.dto.MapImageLikeResponse;
-import com.typenull.pingdom.engagement.api.dto.PostReportRequest;
+import com.typenull.pingdom.engagement.api.dto.like.MapImageLikeRequest;
+import com.typenull.pingdom.engagement.api.dto.like.MapImageLikeResponse;
+import com.typenull.pingdom.engagement.api.dto.report.PostReportRequest;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeResult;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.notification.api.dto;
+package com.typenull.pingdom.notification.api.dto.fcm;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
