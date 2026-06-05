@@ -17,7 +17,9 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
@@ -59,12 +61,16 @@ class AdminMapPlaceControllerTest {
     private MapImageRepository mapImageRepository;
 
     @Autowired
+    private PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
+
+    @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @BeforeEach
     void setUp() {
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -257,11 +263,27 @@ class AdminMapPlaceControllerTest {
                 .mapPlace(mapPlace)
                 .build());
 
+        placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                .placeId(mapPlace.getId())
+                .userId(300L)
+                .requestLatitude(35.1801)
+                .requestLongitude(128.1078)
+                .ranking(1)
+                .build());
+        placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                .placeId(mapPlace.getId())
+                .userId(301L)
+                .requestLatitude(35.1801)
+                .requestLongitude(128.1078)
+                .ranking(2)
+                .build());
+
         placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
                 .placeId(9999L)
                 .photoCount(99L)
                 .bookmarkCount(99L)
                 .totalLikeCount(99L)
+                .exposureCount(99L)
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
 
@@ -278,6 +300,7 @@ class AdminMapPlaceControllerTest {
         assertEquals(2L, snapshot.getPhotoCount());
         assertEquals(1L, snapshot.getBookmarkCount());
         assertEquals(10L, snapshot.getTotalLikeCount());
+        assertEquals(2L, snapshot.getExposureCount());
         assertNotNull(snapshot.getLatestPostCreatedAt());
         assertFalse(placeRecommendationSnapshotRepository.existsById(9999L));
     }
