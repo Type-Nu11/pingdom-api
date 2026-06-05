@@ -4,9 +4,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.application.port.EmailSender;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -22,6 +28,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -58,11 +65,23 @@ class PlaceControllerTest {
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
 
+    @Autowired
+    private MapBookmarkRepository mapBookmarkRepository;
+
+    @Autowired
+    private MapImageRepository mapImageRepository;
+
+    @Autowired
+    private MapImageLikeRepository mapImageLikeRepository;
+
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
     @BeforeEach
     void setUp() {
+        mapImageLikeRepository.deleteAllInBatch();
+        mapBookmarkRepository.deleteAllInBatch();
+        mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -112,6 +131,64 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    @Test
+    void recommendPlacesReturnsPersonalizedNearbyPlaces() throws Exception {
+        String accessToken = signupAndLogin("reader04");
+        User reader = userRepository.findByUsername("reader04").orElseThrow();
+
+        MapPlace bookmarkedPlace = createMapPlace("북마크 기준 장소", "경상남도 진주시 강남로 1", 35.1800, 128.1070, 1L);
+        MapPlace recommendedPlace = createMapPlace("추천 장소", "경상남도 진주시 강남로 2", 35.1804, 128.1075, 3L);
+        MapPlace fallbackPlace = createMapPlace("일반 후보 장소", "경상남도 진주시 강남로 3", 35.1840, 128.1110, 2L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(reader.getId())
+                .placeId(bookmarkedPlace.getId())
+                .build());
+
+        createMapImage(recommendedPlace, 12L, "추천 사진 1");
+        createMapImage(recommendedPlace, 9L, "추천 사진 2");
+        createMapImage(recommendedPlace, 8L, "추천 사진 3");
+        createMapImage(fallbackPlace, 2L, "일반 사진 1");
+        createMapImage(fallbackPlace, 1L, "일반 사진 2");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1802")
+                        .param("longitude", "128.1072")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(2))
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].name").value("추천 장소"))
+                .andExpect(jsonPath("$.places[0].reason").value("저장한 장소와 가까운 추천 장소입니다."));
+    }
+
+    @Test
+    void recommendPlacesFallsBackToPopularNearbyPlacesWhenUserHasNoSignals() throws Exception {
+        String accessToken = signupAndLogin("reader05");
+
+        MapPlace popularPlace = createMapPlace("인기 장소", "경상남도 진주시 남강로 10", 35.1803, 128.1079, 4L);
+        MapPlace normalPlace = createMapPlace("일반 장소", "경상남도 진주시 남강로 11", 35.1816, 128.1082, 1L);
+
+        createMapImage(popularPlace, 20L, "인기 사진 1");
+        createMapImage(popularPlace, 15L, "인기 사진 2");
+        createMapImage(popularPlace, 10L, "인기 사진 3");
+        createMapImage(popularPlace, 6L, "인기 사진 4");
+        createMapImage(normalPlace, 0L, "일반 사진 1");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(2))
+                .andExpect(jsonPath("$.places[0].name").value("인기 장소"))
+                .andExpect(jsonPath("$.places[0].reason", containsString("현재 위치 주변")));
+    }
+
     private String signupAndLogin(String username) throws Exception {
         SignupRequest signupRequest = new SignupRequest(username, username + "@example.com", "password123", 1998, null, "ko", "KR");
 
@@ -133,13 +210,31 @@ class PlaceControllerTest {
     }
 
     private MapPlace createMapPlace(String name, String address) {
+        return createMapPlace(name, address, 35.1801, 128.1078, 0L);
+    }
+
+    private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
                 .address(address)
-                .latitude(35.1801)
-                .longitude(128.1078)
+                .latitude(latitude)
+                .longitude(longitude)
                 .userId(1L)
                 .registrant("placeOwner")
+                .photoCount(photoCount)
+                .build());
+    }
+
+    private MapImage createMapImage(MapPlace mapPlace, long likeCount, String title) {
+        return mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/" + title + ".jpg")
+                .s3Key("test/" + title + ".jpg")
+                .title(title)
+                .description(title + " 설명")
+                .userId(99L)
+                .username("placeOwner")
+                .likeCount(likeCount)
+                .mapPlace(mapPlace)
                 .build());
     }
 
