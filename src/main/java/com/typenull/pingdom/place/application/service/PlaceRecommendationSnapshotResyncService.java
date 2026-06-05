@@ -1,0 +1,132 @@
+package com.typenull.pingdom.place.application.service;
+
+import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class PlaceRecommendationSnapshotResyncService {
+
+    private final MapPlaceRepository mapPlaceRepository;
+    private final MapBookmarkRepository mapBookmarkRepository;
+    private final MapImageRepository mapImageRepository;
+    private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+
+    @Transactional
+    public SnapshotResyncResult resyncAll() {
+        List<MapPlace> places = mapPlaceRepository.findAll();
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+
+        List<PlaceRecommendationSnapshot> existingSnapshots = placeRecommendationSnapshotRepository.findAll();
+        if (placeIds.isEmpty()) {
+            long deletedSnapshotCount = existingSnapshots.size();
+            if (deletedSnapshotCount > 0L) {
+                placeRecommendationSnapshotRepository.deleteAllInBatch();
+            }
+            return new SnapshotResyncResult(0, 0, deletedSnapshotCount);
+        }
+
+        Map<Long, Long> bookmarkCounts = loadBookmarkCounts(placeIds);
+        Map<Long, ImageAggregate> imageAggregates = loadImageAggregates(placeIds);
+        Map<Long, PlaceRecommendationSnapshot> existingSnapshotsByPlaceId = new HashMap<>();
+        for (PlaceRecommendationSnapshot existingSnapshot : existingSnapshots) {
+            existingSnapshotsByPlaceId.put(existingSnapshot.getPlaceId(), existingSnapshot);
+        }
+
+        LocalDateTime syncedAt = LocalDateTime.now();
+        List<PlaceRecommendationSnapshot> snapshotsToSave = new ArrayList<>(places.size());
+
+        for (MapPlace place : places) {
+            Long placeId = place.getId();
+            ImageAggregate imageAggregate = imageAggregates.getOrDefault(placeId, ImageAggregate.empty());
+
+            PlaceRecommendationSnapshot snapshot = existingSnapshotsByPlaceId.get(placeId);
+            if (snapshot == null) {
+                snapshot = PlaceRecommendationSnapshot.builder()
+                        .placeId(placeId)
+                        .updatedAt(syncedAt)
+                        .build();
+            }
+
+            snapshot.synchronize(
+                    place.currentPhotoCount(),
+                    bookmarkCounts.getOrDefault(placeId, 0L),
+                    imageAggregate.totalLikeCount(),
+                    imageAggregate.latestPostCreatedAt(),
+                    syncedAt
+            );
+            snapshotsToSave.add(snapshot);
+        }
+
+        placeRecommendationSnapshotRepository.saveAll(snapshotsToSave);
+
+        Set<Long> placeIdSet = new HashSet<>(placeIds);
+        List<Long> orphanSnapshotPlaceIds = existingSnapshots.stream()
+                .map(PlaceRecommendationSnapshot::getPlaceId)
+                .filter(snapshotPlaceId -> !placeIdSet.contains(snapshotPlaceId))
+                .toList();
+
+        if (!orphanSnapshotPlaceIds.isEmpty()) {
+            placeRecommendationSnapshotRepository.deleteAllByIdInBatch(orphanSnapshotPlaceIds);
+        }
+
+        return new SnapshotResyncResult(
+                placeIds.size(),
+                snapshotsToSave.size(),
+                orphanSnapshotPlaceIds.size()
+        );
+    }
+
+    private Map<Long, Long> loadBookmarkCounts(List<Long> placeIds) {
+        Map<Long, Long> bookmarkCounts = new HashMap<>();
+        for (MapBookmarkRepository.PlaceBookmarkCountProjection projection :
+                mapBookmarkRepository.findBookmarkCountsByPlaceIds(placeIds)) {
+            bookmarkCounts.put(projection.getPlaceId(), projection.getBookmarkCount());
+        }
+        return bookmarkCounts;
+    }
+
+    private Map<Long, ImageAggregate> loadImageAggregates(List<Long> placeIds) {
+        Map<Long, ImageAggregate> imageAggregates = new HashMap<>();
+        for (MapImageRepository.PlaceImageAggregateProjection projection :
+                mapImageRepository.findPlaceAggregatesByPlaceIds(placeIds)) {
+            imageAggregates.put(
+                    projection.getPlaceId(),
+                    new ImageAggregate(
+                            projection.getLikeSum() == null ? 0L : projection.getLikeSum(),
+                            projection.getLatestCreatedAt()
+                    )
+            );
+        }
+        return imageAggregates;
+    }
+
+    private record ImageAggregate(long totalLikeCount, LocalDateTime latestPostCreatedAt) {
+        private static ImageAggregate empty() {
+            return new ImageAggregate(0L, null);
+        }
+    }
+
+    public record SnapshotResyncResult(
+            long placeCount,
+            long synchronizedSnapshotCount,
+            long deletedSnapshotCount
+    ) {
+    }
+}
