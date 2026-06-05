@@ -80,6 +80,17 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listPlacesRejectsMostLikedSort() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortParam", SortParam.MOST_LIKED.name()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SORT_PARAM"));
+    }
+
+    @Test
     void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
         User placeOwner = userRepository.save(User.builder()

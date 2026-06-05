@@ -37,10 +37,11 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     public AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
+        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
 
         Page<MapPlace> placePage = mapPlaceRepository.findByNameContaining(
                 keyword,
-                PageRequest.of(safePage - 1, safeLimit, toListSort(sortParam == null ? SortParam.LATEST : sortParam))
+                PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
         );
 
         List<AdminMapPlaceItem> places = placePage.getContent()
@@ -100,7 +101,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private Sort toListSort(SortParam sortParam) {
         return switch (sortParam) {
             case OLDEST -> Sort.by(Sort.Order.asc("id"));
-            default -> Sort.by(Sort.Order.desc("id")); // MOST_LIKED나 LATEST는 기본적으로 id 역순 정렬로 대체하거나 적절히 처리
+            case LATEST -> Sort.by(Sort.Order.desc("id"));
+            case MOST_LIKED -> throw new AdminException(AdminErrorCode.UNSUPPORTED_PLACE_SORT_PARAM);
         };
     }
 
