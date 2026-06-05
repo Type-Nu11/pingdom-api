@@ -1,7 +1,7 @@
 package com.typenull.pingdom.place.api;
 
-import com.typenull.pingdom.place.api.dto.PlaceDetailResponse;
-import com.typenull.pingdom.place.api.dto.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.application.service.PlaceQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

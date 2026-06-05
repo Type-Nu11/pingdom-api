@@ -1,7 +1,7 @@
 package com.typenull.pingdom.post.application.query;
 
-import com.typenull.pingdom.post.api.dto.PostDetailResponse;
-import com.typenull.pingdom.post.api.dto.PostListResponse;
+import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
+import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 
 public interface PostQueryService {
 

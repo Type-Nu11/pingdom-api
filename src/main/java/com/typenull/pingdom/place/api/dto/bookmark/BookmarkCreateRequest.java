@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.api.dto;
+package com.typenull.pingdom.place.api.dto.bookmark;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;

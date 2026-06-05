@@ -76,6 +76,20 @@ public class AdminMapPlaceController {
                                             """
                             )
                     )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "지원하지 않는 장소 정렬 기준",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "장소 목록은 LATEST 또는 OLDEST 정렬만 지원합니다.",
+                                              "code": "UNSUPPORTED_PLACE_SORT_PARAM"
+                                            }
+                                            """
+                            )
+                    )
             )
     })
     public AdminMapPlaceResponse listPlaces(
@@ -83,10 +97,16 @@ public class AdminMapPlaceController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
+            @Parameter(
+                    description = "장소 정렬 기준. LATEST, OLDEST만 지원합니다.",
+                    example = "LATEST",
+                    schema = @Schema(type = "string", allowableValues = {"LATEST", "OLDEST"})
+            )
+            @RequestParam(defaultValue = "LATEST") SortParam sortParam,
             @Parameter(description = "검색 키워드 설정", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.listPlaces(page, limit, keyword);
+        return adminMapPlaceQueryService.listPlaces(page, limit, sortParam, keyword);
     }
 
     @GetMapping("/{id}")
