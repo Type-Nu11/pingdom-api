@@ -31,15 +31,16 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final double MIN_RADIUS_KM = 1.0d;
     private static final double MAX_RADIUS_KM = 20.0d;
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
-    private static final double PERSONAL_DECAY_METERS = 3_000d;
     private static final double FRESHNESS_DECAY_DAYS = 14d;
     private static final double BAYESIAN_PRIOR_WEIGHT = 3d;
+    private static final double MMR_RELEVANCE_WEIGHT = 0.75d;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
     @Override
     public PlaceRecommendationResponse recommendPlaces(
@@ -89,6 +90,11 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         Map<Long, PlaceAggregate> aggregateMap = loadAggregates(selection.candidates());
+        PlaceRecommendationSimilarityService.SimilarityContext similarityContext = buildSimilarityContext(
+                selection.candidates(),
+                signalContext.interactedPlaceIds(),
+                placeIndex
+        );
         double globalAverageLikePerPhoto = calculateGlobalAverageLikePerPhoto(selection.candidates(), aggregateMap);
         double maxSeedWeight = signalContext.seedWeights().values().stream()
                 .mapToDouble(Double::doubleValue)
@@ -105,17 +111,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         globalAverageLikePerPhoto,
                         maxSeedWeight,
                         appliedRadiusKm,
-                        placeIndex
+                        similarityContext
                 ))
                 .toList();
 
-        List<ScoredCandidate> scoredCandidates = applyFinalScores(intermediateCandidates, hasPersonalSignals).stream()
-                .sorted(Comparator
-                        .comparingDouble(ScoredCandidate::finalScore).reversed()
-                        .thenComparingDouble(ScoredCandidate::distanceMeters)
-                        .thenComparing(candidate -> candidate.place().getId(), Comparator.reverseOrder()))
-                .limit(safeLimit)
-                .toList();
+        List<ScoredCandidate> scoredCandidates = rerankWithMmr(
+                applyFinalScores(intermediateCandidates, hasPersonalSignals),
+                safeLimit,
+                similarityContext
+        );
 
         List<PlaceRecommendationItem> places = scoredCandidates.stream()
                 .map(candidate -> new PlaceRecommendationItem(
@@ -256,6 +260,19 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         return aggregateMap;
     }
 
+    private PlaceRecommendationSimilarityService.SimilarityContext buildSimilarityContext(
+            List<PlaceDistance> candidates,
+            Set<Long> interactedPlaceIds,
+            Map<Long, MapPlace> placeIndex
+    ) {
+        Set<Long> relatedPlaceIds = new LinkedHashSet<>(interactedPlaceIds);
+        candidates.stream()
+                .map(candidate -> candidate.place().getId())
+                .forEach(relatedPlaceIds::add);
+
+        return placeRecommendationSimilarityService.buildContext(relatedPlaceIds, placeIndex);
+    }
+
     private double calculateGlobalAverageLikePerPhoto(
             List<PlaceDistance> candidates,
             Map<Long, PlaceAggregate> aggregateMap
@@ -281,24 +298,17 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double globalAverageLikePerPhoto,
             double maxSeedWeight,
             double appliedRadiusKm,
-            Map<Long, MapPlace> placeIndex
+            PlaceRecommendationSimilarityService.SimilarityContext similarityContext
     ) {
         double personalScore = 0d;
         PersonalSignalType dominantSignalType = PersonalSignalType.NONE;
 
         for (Map.Entry<Long, Double> seedWeightEntry : signalContext.seedWeights().entrySet()) {
-            MapPlace seedPlace = placeIndex.get(seedWeightEntry.getKey());
-            if (seedPlace == null || seedPlace.getLatitude() == null || seedPlace.getLongitude() == null) {
-                continue;
-            }
-
-            double seedDistanceMeters = calculateDistanceMeters(
-                    candidate.place().getLatitude(),
-                    candidate.place().getLongitude(),
-                    seedPlace.getLatitude(),
-                    seedPlace.getLongitude()
+            double similarity = placeRecommendationSimilarityService.similarity(
+                    candidate.place().getId(),
+                    seedWeightEntry.getKey(),
+                    similarityContext
             );
-            double similarity = Math.exp(-seedDistanceMeters / PERSONAL_DECAY_METERS);
             double normalizedSeedWeight = seedWeightEntry.getValue() / maxSeedWeight;
             double contribution = normalizedSeedWeight * similarity;
 
@@ -327,6 +337,60 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 freshnessScore,
                 dominantSignalType
         );
+    }
+
+    private List<ScoredCandidate> rerankWithMmr(
+            List<ScoredCandidate> candidates,
+            int limit,
+            PlaceRecommendationSimilarityService.SimilarityContext similarityContext
+    ) {
+        List<ScoredCandidate> remaining = new ArrayList<>(candidates);
+        List<ScoredCandidate> selected = new ArrayList<>();
+
+        // MMR로 지나치게 비슷한 후보가 연속 노출되는 것을 줄인다.
+        while (!remaining.isEmpty() && selected.size() < limit) {
+            ScoredCandidate next = remaining.stream()
+                    .max(Comparator
+                            .comparingDouble((ScoredCandidate candidate) -> mmrScore(candidate, selected, similarityContext))
+                            .thenComparing(baseScoreComparator()))
+                    .orElseThrow();
+
+            selected.add(next);
+            remaining.remove(next);
+        }
+
+        return List.copyOf(selected);
+    }
+
+    private Comparator<ScoredCandidate> baseScoreComparator() {
+        return Comparator
+                .comparingDouble(ScoredCandidate::finalScore)
+                .thenComparingDouble(ScoredCandidate::personalScore)
+                .thenComparingDouble(ScoredCandidate::qualityScore)
+                .thenComparing(Comparator.comparingDouble(ScoredCandidate::distanceMeters).reversed())
+                .thenComparing(candidate -> candidate.place().getId());
+    }
+
+    private double mmrScore(
+            ScoredCandidate candidate,
+            List<ScoredCandidate> selected,
+            PlaceRecommendationSimilarityService.SimilarityContext similarityContext
+    ) {
+        if (selected.isEmpty()) {
+            return candidate.finalScore();
+        }
+
+        double maxSimilarityToSelected = selected.stream()
+                .mapToDouble(selectedCandidate -> placeRecommendationSimilarityService.similarity(
+                        candidate.place().getId(),
+                        selectedCandidate.place().getId(),
+                        similarityContext
+                ))
+                .max()
+                .orElse(0d);
+
+        return (MMR_RELEVANCE_WEIGHT * candidate.finalScore())
+                - ((1d - MMR_RELEVANCE_WEIGHT) * maxSimilarityToSelected);
     }
 
     private List<ScoredCandidate> applyFinalScores(List<IntermediateCandidate> candidates, boolean hasPersonalSignals) {
