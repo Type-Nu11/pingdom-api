@@ -8,10 +8,12 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -90,6 +92,9 @@ class PlaceControllerTest {
     @Autowired
     private PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
 
+    @Autowired
+    private PlaceRecommendationClickRepository placeRecommendationClickRepository;
+
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
@@ -98,6 +103,7 @@ class PlaceControllerTest {
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -300,6 +306,31 @@ class PlaceControllerTest {
                         .param("radiusKm", "5.0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].name").value("저노출 장소"));
+    }
+
+    @Test
+    void recordRecommendationClickStoresRawLogAndIncreasesSnapshotCount() throws Exception {
+        String accessToken = signupAndLogin("reader12");
+        MapPlace clickedPlace = createMapPlace("클릭 장소", "경상남도 진주시 클릭로 1", 35.1803, 128.1079, 1L);
+        createMapImage(clickedPlace, 2L, "클릭 사진");
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", clickedPlace.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.placeId").value(clickedPlace.getId()))
+                .andExpect(jsonPath("$.message").value("추천 장소 클릭을 기록했습니다."));
+
+        List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findAll();
+        assertEquals(1, clicks.size());
+        assertEquals(clickedPlace.getId(), clicks.get(0).getPlaceId());
+        assertNotNull(clicks.get(0).getCreatedAt());
+
+        PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(clickedPlace.getId())
+                .orElseThrow();
+        assertEquals(1L, snapshot.getClickCount());
+        assertEquals(0L, snapshot.getExposureCount());
     }
 
     @Test
