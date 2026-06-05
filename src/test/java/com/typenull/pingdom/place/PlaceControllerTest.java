@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import static org.hamcrest.Matchers.containsString;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -165,6 +166,42 @@ class PlaceControllerTest {
     }
 
     @Test
+    void recommendPlacesUsesBookmarkSimilarityForPersonalRanking() throws Exception {
+        String accessToken = signupAndLogin("reader06");
+        User reader = userRepository.findByUsername("reader06").orElseThrow();
+
+        MapPlace seedPlace = createMapPlace("기준 장소", "경상남도 진주시 초전동 1", 35.1800, 128.1070, 1L);
+        MapPlace similarPlace = createMapPlace("유사 장소", "경상남도 진주시 초전동 2", 35.1830, 128.1100, 1L);
+        MapPlace nearbyPlace = createMapPlace("가까운 일반 장소", "경상남도 진주시 초전동 3", 35.1804, 128.1074, 1L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(reader.getId())
+                .placeId(seedPlace.getId())
+                .build());
+
+        User userA = createUser("similarityUserA");
+        User userB = createUser("similarityUserB");
+
+        createBookmark(userA.getId(), seedPlace.getId());
+        createBookmark(userA.getId(), similarPlace.getId());
+        createBookmark(userB.getId(), seedPlace.getId());
+        createBookmark(userB.getId(), similarPlace.getId());
+
+        createMapImage(similarPlace, 1L, "유사 장소 사진");
+        createMapImage(nearbyPlace, 1L, "가까운 장소 사진");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1802")
+                        .param("longitude", "128.1072")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("유사 장소"))
+                .andExpect(jsonPath("$.places[0].reason").value("저장한 장소와 가까운 추천 장소입니다."));
+    }
+
+    @Test
     void recommendPlacesFallsBackToPopularNearbyPlacesWhenUserHasNoSignals() throws Exception {
         String accessToken = signupAndLogin("reader05");
 
@@ -187,6 +224,36 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("인기 장소"))
                 .andExpect(jsonPath("$.places[0].reason", containsString("현재 위치 주변")));
+    }
+
+    @Test
+    void recommendPlacesAppliesDiversityReranking() throws Exception {
+        String accessToken = signupAndLogin("reader07");
+
+        MapPlace duplicatePlaceA = createMapPlace("중복 후보 A", "경상남도 진주시 평거동 10", 35.1802, 128.1079, 4L);
+        MapPlace duplicatePlaceB = createMapPlace("중복 후보 B", "경상남도 진주시 평거동 11", 35.18025, 128.10795, 4L);
+        MapPlace diversePlace = createMapPlace("다양성 후보", "경상남도 진주시 충무공동 1", 35.1865, 128.1145, 3L);
+
+        createMapImage(duplicatePlaceA, 20L, "중복 A 사진 1");
+        createMapImage(duplicatePlaceA, 15L, "중복 A 사진 2");
+        createMapImage(duplicatePlaceA, 10L, "중복 A 사진 3");
+
+        createMapImage(duplicatePlaceB, 19L, "중복 B 사진 1");
+        createMapImage(duplicatePlaceB, 14L, "중복 B 사진 2");
+        createMapImage(duplicatePlaceB, 9L, "중복 B 사진 3");
+
+        createMapImage(diversePlace, 16L, "다양성 사진 1");
+        createMapImage(diversePlace, 12L, "다양성 사진 2");
+        createMapImage(diversePlace, 8L, "다양성 사진 3");
+
+                mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[*].name", containsInAnyOrder("중복 후보 A", "다양성 후보")));
     }
 
     private String signupAndLogin(String username) throws Exception {
@@ -222,6 +289,24 @@ class PlaceControllerTest {
                 .userId(1L)
                 .registrant("placeOwner")
                 .photoCount(photoCount)
+                .build());
+    }
+
+    private User createUser(String username) {
+        return userRepository.save(User.builder()
+                .username(username)
+                .email(username + "@example.com")
+                .password("password123")
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .build());
+    }
+
+    private void createBookmark(Long userId, Long placeId) {
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(userId)
+                .placeId(placeId)
                 .build());
     }
 
