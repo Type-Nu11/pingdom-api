@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.api.dto;
+package com.typenull.pingdom.place.api.dto.coordinate;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
@@ -20,4 +20,3 @@ public record PlaceCoordinateCreateRequest(
         Double baseLongitude
 ) {
 }
-
