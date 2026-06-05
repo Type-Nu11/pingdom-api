@@ -19,6 +19,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendation
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
+import java.time.LocalDateTime;
 import java.util.Comparator;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
@@ -331,6 +332,85 @@ class PlaceControllerTest {
                 .orElseThrow();
         assertEquals(1L, snapshot.getClickCount());
         assertEquals(0L, snapshot.getExposureCount());
+    }
+
+    @Test
+    void recommendPlacesAppliesCtrScoreToWellClickedPlace() throws Exception {
+        String accessToken = signupAndLogin("reader13");
+
+        MapPlace wellClickedPlace = createMapPlace("검증된 클릭 반응 장소", "경상남도 진주시 반응로 1", 35.1803, 128.1079, 1L);
+        MapPlace lowClickedPlace = createMapPlace("낮은 클릭 반응 장소", "경상남도 진주시 반응로 2", 35.1803, 128.1079, 1L);
+
+        LocalDateTime now = LocalDateTime.now().minusDays(30);
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(wellClickedPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(6L)
+                .exposureCount(20L)
+                .latestPostCreatedAt(now)
+                .updatedAt(now)
+                .build());
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(lowClickedPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(0L)
+                .exposureCount(20L)
+                .latestPostCreatedAt(now)
+                .updatedAt(now)
+                .build());
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("검증된 클릭 반응 장소"))
+                .andExpect(jsonPath("$.places[0].reason").value("현재 위치 주변에서 추천 클릭 반응이 좋은 장소입니다."));
+    }
+
+    @Test
+    void recommendPlacesProtectsAgainstSingleLuckyClickSample() throws Exception {
+        String accessToken = signupAndLogin("reader14");
+
+        MapPlace luckyClickPlace = createMapPlace("우연 클릭 장소", "경상남도 진주시 반응로 3", 35.1803, 128.1079, 1L);
+        MapPlace provenClickPlace = createMapPlace("검증된 반응 장소", "경상남도 진주시 반응로 4", 35.1803, 128.1079, 1L);
+
+        LocalDateTime now = LocalDateTime.now().minusDays(30);
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(luckyClickPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(1L)
+                .exposureCount(1L)
+                .latestPostCreatedAt(now)
+                .updatedAt(now)
+                .build());
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(provenClickPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(6L)
+                .exposureCount(20L)
+                .latestPostCreatedAt(now)
+                .updatedAt(now)
+                .build());
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("검증된 반응 장소"));
     }
 
     @Test
