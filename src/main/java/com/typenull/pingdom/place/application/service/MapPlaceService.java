@@ -35,7 +35,6 @@ public class MapPlaceService {
             String kakaoPlaceId,
             long userId
     ) {
-        // TODO: ±a 오차 적용 로직은 별도 이슈에서 구현 예정 (현재는 기준 좌표를 그대로 사용)
         double finalLatitude = baseLatitude;
         double finalLongitude = baseLongitude;
         String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
