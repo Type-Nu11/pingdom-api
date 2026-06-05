@@ -52,6 +52,20 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     List<MapImage> findByMapPlace_Id(Long placeId, Pageable pageable);
 
+    @Query("""
+            SELECT COALESCE(SUM(m.likeCount), 0)
+            FROM MapImage m
+            WHERE m.mapPlace.id = :placeId
+            """)
+    long sumLikeCountByPlaceId(@Param("placeId") Long placeId);
+
+    @Query("""
+            SELECT MAX(m.createdAt)
+            FROM MapImage m
+            WHERE m.mapPlace.id = :placeId
+            """)
+    LocalDateTime findLatestCreatedAtByPlaceId(@Param("placeId") Long placeId);
+
     @Query("SELECT COUNT(m) FROM MapImage m WHERE m.mapPlace.id = :placeId AND (:keyword IS NULL OR :keyword = '' OR m.title LIKE %:keyword%)")
     long countByMapPlace_IdAndTitleContaining(
             @Param("placeId") Long placeId,
