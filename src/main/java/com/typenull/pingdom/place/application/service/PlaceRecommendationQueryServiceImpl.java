@@ -39,6 +39,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final double BAYESIAN_PRIOR_WEIGHT = 3d;
     private static final double CTR_PRIOR_WEIGHT = 8d;
     private static final double CTR_CONFIDENCE_SAMPLE_SIZE = 10d;
+    private static final double CONVERSION_PRIOR_WEIGHT = 10d;
+    private static final double CONVERSION_CONFIDENCE_SAMPLE_SIZE = 12d;
+    private static final double LIKE_CONVERSION_WEIGHT = 0.60d;
     private static final double MMR_RELEVANCE_WEIGHT = 0.75d;
 
     private final MapPlaceRepository mapPlaceRepository;
@@ -132,6 +135,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 similarityContext
         );
         double globalAverageLikePerPhoto = calculateGlobalAverageLikePerPhoto(selection.candidates(), aggregateMap);
+        double globalConversionRate = calculateGlobalConversionRate(selection.candidates(), aggregateMap);
         double maxSeedWeight = signalContext.seedWeights().values().stream()
                 .mapToDouble(Double::doubleValue)
                 .max()
@@ -146,6 +150,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         signalContext,
                         graphAffinityScores.getOrDefault(candidate.place().getId(), 0d),
                         globalCtr,
+                        globalConversionRate,
                         resolvedTotalExposureCount,
                         globalAverageLikePerPhoto,
                         maxSeedWeight,
@@ -414,12 +419,37 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 .orElse(0d);
     }
 
+    private double calculateGlobalConversionRate(
+            List<PlaceDistance> candidates,
+            Map<Long, PlaceAggregate> aggregateMap
+    ) {
+        double weightedConversionSum = 0d;
+        long exposureSum = 0L;
+
+        for (PlaceDistance candidate : candidates) {
+            PlaceAggregate aggregate = aggregateMap.getOrDefault(candidate.place().getId(), PlaceAggregate.empty());
+            if (aggregate.exposureCount <= 0L) {
+                continue;
+            }
+
+            weightedConversionSum += aggregate.bookmarkConversionCount
+                    + (aggregate.likeConversionCount * LIKE_CONVERSION_WEIGHT);
+            exposureSum += aggregate.exposureCount;
+        }
+
+        if (exposureSum <= 0L || weightedConversionSum <= 0d) {
+            return 0d;
+        }
+        return weightedConversionSum / (double) exposureSum;
+    }
+
     private IntermediateCandidate toIntermediateCandidate(
             PlaceDistance candidate,
             PlaceAggregate aggregate,
             UserSignalContext signalContext,
             double graphAffinityScore,
             double globalCtr,
+            double globalConversionRate,
             long totalExposureCount,
             double globalAverageLikePerPhoto,
             double maxSeedWeight,
@@ -444,6 +474,12 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 aggregate.exposureCount,
                 globalCtr
         );
+        double rawConversionScore = calculateConversionScore(
+                aggregate.bookmarkConversionCount,
+                aggregate.likeConversionCount,
+                aggregate.exposureCount,
+                globalConversionRate
+        );
 
         long photoCount = aggregate.resolvedPhotoCount(candidate.place().currentPhotoCount());
         double smoothedLikeAverage = (aggregate.likeSum + BAYESIAN_PRIOR_WEIGHT * globalAverageLikePerPhoto)
@@ -460,6 +496,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 personalScore,
                 rawQualityScore,
                 rawEngagementScore,
+                rawConversionScore,
                 rawExplorationScore,
                 freshnessScore,
                 dominantSignalType
@@ -531,6 +568,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 .comparingDouble(ScoredCandidate::finalScore)
                 .thenComparingDouble(ScoredCandidate::personalScore)
                 .thenComparingDouble(ScoredCandidate::engagementScore)
+                .thenComparingDouble(ScoredCandidate::conversionScore)
                 .thenComparingDouble(ScoredCandidate::qualityScore)
                 .thenComparing(Comparator.comparingDouble(ScoredCandidate::distanceMeters).reversed())
                 .thenComparing(candidate -> candidate.place().getId());
@@ -583,6 +621,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 .mapToDouble(IntermediateCandidate::rawEngagementScore)
                 .max()
                 .orElse(0d);
+        double minConversion = candidates.stream()
+                .mapToDouble(IntermediateCandidate::rawConversionScore)
+                .min()
+                .orElse(0d);
+        double maxConversion = candidates.stream()
+                .mapToDouble(IntermediateCandidate::rawConversionScore)
+                .max()
+                .orElse(0d);
 
         return candidates.stream()
                 .map(candidate -> {
@@ -592,6 +638,11 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                             minEngagement,
                             maxEngagement
                     );
+                    double normalizedConversion = normalize(
+                            candidate.rawConversionScore(),
+                            minConversion,
+                            maxConversion
+                    );
                     double normalizedExploration = normalize(
                             candidate.rawExplorationScore(),
                             minExploration,
@@ -600,13 +651,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     double finalScore = hasPersonalSignals
                             ? (0.33d * candidate.geoScore())
                             + (0.30d * candidate.personalScore())
-                            + (0.15d * normalizedQuality)
-                            + (0.08d * normalizedEngagement)
+                            + (0.13d * normalizedQuality)
+                            + (0.07d * normalizedEngagement)
+                            + (0.07d * normalizedConversion)
                             + (0.08d * candidate.freshnessScore())
                             + (0.06d * normalizedExploration)
                             : (0.48d * candidate.geoScore())
-                            + (0.19d * normalizedQuality)
-                            + (0.12d * normalizedEngagement)
+                            + (0.16d * normalizedQuality)
+                            + (0.10d * normalizedEngagement)
+                            + (0.08d * normalizedConversion)
                             + (0.12d * candidate.freshnessScore())
                             + (0.09d * normalizedExploration);
 
@@ -617,6 +670,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                             candidate.personalScore(),
                             normalizedQuality,
                             normalizedEngagement,
+                            normalizedConversion,
                             normalizedExploration,
                             candidate.freshnessScore(),
                             candidate.dominantSignalType(),
@@ -660,6 +714,23 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         return smoothedCtr * confidence;
     }
 
+    private double calculateConversionScore(
+            long bookmarkConversionCount,
+            long likeConversionCount,
+            long exposureCount,
+            double globalConversionRate
+    ) {
+        if (exposureCount <= 0L) {
+            return 0d;
+        }
+
+        double weightedConversionCount = bookmarkConversionCount + (likeConversionCount * LIKE_CONVERSION_WEIGHT);
+        double smoothedConversionRate = (weightedConversionCount + (CONVERSION_PRIOR_WEIGHT * globalConversionRate))
+                / (exposureCount + CONVERSION_PRIOR_WEIGHT);
+        double confidence = Math.min(exposureCount / CONVERSION_CONFIDENCE_SAMPLE_SIZE, 1d);
+        return smoothedConversionRate * confidence;
+    }
+
     private double normalize(double value, double min, double max) {
         if (Double.compare(min, max) == 0) {
             return max > 0d ? 0.5d : 0d;
@@ -685,6 +756,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         if (candidate.engagementScore() >= 0.60d) {
             return "현재 위치 주변에서 추천 클릭 반응이 좋은 장소입니다.";
+        }
+
+        if (candidate.conversionScore() >= 0.55d) {
+            return "현재 위치 주변에서 저장 전환 반응이 좋은 장소입니다.";
         }
 
         if (candidate.explorationScore() >= 0.65d && candidate.qualityScore() < 0.45d) {
@@ -768,6 +843,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double personalScore,
             double rawQualityScore,
             double rawEngagementScore,
+            double rawConversionScore,
             double rawExplorationScore,
             double freshnessScore,
             PersonalSignalType dominantSignalType
@@ -781,6 +857,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double personalScore,
             double qualityScore,
             double engagementScore,
+            double conversionScore,
             double explorationScore,
             double freshnessScore,
             PersonalSignalType dominantSignalType,
@@ -793,6 +870,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         private long bookmarkCount;
         private long likeSum;
         private long clickCount;
+        private long bookmarkConversionCount;
+        private long likeConversionCount;
         private long exposureCount;
         private LocalDateTime latestCreatedAt;
         private boolean snapshotBacked;
@@ -807,6 +886,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             aggregate.bookmarkCount = snapshot.getBookmarkCount();
             aggregate.likeSum = snapshot.getTotalLikeCount();
             aggregate.clickCount = snapshot.getClickCount();
+            aggregate.bookmarkConversionCount = snapshot.getBookmarkConversionCount();
+            aggregate.likeConversionCount = snapshot.getLikeConversionCount();
             aggregate.exposureCount = snapshot.getExposureCount();
             aggregate.latestCreatedAt = snapshot.getLatestPostCreatedAt();
             aggregate.snapshotBacked = true;

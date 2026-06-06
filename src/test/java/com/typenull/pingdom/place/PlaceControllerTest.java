@@ -533,6 +533,50 @@ class PlaceControllerTest {
     }
 
     @Test
+    void recommendPlacesPrefersPlaceWithBetterConversionQuality() throws Exception {
+        String accessToken = signupAndLogin("reader18");
+
+        MapPlace highConversionPlace = createMapPlace("전환 우수 장소", "경상남도 진주시 반응로 5", 35.1803, 128.1079, 1L);
+        MapPlace lowConversionPlace = createMapPlace("전환 낮은 장소", "경상남도 진주시 반응로 6", 35.1803, 128.1079, 1L);
+
+        LocalDateTime now = LocalDateTime.now().minusDays(30);
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(highConversionPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(4L)
+                .bookmarkConversionCount(2L)
+                .likeConversionCount(1L)
+                .exposureCount(20L)
+                .latestPostCreatedAt(now)
+                .updatedAt(now)
+                .build());
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(lowConversionPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(4L)
+                .bookmarkConversionCount(0L)
+                .likeConversionCount(0L)
+                .exposureCount(20L)
+                .latestPostCreatedAt(now)
+                .updatedAt(now)
+                .build());
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("limit", "2")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("전환 우수 장소"))
+                .andExpect(jsonPath("$.places[0].reason").value("현재 위치 주변에서 저장 전환 반응이 좋은 장소입니다."));
+    }
+
+    @Test
     void createAndRemoveBookmarkRefreshRecommendationSnapshot() throws Exception {
         String accessToken = signupAndLogin("reader08");
         MapPlace mapPlace = createMapPlace("북마크 검증 장소", "경상남도 진주시 칠암동 1");
