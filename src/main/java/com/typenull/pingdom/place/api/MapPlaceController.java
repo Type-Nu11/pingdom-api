@@ -83,7 +83,7 @@ public class MapPlaceController {
     }
 
     @PostMapping("/places/upload")
-    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소와 좌표 토큰으로 장소를 저장합니다.")
+    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소/이미지와 좌표 토큰으로 장소를 저장합니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -129,6 +129,7 @@ public class MapPlaceController {
                 request.kakaoPlaceId(),
                 request.name(),
                 request.address(),
+                request.imageUrl(),
                 request.coordinateToken(),
                 user.userId()
         );

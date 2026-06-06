@@ -38,7 +38,7 @@ public class MapPlaceService {
     ) {
         double finalLatitude = baseLatitude;
         double finalLongitude = baseLongitude;
-        String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
+        String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
         String token = placeCoordinateTokenStore.put(userId, normalizedKakaoPlaceId, finalLatitude, finalLongitude);
         return new PlaceCoordinateCreateResponse(token, normalizedKakaoPlaceId);
     }
@@ -48,13 +48,14 @@ public class MapPlaceService {
             String kakaoPlaceId,
             String name,
             String address,
+            String imageUrl,
             String coordinateToken,
             long userId
     ) {
         String username = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
                 .getUsername();
-        String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
+        String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
         if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
         }
@@ -74,6 +75,7 @@ public class MapPlaceService {
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
+                .imageUrl(trimToNull(imageUrl))
                 .latitude(entry.latitude())
                 .longitude(entry.longitude())
                 .location(location)
@@ -92,7 +94,7 @@ public class MapPlaceService {
         );
     }
 
-    private String normalizeKakaoPlaceId(String value) {
+    private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
