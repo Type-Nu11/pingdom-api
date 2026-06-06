@@ -31,7 +31,11 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
               AND m.longitude IS NOT NULL
               AND m.latitude BETWEEN :minLatitude AND :maxLatitude
               AND m.longitude BETWEEN :minLongitude AND :maxLongitude
-            ORDER BY ABS(m.latitude - :latitude) + ABS(m.longitude - :longitude)
+            ORDER BY ABS(m.latitude - :latitude)
+                   + CASE
+                         WHEN ABS(m.longitude - :longitude) <= 180d THEN ABS(m.longitude - :longitude)
+                         ELSE 360d - ABS(m.longitude - :longitude)
+                     END
             """)
     List<MapPlace> findRecommendationCandidatesInBoundingBox(
             @Param("latitude") double latitude,
@@ -40,6 +44,49 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             @Param("maxLatitude") double maxLatitude,
             @Param("minLongitude") double minLongitude,
             @Param("maxLongitude") double maxLongitude,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT m
+            FROM MapPlace m
+            WHERE m.latitude IS NOT NULL
+              AND m.longitude IS NOT NULL
+              AND m.latitude BETWEEN :minLatitude AND :maxLatitude
+            ORDER BY ABS(m.latitude - :latitude)
+                   + CASE
+                         WHEN ABS(m.longitude - :longitude) <= 180d THEN ABS(m.longitude - :longitude)
+                         ELSE 360d - ABS(m.longitude - :longitude)
+                     END
+            """)
+    List<MapPlace> findRecommendationCandidatesInLatitudeBand(
+            @Param("latitude") double latitude,
+            @Param("longitude") double longitude,
+            @Param("minLatitude") double minLatitude,
+            @Param("maxLatitude") double maxLatitude,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT m
+            FROM MapPlace m
+            WHERE m.latitude IS NOT NULL
+              AND m.longitude IS NOT NULL
+              AND m.latitude BETWEEN :minLatitude AND :maxLatitude
+              AND (m.longitude >= :westLongitude OR m.longitude <= :eastLongitude)
+            ORDER BY ABS(m.latitude - :latitude)
+                   + CASE
+                         WHEN ABS(m.longitude - :longitude) <= 180d THEN ABS(m.longitude - :longitude)
+                         ELSE 360d - ABS(m.longitude - :longitude)
+                     END
+            """)
+    List<MapPlace> findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+            @Param("latitude") double latitude,
+            @Param("longitude") double longitude,
+            @Param("minLatitude") double minLatitude,
+            @Param("maxLatitude") double maxLatitude,
+            @Param("westLongitude") double westLongitude,
+            @Param("eastLongitude") double eastLongitude,
             Pageable pageable
     );
 

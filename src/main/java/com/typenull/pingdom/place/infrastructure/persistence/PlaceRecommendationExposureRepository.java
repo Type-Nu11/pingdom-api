@@ -77,6 +77,18 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
                    e.recommendationVersion as recommendationVersion,
                    COUNT(e) as exposureCount
             FROM PlaceRecommendationExposure e
+            WHERE e.placeId IN :placeIds
+            GROUP BY e.placeId, e.recommendationVersion
+            """)
+    List<PlaceVersionExposureCountProjection> countExposuresByPlaceIdsGroupedByPlaceIdAndRecommendationVersion(
+            @Param("placeIds") Collection<Long> placeIds
+    );
+
+    @Query("""
+            SELECT e.placeId as placeId,
+                   e.recommendationVersion as recommendationVersion,
+                   COUNT(e) as exposureCount
+            FROM PlaceRecommendationExposure e
             GROUP BY e.placeId, e.recommendationVersion
             """)
     List<PlaceVersionExposureCountProjection> countExposuresGroupedByPlaceIdAndRecommendationVersion();

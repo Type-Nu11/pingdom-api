@@ -95,6 +95,19 @@ public interface PlaceRecommendationConversionRepository extends JpaRepository<P
                    c.conversionType as conversionType,
                    COUNT(c) as conversionCount
             FROM PlaceRecommendationConversion c
+            WHERE c.placeId IN :placeIds
+            GROUP BY c.placeId, c.recommendationVersion, c.conversionType
+            """)
+    List<PlaceVersionConversionCountProjection> countConversionsByPlaceIdsGroupedByPlaceIdAndRecommendationVersion(
+            @Param("placeIds") Collection<Long> placeIds
+    );
+
+    @Query("""
+            SELECT c.placeId as placeId,
+                   c.recommendationVersion as recommendationVersion,
+                   c.conversionType as conversionType,
+                   COUNT(c) as conversionCount
+            FROM PlaceRecommendationConversion c
             GROUP BY c.placeId, c.recommendationVersion, c.conversionType
             """)
     List<PlaceVersionConversionCountProjection> countConversionsGroupedByPlaceIdAndRecommendationVersion();

@@ -9,8 +9,11 @@ import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkReposito
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
 import java.util.Collection;
 import java.util.Comparator;
@@ -45,6 +48,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final double LIKE_CONVERSION_WEIGHT = 0.60d;
     private static final int CANDIDATE_POOL_LIMIT = 300;
     private static final double MMR_RELEVANCE_WEIGHT = 0.75d;
+    private static final Clock RECOMMENDATION_CLOCK = Clock.systemUTC();
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
@@ -116,14 +120,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         Map<Long, PlaceAggregate> aggregateMap = loadAggregates(selection.candidates());
         long totalClickCount = placeRecommendationSnapshotRepository.sumClickCount();
         long totalExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
-        if (totalClickCount == 0L) {
-            totalClickCount = placeRecommendationClickService.countAllClicks();
-        }
-        if (totalExposureCount == 0L) {
-            totalExposureCount = placeRecommendationExposureService.countAllExposures();
-        }
         double globalCtr = calculateGlobalCtr(totalClickCount, totalExposureCount);
         final long resolvedTotalExposureCount = totalExposureCount;
+        Instant recommendationBaseTime = Instant.now(RECOMMENDATION_CLOCK);
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext = buildSimilarityContext(
                 selection.candidates(),
                 signalContext.interactedPlaceIds(),
@@ -157,7 +156,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         globalAverageLikePerPhoto,
                         maxSeedWeight,
                         appliedRadiusKm,
-                        similarityContext
+                        similarityContext,
+                        recommendationBaseTime
                 ))
                 .toList();
 
@@ -208,8 +208,38 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double minLongitude = longitude - longitudeDelta;
         double maxLongitude = longitude + longitudeDelta;
 
-        if (minLongitude < -180d || maxLongitude > 180d || Double.isInfinite(longitudeDelta)) {
-            return mapPlaceRepository.findAllWithCoordinates(PageRequest.of(0, CANDIDATE_POOL_LIMIT));
+        if (Double.isInfinite(longitudeDelta)) {
+            return mapPlaceRepository.findRecommendationCandidatesInLatitudeBand(
+                    latitude,
+                    longitude,
+                    minLatitude,
+                    maxLatitude,
+                    PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+            );
+        }
+
+        if (minLongitude < -180d) {
+            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+                    latitude,
+                    longitude,
+                    minLatitude,
+                    maxLatitude,
+                    minLongitude + 360d,
+                    maxLongitude,
+                    PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+            );
+        }
+
+        if (maxLongitude > 180d) {
+            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+                    latitude,
+                    longitude,
+                    minLatitude,
+                    maxLatitude,
+                    minLongitude,
+                    maxLongitude - 360d,
+                    PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+            );
         }
 
         return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
@@ -459,7 +489,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double globalAverageLikePerPhoto,
             double maxSeedWeight,
             double appliedRadiusKm,
-            PlaceRecommendationSimilarityService.SimilarityContext similarityContext
+            PlaceRecommendationSimilarityService.SimilarityContext similarityContext,
+            Instant recommendationBaseTime
     ) {
         double personalScore = graphAffinityScore;
         PersonalSignalType dominantSignalType = resolveDominantSignalType(
@@ -492,7 +523,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double rawQualityScore = smoothedLikeAverage
                 + (Math.log1p(aggregate.bookmarkCount) * 0.35d)
                 + (Math.log1p(photoCount) * 0.20d);
-        double freshnessScore = calculateFreshnessScore(aggregate.latestCreatedAt);
+        double freshnessScore = calculateFreshnessScore(aggregate.latestCreatedAt, recommendationBaseTime);
 
         return new IntermediateCandidate(
                 candidate.place(),
@@ -685,14 +716,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 .toList();
     }
 
-    private double calculateFreshnessScore(LocalDateTime latestCreatedAt) {
+    private double calculateFreshnessScore(LocalDateTime latestCreatedAt, Instant recommendationBaseTime) {
         if (latestCreatedAt == null) {
             return 0d;
         }
 
+        Instant latestCreatedAtInstant = latestCreatedAt.atOffset(ZoneOffset.UTC).toInstant();
         double days = Math.max(
                 0d,
-                Duration.between(latestCreatedAt, LocalDateTime.now()).toHours() / 24d
+                Duration.between(latestCreatedAtInstant, recommendationBaseTime).toHours() / 24d
         );
         return Math.exp(-days / FRESHNESS_DECAY_DAYS);
     }

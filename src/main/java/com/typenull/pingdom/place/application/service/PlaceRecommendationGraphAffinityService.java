@@ -97,19 +97,35 @@ public class PlaceRecommendationGraphAffinityService {
             PlaceRecommendationSimilarityService.SimilarityContext similarityContext
     ) {
         Map<Long, List<GraphEdge>> transitionGraph = new HashMap<>();
+        Map<Long, List<GraphEdge>> edgesByNode = new HashMap<>();
+        List<Long> nodeIds = new ArrayList<>(graphNodeIds);
 
-        for (Long fromNodeId : graphNodeIds) {
-            List<GraphEdge> edges = graphNodeIds.stream()
-                    .filter(targetNodeId -> !fromNodeId.equals(targetNodeId))
-                    .map(targetNodeId -> new GraphEdge(
-                            targetNodeId,
-                            placeRecommendationSimilarityService.similarity(fromNodeId, targetNodeId, similarityContext)
-                    ))
-                    .filter(edge -> edge.weight() >= MIN_EDGE_SIMILARITY)
+        for (Long nodeId : nodeIds) {
+            edgesByNode.put(nodeId, new ArrayList<>());
+        }
+
+        for (int leftIndex = 0; leftIndex < nodeIds.size(); leftIndex++) {
+            Long leftNodeId = nodeIds.get(leftIndex);
+            for (int rightIndex = leftIndex + 1; rightIndex < nodeIds.size(); rightIndex++) {
+                Long rightNodeId = nodeIds.get(rightIndex);
+                double similarity = placeRecommendationSimilarityService.similarity(
+                        leftNodeId,
+                        rightNodeId,
+                        similarityContext
+                );
+                if (similarity < MIN_EDGE_SIMILARITY) {
+                    continue;
+                }
+                edgesByNode.get(leftNodeId).add(new GraphEdge(rightNodeId, similarity));
+                edgesByNode.get(rightNodeId).add(new GraphEdge(leftNodeId, similarity));
+            }
+        }
+
+        for (Long fromNodeId : nodeIds) {
+            List<GraphEdge> edges = edgesByNode.getOrDefault(fromNodeId, List.of()).stream()
                     .sorted(Comparator.comparingDouble(GraphEdge::weight).reversed())
                     .limit(MAX_NEIGHBOR_COUNT)
                     .toList();
-
             if (edges.isEmpty()) {
                 transitionGraph.put(fromNodeId, List.of(new GraphEdge(fromNodeId, 1d)));
                 continue;

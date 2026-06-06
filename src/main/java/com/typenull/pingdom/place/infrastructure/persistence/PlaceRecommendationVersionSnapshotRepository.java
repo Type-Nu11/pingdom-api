@@ -21,6 +21,8 @@ public interface PlaceRecommendationVersionSnapshotRepository
             String recommendationVersion
     );
 
+    List<PlaceRecommendationVersionSnapshot> findByPlaceIdIn(Collection<Long> placeIds);
+
     @Query("""
             SELECT COALESCE(SUM(s.clickCount), 0)
             FROM PlaceRecommendationVersionSnapshot s
