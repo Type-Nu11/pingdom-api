@@ -51,6 +51,9 @@ public class PlaceRecommendationConversion {
     @Column(name = "conversion_type", nullable = false, length = 20)
     private PlaceRecommendationConversionType conversionType;
 
+    @Column(name = "recommendation_version", nullable = false, length = 50)
+    private String recommendationVersion;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

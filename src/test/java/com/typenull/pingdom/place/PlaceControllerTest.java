@@ -326,7 +326,10 @@ class PlaceControllerTest {
         mockMvc.perform(post("/place/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", clickedPlace.getId()))))
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", clickedPlace.getId(),
+                                "recommendationVersion", "place-rec-v1"
+                        ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.placeId").value(clickedPlace.getId()))
                 .andExpect(jsonPath("$.message").value("추천 장소 클릭을 기록했습니다."));
@@ -347,10 +350,22 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("reader15");
         MapPlace mapPlace = createMapPlace("북마크 전환 장소", "경상남도 진주시 전환로 1", 35.1803, 128.1079, 1L);
 
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1803")
+                        .param("longitude", "128.1079")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"));
+
         mockMvc.perform(post("/place/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", mapPlace.getId(),
+                                "recommendationVersion", "place-rec-v1"
+                        ))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/map/bookmarks")
@@ -363,8 +378,17 @@ class PlaceControllerTest {
         assertEquals(1, conversions.size());
         assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
         assertEquals(PlaceRecommendationConversionType.BOOKMARK, conversions.get(0).getConversionType());
+        assertEquals("place-rec-v1", conversions.get(0).getRecommendationVersion());
         assertNotNull(conversions.get(0).getCreatedAt());
         assertNotNull(conversions.get(0).getPlaceRecommendationClickId());
+
+        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findAll();
+        assertEquals(1, exposures.size());
+        assertEquals("place-rec-v1", exposures.get(0).getRecommendationVersion());
+
+        List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findAll();
+        assertEquals(1, clicks.size());
+        assertEquals("place-rec-v1", clicks.get(0).getRecommendationVersion());
     }
 
     @Test
@@ -376,7 +400,10 @@ class PlaceControllerTest {
         mockMvc.perform(post("/place/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", mapPlace.getId(),
+                                "recommendationVersion", "place-rec-v1"
+                        ))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/map/like")
@@ -402,7 +429,10 @@ class PlaceControllerTest {
         mockMvc.perform(post("/place/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", mapPlace.getId(),
+                                "recommendationVersion", "place-rec-v1"
+                        ))))
                 .andExpect(status().isCreated());
 
         mockMvc.perform(post("/map/like")
@@ -665,6 +695,7 @@ class PlaceControllerTest {
                     .requestLatitude(latitude)
                     .requestLongitude(longitude)
                     .ranking(1)
+                    .recommendationVersion("place-rec-v1")
                     .build());
         }
     }

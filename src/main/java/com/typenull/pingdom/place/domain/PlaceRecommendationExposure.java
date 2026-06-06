@@ -42,6 +42,9 @@ public class PlaceRecommendationExposure {
     @Column(name = "ranking", nullable = false)
     private Integer ranking;
 
+    @Column(name = "recommendation_version", nullable = false, length = 50)
+    private String recommendationVersion;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -409,6 +409,7 @@ class AdminMapPlaceControllerTest {
                 .requestLatitude(35.1801)
                 .requestLongitude(128.1078)
                 .ranking(1)
+                .recommendationVersion("place-rec-v1")
                 .build());
         placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
                 .placeId(mapPlace.getId())
@@ -416,22 +417,26 @@ class AdminMapPlaceControllerTest {
                 .requestLatitude(35.1801)
                 .requestLongitude(128.1078)
                 .ranking(2)
+                .recommendationVersion("place-rec-v1")
                 .build());
         placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
                 .placeId(mapPlace.getId())
                 .userId(400L)
+                .recommendationVersion("place-rec-v1")
                 .build());
         placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
                 .placeRecommendationClickId(4001L)
                 .placeId(mapPlace.getId())
                 .userId(401L)
                 .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .recommendationVersion("place-rec-v1")
                 .build());
         placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
                 .placeRecommendationClickId(4002L)
                 .placeId(mapPlace.getId())
                 .userId(402L)
                 .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
                 .build());
 
         placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()

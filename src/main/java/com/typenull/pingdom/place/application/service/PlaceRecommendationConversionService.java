@@ -54,6 +54,7 @@ public class PlaceRecommendationConversionService {
                 .placeId(placeId)
                 .userId(userId)
                 .conversionType(conversionType)
+                .recommendationVersion(recentClick.getRecommendationVersion())
                 .build());
         placeRecommendationSnapshotService.increaseConversionCount(placeId, conversionType);
     }

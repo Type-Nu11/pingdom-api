@@ -179,7 +179,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 longitude,
                 scoredCandidates.stream()
                         .map(candidate -> candidate.place().getId())
-                        .toList()
+                        .toList(),
+                RECOMMENDATION_VERSION
         );
 
         return PlaceRecommendationResponse.of(

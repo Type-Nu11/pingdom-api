@@ -37,7 +37,13 @@ public class PlaceRecommendationExposureService {
     }
 
     @Transactional
-    public void recordExposures(Long userId, double latitude, double longitude, List<Long> placeIds) {
+    public void recordExposures(
+            Long userId,
+            double latitude,
+            double longitude,
+            List<Long> placeIds,
+            String recommendationVersion
+    ) {
         if (placeIds.isEmpty()) {
             return;
         }
@@ -52,6 +58,7 @@ public class PlaceRecommendationExposureService {
                     .requestLatitude(latitude)
                     .requestLongitude(longitude)
                     .ranking(ranking++)
+                    .recommendationVersion(recommendationVersion)
                     .build());
         }
 

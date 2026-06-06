@@ -33,6 +33,9 @@ public class PlaceRecommendationClick {
     @Column(name = "user_id")
     private Long userId;
 
+    @Column(name = "recommendation_version", nullable = false, length = 50)
+    private String recommendationVersion;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

@@ -194,7 +194,11 @@ public class PlaceController {
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        placeRecommendationClickService.recordClick(user.userId(), request.placeId());
+        placeRecommendationClickService.recordClick(
+                user.userId(),
+                request.placeId(),
+                request.recommendationVersion()
+        );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new PlaceRecommendationClickResponse(request.placeId(), "추천 장소 클릭을 기록했습니다."));
     }
