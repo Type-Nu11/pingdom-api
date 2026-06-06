@@ -63,7 +63,7 @@ public class MapImageLikeService {
         return new MapImageLikeResult(userId, mapImageId, "좋아요 취소되었습니다.");
     }
 
-    public void LikeReturn (Long postId){
+    public void likeReturn (Long postId){
         postQueryService.getPost(postId);
     }
 }

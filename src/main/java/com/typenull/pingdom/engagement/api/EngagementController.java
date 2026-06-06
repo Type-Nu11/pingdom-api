@@ -122,7 +122,7 @@ public class EngagementController {
         return ResponseEntity.ok(toResponse(result));
     }
 
-    @DeleteMapping("/like/{PostId}")
+    @DeleteMapping("/like/{postId}")
     public ResponseEntity<MapImageLikeResponse> likeClear(
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
@@ -131,12 +131,12 @@ public class EngagementController {
         return ResponseEntity.ok(toResponse(result));
     }
 
-    @PostMapping("/like/return")
+    @PostMapping("/like/return{postId}")
     public ResponseEntity<String> likeReturn(
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        mapImageLikeService.LikeReturn(postId);
+        mapImageLikeService.likeReturn(postId);
         return ResponseEntity.ok().body("게시물 반환");
     }
 
