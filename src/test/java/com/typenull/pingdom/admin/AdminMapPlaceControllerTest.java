@@ -19,9 +19,12 @@ import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversion;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -70,12 +73,16 @@ class AdminMapPlaceControllerTest {
     private PlaceRecommendationClickRepository placeRecommendationClickRepository;
 
     @Autowired
+    private PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
+
+    @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @BeforeEach
     void setUp() {
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
@@ -272,6 +279,24 @@ class AdminMapPlaceControllerTest {
                 .exposureCount(20L)
                 .updatedAt(updatedAt.minusMinutes(5))
                 .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(1001L)
+                .placeId(highCtrPlace.getId())
+                .userId(601L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(1002L)
+                .placeId(highCtrPlace.getId())
+                .userId(602L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(1003L)
+                .placeId(lowCtrPlace.getId())
+                .userId(603L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .build());
 
         mockMvc.perform(get("/admin/places/recommendation-metrics")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -285,7 +310,85 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[0].exposureCount").value(20))
                 .andExpect(jsonPath("$.metrics[0].clickCount").value(6))
                 .andExpect(jsonPath("$.metrics[0].rawCtr").value(0.3d))
+                .andExpect(jsonPath("$.metrics[0].bookmarkConversionCount").value(1))
+                .andExpect(jsonPath("$.metrics[0].likeConversionCount").value(1))
+                .andExpect(jsonPath("$.metrics[0].bookmarkConversionRate").value(0.05d))
+                .andExpect(jsonPath("$.metrics[0].likeConversionRate").value(0.05d))
+                .andExpect(jsonPath("$.metrics[0].totalConversionRate").value(0.1d))
                 .andExpect(jsonPath("$.metrics[1].name").value("CTR 낮은 장소"));
+    }
+
+    @Test
+    void listRecommendationMetricsSortsByTotalConversionRate() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace highConversionPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("전환 높은 장소")
+                .address("경상남도 진주시 성과로 3")
+                .latitude(35.1803)
+                .longitude(128.1080)
+                .userId(53L)
+                .registrant("metricOwner")
+                .photoCount(2L)
+                .build());
+        MapPlace lowConversionPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("전환 낮은 장소")
+                .address("경상남도 진주시 성과로 4")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(54L)
+                .registrant("metricOwner")
+                .photoCount(2L)
+                .build());
+
+        java.time.LocalDateTime updatedAt = java.time.LocalDateTime.now();
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(highConversionPlace.getId())
+                .photoCount(2L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(5L)
+                .exposureCount(10L)
+                .updatedAt(updatedAt)
+                .build());
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(lowConversionPlace.getId())
+                .photoCount(2L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(8L)
+                .exposureCount(20L)
+                .updatedAt(updatedAt)
+                .build());
+
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(2001L)
+                .placeId(highConversionPlace.getId())
+                .userId(701L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(2002L)
+                .placeId(highConversionPlace.getId())
+                .userId(702L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(2003L)
+                .placeId(lowConversionPlace.getId())
+                .userId(703L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .build());
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortBy", RecommendationMetricSortBy.TOTAL_CONVERSION.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortBy").value(RecommendationMetricSortBy.TOTAL_CONVERSION.name()))
+                .andExpect(jsonPath("$.metrics[0].name").value("전환 높은 장소"))
+                .andExpect(jsonPath("$.metrics[0].totalConversionRate").value(0.2d))
+                .andExpect(jsonPath("$.metrics[1].name").value("전환 낮은 장소"))
+                .andExpect(jsonPath("$.metrics[1].totalConversionRate").value(0.05d));
     }
 
     @Test
