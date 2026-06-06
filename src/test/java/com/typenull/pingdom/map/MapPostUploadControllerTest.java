@@ -4,8 +4,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
@@ -57,9 +59,13 @@ class MapPostUploadControllerTest {
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
 
+    @Autowired
+    private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+
     @BeforeEach
     void setUp() {
         mapImageRepository.deleteAllInBatch();
+        placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -242,6 +248,51 @@ class MapPostUploadControllerTest {
 
         verify(s3ObjectStorage).delete("map/delete-post.jpg");
         assertEquals(0L, mapImageRepository.count());
+    }
+
+    @Test
+    void uploadAndDeletePostRefreshRecommendationSnapshot() throws Exception {
+        given(s3ObjectStorage.put(any(), eq("map")))
+                .willReturn(new S3ObjectStorage.S3PutResult("map/snapshot-post.jpg", "https://example.com/snapshot-post.jpg"));
+
+        String accessToken = signupAndLogin("writer06");
+        MapPlace mapPlace = createMapPlace();
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "snapshot-post.jpg",
+                "image/jpeg",
+                "image-bytes".getBytes()
+        );
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(file)
+                        .param("title", "snapshot 검증 게시글")
+                        .param("description", "snapshot 생성 확인")
+                        .param("placeId", mapPlace.getId().toString())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("게시글을 저장했습니다."));
+
+        PlaceRecommendationSnapshot uploadedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
+                .orElseThrow();
+        assertEquals(1L, uploadedSnapshot.getPhotoCount());
+        assertEquals(0L, uploadedSnapshot.getBookmarkCount());
+        assertEquals(0L, uploadedSnapshot.getTotalLikeCount());
+        assertNotNull(uploadedSnapshot.getLatestPostCreatedAt());
+
+        MapImage saved = mapImageRepository.findAll().get(0);
+
+        mockMvc.perform(delete("/map/post/{id}/delete", saved.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
+
+        PlaceRecommendationSnapshot deletedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
+                .orElseThrow();
+        assertEquals(0L, deletedSnapshot.getPhotoCount());
+        assertEquals(0L, deletedSnapshot.getTotalLikeCount());
+        assertEquals(0L, mapImageRepository.count());
+        verify(s3ObjectStorage).delete("map/snapshot-post.jpg");
     }
 
     private String signupAndLogin(String username) throws Exception {
