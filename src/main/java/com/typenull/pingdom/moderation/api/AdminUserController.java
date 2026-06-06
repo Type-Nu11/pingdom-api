@@ -13,6 +13,8 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -95,7 +97,10 @@ public class AdminUserController {
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit
     ) {
-        return adminUserService.listBannedUsers(page, limit);
+        int normalizedPage = Math.max(page, 1);
+        int normalizedLimit = Math.min(Math.max(limit, 1), 100);
+        Pageable pageable = PageRequest.of(normalizedPage - 1, normalizedLimit);
+        return adminUserService.listBannedUsers(pageable);
     }
 
     @PostMapping("/ban/{userId}")

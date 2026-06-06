@@ -38,16 +38,16 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminBannedUserResponse listBannedUsers(int page, int limit) {
-        int normalizedPage = Math.max(page, 1);
-        int normalizedLimit = Math.min(Math.max(limit, 1), 100);
-        Pageable pageable = PageRequest.of(
+    public AdminBannedUserResponse listBannedUsers(Pageable pageable) {
+        int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
+        int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
+        Pageable normalizedPageable = PageRequest.of(
                 normalizedPage - 1,
                 normalizedLimit,
                 Sort.by(Sort.Order.desc("bannedAt"), Sort.Order.desc("id"))
         );
 
-        Page<User> userPage = userRepository.findAllByBannedTrue(pageable);
+        Page<User> userPage = userRepository.findAllByBannedTrue(normalizedPageable);
         List<AdminBannedUserItem> users = userPage.getContent().stream()
                 .map(this::toItem)
                 .toList();
