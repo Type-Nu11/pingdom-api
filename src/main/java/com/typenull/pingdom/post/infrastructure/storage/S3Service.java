@@ -7,6 +7,7 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepo
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.application.service.PlaceGrowthService;
+import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.post.api.dto.image.ImageUploadRequest;
 import com.typenull.pingdom.post.api.dto.image.MapImageResponse;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -40,6 +41,7 @@ public class S3Service {
     private final UserRepository userRepository;
     private final PlatformTransactionManager transactionManager;
     private final PlaceGrowthService placeGrowthService;
+    private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
     public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request);
@@ -129,6 +131,7 @@ public class S3Service {
 
             MapImage saved = mapImageRepository.save(mapImage);
             PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
+            placeRecommendationSnapshotService.refresh(mapPlace.getId());
             return new MapImageResponse(saved.getId(), "게시글을 저장했습니다.", placeGrowth);
         });
     }
@@ -143,6 +146,9 @@ public class S3Service {
             }
             postReportRepository.detachMapImageByMapImageId(mapImage.getId());
             mapImageRepository.delete(mapImage);
+            if (mapPlace != null) {
+                placeRecommendationSnapshotService.refresh(mapPlace.getId());
+            }
             return placeGrowth;
         });
     }
