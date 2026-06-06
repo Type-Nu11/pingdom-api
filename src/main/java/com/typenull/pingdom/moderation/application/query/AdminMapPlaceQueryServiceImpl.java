@@ -13,11 +13,9 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.application.service.PlaceGrowthService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import java.util.Comparator;
 import java.util.List;
@@ -41,7 +39,6 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageRepository mapImageRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
-    private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceGrowthService placeGrowthService;
 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
@@ -124,8 +121,6 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
             snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
         }
-        Map<Long, ConversionCounts> conversionCountsByPlaceId = loadConversionCounts(placeIds);
-
         double globalCtr = calculateGlobalCtr(
                 placeRecommendationSnapshotRepository.sumClickCount(),
                 placeRecommendationSnapshotRepository.sumExposureCount()
@@ -135,7 +130,6 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 .map(place -> toRecommendationMetricItem(
                         place,
                         snapshotsByPlaceId.get(place.getId()),
-                        conversionCountsByPlaceId.getOrDefault(place.getId(), ConversionCounts.empty()),
                         globalCtr
                 ))
                 .sorted(recommendationMetricComparator(safeSortBy))
@@ -202,24 +196,25 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private AdminPlaceRecommendationMetricItem toRecommendationMetricItem(
             MapPlace mapPlace,
             PlaceRecommendationSnapshot snapshot,
-            ConversionCounts conversionCounts,
             double globalCtr
     ) {
         long exposureCount = snapshot == null ? 0L : snapshot.getExposureCount();
         long clickCount = snapshot == null ? 0L : snapshot.getClickCount();
+        long bookmarkConversionCount = snapshot == null ? 0L : snapshot.getBookmarkConversionCount();
+        long likeConversionCount = snapshot == null ? 0L : snapshot.getLikeConversionCount();
         double rawCtr = exposureCount <= 0L ? 0d : (double) clickCount / (double) exposureCount;
         double smoothedCtr = exposureCount <= 0L
                 ? 0d
                 : (clickCount + (CTR_PRIOR_WEIGHT * globalCtr)) / (exposureCount + CTR_PRIOR_WEIGHT);
         double bookmarkConversionRate = exposureCount <= 0L
                 ? 0d
-                : (double) conversionCounts.bookmarkConversionCount() / (double) exposureCount;
+                : (double) bookmarkConversionCount / (double) exposureCount;
         double likeConversionRate = exposureCount <= 0L
                 ? 0d
-                : (double) conversionCounts.likeConversionCount() / (double) exposureCount;
+                : (double) likeConversionCount / (double) exposureCount;
         double totalConversionRate = exposureCount <= 0L
                 ? 0d
-                : (double) conversionCounts.totalConversionCount() / (double) exposureCount;
+                : (double) (bookmarkConversionCount + likeConversionCount) / (double) exposureCount;
 
         return new AdminPlaceRecommendationMetricItem(
                 mapPlace.getId(),
@@ -230,8 +225,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 clickCount,
                 rawCtr,
                 smoothedCtr,
-                conversionCounts.bookmarkConversionCount(),
-                conversionCounts.likeConversionCount(),
+                bookmarkConversionCount,
+                likeConversionCount,
                 bookmarkConversionRate,
                 likeConversionRate,
                 totalConversionRate,
@@ -290,46 +285,5 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             return 0d;
         }
         return (double) totalClickCount / (double) totalExposureCount;
-    }
-
-    private Map<Long, ConversionCounts> loadConversionCounts(List<Long> placeIds) {
-        Map<Long, ConversionCounts> conversionCountsByPlaceId = new HashMap<>();
-        for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
-                placeRecommendationConversionRepository.countConversionsByPlaceIds(placeIds)) {
-            ConversionCounts existing = conversionCountsByPlaceId.getOrDefault(
-                    projection.getPlaceId(),
-                    ConversionCounts.empty()
-            );
-            if (projection.getConversionType() == PlaceRecommendationConversionType.BOOKMARK) {
-                conversionCountsByPlaceId.put(
-                        projection.getPlaceId(),
-                        existing.withBookmarkConversionCount(projection.getConversionCount())
-                );
-                continue;
-            }
-            conversionCountsByPlaceId.put(
-                    projection.getPlaceId(),
-                    existing.withLikeConversionCount(projection.getConversionCount())
-            );
-        }
-        return conversionCountsByPlaceId;
-    }
-
-    private record ConversionCounts(long bookmarkConversionCount, long likeConversionCount) {
-        private static ConversionCounts empty() {
-            return new ConversionCounts(0L, 0L);
-        }
-
-        private long totalConversionCount() {
-            return bookmarkConversionCount + likeConversionCount;
-        }
-
-        private ConversionCounts withBookmarkConversionCount(long count) {
-            return new ConversionCounts(count, likeConversionCount);
-        }
-
-        private ConversionCounts withLikeConversionCount(long count) {
-            return new ConversionCounts(bookmarkConversionCount, count);
-        }
     }
 }

@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service;
 
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
@@ -43,6 +44,8 @@ public class PlaceRecommendationSnapshotService {
                 mapBookmarkRepository.countByPlaceId(placeId),
                 mapImageRepository.sumLikeCountByPlaceId(placeId),
                 snapshot.getClickCount(),
+                snapshot.getBookmarkConversionCount(),
+                snapshot.getLikeConversionCount(),
                 snapshot.getExposureCount(),
                 mapImageRepository.findLatestCreatedAtByPlaceId(placeId),
                 now
@@ -63,6 +66,18 @@ public class PlaceRecommendationSnapshotService {
     @Transactional
     public void increaseClickCounts(List<Long> placeIds) {
         increaseCounts(placeIds, CountType.CLICK);
+    }
+
+    @Transactional
+    public void increaseConversionCount(Long placeId, PlaceRecommendationConversionType conversionType) {
+        LocalDateTime now = LocalDateTime.now();
+        PlaceRecommendationSnapshot snapshot = loadOrCreateSnapshot(placeId, now);
+        if (conversionType == PlaceRecommendationConversionType.BOOKMARK) {
+            snapshot.increaseBookmarkConversionCount(1L, now);
+        } else {
+            snapshot.increaseLikeConversionCount(1L, now);
+        }
+        placeRecommendationSnapshotRepository.save(snapshot);
     }
 
     private void increaseCounts(List<Long> placeIds, CountType countType) {
@@ -116,6 +131,8 @@ public class PlaceRecommendationSnapshotService {
                 .bookmarkCount(mapBookmarkRepository.countByPlaceId(placeId))
                 .totalLikeCount(mapImageRepository.sumLikeCountByPlaceId(placeId))
                 .clickCount(0L)
+                .bookmarkConversionCount(0L)
+                .likeConversionCount(0L)
                 .exposureCount(0L)
                 .latestPostCreatedAt(mapImageRepository.findLatestCreatedAtByPlaceId(placeId))
                 .updatedAt(now)

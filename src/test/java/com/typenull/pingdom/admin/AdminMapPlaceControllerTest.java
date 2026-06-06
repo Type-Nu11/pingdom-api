@@ -267,6 +267,8 @@ class AdminMapPlaceControllerTest {
                 .bookmarkCount(0L)
                 .totalLikeCount(0L)
                 .clickCount(6L)
+                .bookmarkConversionCount(1L)
+                .likeConversionCount(1L)
                 .exposureCount(20L)
                 .updatedAt(updatedAt)
                 .build());
@@ -276,26 +278,10 @@ class AdminMapPlaceControllerTest {
                 .bookmarkCount(0L)
                 .totalLikeCount(0L)
                 .clickCount(1L)
+                .bookmarkConversionCount(0L)
+                .likeConversionCount(1L)
                 .exposureCount(20L)
                 .updatedAt(updatedAt.minusMinutes(5))
-                .build());
-        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
-                .placeRecommendationClickId(1001L)
-                .placeId(highCtrPlace.getId())
-                .userId(601L)
-                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
-                .build());
-        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
-                .placeRecommendationClickId(1002L)
-                .placeId(highCtrPlace.getId())
-                .userId(602L)
-                .conversionType(PlaceRecommendationConversionType.LIKE)
-                .build());
-        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
-                .placeRecommendationClickId(1003L)
-                .placeId(lowCtrPlace.getId())
-                .userId(603L)
-                .conversionType(PlaceRecommendationConversionType.LIKE)
                 .build());
 
         mockMvc.perform(get("/admin/places/recommendation-metrics")
@@ -348,6 +334,8 @@ class AdminMapPlaceControllerTest {
                 .bookmarkCount(0L)
                 .totalLikeCount(0L)
                 .clickCount(5L)
+                .bookmarkConversionCount(1L)
+                .likeConversionCount(1L)
                 .exposureCount(10L)
                 .updatedAt(updatedAt)
                 .build());
@@ -357,27 +345,10 @@ class AdminMapPlaceControllerTest {
                 .bookmarkCount(0L)
                 .totalLikeCount(0L)
                 .clickCount(8L)
+                .bookmarkConversionCount(0L)
+                .likeConversionCount(1L)
                 .exposureCount(20L)
                 .updatedAt(updatedAt)
-                .build());
-
-        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
-                .placeRecommendationClickId(2001L)
-                .placeId(highConversionPlace.getId())
-                .userId(701L)
-                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
-                .build());
-        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
-                .placeRecommendationClickId(2002L)
-                .placeId(highConversionPlace.getId())
-                .userId(702L)
-                .conversionType(PlaceRecommendationConversionType.LIKE)
-                .build());
-        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
-                .placeRecommendationClickId(2003L)
-                .placeId(lowConversionPlace.getId())
-                .userId(703L)
-                .conversionType(PlaceRecommendationConversionType.LIKE)
                 .build());
 
         mockMvc.perform(get("/admin/places/recommendation-metrics")
@@ -450,6 +421,18 @@ class AdminMapPlaceControllerTest {
                 .placeId(mapPlace.getId())
                 .userId(400L)
                 .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(4001L)
+                .placeId(mapPlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(4002L)
+                .placeId(mapPlace.getId())
+                .userId(402L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .build());
 
         placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
                 .placeId(9999L)
@@ -457,6 +440,8 @@ class AdminMapPlaceControllerTest {
                 .bookmarkCount(99L)
                 .totalLikeCount(99L)
                 .clickCount(99L)
+                .bookmarkConversionCount(99L)
+                .likeConversionCount(99L)
                 .exposureCount(99L)
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
@@ -475,6 +460,8 @@ class AdminMapPlaceControllerTest {
         assertEquals(1L, snapshot.getBookmarkCount());
         assertEquals(10L, snapshot.getTotalLikeCount());
         assertEquals(1L, snapshot.getClickCount());
+        assertEquals(1L, snapshot.getBookmarkConversionCount());
+        assertEquals(1L, snapshot.getLikeConversionCount());
         assertEquals(2L, snapshot.getExposureCount());
         assertNotNull(snapshot.getLatestPostCreatedAt());
         assertFalse(placeRecommendationSnapshotRepository.existsById(9999L));

@@ -1,10 +1,12 @@
 package com.typenull.pingdom.place.application.service;
 
 import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -27,6 +29,7 @@ public class PlaceRecommendationSnapshotResyncService {
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
+    private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
@@ -49,6 +52,7 @@ public class PlaceRecommendationSnapshotResyncService {
         Map<Long, Long> bookmarkCounts = loadBookmarkCounts(placeIds);
         Map<Long, ImageAggregate> imageAggregates = loadImageAggregates(placeIds);
         Map<Long, Long> clickCounts = loadClickCounts(placeIds);
+        Map<Long, ConversionCounts> conversionCounts = loadConversionCounts(placeIds);
         Map<Long, Long> exposureCounts = loadExposureCounts(placeIds);
         Map<Long, PlaceRecommendationSnapshot> existingSnapshotsByPlaceId = new HashMap<>();
         for (PlaceRecommendationSnapshot existingSnapshot : existingSnapshots) {
@@ -75,6 +79,8 @@ public class PlaceRecommendationSnapshotResyncService {
                     bookmarkCounts.getOrDefault(placeId, 0L),
                     imageAggregate.totalLikeCount(),
                     clickCounts.getOrDefault(placeId, 0L),
+                    conversionCounts.getOrDefault(placeId, ConversionCounts.empty()).bookmarkConversionCount(),
+                    conversionCounts.getOrDefault(placeId, ConversionCounts.empty()).likeConversionCount(),
                     exposureCounts.getOrDefault(placeId, 0L),
                     imageAggregate.latestPostCreatedAt(),
                     syncedAt
@@ -143,9 +149,43 @@ public class PlaceRecommendationSnapshotResyncService {
         return clickCounts;
     }
 
+    private Map<Long, ConversionCounts> loadConversionCounts(List<Long> placeIds) {
+        Map<Long, ConversionCounts> conversionCounts = new HashMap<>();
+        for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
+                placeRecommendationConversionRepository.countConversionsByPlaceIds(placeIds)) {
+            ConversionCounts existing = conversionCounts.getOrDefault(projection.getPlaceId(), ConversionCounts.empty());
+            if (projection.getConversionType() == PlaceRecommendationConversionType.BOOKMARK) {
+                conversionCounts.put(
+                        projection.getPlaceId(),
+                        existing.withBookmarkConversionCount(projection.getConversionCount())
+                );
+                continue;
+            }
+            conversionCounts.put(
+                    projection.getPlaceId(),
+                    existing.withLikeConversionCount(projection.getConversionCount())
+            );
+        }
+        return conversionCounts;
+    }
+
     private record ImageAggregate(long totalLikeCount, LocalDateTime latestPostCreatedAt) {
         private static ImageAggregate empty() {
             return new ImageAggregate(0L, null);
+        }
+    }
+
+    private record ConversionCounts(long bookmarkConversionCount, long likeConversionCount) {
+        private static ConversionCounts empty() {
+            return new ConversionCounts(0L, 0L);
+        }
+
+        private ConversionCounts withBookmarkConversionCount(long count) {
+            return new ConversionCounts(count, likeConversionCount);
+        }
+
+        private ConversionCounts withLikeConversionCount(long count) {
+            return new ConversionCounts(bookmarkConversionCount, count);
         }
     }
 

@@ -19,6 +19,7 @@ public class PlaceRecommendationConversionService {
 
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
+    private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
     @Transactional
     public void recordConversionIfEligible(
@@ -54,5 +55,6 @@ public class PlaceRecommendationConversionService {
                 .userId(userId)
                 .conversionType(conversionType)
                 .build());
+        placeRecommendationSnapshotService.increaseConversionCount(placeId, conversionType);
     }
 }

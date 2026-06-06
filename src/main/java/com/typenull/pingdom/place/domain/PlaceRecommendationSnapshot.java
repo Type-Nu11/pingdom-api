@@ -35,6 +35,12 @@ public class PlaceRecommendationSnapshot {
     @Column(name = "click_count", nullable = false)
     private long clickCount;
 
+    @Column(name = "bookmark_conversion_count", nullable = false)
+    private long bookmarkConversionCount;
+
+    @Column(name = "like_conversion_count", nullable = false)
+    private long likeConversionCount;
+
     @Column(name = "exposure_count", nullable = false)
     private long exposureCount;
 
@@ -49,6 +55,8 @@ public class PlaceRecommendationSnapshot {
             long bookmarkCount,
             long totalLikeCount,
             long clickCount,
+            long bookmarkConversionCount,
+            long likeConversionCount,
             long exposureCount,
             LocalDateTime latestPostCreatedAt,
             LocalDateTime updatedAt
@@ -57,6 +65,8 @@ public class PlaceRecommendationSnapshot {
         this.bookmarkCount = bookmarkCount;
         this.totalLikeCount = totalLikeCount;
         this.clickCount = clickCount;
+        this.bookmarkConversionCount = bookmarkConversionCount;
+        this.likeConversionCount = likeConversionCount;
         this.exposureCount = exposureCount;
         this.latestPostCreatedAt = latestPostCreatedAt;
         this.updatedAt = updatedAt;
@@ -69,6 +79,16 @@ public class PlaceRecommendationSnapshot {
 
     public void increaseExposureCount(long delta, LocalDateTime updatedAt) {
         this.exposureCount += delta;
+        this.updatedAt = updatedAt;
+    }
+
+    public void increaseBookmarkConversionCount(long delta, LocalDateTime updatedAt) {
+        this.bookmarkConversionCount += delta;
+        this.updatedAt = updatedAt;
+    }
+
+    public void increaseLikeConversionCount(long delta, LocalDateTime updatedAt) {
+        this.likeConversionCount += delta;
         this.updatedAt = updatedAt;
     }
 }
