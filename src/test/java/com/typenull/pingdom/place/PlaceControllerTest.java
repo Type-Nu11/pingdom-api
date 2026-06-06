@@ -154,6 +154,29 @@ class PlaceControllerTest {
     }
 
     @Test
+    void uploadPlaceStoresImageUrl() throws Exception {
+        String accessToken = signupAndLogin("placeUploader01");
+        String coordinateToken = createCoordinateToken(accessToken, "27414316", 35.1801, 128.1078);
+
+        mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "kakaoPlaceId", "27414316",
+                                "name", "이미지 포함 장소",
+                                "address", "경상남도 진주시 이미지로 1",
+                                "imageUrl", "https://example.com/images/place-upload.jpg",
+                                "coordinateToken", coordinateToken
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("이미지 포함 장소"))
+                .andExpect(jsonPath("$.address").value("경상남도 진주시 이미지로 1"));
+
+        MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414316").orElseThrow();
+        assertEquals("https://example.com/images/place-upload.jpg", saved.getImageUrl());
+    }
+
+    @Test
     void getPlaceReturnsNotFoundWhenPlaceDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reader03");
 
@@ -681,6 +704,23 @@ class PlaceControllerTest {
 
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
+                .textValue();
+    }
+
+    private String createCoordinateToken(String accessToken, String kakaoPlaceId, double latitude, double longitude) throws Exception {
+        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "baseLatitude", latitude,
+                                "baseLongitude", longitude,
+                                "kakaoPlaceId", kakaoPlaceId
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        return objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
+                .get("coordinateToken")
                 .textValue();
     }
 

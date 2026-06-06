@@ -48,6 +48,7 @@ public class MapPlaceService {
             String kakaoPlaceId,
             String name,
             String address,
+            String imageUrl,
             String coordinateToken,
             long userId
     ) {
@@ -74,6 +75,7 @@ public class MapPlaceService {
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
+                .imageUrl(normalizeImageUrl(imageUrl))
                 .latitude(entry.latitude())
                 .longitude(entry.longitude())
                 .location(location)
@@ -93,6 +95,10 @@ public class MapPlaceService {
     }
 
     private String normalizeKakaoPlaceId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String normalizeImageUrl(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 

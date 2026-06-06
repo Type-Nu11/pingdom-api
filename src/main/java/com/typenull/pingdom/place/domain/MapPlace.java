@@ -34,6 +34,9 @@ public class MapPlace {
     @Column(name = "address", length = 255, nullable = false)
     private String address;
 
+    @Column(name = "image_url", length = 500)
+    private String imageUrl;
+
     @Column(name = "kakao_place_id", length = 50)
     private String kakaoPlaceId;
 
