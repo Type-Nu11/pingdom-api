@@ -21,6 +21,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -42,6 +43,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final double CONVERSION_PRIOR_WEIGHT = 10d;
     private static final double CONVERSION_CONFIDENCE_SAMPLE_SIZE = 12d;
     private static final double LIKE_CONVERSION_WEIGHT = 0.60d;
+    private static final int CANDIDATE_POOL_LIMIT = 300;
     private static final double MMR_RELEVANCE_WEIGHT = 0.75d;
 
     private final MapPlaceRepository mapPlaceRepository;
@@ -207,14 +209,19 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double maxLongitude = longitude + longitudeDelta;
 
         if (minLongitude < -180d || maxLongitude > 180d || Double.isInfinite(longitudeDelta)) {
-            return mapPlaceRepository.findAllWithCoordinates();
+            return mapPlaceRepository.findAllWithCoordinates().stream()
+                    .limit(CANDIDATE_POOL_LIMIT)
+                    .toList();
         }
 
         return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+                latitude,
+                longitude,
                 minLatitude,
                 maxLatitude,
                 minLongitude,
-                maxLongitude
+                maxLongitude,
+                PageRequest.of(0, CANDIDATE_POOL_LIMIT)
         );
     }
 
