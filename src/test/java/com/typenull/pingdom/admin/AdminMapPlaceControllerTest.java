@@ -442,6 +442,10 @@ class AdminMapPlaceControllerTest {
                 .recommendationVersion("place-rec-v1")
                 .build());
 
+        mockMvc.perform(post("/admin/places/recommendation-snapshots/resync")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
         mockMvc.perform(get("/admin/places/recommendation-metrics")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("sortBy", RecommendationMetricSortBy.CLICK.name())

@@ -18,6 +18,7 @@ public class PlaceRecommendationExposureService {
 
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
     public Map<Long, Long> loadExposureCounts(Collection<Long> placeIds) {
         if (placeIds.isEmpty()) {
@@ -64,5 +65,6 @@ public class PlaceRecommendationExposureService {
 
         placeRecommendationExposureRepository.saveAll(exposures);
         placeRecommendationSnapshotService.increaseExposureCounts(placeIds);
+        placeRecommendationVersionSnapshotService.increaseExposureCounts(placeIds, recommendationVersion);
     }
 }

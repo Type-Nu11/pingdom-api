@@ -32,6 +32,7 @@ public class PlaceRecommendationSnapshotResyncService {
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+    private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
     @Transactional
     public SnapshotResyncResult resyncAll() {
@@ -99,6 +100,8 @@ public class PlaceRecommendationSnapshotResyncService {
         if (!orphanSnapshotPlaceIds.isEmpty()) {
             placeRecommendationSnapshotRepository.deleteAllByIdInBatch(orphanSnapshotPlaceIds);
         }
+
+        placeRecommendationVersionSnapshotService.resyncAll();
 
         return new SnapshotResyncResult(
                 placeIds.size(),

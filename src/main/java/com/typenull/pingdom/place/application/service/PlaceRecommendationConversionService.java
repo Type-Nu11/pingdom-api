@@ -20,6 +20,7 @@ public class PlaceRecommendationConversionService {
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
     @Transactional
     public void recordConversionIfEligible(
@@ -57,5 +58,10 @@ public class PlaceRecommendationConversionService {
                 .recommendationVersion(recentClick.getRecommendationVersion())
                 .build());
         placeRecommendationSnapshotService.increaseConversionCount(placeId, conversionType);
+        placeRecommendationVersionSnapshotService.increaseConversionCount(
+                placeId,
+                recentClick.getRecommendationVersion(),
+                conversionType
+        );
     }
 }

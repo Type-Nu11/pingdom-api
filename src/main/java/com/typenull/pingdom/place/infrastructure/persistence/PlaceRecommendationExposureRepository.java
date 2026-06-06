@@ -15,6 +15,14 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
         long getExposureCount();
     }
 
+    interface PlaceVersionExposureCountProjection {
+        Long getPlaceId();
+
+        String getRecommendationVersion();
+
+        long getExposureCount();
+    }
+
     @Query("""
             SELECT e.placeId as placeId, COUNT(e) as exposureCount
             FROM PlaceRecommendationExposure e
@@ -36,4 +44,13 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
     );
 
     long countByRecommendationVersion(String recommendationVersion);
+
+    @Query("""
+            SELECT e.placeId as placeId,
+                   e.recommendationVersion as recommendationVersion,
+                   COUNT(e) as exposureCount
+            FROM PlaceRecommendationExposure e
+            GROUP BY e.placeId, e.recommendationVersion
+            """)
+    List<PlaceVersionExposureCountProjection> countExposuresGroupedByPlaceIdAndRecommendationVersion();
 }

@@ -17,6 +17,14 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
         long getClickCount();
     }
 
+    interface PlaceVersionClickCountProjection {
+        Long getPlaceId();
+
+        String getRecommendationVersion();
+
+        long getClickCount();
+    }
+
     @Query("""
             SELECT c.placeId as placeId, COUNT(c) as clickCount
             FROM PlaceRecommendationClick c
@@ -40,6 +48,15 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
     long countByPlaceId(Long placeId);
 
     long countByRecommendationVersion(String recommendationVersion);
+
+    @Query("""
+            SELECT c.placeId as placeId,
+                   c.recommendationVersion as recommendationVersion,
+                   COUNT(c) as clickCount
+            FROM PlaceRecommendationClick c
+            GROUP BY c.placeId, c.recommendationVersion
+            """)
+    List<PlaceVersionClickCountProjection> countClicksGroupedByPlaceIdAndRecommendationVersion();
 
     Optional<PlaceRecommendationClick> findFirstByUserIdAndPlaceIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
             Long userId,

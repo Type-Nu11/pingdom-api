@@ -18,6 +18,16 @@ public interface PlaceRecommendationConversionRepository extends JpaRepository<P
         long getConversionCount();
     }
 
+    interface PlaceVersionConversionCountProjection {
+        Long getPlaceId();
+
+        String getRecommendationVersion();
+
+        PlaceRecommendationConversionType getConversionType();
+
+        long getConversionCount();
+    }
+
     boolean existsByUserIdAndPlaceIdAndConversionType(
             Long userId,
             Long placeId,
@@ -47,4 +57,14 @@ public interface PlaceRecommendationConversionRepository extends JpaRepository<P
             @Param("placeIds") Collection<Long> placeIds,
             @Param("recommendationVersion") String recommendationVersion
     );
+
+    @Query("""
+            SELECT c.placeId as placeId,
+                   c.recommendationVersion as recommendationVersion,
+                   c.conversionType as conversionType,
+                   COUNT(c) as conversionCount
+            FROM PlaceRecommendationConversion c
+            GROUP BY c.placeId, c.recommendationVersion, c.conversionType
+            """)
+    List<PlaceVersionConversionCountProjection> countConversionsGroupedByPlaceIdAndRecommendationVersion();
 }

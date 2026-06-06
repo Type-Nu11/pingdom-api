@@ -19,6 +19,7 @@ public class PlaceRecommendationClickService {
 
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
     private final MapPlaceRepository mapPlaceRepository;
 
     @Transactional
@@ -34,6 +35,10 @@ public class PlaceRecommendationClickService {
                 .build());
 
         placeRecommendationSnapshotService.increaseClickCounts(java.util.List.of(placeId));
+        placeRecommendationVersionSnapshotService.increaseClickCounts(
+                java.util.List.of(placeId),
+                recommendationVersion
+        );
     }
 
     public Map<Long, Long> loadClickCounts(Collection<Long> placeIds) {
