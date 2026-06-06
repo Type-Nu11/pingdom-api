@@ -15,12 +15,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
-import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -92,11 +92,14 @@ public class AdminUserController {
             )
     })
     public AdminBannedUserResponse listBannedUsers(
-            @PageableDefault(size = 20) Pageable pageable
+            @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
+            @RequestParam(defaultValue = "1") Integer page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") Integer limit
     ) {
-        int normalizedPage = Math.max(pageable.getPageNumber(), 1);
-        int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
-        Pageable normalizedPageable = PageRequest.of(normalizedPage - 1, normalizedLimit, pageable.getSort());
+        int normalizedPage = Math.max(page, 1);
+        int normalizedLimit = Math.min(Math.max(limit, 1), 100);
+        Pageable normalizedPageable = PageRequest.of(normalizedPage - 1, normalizedLimit);
         return adminUserService.listBannedUsers(normalizedPageable);
     }
 
