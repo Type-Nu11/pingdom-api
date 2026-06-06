@@ -47,7 +47,15 @@ public class PlaceRecommendationSnapshotResyncService {
             if (deletedSnapshotCount > 0L) {
                 placeRecommendationSnapshotRepository.deleteAllInBatch();
             }
-            return new SnapshotResyncResult(0, 0, deletedSnapshotCount);
+            PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
+                    placeRecommendationVersionSnapshotService.resyncAll();
+            return new SnapshotResyncResult(
+                    0,
+                    0,
+                    deletedSnapshotCount,
+                    versionResult.synchronizedSnapshotCount(),
+                    versionResult.deletedSnapshotCount()
+            );
         }
 
         Map<Long, Long> bookmarkCounts = loadBookmarkCounts(placeIds);
@@ -101,12 +109,15 @@ public class PlaceRecommendationSnapshotResyncService {
             placeRecommendationSnapshotRepository.deleteAllByIdInBatch(orphanSnapshotPlaceIds);
         }
 
-        placeRecommendationVersionSnapshotService.resyncAll();
+        PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
+                placeRecommendationVersionSnapshotService.resyncAll();
 
         return new SnapshotResyncResult(
                 placeIds.size(),
                 snapshotsToSave.size(),
-                orphanSnapshotPlaceIds.size()
+                orphanSnapshotPlaceIds.size(),
+                versionResult.synchronizedSnapshotCount(),
+                versionResult.deletedSnapshotCount()
         );
     }
 
@@ -195,7 +206,9 @@ public class PlaceRecommendationSnapshotResyncService {
     public record SnapshotResyncResult(
             long placeCount,
             long synchronizedSnapshotCount,
-            long deletedSnapshotCount
+            long deletedSnapshotCount,
+            long synchronizedVersionSnapshotCount,
+            long deletedVersionSnapshotCount
     ) {
     }
 }

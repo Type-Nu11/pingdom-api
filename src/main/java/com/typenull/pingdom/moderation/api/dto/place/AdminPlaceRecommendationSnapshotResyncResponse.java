@@ -4,6 +4,8 @@ public record AdminPlaceRecommendationSnapshotResyncResponse(
         long placeCount,
         long synchronizedSnapshotCount,
         long deletedSnapshotCount,
+        long synchronizedVersionSnapshotCount,
+        long deletedVersionSnapshotCount,
         String message
 ) {
 }

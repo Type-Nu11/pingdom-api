@@ -561,6 +561,8 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.placeCount").value(1))
                 .andExpect(jsonPath("$.synchronizedSnapshotCount").value(1))
                 .andExpect(jsonPath("$.deletedSnapshotCount").value(1))
+                .andExpect(jsonPath("$.synchronizedVersionSnapshotCount").value(1))
+                .andExpect(jsonPath("$.deletedVersionSnapshotCount").value(0))
                 .andExpect(jsonPath("$.message").value("장소 추천 snapshot 재동기화를 완료했습니다."));
 
         PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
