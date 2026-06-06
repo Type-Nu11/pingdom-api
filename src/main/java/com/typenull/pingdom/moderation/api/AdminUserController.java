@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.web.PageableDefault;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -30,7 +31,7 @@ public class AdminUserController {
 
     private final AdminUserService adminUserService;
 
-    @GetMapping("/users")
+    @GetMapping("/users/banned")
     @Operation(
             summary = "밴 유저 목록 조회",
             description = "관리자가 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
@@ -93,7 +94,10 @@ public class AdminUserController {
     public AdminBannedUserResponse listBannedUsers(
             @PageableDefault(size = 20) Pageable pageable
     ) {
-        return adminUserService.listBannedUsers(pageable);
+        int normalizedPage = Math.max(pageable.getPageNumber(), 1);
+        int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
+        Pageable normalizedPageable = PageRequest.of(normalizedPage - 1, normalizedLimit, pageable.getSort());
+        return adminUserService.listBannedUsers(normalizedPageable);
     }
 
     @PostMapping("/ban/{userId}")

@@ -73,7 +73,7 @@ class AdminUserControllerTest {
         newerBannedUser.ban("두 번째 밴", LocalDateTime.of(2026, 6, 6, 11, 0));
         userRepository.save(newerBannedUser);
 
-        mockMvc.perform(get("/admin/users")
+        mockMvc.perform(get("/admin/users/banned")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
                         .param("page", "1")
                         .param("limit", "20"))
@@ -93,7 +93,7 @@ class AdminUserControllerTest {
         String adminAccessToken = createAdminAndLogin();
         createUser("activeUser02");
 
-        mockMvc.perform(get("/admin/users")
+        mockMvc.perform(get("/admin/users/banned")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
                         .param("page", "1")
                         .param("limit", "20"))
