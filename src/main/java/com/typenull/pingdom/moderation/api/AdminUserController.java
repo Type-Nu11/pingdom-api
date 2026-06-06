@@ -2,6 +2,7 @@ package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.moderation.api.dto.ban.BanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -12,10 +13,12 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -25,6 +28,78 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
+
+    @GetMapping("/users")
+    @Operation(
+            summary = "밴 유저 목록 조회",
+            description = "관리자가 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "밴 유저 목록 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminBannedUserResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "users": [
+                                                {
+                                                  "userId": 7,
+                                                  "username": "blockedUser01",
+                                                  "email": "blocked@example.com",
+                                                  "banned": true,
+                                                  "bannedAt": "2026-06-06T11:30:00",
+                                                  "banReason": "반복 신고 누적"
+                                                }
+                                              ],
+                                              "page": 1,
+                                              "limit": 20,
+                                              "totalCount": 1,
+                                              "totalPages": 1,
+                                              "hasNext": false
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "관리자 권한 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "관리자 권한이 필요합니다.",
+                                              "code": "ACCESS_DENIED"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public AdminBannedUserResponse listBannedUsers(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return adminUserService.listBannedUsers(page, limit);
+    }
 
     @PostMapping("/ban/{userId}")
     @Operation(
