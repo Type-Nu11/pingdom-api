@@ -93,13 +93,11 @@ public class AdminUserController {
     })
     public AdminBannedUserResponse listBannedUsers(
             @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
-            @RequestParam(defaultValue = "1") Integer page,
+            @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
-            @RequestParam(defaultValue = "20") Integer limit
+            @RequestParam(defaultValue = "20") int limit
     ) {
-        int normalizedPage = Math.max(page, 1);
-        int normalizedLimit = Math.min(Math.max(limit, 1), 100);
-        Pageable normalizedPageable = PageRequest.of(normalizedPage - 1, normalizedLimit);
+        Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
         return adminUserService.listBannedUsers(normalizedPageable);
     }
 
