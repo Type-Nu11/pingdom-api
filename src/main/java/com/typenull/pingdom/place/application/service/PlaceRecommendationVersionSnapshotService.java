@@ -144,13 +144,26 @@ public class PlaceRecommendationVersionSnapshotService {
         }
 
         LocalDateTime now = LocalDateTime.now();
+        Map<Long, PlaceRecommendationVersionSnapshot> snapshotsByPlaceId = new HashMap<>();
+        for (PlaceRecommendationVersionSnapshot snapshot :
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                        increments.keySet(),
+                        recommendationVersion
+                )) {
+            snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+        }
+
+        Map<Long, PlaceRecommendationVersionSnapshot> createdSnapshots = createSnapshots(
+                increments.keySet(),
+                recommendationVersion,
+                snapshotsByPlaceId,
+                now
+        );
+        snapshotsByPlaceId.putAll(createdSnapshots);
+
         List<PlaceRecommendationVersionSnapshot> snapshotsToSave = new ArrayList<>(increments.size());
         for (Map.Entry<Long, Long> incrementEntry : increments.entrySet()) {
-            PlaceRecommendationVersionSnapshot snapshot = loadOrCreateSnapshot(
-                    incrementEntry.getKey(),
-                    recommendationVersion,
-                    now
-            );
+            PlaceRecommendationVersionSnapshot snapshot = snapshotsByPlaceId.get(incrementEntry.getKey());
 
             if (countType == CountType.CLICK) {
                 snapshot.increaseClickCount(incrementEntry.getValue(), now);
@@ -161,6 +174,38 @@ public class PlaceRecommendationVersionSnapshotService {
         }
 
         placeRecommendationVersionSnapshotRepository.saveAll(snapshotsToSave);
+    }
+
+    private Map<Long, PlaceRecommendationVersionSnapshot> createSnapshots(
+            Iterable<Long> placeIds,
+            String recommendationVersion,
+            Map<Long, PlaceRecommendationVersionSnapshot> existingSnapshots,
+            LocalDateTime now
+    ) {
+        Set<Long> missingPlaceIds = new HashSet<>();
+        for (Long placeId : placeIds) {
+            if (!existingSnapshots.containsKey(placeId)) {
+                missingPlaceIds.add(placeId);
+            }
+        }
+
+        if (missingPlaceIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, MapPlace> placesById = new HashMap<>();
+        for (MapPlace mapPlace : mapPlaceRepository.findAllById(missingPlaceIds)) {
+            placesById.put(mapPlace.getId(), mapPlace);
+        }
+
+        Map<Long, PlaceRecommendationVersionSnapshot> snapshots = new HashMap<>();
+        for (Long placeId : missingPlaceIds) {
+            if (!placesById.containsKey(placeId)) {
+                throw new IllegalArgumentException("Place not found: " + placeId);
+            }
+            snapshots.put(placeId, createSnapshot(placeId, recommendationVersion, now));
+        }
+        return snapshots;
     }
 
     private PlaceRecommendationVersionSnapshot loadOrCreateSnapshot(
@@ -179,6 +224,14 @@ public class PlaceRecommendationVersionSnapshotService {
 
         mapPlaceRepository.findById(placeId).orElseThrow();
 
+        return createSnapshot(placeId, recommendationVersion, now);
+    }
+
+    private PlaceRecommendationVersionSnapshot createSnapshot(
+            Long placeId,
+            String recommendationVersion,
+            LocalDateTime now
+    ) {
         return PlaceRecommendationVersionSnapshot.builder()
                 .placeId(placeId)
                 .recommendationVersion(recommendationVersion)

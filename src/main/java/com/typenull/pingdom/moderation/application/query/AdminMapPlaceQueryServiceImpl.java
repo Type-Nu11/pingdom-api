@@ -129,58 +129,243 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         String safeRecommendationVersion = recommendationVersion == null ? "" : recommendationVersion.trim();
         Integer safeDays = days == null || days <= 0 ? null : days;
 
-        List<MapPlace> places = mapPlaceRepository.findByNameContaining(keyword, Pageable.unpaged()).getContent();
-        List<Long> placeIds = places.stream()
-                .map(MapPlace::getId)
-                .toList();
-
-        if (placeIds.isEmpty()) {
-            return AdminPlaceRecommendationMetricsResponse.of(
-                    List.of(),
-                    safeSortBy,
-                    safeRecommendationVersion,
-                    safeDays,
-                    safePage,
-                    safeLimit,
-                    0L,
-                    0L
-            );
-        }
-
-        Map<Long, PlaceRecommendationSnapshot> snapshotsByPlaceId = new HashMap<>();
-        for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
-            snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
-        }
-        List<AdminPlaceRecommendationMetricItem> sortedMetrics;
         if (safeDays != null) {
-            sortedMetrics = buildPeriodFilteredMetrics(
+            List<MapPlace> places = mapPlaceRepository.findByNameContaining(keyword, Pageable.unpaged()).getContent();
+            List<Long> placeIds = places.stream()
+                    .map(MapPlace::getId)
+                    .toList();
+
+            if (placeIds.isEmpty()) {
+                return AdminPlaceRecommendationMetricsResponse.of(
+                        List.of(),
+                        safeSortBy,
+                        safeRecommendationVersion,
+                        safeDays,
+                        safePage,
+                        safeLimit,
+                        0L,
+                        0L
+                );
+            }
+
+            List<AdminPlaceRecommendationMetricItem> sortedMetrics = buildPeriodFilteredMetrics(
                     places,
                     safeRecommendationVersion,
                     safeSortBy,
                     LocalDateTime.now().minusDays(safeDays)
             );
-        } else {
-            sortedMetrics = safeRecommendationVersion.isBlank()
-                    ? buildSnapshotMetrics(places, snapshotsByPlaceId, safeSortBy)
-                    : buildVersionFilteredMetrics(places, safeRecommendationVersion, safeSortBy);
+            long totalCount = sortedMetrics.size();
+            long totalPages = totalCount == 0L ? 0L : (long) Math.ceil((double) totalCount / (double) safeLimit);
+            int fromIndex = Math.min((safePage - 1) * safeLimit, sortedMetrics.size());
+            int toIndex = Math.min(fromIndex + safeLimit, sortedMetrics.size());
+            List<AdminPlaceRecommendationMetricItem> pagedMetrics = sortedMetrics.subList(fromIndex, toIndex);
+
+            return AdminPlaceRecommendationMetricsResponse.of(
+                    pagedMetrics,
+                    safeSortBy,
+                    safeRecommendationVersion,
+                    safeDays,
+                    safePage,
+                    safeLimit,
+                    totalCount,
+                    totalPages
+            );
         }
 
-        long totalCount = sortedMetrics.size();
-        long totalPages = totalCount == 0L ? 0L : (long) Math.ceil((double) totalCount / (double) safeLimit);
-        int fromIndex = Math.min((safePage - 1) * safeLimit, sortedMetrics.size());
-        int toIndex = Math.min(fromIndex + safeLimit, sortedMetrics.size());
-        List<AdminPlaceRecommendationMetricItem> pagedMetrics = sortedMetrics.subList(fromIndex, toIndex);
+        if (safeRecommendationVersion.isBlank()) {
+            double globalCtr = calculateGlobalCtr(
+                    placeRecommendationSnapshotRepository.sumClickCount(),
+                    placeRecommendationSnapshotRepository.sumExposureCount()
+            );
+            Page<MapPlace> placePage = findSnapshotMetricPage(
+                    keyword,
+                    safeSortBy,
+                    globalCtr,
+                    PageRequest.of(safePage - 1, safeLimit)
+            );
+            List<AdminPlaceRecommendationMetricItem> metrics = buildSnapshotPageMetrics(
+                    placePage.getContent(),
+                    globalCtr
+            );
+
+            return AdminPlaceRecommendationMetricsResponse.of(
+                    metrics,
+                    safeSortBy,
+                    safeRecommendationVersion,
+                    safeDays,
+                    safePage,
+                    safeLimit,
+                    placePage.getTotalElements(),
+                    placePage.getTotalPages()
+            );
+        }
+
+        double globalCtr = calculateGlobalCtr(
+                placeRecommendationVersionSnapshotRepository.sumClickCountByRecommendationVersion(safeRecommendationVersion),
+                placeRecommendationVersionSnapshotRepository.sumExposureCountByRecommendationVersion(safeRecommendationVersion)
+        );
+        Page<MapPlace> placePage = findVersionSnapshotMetricPage(
+                keyword,
+                safeRecommendationVersion,
+                safeSortBy,
+                globalCtr,
+                PageRequest.of(safePage - 1, safeLimit)
+        );
+        List<AdminPlaceRecommendationMetricItem> metrics = buildVersionSnapshotPageMetrics(
+                placePage.getContent(),
+                safeRecommendationVersion,
+                globalCtr
+        );
 
         return AdminPlaceRecommendationMetricsResponse.of(
-                pagedMetrics,
+                metrics,
                 safeSortBy,
                 safeRecommendationVersion,
                 safeDays,
                 safePage,
                 safeLimit,
-                totalCount,
-                totalPages
+                placePage.getTotalElements(),
+                placePage.getTotalPages()
         );
+    }
+
+    private List<AdminPlaceRecommendationMetricItem> buildSnapshotPageMetrics(
+            List<MapPlace> places,
+            double globalCtr
+    ) {
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+        Map<Long, PlaceRecommendationSnapshot> snapshotsByPlaceId = new HashMap<>();
+        for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
+            snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+        }
+
+        return places.stream()
+                .map(place -> toRecommendationMetricItem(
+                        place,
+                        snapshotsByPlaceId.get(place.getId()),
+                        globalCtr
+                ))
+                .toList();
+    }
+
+    private List<AdminPlaceRecommendationMetricItem> buildVersionSnapshotPageMetrics(
+            List<MapPlace> places,
+            String recommendationVersion,
+            double globalCtr
+    ) {
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+        Map<Long, PlaceRecommendationVersionSnapshot> snapshotsByPlaceId = new HashMap<>();
+        for (PlaceRecommendationVersionSnapshot snapshot :
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                        placeIds,
+                        recommendationVersion
+                )) {
+            snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+        }
+
+        return places.stream()
+                .map(place -> toRecommendationMetricItem(
+                        place,
+                        snapshotsByPlaceId.get(place.getId()),
+                        globalCtr
+                ))
+                .toList();
+    }
+
+    private Page<MapPlace> findSnapshotMetricPage(
+            String keyword,
+            RecommendationMetricSortBy sortBy,
+            double globalCtr,
+            Pageable pageable
+    ) {
+        return switch (sortBy) {
+            case SMOOTHED_CTR -> mapPlaceRepository.findRecommendationMetricPageOrderBySmoothedCtr(
+                    keyword,
+                    globalCtr,
+                    CTR_PRIOR_WEIGHT,
+                    pageable
+            );
+            case RAW_CTR -> mapPlaceRepository.findRecommendationMetricPageOrderByRawCtr(
+                    keyword,
+                    globalCtr,
+                    CTR_PRIOR_WEIGHT,
+                    pageable
+            );
+            case BOOKMARK_CONVERSION -> mapPlaceRepository.findRecommendationMetricPageOrderByBookmarkConversion(
+                    keyword,
+                    pageable
+            );
+            case LIKE_CONVERSION -> mapPlaceRepository.findRecommendationMetricPageOrderByLikeConversion(
+                    keyword,
+                    pageable
+            );
+            case TOTAL_CONVERSION -> mapPlaceRepository.findRecommendationMetricPageOrderByTotalConversion(
+                    keyword,
+                    pageable
+            );
+            case EXPOSURE -> mapPlaceRepository.findRecommendationMetricPageOrderByExposure(keyword, pageable);
+            case CLICK -> mapPlaceRepository.findRecommendationMetricPageOrderByClick(keyword, pageable);
+            case UPDATED_AT -> mapPlaceRepository.findRecommendationMetricPageOrderByUpdatedAt(keyword, pageable);
+        };
+    }
+
+    private Page<MapPlace> findVersionSnapshotMetricPage(
+            String keyword,
+            String recommendationVersion,
+            RecommendationMetricSortBy sortBy,
+            double globalCtr,
+            Pageable pageable
+    ) {
+        return switch (sortBy) {
+            case SMOOTHED_CTR -> mapPlaceRepository.findVersionRecommendationMetricPageOrderBySmoothedCtr(
+                    keyword,
+                    recommendationVersion,
+                    globalCtr,
+                    CTR_PRIOR_WEIGHT,
+                    pageable
+            );
+            case RAW_CTR -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByRawCtr(
+                    keyword,
+                    recommendationVersion,
+                    globalCtr,
+                    CTR_PRIOR_WEIGHT,
+                    pageable
+            );
+            case BOOKMARK_CONVERSION -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByBookmarkConversion(
+                    keyword,
+                    recommendationVersion,
+                    pageable
+            );
+            case LIKE_CONVERSION -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByLikeConversion(
+                    keyword,
+                    recommendationVersion,
+                    pageable
+            );
+            case TOTAL_CONVERSION -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByTotalConversion(
+                    keyword,
+                    recommendationVersion,
+                    pageable
+            );
+            case EXPOSURE -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByExposure(
+                    keyword,
+                    recommendationVersion,
+                    pageable
+            );
+            case CLICK -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByClick(
+                    keyword,
+                    recommendationVersion,
+                    pageable
+            );
+            case UPDATED_AT -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByUpdatedAt(
+                    keyword,
+                    recommendationVersion,
+                    pageable
+            );
+        };
     }
 
     @Override

@@ -97,12 +97,13 @@ public class PlaceRecommendationSnapshotService {
             existingSnapshots.put(snapshot.getPlaceId(), snapshot);
         }
 
+        Map<Long, PlaceRecommendationSnapshot> createdSnapshots =
+                createMissingSnapshots(increments.keySet(), existingSnapshots, now);
+        existingSnapshots.putAll(createdSnapshots);
+
         List<PlaceRecommendationSnapshot> snapshotsToSave = new ArrayList<>(increments.size());
         for (Map.Entry<Long, Long> incrementEntry : increments.entrySet()) {
             PlaceRecommendationSnapshot snapshot = existingSnapshots.get(incrementEntry.getKey());
-            if (snapshot == null) {
-                snapshot = loadOrCreateSnapshot(incrementEntry.getKey(), now);
-            }
 
             if (countType == CountType.CLICK) {
                 snapshot.increaseClickCount(incrementEntry.getValue(), now);
@@ -115,6 +116,38 @@ public class PlaceRecommendationSnapshotService {
         placeRecommendationSnapshotRepository.saveAll(snapshotsToSave);
     }
 
+    private Map<Long, PlaceRecommendationSnapshot> createMissingSnapshots(
+            Iterable<Long> placeIds,
+            Map<Long, PlaceRecommendationSnapshot> existingSnapshots,
+            LocalDateTime now
+    ) {
+        List<Long> missingPlaceIds = new ArrayList<>();
+        for (Long placeId : placeIds) {
+            if (!existingSnapshots.containsKey(placeId)) {
+                missingPlaceIds.add(placeId);
+            }
+        }
+
+        if (missingPlaceIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, MapPlace> placesById = new HashMap<>();
+        for (MapPlace mapPlace : mapPlaceRepository.findAllById(missingPlaceIds)) {
+            placesById.put(mapPlace.getId(), mapPlace);
+        }
+
+        Map<Long, PlaceRecommendationSnapshot> createdSnapshots = new HashMap<>();
+        for (Long placeId : missingPlaceIds) {
+            MapPlace mapPlace = placesById.get(placeId);
+            if (mapPlace == null) {
+                throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+            }
+            createdSnapshots.put(placeId, createSnapshot(mapPlace, now));
+        }
+        return createdSnapshots;
+    }
+
     private PlaceRecommendationSnapshot loadOrCreateSnapshot(Long placeId, LocalDateTime now) {
         PlaceRecommendationSnapshot existingSnapshot = placeRecommendationSnapshotRepository.findById(placeId)
                 .orElse(null);
@@ -125,16 +158,20 @@ public class PlaceRecommendationSnapshotService {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
+        return createSnapshot(mapPlace, now);
+    }
+
+    private PlaceRecommendationSnapshot createSnapshot(MapPlace mapPlace, LocalDateTime now) {
         return PlaceRecommendationSnapshot.builder()
-                .placeId(placeId)
+                .placeId(mapPlace.getId())
                 .photoCount(mapPlace.currentPhotoCount())
-                .bookmarkCount(mapBookmarkRepository.countByPlaceId(placeId))
-                .totalLikeCount(mapImageRepository.sumLikeCountByPlaceId(placeId))
+                .bookmarkCount(mapBookmarkRepository.countByPlaceId(mapPlace.getId()))
+                .totalLikeCount(mapImageRepository.sumLikeCountByPlaceId(mapPlace.getId()))
                 .clickCount(0L)
                 .bookmarkConversionCount(0L)
                 .likeConversionCount(0L)
                 .exposureCount(0L)
-                .latestPostCreatedAt(mapImageRepository.findLatestCreatedAtByPlaceId(placeId))
+                .latestPostCreatedAt(mapImageRepository.findLatestCreatedAtByPlaceId(mapPlace.getId()))
                 .updatedAt(now)
                 .build();
     }

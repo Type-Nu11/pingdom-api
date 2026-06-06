@@ -209,9 +209,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double maxLongitude = longitude + longitudeDelta;
 
         if (minLongitude < -180d || maxLongitude > 180d || Double.isInfinite(longitudeDelta)) {
-            return mapPlaceRepository.findAllWithCoordinates().stream()
-                    .limit(CANDIDATE_POOL_LIMIT)
-                    .toList();
+            return mapPlaceRepository.findAllWithCoordinates(PageRequest.of(0, CANDIDATE_POOL_LIMIT));
         }
 
         return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(

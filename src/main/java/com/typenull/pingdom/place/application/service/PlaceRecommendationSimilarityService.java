@@ -95,15 +95,22 @@ public class PlaceRecommendationSimilarityService {
             return 0d;
         }
 
-        Set<Long> intersection = new HashSet<>(left);
-        intersection.retainAll(right);
-        if (intersection.isEmpty()) {
+        Set<Long> smaller = left.size() <= right.size() ? left : right;
+        Set<Long> larger = smaller == left ? right : left;
+
+        long intersectionSize = 0L;
+        for (Long value : smaller) {
+            if (larger.contains(value)) {
+                intersectionSize++;
+            }
+        }
+
+        if (intersectionSize == 0L) {
             return 0d;
         }
 
-        Set<Long> union = new HashSet<>(left);
-        union.addAll(right);
-        return (double) intersection.size() / (double) union.size();
+        long unionSize = left.size() + right.size() - intersectionSize;
+        return (double) intersectionSize / (double) unionSize;
     }
 
     private double calculateDistanceMeters(
