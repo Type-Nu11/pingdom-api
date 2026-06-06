@@ -3,6 +3,7 @@ package com.typenull.pingdom.engagement.application.service;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.event.MapImageLikedEvent;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
+import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -17,6 +18,7 @@ public class MapImageLikeService {
 
     private final MapImageLikeRepository mapImageLikeRepository;
     private final MapImageRepository mapImageRepository;
+    private final PostQueryService postQueryService;
     private final ApplicationEventPublisher applicationEventPublisher;
 
     @Transactional
@@ -59,5 +61,9 @@ public class MapImageLikeService {
         mapImageRepository.decreaseLikeCount(mapImageId);
 
         return new MapImageLikeResult(userId, mapImageId, "좋아요 취소되었습니다.");
+    }
+
+    public void LikeReturn (Long postId){
+        postQueryService.getPost(postId);
     }
 }

@@ -19,12 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.PathVariable;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/map")
@@ -127,13 +122,22 @@ public class EngagementController {
         return ResponseEntity.ok(toResponse(result));
     }
 
-    @DeleteMapping("/like/{imageId}")
+    @DeleteMapping("/like/{PostId}")
     public ResponseEntity<MapImageLikeResponse> likeClear(
-            @PathVariable("imageId") Long imageId,
+            @PathVariable("postId") Long postId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        MapImageLikeResult result = mapImageLikeService.notLike(imageId, user.userId());
+        MapImageLikeResult result = mapImageLikeService.notLike(postId, user.userId());
         return ResponseEntity.ok(toResponse(result));
+    }
+
+    @PostMapping("/like/return")
+    public ResponseEntity<String> likeReturn(
+            @PathVariable("postId") Long postId,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        mapImageLikeService.LikeReturn(postId);
+        return ResponseEntity.ok().body("게시물 반환");
     }
 
     private MapImageLikeResponse toResponse(MapImageLikeResult result) {
