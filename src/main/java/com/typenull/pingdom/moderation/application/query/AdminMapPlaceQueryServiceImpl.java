@@ -127,6 +127,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             return AdminPlaceRecommendationMetricsResponse.of(
                     List.of(),
                     safeSortBy,
+                    safeRecommendationVersion,
                     safePage,
                     safeLimit,
                     0L,
@@ -151,6 +152,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         return AdminPlaceRecommendationMetricsResponse.of(
                 pagedMetrics,
                 safeSortBy,
+                safeRecommendationVersion,
                 safePage,
                 safeLimit,
                 totalCount,

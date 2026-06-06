@@ -8,6 +8,7 @@ import java.util.List;
 public record AdminPlaceRecommendationMetricsResponse(
         List<AdminPlaceRecommendationMetricItem> metrics,
         RecommendationMetricSortBy sortBy,
+        String recommendationVersion,
         int page,
         int limit,
         long totalCount,
@@ -17,11 +18,21 @@ public record AdminPlaceRecommendationMetricsResponse(
     public static AdminPlaceRecommendationMetricsResponse of(
             List<AdminPlaceRecommendationMetricItem> metrics,
             RecommendationMetricSortBy sortBy,
+            String recommendationVersion,
             int page,
             int limit,
             long totalCount,
             long totalPages
     ) {
-        return new AdminPlaceRecommendationMetricsResponse(metrics, sortBy, page, limit, totalCount, totalPages, page < totalPages);
+        return new AdminPlaceRecommendationMetricsResponse(
+                metrics,
+                sortBy,
+                recommendationVersion,
+                page,
+                limit,
+                totalCount,
+                totalPages,
+                page < totalPages
+        );
     }
 }

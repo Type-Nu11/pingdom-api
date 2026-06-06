@@ -452,6 +452,7 @@ class AdminMapPlaceControllerTest {
                         .param("recommendationVersion", "place-rec-v1"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.sortBy").value(RecommendationMetricSortBy.CLICK.name()))
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"))
                 .andExpect(jsonPath("$.totalCount").value(2))
                 .andExpect(jsonPath("$.metrics[0].name").value("버전1 장소"))
                 .andExpect(jsonPath("$.metrics[0].exposureCount").value(10))
