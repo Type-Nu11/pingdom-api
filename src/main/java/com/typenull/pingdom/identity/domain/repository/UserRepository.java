@@ -1,8 +1,9 @@
 package com.typenull.pingdom.identity.domain.repository;
 
 import com.typenull.pingdom.identity.domain.User;
-import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface UserRepository extends JpaRepository<User, Long> {
@@ -18,5 +19,5 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmailAndEmailVerificationCode(String email, String emailVerificationCode);
 
-    List<User> findAllByBannedTrueOrderByBannedAtDescIdDesc();
+    Page<User> findAllByBannedTrue(Pageable pageable);
 }
