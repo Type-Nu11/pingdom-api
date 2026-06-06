@@ -18,7 +18,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -32,7 +31,7 @@ public class AdminUserController {
     @GetMapping("/users")
     @Operation(
             summary = "밴 유저 목록 조회",
-            description = "관리자가 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            description = "관리자가 밴 처리된 사용자 목록을 조회합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -47,17 +46,9 @@ public class AdminUserController {
                                                 {
                                                   "userId": 7,
                                                   "username": "blockedUser01",
-                                                  "email": "blocked@example.com",
-                                                  "banned": true,
-                                                  "bannedAt": "2026-06-06T11:30:00",
-                                                  "banReason": "반복 신고 누적"
+                                                  "banned": true
                                                 }
-                                              ],
-                                              "page": 1,
-                                              "limit": 20,
-                                              "totalCount": 1,
-                                              "totalPages": 1,
-                                              "hasNext": false
+                                              ]
                                             }
                                             """
                             )
@@ -92,13 +83,8 @@ public class AdminUserController {
                     )
             )
     })
-    public AdminBannedUserResponse listBannedUsers(
-            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
-            @RequestParam(defaultValue = "1") int page,
-            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
-            @RequestParam(defaultValue = "20") int limit
-    ) {
-        return adminUserService.listBannedUsers(page, limit);
+    public AdminBannedUserResponse listBannedUsers() {
+        return adminUserService.listBannedUsers();
     }
 
     @PostMapping("/ban/{userId}")

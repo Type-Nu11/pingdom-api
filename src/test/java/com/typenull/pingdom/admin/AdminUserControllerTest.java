@@ -74,18 +74,14 @@ class AdminUserControllerTest {
         userRepository.save(newerBannedUser);
 
         mockMvc.perform(get("/admin/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("page", "1")
-                        .param("limit", "20"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users.length()").value(2))
                 .andExpect(jsonPath("$.users[0].userId").value(newerBannedUser.getId()))
                 .andExpect(jsonPath("$.users[0].username").value("bannedUser02"))
-                .andExpect(jsonPath("$.users[0].banReason").value("두 번째 밴"))
+                .andExpect(jsonPath("$.users[0].banned").value(true))
                 .andExpect(jsonPath("$.users[1].userId").value(olderBannedUser.getId()))
-                .andExpect(jsonPath("$.users[1].username").value("bannedUser01"))
-                .andExpect(jsonPath("$.totalCount").value(2))
-                .andExpect(jsonPath("$.hasNext").value(false));
+                .andExpect(jsonPath("$.users[1].username").value("bannedUser01"));
     }
 
     @Test
@@ -94,12 +90,9 @@ class AdminUserControllerTest {
         createUser("activeUser02");
 
         mockMvc.perform(get("/admin/users")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("page", "1")
-                        .param("limit", "20"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.users.length()").value(0))
-                .andExpect(jsonPath("$.totalCount").value(0));
+                .andExpect(jsonPath("$.users.length()").value(0));
     }
 
     private User createUser(String username) {

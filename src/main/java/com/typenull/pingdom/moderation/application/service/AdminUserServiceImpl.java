@@ -11,10 +11,6 @@ import com.typenull.pingdom.moderation.application.AdminUserService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -38,37 +34,19 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminBannedUserResponse listBannedUsers(int page, int limit) {
-        int normalizedPage = Math.max(page, 1);
-        int normalizedLimit = Math.min(Math.max(limit, 1), 100);
-        Pageable pageable = PageRequest.of(
-                normalizedPage - 1,
-                normalizedLimit,
-                Sort.by(Sort.Order.desc("bannedAt"), Sort.Order.desc("id"))
-        );
-
-        Page<User> userPage = userRepository.findAllByBannedTrue(pageable);
-        List<AdminBannedUserItem> users = userPage.getContent().stream()
+    public AdminBannedUserResponse listBannedUsers() {
+        List<AdminBannedUserItem> users = userRepository.findAllByBannedTrueOrderByBannedAtDescIdDesc().stream()
                 .map(this::toItem)
                 .toList();
 
-        return AdminBannedUserResponse.of(
-                users,
-                normalizedPage,
-                normalizedLimit,
-                userPage.getTotalElements(),
-                userPage.getTotalPages()
-        );
+        return AdminBannedUserResponse.of(users);
     }
 
     private AdminBannedUserItem toItem(User user) {
         return new AdminBannedUserItem(
                 user.getId(),
                 user.getUsername(),
-                user.getEmail(),
-                user.isBanned(),
-                user.getBannedAt(),
-                user.getBanReason()
+                user.isBanned()
         );
     }
 }
