@@ -29,6 +29,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQueryService {
 
+    private static final String RECOMMENDATION_VERSION = "place-rec-v1";
     private static final int MIN_LIMIT = 1;
     private static final int MAX_LIMIT = 20;
     private static final double MIN_RADIUS_KM = 1.0d;
@@ -67,7 +68,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         List<MapPlace> candidatePool = loadCandidatePool(latitude, longitude, MAX_RADIUS_KM);
 
         if (candidatePool.isEmpty()) {
-            return PlaceRecommendationResponse.of(List.of(), safeLimit, safeRadiusKm, safeRadiusKm);
+            return PlaceRecommendationResponse.of(
+                    List.of(),
+                    RECOMMENDATION_VERSION,
+                    safeLimit,
+                    safeRadiusKm,
+                    safeRadiusKm
+            );
         }
 
         Map<Long, MapPlace> placeIndex = buildPlaceIndex(candidatePool, signalContext.interactedPlaceIds());
@@ -92,7 +99,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         if (selection.candidates().isEmpty()) {
-            return PlaceRecommendationResponse.of(List.of(), safeLimit, safeRadiusKm, selection.appliedRadiusKm());
+            return PlaceRecommendationResponse.of(
+                    List.of(),
+                    RECOMMENDATION_VERSION,
+                    safeLimit,
+                    safeRadiusKm,
+                    selection.appliedRadiusKm()
+            );
         }
 
         Map<Long, PlaceAggregate> aggregateMap = loadAggregates(selection.candidates());
@@ -169,7 +182,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         .toList()
         );
 
-        return PlaceRecommendationResponse.of(places, safeLimit, safeRadiusKm, appliedRadiusKm);
+        return PlaceRecommendationResponse.of(
+                places,
+                RECOMMENDATION_VERSION,
+                safeLimit,
+                safeRadiusKm,
+                appliedRadiusKm
+        );
     }
 
     private List<MapPlace> loadCandidatePool(double latitude, double longitude, double maxRadiusKm) {

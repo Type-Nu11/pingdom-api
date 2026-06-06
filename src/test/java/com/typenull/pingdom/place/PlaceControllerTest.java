@@ -190,6 +190,7 @@ class PlaceControllerTest {
                         .param("limit", "2")
                         .param("radiusKm", "5.0"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"))
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places.length()").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("추천 장소"))

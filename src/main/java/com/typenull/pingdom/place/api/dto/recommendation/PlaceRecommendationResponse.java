@@ -7,6 +7,8 @@ import java.util.List;
 public record PlaceRecommendationResponse(
         @Schema(description = "추천 장소 목록")
         List<PlaceRecommendationItem> places,
+        @Schema(description = "추천 알고리즘 버전", example = "place-rec-v1")
+        String recommendationVersion,
         @Schema(description = "요청 제한 수", example = "10")
         int limit,
         @Schema(description = "요청 반경(km)", example = "5.0")
@@ -18,12 +20,14 @@ public record PlaceRecommendationResponse(
 ) {
     public static PlaceRecommendationResponse of(
             List<PlaceRecommendationItem> places,
+            String recommendationVersion,
             int limit,
             double requestedRadiusKm,
             double appliedRadiusKm
     ) {
         return new PlaceRecommendationResponse(
                 places,
+                recommendationVersion,
                 limit,
                 requestedRadiusKm,
                 appliedRadiusKm,
