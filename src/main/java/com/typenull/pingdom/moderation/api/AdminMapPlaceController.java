@@ -209,7 +209,8 @@ public class AdminMapPlaceController {
                     description = "추천 성과 정렬 기준",
                     example = "SMOOTHED_CTR",
                     schema = @Schema(type = "string", allowableValues = {
-                            "SMOOTHED_CTR", "RAW_CTR", "EXPOSURE", "CLICK", "UPDATED_AT"
+                            "SMOOTHED_CTR", "RAW_CTR", "BOOKMARK_CONVERSION", "LIKE_CONVERSION",
+                            "TOTAL_CONVERSION", "EXPOSURE", "CLICK", "UPDATED_AT"
                     })
             )
             @RequestParam(defaultValue = "SMOOTHED_CTR") RecommendationMetricSortBy sortBy,

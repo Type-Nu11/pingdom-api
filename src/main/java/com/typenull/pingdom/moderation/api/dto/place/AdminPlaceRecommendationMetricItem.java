@@ -21,6 +21,16 @@ public record AdminPlaceRecommendationMetricItem(
         double rawCtr,
         @Schema(description = "랭킹 기준 smoothed CTR", example = "0.13")
         double smoothedCtr,
+        @Schema(description = "북마크 전환 수", example = "4")
+        long bookmarkConversionCount,
+        @Schema(description = "좋아요 전환 수", example = "6")
+        long likeConversionCount,
+        @Schema(description = "북마크 전환율", example = "0.03")
+        double bookmarkConversionRate,
+        @Schema(description = "좋아요 전환율", example = "0.05")
+        double likeConversionRate,
+        @Schema(description = "전체 전환율", example = "0.08")
+        double totalConversionRate,
         @Schema(description = "추천 snapshot 최종 갱신 시각", example = "2026-06-05T22:50:43")
         LocalDateTime snapshotUpdatedAt
 ) {
