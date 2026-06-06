@@ -21,9 +21,8 @@ public record PlaceUploadRequest(
         @Schema(description = "장소 주소", example = "서울특별시 중구 세종대로 110")
         String address,
 
-        @NotBlank(message = "이미지 URL은 필수입니다.")
         @Size(max = 500, message = "이미지 URL은 500자 이하여야 합니다.")
-        @Schema(description = "장소 대표 이미지 URL", example = "https://example.com/images/place-1.jpg")
+        @Schema(description = "장소 대표 이미지 URL(선택)", example = "https://example.com/images/place-1.jpg")
         String imageUrl,
 
         @NotBlank(message = "좌표 토큰은 필수입니다.")
