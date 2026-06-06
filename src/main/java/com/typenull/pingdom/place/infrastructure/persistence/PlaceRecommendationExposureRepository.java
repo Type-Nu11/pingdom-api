@@ -22,4 +22,18 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
             GROUP BY e.placeId
             """)
     List<PlaceExposureCountProjection> countExposuresByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
+
+    @Query("""
+            SELECT e.placeId as placeId, COUNT(e) as exposureCount
+            FROM PlaceRecommendationExposure e
+            WHERE e.placeId IN :placeIds
+              AND e.recommendationVersion = :recommendationVersion
+            GROUP BY e.placeId
+            """)
+    List<PlaceExposureCountProjection> countExposuresByPlaceIdsAndRecommendationVersion(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("recommendationVersion") String recommendationVersion
+    );
+
+    long countByRecommendationVersion(String recommendationVersion);
 }

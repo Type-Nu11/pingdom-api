@@ -16,6 +16,7 @@ public interface AdminMapPlaceQueryService {
             int page,
             int limit,
             RecommendationMetricSortBy sortBy,
-            String keyword
+            String keyword,
+            String recommendationVersion
     );
 }

@@ -215,9 +215,17 @@ public class AdminMapPlaceController {
             )
             @RequestParam(defaultValue = "SMOOTHED_CTR") RecommendationMetricSortBy sortBy,
             @Parameter(description = "장소 검색 키워드", example = "진주")
-            @RequestParam(required = false, defaultValue = "") String keyword
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @Parameter(description = "추천 버전 필터", example = "place-rec-v1")
+            @RequestParam(required = false, defaultValue = "") String recommendationVersion
     ) {
-        return adminMapPlaceQueryService.listRecommendationMetrics(page, limit, sortBy, keyword);
+        return adminMapPlaceQueryService.listRecommendationMetrics(
+                page,
+                limit,
+                sortBy,
+                keyword,
+                recommendationVersion
+        );
     }
 
     @DeleteMapping("/{id}/delete")

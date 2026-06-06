@@ -363,6 +363,105 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listRecommendationMetricsFiltersByRecommendationVersion() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace versionOnePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("버전1 장소")
+                .address("경상남도 진주시 버전로 1")
+                .latitude(35.1810)
+                .longitude(128.1085)
+                .userId(61L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace versionTwoPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("버전2 장소")
+                .address("경상남도 진주시 버전로 2")
+                .latitude(35.1811)
+                .longitude(128.1086)
+                .userId(62L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+
+        for (int index = 0; index < 10; index++) {
+            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                    .placeId(versionOnePlace.getId())
+                    .userId(1000L + index)
+                    .requestLatitude(35.1810)
+                    .requestLongitude(128.1085)
+                    .ranking(1)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        for (int index = 0; index < 4; index++) {
+            placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                    .placeId(versionOnePlace.getId())
+                    .userId(2000L + index)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(5001L)
+                .placeId(versionOnePlace.getId())
+                .userId(3001L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(5002L)
+                .placeId(versionOnePlace.getId())
+                .userId(3002L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v2")
+                .build());
+
+        for (int index = 0; index < 5; index++) {
+            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                    .placeId(versionTwoPlace.getId())
+                    .userId(4000L + index)
+                    .requestLatitude(35.1811)
+                    .requestLongitude(128.1086)
+                    .ranking(1)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        for (int index = 0; index < 3; index++) {
+            placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                    .placeId(versionTwoPlace.getId())
+                    .userId(5000L + index)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(6001L)
+                .placeId(versionTwoPlace.getId())
+                .userId(6001L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortBy", RecommendationMetricSortBy.CLICK.name())
+                        .param("recommendationVersion", "place-rec-v1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortBy").value(RecommendationMetricSortBy.CLICK.name()))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.metrics[0].name").value("버전1 장소"))
+                .andExpect(jsonPath("$.metrics[0].exposureCount").value(10))
+                .andExpect(jsonPath("$.metrics[0].clickCount").value(4))
+                .andExpect(jsonPath("$.metrics[0].bookmarkConversionCount").value(1))
+                .andExpect(jsonPath("$.metrics[0].likeConversionCount").value(0))
+                .andExpect(jsonPath("$.metrics[1].name").value("버전2 장소"))
+                .andExpect(jsonPath("$.metrics[1].exposureCount").value(5))
+                .andExpect(jsonPath("$.metrics[1].clickCount").value(3))
+                .andExpect(jsonPath("$.metrics[1].bookmarkConversionCount").value(0))
+                .andExpect(jsonPath("$.metrics[1].likeConversionCount").value(1));
+    }
+
+    @Test
     void resyncRecommendationSnapshotsRebuildsCurrentPlacesAndRemovesOrphans() throws Exception {
         String accessToken = createAdminAndLogin();
 
