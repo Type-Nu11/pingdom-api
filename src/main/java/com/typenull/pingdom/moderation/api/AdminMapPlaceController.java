@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.api;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationSnapshotResyncResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
@@ -227,6 +228,38 @@ public class AdminMapPlaceController {
                 sortBy,
                 keyword,
                 recommendationVersion,
+                days
+        );
+    }
+
+    @GetMapping("/recommendation-metrics/compare")
+    @Operation(
+            summary = "관리자 추천 버전 성과 비교",
+            description = "관리자가 두 추천 버전의 CTR, 전환율, 노출 지표를 같은 조건에서 비교합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "추천 버전 성과 비교 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminPlaceRecommendationMetricsCompareResponse.class)
+                    )
+            )
+    })
+    public AdminPlaceRecommendationMetricsCompareResponse compareRecommendationMetrics(
+            @Parameter(description = "기준 추천 버전", example = "place-rec-v1")
+            @RequestParam String baselineVersion,
+            @Parameter(description = "비교 대상 추천 버전", example = "place-rec-v2")
+            @RequestParam String targetVersion,
+            @Parameter(description = "장소 검색 키워드", example = "진주")
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @Parameter(description = "최근 N일 기준 필터", example = "7")
+            @RequestParam(required = false) Integer days
+    ) {
+        return adminMapPlaceQueryService.compareRecommendationMetrics(
+                baselineVersion,
+                targetVersion,
+                keyword,
                 days
         );
     }

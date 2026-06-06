@@ -533,6 +533,97 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void compareRecommendationMetricsReturnsVersionSummaryAndDelta() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace comparePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("비교 장소")
+                .address("경상남도 진주시 비교로 1")
+                .latitude(35.1830)
+                .longitude(128.1100)
+                .userId(81L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+
+        for (int index = 0; index < 10; index++) {
+            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                    .placeId(comparePlace.getId())
+                    .userId(8000L + index)
+                    .requestLatitude(35.1830)
+                    .requestLongitude(128.1100)
+                    .ranking(1)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        for (int index = 0; index < 4; index++) {
+            placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                    .placeId(comparePlace.getId())
+                    .userId(8100L + index)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(9001L)
+                .placeId(comparePlace.getId())
+                .userId(8201L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .recommendationVersion("place-rec-v1")
+                .build());
+
+        for (int index = 0; index < 12; index++) {
+            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                    .placeId(comparePlace.getId())
+                    .userId(8300L + index)
+                    .requestLatitude(35.1830)
+                    .requestLongitude(128.1100)
+                    .ranking(1)
+                    .recommendationVersion("place-rec-v2")
+                    .build());
+        }
+        for (int index = 0; index < 6; index++) {
+            placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                    .placeId(comparePlace.getId())
+                    .userId(8400L + index)
+                    .recommendationVersion("place-rec-v2")
+                    .build());
+        }
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(9002L)
+                .placeId(comparePlace.getId())
+                .userId(8501L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .recommendationVersion("place-rec-v2")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(9003L)
+                .placeId(comparePlace.getId())
+                .userId(8502L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v2")
+                .build());
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics/compare")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("baselineVersion", "place-rec-v1")
+                        .param("targetVersion", "place-rec-v2")
+                        .param("days", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.baselineVersion").value("place-rec-v1"))
+                .andExpect(jsonPath("$.targetVersion").value("place-rec-v2"))
+                .andExpect(jsonPath("$.days").value(1))
+                .andExpect(jsonPath("$.baseline.exposureCount").value(10))
+                .andExpect(jsonPath("$.baseline.clickCount").value(4))
+                .andExpect(jsonPath("$.target.exposureCount").value(12))
+                .andExpect(jsonPath("$.target.clickCount").value(6))
+                .andExpect(jsonPath("$.target.likeConversionCount").value(1))
+                .andExpect(jsonPath("$.delta.exposureCount").value(2))
+                .andExpect(jsonPath("$.delta.clickCount").value(2))
+                .andExpect(jsonPath("$.delta.bookmarkConversionCount").value(0))
+                .andExpect(jsonPath("$.delta.likeConversionCount").value(1));
+    }
+
+    @Test
     void resyncRecommendationSnapshotsRebuildsCurrentPlacesAndRemovesOrphans() throws Exception {
         String accessToken = createAdminAndLogin();
 

@@ -5,6 +5,8 @@ import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceImageItem;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceItem;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricSummary;
+import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
@@ -178,6 +180,74 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 safeLimit,
                 totalCount,
                 totalPages
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminPlaceRecommendationMetricsCompareResponse compareRecommendationMetrics(
+            String baselineVersion,
+            String targetVersion,
+            String keyword,
+            Integer days
+    ) {
+        String safeBaselineVersion = baselineVersion == null ? "" : baselineVersion.trim();
+        String safeTargetVersion = targetVersion == null ? "" : targetVersion.trim();
+        String safeKeyword = keyword == null ? "" : keyword;
+        Integer safeDays = days == null || days <= 0 ? null : days;
+
+        List<MapPlace> places = mapPlaceRepository.findByNameContaining(safeKeyword, Pageable.unpaged()).getContent();
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+
+        List<AdminPlaceRecommendationMetricItem> baselineMetrics;
+        List<AdminPlaceRecommendationMetricItem> targetMetrics;
+        if (placeIds.isEmpty()) {
+            baselineMetrics = List.of();
+            targetMetrics = List.of();
+        } else if (safeDays != null) {
+            LocalDateTime cutoff = LocalDateTime.now().minusDays(safeDays);
+            baselineMetrics = buildPeriodFilteredMetrics(
+                    places,
+                    safeBaselineVersion,
+                    RecommendationMetricSortBy.CLICK,
+                    cutoff
+            );
+            targetMetrics = buildPeriodFilteredMetrics(
+                    places,
+                    safeTargetVersion,
+                    RecommendationMetricSortBy.CLICK,
+                    cutoff
+            );
+        } else {
+            baselineMetrics = buildVersionFilteredMetrics(
+                    places,
+                    safeBaselineVersion,
+                    RecommendationMetricSortBy.CLICK
+            );
+            targetMetrics = buildVersionFilteredMetrics(
+                    places,
+                    safeTargetVersion,
+                    RecommendationMetricSortBy.CLICK
+            );
+        }
+
+        AdminPlaceRecommendationMetricSummary baselineSummary =
+                toMetricSummary(safeBaselineVersion, baselineMetrics);
+        AdminPlaceRecommendationMetricSummary targetSummary =
+                toMetricSummary(safeTargetVersion, targetMetrics);
+        AdminPlaceRecommendationMetricSummary deltaSummary =
+                toDeltaSummary(safeBaselineVersion, baselineSummary, targetSummary);
+
+        return new AdminPlaceRecommendationMetricsCompareResponse(
+                safeBaselineVersion,
+                safeTargetVersion,
+                safeDays,
+                safeKeyword,
+                baselineSummary,
+                targetSummary,
+                deltaSummary
         );
     }
 
@@ -429,6 +499,63 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 likeConversionRate,
                 totalConversionRate,
                 snapshotUpdatedAt
+        );
+    }
+
+    private AdminPlaceRecommendationMetricSummary toMetricSummary(
+            String recommendationVersion,
+            List<AdminPlaceRecommendationMetricItem> metrics
+    ) {
+        long exposureCount = metrics.stream().mapToLong(AdminPlaceRecommendationMetricItem::exposureCount).sum();
+        long clickCount = metrics.stream().mapToLong(AdminPlaceRecommendationMetricItem::clickCount).sum();
+        long bookmarkConversionCount = metrics.stream()
+                .mapToLong(AdminPlaceRecommendationMetricItem::bookmarkConversionCount)
+                .sum();
+        long likeConversionCount = metrics.stream()
+                .mapToLong(AdminPlaceRecommendationMetricItem::likeConversionCount)
+                .sum();
+        double rawCtr = exposureCount <= 0L ? 0d : (double) clickCount / (double) exposureCount;
+        double smoothedCtr = rawCtr;
+        double bookmarkConversionRate = exposureCount <= 0L
+                ? 0d
+                : (double) bookmarkConversionCount / (double) exposureCount;
+        double likeConversionRate = exposureCount <= 0L
+                ? 0d
+                : (double) likeConversionCount / (double) exposureCount;
+        double totalConversionRate = exposureCount <= 0L
+                ? 0d
+                : (double) (bookmarkConversionCount + likeConversionCount) / (double) exposureCount;
+
+        return new AdminPlaceRecommendationMetricSummary(
+                recommendationVersion,
+                exposureCount,
+                clickCount,
+                rawCtr,
+                smoothedCtr,
+                bookmarkConversionCount,
+                likeConversionCount,
+                bookmarkConversionRate,
+                likeConversionRate,
+                totalConversionRate
+        );
+    }
+
+    private AdminPlaceRecommendationMetricSummary toDeltaSummary(
+            String baselineVersion,
+            AdminPlaceRecommendationMetricSummary baseline,
+            AdminPlaceRecommendationMetricSummary target
+    ) {
+        return new AdminPlaceRecommendationMetricSummary(
+                target.recommendationVersion() + " - " + baselineVersion,
+                target.exposureCount() - baseline.exposureCount(),
+                target.clickCount() - baseline.clickCount(),
+                target.rawCtr() - baseline.rawCtr(),
+                target.smoothedCtr() - baseline.smoothedCtr(),
+                target.bookmarkConversionCount() - baseline.bookmarkConversionCount(),
+                target.likeConversionCount() - baseline.likeConversionCount(),
+                target.bookmarkConversionRate() - baseline.bookmarkConversionRate(),
+                target.likeConversionRate() - baseline.likeConversionRate(),
+                target.totalConversionRate() - baseline.totalConversionRate()
         );
     }
 
