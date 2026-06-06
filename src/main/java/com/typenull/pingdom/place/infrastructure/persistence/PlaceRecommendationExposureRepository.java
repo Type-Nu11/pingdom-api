@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence;
 
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -41,6 +42,32 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
     List<PlaceExposureCountProjection> countExposuresByPlaceIdsAndRecommendationVersion(
             @Param("placeIds") Collection<Long> placeIds,
             @Param("recommendationVersion") String recommendationVersion
+    );
+
+    @Query("""
+            SELECT e.placeId as placeId, COUNT(e) as exposureCount
+            FROM PlaceRecommendationExposure e
+            WHERE e.placeId IN :placeIds
+              AND e.createdAt >= :cutoff
+            GROUP BY e.placeId
+            """)
+    List<PlaceExposureCountProjection> countExposuresByPlaceIdsAndCreatedAtGreaterThanEqual(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("cutoff") LocalDateTime cutoff
+    );
+
+    @Query("""
+            SELECT e.placeId as placeId, COUNT(e) as exposureCount
+            FROM PlaceRecommendationExposure e
+            WHERE e.placeId IN :placeIds
+              AND e.recommendationVersion = :recommendationVersion
+              AND e.createdAt >= :cutoff
+            GROUP BY e.placeId
+            """)
+    List<PlaceExposureCountProjection> countExposuresByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("recommendationVersion") String recommendationVersion,
+            @Param("cutoff") LocalDateTime cutoff
     );
 
     long countByRecommendationVersion(String recommendationVersion);

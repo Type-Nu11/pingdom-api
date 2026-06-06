@@ -30,6 +30,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkReposito
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -464,6 +465,71 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[1].clickCount").value(3))
                 .andExpect(jsonPath("$.metrics[1].bookmarkConversionCount").value(0))
                 .andExpect(jsonPath("$.metrics[1].likeConversionCount").value(1));
+    }
+
+    @Test
+    void listRecommendationMetricsFiltersByRecentDays() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace recentPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("최근 반응 장소")
+                .address("경상남도 진주시 최근로 1")
+                .latitude(35.1820)
+                .longitude(128.1090)
+                .userId(71L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace staleSnapshotPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("누적 반응 장소")
+                .address("경상남도 진주시 최근로 2")
+                .latitude(35.1821)
+                .longitude(128.1091)
+                .userId(72L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(staleSnapshotPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(20L)
+                .bookmarkConversionCount(3L)
+                .likeConversionCount(2L)
+                .exposureCount(30L)
+                .updatedAt(LocalDateTime.now().minusDays(10))
+                .build());
+
+        for (int index = 0; index < 3; index++) {
+            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                    .placeId(recentPlace.getId())
+                    .userId(7000L + index)
+                    .requestLatitude(35.1820)
+                    .requestLongitude(128.1090)
+                    .ranking(1)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+        for (int index = 0; index < 2; index++) {
+            placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                    .placeId(recentPlace.getId())
+                    .userId(7100L + index)
+                    .recommendationVersion("place-rec-v1")
+                    .build());
+        }
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortBy", RecommendationMetricSortBy.CLICK.name())
+                        .param("days", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.days").value(1))
+                .andExpect(jsonPath("$.metrics[0].name").value("최근 반응 장소"))
+                .andExpect(jsonPath("$.metrics[0].clickCount").value(2))
+                .andExpect(jsonPath("$.metrics[1].name").value("누적 반응 장소"))
+                .andExpect(jsonPath("$.metrics[1].clickCount").value(0));
     }
 
     @Test

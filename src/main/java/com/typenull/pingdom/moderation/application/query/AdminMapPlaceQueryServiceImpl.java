@@ -14,7 +14,11 @@ import com.typenull.pingdom.place.application.service.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.domain.PlaceRecommendationVersionSnapshot;
+import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -43,6 +47,9 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final MapImageRepository mapImageRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceRecommendationVersionSnapshotRepository placeRecommendationVersionSnapshotRepository;
+    private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
+    private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
+    private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceGrowthService placeGrowthService;
 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
@@ -111,12 +118,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             int limit,
             RecommendationMetricSortBy sortBy,
             String keyword,
-            String recommendationVersion
+            String recommendationVersion,
+            Integer days
     ) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         RecommendationMetricSortBy safeSortBy = sortBy == null ? RecommendationMetricSortBy.SMOOTHED_CTR : sortBy;
         String safeRecommendationVersion = recommendationVersion == null ? "" : recommendationVersion.trim();
+        Integer safeDays = days == null || days <= 0 ? null : days;
 
         List<MapPlace> places = mapPlaceRepository.findByNameContaining(keyword, Pageable.unpaged()).getContent();
         List<Long> placeIds = places.stream()
@@ -128,6 +137,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                     List.of(),
                     safeSortBy,
                     safeRecommendationVersion,
+                    safeDays,
                     safePage,
                     safeLimit,
                     0L,
@@ -139,9 +149,19 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
             snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
         }
-        List<AdminPlaceRecommendationMetricItem> sortedMetrics = safeRecommendationVersion.isBlank()
-                ? buildSnapshotMetrics(places, snapshotsByPlaceId, safeSortBy)
-                : buildVersionFilteredMetrics(places, safeRecommendationVersion, safeSortBy);
+        List<AdminPlaceRecommendationMetricItem> sortedMetrics;
+        if (safeDays != null) {
+            sortedMetrics = buildPeriodFilteredMetrics(
+                    places,
+                    safeRecommendationVersion,
+                    safeSortBy,
+                    LocalDateTime.now().minusDays(safeDays)
+            );
+        } else {
+            sortedMetrics = safeRecommendationVersion.isBlank()
+                    ? buildSnapshotMetrics(places, snapshotsByPlaceId, safeSortBy)
+                    : buildVersionFilteredMetrics(places, safeRecommendationVersion, safeSortBy);
+        }
 
         long totalCount = sortedMetrics.size();
         long totalPages = totalCount == 0L ? 0L : (long) Math.ceil((double) totalCount / (double) safeLimit);
@@ -153,11 +173,100 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 pagedMetrics,
                 safeSortBy,
                 safeRecommendationVersion,
+                safeDays,
                 safePage,
                 safeLimit,
                 totalCount,
                 totalPages
         );
+    }
+
+    private List<AdminPlaceRecommendationMetricItem> buildPeriodFilteredMetrics(
+            List<MapPlace> places,
+            String recommendationVersion,
+            RecommendationMetricSortBy sortBy,
+            LocalDateTime cutoff
+    ) {
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+        Map<Long, Long> exposureCounts = new HashMap<>();
+        Map<Long, Long> clickCounts = new HashMap<>();
+        Map<Long, ConversionCounts> conversionCounts = new HashMap<>();
+
+        if (recommendationVersion.isBlank()) {
+            for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
+                    placeRecommendationExposureRepository.countExposuresByPlaceIdsAndCreatedAtGreaterThanEqual(
+                            placeIds,
+                            cutoff
+                    )) {
+                exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
+            }
+            for (PlaceRecommendationClickRepository.PlaceClickCountProjection projection :
+                    placeRecommendationClickRepository.countClicksByPlaceIdsAndCreatedAtGreaterThanEqual(
+                            placeIds,
+                            cutoff
+                    )) {
+                clickCounts.put(projection.getPlaceId(), projection.getClickCount());
+            }
+            for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
+                    placeRecommendationConversionRepository.countConversionsByPlaceIdsAndCreatedAtGreaterThanEqual(
+                            placeIds,
+                            cutoff
+                    )) {
+                conversionCounts.computeIfAbsent(projection.getPlaceId(), ignored -> new ConversionCounts())
+                        .accumulate(projection.getConversionType(), projection.getConversionCount());
+            }
+        } else {
+            for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
+                    placeRecommendationExposureRepository
+                            .countExposuresByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+                                    placeIds,
+                                    recommendationVersion,
+                                    cutoff
+                            )) {
+                exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
+            }
+            for (PlaceRecommendationClickRepository.PlaceClickCountProjection projection :
+                    placeRecommendationClickRepository
+                            .countClicksByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+                                    placeIds,
+                                    recommendationVersion,
+                                    cutoff
+                            )) {
+                clickCounts.put(projection.getPlaceId(), projection.getClickCount());
+            }
+            for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
+                    placeRecommendationConversionRepository
+                            .countConversionsByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+                                    placeIds,
+                                    recommendationVersion,
+                                    cutoff
+                            )) {
+                conversionCounts.computeIfAbsent(projection.getPlaceId(), ignored -> new ConversionCounts())
+                        .accumulate(projection.getConversionType(), projection.getConversionCount());
+            }
+        }
+
+        long totalExposureCount = exposureCounts.values().stream().mapToLong(Long::longValue).sum();
+        long totalClickCount = clickCounts.values().stream().mapToLong(Long::longValue).sum();
+        double globalCtr = calculateGlobalCtr(totalClickCount, totalExposureCount);
+
+        return places.stream()
+                .map(place -> {
+                    ConversionCounts counts = conversionCounts.getOrDefault(place.getId(), new ConversionCounts());
+                    return toRecommendationMetricItem(
+                            place,
+                            exposureCounts.getOrDefault(place.getId(), 0L),
+                            clickCounts.getOrDefault(place.getId(), 0L),
+                            counts.bookmarkConversionCount,
+                            counts.likeConversionCount,
+                            globalCtr,
+                            null
+                    );
+                })
+                .sorted(recommendationMetricComparator(sortBy))
+                .toList();
     }
 
     private List<AdminPlaceRecommendationMetricItem> buildSnapshotMetrics(
@@ -321,6 +430,21 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 totalConversionRate,
                 snapshotUpdatedAt
         );
+    }
+
+    private static class ConversionCounts {
+        private long bookmarkConversionCount;
+        private long likeConversionCount;
+
+        private void accumulate(PlaceRecommendationConversionType conversionType, long count) {
+            if (conversionType == PlaceRecommendationConversionType.BOOKMARK) {
+                bookmarkConversionCount += count;
+                return;
+            }
+            if (conversionType == PlaceRecommendationConversionType.LIKE) {
+                likeConversionCount += count;
+            }
+        }
     }
 
     private Comparator<AdminPlaceRecommendationMetricItem> recommendationMetricComparator(

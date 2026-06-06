@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.infrastructure.persistence;
 
 import com.typenull.pingdom.place.domain.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
@@ -56,6 +57,36 @@ public interface PlaceRecommendationConversionRepository extends JpaRepository<P
     List<PlaceConversionCountProjection> countConversionsByPlaceIdsAndRecommendationVersion(
             @Param("placeIds") Collection<Long> placeIds,
             @Param("recommendationVersion") String recommendationVersion
+    );
+
+    @Query("""
+            SELECT c.placeId as placeId,
+                   c.conversionType as conversionType,
+                   COUNT(c) as conversionCount
+            FROM PlaceRecommendationConversion c
+            WHERE c.placeId IN :placeIds
+              AND c.createdAt >= :cutoff
+            GROUP BY c.placeId, c.conversionType
+            """)
+    List<PlaceConversionCountProjection> countConversionsByPlaceIdsAndCreatedAtGreaterThanEqual(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("cutoff") LocalDateTime cutoff
+    );
+
+    @Query("""
+            SELECT c.placeId as placeId,
+                   c.conversionType as conversionType,
+                   COUNT(c) as conversionCount
+            FROM PlaceRecommendationConversion c
+            WHERE c.placeId IN :placeIds
+              AND c.recommendationVersion = :recommendationVersion
+              AND c.createdAt >= :cutoff
+            GROUP BY c.placeId, c.conversionType
+            """)
+    List<PlaceConversionCountProjection> countConversionsByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("recommendationVersion") String recommendationVersion,
+            @Param("cutoff") LocalDateTime cutoff
     );
 
     @Query("""

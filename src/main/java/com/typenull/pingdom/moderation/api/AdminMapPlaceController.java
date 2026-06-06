@@ -217,14 +217,17 @@ public class AdminMapPlaceController {
             @Parameter(description = "장소 검색 키워드", example = "진주")
             @RequestParam(required = false, defaultValue = "") String keyword,
             @Parameter(description = "추천 버전 필터", example = "place-rec-v1")
-            @RequestParam(required = false, defaultValue = "") String recommendationVersion
+            @RequestParam(required = false, defaultValue = "") String recommendationVersion,
+            @Parameter(description = "최근 N일 기준 필터", example = "7")
+            @RequestParam(required = false) Integer days
     ) {
         return adminMapPlaceQueryService.listRecommendationMetrics(
                 page,
                 limit,
                 sortBy,
                 keyword,
-                recommendationVersion
+                recommendationVersion,
+                days
         );
     }
 
