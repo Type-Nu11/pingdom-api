@@ -2,6 +2,10 @@ package com.typenull.pingdom.engagement.application.service;
 
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.event.MapImageLikedEvent;
+import com.typenull.pingdom.notification.domain.Notifications;
+import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
+import com.typenull.pingdom.notification.domain.exception.NotificationsException;
+import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import com.typenull.pingdom.place.application.service.PlaceRecommendationConversionService;
 import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
@@ -26,6 +30,7 @@ public class MapImageLikeService {
     private final ApplicationEventPublisher applicationEventPublisher;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final PlaceRecommendationConversionService placeRecommendationConversionService;
+    private final NotificationsRepository notificationsRepository;
 
     @Transactional
     public MapImageLikeResult like(Long mapImageId, Long userId) {
@@ -81,7 +86,15 @@ public class MapImageLikeService {
         return new MapImageLikeResult(userId, mapImageId, "좋아요 취소되었습니다.");
     }
 
-    public void likeReturn (Long postId){
+    @Transactional
+    public void likeReturn(Long postId, Long notificationsId, Long userId) {
         postQueryService.getPost(postId);
+
+        Notifications notification = notificationsRepository
+                .findByIdAndUserId(notificationsId, userId)
+                .orElseThrow(() -> new NotificationsException(NotificationsErrorCode.NOTIFICATION_NOT_FOUND));
+
+        notification.setRead(true);
+
     }
 }
