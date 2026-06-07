@@ -6,6 +6,8 @@ import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
 import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import com.typenull.pingdom.identity.application.query.MyPageService;
+import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
+import com.typenull.pingdom.place.application.service.PlaceQueryService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -23,6 +25,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -33,6 +36,7 @@ public class UsersController {
 
     private final MyPageService myPageService;
     private final ChangeInfoService changeInfoService;
+    private final PlaceQueryService placeQueryService;
 
     @GetMapping("/me")
     @Operation(
@@ -94,6 +98,64 @@ public class UsersController {
     ) {
         MyPageQueryResult result = myPageService.getMyPageInfo(user.userId());
         return ResponseEntity.ok(MyPageResponse.from(result));
+    }
+
+    @GetMapping("/bookmarks")
+    @Operation(
+            summary = "북마크 목록 조회",
+            description = "현재 인증된 사용자가 북마크한 장소 목록을 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "북마크 목록 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = PlaceListResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "places": [
+                                                {
+                                                  "id": 17,
+                                                  "name": "진주성",
+                                                  "address": "경상남도 진주시 남강로 626",
+                                                  "latitude": 35.1894,
+                                                  "longitude": 128.0789
+                                                }
+                                              ],
+                                              "page": 1,
+                                              "limit": 20,
+                                              "totalCount": 1,
+                                              "totalPages": 1,
+                                              "hasNext": false
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<PlaceListResponse> listBookmarks(
+            @Parameter(description = "페이지 번호", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(placeQueryService.listBookmarkedPlaces(user.userId(), page, limit));
     }
 
     @PostMapping("/change-pw")

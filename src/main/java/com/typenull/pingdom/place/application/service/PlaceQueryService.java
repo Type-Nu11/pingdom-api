@@ -7,4 +7,6 @@ public interface PlaceQueryService {
     PlaceListResponse listPlaces(int page, int limit, String keyword);
 
     PlaceDetailResponse getPlace(Long placeId);
+
+    PlaceListResponse listBookmarkedPlaces(Long userId, int page, int limit);
 }

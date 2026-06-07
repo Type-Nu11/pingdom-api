@@ -66,6 +66,27 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
+    @Override
+    @Transactional(readOnly = true)
+    public PlaceListResponse listBookmarkedPlaces(Long userId, int page, int limit) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
+
+        Page<MapPlace> placePage = mapPlaceRepository.findBookmarkedPlacesByUserId(userId, pageable);
+        List<PlaceListItem> places = placePage.getContent().stream()
+                .map(this::toListItem)
+                .toList();
+
+        return PlaceListResponse.of(
+                places,
+                safePage,
+                safeLimit,
+                placePage.getTotalElements(),
+                placePage.getTotalPages()
+        );
+    }
+
     private PlaceListItem toListItem(MapPlace mapPlace) {
         return new PlaceListItem(
                 mapPlace.getId(),
