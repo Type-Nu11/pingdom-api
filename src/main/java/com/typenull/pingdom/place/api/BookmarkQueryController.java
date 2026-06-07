@@ -1,5 +1,7 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.application.service.PlaceQueryService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
@@ -75,6 +77,9 @@ public class BookmarkQueryController {
             @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int limit,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
         return ResponseEntity.ok(placeQueryService.listBookmarkedPlaces(user.userId(), page, limit));
     }
 }
