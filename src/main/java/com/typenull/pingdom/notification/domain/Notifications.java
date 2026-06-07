@@ -32,7 +32,7 @@ public class Notifications {
     @Column(name = "body", nullable = false)
     private String body;
 
-    @Column(name = "isRead", nullable = false)
+    @Column(name = "is_read", nullable = false)
     private boolean isRead;
 
     @Column(name = "created_at", nullable = false)

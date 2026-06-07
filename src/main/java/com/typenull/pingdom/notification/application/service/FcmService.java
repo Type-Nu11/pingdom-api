@@ -77,6 +77,10 @@ public class FcmService {
     @Transactional
     public NotificationResponse sendLikeNotification(Long ownerId, Long likerId) {
 
+        if (Objects.equals(ownerId, likerId)) {
+            throw new NotificationsException(NotificationsErrorCode.CANNOT_SEND_NOTIFICATION_TO_SELF);
+        }
+
         User owner = userRepository.findById(ownerId).orElse(null);
         if (owner == null) {
             log.warn("좋아요 알림 수신자를 찾지 못해 전송을 생략합니다. ownerId={}", ownerId);

@@ -9,7 +9,8 @@ import org.springframework.http.HttpStatus;
 public enum NotificationsErrorCode {
     FCM_TOKEN_NOT_FOUND(HttpStatus.NOT_FOUND, "작성자의 FCM아이디를 찾을 수 없습니다,"),
     NOTIFICATION_SEND_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "알림 전송에 실패했습니다."),
-    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알람을 찾을 수 없습니다,");
+    NOTIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "알림을 찾을 수 없습니다."),
+    CANNOT_SEND_NOTIFICATION_TO_SELF(HttpStatus.BAD_REQUEST, "자기 자신에게 알림을 보낼 수 없습니다.");
 
 
     private final HttpStatus status;
