@@ -131,7 +131,7 @@ public class EngagementController {
         return ResponseEntity.ok(toResponse(result));
     }
 
-    @PostMapping("/like/return{postId}")
+    @PostMapping("/like/return/{postId}")
     public ResponseEntity<String> likeReturn(
             @PathVariable("postId") Long postId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
