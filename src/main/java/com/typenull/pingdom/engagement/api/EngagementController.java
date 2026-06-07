@@ -134,9 +134,10 @@ public class EngagementController {
     @PostMapping("/like/return/{postId}")
     public ResponseEntity<String> likeReturn(
             @PathVariable("postId") Long postId,
+            @PathVariable("notificationsId") Long notificationsId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        mapImageLikeService.likeReturn(postId);
+        mapImageLikeService.likeReturn(user.userId(), postId, notificationsId);
         return ResponseEntity.ok().body("게시물 반환");
     }
 
