@@ -364,6 +364,67 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listRecommendationMetricsSortsUpdatedAtWithNullSnapshotsLast() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace recentPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("최근 갱신 장소")
+                .address("경상남도 진주시 최신로 1")
+                .latitude(35.1810)
+                .longitude(128.1085)
+                .userId(61L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace oldPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("이전 갱신 장소")
+                .address("경상남도 진주시 최신로 2")
+                .latitude(35.1811)
+                .longitude(128.1086)
+                .userId(62L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace nullUpdatedPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("미갱신 장소")
+                .address("경상남도 진주시 최신로 3")
+                .latitude(35.1812)
+                .longitude(128.1087)
+                .userId(63L)
+                .registrant("metricOwner")
+                .photoCount(1L)
+                .build());
+
+        LocalDateTime updatedAt = LocalDateTime.now();
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(recentPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(1L)
+                .exposureCount(3L)
+                .updatedAt(updatedAt)
+                .build());
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(oldPlace.getId())
+                .photoCount(1L)
+                .bookmarkCount(0L)
+                .totalLikeCount(0L)
+                .clickCount(1L)
+                .exposureCount(3L)
+                .updatedAt(updatedAt.minusMinutes(5))
+                .build());
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortBy", RecommendationMetricSortBy.UPDATED_AT.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortBy").value(RecommendationMetricSortBy.UPDATED_AT.name()))
+                .andExpect(jsonPath("$.metrics[0].name").value("최근 갱신 장소"))
+                .andExpect(jsonPath("$.metrics[1].name").value("이전 갱신 장소"))
+                .andExpect(jsonPath("$.metrics[2].name").value("미갱신 장소"));
+    }
+
+    @Test
     void listRecommendationMetricsFiltersByRecommendationVersion() throws Exception {
         String accessToken = createAdminAndLogin();
 

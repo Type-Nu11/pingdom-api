@@ -793,9 +793,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                     .thenComparing(AdminPlaceRecommendationMetricItem::id);
             case UPDATED_AT -> Comparator.comparing(
                             AdminPlaceRecommendationMetricItem::snapshotUpdatedAt,
-                            Comparator.nullsLast(Comparator.naturalOrder())
+                            Comparator.nullsLast(Comparator.reverseOrder())
                     )
-                    .reversed()
                     .thenComparing(AdminPlaceRecommendationMetricItem::id);
             case SMOOTHED_CTR -> Comparator.comparingDouble(AdminPlaceRecommendationMetricItem::smoothedCtr)
                     .thenComparingDouble(AdminPlaceRecommendationMetricItem::rawCtr)
