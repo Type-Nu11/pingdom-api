@@ -6,6 +6,7 @@ import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
@@ -75,6 +76,9 @@ class PlaceControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private PlaceController placeController;
 
     @Autowired
     private UserRepository userRepository;
@@ -208,6 +212,19 @@ class PlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void recommendPlacesAllowsAnonymousUserWhenPrincipalIsNull() {
+        MapPlace mapPlace = createMapPlace("비로그인 추천 장소", "경상남도 진주시 익명로 1", 35.1801, 128.1078, 1L);
+        createMapImage(mapPlace, 0L, "비로그인 추천 사진");
+
+        var response = placeController.recommendPlaces(35.1801, 128.1078, 1, 5.0, null);
+
+        assertEquals(200, response.getStatusCode().value());
+        assertNotNull(response.getBody());
+        assertEquals(1, response.getBody().recommendedCount());
+        assertEquals("비로그인 추천 장소", response.getBody().places().get(0).name());
     }
 
     @Test

@@ -135,8 +135,9 @@ public class PlaceController {
             @RequestParam(defaultValue = "5.0") double radiusKm,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(
-                placeRecommendationQueryService.recommendPlaces(user.userId(), latitude, longitude, limit, radiusKm)
+                placeRecommendationQueryService.recommendPlaces(userId, latitude, longitude, limit, radiusKm)
         );
     }
 
