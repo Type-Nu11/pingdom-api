@@ -1,8 +1,8 @@
 package com.typenull.pingdom.place.application.service;
 
-import com.typenull.pingdom.place.api.dto.PlaceDetailResponse;
-import com.typenull.pingdom.place.api.dto.PlaceListItem;
-import com.typenull.pingdom.place.api.dto.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
+import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;

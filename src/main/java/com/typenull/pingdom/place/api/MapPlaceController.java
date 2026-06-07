@@ -1,9 +1,9 @@
 package com.typenull.pingdom.place.api;
 
-import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
-import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateRequest;
-import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateResponse;
-import com.typenull.pingdom.place.api.dto.PlaceUploadRequest;
+import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRequest;
+import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceUploadRequest;
 import com.typenull.pingdom.place.application.service.MapPlaceService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -30,7 +30,7 @@ public class MapPlaceController {
     private final MapPlaceService mapPlaceService;
 
     @PostMapping("/places/coordinates")
-    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 좌표를 발급합니다.")
+    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 카카오 장소 ID를 발급합니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -73,12 +73,17 @@ public class MapPlaceController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         PlaceCoordinateCreateResponse response =
-                mapPlaceService.createCoordinateToken(request.baseLatitude(), request.baseLongitude(), user.userId());
+                mapPlaceService.createCoordinateToken(
+                        request.baseLatitude(),
+                        request.baseLongitude(),
+                        request.kakaoPlaceId(),
+                        user.userId()
+                );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
     @PostMapping("/places/upload")
-    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소와 좌표 토큰으로 장소를 저장합니다.")
+    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소/이미지와 좌표 토큰으로 장소를 저장합니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -124,6 +129,7 @@ public class MapPlaceController {
                 request.kakaoPlaceId(),
                 request.name(),
                 request.address(),
+                request.imageUrl(),
                 request.coordinateToken(),
                 user.userId()
         );

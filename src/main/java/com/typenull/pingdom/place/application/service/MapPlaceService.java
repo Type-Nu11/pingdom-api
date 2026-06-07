@@ -3,9 +3,9 @@ package com.typenull.pingdom.place.application.service;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.api.dto.PlaceCreateResponse;
-import com.typenull.pingdom.place.api.dto.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -27,14 +27,20 @@ public class MapPlaceService {
     private final MapPlaceRepository mapPlaceRepository;
     private final UserRepository userRepository;
     private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
+    private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
-    public PlaceCoordinateCreateResponse createCoordinateToken(double baseLatitude, double baseLongitude, long userId) {
-        // TODO: ±a 오차 적용 로직은 별도 이슈에서 구현 예정 (현재는 기준 좌표를 그대로 사용)
+    public PlaceCoordinateCreateResponse createCoordinateToken(
+            double baseLatitude,
+            double baseLongitude,
+            String kakaoPlaceId,
+            long userId
+    ) {
         double finalLatitude = baseLatitude;
         double finalLongitude = baseLongitude;
-        String token = placeCoordinateTokenStore.put(userId, finalLatitude, finalLongitude);
-        return new PlaceCoordinateCreateResponse(token, finalLatitude, finalLongitude);
+        String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
+        String token = placeCoordinateTokenStore.put(userId, normalizedKakaoPlaceId, finalLatitude, finalLongitude);
+        return new PlaceCoordinateCreateResponse(token, normalizedKakaoPlaceId);
     }
 
     @Transactional
@@ -42,13 +48,14 @@ public class MapPlaceService {
             String kakaoPlaceId,
             String name,
             String address,
+            String imageUrl,
             String coordinateToken,
             long userId
     ) {
         String username = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
                 .getUsername();
-        String normalizedKakaoPlaceId = normalizeKakaoPlaceId(kakaoPlaceId);
+        String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
         if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
         }
@@ -58,11 +65,17 @@ public class MapPlaceService {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
         }
 
+        String tokenKakaoPlaceId = entry.kakaoPlaceId();
+        if (!Objects.equals(normalizedKakaoPlaceId, tokenKakaoPlaceId)) {
+            throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
+        }
+
         Point location = toPoint(entry.latitude(), entry.longitude());
         MapPlace mapPlace = MapPlace.builder()
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
+                .imageUrl(trimToNull(imageUrl))
                 .latitude(entry.latitude())
                 .longitude(entry.longitude())
                 .location(location)
@@ -71,6 +84,7 @@ public class MapPlaceService {
                 .build();
 
         MapPlace saved = mapPlaceRepository.save(mapPlace);
+        placeRecommendationSnapshotService.initialize(saved.getId());
         return new PlaceCreateResponse(
                 saved.getId(),
                 saved.getName(),
@@ -80,7 +94,7 @@ public class MapPlaceService {
         );
     }
 
-    private String normalizeKakaoPlaceId(String value) {
+    private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
@@ -94,6 +108,7 @@ public class MapPlaceService {
         }
 
         mapPlaceRepository.delete(mapPlace);
+        placeRecommendationSnapshotService.delete(placeId);
     }
 
     private static Point toPoint(double latitude, double longitude) {

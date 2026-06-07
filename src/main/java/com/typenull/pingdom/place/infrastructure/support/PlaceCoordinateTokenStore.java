@@ -17,9 +17,9 @@ public class PlaceCoordinateTokenStore {
     private final Clock clock = Clock.systemUTC();
     private final Map<String, Entry> store = new ConcurrentHashMap<>();
 
-    public String put(long userId, double latitude, double longitude) {
+    public String put(long userId, String kakaoPlaceId, double latitude, double longitude) {
         String token = UUID.randomUUID().toString();
-        store.put(token, new Entry(userId, latitude, longitude, Instant.now(clock).plus(TTL)));
+        store.put(token, new Entry(userId, kakaoPlaceId, latitude, longitude, Instant.now(clock).plus(TTL)));
         return token;
     }
 
@@ -46,6 +46,6 @@ public class PlaceCoordinateTokenStore {
         store.entrySet().removeIf(entry -> now.isAfter(entry.getValue().expiresAt()));
     }
 
-    public record Entry(long userId, double latitude, double longitude, Instant expiresAt) {
+    public record Entry(long userId, String kakaoPlaceId, double latitude, double longitude, Instant expiresAt) {
     }
 }
