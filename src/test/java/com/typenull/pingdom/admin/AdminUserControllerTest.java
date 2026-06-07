@@ -102,6 +102,41 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(0));
     }
 
+    @Test
+    void getBannedUserReturnsUserDetail() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        User bannedUser = createUser("bannedDetailUser");
+        LocalDateTime bannedAt = LocalDateTime.of(2026, 6, 7, 13, 30);
+        bannedUser.ban("반복적인 신고 누적", bannedAt);
+        userRepository.save(bannedUser);
+
+        mockMvc.perform(get("/admin/users/banned/{userId}", bannedUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(bannedUser.getId()))
+                .andExpect(jsonPath("$.username").value("bannedDetailUser"))
+                .andExpect(jsonPath("$.email").value("bannedDetailUser@example.com"))
+                .andExpect(jsonPath("$.birthYear").value(1998))
+                .andExpect(jsonPath("$.language").value("ko"))
+                .andExpect(jsonPath("$.country").value("KR"))
+                .andExpect(jsonPath("$.role").value("USER"))
+                .andExpect(jsonPath("$.banned").value(true))
+                .andExpect(jsonPath("$.bannedAt").value("2026-06-07T13:30:00"))
+                .andExpect(jsonPath("$.banReason").value("반복적인 신고 누적"));
+    }
+
+    @Test
+    void getBannedUserReturnsNotFoundWhenUserIsNotBanned() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User activeUser = createUser("activeDetailUser");
+
+        mockMvc.perform(get("/admin/users/banned/{userId}", activeUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
     private User createUser(String username) {
         return userRepository.save(User.builder()
                 .username(username)

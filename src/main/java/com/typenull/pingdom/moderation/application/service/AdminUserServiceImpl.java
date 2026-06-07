@@ -5,6 +5,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserItem;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
@@ -58,6 +59,28 @@ public class AdminUserServiceImpl implements AdminUserService {
                 normalizedLimit,
                 userPage.getTotalElements(),
                 userPage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminBannedUserDetailResponse getBannedUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .filter(User::isBanned)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        return new AdminBannedUserDetailResponse(
+                user.getId(),
+                user.getUsername(),
+                user.getEmail(),
+                user.getBirthYear(),
+                user.getLanguage(),
+                user.getCountry(),
+                user.getRole().name(),
+                user.isBanned(),
+                user.getBannedAt(),
+                user.getBanReason(),
+                user.getCreatedAt()
         );
     }
 
