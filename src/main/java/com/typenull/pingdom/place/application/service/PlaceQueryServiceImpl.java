@@ -69,6 +69,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     @Override
     @Transactional(readOnly = true)
     public PlaceListResponse listBookmarkedPlaces(Long userId, int page, int limit) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
