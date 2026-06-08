@@ -93,6 +93,23 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     @Query("SELECT m FROM MapPlace m WHERE (:keyword IS NULL OR :keyword = '' OR m.name LIKE %:keyword%)")
     Page<MapPlace> findByNameContaining(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 
+    @Query(
+            value = """
+                    SELECT p
+                    FROM MapBookmark b
+                    JOIN MapPlace p ON p.id = b.placeId
+                    WHERE b.userId = :userId
+                    ORDER BY b.createdAt DESC, b.id DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(b)
+                    FROM MapBookmark b
+                    JOIN MapPlace p ON p.id = b.placeId
+                    WHERE b.userId = :userId
+                    """
+    )
+    Page<MapPlace> findBookmarkedPlacesByUserId(@Param("userId") Long userId, Pageable pageable);
+
     @Query(value = """
             SELECT p
             FROM MapPlace p
