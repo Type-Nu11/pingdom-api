@@ -110,6 +110,10 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
+        if (user.isBanned()) {
+            throw new AuthException(AuthErrorCode.USER_BANNED);
+        }
+
         if (user.isEmailVerified()) {
             throw new AuthException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
         }

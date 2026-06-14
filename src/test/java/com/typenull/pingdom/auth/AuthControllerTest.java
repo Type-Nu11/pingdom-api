@@ -191,6 +191,25 @@ class AuthControllerTest {
     }
 
     @Test
+    void resendEmailFailsWhenUserIsBanned() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("banneduser", "banneduser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        User user = userRepository.findByUsername("banneduser").orElseThrow();
+        user.ban("테스트 밴", LocalDateTime.now());
+        userRepository.saveAndFlush(user);
+
+        EmailResendRequest resendRequest = new EmailResendRequest("banneduser@example.com");
+        mockMvc.perform(post("/auth/email/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("USER_BANNED"));
+    }
+
+    @Test
     void resendEmailFailsWhenUserDoesNotExist() throws Exception {
         EmailResendRequest resendRequest = new EmailResendRequest("missing@example.com");
 
