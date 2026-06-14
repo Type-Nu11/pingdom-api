@@ -5,6 +5,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.application.port.EmailSender;
@@ -12,6 +14,7 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,7 +27,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
-import com.fasterxml.jackson.databind.ObjectMapper;
+
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
@@ -126,6 +129,76 @@ class AuthControllerTest {
 
         User user = userRepository.findByUsername("emailuser").orElseThrow();
         org.junit.jupiter.api.Assertions.assertTrue(user.isEmailVerified());
+    }
+
+    @Test
+    void resendEmailReissuesVerificationCodeAndOnlyNewCodeCanVerify() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("resenduser", "resenduser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        User user = userRepository.findByUsername("resenduser").orElseThrow();
+        user.issueEmailVerification("TEMP-CODE", LocalDateTime.now().minusMinutes(1));
+        userRepository.saveAndFlush(user);
+
+        EmailResendRequest resendRequest = new EmailResendRequest("resenduser@example.com");
+
+        mockMvc.perform(post("/auth/email/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isOk());
+
+        User updatedUser = userRepository.findByUsername("resenduser").orElseThrow();
+        org.junit.jupiter.api.Assertions.assertFalse(updatedUser.isEmailVerified());
+        org.junit.jupiter.api.Assertions.assertNotNull(updatedUser.getEmailVerificationCode());
+        org.junit.jupiter.api.Assertions.assertNotEquals("TEMP-CODE", updatedUser.getEmailVerificationCode());
+        org.junit.jupiter.api.Assertions.assertTrue(updatedUser.getEmailVerificationExpiresAt().isAfter(LocalDateTime.now()));
+
+        EmailVerifyRequest oldVerifyRequest = new EmailVerifyRequest("resenduser@example.com", "TEMP-CODE");
+        mockMvc.perform(post("/auth/email/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(oldVerifyRequest)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_EMAIL_VERIFICATION_CODE"));
+
+        EmailVerifyRequest newVerifyRequest = new EmailVerifyRequest("resenduser@example.com", updatedUser.getEmailVerificationCode());
+        mockMvc.perform(post("/auth/email/verify")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(newVerifyRequest)))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void resendEmailFailsWhenUserAlreadyVerified() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("verifieduser", "verifieduser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        User issuedUser = userRepository.findByUsername("verifieduser").orElseThrow();
+        EmailVerifyRequest verifyRequest = new EmailVerifyRequest("verifieduser@example.com", issuedUser.getEmailVerificationCode());
+        mockMvc.perform(post("/auth/email/verify")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(verifyRequest)));
+
+        EmailResendRequest resendRequest = new EmailResendRequest("verifieduser@example.com");
+        mockMvc.perform(post("/auth/email/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("EMAIL_ALREADY_VERIFIED"));
+    }
+
+    @Test
+    void resendEmailFailsWhenUserDoesNotExist() throws Exception {
+        EmailResendRequest resendRequest = new EmailResendRequest("missing@example.com");
+
+        mockMvc.perform(post("/auth/email/resend")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(resendRequest)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 
     @Test
