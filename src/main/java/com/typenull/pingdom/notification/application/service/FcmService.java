@@ -59,6 +59,7 @@ public class FcmService {
         }
 
         if (owner.getFcmToken() == null) {
+            log.debug("좋아요 알림 수신자의 FCM 토큰이 없어 전송을 생략합니다. ownerId={}", ownerId);
             return;
         }
 
