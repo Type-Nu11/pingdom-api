@@ -106,7 +106,7 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
                     FROM MapBookmark b
                     WHERE b.userId = :userId
                       AND EXISTS (
-                          SELECT 1
+                          SELECT p.id
                           FROM MapPlace p
                           WHERE p.id = b.placeId
                       )
