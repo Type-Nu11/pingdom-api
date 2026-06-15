@@ -104,8 +104,12 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             countQuery = """
                     SELECT COUNT(b)
                     FROM MapBookmark b
-                    JOIN MapPlace p ON p.id = b.placeId
                     WHERE b.userId = :userId
+                      AND EXISTS (
+                          SELECT 1
+                          FROM MapPlace p
+                          WHERE p.id = b.placeId
+                      )
                     """
     )
     Page<MapPlace> findBookmarkedPlacesByUserId(@Param("userId") Long userId, Pageable pageable);
