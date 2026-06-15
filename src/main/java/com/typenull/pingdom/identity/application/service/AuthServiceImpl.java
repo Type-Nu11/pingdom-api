@@ -1,7 +1,8 @@
 package com.typenull.pingdom.identity.application.service;
 
-import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
@@ -57,17 +58,12 @@ public class AuthServiceImpl implements AuthService {
 
         if (StringUtils.hasText(request.email())) {
             // 이메일 인증 코드 발급 처리
-            user.issueEmailVerification(generateVerificationCode(), LocalDateTime.now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES));
+            issueEmailVerification(user);
         }
 
         User savedUser = userRepository.save(user);
 
-        if (StringUtils.hasText(savedUser.getEmail()) && StringUtils.hasText(savedUser.getEmailVerificationCode())) {
-            // 트랜잭션 커밋 후 인증 메일 발송 이벤트 발행
-            applicationEventPublisher.publishEvent(
-                    new EmailVerificationRequestedEvent(savedUser.getEmail(), savedUser.getEmailVerificationCode())
-            );
-        }
+        publishEmailVerificationRequestedEvent(savedUser);
 
         return new UserResponse(
                 savedUser.getId(),
@@ -106,6 +102,24 @@ public class AuthServiceImpl implements AuthService {
         }
 
         return issueLoginResponse(user);
+    }
+
+    @Override
+    @Transactional
+    public void resendVerificationEmail(EmailResendRequest request) {
+        User user = userRepository.findByEmail(request.email())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (user.isBanned()) {
+            throw new AuthException(AuthErrorCode.USER_BANNED);
+        }
+
+        if (user.isEmailVerified()) {
+            throw new AuthException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
+        }
+
+        issueEmailVerification(user);
+        publishEmailVerificationRequestedEvent(user);
     }
 
     @Override
@@ -164,6 +178,22 @@ public class AuthServiceImpl implements AuthService {
     // 6자리 이메일 인증 코드 생성 메서드
     private String generateVerificationCode() {
         return "%06d".formatted(ThreadLocalRandom.current().nextInt(1_000_000));
+    }
+
+    private void issueEmailVerification(User user) {
+        user.issueEmailVerification(
+                generateVerificationCode(),
+                LocalDateTime.now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
+        );
+    }
+
+    private void publishEmailVerificationRequestedEvent(User user) {
+        if (StringUtils.hasText(user.getEmail()) && StringUtils.hasText(user.getEmailVerificationCode())) {
+            // 트랜잭션 커밋 후 인증 메일 발송 이벤트 발행
+            applicationEventPublisher.publishEvent(
+                    new EmailVerificationRequestedEvent(user.getEmail(), user.getEmailVerificationCode())
+            );
+        }
     }
 
     @Override

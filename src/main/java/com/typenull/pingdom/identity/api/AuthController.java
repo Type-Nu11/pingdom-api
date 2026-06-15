@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api;
 
+import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
@@ -271,6 +272,66 @@ public class AuthController {
     })
     public LoginResponse adminLogin(@Valid @RequestBody LoginRequest request) {
         return authService.adminLogin(request);
+    }
+
+    @PostMapping("/email/resend")
+    @Operation(
+            summary = "인증 메일 재발송",
+            description = "미인증 사용자의 이메일 인증 코드를 새로 발급하고 인증 메일을 다시 발송합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "인증 메일 재발송 성공"
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "email": "이메일 형식이 올바르지 않습니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이메일에 해당하는 사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 인증된 이메일",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "이미 이메일 인증이 완료된 사용자입니다.",
+                                              "code": "EMAIL_ALREADY_VERIFIED"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<Void> resendVerificationEmail(@Valid @RequestBody EmailResendRequest request) {
+        authService.resendVerificationEmail(request);
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/email/verify")
