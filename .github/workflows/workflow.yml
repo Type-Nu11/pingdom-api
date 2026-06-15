@@ -58,7 +58,7 @@ jobs:
           key: ${{ secrets.KEY }}
           script: |
             cd ~/Pingdom_Backend
-            git pull origin main
+            git pull origin release
             docker compose pull
             docker compose up -d --force-recreate
             docker image prune -f
