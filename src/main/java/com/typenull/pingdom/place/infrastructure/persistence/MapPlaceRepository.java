@@ -104,7 +104,6 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             countQuery = """
                     SELECT COUNT(b)
                     FROM MapBookmark b
-                    JOIN MapPlace p ON p.id = b.placeId
                     WHERE b.userId = :userId
                     """
     )

@@ -20,6 +20,7 @@ public class Notifications {
     @Column(name = "token", nullable = false)
     private String token;
 
+    @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private NotificationType type;
 

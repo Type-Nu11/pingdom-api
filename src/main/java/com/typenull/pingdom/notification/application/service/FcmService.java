@@ -78,23 +78,24 @@ public class FcmService {
     public NotificationResponse sendLikeNotification(Long ownerId, Long likerId) {
 
         if (Objects.equals(ownerId, likerId)) {
-            throw new NotificationsException(NotificationsErrorCode.CANNOT_SEND_NOTIFICATION_TO_SELF);
+            return null;
         }
 
         User owner = userRepository.findById(ownerId).orElse(null);
         if (owner == null) {
             log.warn("좋아요 알림 수신자를 찾지 못해 전송을 생략합니다. ownerId={}", ownerId);
-            throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
+            return null;
         }
 
         if (owner.getFcmToken() == null) {
-            throw new NotificationsException(NotificationsErrorCode.FCM_TOKEN_NOT_FOUND);
+            log.debug("좋아요 알림 수신자의 FCM 토큰이 없어 전송을 생략합니다. ownerId={}", ownerId);
+            return null;
         }
 
         User liker = userRepository.findById(likerId).orElse(null);
         if (liker == null) {
             log.warn("좋아요 알림 발신자를 찾지 못해 전송을 생략합니다. likerId={}", likerId);
-            throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
+            return null;
         }
 
         return sendNotification(owner.getFcmToken(), NotificationType.NEW_LIKE, ownerId, liker.getUsername());
