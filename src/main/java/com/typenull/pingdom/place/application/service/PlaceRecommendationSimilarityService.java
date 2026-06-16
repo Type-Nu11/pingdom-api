@@ -155,6 +155,29 @@ public class PlaceRecommendationSimilarityService {
     }
 
     public SimilarityScore score(Long leftPlaceId, Long rightPlaceId, SimilarityContext context) {
+        return score(
+                leftPlaceId,
+                rightPlaceId,
+                context.placeIndex().get(leftPlaceId),
+                context.placeIndex().get(rightPlaceId),
+                context
+        );
+    }
+
+    public SimilarityScore score(MapPlace leftPlace, MapPlace rightPlace, SimilarityContext context) {
+        if (leftPlace == null || rightPlace == null) {
+            return SimilarityScore.empty();
+        }
+        return score(leftPlace.getId(), rightPlace.getId(), leftPlace, rightPlace, context);
+    }
+
+    private SimilarityScore score(
+            Long leftPlaceId,
+            Long rightPlaceId,
+            MapPlace leftPlace,
+            MapPlace rightPlace,
+            SimilarityContext context
+    ) {
         if (Objects.equals(leftPlaceId, rightPlaceId)) {
             return SimilarityScore.identity();
         }
@@ -164,9 +187,6 @@ public class PlaceRecommendationSimilarityService {
         if (snapshotScore != null) {
             return snapshotScore;
         }
-
-        MapPlace leftPlace = context.placeIndex().get(leftPlaceId);
-        MapPlace rightPlace = context.placeIndex().get(rightPlaceId);
 
         if (leftPlace == null || rightPlace == null) {
             return SimilarityScore.empty();
@@ -183,8 +203,8 @@ public class PlaceRecommendationSimilarityService {
                 context.likeUsersByPlace().get(rightPlaceId)
         );
         double trendSimilarity = trendSimilarity(
-                context.trendProfilesByPlace().get(leftPlaceId),
-                context.trendProfilesByPlace().get(rightPlaceId)
+                context.trendProfilesByPlace().getOrDefault(leftPlaceId, TrendProfile.fallback(leftPlace)),
+                context.trendProfilesByPlace().getOrDefault(rightPlaceId, TrendProfile.fallback(rightPlace))
         );
         double totalSimilarity = (0.40d * geoKernel)
                 + (0.35d * coBookmarkPmi)
@@ -373,6 +393,13 @@ public class PlaceRecommendationSimilarityService {
             double freshnessScore = calculateFreshnessScore(latestPostCreatedAt);
             boolean hasSignal = photoCount > 0L || latestPostCreatedAt != null;
             return new TrendProfile(photoCount, freshnessScore, hasSignal);
+        }
+
+        static TrendProfile fallback(MapPlace place) {
+            if (place == null) {
+                return new TrendProfile(0L, 0d, false);
+            }
+            return of(place.currentPhotoCount(), null);
         }
     }
 

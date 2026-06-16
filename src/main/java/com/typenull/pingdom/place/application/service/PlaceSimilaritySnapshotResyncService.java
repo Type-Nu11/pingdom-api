@@ -7,10 +7,10 @@ import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnap
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.ArrayDeque;
 import java.util.ArrayList;
-import java.util.Comparator;
-import java.util.HashSet;
 import java.util.HashMap;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlaceSimilaritySnapshotResyncService {
 
     private static final double MAX_SIMILARITY_RADIUS_KM = 20.0d;
+    private static final int PLACE_PAGE_SIZE = 500;
     private static final int RESYNC_BATCH_SIZE = 500;
     private static final Clock RESYNC_CLOCK = Clock.systemUTC();
 
@@ -36,8 +37,8 @@ public class PlaceSimilaritySnapshotResyncService {
 
     @Transactional
     public SimilaritySnapshotResyncResult resyncAll() {
-        List<MapPlace> places = mapPlaceRepository.findAllWithCoordinates(Pageable.unpaged());
-        if (places.isEmpty()) {
+        Set<Long> activePlaceIds = collectActivePlaceIds();
+        if (activePlaceIds.isEmpty()) {
             long deletedSnapshotCount = placeSimilaritySnapshotRepository.count();
             if (deletedSnapshotCount > 0L) {
                 placeSimilaritySnapshotRepository.deleteAllInBatch();
@@ -45,99 +46,60 @@ public class PlaceSimilaritySnapshotResyncService {
             return new SimilaritySnapshotResyncResult(0L, deletedSnapshotCount);
         }
 
-        Map<Long, MapPlace> placeIndex = new HashMap<>();
-        for (MapPlace place : places) {
-            placeIndex.put(place.getId(), place);
-        }
-
         long totalBookmarkUserCount = placeRecommendationSimilarityService.cachedTotalBookmarkUserCount();
+        ExistingSnapshotState existingSnapshotState = loadExistingSnapshotState(activePlaceIds);
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext =
                 placeRecommendationSimilarityService.buildContext(
-                        placeIndex.keySet(),
-                        placeIndex,
+                        activePlaceIds,
+                        Map.of(),
                         false,
                         totalBookmarkUserCount
                 );
-        Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair =
-                new HashMap<>();
-        for (PlaceSimilaritySnapshot snapshot : placeSimilaritySnapshotRepository.findByPlaceIdsWithin(placeIndex.keySet())) {
-            existingSnapshotByPair.put(
-                    PlaceRecommendationSimilarityService.PlacePairKey.of(
-                            snapshot.getLeftPlaceId(),
-                            snapshot.getRightPlaceId()
-                    ),
-                    snapshot
-            );
-        }
-
         LocalDateTime syncedAt = LocalDateTime.ofInstant(RESYNC_CLOCK.instant(), ZoneOffset.UTC);
-        long synchronizedSnapshotCount = 0L;
-        List<PlaceSimilaritySnapshot> snapshotBatch = new ArrayList<>(RESYNC_BATCH_SIZE);
-        List<MapPlace> sortedPlaces = places.stream()
-                .sorted(Comparator.comparingDouble(MapPlace::getLatitude))
-                .toList();
-        double latitudeDelta = toLatitudeDelta(MAX_SIMILARITY_RADIUS_KM);
 
-        for (int baseIndex = 0; baseIndex < sortedPlaces.size(); baseIndex++) {
-            MapPlace basePlace = sortedPlaces.get(baseIndex);
-            for (int candidateIndex = baseIndex + 1; candidateIndex < sortedPlaces.size(); candidateIndex++) {
-                MapPlace nearbyPlace = sortedPlaces.get(candidateIndex);
-                if ((nearbyPlace.getLatitude() - basePlace.getLatitude()) > latitudeDelta) {
-                    break;
-                }
-                if (!isWithinSimilarityRadius(basePlace, nearbyPlace)) {
-                    continue;
-                }
+        long synchronizedSnapshotCount = synchronizeSnapshots(
+                similarityContext,
+                existingSnapshotState.existingSnapshotByPair(),
+                syncedAt
+        );
 
-                PlaceRecommendationSimilarityService.PlacePairKey pairKey =
-                        PlaceRecommendationSimilarityService.PlacePairKey.of(basePlace.getId(), nearbyPlace.getId());
-                PlaceRecommendationSimilarityService.SimilarityScore similarityScore =
-                        placeRecommendationSimilarityService.score(basePlace.getId(), nearbyPlace.getId(), similarityContext);
-                PlaceSimilaritySnapshot snapshot = existingSnapshotByPair.remove(pairKey);
-                if (snapshot == null) {
-                    snapshot = PlaceSimilaritySnapshot.builder()
-                            .leftPlaceId(pairKey.leftPlaceId())
-                            .rightPlaceId(pairKey.rightPlaceId())
-                            .updatedAt(syncedAt)
-                            .build();
-                }
+        existingSnapshotState.orphanSnapshotIds().addAll(existingSnapshotState.existingSnapshotByPair().values().stream()
+                .map(PlaceSimilaritySnapshot::getId)
+                .toList());
 
-                snapshot.synchronize(
-                        similarityScore.geoKernel(),
-                        similarityScore.coBookmarkPmi(),
-                        similarityScore.coLikeCosine(),
-                        similarityScore.trendSimilarity(),
-                        similarityScore.totalSimilarity(),
-                        syncedAt
-                );
-                snapshotBatch.add(snapshot);
-                synchronizedSnapshotCount++;
-
-                if (snapshotBatch.size() >= RESYNC_BATCH_SIZE) {
-                    placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
-                    snapshotBatch.clear();
-                }
-            }
-        }
-
-        if (!snapshotBatch.isEmpty()) {
-            placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
-        }
-
-        long deletedSnapshotCount = deleteOrphanSnapshots(existingSnapshotByPair, placeIndex.keySet());
+        long deletedSnapshotCount = deleteSnapshotIds(existingSnapshotState.orphanSnapshotIds());
         return new SimilaritySnapshotResyncResult(synchronizedSnapshotCount, deletedSnapshotCount);
     }
 
-    private long deleteOrphanSnapshots(
-            Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> orphanSnapshotsByPair,
-            Set<Long> activePlaceIds
-    ) {
-        Set<Long> orphanSnapshotIds = new HashSet<>();
-        orphanSnapshotsByPair.values().stream()
-                .map(PlaceSimilaritySnapshot::getId)
-                .forEach(orphanSnapshotIds::add);
-
+    private Set<Long> collectActivePlaceIds() {
+        Set<Long> activePlaceIds = new HashSet<>();
         int pageNumber = 0;
+
+        while (true) {
+            Page<MapPlace> placePage = mapPlaceRepository.findCoordinatePage(PageRequest.of(pageNumber, PLACE_PAGE_SIZE));
+            if (placePage.isEmpty()) {
+                break;
+            }
+
+            placePage.getContent().stream()
+                    .map(MapPlace::getId)
+                    .forEach(activePlaceIds::add);
+
+            if (!placePage.hasNext()) {
+                break;
+            }
+            pageNumber++;
+        }
+
+        return activePlaceIds;
+    }
+
+    private ExistingSnapshotState loadExistingSnapshotState(Set<Long> activePlaceIds) {
+        Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair =
+                new HashMap<>();
+        List<Long> orphanSnapshotIds = new ArrayList<>();
+        int pageNumber = 0;
+
         while (true) {
             Page<PlaceSimilaritySnapshot> snapshotPage = placeSimilaritySnapshotRepository.findAll(
                     PageRequest.of(pageNumber, RESYNC_BATCH_SIZE, Sort.by(Sort.Order.asc("id")))
@@ -146,11 +108,21 @@ public class PlaceSimilaritySnapshotResyncService {
                 break;
             }
 
-            snapshotPage.getContent().stream()
-                    .filter(snapshot -> !activePlaceIds.contains(snapshot.getLeftPlaceId())
-                            || !activePlaceIds.contains(snapshot.getRightPlaceId()))
-                    .map(PlaceSimilaritySnapshot::getId)
-                    .forEach(orphanSnapshotIds::add);
+            for (PlaceSimilaritySnapshot snapshot : snapshotPage.getContent()) {
+                if (!activePlaceIds.contains(snapshot.getLeftPlaceId())
+                        || !activePlaceIds.contains(snapshot.getRightPlaceId())) {
+                    orphanSnapshotIds.add(snapshot.getId());
+                    continue;
+                }
+
+                existingSnapshotByPair.put(
+                        PlaceRecommendationSimilarityService.PlacePairKey.of(
+                                snapshot.getLeftPlaceId(),
+                                snapshot.getRightPlaceId()
+                        ),
+                        snapshot
+                );
+            }
 
             if (!snapshotPage.hasNext()) {
                 break;
@@ -158,16 +130,94 @@ public class PlaceSimilaritySnapshotResyncService {
             pageNumber++;
         }
 
-        if (orphanSnapshotIds.isEmpty()) {
+        return new ExistingSnapshotState(existingSnapshotByPair, orphanSnapshotIds);
+    }
+
+    private long synchronizeSnapshots(
+            PlaceRecommendationSimilarityService.SimilarityContext similarityContext,
+            Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair,
+            LocalDateTime syncedAt
+    ) {
+        ArrayDeque<MapPlace> slidingWindow = new ArrayDeque<>();
+        List<PlaceSimilaritySnapshot> snapshotBatch = new ArrayList<>(RESYNC_BATCH_SIZE);
+        double latitudeDelta = toLatitudeDelta(MAX_SIMILARITY_RADIUS_KM);
+        long synchronizedSnapshotCount = 0L;
+        int pageNumber = 0;
+
+        while (true) {
+            Page<MapPlace> placePage = mapPlaceRepository.findCoordinatePage(PageRequest.of(pageNumber, PLACE_PAGE_SIZE));
+            if (placePage.isEmpty()) {
+                break;
+            }
+
+            for (MapPlace currentPlace : placePage.getContent()) {
+                // 위도 오름차순 페이지를 유지하면서 20km 위도 범위를 벗어난 이전 장소는 창에서 제거한다.
+                while (!slidingWindow.isEmpty()
+                        && (currentPlace.getLatitude() - slidingWindow.peekFirst().getLatitude()) > latitudeDelta) {
+                    slidingWindow.removeFirst();
+                }
+
+                for (MapPlace previousPlace : slidingWindow) {
+                    if (!isWithinSimilarityRadius(previousPlace, currentPlace)) {
+                        continue;
+                    }
+
+                    PlaceRecommendationSimilarityService.PlacePairKey pairKey =
+                            PlaceRecommendationSimilarityService.PlacePairKey.of(previousPlace.getId(), currentPlace.getId());
+                    PlaceRecommendationSimilarityService.SimilarityScore similarityScore =
+                            placeRecommendationSimilarityService.score(previousPlace, currentPlace, similarityContext);
+                    PlaceSimilaritySnapshot snapshot = existingSnapshotByPair.remove(pairKey);
+                    if (snapshot == null) {
+                        snapshot = PlaceSimilaritySnapshot.builder()
+                                .leftPlaceId(pairKey.leftPlaceId())
+                                .rightPlaceId(pairKey.rightPlaceId())
+                                .updatedAt(syncedAt)
+                                .build();
+                    }
+
+                    snapshot.synchronize(
+                            similarityScore.geoKernel(),
+                            similarityScore.coBookmarkPmi(),
+                            similarityScore.coLikeCosine(),
+                            similarityScore.trendSimilarity(),
+                            similarityScore.totalSimilarity(),
+                            syncedAt
+                    );
+                    snapshotBatch.add(snapshot);
+                    synchronizedSnapshotCount++;
+
+                    if (snapshotBatch.size() >= RESYNC_BATCH_SIZE) {
+                        placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
+                        snapshotBatch.clear();
+                    }
+                }
+
+                slidingWindow.addLast(currentPlace);
+            }
+
+            if (!placePage.hasNext()) {
+                break;
+            }
+            pageNumber++;
+        }
+
+        if (!snapshotBatch.isEmpty()) {
+            placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
+        }
+
+        return synchronizedSnapshotCount;
+    }
+
+    private long deleteSnapshotIds(List<Long> snapshotIds) {
+        if (snapshotIds.isEmpty()) {
             return 0L;
         }
 
-        List<Long> orphanSnapshotIdList = new ArrayList<>(orphanSnapshotIds);
-        for (int start = 0; start < orphanSnapshotIdList.size(); start += RESYNC_BATCH_SIZE) {
-            int end = Math.min(start + RESYNC_BATCH_SIZE, orphanSnapshotIdList.size());
-            placeSimilaritySnapshotRepository.deleteAllByIdInBatch(orphanSnapshotIdList.subList(start, end));
+        for (int start = 0; start < snapshotIds.size(); start += RESYNC_BATCH_SIZE) {
+            int end = Math.min(start + RESYNC_BATCH_SIZE, snapshotIds.size());
+            placeSimilaritySnapshotRepository.deleteAllByIdInBatch(snapshotIds.subList(start, end));
         }
-        return orphanSnapshotIdList.size();
+        return snapshotIds.size();
     }
 
     private double toLatitudeDelta(double radiusKm) {
@@ -203,5 +253,11 @@ public class PlaceSimilaritySnapshotResyncService {
     }
 
     public record SimilaritySnapshotResyncResult(long synchronizedSnapshotCount, long deletedSnapshotCount) {
+    }
+
+    private record ExistingSnapshotState(
+            Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair,
+            List<Long> orphanSnapshotIds
+    ) {
     }
 }
