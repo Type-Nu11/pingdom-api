@@ -131,7 +131,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         long totalClickCount = placeRecommendationSnapshotRepository.sumClickCount();
         long totalExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
         if (totalExposureCount <= 0L) {
-            totalExposureCount = placeRecommendationExposureService.countAllExposures();
+            totalExposureCount = 10_000L;
         }
         double globalCtr = calculateGlobalCtr(totalClickCount, totalExposureCount);
         final long resolvedTotalExposureCount = totalExposureCount;
