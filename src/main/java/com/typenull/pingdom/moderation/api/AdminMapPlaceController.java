@@ -347,6 +347,8 @@ public class AdminMapPlaceController {
                                               "placeCount": 12,
                                               "synchronizedSnapshotCount": 12,
                                               "deletedSnapshotCount": 1,
+                                              "synchronizedSimilaritySnapshotCount": 24,
+                                              "deletedSimilaritySnapshotCount": 2,
                                               "synchronizedVersionSnapshotCount": 3,
                                               "deletedVersionSnapshotCount": 0,
                                               "message": "장소 추천 snapshot 재동기화를 완료했습니다."
@@ -381,6 +383,8 @@ public class AdminMapPlaceController {
                 result.placeCount(),
                 result.synchronizedSnapshotCount(),
                 result.deletedSnapshotCount(),
+                result.synchronizedSimilaritySnapshotCount(),
+                result.deletedSimilaritySnapshotCount(),
                 result.synchronizedVersionSnapshotCount(),
                 result.deletedVersionSnapshotCount(),
                 "장소 추천 snapshot 재동기화를 완료했습니다."
