@@ -19,12 +19,15 @@ import java.util.Collection;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -47,6 +50,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final double CONVERSION_CONFIDENCE_SAMPLE_SIZE = 12d;
     private static final double LIKE_CONVERSION_WEIGHT = 0.60d;
     private static final int CANDIDATE_POOL_LIMIT = 300;
+    private static final int GEO_CANDIDATE_LIMIT = 180;
+    private static final int PERSONAL_CANDIDATE_LIMIT = 120;
+    private static final int TREND_CANDIDATE_LIMIT = 80;
+    private static final long TREND_LOOKBACK_DAYS = 7L;
+    private static final int PERSONAL_EXPANSION_PER_SEED_LIMIT = 30;
+    private static final int PERSONAL_EXPANSION_SEED_LIMIT = 5;
+    private static final double PERSONAL_EXPANSION_RADIUS_KM = 10.0d;
+    private static final int MIN_SELECTION_POOL_SIZE = 40;
     private static final double MMR_RELEVANCE_WEIGHT = 0.75d;
     private static final Clock RECOMMENDATION_CLOCK = Clock.systemUTC();
 
@@ -74,7 +85,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double safeRadiusKm = Math.max(MIN_RADIUS_KM, Math.min(radiusKm, MAX_RADIUS_KM));
 
         UserSignalContext signalContext = loadUserSignals(userId);
-        List<MapPlace> candidatePool = loadCandidatePool(latitude, longitude, MAX_RADIUS_KM);
+        List<CandidatePlace> candidatePool = loadCandidatePool(latitude, longitude, signalContext);
 
         if (candidatePool.isEmpty()) {
             return PlaceRecommendationResponse.of(
@@ -88,11 +99,11 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         Map<Long, MapPlace> placeIndex = buildPlaceIndex(candidatePool, signalContext.interactedPlaceIds());
         List<PlaceDistance> placeDistances = candidatePool.stream()
-                .map(place -> new PlaceDistance(place, calculateDistanceMeters(
+                .map(candidate -> new PlaceDistance(candidate.place(), candidate.sources(), calculateDistanceMeters(
                         latitude,
                         longitude,
-                        place.getLatitude(),
-                        place.getLongitude()
+                        candidate.place().getLatitude(),
+                        candidate.place().getLongitude()
                 )))
                 .toList();
 
@@ -120,6 +131,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         Map<Long, PlaceAggregate> aggregateMap = loadAggregates(selection.candidates());
         long totalClickCount = placeRecommendationSnapshotRepository.sumClickCount();
         long totalExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
+        if (totalExposureCount <= 0L) {
+            totalExposureCount = 10_000L;
+        }
         double globalCtr = calculateGlobalCtr(totalClickCount, totalExposureCount);
         final long resolvedTotalExposureCount = totalExposureCount;
         Instant recommendationBaseTime = Instant.now(RECOMMENDATION_CLOCK);
@@ -199,7 +213,146 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         );
     }
 
-    private List<MapPlace> loadCandidatePool(double latitude, double longitude, double maxRadiusKm) {
+    private List<CandidatePlace> loadCandidatePool(
+            double latitude,
+            double longitude,
+            UserSignalContext signalContext
+    ) {
+        LinkedHashMap<Long, CandidatePlaceAccumulator> mergedCandidates = new LinkedHashMap<>();
+
+        mergeCandidates(
+                mergedCandidates,
+                loadGeoCandidates(latitude, longitude, MAX_RADIUS_KM),
+                CandidateSource.GEO,
+                GEO_CANDIDATE_LIMIT
+        );
+        mergeCandidates(
+                mergedCandidates,
+                loadPersonalCandidates(signalContext),
+                CandidateSource.PERSONAL,
+                PERSONAL_CANDIDATE_LIMIT
+        );
+        mergeCandidates(
+                mergedCandidates,
+                loadTrendCandidates(),
+                CandidateSource.TREND,
+                TREND_CANDIDATE_LIMIT
+        );
+
+        return mergedCandidates.values().stream()
+                .map(accumulator -> new CandidatePlace(accumulator.place(), Set.copyOf(accumulator.sources())))
+                .toList();
+    }
+
+    private List<MapPlace> loadGeoCandidates(double latitude, double longitude, double maxRadiusKm) {
+        return loadNearbyCandidates(latitude, longitude, maxRadiusKm, GEO_CANDIDATE_LIMIT);
+    }
+
+    private List<MapPlace> loadPersonalCandidates(UserSignalContext signalContext) {
+        if (signalContext.interactedPlaceIds().isEmpty()) {
+            return List.of();
+        }
+
+        LinkedHashMap<Long, MapPlace> personalCandidates = new LinkedHashMap<>();
+        List<MapPlace> seedPlaces = mapPlaceRepository.findAllById(signalContext.interactedPlaceIds());
+
+        for (MapPlace seedPlace : seedPlaces) {
+            personalCandidates.putIfAbsent(seedPlace.getId(), seedPlace);
+        }
+
+        List<MapPlace> expansionSeeds = seedPlaces.stream()
+                .sorted(Comparator.comparingDouble(
+                        (MapPlace place) -> signalContext.seedWeights().getOrDefault(place.getId(), 0.0d)
+                ).reversed())
+                .limit(PERSONAL_EXPANSION_SEED_LIMIT)
+                .toList();
+
+        for (MapPlace seedPlace : expansionSeeds) {
+            for (MapPlace nearbyPlace : loadNearbyCandidates(
+                    seedPlace.getLatitude(),
+                    seedPlace.getLongitude(),
+                    PERSONAL_EXPANSION_RADIUS_KM,
+                    PERSONAL_EXPANSION_PER_SEED_LIMIT
+            )) {
+                personalCandidates.putIfAbsent(nearbyPlace.getId(), nearbyPlace);
+
+                if (personalCandidates.size() >= PERSONAL_CANDIDATE_LIMIT) {
+                    return List.copyOf(personalCandidates.values());
+                }
+            }
+        }
+
+        return List.copyOf(personalCandidates.values());
+    }
+
+    private List<MapPlace> loadTrendCandidates() {
+        LocalDateTime trendUpdatedAfter = LocalDateTime.now(RECOMMENDATION_CLOCK).minusDays(TREND_LOOKBACK_DAYS);
+        Page<PlaceRecommendationSnapshot> snapshotPage = placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(
+                trendUpdatedAfter,
+                PageRequest.of(
+                        0,
+                        TREND_CANDIDATE_LIMIT,
+                        Sort.by(
+                                Sort.Order.desc("updatedAt"),
+                                Sort.Order.desc("latestPostCreatedAt"),
+                                Sort.Order.desc("totalLikeCount"),
+                                Sort.Order.desc("photoCount"),
+                                Sort.Order.asc("placeId")
+                        )
+                )
+        );
+
+        List<Long> placeIds = snapshotPage.getContent().stream()
+                .map(PlaceRecommendationSnapshot::getPlaceId)
+                .toList();
+        if (placeIds.isEmpty()) {
+            return List.of();
+        }
+
+        Map<Long, MapPlace> placeById = new HashMap<>();
+        for (MapPlace place : mapPlaceRepository.findAllById(placeIds)) {
+            if (place.getLatitude() != null && place.getLongitude() != null) {
+                placeById.put(place.getId(), place);
+            }
+        }
+
+        List<MapPlace> orderedTrendCandidates = new ArrayList<>();
+        for (Long placeId : placeIds) {
+            MapPlace place = placeById.get(placeId);
+            if (place != null) {
+                orderedTrendCandidates.add(place);
+            }
+        }
+        return orderedTrendCandidates;
+    }
+
+    private void mergeCandidates(
+            Map<Long, CandidatePlaceAccumulator> mergedCandidates,
+            List<MapPlace> candidates,
+            CandidateSource source,
+            int sourceLimit
+    ) {
+        int addedCount = 0;
+        for (MapPlace candidate : candidates) {
+            CandidatePlaceAccumulator accumulator = mergedCandidates.get(candidate.getId());
+            if (accumulator == null) {
+                if (addedCount >= sourceLimit || mergedCandidates.size() >= CANDIDATE_POOL_LIMIT) {
+                    continue;
+                }
+                mergedCandidates.put(candidate.getId(), new CandidatePlaceAccumulator(candidate, source));
+                addedCount++;
+                continue;
+            }
+            accumulator.addSource(source);
+        }
+    }
+
+    private List<MapPlace> loadNearbyCandidates(
+            double latitude,
+            double longitude,
+            double maxRadiusKm,
+            int limit
+    ) {
         double latitudeDelta = toLatitudeDelta(maxRadiusKm);
         double longitudeDelta = toLongitudeDelta(latitude, maxRadiusKm);
 
@@ -214,7 +367,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     longitude,
                     minLatitude,
                     maxLatitude,
-                    PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+                    PageRequest.of(0, limit)
             );
         }
 
@@ -226,7 +379,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     maxLatitude,
                     minLongitude + 360d,
                     maxLongitude,
-                    PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+                    PageRequest.of(0, limit)
             );
         }
 
@@ -238,7 +391,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     maxLatitude,
                     minLongitude,
                     maxLongitude - 360d,
-                    PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+                    PageRequest.of(0, limit)
             );
         }
 
@@ -249,14 +402,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 maxLatitude,
                 minLongitude,
                 maxLongitude,
-                PageRequest.of(0, CANDIDATE_POOL_LIMIT)
+                PageRequest.of(0, limit)
         );
     }
 
-    private Map<Long, MapPlace> buildPlaceIndex(List<MapPlace> candidatePool, Set<Long> interactedPlaceIds) {
+    private Map<Long, MapPlace> buildPlaceIndex(List<CandidatePlace> candidatePool, Set<Long> interactedPlaceIds) {
         Map<Long, MapPlace> placeIndex = new HashMap<>();
-        for (MapPlace candidate : candidatePool) {
-            placeIndex.put(candidate.getId(), candidate);
+        for (CandidatePlace candidate : candidatePool) {
+            placeIndex.put(candidate.place().getId(), candidate.place());
         }
 
         if (interactedPlaceIds.isEmpty()) {
@@ -283,19 +436,46 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             double requestedRadiusKm,
             Set<Long> excludedPlaceIds
     ) {
+        int targetCandidateCount = Math.min(
+                CANDIDATE_POOL_LIMIT,
+                Math.max(MIN_SELECTION_POOL_SIZE, limit * 4)
+        );
         double appliedRadiusKm = requestedRadiusKm;
         List<PlaceDistance> candidates = List.of();
+        List<PlaceDistance> sourceBoostedCandidates = placeDistances.stream()
+                .filter(candidate -> !excludedPlaceIds.contains(candidate.place().getId()))
+                .filter(candidate -> candidate.sources().contains(CandidateSource.PERSONAL)
+                        || candidate.sources().contains(CandidateSource.TREND))
+                .sorted(sourceBoostedCandidateComparator())
+                .toList();
 
         for (double radiusStepKm : buildRadiusSteps(requestedRadiusKm)) {
             appliedRadiusKm = radiusStepKm;
             double radiusMeters = radiusStepKm * 1_000d;
 
-            candidates = placeDistances.stream()
+            LinkedHashMap<Long, PlaceDistance> selectedCandidates = new LinkedHashMap<>();
+
+            for (PlaceDistance sourceBoostedCandidate : sourceBoostedCandidates) {
+                selectedCandidates.put(sourceBoostedCandidate.place().getId(), sourceBoostedCandidate);
+                if (selectedCandidates.size() >= targetCandidateCount) {
+                    break;
+                }
+            }
+
+            placeDistances.stream()
+                    .filter(candidate -> candidate.sources().contains(CandidateSource.GEO))
                     .filter(candidate -> candidate.distanceMeters() <= radiusMeters)
                     .filter(candidate -> !excludedPlaceIds.contains(candidate.place().getId()))
-                    .toList();
+                    .sorted(Comparator.comparingDouble(PlaceDistance::distanceMeters))
+                    .forEach(candidate -> {
+                        if (selectedCandidates.size() < targetCandidateCount) {
+                            selectedCandidates.putIfAbsent(candidate.place().getId(), candidate);
+                        }
+                    });
 
-            if (candidates.size() >= limit) {
+            candidates = List.copyOf(selectedCandidates.values());
+
+            if (candidates.size() >= limit && candidates.size() >= Math.min(targetCandidateCount, limit * 2)) {
                 break;
             }
         }
@@ -303,8 +483,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         if (candidates.isEmpty()) {
             List<PlaceDistance> fallbackCandidates = placeDistances.stream()
                     .filter(candidate -> !excludedPlaceIds.contains(candidate.place().getId()))
-                    .sorted(Comparator.comparingDouble(PlaceDistance::distanceMeters))
-                    .limit(Math.max(limit * 3L, limit))
+                    .sorted(sourceBoostedCandidateComparator()
+                            .thenComparingDouble(PlaceDistance::distanceMeters))
+                    .limit(targetCandidateCount)
                     .toList();
 
             if (!fallbackCandidates.isEmpty()) {
@@ -317,6 +498,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         return new CandidateSelection(candidates, appliedRadiusKm);
+    }
+
+    private Comparator<PlaceDistance> sourceBoostedCandidateComparator() {
+        return Comparator
+                .comparingInt((PlaceDistance candidate) -> candidate.sources().contains(CandidateSource.PERSONAL) ? 0
+                        : candidate.sources().contains(CandidateSource.TREND) ? 1 : 2)
+                .thenComparingDouble(PlaceDistance::distanceMeters)
+                .thenComparing(candidate -> candidate.place().getId());
     }
 
     private List<Double> buildRadiusSteps(double requestedRadiusKm) {
@@ -867,10 +1056,41 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
     }
 
-    private record PlaceDistance(MapPlace place, double distanceMeters) {
+    private enum CandidateSource {
+        GEO,
+        PERSONAL,
+        TREND
+    }
+
+    private record CandidatePlace(MapPlace place, Set<CandidateSource> sources) {
+    }
+
+    private record PlaceDistance(MapPlace place, Set<CandidateSource> sources, double distanceMeters) {
     }
 
     private record CandidateSelection(List<PlaceDistance> candidates, double appliedRadiusKm) {
+    }
+
+    private static final class CandidatePlaceAccumulator {
+        private final MapPlace place;
+        private final Set<CandidateSource> sources = new LinkedHashSet<>();
+
+        private CandidatePlaceAccumulator(MapPlace place, CandidateSource source) {
+            this.place = place;
+            this.sources.add(source);
+        }
+
+        private MapPlace place() {
+            return place;
+        }
+
+        private Set<CandidateSource> sources() {
+            return sources;
+        }
+
+        private void addSource(CandidateSource source) {
+            sources.add(source);
+        }
     }
 
     private record IntermediateCandidate(
