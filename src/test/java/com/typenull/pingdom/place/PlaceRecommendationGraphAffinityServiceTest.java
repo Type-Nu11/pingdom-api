@@ -34,7 +34,14 @@ class PlaceRecommendationGraphAffinityServiceTest {
     @Test
     void scorePropagatesAffinityAcrossIntermediatePlace() {
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext =
-                new PlaceRecommendationSimilarityService.SimilarityContext(Map.of(), Map.of(), Map.of());
+                new PlaceRecommendationSimilarityService.SimilarityContext(
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        0L
+                );
 
         stubBidirectionalSimilarity(similarityContext, 100L, 200L, 0.80d);
         stubBidirectionalSimilarity(similarityContext, 200L, 300L, 0.85d);
@@ -55,7 +62,14 @@ class PlaceRecommendationGraphAffinityServiceTest {
     @Test
     void scoreReturnsZeroWhenSeedDoesNotExist() {
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext =
-                new PlaceRecommendationSimilarityService.SimilarityContext(Map.of(), Map.of(), Map.of());
+                new PlaceRecommendationSimilarityService.SimilarityContext(
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        0L
+                );
 
         Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
                 List.of(200L, 300L),

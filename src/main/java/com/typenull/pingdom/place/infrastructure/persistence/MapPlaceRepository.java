@@ -24,6 +24,23 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             """)
     List<MapPlace> findAllWithCoordinates(Pageable pageable);
 
+    @Query(
+            value = """
+                    SELECT m
+                    FROM MapPlace m
+                    WHERE m.latitude IS NOT NULL
+                      AND m.longitude IS NOT NULL
+                    ORDER BY m.latitude ASC, m.id ASC
+                    """,
+            countQuery = """
+                    SELECT COUNT(m)
+                    FROM MapPlace m
+                    WHERE m.latitude IS NOT NULL
+                      AND m.longitude IS NOT NULL
+                    """
+    )
+    Page<MapPlace> findCoordinatePage(Pageable pageable);
+
     @Query("""
             SELECT m
             FROM MapPlace m
