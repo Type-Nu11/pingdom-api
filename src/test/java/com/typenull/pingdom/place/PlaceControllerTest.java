@@ -371,6 +371,34 @@ class PlaceControllerTest {
     }
 
     @Test
+    void recommendPlacesIncludesPersonalCandidatesOutsideCurrentGeoArea() throws Exception {
+        String accessToken = signupAndLogin("reader19");
+        User reader = userRepository.findByUsername("reader19").orElseThrow();
+
+        MapPlace seedPlace = createMapPlace("개인화 기준 장소", "경상남도 진주시 개인화로 1", 35.1800, 128.1070, 1L);
+        MapPlace personalCandidate = createMapPlace("개인화 확장 장소", "경상남도 진주시 개인화로 2", 35.1810, 128.1080, 3L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(reader.getId())
+                .placeId(seedPlace.getId())
+                .build());
+
+        createMapImage(personalCandidate, 12L, "개인화 사진 1");
+        createMapImage(personalCandidate, 9L, "개인화 사진 2");
+        createMapImage(personalCandidate, 7L, "개인화 사진 3");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(1))
+                .andExpect(jsonPath("$.places[0].name").value("개인화 확장 장소"));
+    }
+
+    @Test
     void recommendPlacesFallsBackToPopularNearbyPlacesWhenUserHasNoSignals() throws Exception {
         String accessToken = signupAndLogin("reader05");
 
@@ -393,6 +421,34 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("인기 장소"))
                 .andExpect(jsonPath("$.places[0].reason", containsString("현재 위치 주변")));
+    }
+
+    @Test
+    void recommendPlacesIncludesTrendCandidatesWhenNoGeoCandidatesExist() throws Exception {
+        String accessToken = signupAndLogin("reader20");
+        MapPlace trendPlace = createMapPlace("트렌드 후보 장소", "경상남도 진주시 트렌드로 1", 35.1803, 128.1079, 2L);
+
+        LocalDateTime recent = LocalDateTime.now();
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(trendPlace.getId())
+                .photoCount(2L)
+                .bookmarkCount(0L)
+                .totalLikeCount(15L)
+                .clickCount(3L)
+                .exposureCount(5L)
+                .latestPostCreatedAt(recent)
+                .updatedAt(recent)
+                .build());
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(1))
+                .andExpect(jsonPath("$.places[0].name").value("트렌드 후보 장소"));
     }
 
     @Test
