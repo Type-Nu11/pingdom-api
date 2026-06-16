@@ -129,6 +129,7 @@ public class MapPlaceController {
                 request.kakaoPlaceId(),
                 request.name(),
                 request.address(),
+                request.category(),
                 request.imageUrl(),
                 request.coordinateToken(),
                 user.userId()
