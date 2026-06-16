@@ -159,6 +159,55 @@ class PlaceControllerTest {
     }
 
     @Test
+    void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
+        String accessToken = signupAndLogin("bookmarkReader01");
+        User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
+
+        MapPlace firstBookmarkedPlace = createMapPlace("첫 번째 북마크 장소", "경상남도 진주시 북마크로 1");
+        MapPlace secondBookmarkedPlace = createMapPlace("두 번째 북마크 장소", "경상남도 진주시 북마크로 2");
+        createMapPlace("북마크되지 않은 장소", "경상남도 진주시 북마크로 3");
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(firstBookmarkedPlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(secondBookmarkedPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/users/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].name").value("두 번째 북마크 장소"))
+                .andExpect(jsonPath("$.places[1].name").value("첫 번째 북마크 장소"));
+    }
+
+    @Test
+    void listBookmarksReturnsEmptyListWhenNoBookmarkExists() throws Exception {
+        String accessToken = signupAndLogin("bookmarkReader02");
+        createMapPlace("일반 장소", "경상남도 진주시 북마크로 4");
+
+        mockMvc.perform(get("/users/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(0))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
     void uploadPlaceStoresImageUrl() throws Exception {
         String accessToken = signupAndLogin("placeUploader01");
         String coordinateToken = createCoordinateToken(accessToken, "27414316", 35.1801, 128.1078);

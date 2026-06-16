@@ -2,6 +2,7 @@ package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.moderation.api.dto.ban.BanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -99,6 +100,85 @@ public class AdminUserController {
     ) {
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
         return adminUserService.listBannedUsers(normalizedPageable);
+    }
+
+    @GetMapping("/users/banned/{userId}")
+    @Operation(
+            summary = "밴 유저 상세 조회",
+            description = "관리자가 특정 밴 유저의 상세 정보를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "밴 유저 상세 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminBannedUserDetailResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "userId": 7,
+                                              "username": "blockedUser01",
+                                              "email": "blockedUser01@example.com",
+                                              "birthYear": 1998,
+                                              "language": "ko",
+                                              "country": "KR",
+                                              "role": "USER",
+                                              "banned": true,
+                                              "bannedAt": "2026-06-07T13:30:00",
+                                              "banReason": "반복적인 신고 누적",
+                                              "createdAt": "2026-06-01T10:00:00"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "관리자 권한 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "관리자 권한이 필요합니다.",
+                                              "code": "ACCESS_DENIED"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "밴 유저를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public AdminBannedUserDetailResponse getBannedUser(
+            @Parameter(description = "조회할 밴 유저 ID", example = "7") @PathVariable Long userId
+    ) {
+        return adminUserService.getBannedUser(userId);
     }
 
     @PostMapping("/ban/{userId}")

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.application.service;
 
+import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
@@ -14,6 +15,9 @@ public interface AuthService {
     public LoginResponse login(LoginRequest request);
 
     public LoginResponse adminLogin(LoginRequest request);
+
+    // 이메일 인증 메일 재발송 처리 메서드
+    public void resendVerificationEmail(EmailResendRequest request);
 
     // 이메일 인증 처리 메서드
     public void verifyEmail(EmailVerifyRequest request);
