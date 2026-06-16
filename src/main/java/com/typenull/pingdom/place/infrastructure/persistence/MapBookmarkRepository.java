@@ -48,4 +48,10 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
             WHERE b.placeId IN :placeIds
             """)
     List<PlaceBookmarkUserProjection> findBookmarkUsersByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
+
+    @Query("""
+            SELECT COUNT(DISTINCT b.userId)
+            FROM MapBookmark b
+            """)
+    long countDistinctUserId();
 }
