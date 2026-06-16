@@ -4,10 +4,13 @@ import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.ArrayList;
-import java.util.HashMap;
+import java.util.Comparator;
 import java.util.HashSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
@@ -24,8 +27,8 @@ import org.springframework.transaction.annotation.Transactional;
 public class PlaceSimilaritySnapshotResyncService {
 
     private static final double MAX_SIMILARITY_RADIUS_KM = 20.0d;
-    private static final int CANDIDATE_POOL_LIMIT = 300;
     private static final int RESYNC_BATCH_SIZE = 500;
+    private static final Clock RESYNC_CLOCK = Clock.systemUTC();
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
@@ -47,8 +50,14 @@ public class PlaceSimilaritySnapshotResyncService {
             placeIndex.put(place.getId(), place);
         }
 
+        long totalBookmarkUserCount = placeRecommendationSimilarityService.cachedTotalBookmarkUserCount();
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext =
-                placeRecommendationSimilarityService.buildContext(placeIndex.keySet(), placeIndex, false);
+                placeRecommendationSimilarityService.buildContext(
+                        placeIndex.keySet(),
+                        placeIndex,
+                        false,
+                        totalBookmarkUserCount
+                );
         Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair =
                 new HashMap<>();
         for (PlaceSimilaritySnapshot snapshot : placeSimilaritySnapshotRepository.findByPlaceIdsWithin(placeIndex.keySet())) {
@@ -61,13 +70,22 @@ public class PlaceSimilaritySnapshotResyncService {
             );
         }
 
-        LocalDateTime syncedAt = LocalDateTime.now();
-        Set<PlaceRecommendationSimilarityService.PlacePairKey> synchronizedPairKeys = new HashSet<>();
-        List<PlaceSimilaritySnapshot> snapshotsToSave = new ArrayList<>();
+        LocalDateTime syncedAt = LocalDateTime.ofInstant(RESYNC_CLOCK.instant(), ZoneOffset.UTC);
+        long synchronizedSnapshotCount = 0L;
+        List<PlaceSimilaritySnapshot> snapshotBatch = new ArrayList<>(RESYNC_BATCH_SIZE);
+        List<MapPlace> sortedPlaces = places.stream()
+                .sorted(Comparator.comparingDouble(MapPlace::getLatitude))
+                .toList();
+        double latitudeDelta = toLatitudeDelta(MAX_SIMILARITY_RADIUS_KM);
 
-        for (MapPlace basePlace : places) {
-            for (MapPlace nearbyPlace : loadNearbyPlaces(basePlace)) {
-                if (nearbyPlace.getId() <= basePlace.getId()) {
+        for (int baseIndex = 0; baseIndex < sortedPlaces.size(); baseIndex++) {
+            MapPlace basePlace = sortedPlaces.get(baseIndex);
+            for (int candidateIndex = baseIndex + 1; candidateIndex < sortedPlaces.size(); candidateIndex++) {
+                MapPlace nearbyPlace = sortedPlaces.get(candidateIndex);
+                if ((nearbyPlace.getLatitude() - basePlace.getLatitude()) > latitudeDelta) {
+                    break;
+                }
+                if (!isWithinSimilarityRadius(basePlace, nearbyPlace)) {
                     continue;
                 }
 
@@ -75,7 +93,7 @@ public class PlaceSimilaritySnapshotResyncService {
                         PlaceRecommendationSimilarityService.PlacePairKey.of(basePlace.getId(), nearbyPlace.getId());
                 PlaceRecommendationSimilarityService.SimilarityScore similarityScore =
                         placeRecommendationSimilarityService.score(basePlace.getId(), nearbyPlace.getId(), similarityContext);
-                PlaceSimilaritySnapshot snapshot = existingSnapshotByPair.get(pairKey);
+                PlaceSimilaritySnapshot snapshot = existingSnapshotByPair.remove(pairKey);
                 if (snapshot == null) {
                     snapshot = PlaceSimilaritySnapshot.builder()
                             .leftPlaceId(pairKey.leftPlaceId())
@@ -92,23 +110,34 @@ public class PlaceSimilaritySnapshotResyncService {
                         similarityScore.totalSimilarity(),
                         syncedAt
                 );
-                snapshotsToSave.add(snapshot);
-                synchronizedPairKeys.add(pairKey);
+                snapshotBatch.add(snapshot);
+                synchronizedSnapshotCount++;
+
+                if (snapshotBatch.size() >= RESYNC_BATCH_SIZE) {
+                    placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
+                    snapshotBatch.clear();
+                }
             }
         }
 
-        if (!snapshotsToSave.isEmpty()) {
-            placeSimilaritySnapshotRepository.saveAll(snapshotsToSave);
+        if (!snapshotBatch.isEmpty()) {
+            placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
         }
 
-        long deletedSnapshotCount = deleteOrphanSnapshots(synchronizedPairKeys);
-        return new SimilaritySnapshotResyncResult(synchronizedPairKeys.size(), deletedSnapshotCount);
+        long deletedSnapshotCount = deleteOrphanSnapshots(existingSnapshotByPair, placeIndex.keySet());
+        return new SimilaritySnapshotResyncResult(synchronizedSnapshotCount, deletedSnapshotCount);
     }
 
-    private long deleteOrphanSnapshots(Set<PlaceRecommendationSimilarityService.PlacePairKey> synchronizedPairKeys) {
-        int pageNumber = 0;
-        List<Long> orphanSnapshotIds = new ArrayList<>();
+    private long deleteOrphanSnapshots(
+            Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> orphanSnapshotsByPair,
+            Set<Long> activePlaceIds
+    ) {
+        Set<Long> orphanSnapshotIds = new HashSet<>();
+        orphanSnapshotsByPair.values().stream()
+                .map(PlaceSimilaritySnapshot::getId)
+                .forEach(orphanSnapshotIds::add);
 
+        int pageNumber = 0;
         while (true) {
             Page<PlaceSimilaritySnapshot> snapshotPage = placeSimilaritySnapshotRepository.findAll(
                     PageRequest.of(pageNumber, RESYNC_BATCH_SIZE, Sort.by(Sort.Order.asc("id")))
@@ -117,15 +146,11 @@ public class PlaceSimilaritySnapshotResyncService {
                 break;
             }
 
-            orphanSnapshotIds.addAll(snapshotPage.getContent().stream()
-                    .filter(snapshot -> !synchronizedPairKeys.contains(
-                            PlaceRecommendationSimilarityService.PlacePairKey.of(
-                                    snapshot.getLeftPlaceId(),
-                                    snapshot.getRightPlaceId()
-                            )
-                    ))
+            snapshotPage.getContent().stream()
+                    .filter(snapshot -> !activePlaceIds.contains(snapshot.getLeftPlaceId())
+                            || !activePlaceIds.contains(snapshot.getRightPlaceId()))
                     .map(PlaceSimilaritySnapshot::getId)
-                    .toList());
+                    .forEach(orphanSnapshotIds::add);
 
             if (!snapshotPage.hasNext()) {
                 break;
@@ -133,86 +158,20 @@ public class PlaceSimilaritySnapshotResyncService {
             pageNumber++;
         }
 
-        if (!orphanSnapshotIds.isEmpty()) {
-            placeSimilaritySnapshotRepository.deleteAllByIdInBatch(orphanSnapshotIds);
-        }
-        return orphanSnapshotIds.size();
-    }
-
-    private List<MapPlace> loadNearbyPlaces(MapPlace basePlace) {
-        double latitudeDelta = toLatitudeDelta(MAX_SIMILARITY_RADIUS_KM);
-        double longitudeDelta = toLongitudeDelta(basePlace.getLatitude(), MAX_SIMILARITY_RADIUS_KM);
-
-        double minLatitude = Math.max(-90d, basePlace.getLatitude() - latitudeDelta);
-        double maxLatitude = Math.min(90d, basePlace.getLatitude() + latitudeDelta);
-        Pageable pageable = PageRequest.of(0, CANDIDATE_POOL_LIMIT);
-
-        if (Double.isInfinite(longitudeDelta)) {
-            return mapPlaceRepository.findRecommendationCandidatesInLatitudeBand(
-                    basePlace.getLatitude(),
-                    basePlace.getLongitude(),
-                    minLatitude,
-                    maxLatitude,
-                    pageable
-            ).stream()
-                    .filter(candidate -> isWithinSimilarityRadius(basePlace, candidate))
-                    .toList();
+        if (orphanSnapshotIds.isEmpty()) {
+            return 0L;
         }
 
-        double minLongitude = basePlace.getLongitude() - longitudeDelta;
-        double maxLongitude = basePlace.getLongitude() + longitudeDelta;
-
-        if (minLongitude < -180d) {
-            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
-                    basePlace.getLatitude(),
-                    basePlace.getLongitude(),
-                    minLatitude,
-                    maxLatitude,
-                    minLongitude + 360d,
-                    maxLongitude,
-                    pageable
-            ).stream()
-                    .filter(candidate -> isWithinSimilarityRadius(basePlace, candidate))
-                    .toList();
+        List<Long> orphanSnapshotIdList = new ArrayList<>(orphanSnapshotIds);
+        for (int start = 0; start < orphanSnapshotIdList.size(); start += RESYNC_BATCH_SIZE) {
+            int end = Math.min(start + RESYNC_BATCH_SIZE, orphanSnapshotIdList.size());
+            placeSimilaritySnapshotRepository.deleteAllByIdInBatch(orphanSnapshotIdList.subList(start, end));
         }
-
-        if (maxLongitude > 180d) {
-            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
-                    basePlace.getLatitude(),
-                    basePlace.getLongitude(),
-                    minLatitude,
-                    maxLatitude,
-                    minLongitude,
-                    maxLongitude - 360d,
-                    pageable
-            ).stream()
-                    .filter(candidate -> isWithinSimilarityRadius(basePlace, candidate))
-                    .toList();
-        }
-
-        return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
-                basePlace.getLatitude(),
-                basePlace.getLongitude(),
-                minLatitude,
-                maxLatitude,
-                minLongitude,
-                maxLongitude,
-                pageable
-        ).stream()
-                .filter(candidate -> isWithinSimilarityRadius(basePlace, candidate))
-                .toList();
+        return orphanSnapshotIdList.size();
     }
 
     private double toLatitudeDelta(double radiusKm) {
         return radiusKm / 111.32d;
-    }
-
-    private double toLongitudeDelta(double latitude, double radiusKm) {
-        double cosine = Math.cos(Math.toRadians(latitude));
-        if (Math.abs(cosine) < 1e-6) {
-            return Double.POSITIVE_INFINITY;
-        }
-        return radiusKm / (111.32d * cosine);
     }
 
     private boolean isWithinSimilarityRadius(MapPlace basePlace, MapPlace candidatePlace) {

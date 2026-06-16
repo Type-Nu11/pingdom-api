@@ -9,6 +9,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendation
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
 import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Collection;
@@ -29,6 +30,7 @@ public class PlaceRecommendationSimilarityService {
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
     private static final double GEO_SIMILARITY_DECAY_METERS = 2_500d;
     private static final double TREND_FRESHNESS_DECAY_DAYS = 14d;
+    private static final Duration BOOKMARK_USER_COUNT_CACHE_TTL = Duration.ofHours(1);
     private static final Clock SIMILARITY_CLOCK = Clock.systemUTC();
 
     private final MapBookmarkRepository mapBookmarkRepository;
@@ -36,14 +38,27 @@ public class PlaceRecommendationSimilarityService {
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
 
+    private final Object bookmarkUserCountLock = new Object();
+    private volatile long cachedTotalBookmarkUserCount;
+    private volatile Instant cachedBookmarkUserCountLoadedAt;
+
     public SimilarityContext buildContext(Collection<Long> placeIds, Map<Long, MapPlace> placeIndex) {
-        return buildContext(placeIds, placeIndex, true);
+        return buildContext(placeIds, placeIndex, true, null);
     }
 
     public SimilarityContext buildContext(
             Collection<Long> placeIds,
             Map<Long, MapPlace> placeIndex,
             boolean loadSimilaritySnapshots
+    ) {
+        return buildContext(placeIds, placeIndex, loadSimilaritySnapshots, null);
+    }
+
+    public SimilarityContext buildContext(
+            Collection<Long> placeIds,
+            Map<Long, MapPlace> placeIndex,
+            boolean loadSimilaritySnapshots,
+            Long totalBookmarkUserCount
     ) {
         Map<Long, Set<Long>> bookmarkUsersByPlace = new HashMap<>();
         Map<Long, Set<Long>> likeUsersByPlace = new HashMap<>();
@@ -101,8 +116,38 @@ public class PlaceRecommendationSimilarityService {
                 likeUsersByPlace,
                 trendProfilesByPlace,
                 snapshotScoresByPair,
-                mapBookmarkRepository.countDistinctUserId()
+                resolveTotalBookmarkUserCount(placeIds, totalBookmarkUserCount)
         );
+    }
+
+    private long resolveTotalBookmarkUserCount(Collection<Long> placeIds, Long precomputedTotalBookmarkUserCount) {
+        if (placeIds.isEmpty()) {
+            return 0L;
+        }
+        if (precomputedTotalBookmarkUserCount != null) {
+            return precomputedTotalBookmarkUserCount;
+        }
+        return cachedTotalBookmarkUserCount();
+    }
+
+    long cachedTotalBookmarkUserCount() {
+        Instant now = SIMILARITY_CLOCK.instant();
+        Instant loadedAt = cachedBookmarkUserCountLoadedAt;
+        if (loadedAt != null && !loadedAt.plus(BOOKMARK_USER_COUNT_CACHE_TTL).isBefore(now)) {
+            return cachedTotalBookmarkUserCount;
+        }
+
+        synchronized (bookmarkUserCountLock) {
+            loadedAt = cachedBookmarkUserCountLoadedAt;
+            if (loadedAt != null && !loadedAt.plus(BOOKMARK_USER_COUNT_CACHE_TTL).isBefore(now)) {
+                return cachedTotalBookmarkUserCount;
+            }
+
+            long refreshedCount = mapBookmarkRepository.countDistinctUserId();
+            cachedTotalBookmarkUserCount = refreshedCount;
+            cachedBookmarkUserCountLoadedAt = now;
+            return refreshedCount;
+        }
     }
 
     public double similarity(Long leftPlaceId, Long rightPlaceId, SimilarityContext context) {
