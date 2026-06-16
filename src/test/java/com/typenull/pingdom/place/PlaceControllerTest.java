@@ -219,6 +219,7 @@ class PlaceControllerTest {
                                 "kakaoPlaceId", "27414316",
                                 "name", "이미지 포함 장소",
                                 "address", "경상남도 진주시 이미지로 1",
+                                "category", "카페",
                                 "imageUrl", "https://example.com/images/place-upload.jpg",
                                 "coordinateToken", coordinateToken
                         ))))
@@ -227,6 +228,7 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.address").value("경상남도 진주시 이미지로 1"));
 
         MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414316").orElseThrow();
+        assertEquals("카페", saved.getCategory());
         assertEquals("https://example.com/images/place-upload.jpg", saved.getImageUrl());
     }
 
@@ -242,6 +244,7 @@ class PlaceControllerTest {
                                 "kakaoPlaceId", "27414317",
                                 "name", "이미지 없는 장소",
                                 "address", "경상남도 진주시 이미지로 2",
+                                "category", "식당",
                                 "imageUrl", "   ",
                                 "coordinateToken", coordinateToken
                         ))))
@@ -250,7 +253,28 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.address").value("경상남도 진주시 이미지로 2"));
 
         MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414317").orElseThrow();
+        assertEquals("식당", saved.getCategory());
         assertNull(saved.getImageUrl());
+    }
+
+    @Test
+    void uploadPlaceReturnsBadRequestWhenCategoryIsBlank() throws Exception {
+        String accessToken = signupAndLogin("placeUploader03");
+        String coordinateToken = createCoordinateToken(accessToken, "27414318", 35.1803, 128.1080);
+
+        mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "kakaoPlaceId", "27414318",
+                                "name", "카테고리 없는 장소",
+                                "address", "경상남도 진주시 이미지로 3",
+                                "category", "   ",
+                                "imageUrl", "https://example.com/images/place-upload-blank-category.jpg",
+                                "coordinateToken", coordinateToken
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.category").value("카테고리는 필수입니다."));
     }
 
     @Test

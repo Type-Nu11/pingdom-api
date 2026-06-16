@@ -48,6 +48,7 @@ public class MapPlaceService {
             String kakaoPlaceId,
             String name,
             String address,
+            String category,
             String imageUrl,
             String coordinateToken,
             long userId
@@ -75,6 +76,7 @@ public class MapPlaceService {
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
+                .category(trimToNull(category))
                 .imageUrl(trimToNull(imageUrl))
                 .latitude(entry.latitude())
                 .longitude(entry.longitude())
