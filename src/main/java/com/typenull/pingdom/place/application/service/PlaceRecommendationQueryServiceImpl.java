@@ -53,6 +53,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final int GEO_CANDIDATE_LIMIT = 180;
     private static final int PERSONAL_CANDIDATE_LIMIT = 120;
     private static final int TREND_CANDIDATE_LIMIT = 80;
+    private static final long TREND_LOOKBACK_DAYS = 7L;
     private static final int PERSONAL_EXPANSION_PER_SEED_LIMIT = 30;
     private static final int PERSONAL_EXPANSION_SEED_LIMIT = 5;
     private static final double PERSONAL_EXPANSION_RADIUS_KM = 10.0d;
@@ -285,7 +286,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private List<MapPlace> loadTrendCandidates() {
-        Page<PlaceRecommendationSnapshot> snapshotPage = placeRecommendationSnapshotRepository.findAll(
+        LocalDateTime trendUpdatedAfter = LocalDateTime.now(RECOMMENDATION_CLOCK).minusDays(TREND_LOOKBACK_DAYS);
+        Page<PlaceRecommendationSnapshot> snapshotPage = placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(
+                trendUpdatedAfter,
                 PageRequest.of(
                         0,
                         TREND_CANDIDATE_LIMIT,
