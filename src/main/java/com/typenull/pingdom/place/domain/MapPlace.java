@@ -34,6 +34,9 @@ public class MapPlace {
     @Column(name = "address", length = 255, nullable = false)
     private String address;
 
+    @Column(name = "category", length = 50)
+    private String category;
+
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
