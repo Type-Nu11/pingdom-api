@@ -54,6 +54,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final int PERSONAL_CANDIDATE_LIMIT = 120;
     private static final int TREND_CANDIDATE_LIMIT = 80;
     private static final int PERSONAL_EXPANSION_PER_SEED_LIMIT = 30;
+    private static final int PERSONAL_EXPANSION_SEED_LIMIT = 5;
     private static final double PERSONAL_EXPANSION_RADIUS_KM = 10.0d;
     private static final int MIN_SELECTION_POOL_SIZE = 40;
     private static final double MMR_RELEVANCE_WEIGHT = 0.75d;
@@ -256,7 +257,16 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
         for (MapPlace seedPlace : seedPlaces) {
             personalCandidates.putIfAbsent(seedPlace.getId(), seedPlace);
+        }
 
+        List<MapPlace> expansionSeeds = seedPlaces.stream()
+                .sorted(Comparator.comparingDouble(
+                        (MapPlace place) -> signalContext.seedWeights().getOrDefault(place.getId(), 0.0d)
+                ).reversed())
+                .limit(PERSONAL_EXPANSION_SEED_LIMIT)
+                .toList();
+
+        for (MapPlace seedPlace : expansionSeeds) {
             for (MapPlace nearbyPlace : loadNearbyCandidates(
                     seedPlace.getLatitude(),
                     seedPlace.getLongitude(),
