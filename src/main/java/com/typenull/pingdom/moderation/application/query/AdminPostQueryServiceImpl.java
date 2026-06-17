@@ -30,10 +30,13 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPostResponse listPosts(int limit, int page, SortParam sortParam) {
+    public AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword) {
+        int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        int targetPage = Math.max(page - 1, 0);
+        int targetPage = safePage - 1;
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        Long numericKeyword = parseLongKeyword(safeKeyword);
 
         Sort sort = switch (safeSortParam) {
             case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
@@ -41,9 +44,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
-        Page<MapImage> mapImagePage = mapImageRepository.findAllBy(
-                PageRequest.of(targetPage, safeLimit, sort)
-        );
+        PageRequest pageable = PageRequest.of(targetPage, safeLimit, sort);
+        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, pageable);
 
         Map<Long, List<AdminPostReportItem>> reportsByImageId = getReportsByImageId(mapImagePage.getContent());
 
@@ -54,7 +56,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
         return AdminPostResponse.of(
                 posts,
-                page,
+                safePage,
                 safeLimit,
                 mapImagePage.getTotalElements(),
                 mapImagePage.getTotalPages()
@@ -111,5 +113,28 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 postReport.getStatus(),
                 postReport.getProcessedAt()
         );
+    }
+
+    private Long parseLongKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private Page<MapImage> loadAdminPostPage(String keyword, Long numericKeyword, PageRequest pageable) {
+        if (keyword.isBlank()) {
+            return mapImageRepository.findAllBy(pageable);
+        }
+
+        if (numericKeyword != null) {
+            return mapImageRepository.searchAdminPostsByNumericKeyword(numericKeyword, pageable);
+        }
+
+        return mapImageRepository.searchAdminPostsByTextKeyword(keyword, pageable);
     }
 }

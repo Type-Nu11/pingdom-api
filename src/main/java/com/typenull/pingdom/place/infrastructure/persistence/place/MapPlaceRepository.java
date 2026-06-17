@@ -112,6 +112,20 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     @Query("SELECT m FROM MapPlace m WHERE (:keyword IS NULL OR :keyword = '' OR m.name LIKE %:keyword%)")
     Page<MapPlace> findByNameContaining(@Param("keyword") String keyword, org.springframework.data.domain.Pageable pageable);
 
+    @Query("""
+            SELECT m
+            FROM MapPlace m
+            WHERE (:keyword IS NULL OR :keyword = ''
+                   OR m.name LIKE CONCAT('%', :keyword, '%')
+                   OR m.address LIKE CONCAT('%', :keyword, '%')
+                   OR (:numericKeyword IS NOT NULL AND m.userId = :numericKeyword))
+            """)
+    Page<MapPlace> searchAdminPlaces(
+            @Param("keyword") String keyword,
+            @Param("numericKeyword") Long numericKeyword,
+            Pageable pageable
+    );
+
     @Query(
             value = """
                     SELECT p

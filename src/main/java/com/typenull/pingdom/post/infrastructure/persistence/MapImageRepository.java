@@ -46,6 +46,33 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     Page<MapImage> findAllBy(Pageable pageable);
 
     @EntityGraph(attributePaths = "mapPlace")
+    @Query("""
+            SELECT m
+            FROM MapImage m
+            WHERE m.id = :numericKeyword
+               OR m.userId = :numericKeyword
+            """)
+    Page<MapImage> searchAdminPostsByNumericKeyword(
+            @Param("numericKeyword") Long numericKeyword,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "mapPlace")
+    @Query("""
+            SELECT m
+            FROM MapImage m
+            LEFT JOIN m.mapPlace p
+            WHERE m.title LIKE CONCAT('%', :keyword, '%')
+               OR m.username LIKE CONCAT('%', :keyword, '%')
+               OR m.description LIKE CONCAT('%', :keyword, '%')
+               OR p.name LIKE CONCAT('%', :keyword, '%')
+            """)
+    Page<MapImage> searchAdminPostsByTextKeyword(
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "mapPlace")
     Optional<MapImage> findWithMapPlaceById(Long id);
 
     long countByMapPlace_Id(Long placeId);
