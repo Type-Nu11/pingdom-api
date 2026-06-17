@@ -286,11 +286,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         List<MapPlace> seedPlaces = mapPlaceRepository.findAllById(signalContext.interactedPlaceIds());
 
         for (MapPlace seedPlace : seedPlaces) {
-            personalCandidates.putIfAbsent(seedPlace.getId(), seedPlace);
+            if (hasCoordinates(seedPlace)) {
+                personalCandidates.putIfAbsent(seedPlace.getId(), seedPlace);
+            }
         }
 
         List<MapPlace> expansionSeeds = seedPlaces.stream()
-                .filter(place -> place.getLatitude() != null && place.getLongitude() != null)
+                .filter(this::hasCoordinates)
                 .sorted(Comparator.comparingDouble(
                         (MapPlace place) -> signalContext.seedWeights().getOrDefault(place.getId(), 0.0d)
                 ).reversed())
@@ -364,6 +366,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     ) {
         int addedCount = 0;
         for (MapPlace candidate : candidates) {
+            if (!hasCoordinates(candidate)) {
+                continue;
+            }
+
             CandidatePlaceAccumulator accumulator = mergedCandidates.get(candidate.getId());
             if (accumulator == null) {
                 if (addedCount >= sourceLimit || mergedCandidates.size() >= CANDIDATE_POOL_LIMIT) {
@@ -375,6 +381,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             }
             accumulator.addSource(source);
         }
+    }
+
+    private boolean hasCoordinates(MapPlace place) {
+        return place.getLatitude() != null && place.getLongitude() != null;
     }
 
     private List<MapPlace> loadNearbyCandidates(
