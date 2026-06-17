@@ -23,7 +23,7 @@ public class PlaceRecommendationClickService {
     private final MapPlaceRepository mapPlaceRepository;
 
     @Transactional
-    public void recordClick(Long userId, Long placeId, String recommendationVersion) {
+    public void recordClick(Long userId, Long placeId, String recommendationVersion, String requestId) {
         if (!mapPlaceRepository.existsById(placeId)) {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
@@ -32,6 +32,7 @@ public class PlaceRecommendationClickService {
                 .placeId(placeId)
                 .userId(userId)
                 .recommendationVersion(recommendationVersion)
+                .requestId(requestId)
                 .build());
 
         placeRecommendationSnapshotService.increaseClickCounts(java.util.List.of(placeId));
