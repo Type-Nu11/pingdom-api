@@ -44,11 +44,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
-        Page<MapImage> mapImagePage = mapImageRepository.searchAdminPosts(
-                safeKeyword,
-                numericKeyword,
-                PageRequest.of(targetPage, safeLimit, sort)
-        );
+        PageRequest pageable = PageRequest.of(targetPage, safeLimit, sort);
+        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, pageable);
 
         Map<Long, List<AdminPostReportItem>> reportsByImageId = getReportsByImageId(mapImagePage.getContent());
 
@@ -127,5 +124,17 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         } catch (NumberFormatException exception) {
             return null;
         }
+    }
+
+    private Page<MapImage> loadAdminPostPage(String keyword, Long numericKeyword, PageRequest pageable) {
+        if (keyword.isBlank()) {
+            return mapImageRepository.findAllBy(pageable);
+        }
+
+        if (numericKeyword != null) {
+            return mapImageRepository.searchAdminPostsByNumericKeyword(numericKeyword, pageable);
+        }
+
+        return mapImageRepository.searchAdminPostsByTextKeyword(keyword, pageable);
     }
 }
