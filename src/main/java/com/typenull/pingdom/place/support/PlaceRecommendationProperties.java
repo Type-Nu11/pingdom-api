@@ -5,6 +5,8 @@ import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
@@ -19,6 +21,7 @@ public record PlaceRecommendationProperties(
 ) {
 
     public record VersionPolicy(
+            @NotBlank(message = "version은 필수입니다.")
             String version,
 
             RecommendationStage stage,
@@ -37,12 +40,15 @@ public record PlaceRecommendationProperties(
             double mmrRelevanceWeight,
 
             @Valid
+            @NotNull(message = "mix는 필수입니다.")
             CandidateMix mix,
 
             @Valid
+            @NotNull(message = "personalizedWeights는 필수입니다.")
             RankingWeights personalizedWeights,
 
             @Valid
+            @NotNull(message = "anonymousWeights는 필수입니다.")
             RankingWeights anonymousWeights
     ) {
     }

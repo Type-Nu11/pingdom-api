@@ -58,6 +58,7 @@ public class PlaceRecommendationPolicyService {
             if (requestedPolicy != null) {
                 return ResolvedRecommendationPolicy.from(requestedPolicy);
             }
+            return ResolvedRecommendationPolicy.from(policiesByVersion.get(resolvedDefaultVersion));
         }
 
         int bucket = resolveBucket(userId, latitude, longitude);

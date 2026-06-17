@@ -13,11 +13,11 @@ public interface PlaceRecommendationSnapshotRepository extends JpaRepository<Pla
             SELECT COALESCE(SUM(s.clickCount), 0)
             FROM PlaceRecommendationSnapshot s
             """)
-    long sumClickCount();
+    Long sumClickCount();
 
     @Query("""
             SELECT COALESCE(SUM(s.exposureCount), 0)
             FROM PlaceRecommendationSnapshot s
             """)
-    long sumExposureCount();
+    Long sumExposureCount();
 }

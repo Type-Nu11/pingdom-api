@@ -487,7 +487,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private long resolveTotalClickCount() {
-        long snapshotClickCount = placeRecommendationSnapshotRepository.sumClickCount();
+        long snapshotClickCount = nullSafeCount(placeRecommendationSnapshotRepository.sumClickCount());
         if (snapshotClickCount > 0L) {
             return snapshotClickCount;
         }
@@ -495,11 +495,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private long resolveTotalExposureCount() {
-        long snapshotExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
+        long snapshotExposureCount = nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount());
         if (snapshotExposureCount > 0L) {
             return snapshotExposureCount;
         }
         return placeRecommendationExposureService.countAllExposures();
+    }
+
+    private long nullSafeCount(Long value) {
+        return value == null ? 0L : value;
     }
 
     private double calculateGlobalConversionRate(
