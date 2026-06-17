@@ -10,6 +10,7 @@ public enum MapErrorCode {
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
     ALREADY_REPORTED_IMAGE(HttpStatus.CONFLICT, "같은 게시글은 한 번만 신고할 수 있습니다."),
     OTHERS_NOT_DELETED(HttpStatus.FORBIDDEN,"자신의 게시글만 삭제할 수 있습니다."),
+    OTHERS_NOT_UPDATE(HttpStatus.FORBIDDEN,"자신의 게시글만 수정할 수 있습니다."),
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."),
     PLACE_COORDINATE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "좌표 토큰이 유효하지 않습니다."),
     PLACE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 장소입니다."),

@@ -1,5 +1,7 @@
 package com.typenull.pingdom.post.api;
 
+import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
+import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
@@ -245,6 +247,16 @@ public class PostController {
     ) {
         Long userId = user.userId();
         return ResponseEntity.ok(s3Service.uploadImage(request, userId));
+    }
+
+    @PostMapping("/post/{id}/update")
+    public ResponseEntity<PostUpdateResponse> updatePost(
+            @Valid PostUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
+    ){
+        Long userId = user.userId();
+        return ResponseEntity.ok(s3Service.updateImage(request, userId, imageId));
     }
 
     @DeleteMapping("/post/{id}/delete")

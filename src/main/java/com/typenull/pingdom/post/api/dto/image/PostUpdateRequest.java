@@ -10,10 +10,6 @@ import org.springframework.util.StringUtils;
 
 @Schema(description = "게시글 업로드 요청 정보")
 public record PostUpdateRequest(
-        @NotBlank(message = "이미지 게시글 아이디는은 필수입니다.")
-        @Schema(description = "수정할 게시글 아이디", example = "1")
-        Long imageId,
-
         @NotBlank(message = "제목은 필수입니다.")
         @Size(max = 100, message = "제목은 100자 이하여야 합니다.")
         @Schema(description = "게시글 제목", example = "진주성 야경")
@@ -25,6 +21,10 @@ public record PostUpdateRequest(
 
         @Schema(description = "연결할 장소 ID(레거시)", example = "17")
         Long placeId,
+
+        String imageURl,
+
+        String s3Key,
 
         @NotNull(message = "파일은 필수입니다.")
         @Schema(description = "수정할 게시글 첨부 파일", type = "string", format = "binary")

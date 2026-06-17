@@ -48,8 +48,10 @@ public class MapImage {
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
 
-    public void update(String title, String description){
+    public void update(String title, String description, String imageUrl, String s3Key) {
         this.title = title;
         this.description = description;
+        this.imageUrl = imageUrl;
+        this.s3Key = s3Key;
     }
 }
