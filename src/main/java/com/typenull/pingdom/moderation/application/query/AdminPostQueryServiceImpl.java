@@ -30,7 +30,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPostResponse listPosts(int limit, int page, SortParam sortParam, String keyword) {
+    public AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         int targetPage = safePage - 1;
