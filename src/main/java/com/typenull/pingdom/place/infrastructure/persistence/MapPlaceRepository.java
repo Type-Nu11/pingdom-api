@@ -99,10 +99,11 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             WHERE (:keyword IS NULL OR :keyword = ''
                    OR m.name LIKE CONCAT('%', :keyword, '%')
                    OR m.address LIKE CONCAT('%', :keyword, '%')
-                   OR STR(m.userId) LIKE CONCAT('%', :keyword, '%'))
+                   OR (:numericKeyword IS NOT NULL AND m.userId = :numericKeyword))
             """)
     Page<MapPlace> searchAdminPlaces(
             @Param("keyword") String keyword,
+            @Param("numericKeyword") Long numericKeyword,
             Pageable pageable
     );
 

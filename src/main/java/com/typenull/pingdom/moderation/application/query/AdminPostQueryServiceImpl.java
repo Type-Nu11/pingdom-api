@@ -35,6 +35,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         int targetPage = Math.max(page - 1, 0);
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
         String safeKeyword = keyword == null ? "" : keyword.trim();
+        Long numericKeyword = parseLongKeyword(safeKeyword);
 
         Sort sort = switch (safeSortParam) {
             case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
@@ -44,6 +45,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
         Page<MapImage> mapImagePage = mapImageRepository.searchAdminPosts(
                 safeKeyword,
+                numericKeyword,
                 PageRequest.of(targetPage, safeLimit, sort)
         );
 
@@ -113,5 +115,16 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 postReport.getStatus(),
                 postReport.getProcessedAt()
         );
+    }
+
+    private Long parseLongKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 }

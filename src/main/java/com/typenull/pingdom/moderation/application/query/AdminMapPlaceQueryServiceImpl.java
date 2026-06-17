@@ -62,9 +62,11 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         int safeLimit = Math.max(1, Math.min(limit, 100));
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
         String safeKeyword = keyword == null ? "" : keyword.trim();
+        Long numericKeyword = parseLongKeyword(safeKeyword);
 
         Page<MapPlace> placePage = mapPlaceRepository.searchAdminPlaces(
                 safeKeyword,
+                numericKeyword,
                 PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
         );
 
@@ -613,6 +615,17 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount()
         );
+    }
+
+    private Long parseLongKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private AdminPlaceRecommendationMetricItem toRecommendationMetricItem(

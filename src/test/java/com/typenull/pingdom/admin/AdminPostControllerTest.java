@@ -198,6 +198,38 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    @Test
+    void listPostsMatchesPostIdExactlyWhenKeywordIsNumeric() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("numericKeywordOwner");
+
+        MapImage firstPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-1.jpg")
+                .s3Key("post-1")
+                .title("첫 번째 게시글")
+                .description("숫자 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        MapImage secondPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-10.jpg")
+                .s3Key("post-10")
+                .title("두 번째 게시글")
+                .description("숫자 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", String.valueOf(firstPost.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(firstPost.getId()))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(secondPost.getId().intValue())));
+    }
+
     private User createUser(String username) {
         return userRepository.save(User.builder()
                 .username(username)

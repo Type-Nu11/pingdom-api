@@ -167,6 +167,37 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listPlacesMatchesRegistrantUserIdExactlyWhenKeywordIsNumeric() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace firstPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("정확 일치 장소")
+                .address("경상남도 진주시 테스트로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(7L)
+                .registrant("firstRegistrar")
+                .build());
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("부분 일치 장소")
+                .address("경상남도 진주시 테스트로 2")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(77L)
+                .registrant("secondRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(firstPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
     void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
         User placeOwner = userRepository.save(User.builder()
