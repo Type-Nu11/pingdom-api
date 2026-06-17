@@ -42,6 +42,7 @@ public class PlaceRecommendationExposureService {
             Long userId,
             double latitude,
             double longitude,
+            String requestId,
             List<Long> placeIds,
             String recommendationVersion
     ) {
@@ -60,6 +61,7 @@ public class PlaceRecommendationExposureService {
                     .requestLongitude(longitude)
                     .ranking(ranking++)
                     .recommendationVersion(recommendationVersion)
+                    .requestId(requestId)
                     .build());
         }
 

@@ -174,8 +174,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
         if (safeRecommendationVersion.isBlank()) {
             double globalCtr = calculateGlobalCtr(
-                    placeRecommendationSnapshotRepository.sumClickCount(),
-                    placeRecommendationSnapshotRepository.sumExposureCount()
+                    nullSafeCount(placeRecommendationSnapshotRepository.sumClickCount()),
+                    nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount())
             );
             Page<MapPlace> placePage = findSnapshotMetricPage(
                     keyword,
@@ -201,8 +201,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         }
 
         double globalCtr = calculateGlobalCtr(
-                placeRecommendationVersionSnapshotRepository.sumClickCountByRecommendationVersion(safeRecommendationVersion),
-                placeRecommendationVersionSnapshotRepository.sumExposureCountByRecommendationVersion(safeRecommendationVersion)
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumClickCountByRecommendationVersion(safeRecommendationVersion)
+                ),
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumExposureCountByRecommendationVersion(safeRecommendationVersion)
+                )
         );
         Page<MapPlace> placePage = findVersionSnapshotMetricPage(
                 keyword,
@@ -530,8 +536,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             RecommendationMetricSortBy sortBy
     ) {
         double globalCtr = calculateGlobalCtr(
-                placeRecommendationSnapshotRepository.sumClickCount(),
-                placeRecommendationSnapshotRepository.sumExposureCount()
+                nullSafeCount(placeRecommendationSnapshotRepository.sumClickCount()),
+                nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount())
         );
 
         return places.stream()
@@ -562,8 +568,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         }
 
         double globalCtr = calculateGlobalCtr(
-                placeRecommendationVersionSnapshotRepository.sumClickCountByRecommendationVersion(recommendationVersion),
-                placeRecommendationVersionSnapshotRepository.sumExposureCountByRecommendationVersion(recommendationVersion)
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumClickCountByRecommendationVersion(recommendationVersion)
+                ),
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumExposureCountByRecommendationVersion(recommendationVersion)
+                )
         );
 
         return places.stream()
@@ -586,6 +598,10 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             case LATEST -> Sort.by(Sort.Order.desc("id"));
             case MOST_LIKED -> throw new AdminException(AdminErrorCode.UNSUPPORTED_PLACE_SORT_PARAM);
         };
+    }
+
+    private long nullSafeCount(Long value) {
+        return value == null ? 0L : value;
     }
 
     private AdminMapPlaceItem toItem(MapPlace mapPlace) {
