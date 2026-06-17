@@ -1,6 +1,6 @@
 package com.typenull.pingdom.post.api.dto.post;
 
-import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 

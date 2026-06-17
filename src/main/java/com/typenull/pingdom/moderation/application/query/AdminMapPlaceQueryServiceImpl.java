@@ -12,17 +12,17 @@ import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
-import com.typenull.pingdom.place.application.service.PlaceGrowthService;
-import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
-import com.typenull.pingdom.place.domain.PlaceRecommendationVersionSnapshot;
-import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
-import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationVersionSnapshotRepository;
+import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationVersionSnapshot;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.LocalDateTime;
@@ -177,8 +177,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
         if (safeRecommendationVersion.isBlank()) {
             double globalCtr = calculateGlobalCtr(
-                    placeRecommendationSnapshotRepository.sumClickCount(),
-                    placeRecommendationSnapshotRepository.sumExposureCount()
+                    nullSafeCount(placeRecommendationSnapshotRepository.sumClickCount()),
+                    nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount())
             );
             Page<MapPlace> placePage = findSnapshotMetricPage(
                     keyword,
@@ -204,8 +204,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         }
 
         double globalCtr = calculateGlobalCtr(
-                placeRecommendationVersionSnapshotRepository.sumClickCountByRecommendationVersion(safeRecommendationVersion),
-                placeRecommendationVersionSnapshotRepository.sumExposureCountByRecommendationVersion(safeRecommendationVersion)
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumClickCountByRecommendationVersion(safeRecommendationVersion)
+                ),
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumExposureCountByRecommendationVersion(safeRecommendationVersion)
+                )
         );
         Page<MapPlace> placePage = findVersionSnapshotMetricPage(
                 keyword,
@@ -533,8 +539,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             RecommendationMetricSortBy sortBy
     ) {
         double globalCtr = calculateGlobalCtr(
-                placeRecommendationSnapshotRepository.sumClickCount(),
-                placeRecommendationSnapshotRepository.sumExposureCount()
+                nullSafeCount(placeRecommendationSnapshotRepository.sumClickCount()),
+                nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount())
         );
 
         return places.stream()
@@ -565,8 +571,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         }
 
         double globalCtr = calculateGlobalCtr(
-                placeRecommendationVersionSnapshotRepository.sumClickCountByRecommendationVersion(recommendationVersion),
-                placeRecommendationVersionSnapshotRepository.sumExposureCountByRecommendationVersion(recommendationVersion)
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumClickCountByRecommendationVersion(recommendationVersion)
+                ),
+                nullSafeCount(
+                        placeRecommendationVersionSnapshotRepository
+                                .sumExposureCountByRecommendationVersion(recommendationVersion)
+                )
         );
 
         return places.stream()
@@ -589,6 +601,10 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             case LATEST -> Sort.by(Sort.Order.desc("id"));
             case MOST_LIKED -> throw new AdminException(AdminErrorCode.UNSUPPORTED_PLACE_SORT_PARAM);
         };
+    }
+
+    private long nullSafeCount(Long value) {
+        return value == null ? 0L : value;
     }
 
     private AdminMapPlaceItem toItem(MapPlace mapPlace) {

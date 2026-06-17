@@ -3,7 +3,7 @@ package com.typenull.pingdom.post.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.place.MapPlace;
 
 import java.time.LocalDateTime;
 
@@ -47,4 +47,11 @@ public class MapImage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
+
+    public void update(String title, String description, String imageUrl, String s3Key) {
+        this.title = title;
+        this.description = description;
+        this.imageUrl = imageUrl;
+        this.s3Key = s3Key;
+    }
 }

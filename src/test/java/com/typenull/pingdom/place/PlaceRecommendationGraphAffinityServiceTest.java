@@ -1,7 +1,7 @@
 package com.typenull.pingdom.place;
 
-import com.typenull.pingdom.place.application.service.PlaceRecommendationGraphAffinityService;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationGraphAffinityService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
@@ -34,7 +34,14 @@ class PlaceRecommendationGraphAffinityServiceTest {
     @Test
     void scorePropagatesAffinityAcrossIntermediatePlace() {
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext =
-                new PlaceRecommendationSimilarityService.SimilarityContext(Map.of(), Map.of(), Map.of());
+                new PlaceRecommendationSimilarityService.SimilarityContext(
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        0L
+                );
 
         stubBidirectionalSimilarity(similarityContext, 100L, 200L, 0.80d);
         stubBidirectionalSimilarity(similarityContext, 200L, 300L, 0.85d);
@@ -55,7 +62,14 @@ class PlaceRecommendationGraphAffinityServiceTest {
     @Test
     void scoreReturnsZeroWhenSeedDoesNotExist() {
         PlaceRecommendationSimilarityService.SimilarityContext similarityContext =
-                new PlaceRecommendationSimilarityService.SimilarityContext(Map.of(), Map.of(), Map.of());
+                new PlaceRecommendationSimilarityService.SimilarityContext(
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        Map.of(),
+                        0L
+                );
 
         Map<Long, Double> scores = placeRecommendationGraphAffinityService.score(
                 List.of(200L, 300L),

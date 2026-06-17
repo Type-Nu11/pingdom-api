@@ -70,3 +70,62 @@ oauth2:
 
 fcm:
   key-path: src/main/resources/fcm-key.json
+
+place:
+  recommendation:
+    default-version: place-rec-v1
+    versions:
+      - version: place-rec-v1
+        stage: STABLE
+        traffic-percentage: 100
+        feature-logging-enabled: false
+        portfolio-size-multiplier: 4
+        mmr-relevance-weight: 0.75
+        mix:
+          personal-ratio: 0.35
+          popular-ratio: 0.25
+          fresh-ratio: 0.20
+          geo-ratio: 0.20
+        personalized-weights:
+          geo-weight: 0.33
+          personal-weight: 0.30
+          quality-weight: 0.13
+          engagement-weight: 0.07
+          conversion-weight: 0.07
+          freshness-weight: 0.08
+          exploration-weight: 0.06
+        anonymous-weights:
+          geo-weight: 0.48
+          personal-weight: 0.00
+          quality-weight: 0.16
+          engagement-weight: 0.10
+          conversion-weight: 0.08
+          freshness-weight: 0.12
+          exploration-weight: 0.09
+      - version: place-rec-v2
+        stage: EXPERIMENTAL
+        traffic-percentage: 0
+        feature-logging-enabled: true
+        portfolio-size-multiplier: 5
+        mmr-relevance-weight: 0.70
+        mix:
+          personal-ratio: 0.40
+          popular-ratio: 0.20
+          fresh-ratio: 0.25
+          geo-ratio: 0.15
+        personalized-weights:
+          geo-weight: 0.28
+          personal-weight: 0.32
+          quality-weight: 0.11
+          engagement-weight: 0.08
+          conversion-weight: 0.09
+          freshness-weight: 0.06
+          exploration-weight: 0.06
+        anonymous-weights:
+          geo-weight: 0.40
+          personal-weight: 0.00
+          quality-weight: 0.14
+          engagement-weight: 0.10
+          conversion-weight: 0.10
+          freshness-weight: 0.16
+          exploration-weight: 0.10

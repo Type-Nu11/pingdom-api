@@ -5,9 +5,9 @@ import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationClickService;
-import com.typenull.pingdom.place.application.service.PlaceQueryService;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationQueryService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
+import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -133,11 +133,20 @@ public class PlaceController {
             @DecimalMin(value = "1.0", message = "radiusKm는 1.0 이상이어야 합니다.")
             @DecimalMax(value = "20.0", message = "radiusKm는 20.0 이하여야 합니다.")
             @RequestParam(defaultValue = "5.0") double radiusKm,
+            @Parameter(description = "강제 추천 버전", example = "place-rec-v2")
+            @RequestParam(required = false) String recommendationVersion,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(
-                placeRecommendationQueryService.recommendPlaces(userId, latitude, longitude, limit, radiusKm)
+                placeRecommendationQueryService.recommendPlaces(
+                        userId,
+                        latitude,
+                        longitude,
+                        limit,
+                        radiusKm,
+                        recommendationVersion
+                )
         );
     }
 
@@ -198,7 +207,8 @@ public class PlaceController {
         placeRecommendationClickService.recordClick(
                 user.userId(),
                 request.placeId(),
-                request.recommendationVersion()
+                request.recommendationVersion(),
+                request.requestId()
         );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new PlaceRecommendationClickResponse(request.placeId(), "추천 장소 클릭을 기록했습니다."));
