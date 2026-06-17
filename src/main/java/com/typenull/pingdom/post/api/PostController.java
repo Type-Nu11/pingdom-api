@@ -233,7 +233,7 @@ public class PostController {
                             examples = @ExampleObject(
                                     value = """
                                             {
-                                              "message": "한 장소엔 하나의 포스트만 가능합니다..",
+                                              "message": "한 장소엔 하나의 포스트만 가능합니다.",
                                               "code": "ALREADY_POSTED"
                                             }
                                             """

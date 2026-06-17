@@ -15,12 +15,13 @@ import org.locationtech.jts.geom.Point;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(
-        name = "map_place",
-        uniqueConstraints = {
-                @UniqueConstraint(name = "uk_map_place_kakao_place_id", columnNames = "kakao_place_id")
-        }
-)
+//더미 데이터 떄문에 임시로 끄기, 정식으로 출시 할때 키기
+//@Table(
+//        name = "map_place",
+//        uniqueConstraints = {
+//                @UniqueConstraint(name = "uk_map_place_kakao_place_id", columnNames = "kakao_place_id")
+//        }
+//)
 public class MapPlace {
 
     @Id
