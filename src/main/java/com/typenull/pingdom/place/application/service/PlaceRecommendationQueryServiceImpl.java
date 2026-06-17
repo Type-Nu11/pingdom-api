@@ -290,6 +290,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         List<MapPlace> expansionSeeds = seedPlaces.stream()
+                .filter(place -> place.getLatitude() != null && place.getLongitude() != null)
                 .sorted(Comparator.comparingDouble(
                         (MapPlace place) -> signalContext.seedWeights().getOrDefault(place.getId(), 0.0d)
                 ).reversed())
@@ -673,16 +674,16 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private long resolveTotalClickCount() {
-        long snapshotClickCount = nullSafeCount(placeRecommendationSnapshotRepository.sumClickCount());
-        if (snapshotClickCount > 0L) {
+        Long snapshotClickCount = placeRecommendationSnapshotRepository.sumClickCount();
+        if (snapshotClickCount != null) {
             return snapshotClickCount;
         }
         return placeRecommendationClickService.countAllClicks();
     }
 
     private long resolveTotalExposureCount() {
-        long snapshotExposureCount = nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount());
-        if (snapshotExposureCount > 0L) {
+        Long snapshotExposureCount = placeRecommendationSnapshotRepository.sumExposureCount();
+        if (snapshotExposureCount != null) {
             return snapshotExposureCount;
         }
         return placeRecommendationExposureService.countAllExposures();
