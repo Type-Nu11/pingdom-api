@@ -3,7 +3,7 @@ package com.typenull.pingdom.post.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.place.MapPlace;
 
 import java.time.LocalDateTime;
 

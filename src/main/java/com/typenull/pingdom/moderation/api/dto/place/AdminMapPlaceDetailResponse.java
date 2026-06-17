@@ -1,6 +1,6 @@
 package com.typenull.pingdom.moderation.api.dto.place;
 
-import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
 import java.util.List;
 import com.typenull.pingdom.moderation.domain.SortParam;
 

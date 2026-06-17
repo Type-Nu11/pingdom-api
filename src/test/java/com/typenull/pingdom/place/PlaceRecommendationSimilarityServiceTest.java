@@ -1,12 +1,12 @@
 package com.typenull.pingdom.place;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationSimilarityService;
-import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.domain.PlaceSimilaritySnapshot;
-import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
