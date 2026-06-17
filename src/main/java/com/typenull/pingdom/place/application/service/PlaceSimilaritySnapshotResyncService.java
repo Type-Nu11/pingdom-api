@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
+import jakarta.persistence.EntityManager;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
@@ -34,6 +35,7 @@ public class PlaceSimilaritySnapshotResyncService {
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
+    private final EntityManager entityManager;
 
     @Transactional
     public SimilaritySnapshotResyncResult resyncAll() {
@@ -187,8 +189,7 @@ public class PlaceSimilaritySnapshotResyncService {
                     synchronizedSnapshotCount++;
 
                     if (snapshotBatch.size() >= RESYNC_BATCH_SIZE) {
-                        placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
-                        snapshotBatch.clear();
+                        persistSnapshotBatch(snapshotBatch);
                     }
                 }
 
@@ -202,10 +203,17 @@ public class PlaceSimilaritySnapshotResyncService {
         }
 
         if (!snapshotBatch.isEmpty()) {
-            placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
+            persistSnapshotBatch(snapshotBatch);
         }
 
         return synchronizedSnapshotCount;
+    }
+
+    private void persistSnapshotBatch(List<PlaceSimilaritySnapshot> snapshotBatch) {
+        placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
+        entityManager.flush();
+        entityManager.clear();
+        snapshotBatch.clear();
     }
 
     private long deleteSnapshotIds(List<Long> snapshotIds) {

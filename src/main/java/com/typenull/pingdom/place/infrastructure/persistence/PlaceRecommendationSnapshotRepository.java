@@ -15,13 +15,13 @@ public interface PlaceRecommendationSnapshotRepository extends JpaRepository<Pla
     Page<PlaceRecommendationSnapshot> findByUpdatedAtGreaterThanEqual(LocalDateTime updatedAt, Pageable pageable);
 
     @Query("""
-            SELECT COALESCE(SUM(s.clickCount), 0)
+            SELECT SUM(s.clickCount)
             FROM PlaceRecommendationSnapshot s
             """)
     Long sumClickCount();
 
     @Query("""
-            SELECT COALESCE(SUM(s.exposureCount), 0)
+            SELECT SUM(s.exposureCount)
             FROM PlaceRecommendationSnapshot s
             """)
     Long sumExposureCount();
