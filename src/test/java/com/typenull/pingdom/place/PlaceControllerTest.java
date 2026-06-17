@@ -10,6 +10,7 @@ import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.MapBookmark;
 import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.PlaceRecommendationFeatureLog;
 import com.typenull.pingdom.place.domain.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
@@ -19,6 +20,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -107,6 +109,9 @@ class PlaceControllerTest {
     @Autowired
     private PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
 
+    @Autowired
+    private PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
+
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
@@ -118,6 +123,7 @@ class PlaceControllerTest {
         placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
+        placeRecommendationFeatureLogRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -292,11 +298,12 @@ class PlaceControllerTest {
         MapPlace mapPlace = createMapPlace("비로그인 추천 장소", "경상남도 진주시 익명로 1", 35.1801, 128.1078, 1L);
         createMapImage(mapPlace, 0L, "비로그인 추천 사진");
 
-        var response = placeController.recommendPlaces(35.1801, 128.1078, 1, 5.0, null);
+        var response = placeController.recommendPlaces(35.1801, 128.1078, 1, 5.0, null, null);
 
         assertEquals(200, response.getStatusCode().value());
         assertNotNull(response.getBody());
         assertEquals(1, response.getBody().recommendedCount());
+        assertNotNull(response.getBody().recommendationRequestId());
         assertEquals("비로그인 추천 장소", response.getBody().places().get(0).name());
     }
 
@@ -328,6 +335,7 @@ class PlaceControllerTest {
                         .param("radiusKm", "5.0"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"))
+                .andExpect(jsonPath("$.recommendationRequestId").isNotEmpty())
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places.length()").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("추천 장소"))
@@ -371,6 +379,34 @@ class PlaceControllerTest {
     }
 
     @Test
+    void recommendPlacesIncludesPersonalCandidatesOutsideCurrentGeoArea() throws Exception {
+        String accessToken = signupAndLogin("reader19");
+        User reader = userRepository.findByUsername("reader19").orElseThrow();
+
+        MapPlace seedPlace = createMapPlace("개인화 기준 장소", "경상남도 진주시 개인화로 1", 35.1800, 128.1070, 1L);
+        MapPlace personalCandidate = createMapPlace("개인화 확장 장소", "경상남도 진주시 개인화로 2", 35.1810, 128.1080, 3L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(reader.getId())
+                .placeId(seedPlace.getId())
+                .build());
+
+        createMapImage(personalCandidate, 12L, "개인화 사진 1");
+        createMapImage(personalCandidate, 9L, "개인화 사진 2");
+        createMapImage(personalCandidate, 7L, "개인화 사진 3");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(1))
+                .andExpect(jsonPath("$.places[0].name").value("개인화 확장 장소"));
+    }
+
+    @Test
     void recommendPlacesFallsBackToPopularNearbyPlacesWhenUserHasNoSignals() throws Exception {
         String accessToken = signupAndLogin("reader05");
 
@@ -393,6 +429,34 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("인기 장소"))
                 .andExpect(jsonPath("$.places[0].reason", containsString("현재 위치 주변")));
+    }
+
+    @Test
+    void recommendPlacesIncludesTrendCandidatesWhenNoGeoCandidatesExist() throws Exception {
+        String accessToken = signupAndLogin("reader20");
+        MapPlace trendPlace = createMapPlace("트렌드 후보 장소", "경상남도 진주시 트렌드로 1", 35.1803, 128.1079, 2L);
+
+        LocalDateTime recent = LocalDateTime.now();
+        placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
+                .placeId(trendPlace.getId())
+                .photoCount(2L)
+                .bookmarkCount(0L)
+                .totalLikeCount(15L)
+                .clickCount(3L)
+                .exposureCount(5L)
+                .latestPostCreatedAt(recent)
+                .updatedAt(recent)
+                .build());
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "37.5665")
+                        .param("longitude", "126.9780")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendedCount").value(1))
+                .andExpect(jsonPath("$.places[0].name").value("트렌드 후보 장소"));
     }
 
     @Test
@@ -422,6 +486,7 @@ class PlaceControllerTest {
         assertEquals(1, exposures.get(0).getRanking());
         assertEquals(2, exposures.get(1).getRanking());
         assertNotNull(exposures.get(0).getCreatedAt());
+        assertNotNull(exposures.get(0).getRequestId());
         assertEquals(35.1801d, exposures.get(0).getRequestLatitude());
         assertEquals(128.1078d, exposures.get(0).getRequestLongitude());
 
@@ -475,6 +540,7 @@ class PlaceControllerTest {
         assertEquals(1, clicks.size());
         assertEquals(clickedPlace.getId(), clicks.get(0).getPlaceId());
         assertNotNull(clicks.get(0).getCreatedAt());
+        assertNull(clicks.get(0).getRequestId());
 
         PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(clickedPlace.getId())
                 .orElseThrow();
@@ -526,6 +592,76 @@ class PlaceControllerTest {
         List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findAll();
         assertEquals(1, clicks.size());
         assertEquals("place-rec-v1", clicks.get(0).getRecommendationVersion());
+    }
+
+    @Test
+    void recommendPlacesSupportsExplicitExperimentalVersionAndLogsFeatures() throws Exception {
+        String accessToken = signupAndLogin("reader18");
+        MapPlace freshPlace = createMapPlace("실험 신선 후보", "경상남도 진주시 실험로 1", 35.1803, 128.1079, 1L);
+        createMapImage(freshPlace, 5L, "실험 후보 사진");
+
+        MvcResult result = mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1803")
+                        .param("longitude", "128.1079")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0")
+                        .param("recommendationVersion", "place-rec-v2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v2"))
+                .andExpect(jsonPath("$.recommendationRequestId").isNotEmpty())
+                .andReturn();
+
+        String requestId = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("recommendationRequestId")
+                .asText();
+
+        List<PlaceRecommendationFeatureLog> featureLogs =
+                placeRecommendationFeatureLogRepository.findByRequestIdOrderByRankingAsc(requestId);
+        assertEquals(1, featureLogs.size());
+        assertEquals("place-rec-v2", featureLogs.get(0).getRecommendationVersion());
+        assertEquals(requestId, featureLogs.get(0).getRequestId());
+
+        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findAll();
+        assertEquals(1, exposures.size());
+        assertEquals("place-rec-v2", exposures.get(0).getRecommendationVersion());
+        assertEquals(requestId, exposures.get(0).getRequestId());
+    }
+
+    @Test
+    void recordRecommendationClickStoresRequestIdWhenProvided() throws Exception {
+        String accessToken = signupAndLogin("reader19");
+        MapPlace clickedPlace = createMapPlace("요청 추적 클릭 장소", "경상남도 진주시 추적으로 1", 35.1803, 128.1079, 1L);
+        createMapImage(clickedPlace, 1L, "요청 추적 사진");
+
+        MvcResult recommendationResult = mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1803")
+                        .param("longitude", "128.1079")
+                        .param("limit", "1")
+                        .param("radiusKm", "5.0")
+                        .param("recommendationVersion", "place-rec-v2"))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String requestId = objectMapper.readTree(recommendationResult.getResponse().getContentAsString())
+                .get("recommendationRequestId")
+                .asText();
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", clickedPlace.getId(),
+                                "recommendationVersion", "place-rec-v2",
+                                "requestId", requestId
+                        ))))
+                .andExpect(status().isCreated());
+
+        List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findAll();
+        assertEquals(1, clicks.size());
+        assertEquals("place-rec-v2", clicks.get(0).getRecommendationVersion());
+        assertEquals(requestId, clicks.get(0).getRequestId());
     }
 
     @Test

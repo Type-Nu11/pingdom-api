@@ -9,6 +9,8 @@ public record PlaceRecommendationResponse(
         List<PlaceRecommendationItem> places,
         @Schema(description = "추천 알고리즘 버전", example = "place-rec-v1")
         String recommendationVersion,
+        @Schema(description = "추천 요청 식별자", example = "9f7263d5-65f1-4834-9ca3-86ad2fc4e7d0")
+        String recommendationRequestId,
         @Schema(description = "요청 제한 수", example = "10")
         int limit,
         @Schema(description = "요청 반경(km)", example = "5.0")
@@ -21,6 +23,7 @@ public record PlaceRecommendationResponse(
     public static PlaceRecommendationResponse of(
             List<PlaceRecommendationItem> places,
             String recommendationVersion,
+            String recommendationRequestId,
             int limit,
             double requestedRadiusKm,
             double appliedRadiusKm
@@ -28,6 +31,7 @@ public record PlaceRecommendationResponse(
         return new PlaceRecommendationResponse(
                 places,
                 recommendationVersion,
+                recommendationRequestId,
                 limit,
                 requestedRadiusKm,
                 appliedRadiusKm,

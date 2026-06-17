@@ -23,6 +23,7 @@ import com.typenull.pingdom.place.domain.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.domain.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
@@ -30,6 +31,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkReposito
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationVersionSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -79,6 +82,12 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
+    @Autowired
+    private PlaceRecommendationVersionSnapshotRepository placeRecommendationVersionSnapshotRepository;
+
+    @Autowired
+    private PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
+
     @BeforeEach
     void setUp() {
         mapBookmarkRepository.deleteAllInBatch();
@@ -86,6 +95,8 @@ class AdminMapPlaceControllerTest {
         placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
+        placeRecommendationVersionSnapshotRepository.deleteAllInBatch();
+        placeSimilaritySnapshotRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -772,6 +783,16 @@ class AdminMapPlaceControllerTest {
                 .exposureCount(99L)
                 .updatedAt(java.time.LocalDateTime.now())
                 .build());
+        placeSimilaritySnapshotRepository.save(PlaceSimilaritySnapshot.builder()
+                .leftPlaceId(9998L)
+                .rightPlaceId(9999L)
+                .geoKernelScore(0.9d)
+                .coBookmarkPmiScore(0.9d)
+                .coLikeCosineScore(0.9d)
+                .trendSimilarityScore(0.9d)
+                .totalSimilarityScore(0.9d)
+                .updatedAt(java.time.LocalDateTime.now())
+                .build());
 
         mockMvc.perform(post("/admin/places/recommendation-snapshots/resync")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -779,6 +800,8 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.placeCount").value(1))
                 .andExpect(jsonPath("$.synchronizedSnapshotCount").value(1))
                 .andExpect(jsonPath("$.deletedSnapshotCount").value(1))
+                .andExpect(jsonPath("$.synchronizedSimilaritySnapshotCount").value(0))
+                .andExpect(jsonPath("$.deletedSimilaritySnapshotCount").value(1))
                 .andExpect(jsonPath("$.synchronizedVersionSnapshotCount").value(1))
                 .andExpect(jsonPath("$.deletedVersionSnapshotCount").value(0))
                 .andExpect(jsonPath("$.message").value("장소 추천 snapshot 재동기화를 완료했습니다."));
@@ -794,6 +817,40 @@ class AdminMapPlaceControllerTest {
         assertEquals(2L, snapshot.getExposureCount());
         assertNotNull(snapshot.getLatestPostCreatedAt());
         assertFalse(placeRecommendationSnapshotRepository.existsById(9999L));
+        assertEquals(0L, placeSimilaritySnapshotRepository.count());
+    }
+
+    @Test
+    void resyncRecommendationSnapshotsSynchronizesPlaceSimilaritySnapshots() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("유사도 기준 장소 1")
+                .address("경상남도 진주시 유사도로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(901L)
+                .registrant("similarityOwner")
+                .photoCount(3L)
+                .build());
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("유사도 기준 장소 2")
+                .address("경상남도 진주시 유사도로 2")
+                .latitude(35.1803)
+                .longitude(128.1080)
+                .userId(902L)
+                .registrant("similarityOwner")
+                .photoCount(5L)
+                .build());
+
+        mockMvc.perform(post("/admin/places/recommendation-snapshots/resync")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeCount").value(2))
+                .andExpect(jsonPath("$.synchronizedSimilaritySnapshotCount").value(1))
+                .andExpect(jsonPath("$.deletedSimilaritySnapshotCount").value(0));
+
+        assertEquals(1L, placeSimilaritySnapshotRepository.count());
     }
 
     private String createAdminAndLogin() throws Exception {

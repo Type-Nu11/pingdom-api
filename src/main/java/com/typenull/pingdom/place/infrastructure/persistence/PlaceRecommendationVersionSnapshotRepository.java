@@ -28,12 +28,12 @@ public interface PlaceRecommendationVersionSnapshotRepository
             FROM PlaceRecommendationVersionSnapshot s
             WHERE s.recommendationVersion = :recommendationVersion
             """)
-    long sumClickCountByRecommendationVersion(@Param("recommendationVersion") String recommendationVersion);
+    Long sumClickCountByRecommendationVersion(@Param("recommendationVersion") String recommendationVersion);
 
     @Query("""
             SELECT COALESCE(SUM(s.exposureCount), 0)
             FROM PlaceRecommendationVersionSnapshot s
             WHERE s.recommendationVersion = :recommendationVersion
             """)
-    long sumExposureCountByRecommendationVersion(@Param("recommendationVersion") String recommendationVersion);
+    Long sumExposureCountByRecommendationVersion(@Param("recommendationVersion") String recommendationVersion);
 }

@@ -37,6 +37,7 @@ public class PlaceRecommendationSnapshotResyncService {
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+    private final PlaceSimilaritySnapshotResyncService placeSimilaritySnapshotResyncService;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
     @Transactional
@@ -49,10 +50,14 @@ public class PlaceRecommendationSnapshotResyncService {
             }
             PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
                     placeRecommendationVersionSnapshotService.resyncAll();
+            PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult similarityResult =
+                    placeSimilaritySnapshotResyncService.resyncAll();
             return new SnapshotResyncResult(
                     0,
                     0,
                     deletedSnapshotCount,
+                    similarityResult.synchronizedSnapshotCount(),
+                    similarityResult.deletedSnapshotCount(),
                     versionResult.synchronizedSnapshotCount(),
                     versionResult.deletedSnapshotCount()
             );
@@ -130,6 +135,8 @@ public class PlaceRecommendationSnapshotResyncService {
             placeRecommendationSnapshotRepository.deleteAllByIdInBatch(orphanSnapshotPlaceIds);
         }
 
+        PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult similarityResult =
+                placeSimilaritySnapshotResyncService.resyncAll();
         PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
                 placeRecommendationVersionSnapshotService.resyncAll();
 
@@ -137,6 +144,8 @@ public class PlaceRecommendationSnapshotResyncService {
                 placeCount,
                 synchronizedSnapshotCount,
                 orphanSnapshotPlaceIds.size(),
+                similarityResult.synchronizedSnapshotCount(),
+                similarityResult.deletedSnapshotCount(),
                 versionResult.synchronizedSnapshotCount(),
                 versionResult.deletedSnapshotCount()
         );
@@ -255,6 +264,8 @@ public class PlaceRecommendationSnapshotResyncService {
             long placeCount,
             long synchronizedSnapshotCount,
             long deletedSnapshotCount,
+            long synchronizedSimilaritySnapshotCount,
+            long deletedSimilaritySnapshotCount,
             long synchronizedVersionSnapshotCount,
             long deletedVersionSnapshotCount
     ) {

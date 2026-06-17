@@ -3,6 +3,8 @@ package com.typenull.pingdom.place.infrastructure.persistence;
 import com.typenull.pingdom.place.domain.MapPlace;
 import java.util.List;
 import java.util.Optional;
+
+import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -23,6 +25,23 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
               AND m.longitude IS NOT NULL
             """)
     List<MapPlace> findAllWithCoordinates(Pageable pageable);
+
+    @Query(
+            value = """
+                    SELECT m
+                    FROM MapPlace m
+                    WHERE m.latitude IS NOT NULL
+                      AND m.longitude IS NOT NULL
+                    ORDER BY m.latitude ASC, m.id ASC
+                    """,
+            countQuery = """
+                    SELECT COUNT(m)
+                    FROM MapPlace m
+                    WHERE m.latitude IS NOT NULL
+                      AND m.longitude IS NOT NULL
+                    """
+    )
+    Page<MapPlace> findCoordinatePage(Pageable pageable);
 
     @Query("""
             SELECT m

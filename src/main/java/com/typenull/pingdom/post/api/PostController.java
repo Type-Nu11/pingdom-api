@@ -1,7 +1,9 @@
 package com.typenull.pingdom.post.api;
 
-import com.typenull.pingdom.post.api.dto.image.ImageUploadRequest;
-import com.typenull.pingdom.post.api.dto.image.MapImageResponse;
+import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
+import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
+import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
+import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 import com.typenull.pingdom.post.application.query.PostQueryService;
@@ -176,7 +178,7 @@ public class PostController {
             @ApiResponse(
                     responseCode = "200",
                     description = "게시글 업로드 성공",
-                    content = @Content(schema = @Schema(implementation = MapImageResponse.class))
+                    content = @Content(schema = @Schema(implementation = PostResponse.class))
             ),
             @ApiResponse(
                     responseCode = "400",
@@ -239,12 +241,22 @@ public class PostController {
                     )
             )
     })
-    public ResponseEntity<MapImageResponse> uploadPost(
-            @Valid @ModelAttribute ImageUploadRequest request,
+    public ResponseEntity<PostResponse> uploadPost(
+            @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         Long userId = user.userId();
         return ResponseEntity.ok(s3Service.uploadImage(request, userId));
+    }
+
+    @PostMapping("/post/{id}/update")
+    public ResponseEntity<PostUpdateResponse> updatePost(
+            @Valid @ModelAttribute PostUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
+    ){
+        Long userId = user.userId();
+        return ResponseEntity.ok(s3Service.updateImage(request, userId, imageId));
     }
 
     @DeleteMapping("/post/{id}/delete")
