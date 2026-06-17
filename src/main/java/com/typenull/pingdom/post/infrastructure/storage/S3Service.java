@@ -24,7 +24,6 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
-import org.springframework.transaction.annotation.Transactional;
 import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
@@ -93,7 +92,6 @@ public class S3Service {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
-    @Transactional
     public PostUpdateResponse updateImage(PostUpdateRequest request, Long userId, Long imageId) {
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
@@ -113,41 +111,29 @@ public class S3Service {
             throw toMapException(exception);
         }
 
-        try {
-            TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
-            PostUpdateResponse response = transactionTemplate.execute(status -> {
-                registerRollbackCleanup(putResult.key());
+        PostUpdateResponse response = transactionTemplate.execute(status -> {
+            registerRollbackCleanup(putResult.key());
 
-                mapImage.update(
-                        request.title(),
-                        request.description(),
-                        putResult.url(),
-                        putResult.key()
-                );
+            MapImage imageToUpdate = mapImageRepository.findWithMapPlaceById(imageId)
+                    .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
-                mapImageRepository.save(mapImage);
+            imageToUpdate.update(
+                    request.title(),
+                    request.description(),
+                    putResult.url(),
+                    putResult.key()
+            );
 
-                if (mapImage.getMapPlace() != null) {
-                    placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());
-                }
+            mapImageRepository.save(imageToUpdate);
 
-                return new PostUpdateResponse(mapImage.getId(), "게시글을 수정했습니다.");
-            });
+            return new PostUpdateResponse(imageToUpdate.getId(), "게시글을 수정했습니다.");
+        });
 
-            deleteOldS3Quietly(oldS3Key);
+        deleteOldS3Quietly(oldS3Key);
 
-            return response;
-        } catch (MapException exception) {
-            throw exception;
-        } catch (Exception exception) {
-            try {
-                s3ObjectStorage.delete(putResult.key());
-            } catch (RuntimeException cleanupException) {
-                log.warn("게시글 수정 실패 후 새 S3 파일 정리에 실패했습니다. key={}", putResult.key(), cleanupException);
-            }
-            throw new MapException(MapErrorCode.UPLOAD_ERROR);
-        }
+        return response;
     }
 
     public PostResponse deleteImage(Long imageId, Long userId) {

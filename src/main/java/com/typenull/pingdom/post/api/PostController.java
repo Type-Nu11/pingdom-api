@@ -251,7 +251,7 @@ public class PostController {
 
     @PostMapping("/post/{id}/update")
     public ResponseEntity<PostUpdateResponse> updatePost(
-            @Valid PostUpdateRequest request,
+            @Valid @ModelAttribute PostUpdateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ){
