@@ -3,6 +3,8 @@ package com.typenull.pingdom.place.infrastructure.persistence;
 import com.typenull.pingdom.place.domain.MapPlace;
 import java.util.List;
 import java.util.Optional;
+
+import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
