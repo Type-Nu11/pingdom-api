@@ -24,9 +24,10 @@ public interface PlaceSimilaritySnapshotRepository extends JpaRepository<PlaceSi
                    s.leftPlaceId AS leftPlaceId,
                    s.rightPlaceId AS rightPlaceId
             FROM PlaceSimilaritySnapshot s
+            WHERE s.id > :lastSeenId
             ORDER BY s.id ASC
             """)
-    Slice<ExistingSnapshotProjection> findExistingSnapshotSlice(Pageable pageable);
+    Slice<ExistingSnapshotProjection> findExistingSnapshotSlice(@Param("lastSeenId") Long lastSeenId, Pageable pageable);
 
     @Query("""
             SELECT s

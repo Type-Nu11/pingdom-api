@@ -4,6 +4,7 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
@@ -16,7 +17,6 @@ import com.typenull.pingdom.place.domain.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
 import jakarta.persistence.EntityManager;
-import jakarta.persistence.Query;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -32,8 +32,11 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.SliceImpl;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -52,7 +55,7 @@ class PlaceSimilaritySnapshotResyncServiceTest {
     private EntityManager entityManager;
 
     @Mock
-    private Query query;
+    private JdbcTemplate jdbcTemplate;
 
     @InjectMocks
     private PlaceSimilaritySnapshotResyncService placeSimilaritySnapshotResyncService;
@@ -78,10 +81,6 @@ class PlaceSimilaritySnapshotResyncServiceTest {
                         0.55d,
                         false
                 ));
-
-        when(entityManager.createQuery(anyString())).thenReturn(query);
-        when(query.setParameter(anyString(), any())).thenReturn(query);
-        when(query.executeUpdate()).thenReturn(1);
     }
 
     @Test
@@ -91,8 +90,12 @@ class PlaceSimilaritySnapshotResyncServiceTest {
 
         when(mapPlaceRepository.findCoordinatePage(any(PageRequest.class)))
                 .thenAnswer(invocation -> coordinatePage(places, invocation.getArgument(0)));
-        when(placeSimilaritySnapshotRepository.findExistingSnapshotSlice(any(PageRequest.class)))
-                .thenAnswer(invocation -> snapshotSlice(existingSnapshots, invocation.getArgument(0)));
+        when(placeSimilaritySnapshotRepository.findExistingSnapshotSlice(anyLong(), any(Pageable.class)))
+                .thenAnswer(invocation -> snapshotSlice(
+                        existingSnapshots,
+                        invocation.getArgument(0),
+                        invocation.getArgument(1)
+                ));
         when(placeSimilaritySnapshotRepository.count()).thenReturn((long) existingSnapshots.size());
 
         PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult result =
@@ -101,7 +104,7 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         assertEquals(existingSnapshots.size(), result.synchronizedSnapshotCount());
         assertEquals(0L, result.deletedSnapshotCount());
         verify(placeSimilaritySnapshotRepository, never()).saveAll(any());
-        verify(entityManager, atLeastOnce()).createQuery(anyString());
+        verify(jdbcTemplate, atLeastOnce()).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
     }
 
     private Page<MapPlace> coordinatePage(List<MapPlace> places, PageRequest pageable) {
@@ -113,18 +116,18 @@ class PlaceSimilaritySnapshotResyncServiceTest {
 
     private Slice<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> snapshotSlice(
             List<PlaceSimilaritySnapshot> snapshots,
-            PageRequest pageable
+            long lastSeenSnapshotId,
+            Pageable pageable
     ) {
-        int start = (int) pageable.getOffset();
-        if (start >= snapshots.size()) {
-            return new SliceImpl<>(List.of(), pageable, false);
-        }
-
-        int end = Math.min(start + pageable.getPageSize(), snapshots.size());
-        List<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> content = snapshots.subList(start, end).stream()
+        List<PlaceSimilaritySnapshot> filteredSnapshots = snapshots.stream()
+                .filter(snapshot -> snapshot.getId() > lastSeenSnapshotId)
+                .toList();
+        List<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> content = filteredSnapshots.stream()
+                .limit(pageable.getPageSize())
                 .map(this::toProjection)
                 .toList();
-        return new SliceImpl<>(content, pageable, end < snapshots.size());
+        boolean hasNext = filteredSnapshots.size() > content.size();
+        return new SliceImpl<>(content, pageable, hasNext);
     }
 
     private List<MapPlace> createPlaces(int count) {
