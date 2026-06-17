@@ -384,7 +384,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private boolean hasCoordinates(MapPlace place) {
-        return place.getLatitude() != null && place.getLongitude() != null;
+        return place != null && place.getLatitude() != null && place.getLongitude() != null;
     }
 
     private List<MapPlace> loadNearbyCandidates(
