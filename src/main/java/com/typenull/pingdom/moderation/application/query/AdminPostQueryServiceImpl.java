@@ -31,8 +31,9 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
     @Override
     @Transactional(readOnly = true)
     public AdminPostResponse listPosts(int limit, int page, SortParam sortParam, String keyword) {
+        int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        int targetPage = Math.max(page - 1, 0);
+        int targetPage = safePage - 1;
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
         String safeKeyword = keyword == null ? "" : keyword.trim();
         Long numericKeyword = parseLongKeyword(safeKeyword);
@@ -58,7 +59,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
         return AdminPostResponse.of(
                 posts,
-                page,
+                safePage,
                 safeLimit,
                 mapImagePage.getTotalElements(),
                 mapImagePage.getTotalPages()
