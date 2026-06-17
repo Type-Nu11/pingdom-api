@@ -18,9 +18,9 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Slice;
-import org.springframework.data.domain.Sort;
+import org.springframework.jdbc.core.BatchPreparedStatementSetter;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -32,21 +32,22 @@ public class PlaceSimilaritySnapshotResyncService {
     private static final int PLACE_PAGE_SIZE = 500;
     private static final int RESYNC_BATCH_SIZE = 500;
     private static final Clock RESYNC_CLOCK = Clock.systemUTC();
-    private static final String UPDATE_SNAPSHOT_QUERY = """
-            UPDATE PlaceSimilaritySnapshot s
-            SET s.geoKernelScore = :geoKernelScore,
-                s.coBookmarkPmiScore = :coBookmarkPmiScore,
-                s.coLikeCosineScore = :coLikeCosineScore,
-                s.trendSimilarityScore = :trendSimilarityScore,
-                s.totalSimilarityScore = :totalSimilarityScore,
-                s.updatedAt = :updatedAt
-            WHERE s.id = :id
+    private static final String UPDATE_SNAPSHOT_SQL = """
+            UPDATE place_similarity_snapshot
+            SET geo_kernel_score = ?,
+                co_bookmark_pmi_score = ?,
+                co_like_cosine_score = ?,
+                trend_similarity_score = ?,
+                total_similarity_score = ?,
+                updated_at = ?
+            WHERE place_similarity_snapshot_id = ?
             """;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
     private final EntityManager entityManager;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
     public SimilaritySnapshotResyncResult resyncAll() {
@@ -111,16 +112,20 @@ public class PlaceSimilaritySnapshotResyncService {
         Map<PlaceRecommendationSimilarityService.PlacePairKey, ExistingSnapshotRef> existingSnapshotByPair =
                 new HashMap<>();
         List<Long> orphanSnapshotIds = new ArrayList<>();
-        Pageable pageable = PageRequest.of(0, RESYNC_BATCH_SIZE);
+        Long lastSeenSnapshotId = 0L;
 
         while (true) {
             Slice<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> snapshotPage =
-                    placeSimilaritySnapshotRepository.findExistingSnapshotSlice(pageable);
+                    placeSimilaritySnapshotRepository.findExistingSnapshotSlice(
+                            lastSeenSnapshotId,
+                            PageRequest.of(0, RESYNC_BATCH_SIZE)
+                    );
             if (snapshotPage.isEmpty()) {
                 break;
             }
 
             for (PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection snapshot : snapshotPage.getContent()) {
+                lastSeenSnapshotId = snapshot.getId();
                 if (!activePlaceIds.contains(snapshot.getLeftPlaceId())
                         || !activePlaceIds.contains(snapshot.getRightPlaceId())) {
                     orphanSnapshotIds.add(snapshot.getId());
@@ -139,7 +144,6 @@ public class PlaceSimilaritySnapshotResyncService {
             if (!snapshotPage.hasNext()) {
                 break;
             }
-            pageable = snapshotPage.nextPageable();
         }
 
         return new ExistingSnapshotState(existingSnapshotByPair, orphanSnapshotIds);
@@ -238,17 +242,24 @@ public class PlaceSimilaritySnapshotResyncService {
         }
         entityManager.flush();
         if (!snapshotUpdateBatch.isEmpty()) {
-            jakarta.persistence.Query query = entityManager.createQuery(UPDATE_SNAPSHOT_QUERY);
-            for (ExistingSnapshotUpdate snapshotUpdate : snapshotUpdateBatch) {
-                query.setParameter("geoKernelScore", snapshotUpdate.geoKernelScore())
-                        .setParameter("coBookmarkPmiScore", snapshotUpdate.coBookmarkPmiScore())
-                        .setParameter("coLikeCosineScore", snapshotUpdate.coLikeCosineScore())
-                        .setParameter("trendSimilarityScore", snapshotUpdate.trendSimilarityScore())
-                        .setParameter("totalSimilarityScore", snapshotUpdate.totalSimilarityScore())
-                        .setParameter("updatedAt", snapshotUpdate.updatedAt())
-                        .setParameter("id", snapshotUpdate.id())
-                        .executeUpdate();
-            }
+            jdbcTemplate.batchUpdate(UPDATE_SNAPSHOT_SQL, new BatchPreparedStatementSetter() {
+                @Override
+                public void setValues(java.sql.PreparedStatement ps, int index) throws java.sql.SQLException {
+                    ExistingSnapshotUpdate snapshotUpdate = snapshotUpdateBatch.get(index);
+                    ps.setDouble(1, snapshotUpdate.geoKernelScore());
+                    ps.setDouble(2, snapshotUpdate.coBookmarkPmiScore());
+                    ps.setDouble(3, snapshotUpdate.coLikeCosineScore());
+                    ps.setDouble(4, snapshotUpdate.trendSimilarityScore());
+                    ps.setDouble(5, snapshotUpdate.totalSimilarityScore());
+                    ps.setObject(6, snapshotUpdate.updatedAt());
+                    ps.setLong(7, snapshotUpdate.id());
+                }
+
+                @Override
+                public int getBatchSize() {
+                    return snapshotUpdateBatch.size();
+                }
+            });
         }
         entityManager.flush();
         entityManager.clear();
