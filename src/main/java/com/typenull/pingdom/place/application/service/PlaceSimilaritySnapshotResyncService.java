@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -31,6 +32,16 @@ public class PlaceSimilaritySnapshotResyncService {
     private static final int PLACE_PAGE_SIZE = 500;
     private static final int RESYNC_BATCH_SIZE = 500;
     private static final Clock RESYNC_CLOCK = Clock.systemUTC();
+    private static final String UPDATE_SNAPSHOT_QUERY = """
+            UPDATE PlaceSimilaritySnapshot s
+            SET s.geoKernelScore = :geoKernelScore,
+                s.coBookmarkPmiScore = :coBookmarkPmiScore,
+                s.coLikeCosineScore = :coLikeCosineScore,
+                s.trendSimilarityScore = :trendSimilarityScore,
+                s.totalSimilarityScore = :totalSimilarityScore,
+                s.updatedAt = :updatedAt
+            WHERE s.id = :id
+            """;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
@@ -66,7 +77,7 @@ public class PlaceSimilaritySnapshotResyncService {
         );
 
         existingSnapshotState.orphanSnapshotIds().addAll(existingSnapshotState.existingSnapshotByPair().values().stream()
-                .map(PlaceSimilaritySnapshot::getId)
+                .map(ExistingSnapshotRef::id)
                 .toList());
 
         long deletedSnapshotCount = deleteSnapshotIds(existingSnapshotState.orphanSnapshotIds());
@@ -97,20 +108,19 @@ public class PlaceSimilaritySnapshotResyncService {
     }
 
     private ExistingSnapshotState loadExistingSnapshotState(Set<Long> activePlaceIds) {
-        Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair =
+        Map<PlaceRecommendationSimilarityService.PlacePairKey, ExistingSnapshotRef> existingSnapshotByPair =
                 new HashMap<>();
         List<Long> orphanSnapshotIds = new ArrayList<>();
-        int pageNumber = 0;
+        Pageable pageable = PageRequest.of(0, RESYNC_BATCH_SIZE);
 
         while (true) {
-            Page<PlaceSimilaritySnapshot> snapshotPage = placeSimilaritySnapshotRepository.findAll(
-                    PageRequest.of(pageNumber, RESYNC_BATCH_SIZE, Sort.by(Sort.Order.asc("id")))
-            );
+            Slice<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> snapshotPage =
+                    placeSimilaritySnapshotRepository.findExistingSnapshotSlice(pageable);
             if (snapshotPage.isEmpty()) {
                 break;
             }
 
-            for (PlaceSimilaritySnapshot snapshot : snapshotPage.getContent()) {
+            for (PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection snapshot : snapshotPage.getContent()) {
                 if (!activePlaceIds.contains(snapshot.getLeftPlaceId())
                         || !activePlaceIds.contains(snapshot.getRightPlaceId())) {
                     orphanSnapshotIds.add(snapshot.getId());
@@ -122,14 +132,14 @@ public class PlaceSimilaritySnapshotResyncService {
                                 snapshot.getLeftPlaceId(),
                                 snapshot.getRightPlaceId()
                         ),
-                        snapshot
+                        new ExistingSnapshotRef(snapshot.getId())
                 );
             }
 
             if (!snapshotPage.hasNext()) {
                 break;
             }
-            pageNumber++;
+            pageable = snapshotPage.nextPageable();
         }
 
         return new ExistingSnapshotState(existingSnapshotByPair, orphanSnapshotIds);
@@ -137,11 +147,12 @@ public class PlaceSimilaritySnapshotResyncService {
 
     private long synchronizeSnapshots(
             PlaceRecommendationSimilarityService.SimilarityContext similarityContext,
-            Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair,
+            Map<PlaceRecommendationSimilarityService.PlacePairKey, ExistingSnapshotRef> existingSnapshotByPair,
             LocalDateTime syncedAt
     ) {
         ArrayDeque<MapPlace> slidingWindow = new ArrayDeque<>();
-        List<PlaceSimilaritySnapshot> snapshotBatch = new ArrayList<>(RESYNC_BATCH_SIZE);
+        List<PlaceSimilaritySnapshot> snapshotInsertBatch = new ArrayList<>(RESYNC_BATCH_SIZE);
+        List<ExistingSnapshotUpdate> snapshotUpdateBatch = new ArrayList<>(RESYNC_BATCH_SIZE);
         double latitudeDelta = toLatitudeDelta(MAX_SIMILARITY_RADIUS_KM);
         long synchronizedSnapshotCount = 0L;
         int pageNumber = 0;
@@ -168,28 +179,37 @@ public class PlaceSimilaritySnapshotResyncService {
                             PlaceRecommendationSimilarityService.PlacePairKey.of(previousPlace.getId(), currentPlace.getId());
                     PlaceRecommendationSimilarityService.SimilarityScore similarityScore =
                             placeRecommendationSimilarityService.score(previousPlace, currentPlace, similarityContext);
-                    PlaceSimilaritySnapshot snapshot = existingSnapshotByPair.remove(pairKey);
-                    if (snapshot == null) {
-                        snapshot = PlaceSimilaritySnapshot.builder()
+                    ExistingSnapshotRef existingSnapshot = existingSnapshotByPair.remove(pairKey);
+                    if (existingSnapshot == null) {
+                        PlaceSimilaritySnapshot snapshot = PlaceSimilaritySnapshot.builder()
                                 .leftPlaceId(pairKey.leftPlaceId())
                                 .rightPlaceId(pairKey.rightPlaceId())
                                 .updatedAt(syncedAt)
                                 .build();
+                        snapshot.synchronize(
+                                similarityScore.geoKernel(),
+                                similarityScore.coBookmarkPmi(),
+                                similarityScore.coLikeCosine(),
+                                similarityScore.trendSimilarity(),
+                                similarityScore.totalSimilarity(),
+                                syncedAt
+                        );
+                        snapshotInsertBatch.add(snapshot);
+                    } else {
+                        snapshotUpdateBatch.add(new ExistingSnapshotUpdate(
+                                existingSnapshot.id(),
+                                similarityScore.geoKernel(),
+                                similarityScore.coBookmarkPmi(),
+                                similarityScore.coLikeCosine(),
+                                similarityScore.trendSimilarity(),
+                                similarityScore.totalSimilarity(),
+                                syncedAt
+                        ));
                     }
-
-                    snapshot.synchronize(
-                            similarityScore.geoKernel(),
-                            similarityScore.coBookmarkPmi(),
-                            similarityScore.coLikeCosine(),
-                            similarityScore.trendSimilarity(),
-                            similarityScore.totalSimilarity(),
-                            syncedAt
-                    );
-                    snapshotBatch.add(snapshot);
                     synchronizedSnapshotCount++;
 
-                    if (snapshotBatch.size() >= RESYNC_BATCH_SIZE) {
-                        persistSnapshotBatch(snapshotBatch);
+                    if (snapshotInsertBatch.size() + snapshotUpdateBatch.size() >= RESYNC_BATCH_SIZE) {
+                        persistSnapshotBatch(snapshotInsertBatch, snapshotUpdateBatch);
                     }
                 }
 
@@ -202,18 +222,38 @@ public class PlaceSimilaritySnapshotResyncService {
             pageNumber++;
         }
 
-        if (!snapshotBatch.isEmpty()) {
-            persistSnapshotBatch(snapshotBatch);
+        if (!snapshotInsertBatch.isEmpty() || !snapshotUpdateBatch.isEmpty()) {
+            persistSnapshotBatch(snapshotInsertBatch, snapshotUpdateBatch);
         }
 
         return synchronizedSnapshotCount;
     }
 
-    private void persistSnapshotBatch(List<PlaceSimilaritySnapshot> snapshotBatch) {
-        placeSimilaritySnapshotRepository.saveAll(snapshotBatch);
+    private void persistSnapshotBatch(
+            List<PlaceSimilaritySnapshot> snapshotInsertBatch,
+            List<ExistingSnapshotUpdate> snapshotUpdateBatch
+    ) {
+        if (!snapshotInsertBatch.isEmpty()) {
+            placeSimilaritySnapshotRepository.saveAll(snapshotInsertBatch);
+        }
+        entityManager.flush();
+        if (!snapshotUpdateBatch.isEmpty()) {
+            jakarta.persistence.Query query = entityManager.createQuery(UPDATE_SNAPSHOT_QUERY);
+            for (ExistingSnapshotUpdate snapshotUpdate : snapshotUpdateBatch) {
+                query.setParameter("geoKernelScore", snapshotUpdate.geoKernelScore())
+                        .setParameter("coBookmarkPmiScore", snapshotUpdate.coBookmarkPmiScore())
+                        .setParameter("coLikeCosineScore", snapshotUpdate.coLikeCosineScore())
+                        .setParameter("trendSimilarityScore", snapshotUpdate.trendSimilarityScore())
+                        .setParameter("totalSimilarityScore", snapshotUpdate.totalSimilarityScore())
+                        .setParameter("updatedAt", snapshotUpdate.updatedAt())
+                        .setParameter("id", snapshotUpdate.id())
+                        .executeUpdate();
+            }
+        }
         entityManager.flush();
         entityManager.clear();
-        snapshotBatch.clear();
+        snapshotInsertBatch.clear();
+        snapshotUpdateBatch.clear();
     }
 
     private long deleteSnapshotIds(List<Long> snapshotIds) {
@@ -264,8 +304,22 @@ public class PlaceSimilaritySnapshotResyncService {
     }
 
     private record ExistingSnapshotState(
-            Map<PlaceRecommendationSimilarityService.PlacePairKey, PlaceSimilaritySnapshot> existingSnapshotByPair,
+            Map<PlaceRecommendationSimilarityService.PlacePairKey, ExistingSnapshotRef> existingSnapshotByPair,
             List<Long> orphanSnapshotIds
+    ) {
+    }
+
+    private record ExistingSnapshotRef(Long id) {
+    }
+
+    private record ExistingSnapshotUpdate(
+            Long id,
+            double geoKernelScore,
+            double coBookmarkPmiScore,
+            double coLikeCosineScore,
+            double trendSimilarityScore,
+            double totalSimilarityScore,
+            LocalDateTime updatedAt
     ) {
     }
 }
