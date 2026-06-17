@@ -48,6 +48,10 @@ public class S3Service {
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request);
 
+        if(mapImageRepository.existsByUserIdAndMapPlace_Id(userId, placeId)){
+            throw new MapException(MapErrorCode.ALREADY_POSTED);
+        }
+
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));

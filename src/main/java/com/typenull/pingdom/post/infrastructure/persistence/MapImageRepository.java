@@ -96,4 +96,6 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
             GROUP BY m.mapPlace.id
             """)
     List<PlaceImageAggregateProjection> findPlaceAggregatesByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
+
+    boolean existsByUserIdAndMapPlace_Id(Long userId, Long placeId);
 }
