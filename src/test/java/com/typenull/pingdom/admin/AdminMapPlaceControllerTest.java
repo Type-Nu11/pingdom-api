@@ -128,6 +128,45 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listPlacesFiltersByKeywordAcrossAddressAndRegistrantUserId() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace matchingPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("진주성")
+                .address("경상남도 진주시 남강로 626")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(77L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("다른 장소")
+                .address("서울특별시 강남구 테헤란로")
+                .latitude(37.4981)
+                .longitude(127.0276)
+                .userId(88L)
+                .registrant("anotherRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "남강로 626"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "77"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
     void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
         User placeOwner = userRepository.save(User.builder()

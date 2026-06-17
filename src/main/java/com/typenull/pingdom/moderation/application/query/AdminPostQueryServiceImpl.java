@@ -30,10 +30,11 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPostResponse listPosts(int limit, int page, SortParam sortParam) {
+    public AdminPostResponse listPosts(int limit, int page, SortParam sortParam, String keyword) {
         int safeLimit = Math.max(1, Math.min(limit, 100));
         int targetPage = Math.max(page - 1, 0);
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
 
         Sort sort = switch (safeSortParam) {
             case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
@@ -41,7 +42,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
-        Page<MapImage> mapImagePage = mapImageRepository.findAllBy(
+        Page<MapImage> mapImagePage = mapImageRepository.searchAdminPosts(
+                safeKeyword,
                 PageRequest.of(targetPage, safeLimit, sort)
         );
 

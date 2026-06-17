@@ -77,9 +77,11 @@ public class AdminPostController {
             @RequestParam(defaultValue = "20") int limit,
             @RequestParam(defaultValue =  "1") int page,
             @Parameter(description = "정렬 기준", example = "latest")
-            @RequestParam(defaultValue = "LATEST") SortParam sortParam
+            @RequestParam(defaultValue = "LATEST") SortParam sortParam,
+            @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 작성자명, 작성자 ID, 연결 장소명, 설명으로 검색합니다.", example = "용인")
+            @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminPostQueryService.listPosts(limit, page, sortParam);
+        return adminPostQueryService.listPosts(limit, page, sortParam, keyword);
     }
 
     @GetMapping("/posts/{id}")

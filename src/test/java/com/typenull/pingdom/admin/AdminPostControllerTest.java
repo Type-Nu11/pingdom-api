@@ -13,6 +13,8 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -60,6 +62,9 @@ class AdminPostControllerTest {
     private MapImageRepository mapImageRepository;
 
     @Autowired
+    private MapPlaceRepository mapPlaceRepository;
+
+    @Autowired
     private PostReportRepository postReportRepository;
 
     @Autowired
@@ -69,6 +74,7 @@ class AdminPostControllerTest {
     void setUp() {
         postReportRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -148,6 +154,48 @@ class AdminPostControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    void listPostsFiltersByKeywordAcrossPostAndPlaceFields() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("keywordOwner");
+
+        MapPlace matchingPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("대구소프트웨어마이스터고등학교")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.6427)
+                .longitude(128.3916)
+                .userId(owner.getId())
+                .registrant(owner.getUsername())
+                .build());
+
+        MapImage matchingPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/matching-image.jpg")
+                .s3Key("matching-key")
+                .title("검색 대상 게시글")
+                .description("장소명 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .mapPlace(matchingPlace)
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/other-image.jpg")
+                .s3Key("other-key")
+                .title("다른 게시글")
+                .description("검색되지 않아야 함")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", "대구소프트웨어마이스터고등학교"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(matchingPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
     }
 
     private User createUser(String username) {

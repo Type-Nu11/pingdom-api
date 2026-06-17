@@ -61,9 +61,10 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
 
-        Page<MapPlace> placePage = mapPlaceRepository.findByNameContaining(
-                keyword,
+        Page<MapPlace> placePage = mapPlaceRepository.searchAdminPlaces(
+                safeKeyword,
                 PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
         );
 
