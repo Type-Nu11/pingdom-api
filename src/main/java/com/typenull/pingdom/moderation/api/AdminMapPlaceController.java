@@ -9,7 +9,7 @@ import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
