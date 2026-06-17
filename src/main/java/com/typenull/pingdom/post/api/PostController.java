@@ -227,6 +227,20 @@ public class PostController {
                     )
             ),
             @ApiResponse(
+                    responseCode = "400",
+                    description = "이미 포스트가 있음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "한 장소엔 하나의 포스트만 가능합니다.",
+                                              "code": "ALREADY_POSTED"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
                     responseCode = "500",
                     description = "업로드 처리 실패",
                     content = @Content(
