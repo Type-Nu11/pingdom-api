@@ -19,6 +19,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -68,7 +69,6 @@ public class PlaceSimilaritySnapshotResyncService {
                         totalBookmarkUserCount
                 );
         LocalDateTime syncedAt = LocalDateTime.ofInstant(RESYNC_CLOCK.instant(), ZoneOffset.UTC);
-        entityManager.clear();
 
         long synchronizedSnapshotCount = synchronizeSnapshots(
                 similarityContext,
@@ -111,17 +111,16 @@ public class PlaceSimilaritySnapshotResyncService {
         Map<PlaceRecommendationSimilarityService.PlacePairKey, ExistingSnapshotRef> existingSnapshotByPair =
                 new HashMap<>();
         List<Long> orphanSnapshotIds = new ArrayList<>();
-        int pageNumber = 0;
+        Pageable pageable = PageRequest.of(0, RESYNC_BATCH_SIZE);
 
         while (true) {
-            Page<PlaceSimilaritySnapshot> snapshotPage = placeSimilaritySnapshotRepository.findAll(
-                    PageRequest.of(pageNumber, RESYNC_BATCH_SIZE, Sort.by(Sort.Order.asc("id")))
-            );
+            Slice<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> snapshotPage =
+                    placeSimilaritySnapshotRepository.findExistingSnapshotSlice(pageable);
             if (snapshotPage.isEmpty()) {
                 break;
             }
 
-            for (PlaceSimilaritySnapshot snapshot : snapshotPage.getContent()) {
+            for (PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection snapshot : snapshotPage.getContent()) {
                 if (!activePlaceIds.contains(snapshot.getLeftPlaceId())
                         || !activePlaceIds.contains(snapshot.getRightPlaceId())) {
                     orphanSnapshotIds.add(snapshot.getId());
@@ -140,7 +139,7 @@ public class PlaceSimilaritySnapshotResyncService {
             if (!snapshotPage.hasNext()) {
                 break;
             }
-            pageNumber++;
+            pageable = snapshotPage.nextPageable();
         }
 
         return new ExistingSnapshotState(existingSnapshotByPair, orphanSnapshotIds);
@@ -238,16 +237,18 @@ public class PlaceSimilaritySnapshotResyncService {
             placeSimilaritySnapshotRepository.saveAll(snapshotInsertBatch);
         }
         entityManager.flush();
-        for (ExistingSnapshotUpdate snapshotUpdate : snapshotUpdateBatch) {
-            entityManager.createQuery(UPDATE_SNAPSHOT_QUERY)
-                    .setParameter("geoKernelScore", snapshotUpdate.geoKernelScore())
-                    .setParameter("coBookmarkPmiScore", snapshotUpdate.coBookmarkPmiScore())
-                    .setParameter("coLikeCosineScore", snapshotUpdate.coLikeCosineScore())
-                    .setParameter("trendSimilarityScore", snapshotUpdate.trendSimilarityScore())
-                    .setParameter("totalSimilarityScore", snapshotUpdate.totalSimilarityScore())
-                    .setParameter("updatedAt", snapshotUpdate.updatedAt())
-                    .setParameter("id", snapshotUpdate.id())
-                    .executeUpdate();
+        if (!snapshotUpdateBatch.isEmpty()) {
+            jakarta.persistence.Query query = entityManager.createQuery(UPDATE_SNAPSHOT_QUERY);
+            for (ExistingSnapshotUpdate snapshotUpdate : snapshotUpdateBatch) {
+                query.setParameter("geoKernelScore", snapshotUpdate.geoKernelScore())
+                        .setParameter("coBookmarkPmiScore", snapshotUpdate.coBookmarkPmiScore())
+                        .setParameter("coLikeCosineScore", snapshotUpdate.coLikeCosineScore())
+                        .setParameter("trendSimilarityScore", snapshotUpdate.trendSimilarityScore())
+                        .setParameter("totalSimilarityScore", snapshotUpdate.totalSimilarityScore())
+                        .setParameter("updatedAt", snapshotUpdate.updatedAt())
+                        .setParameter("id", snapshotUpdate.id())
+                        .executeUpdate();
+            }
         }
         entityManager.flush();
         entityManager.clear();

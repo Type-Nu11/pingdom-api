@@ -32,6 +32,8 @@ import org.mockito.quality.Strictness;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.domain.SliceImpl;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -89,8 +91,8 @@ class PlaceSimilaritySnapshotResyncServiceTest {
 
         when(mapPlaceRepository.findCoordinatePage(any(PageRequest.class)))
                 .thenAnswer(invocation -> coordinatePage(places, invocation.getArgument(0)));
-        when(placeSimilaritySnapshotRepository.findAll(any(PageRequest.class)))
-                .thenAnswer(invocation -> snapshotPage(existingSnapshots, invocation.getArgument(0)));
+        when(placeSimilaritySnapshotRepository.findExistingSnapshotSlice(any(PageRequest.class)))
+                .thenAnswer(invocation -> snapshotSlice(existingSnapshots, invocation.getArgument(0)));
         when(placeSimilaritySnapshotRepository.count()).thenReturn((long) existingSnapshots.size());
 
         PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult result =
@@ -109,14 +111,20 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         return new PageImpl<>(places, pageable, places.size());
     }
 
-    private Page<PlaceSimilaritySnapshot> snapshotPage(List<PlaceSimilaritySnapshot> snapshots, PageRequest pageable) {
+    private Slice<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> snapshotSlice(
+            List<PlaceSimilaritySnapshot> snapshots,
+            PageRequest pageable
+    ) {
         int start = (int) pageable.getOffset();
         if (start >= snapshots.size()) {
-            return Page.empty(pageable);
+            return new SliceImpl<>(List.of(), pageable, false);
         }
 
         int end = Math.min(start + pageable.getPageSize(), snapshots.size());
-        return new PageImpl<>(snapshots.subList(start, end), pageable, snapshots.size());
+        List<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> content = snapshots.subList(start, end).stream()
+                .map(this::toProjection)
+                .toList();
+        return new SliceImpl<>(content, pageable, end < snapshots.size());
     }
 
     private List<MapPlace> createPlaces(int count) {
@@ -158,5 +166,24 @@ class PlaceSimilaritySnapshotResyncServiceTest {
             }
         }
         return snapshots;
+    }
+
+    private PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection toProjection(PlaceSimilaritySnapshot snapshot) {
+        return new PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection() {
+            @Override
+            public Long getId() {
+                return snapshot.getId();
+            }
+
+            @Override
+            public Long getLeftPlaceId() {
+                return snapshot.getLeftPlaceId();
+            }
+
+            @Override
+            public Long getRightPlaceId() {
+                return snapshot.getRightPlaceId();
+            }
+        };
     }
 }
