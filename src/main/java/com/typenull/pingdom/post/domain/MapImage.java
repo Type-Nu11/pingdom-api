@@ -47,4 +47,9 @@ public class MapImage {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
+
+    public void update(String title, String description){
+        this.title = title;
+        this.description = description;
+    }
 }

@@ -9,7 +9,7 @@ import org.springframework.web.multipart.MultipartFile;
 import org.springframework.util.StringUtils;
 
 @Schema(description = "게시글 업로드 요청 정보")
-public record ImageUploadRequest(
+public record PostUploadRequest(
         @NotBlank(message = "제목은 필수입니다.")
         @Size(max = 100, message = "제목은 100자 이하여야 합니다.")
         @Schema(description = "게시글 제목", example = "진주성 야경")

@@ -8,8 +8,10 @@ import com.typenull.pingdom.place.domain.MapPlace;
 import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.application.service.PlaceGrowthService;
 import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotService;
-import com.typenull.pingdom.post.api.dto.image.ImageUploadRequest;
-import com.typenull.pingdom.post.api.dto.image.MapImageResponse;
+import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
+import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
+import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
+import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
@@ -43,7 +45,7 @@ public class S3Service {
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
-    public MapImageResponse uploadImage(ImageUploadRequest request, long userId) {
+    public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request);
 
         String username = userRepository.findById(userId)
@@ -68,7 +70,7 @@ public class S3Service {
         }
     }
 
-    private Long resolvePlaceId(ImageUploadRequest request) {
+    private Long resolvePlaceId(PostUploadRequest request) {
         String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
         if (kakaoPlaceId != null) {
             return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
@@ -90,7 +92,24 @@ public class S3Service {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
-    public MapImageResponse deleteImage(Long imageId, Long userId) {
+    public PostUpdateResponse updateImage(PostUpdateRequest request) {
+        MapImage mapImage = mapImageRepository.findWithMapPlaceById(request.imageId())
+                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+
+        mapImage.update(request.title(), request.description());
+        S3ObjectStorage.S3PutResult putResult;
+        try {
+            putResult = s3ObjectStorage.put(request.file(), "map");
+        } catch (IOException exception) {
+            throw new MapException(MapErrorCode.UPLOAD_ERROR);
+        } catch (S3StorageException exception) {
+            throw toMapException(exception);
+        }
+
+        return new PostUpdateResponse(mapImage.getId(), "게시글을 수정했습니다.");
+    }
+
+    public PostResponse deleteImage(Long imageId, Long userId) {
         // 지우려는 이미지가 있는지
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
@@ -104,11 +123,11 @@ public class S3Service {
         deleteFromS3(s3Key);
         PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage);
 
-        return new MapImageResponse(imageId, "게시글을 삭제했습니다", placeGrowth);
+        return new PostResponse(imageId, "게시글을 삭제했습니다", placeGrowth);
     }
 
-    private MapImageResponse savePost(
-            ImageUploadRequest request,
+    private PostResponse savePost(
+            PostUploadRequest request,
             long userId,
             String username,
             S3ObjectStorage.S3PutResult putResult,
@@ -132,7 +151,7 @@ public class S3Service {
             MapImage saved = mapImageRepository.save(mapImage);
             PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
             placeRecommendationSnapshotService.refresh(mapPlace.getId());
-            return new MapImageResponse(saved.getId(), "게시글을 저장했습니다.", placeGrowth);
+            return new PostResponse(saved.getId(), "게시글을 저장했습니다.", placeGrowth);
         });
     }
 
