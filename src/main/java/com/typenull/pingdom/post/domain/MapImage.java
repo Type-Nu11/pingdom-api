@@ -12,14 +12,15 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-@Table(
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_map_image_user_place",
-                        columnNames = {"user_id", "map_place_id"}
-                )
-        }
-)
+//@Table(
+//        uniqueConstraints = {
+//                @UniqueConstraint(
+//                        name = "uk_map_image_user_place",
+//                        columnNames = {"user_id", "map_place_id"}
+//                )
+//        }
+//)
+@Table(name = "map_place")
 public class MapImage {
 
     @Id

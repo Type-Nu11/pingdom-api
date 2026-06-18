@@ -131,10 +131,6 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             return mapImageRepository.findAllBy(pageable);
         }
 
-        if (numericKeyword != null) {
-            return mapImageRepository.searchAdminPostsByNumericKeyword(numericKeyword, pageable);
-        }
-
-        return mapImageRepository.searchAdminPostsByTextKeyword(keyword, pageable);
+        return mapImageRepository.searchAdminPosts(keyword, numericKeyword, pageable);
     }
 }

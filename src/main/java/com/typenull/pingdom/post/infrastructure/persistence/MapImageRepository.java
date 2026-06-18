@@ -49,26 +49,16 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     @Query("""
             SELECT m
             FROM MapImage m
-            WHERE m.id = :numericKeyword
-               OR m.userId = :numericKeyword
-            """)
-    Page<MapImage> searchAdminPostsByNumericKeyword(
-            @Param("numericKeyword") Long numericKeyword,
-            Pageable pageable
-    );
-
-    @EntityGraph(attributePaths = "mapPlace")
-    @Query("""
-            SELECT m
-            FROM MapImage m
             LEFT JOIN m.mapPlace p
             WHERE m.title LIKE CONCAT('%', :keyword, '%')
                OR m.username LIKE CONCAT('%', :keyword, '%')
                OR m.description LIKE CONCAT('%', :keyword, '%')
                OR p.name LIKE CONCAT('%', :keyword, '%')
+               OR (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
             """)
-    Page<MapImage> searchAdminPostsByTextKeyword(
+    Page<MapImage> searchAdminPosts(
             @Param("keyword") String keyword,
+            @Param("numericKeyword") Long numericKeyword,
             Pageable pageable
     );
 
