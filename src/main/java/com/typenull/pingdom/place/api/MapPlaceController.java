@@ -30,7 +30,7 @@ public class MapPlaceController {
     private final MapPlaceService mapPlaceService;
 
     @PostMapping("/places/coordinates")
-    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰과 카카오 장소 ID를 발급합니다.")
+    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰을 발급합니다. 카카오 장소 ID는 선택값입니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -83,7 +83,7 @@ public class MapPlaceController {
     }
 
     @PostMapping("/places/upload")
-    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소/이미지와 좌표 토큰으로 장소를 저장합니다.")
+    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소/이미지와 좌표 토큰으로 장소를 저장합니다. 카카오 장소 ID 없이도 좌표 기반 등록이 가능합니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",

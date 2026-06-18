@@ -6,6 +6,8 @@ import com.typenull.pingdom.engagement.api.dto.report.PostReportRequest;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeResult;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -109,6 +111,9 @@ public class EngagementController {
             @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
         postReportService.report(imageId, user.userId(), user.username(), request.reason());
         return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }

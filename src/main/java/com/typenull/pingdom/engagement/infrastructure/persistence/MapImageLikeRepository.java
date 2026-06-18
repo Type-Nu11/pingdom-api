@@ -4,6 +4,8 @@ package com.typenull.pingdom.engagement.infrastructure.persistence;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import java.util.Collection;
 import java.util.List;
+import java.util.Set;
+
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,7 +19,7 @@ public interface MapImageLikeRepository extends JpaRepository<MapImageLike, Long
         Long getUserId();
     }
 
-    boolean existsByUserIdAndMapImageId(Long userId, Long mapImageId);
+    Boolean existsByUserIdAndMapImageId(Long userId, Long mapImageId);
 
     long countByMapImageId(Long mapImageId);
 
@@ -48,4 +50,7 @@ public interface MapImageLikeRepository extends JpaRepository<MapImageLike, Long
               AND image.mapPlace.id IN :placeIds
             """)
     List<PlaceLikeUserProjection> findLikeUsersByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
+
+    @Query("SELECT m.mapImageId FROM MapImageLike m WHERE m.userId = :userId AND m.mapImageId IN :mapImageIds")
+    Set<Long> findLikedMapImageIdsByUserIdAndMapImageIds(@Param("userId") Long userId, @Param("mapImageIds") Collection<Long> mapImageIds);
 }

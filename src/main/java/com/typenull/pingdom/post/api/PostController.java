@@ -64,6 +64,7 @@ public class PostController {
                                                   "username": "pingdom_user",
                                                   "createdAt": "2026-06-04T16:20:00",
                                                   "likeCount": 12,
+                                                  "likedByMe": false,
                                                   "placeId": 5,
                                                   "placeName": "진주성"
                                                 }
@@ -97,9 +98,11 @@ public class PostController {
             @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        return postQueryService.listPosts(page, limit);
+        Long userId = user.userId();
+        return postQueryService.listPosts(page, limit, userId);
     }
 
     @GetMapping("/posts/{id}")
@@ -124,6 +127,7 @@ public class PostController {
                                               "username": "pingdom_user",
                                               "createdAt": "2026-06-04T16:20:00",
                                               "likeCount": 12,
+                                              "LikedByMe": false,
                                               "placeId": 5,
                                               "placeName": "진주성",
                                               "placeAddress": "경상남도 진주시 남강로 626",
@@ -164,15 +168,17 @@ public class PostController {
             )
     })
     public PostDetailResponse getPost(
-            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId
+            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        return postQueryService.getPost(postId);
+        Long userId = (user != null) ? user.userId() : null;
+        return postQueryService.getPost(postId, userId);
     }
 
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
-            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시), 제목, 부가 설명, 첨부 파일을 함께 업로드해 게시글로 저장합니다."
+            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시)를 사용해 게시글을 저장합니다. 기존 장소 선택 없이 업로드하는 경우에는 좌표 토큰과 장소 이름/주소/카테고리를 함께 보내 장소 생성 후 게시글을 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -189,7 +195,7 @@ public class PostController {
                                             {
                                               "message": "입력값을 확인해주세요.",
                                               "errors": {
-                                                "kakaoPlaceId": "카카오 장소 ID는 50자 이하여야 합니다.",
+                                                "placeName": "좌표 기반 업로드 시 장소 이름은 필수입니다.",
                                                 "title": "제목은 필수입니다.",
                                                 "file": "파일은 필수입니다."
                                               }
@@ -259,7 +265,7 @@ public class PostController {
             @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = user.userId();
+        Long userId = (user != null) ? user.userId() : null;
         return ResponseEntity.ok(s3Service.uploadImage(request, userId));
     }
 

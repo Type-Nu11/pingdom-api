@@ -18,6 +18,20 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
 
     boolean existsByKakaoPlaceId(String kakaoPlaceId);
 
+    Optional<MapPlace> findFirstByNameAndAddressAndLatitudeAndLongitude(
+            String name,
+            String address,
+            Double latitude,
+            Double longitude
+    );
+
+    boolean existsByNameAndAddressAndLatitudeAndLongitude(
+            String name,
+            String address,
+            Double latitude,
+            Double longitude
+    );
+
     @Query("""
             SELECT m
             FROM MapPlace m
