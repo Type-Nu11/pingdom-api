@@ -30,4 +30,9 @@ public record AdminAdCreateRequest(
         @NotNull(message = "종료 시각은 필수입니다.")
         LocalDateTime endAt
 ) {
+    public AdminAdCreateRequest {
+        title = title == null ? null : title.trim();
+        imageUrl = imageUrl == null ? null : imageUrl.trim();
+        redirectUrl = redirectUrl == null ? null : redirectUrl.trim();
+    }
 }

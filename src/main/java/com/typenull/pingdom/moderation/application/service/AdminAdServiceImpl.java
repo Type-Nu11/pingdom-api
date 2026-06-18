@@ -26,9 +26,9 @@ public class AdminAdServiceImpl implements AdminAdService {
         }
 
         AdminAd savedAd = adminAdRepository.save(AdminAd.builder()
-                .title(request.title().trim())
-                .imageUrl(request.imageUrl().trim())
-                .redirectUrl(request.redirectUrl().trim())
+                .title(request.title())
+                .imageUrl(request.imageUrl())
+                .redirectUrl(request.redirectUrl())
                 .startAt(request.startAt())
                 .endAt(request.endAt())
                 .createdAt(LocalDateTime.now())
