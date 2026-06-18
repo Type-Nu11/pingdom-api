@@ -6,6 +6,8 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
+import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
@@ -41,12 +43,13 @@ public class S3Service {
     private final MapPlaceRepository mapPlaceRepository;
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
+    private final MapPlaceService mapPlaceService;
     private final PlatformTransactionManager transactionManager;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
-        Long placeId = resolvePlaceId(request);
+        Long placeId = resolvePlaceId(request, userId);
 
         if(mapImageRepository.existsByUserIdAndMapPlace_Id(userId, placeId)){
             throw new MapException(MapErrorCode.ALREADY_POSTED);
@@ -74,7 +77,7 @@ public class S3Service {
         }
     }
 
-    private Long resolvePlaceId(PostUploadRequest request) {
+    private Long resolvePlaceId(PostUploadRequest request, long userId) {
         String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
         if (kakaoPlaceId != null) {
             return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
@@ -84,7 +87,7 @@ public class S3Service {
 
         Long placeId = request.placeId();
         if (placeId == null) {
-            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
+            return resolveOrCreatePlaceIdByCoordinateToken(request, userId);
         }
 
         return mapPlaceRepository.findById(placeId)
@@ -92,7 +95,80 @@ public class S3Service {
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
     }
 
+    private Long resolveOrCreatePlaceIdByCoordinateToken(PostUploadRequest request, long userId) {
+        String normalizedPlaceName = trimToNull(request.placeName());
+        String normalizedAddress = trimToNull(request.address());
+        String normalizedCategory = trimToNull(request.category());
+
+        if (normalizedPlaceName == null
+                || normalizedAddress == null
+                || normalizedCategory == null
+                || !StringUtils.hasText(request.coordinateToken())) {
+            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
+        }
+
+        return mapPlaceRepository.findFirstByNameAndAddressAndLatitudeAndLongitude(
+                        normalizedPlaceName,
+                        normalizedAddress,
+                        requestLatitudeFromToken(request.coordinateToken(), userId),
+                        requestLongitudeFromToken(request.coordinateToken(), userId)
+                )
+                .map(MapPlace::getId)
+                .orElseGet(() -> createPlaceByCoordinateToken(
+                        request.coordinateToken(),
+                        normalizedPlaceName,
+                        normalizedAddress,
+                        normalizedCategory,
+                        userId
+                ));
+    }
+
+    private Long createPlaceByCoordinateToken(
+            String coordinateToken,
+            String placeName,
+            String address,
+            String category,
+            long userId
+    ) {
+        PlaceCreateResponse placeResponse = mapPlaceService.uploadPlaceByToken(
+                null,
+                placeName,
+                address,
+                category,
+                null,
+                coordinateToken,
+                userId
+        );
+        return placeResponse.id();
+    }
+
+    private Double requestLatitudeFromToken(String coordinateToken, long userId) {
+        var entry = previewCoordinateToken(coordinateToken, userId);
+        return entry.latitude();
+    }
+
+    private Double requestLongitudeFromToken(String coordinateToken, long userId) {
+        var entry = previewCoordinateToken(coordinateToken, userId);
+        return entry.longitude();
+    }
+
+    private com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry previewCoordinateToken(
+            String coordinateToken,
+            long userId
+    ) {
+        com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry entry =
+                mapPlaceService.peekCoordinateToken(coordinateToken);
+        if (entry == null || entry.userId() != userId) {
+            throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
+        }
+        return entry;
+    }
+
     private String normalizeKakaoPlaceId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
@@ -154,7 +230,8 @@ public class S3Service {
         deleteFromS3(s3Key);
         PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage);
 
-        return new PostResponse(imageId, "게시글을 삭제했습니다", placeGrowth);
+        Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
+        return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
     }
 
     private PostResponse savePost(
@@ -182,7 +259,7 @@ public class S3Service {
             MapImage saved = mapImageRepository.save(mapImage);
             PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
             placeRecommendationSnapshotService.refresh(mapPlace.getId());
-            return new PostResponse(saved.getId(), "게시글을 저장했습니다.", placeGrowth);
+            return new PostResponse(saved.getId(), saved.getId(), mapPlace.getId(), "게시글을 저장했습니다.", placeGrowth);
         });
     }
 

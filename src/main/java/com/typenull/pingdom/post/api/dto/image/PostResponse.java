@@ -7,6 +7,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record PostResponse(
         @Schema(description = "대상 게시글 ID", example = "10")
         Long id,
+        @Schema(description = "생성된 게시글 ID", example = "10")
+        Long postId,
+        @Schema(description = "연결되거나 생성된 장소 ID", example = "5")
+        Long placeId,
         @Schema(description = "처리 결과 메시지", example = "게시글을 저장했습니다.")
         String message,
         @Schema(description = "연결된 장소 성장 상태")

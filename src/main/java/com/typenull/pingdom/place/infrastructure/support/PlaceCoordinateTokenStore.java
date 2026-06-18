@@ -40,6 +40,24 @@ public class PlaceCoordinateTokenStore {
         return entry;
     }
 
+    public Entry peek(String token) {
+        if (token == null) {
+            return null;
+        }
+
+        Entry entry = store.get(token);
+        if (entry == null) {
+            return null;
+        }
+
+        if (Instant.now(clock).isAfter(entry.expiresAt())) {
+            store.remove(token);
+            return null;
+        }
+
+        return entry;
+    }
+
     @Scheduled(fixedDelayString = "PT1M", initialDelayString = "PT1M")
     public void evictExpiredTokens() {
         Instant now = Instant.now(clock);

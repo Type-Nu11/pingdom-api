@@ -178,7 +178,7 @@ public class PostController {
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
-            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시), 제목, 부가 설명, 첨부 파일을 함께 업로드해 게시글로 저장합니다."
+            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시)를 사용해 게시글을 저장합니다. 기존 장소 선택 없이 업로드하는 경우에는 좌표 토큰과 장소 이름/주소/카테고리를 함께 보내 장소 생성 후 게시글을 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -195,7 +195,7 @@ public class PostController {
                                             {
                                               "message": "입력값을 확인해주세요.",
                                               "errors": {
-                                                "kakaoPlaceId": "카카오 장소 ID는 50자 이하여야 합니다.",
+                                                "placeName": "좌표 기반 업로드 시 장소 이름은 필수입니다.",
                                                 "title": "제목은 필수입니다.",
                                                 "file": "파일은 필수입니다."
                                               }
