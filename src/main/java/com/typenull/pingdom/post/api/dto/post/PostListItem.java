@@ -21,6 +21,8 @@ public record PostListItem(
         LocalDateTime createdAt,
         @Schema(description = "좋아요 수", example = "12")
         long likeCount,
+        @Schema(description = "좋아요 여부")
+        Boolean likedByMe,
         @Schema(description = "연결된 장소 ID", example = "5")
         Long placeId,
         @Schema(description = "연결된 장소명", example = "진주성")
