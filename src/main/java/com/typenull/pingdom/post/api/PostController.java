@@ -98,9 +98,11 @@ public class PostController {
             @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        return postQueryService.listPosts(page, limit);
+        Long userId = user.userId();
+        return postQueryService.listPosts(page, limit, userId);
     }
 
     @GetMapping("/posts/{id}")
@@ -166,9 +168,11 @@ public class PostController {
             )
     })
     public PostDetailResponse getPost(
-            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId
+            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId,
+            @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        return postQueryService.getPost(postId);
+        Long userId = user.userId();
+        return postQueryService.getPost(postId, userId);
     }
 
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.application.query;
 
+import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
@@ -27,10 +28,11 @@ public class PostQueryServiceImpl implements PostQueryService {
 
     private final MapImageRepository mapImageRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final MapImageLikeRepository mapImageLikeRepository;
 
     @Override
     @Transactional(readOnly = true)
-    public PostListResponse listPosts(int page, int limit) {
+    public PostListResponse listPosts(int page, int limit, Long userId) {
         int safePage = Math.max(page, MIN_PAGE);
         int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
 
@@ -40,7 +42,7 @@ public class PostQueryServiceImpl implements PostQueryService {
 
         List<PostListItem> posts = imagePage.getContent()
                 .stream()
-                .map(this::toListItem)
+                .map(mapImage -> toListItem(mapImage, userId))
                 .toList();
 
         return PostListResponse.of(
@@ -54,7 +56,7 @@ public class PostQueryServiceImpl implements PostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public PostDetailResponse getPost(Long postId) {
+    public PostDetailResponse getPost(Long postId, Long userId) {
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
@@ -68,7 +70,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
-                mapImage.getLikedByMe(),
+                mapImageLikeRepository.existsByUserIdAndMapImageId(userId, mapImage.getId()),
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null,
                 mapPlace != null ? mapPlace.getAddress() : null,
@@ -82,7 +84,7 @@ public class PostQueryServiceImpl implements PostQueryService {
         return Sort.by(Sort.Order.desc("id"));
     }
 
-    private PostListItem toListItem(MapImage mapImage) {
+    private PostListItem toListItem(MapImage mapImage, Long userId) {
         MapPlace mapPlace = mapImage.getMapPlace();
         return new PostListItem(
                 mapImage.getId(),
@@ -93,7 +95,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
-                mapImage.getLikedByMe(),
+                mapImageLikeRepository.existsByUserIdAndMapImageId(userId, mapImage.getId()),
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null
         );

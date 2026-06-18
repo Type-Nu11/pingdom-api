@@ -52,8 +52,6 @@ public class MapImage {
     @Column(nullable = false, name = "like_count")
     private long likeCount = 0L;
 
-    private Boolean likedByMe = false;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
@@ -63,13 +61,5 @@ public class MapImage {
         this.description = description;
         this.imageUrl = imageUrl;
         this.s3Key = s3Key;
-    }
-
-    public void setLikedByMe(){
-        this.likedByMe = true;
-    }
-
-    public void setNotLikeByMe(){
-        this.likedByMe = false;
     }
 }
