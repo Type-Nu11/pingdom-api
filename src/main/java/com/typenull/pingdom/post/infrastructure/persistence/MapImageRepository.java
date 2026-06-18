@@ -115,4 +115,10 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     List<PlaceImageAggregateProjection> findPlaceAggregatesByPlaceIds(@Param("placeIds") Collection<Long> placeIds);
 
     boolean existsByUserIdAndMapPlace_Id(Long userId, Long placeId);
+
+    @Query("SELECT m FROM MapImage m WHERE m.id = :id OR m.userId = :id")
+    Page<MapImage> findByIdOrUserId(@Param("id") Long id, Pageable pageable);
+
+    @Query("SELECT m FROM MapImage m WHERE m.title LIKE %:keyword% OR m.description LIKE %:keyword%")
+    Page<MapImage> findByTitleOrDescriptionContaining(@Param("keyword") String keyword, Pageable pageable);
 }
