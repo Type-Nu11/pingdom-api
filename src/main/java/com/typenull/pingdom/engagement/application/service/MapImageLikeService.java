@@ -52,6 +52,7 @@ public class MapImageLikeService {
 
         mapImageLikeRepository.save(mapImageLike);
         mapImageRepository.increaseLikeCount(mapImageId);
+        mapImage.setLikedByMe();
         if (mapImage.getMapPlace() != null) {
             placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());
             placeRecommendationConversionService.recordConversionIfEligible(
@@ -79,6 +80,7 @@ public class MapImageLikeService {
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
         mapImageLikeRepository.deleteLike(userId, mapImageId);
         mapImageRepository.decreaseLikeCount(mapImageId);
+        mapImage.setNotLikeByMe();
         if (mapImage.getMapPlace() != null) {
             placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());
         }
@@ -87,6 +89,7 @@ public class MapImageLikeService {
     }
 
     @Transactional
+    //좋아요 알림을 눌렀을때 처리
     public void likeReturn(Long postId, Long notificationsId, Long userId) {
         postQueryService.getPost(postId);
 

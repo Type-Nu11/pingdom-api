@@ -64,6 +64,7 @@ public class PostController {
                                                   "username": "pingdom_user",
                                                   "createdAt": "2026-06-04T16:20:00",
                                                   "likeCount": 12,
+                                                  "likedByMe": false,
                                                   "placeId": 5,
                                                   "placeName": "진주성"
                                                 }
@@ -124,6 +125,7 @@ public class PostController {
                                               "username": "pingdom_user",
                                               "createdAt": "2026-06-04T16:20:00",
                                               "likeCount": 12,
+                                              "LikedByMe":false,
                                               "placeId": 5,
                                               "placeName": "진주성",
                                               "placeAddress": "경상남도 진주시 남강로 626",

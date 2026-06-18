@@ -68,6 +68,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
+                mapImage.getLikedByMe(),
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null,
                 mapPlace != null ? mapPlace.getAddress() : null,
@@ -92,6 +93,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
+                mapImage.getLikedByMe(),
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null
         );
