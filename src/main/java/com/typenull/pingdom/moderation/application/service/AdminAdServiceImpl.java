@@ -21,7 +21,7 @@ public class AdminAdServiceImpl implements AdminAdService {
     @Override
     @Transactional
     public AdminAdCreateResponse create(AdminAdCreateRequest request) {
-        if (!request.endAt().isAfter(request.startAt())) {
+        if (request.startAt() == null || request.endAt() == null || !request.endAt().isAfter(request.startAt())) {
             throw new AdminException(AdminErrorCode.AD_INVALID_PERIOD);
         }
 
