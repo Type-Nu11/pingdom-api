@@ -21,6 +21,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import software.amazon.awssdk.services.s3.S3Client;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -79,6 +80,26 @@ class PostReportControllerTest {
         assertEquals("reporter01", postReport.getReporterUsername());
         assertEquals("부적절한 사진입니다.", postReport.getReason());
         assertEquals(mapImage.getId(), postReport.getMapImage().getId());
+    }
+
+    @Test
+    void reportSucceedsWithSameTokenThatCanAccessMyPage() throws Exception {
+        String accessToken = signupAndLogin("reporter05");
+        MapImage mapImage = createMapImage(105L);
+
+        mockMvc.perform(get("/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "같은 토큰으로 신고 테스트"
+                                }
+                                """))
+                .andExpect(status().isCreated());
     }
 
     @Test
