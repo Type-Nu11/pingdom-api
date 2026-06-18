@@ -16,7 +16,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
-import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -118,7 +118,7 @@ public class AdminAdController {
                 .body(adminAdService.create(request));
     }
 
-    @DeleteMapping("/delete")
+    @DeleteMapping("/{adId}")
     @Operation(
             summary = "이벤트/광고 삭제",
             description = "관리자가 등록된 이벤트/광고를 삭제합니다."
@@ -173,7 +173,7 @@ public class AdminAdController {
     })
     public ResponseEntity<Void> deleteAd(
             @Parameter(description = "삭제할 이벤트/광고 ID", example = "1")
-            @RequestParam("adId") Long adId
+            @PathVariable("adId") Long adId
     ) {
         adminAdService.delete(adId);
         return ResponseEntity.noContent().build();

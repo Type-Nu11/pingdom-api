@@ -121,9 +121,8 @@ class AdminAdControllerTest {
                 .createdAt(LocalDateTime.of(2026, 6, 18, 12, 0))
                 .build());
 
-        mockMvc.perform(delete("/admin/ad/delete")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("adId", String.valueOf(savedAd.getId())))
+        mockMvc.perform(delete("/admin/ad/{adId}", savedAd.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isNoContent());
     }
 
@@ -131,9 +130,8 @@ class AdminAdControllerTest {
     void deleteAdReturnsNotFoundWhenAdDoesNotExist() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
-        mockMvc.perform(delete("/admin/ad/delete")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("adId", "999999"))
+        mockMvc.perform(delete("/admin/ad/{adId}", 999999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("AD_NOT_FOUND"));
     }
