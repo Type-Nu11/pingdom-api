@@ -42,4 +42,13 @@ public class AdminAdServiceImpl implements AdminAdService {
                 "이벤트/광고를 등록했습니다."
         );
     }
+
+    @Override
+    @Transactional
+    public void delete(Long adId) {
+        AdminAd adminAd = adminAdRepository.findById(adId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.AD_NOT_FOUND));
+
+        adminAdRepository.delete(adminAd);
+    }
 }

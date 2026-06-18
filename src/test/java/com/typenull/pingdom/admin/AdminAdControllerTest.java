@@ -1,6 +1,7 @@
 package com.typenull.pingdom.admin;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,6 +11,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateRequest;
+import com.typenull.pingdom.moderation.domain.ad.AdminAd;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAdRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -105,6 +107,35 @@ class AdminAdControllerTest {
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("AD_INVALID_PERIOD"));
+    }
+
+    @Test
+    void deleteAdReturnsNoContent() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        AdminAd savedAd = adminAdRepository.save(AdminAd.builder()
+                .title("삭제 대상 광고")
+                .imageUrl("https://cdn.pingdom.com/banner/delete-target.png")
+                .redirectUrl("https://pingdom.com/events/delete-target")
+                .startAt(LocalDateTime.of(2026, 6, 20, 9, 0))
+                .endAt(LocalDateTime.of(2026, 6, 30, 23, 59, 59))
+                .createdAt(LocalDateTime.of(2026, 6, 18, 12, 0))
+                .build());
+
+        mockMvc.perform(delete("/admin/ad/delete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("adId", String.valueOf(savedAd.getId())))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
+    void deleteAdReturnsNotFoundWhenAdDoesNotExist() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(delete("/admin/ad/delete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("adId", "999999"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("AD_NOT_FOUND"));
     }
 
     private String createAdminAndLogin() throws Exception {
