@@ -15,6 +15,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,10 +31,13 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPostResponse listPosts(int limit, int page, SortParam sortParam) {
+    public AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword) {
+        int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        int targetPage = Math.max(page - 1, 0);
+        int targetPage = safePage - 1;
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        Long numericKeyword = parseLongKeyword(safeKeyword);
 
         Sort sort = switch (safeSortParam) {
             case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
@@ -41,9 +45,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
         };
 
-        Page<MapImage> mapImagePage = mapImageRepository.findAllBy(
-                PageRequest.of(targetPage, safeLimit, sort)
-        );
+        PageRequest pageable = PageRequest.of(targetPage, safeLimit, sort);
+        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, pageable);
 
         Map<Long, List<AdminPostReportItem>> reportsByImageId = getReportsByImageId(mapImagePage.getContent());
 
@@ -54,7 +57,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
         return AdminPostResponse.of(
                 posts,
-                page,
+                safePage,
                 safeLimit,
                 mapImagePage.getTotalElements(),
                 mapImagePage.getTotalPages()
@@ -111,5 +114,31 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 postReport.getStatus(),
                 postReport.getProcessedAt()
         );
+    }
+
+    private Long parseLongKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private Page<MapImage> loadAdminPostPage(String keyword, Long numericKeyword, Pageable pageable) {
+        // 1. 전체 조회
+        if (keyword.isBlank()) {
+            return mapImageRepository.findAllBy(pageable);
+        }
+
+        // 2. 숫자인 경우 -> ID 정밀 검색
+        if (numericKeyword != null) {
+            return mapImageRepository.findByIdOrUserId(numericKeyword, pageable);
+        }
+
+        // 3. 텍스트인 경우 -> 텍스트 포함 검색
+        return mapImageRepository.findByTitleOrDescriptionContaining(keyword, pageable);
     }
 }

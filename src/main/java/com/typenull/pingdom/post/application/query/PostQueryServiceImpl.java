@@ -1,7 +1,7 @@
 package com.typenull.pingdom.post.application.query;
 
-import com.typenull.pingdom.place.application.service.PlaceGrowthService;
-import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListItem;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;

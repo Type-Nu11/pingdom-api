@@ -4,17 +4,17 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
-import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.domain.PlaceGrowthSnapshot;
-import com.typenull.pingdom.place.application.service.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
@@ -47,6 +47,10 @@ public class S3Service {
 
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request);
+
+        if(mapImageRepository.existsByUserIdAndMapPlace_Id(userId, placeId)){
+            throw new MapException(MapErrorCode.ALREADY_POSTED);
+        }
 
         String username = userRepository.findById(userId)
                 .map(user -> user.getUsername())

@@ -9,7 +9,7 @@ import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
-import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -109,7 +109,7 @@ public class AdminMapPlaceController {
                     schema = @Schema(type = "string", allowableValues = {"LATEST", "OLDEST"})
             )
             @RequestParam(defaultValue = "LATEST") SortParam sortParam,
-            @Parameter(description = "검색 키워드 설정", example = "용인")
+            @Parameter(description = "장소 검색 키워드. 장소명, 등록자 ID, 주소로 검색합니다.", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
         return adminMapPlaceQueryService.listPlaces(page, limit, sortParam, keyword);

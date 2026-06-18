@@ -3,7 +3,7 @@ package com.typenull.pingdom.post.domain;
 import jakarta.persistence.*;
 import lombok.*;
 import org.hibernate.annotations.CreationTimestamp;
-import com.typenull.pingdom.place.domain.MapPlace;
+import com.typenull.pingdom.place.domain.place.MapPlace;
 
 import java.time.LocalDateTime;
 
@@ -12,6 +12,14 @@ import java.time.LocalDateTime;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
+//@Table(
+//        uniqueConstraints = {
+//                @UniqueConstraint(
+//                        name = "uk_map_image_user_place",
+//                        columnNames = {"user_id", "map_place_id"}
+//                )
+//        }
+//)
 public class MapImage {
 
     @Id

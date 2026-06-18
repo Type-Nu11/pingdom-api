@@ -15,24 +15,24 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.place.domain.MapBookmark;
+import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.place.domain.MapPlace;
-import com.typenull.pingdom.place.domain.PlaceRecommendationClick;
-import com.typenull.pingdom.place.domain.PlaceRecommendationConversion;
-import com.typenull.pingdom.place.domain.PlaceRecommendationConversionType;
-import com.typenull.pingdom.place.domain.PlaceRecommendationExposure;
-import com.typenull.pingdom.place.domain.PlaceRecommendationSnapshot;
-import com.typenull.pingdom.place.domain.PlaceSimilaritySnapshot;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationClickRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationConversionRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationExposureRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.MapBookmarkRepository;
+import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationExposure;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationSnapshotRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceRecommendationVersionSnapshotRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.PlaceSimilaritySnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -136,6 +136,76 @@ class AdminMapPlaceControllerTest {
                         .param("sortParam", SortParam.MOST_LIKED.name()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SORT_PARAM"));
+    }
+
+    @Test
+    void listPlacesFiltersByKeywordAcrossAddressAndRegistrantUserId() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace matchingPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("진주성")
+                .address("경상남도 진주시 남강로 626")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(77L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("다른 장소")
+                .address("서울특별시 강남구 테헤란로")
+                .latitude(37.4981)
+                .longitude(127.0276)
+                .userId(88L)
+                .registrant("anotherRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "남강로 626"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "77"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesMatchesRegistrantUserIdExactlyWhenKeywordIsNumeric() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace firstPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("정확 일치 장소")
+                .address("경상남도 진주시 테스트로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(7L)
+                .registrant("firstRegistrar")
+                .build());
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("부분 일치 장소")
+                .address("경상남도 진주시 테스트로 2")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(77L)
+                .registrant("secondRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(firstPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
     }
 
     @Test

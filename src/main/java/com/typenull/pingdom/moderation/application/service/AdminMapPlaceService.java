@@ -1,7 +1,7 @@
 package com.typenull.pingdom.moderation.application.service;
 
-import com.typenull.pingdom.place.application.service.PlaceRecommendationSnapshotResyncService;
-import com.typenull.pingdom.place.infrastructure.persistence.MapPlaceRepository;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import lombok.RequiredArgsConstructor;
