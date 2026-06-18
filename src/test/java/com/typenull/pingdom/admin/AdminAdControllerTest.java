@@ -77,7 +77,7 @@ class AdminAdControllerTest {
                 LocalDateTime.of(2026, 6, 30, 23, 59, 59)
         );
 
-        mockMvc.perform(post("/admin/ad/post")
+        mockMvc.perform(post("/admin/ad")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
@@ -99,7 +99,7 @@ class AdminAdControllerTest {
                 LocalDateTime.of(2026, 6, 20, 9, 0)
         );
 
-        mockMvc.perform(post("/admin/ad/post")
+        mockMvc.perform(post("/admin/ad")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
