@@ -50,6 +50,21 @@ public class AdminAd {
             LocalDateTime endAt,
             LocalDateTime createdAt
     ) {
+        if (title == null || title.isBlank()) {
+            throw new IllegalArgumentException("title은 필수이며 공백일 수 없습니다.");
+        }
+        if (imageUrl == null || imageUrl.isBlank()) {
+            throw new IllegalArgumentException("imageUrl은 필수이며 공백일 수 없습니다.");
+        }
+        if (redirectUrl == null || redirectUrl.isBlank()) {
+            throw new IllegalArgumentException("redirectUrl은 필수이며 공백일 수 없습니다.");
+        }
+        if (startAt == null || endAt == null || !endAt.isAfter(startAt)) {
+            throw new IllegalArgumentException("종료 시각은 시작 시각보다 이후여야 합니다.");
+        }
+        if (createdAt == null) {
+            throw new IllegalArgumentException("createdAt은 필수입니다.");
+        }
         this.title = title;
         this.imageUrl = imageUrl;
         this.redirectUrl = redirectUrl;
