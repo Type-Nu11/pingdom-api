@@ -15,6 +15,7 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -126,15 +127,18 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         }
     }
 
-    private Page<MapImage> loadAdminPostPage(String keyword, Long numericKeyword, PageRequest pageable) {
+    private Page<MapImage> loadAdminPostPage(String keyword, Long numericKeyword, Pageable pageable) {
+        // 1. 전체 조회
         if (keyword.isBlank()) {
             return mapImageRepository.findAllBy(pageable);
         }
 
+        // 2. 숫자인 경우 -> ID 정밀 검색
         if (numericKeyword != null) {
-            return mapImageRepository.searchAdminPostsByNumericKeyword(numericKeyword, pageable);
+            return mapImageRepository.findByIdOrUserId(numericKeyword, pageable);
         }
 
-        return mapImageRepository.searchAdminPostsByTextKeyword(keyword, pageable);
+        // 3. 텍스트인 경우 -> 텍스트 포함 검색
+        return mapImageRepository.findByTitleOrDescriptionContaining(keyword, pageable);
     }
 }
