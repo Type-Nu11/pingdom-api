@@ -13,6 +13,8 @@ springdoc:
     urls:
       - name: app
         url: /v3/api-docs/app
+      - name: common
+        url: /v3/api-docs/common
       - name: web
         url: /v3/api-docs/web
 
