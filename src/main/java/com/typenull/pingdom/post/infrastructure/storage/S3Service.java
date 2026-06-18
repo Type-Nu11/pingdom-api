@@ -10,6 +10,7 @@ import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
@@ -107,11 +108,12 @@ public class S3Service {
             throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
         }
 
+        Entry coordinateTokenEntry = previewCoordinateToken(request.coordinateToken(), userId);
         return mapPlaceRepository.findFirstByNameAndAddressAndLatitudeAndLongitude(
                         normalizedPlaceName,
                         normalizedAddress,
-                        requestLatitudeFromToken(request.coordinateToken(), userId),
-                        requestLongitudeFromToken(request.coordinateToken(), userId)
+                        coordinateTokenEntry.latitude(),
+                        coordinateTokenEntry.longitude()
                 )
                 .map(MapPlace::getId)
                 .orElseGet(() -> createPlaceByCoordinateToken(
@@ -142,22 +144,8 @@ public class S3Service {
         return placeResponse.id();
     }
 
-    private Double requestLatitudeFromToken(String coordinateToken, long userId) {
-        var entry = previewCoordinateToken(coordinateToken, userId);
-        return entry.latitude();
-    }
-
-    private Double requestLongitudeFromToken(String coordinateToken, long userId) {
-        var entry = previewCoordinateToken(coordinateToken, userId);
-        return entry.longitude();
-    }
-
-    private com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry previewCoordinateToken(
-            String coordinateToken,
-            long userId
-    ) {
-        com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry entry =
-                mapPlaceService.peekCoordinateToken(coordinateToken);
+    private Entry previewCoordinateToken(String coordinateToken, long userId) {
+        Entry entry = mapPlaceService.peekCoordinateToken(coordinateToken);
         if (entry == null || entry.userId() != userId) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
         }
