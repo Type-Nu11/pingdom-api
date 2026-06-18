@@ -27,7 +27,7 @@ public class AdminAdController {
 
     private final AdminAdService adminAdService;
 
-    @PostMapping("/post")
+    @PostMapping
     @Operation(
             summary = "이벤트/광고 등록",
             description = "관리자가 앱에 노출할 이벤트/광고 배너 정보를 등록합니다."
