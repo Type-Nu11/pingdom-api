@@ -40,9 +40,14 @@ public class PostQueryServiceImpl implements PostQueryService {
                 PageRequest.of(safePage - MIN_PAGE, safeLimit, latestFirstSort())
         );
 
-        List<PostListItem> posts = imagePage.getContent()
-                .stream()
-                .map(mapImage -> toListItem(mapImage, userId))
+        List<MapImage> mapImages = imagePage.getContent();
+        List<Long> mapImageIds = mapImages.stream().map(MapImage::getId).toList();
+        java.util.Set<Long> likedImageIds = (userId != null && !mapImageIds.isEmpty())
+                ? mapImageLikeRepository.findLikedMapImageIdsByUserIdAndMapImageIds(userId, mapImageIds)
+                : java.util.Collections.emptySet();
+
+        List<PostListItem> posts = mapImages.stream()
+                .map(mapImage -> toListItem(mapImage, likedImageIds.contains(mapImage.getId())))
                 .toList();
 
         return PostListResponse.of(
@@ -61,6 +66,12 @@ public class PostQueryServiceImpl implements PostQueryService {
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         MapPlace mapPlace = mapImage.getMapPlace();
+        boolean liked = userId != null
+                && mapImageLikeRepository.existsByUserIdAndMapImageId(
+                userId,
+                mapImage.getId()
+        );
+
         return new PostDetailResponse(
                 mapImage.getId(),
                 mapImage.getTitle(),
@@ -70,7 +81,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
-                mapImageLikeRepository.existsByUserIdAndMapImageId(userId, mapImage.getId()),
+                liked,
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null,
                 mapPlace != null ? mapPlace.getAddress() : null,
@@ -84,7 +95,7 @@ public class PostQueryServiceImpl implements PostQueryService {
         return Sort.by(Sort.Order.desc("id"));
     }
 
-    private PostListItem toListItem(MapImage mapImage, Long userId) {
+    private PostListItem toListItem(MapImage mapImage, boolean liked) {
         MapPlace mapPlace = mapImage.getMapPlace();
         return new PostListItem(
                 mapImage.getId(),
@@ -95,7 +106,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
-                mapImageLikeRepository.existsByUserIdAndMapImageId(userId, mapImage.getId()),
+                liked,
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null
         );

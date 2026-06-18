@@ -127,7 +127,7 @@ public class PostController {
                                               "username": "pingdom_user",
                                               "createdAt": "2026-06-04T16:20:00",
                                               "likeCount": 12,
-                                              "LikedByMe":false,
+                                              "LikedByMe": false,
                                               "placeId": 5,
                                               "placeName": "진주성",
                                               "placeAddress": "경상남도 진주시 남강로 626",
@@ -171,7 +171,7 @@ public class PostController {
             @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = user.userId();
+        Long userId = (user != null) ? user.userId() : null;
         return postQueryService.getPost(postId, userId);
     }
 
@@ -265,7 +265,7 @@ public class PostController {
             @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = user.userId();
+        Long userId = (user != null) ? user.userId() : null;
         return ResponseEntity.ok(s3Service.uploadImage(request, userId));
     }
 
