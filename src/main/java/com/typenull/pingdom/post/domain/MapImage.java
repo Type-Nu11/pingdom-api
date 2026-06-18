@@ -20,7 +20,6 @@ import java.time.LocalDateTime;
 //                )
 //        }
 //)
-@Table(name = "map_place")
 public class MapImage {
 
     @Id
