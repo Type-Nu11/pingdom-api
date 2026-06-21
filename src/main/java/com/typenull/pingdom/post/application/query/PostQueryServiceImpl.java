@@ -77,6 +77,10 @@ public class PostQueryServiceImpl implements PostQueryService {
     @Override
     @Transactional(readOnly = true)
     public PostListResponse listBookmarkedPosts(int page, int limit, Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+
         int safePage = Math.max(page, MIN_PAGE);
         int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
 

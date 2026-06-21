@@ -104,7 +104,8 @@ class MapPostQueryControllerTest {
         Long userId = userRepository.findByUsername("bookmark-reader").orElseThrow().getId();
         MapPlace savedPlace = createMapPlace("저장한 장소", "경상남도 진주시 저장로 1");
         MapPlace unsavedPlace = createMapPlace("저장하지 않은 장소", "경상남도 진주시 미저장로 2");
-        MapImage savedPost = createMapImage(31L, "writer01", "저장한 게시글", savedPlace, 4L);
+        createMapImage(31L, "writer01", "이전 저장 게시글", savedPlace, 4L);
+        MapImage savedPost = createMapImage(33L, "writer03", "최신 저장 게시글", savedPlace, 6L);
         createMapImage(32L, "writer02", "저장하지 않은 게시글", unsavedPlace, 2L);
         mapBookmarkRepository.save(MapBookmark.builder()
                 .userId(userId)
@@ -119,6 +120,7 @@ class MapPostQueryControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1))
                 .andExpect(jsonPath("$.posts.length()").value(1))
                 .andExpect(jsonPath("$.posts[0].id").value(savedPost.getId()))
+                .andExpect(jsonPath("$.posts[0].title").value("최신 저장 게시글"))
                 .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
                 .andExpect(jsonPath("$.posts[0].placeId").value(savedPlace.getId()));
     }
