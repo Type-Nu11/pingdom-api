@@ -3,6 +3,7 @@ package com.typenull.pingdom.post.application.query;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListItem;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
@@ -11,6 +12,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -29,6 +31,7 @@ public class PostQueryServiceImpl implements PostQueryService {
     private final MapImageRepository mapImageRepository;
     private final PlaceGrowthService placeGrowthService;
     private final MapImageLikeRepository mapImageLikeRepository;
+    private final MapBookmarkRepository mapBookmarkRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -42,12 +45,57 @@ public class PostQueryServiceImpl implements PostQueryService {
 
         List<MapImage> mapImages = imagePage.getContent();
         List<Long> mapImageIds = mapImages.stream().map(MapImage::getId).toList();
-        java.util.Set<Long> likedImageIds = (userId != null && !mapImageIds.isEmpty())
+        Set<Long> likedImageIds = (userId != null && !mapImageIds.isEmpty())
                 ? mapImageLikeRepository.findLikedMapImageIdsByUserIdAndMapImageIds(userId, mapImageIds)
+                : java.util.Collections.emptySet();
+        List<Long> placeIds = mapImages.stream()
+                .map(MapImage::getMapPlace)
+                .filter(java.util.Objects::nonNull)
+                .map(MapPlace::getId)
+                .toList();
+        Set<Long> bookmarkedPlaceIds = (userId != null && !placeIds.isEmpty())
+                ? mapBookmarkRepository.findPlaceIdsByUserIdAndPlaceIds(userId, placeIds)
                 : java.util.Collections.emptySet();
 
         List<PostListItem> posts = mapImages.stream()
-                .map(mapImage -> toListItem(mapImage, likedImageIds.contains(mapImage.getId())))
+                .map(mapImage -> toListItem(
+                        mapImage,
+                        likedImageIds.contains(mapImage.getId()),
+                        isBookmarked(mapImage, bookmarkedPlaceIds)
+                ))
+                .toList();
+
+        return PostListResponse.of(
+                posts,
+                safePage,
+                safeLimit,
+                imagePage.getTotalElements(),
+                imagePage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PostListResponse listBookmarkedPosts(int page, int limit, Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+
+        int safePage = Math.max(page, MIN_PAGE);
+        int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
+
+        Page<MapImage> imagePage = mapImageRepository.findBookmarkedByUserId(
+                userId,
+                PageRequest.of(safePage - MIN_PAGE, safeLimit)
+        );
+        List<MapImage> mapImages = imagePage.getContent();
+        List<Long> mapImageIds = mapImages.stream().map(MapImage::getId).toList();
+        Set<Long> likedImageIds = mapImageIds.isEmpty()
+                ? java.util.Collections.emptySet()
+                : mapImageLikeRepository.findLikedMapImageIdsByUserIdAndMapImageIds(userId, mapImageIds);
+
+        List<PostListItem> posts = mapImages.stream()
+                .map(mapImage -> toListItem(mapImage, likedImageIds.contains(mapImage.getId()), true))
                 .toList();
 
         return PostListResponse.of(
@@ -95,7 +143,7 @@ public class PostQueryServiceImpl implements PostQueryService {
         return Sort.by(Sort.Order.desc("id"));
     }
 
-    private PostListItem toListItem(MapImage mapImage, boolean liked) {
+    private PostListItem toListItem(MapImage mapImage, boolean liked, boolean bookmarked) {
         MapPlace mapPlace = mapImage.getMapPlace();
         return new PostListItem(
                 mapImage.getId(),
@@ -107,8 +155,14 @@ public class PostQueryServiceImpl implements PostQueryService {
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount(),
                 liked,
+                bookmarked,
                 mapPlace != null ? mapPlace.getId() : null,
                 mapPlace != null ? mapPlace.getName() : null
         );
+    }
+
+    private boolean isBookmarked(MapImage mapImage, Set<Long> bookmarkedPlaceIds) {
+        return mapImage.getMapPlace() != null
+                && bookmarkedPlaceIds.contains(mapImage.getMapPlace().getId());
     }
 }

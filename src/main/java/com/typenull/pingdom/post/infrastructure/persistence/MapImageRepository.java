@@ -46,6 +46,34 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     Page<MapImage> findAllBy(Pageable pageable);
 
     @EntityGraph(attributePaths = "mapPlace")
+    @Query(
+            value = """
+                    SELECT m
+                    FROM MapImage m
+                    JOIN MapBookmark b ON b.placeId = m.mapPlace.id
+                    WHERE b.userId = :userId
+                      AND m.id = (
+                          SELECT MAX(latest.id)
+                          FROM MapImage latest
+                          WHERE latest.mapPlace.id = m.mapPlace.id
+                      )
+                    ORDER BY b.createdAt DESC, b.id DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(m)
+                    FROM MapImage m
+                    JOIN MapBookmark b ON b.placeId = m.mapPlace.id
+                    WHERE b.userId = :userId
+                      AND m.id = (
+                          SELECT MAX(latest.id)
+                          FROM MapImage latest
+                          WHERE latest.mapPlace.id = m.mapPlace.id
+                      )
+                    """
+    )
+    Page<MapImage> findBookmarkedByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = "mapPlace")
     @Query("""
             SELECT m
             FROM MapImage m
