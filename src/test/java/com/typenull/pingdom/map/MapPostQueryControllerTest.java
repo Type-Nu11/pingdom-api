@@ -5,6 +5,8 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -50,10 +52,14 @@ class MapPostQueryControllerTest {
     private MapPlaceRepository mapPlaceRepository;
 
     @Autowired
+    private MapBookmarkRepository mapBookmarkRepository;
+
+    @Autowired
     private MapImageRepository mapImageRepository;
 
     @BeforeEach
     void setUp() {
+        mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -66,6 +72,11 @@ class MapPostQueryControllerTest {
         MapPlace secondPlace = createMapPlace("두 번째 장소", "경상남도 진주시 남강로 2");
         createMapImage(11L, "writer01", "첫 번째 게시글", firstPlace, 3L);
         MapImage latestPost = createMapImage(12L, "writer02", "두 번째 게시글", secondPlace, 7L);
+        Long userId = userRepository.findByUsername("reader01").orElseThrow().getId();
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(userId)
+                .placeId(secondPlace.getId())
+                .build());
 
         mockMvc.perform(get("/map/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -82,7 +93,34 @@ class MapPostQueryControllerTest {
                 .andExpect(jsonPath("$.posts[0].title").value("두 번째 게시글"))
                 .andExpect(jsonPath("$.posts[0].username").value("writer02"))
                 .andExpect(jsonPath("$.posts[0].likeCount").value(7))
+                .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
+                .andExpect(jsonPath("$.posts[1].bookmarked").value(false))
                 .andExpect(jsonPath("$.posts[0].placeName").value("두 번째 장소"));
+    }
+
+    @Test
+    void listBookmarkedPostsReturnsOnlyCurrentUsersSavedPosts() throws Exception {
+        String accessToken = signupAndLogin("bookmark-reader");
+        Long userId = userRepository.findByUsername("bookmark-reader").orElseThrow().getId();
+        MapPlace savedPlace = createMapPlace("저장한 장소", "경상남도 진주시 저장로 1");
+        MapPlace unsavedPlace = createMapPlace("저장하지 않은 장소", "경상남도 진주시 미저장로 2");
+        MapImage savedPost = createMapImage(31L, "writer01", "저장한 게시글", savedPlace, 4L);
+        createMapImage(32L, "writer02", "저장하지 않은 게시글", unsavedPlace, 2L);
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(userId)
+                .placeId(savedPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(savedPost.getId()))
+                .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
+                .andExpect(jsonPath("$.posts[0].placeId").value(savedPlace.getId()));
     }
 
     @Test
