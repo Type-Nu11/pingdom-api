@@ -60,14 +60,13 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                     ORDER BY b.createdAt DESC, b.id DESC
                     """,
             countQuery = """
-                    SELECT COUNT(m)
-                    FROM MapImage m
-                    JOIN MapBookmark b ON b.placeId = m.mapPlace.id
+                    SELECT COUNT(b)
+                    FROM MapBookmark b
                     WHERE b.userId = :userId
-                      AND m.id = (
-                          SELECT MAX(latest.id)
-                          FROM MapImage latest
-                          WHERE latest.mapPlace.id = m.mapPlace.id
+                      AND EXISTS (
+                          SELECT 1
+                          FROM MapImage m
+                          WHERE m.mapPlace.id = b.placeId
                       )
                     """
     )
