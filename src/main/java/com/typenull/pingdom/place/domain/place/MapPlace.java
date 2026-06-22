@@ -15,13 +15,12 @@ import org.locationtech.jts.geom.Point;
 @AllArgsConstructor
 @NoArgsConstructor
 @Builder
-//더미 데이터 떄문에 임시로 끄기, 정식으로 출시 할때 키기
-//@Table(
-//        name = "map_place",
-//        uniqueConstraints = {
-//                @UniqueConstraint(name = "uk_map_place_kakao_place_id", columnNames = "kakao_place_id")
-//        }
-//)
+@Table(
+        name = "map_place",
+        uniqueConstraints = {
+                @UniqueConstraint(name = "uk_map_place_kakao_place_id", columnNames = "kakao_place_id")
+        }
+)
 public class MapPlace {
 
     @Id
@@ -50,7 +49,7 @@ public class MapPlace {
     @Column(name = "longitude", nullable = false)
     private Double longitude;
 
-    // PostGIS geometry (WGS84, lon/lat). Nullable for backward compatibility with existing rows.
+    // PostGIS geometry (WGS84, lon/lat).
     @JdbcTypeCode(SqlTypes.GEOMETRY)
     @Column(name = "location", columnDefinition = "geometry(Point,4326)")
     private Point location;
