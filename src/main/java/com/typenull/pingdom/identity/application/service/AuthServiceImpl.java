@@ -98,7 +98,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        if (user.isBanned()) {
+        if (user.isCurrentlyBanned(LocalDateTime.now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -118,7 +118,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (user.isBanned()) {
+        if (user.isCurrentlyBanned(LocalDateTime.now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -162,6 +162,10 @@ public class AuthServiceImpl implements AuthService {
 
         if (user.isWithdrawn()) {
             throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
+
+        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+            throw new AuthException(AuthErrorCode.USER_BANNED);
         }
 
         if (!user.matchesRefreshToken(request.refreshToken())) {
@@ -259,7 +263,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
-        if (user.isBanned()) {
+        if (user.isCurrentlyBanned(LocalDateTime.now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {

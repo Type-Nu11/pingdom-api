@@ -342,6 +342,71 @@ class AuthControllerTest {
     }
 
     @Test
+    void activeTemporaryBanBlocksExistingAccessAndRefreshTokens() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("activebanuser", "activebanuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        LoginRequest loginRequest = new LoginRequest("activebanuser", "password123");
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("accessToken")
+                .textValue();
+        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("refreshToken")
+                .textValue();
+
+        User user = userRepository.findByUsername("activebanuser").orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        user.ban("기간 밴 테스트", now, now.plusDays(1));
+        userRepository.saveAndFlush(user);
+
+        mockMvc.perform(get("/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+
+        RefreshTokenRequest refreshTokenRequest = new RefreshTokenRequest(refreshToken);
+        mockMvc.perform(post("/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(refreshTokenRequest)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("USER_BANNED"));
+    }
+
+    @Test
+    void expiredTemporaryBanAllowsLoginAndExistingAccessToken() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("expiredbanuser", "expiredbanuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        String accessToken = loginAndExtractAccessToken("expiredbanuser");
+        User user = userRepository.findByUsername("expiredbanuser").orElseThrow();
+        LocalDateTime now = LocalDateTime.now();
+        user.ban("만료된 기간 밴", now.minusDays(2), now.minusDays(1));
+        userRepository.saveAndFlush(user);
+
+        mockMvc.perform(get("/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        LoginRequest loginRequest = new LoginRequest("expiredbanuser", "password123");
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andExpect(jsonPath("$.refreshToken").isString());
+    }
+
+    @Test
     void withdrawAnonymizesUserAndBlocksExistingTokens() throws Exception {
         SignupRequest signupRequest = new SignupRequest(
                 "withdrawuser",
