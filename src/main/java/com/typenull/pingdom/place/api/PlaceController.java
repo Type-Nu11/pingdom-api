@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClic
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
+import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -71,13 +72,41 @@ public class PlaceController {
     })
     public ResponseEntity<PlaceListResponse> listPlaces(
             @Parameter(description = "페이지 번호", example = "1")
+            @Min(value = 1, message = "page는 1 이상이어야 합니다.")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
+            @Min(value = 1, message = "limit는 1 이상이어야 합니다.")
+            @Max(value = 100, message = "limit는 100 이하여야 합니다.")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "장소명 검색어", example = "카페")
-            @RequestParam(required = false) String keyword
+            @Parameter(description = "장소명 또는 주소 검색어", example = "카페")
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "카테고리 필터", example = "카페")
+            @RequestParam(required = false) String category,
+            @Parameter(description = "현재 위도. 거리 검색 시 longitude, radiusKm와 함께 전달합니다.", example = "35.1801")
+            @DecimalMin(value = "-90.0", message = "위도는 -90.0 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90.0 이하여야 합니다.")
+            @RequestParam(required = false) Double latitude,
+            @Parameter(description = "현재 경도. 거리 검색 시 latitude, radiusKm와 함께 전달합니다.", example = "128.1078")
+            @DecimalMin(value = "-180.0", message = "경도는 -180.0 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180.0 이하여야 합니다.")
+            @RequestParam(required = false) Double longitude,
+            @Parameter(description = "검색 반경(km). 거리 검색 시 latitude, longitude와 함께 전달합니다.", example = "3.0")
+            @DecimalMin(value = "0.1", message = "radiusKm는 0.1 이상이어야 합니다.")
+            @DecimalMax(value = "20.0", message = "radiusKm는 20.0 이하여야 합니다.")
+            @RequestParam(required = false) Double radiusKm,
+            @Parameter(description = "정렬 기준. LATEST 또는 NEAREST", example = "LATEST")
+            @RequestParam(defaultValue = "LATEST") String sort
     ) {
-        return ResponseEntity.ok(placeQueryService.listPlaces(page, limit, keyword));
+        return ResponseEntity.ok(placeQueryService.listPlaces(new PlaceSearchCondition(
+                page,
+                limit,
+                keyword,
+                category,
+                latitude,
+                longitude,
+                radiusKm,
+                sort
+        )));
     }
 
     @GetMapping("/recommendations")
