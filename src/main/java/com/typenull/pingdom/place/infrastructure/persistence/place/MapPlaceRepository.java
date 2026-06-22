@@ -23,6 +23,25 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     @Query("""
             SELECT m
             FROM MapPlace m
+            WHERE m.id <> :placeId
+              AND m.name = :name
+              AND m.address = :address
+              AND m.latitude BETWEEN :minLatitude AND :maxLatitude
+              AND m.longitude BETWEEN :minLongitude AND :maxLongitude
+            """)
+    List<MapPlace> findDuplicateCandidatesByNameAndAddressInBoundingBox(
+            @Param("placeId") Long placeId,
+            @Param("name") String name,
+            @Param("address") String address,
+            @Param("minLatitude") double minLatitude,
+            @Param("maxLatitude") double maxLatitude,
+            @Param("minLongitude") double minLongitude,
+            @Param("maxLongitude") double maxLongitude
+    );
+
+    @Query("""
+            SELECT m
+            FROM MapPlace m
             WHERE EXISTS (
                 SELECT other.id
                 FROM MapPlace other

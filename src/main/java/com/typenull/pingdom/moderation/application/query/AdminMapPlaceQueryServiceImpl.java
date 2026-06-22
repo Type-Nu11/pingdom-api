@@ -50,6 +50,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
     private static final int PLACE_DETAIL_POST_LIMIT = 20;
     private static final double CTR_PRIOR_WEIGHT = 8d;
+    private static final double DUPLICATE_DISTANCE_METERS = 50d;
+    private static final double EARTH_RADIUS_METERS = 6_371_000d;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageRepository mapImageRepository;
@@ -154,8 +156,17 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                     .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
         }
 
-        mapPlaceRepository.findAllByNameAndAddress(mapPlace.getName(), mapPlace.getAddress()).stream()
-                .filter(candidatePlace -> !candidatePlace.getId().equals(placeId))
+        double latitudeDelta = Math.toDegrees(DUPLICATE_DISTANCE_METERS / EARTH_RADIUS_METERS);
+        double longitudeDelta = calculateLongitudeDelta(mapPlace.getLatitude(), DUPLICATE_DISTANCE_METERS);
+        mapPlaceRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
+                        placeId,
+                        mapPlace.getName(),
+                        mapPlace.getAddress(),
+                        mapPlace.getLatitude() - latitudeDelta,
+                        mapPlace.getLatitude() + latitudeDelta,
+                        mapPlace.getLongitude() - longitudeDelta,
+                        mapPlace.getLongitude() + longitudeDelta
+                ).stream()
                 .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
 
         AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
@@ -198,6 +209,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 mapPlace.currentPhotoCount(),
                 candidates
         );
+    }
+
+    private double calculateLongitudeDelta(double latitude, double distanceMeters) {
+        double cosLatitude = Math.cos(Math.toRadians(latitude));
+        if (Math.abs(cosLatitude) < 1e-12) {
+            return 180d;
+        }
+        return Math.toDegrees(distanceMeters / (EARTH_RADIUS_METERS * cosLatitude));
     }
 
     @Override
