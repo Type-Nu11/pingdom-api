@@ -153,6 +153,71 @@ class PlaceControllerTest {
     }
 
     @Test
+    void listPlacesSearchesByAddressAndCategory() throws Exception {
+        String accessToken = signupAndLogin("readerSearch01");
+        MapPlace matchingPlace = createMapPlace(
+                "진주성",
+                "경상남도 진주시 남강로 626",
+                "관광",
+                35.1894,
+                128.0789
+        );
+        createMapPlace("남강 카페", "경상남도 진주시 남강로 10", "카페", 35.1801, 128.1078);
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "남강로")
+                        .param("category", " 관광 "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].category").value("관광"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesFiltersByRadiusAndSortsNearest() throws Exception {
+        String accessToken = signupAndLogin("readerSearch02");
+        MapPlace nearPlace = createMapPlace("가까운 장소", "경상남도 진주시 가까운로 1", "카페", 35.1802, 128.1079);
+        createMapPlace("먼저 생성된 먼 장소", "경상남도 진주시 먼로 1", "카페", 35.1840, 128.1110);
+        createMapPlace("반경 밖 장소", "경상남도 진주시 바깥로 1", "카페", 35.2500, 128.2000);
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("radiusKm", "1.0")
+                        .param("sort", "NEAREST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].id").value(nearPlace.getId()))
+                .andExpect(jsonPath("$.places[0].distanceMeters").isNumber())
+                .andExpect(jsonPath("$.totalCount").value(2));
+    }
+
+    @Test
+    void listPlacesRejectsIncompleteDistanceCondition() throws Exception {
+        String accessToken = signupAndLogin("readerSearch03");
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
+    }
+
+    @Test
+    void listPlacesRejectsNearestWithoutDistanceCondition() throws Exception {
+        String accessToken = signupAndLogin("readerSearch04");
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sort", "NEAREST"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
+    }
+
+    @Test
     void getPlaceReturnsPlaceDetailOnly() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
@@ -1029,10 +1094,26 @@ class PlaceControllerTest {
         return createMapPlace(name, address, 35.1801, 128.1078, 0L);
     }
 
+    private MapPlace createMapPlace(String name, String address, String category, double latitude, double longitude) {
+        return createMapPlace(name, address, category, latitude, longitude, 0L);
+    }
+
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
+        return createMapPlace(name, address, null, latitude, longitude, photoCount);
+    }
+
+    private MapPlace createMapPlace(
+            String name,
+            String address,
+            String category,
+            double latitude,
+            double longitude,
+            long photoCount
+    ) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
                 .address(address)
+                .category(category)
                 .latitude(latitude)
                 .longitude(longitude)
                 .userId(1L)
