@@ -190,7 +190,13 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
         Double firstDistance = calculateDistanceMeters(latitude, longitude, first);
         Double secondDistance = calculateDistanceMeters(latitude, longitude, second);
-        if (firstDistance != null && secondDistance != null) {
+        if (firstDistance != null || secondDistance != null) {
+            if (firstDistance == null) {
+                return 1;
+            }
+            if (secondDistance == null) {
+                return -1;
+            }
             int distanceCompare = Double.compare(firstDistance, secondDistance);
             if (distanceCompare != 0) {
                 return distanceCompare;
