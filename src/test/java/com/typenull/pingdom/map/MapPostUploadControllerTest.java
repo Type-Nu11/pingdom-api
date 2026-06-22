@@ -1,6 +1,9 @@
 package com.typenull.pingdom.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -12,6 +15,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.util.HashMap;
+import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -29,6 +33,7 @@ import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -64,8 +69,12 @@ class MapPostUploadControllerTest {
     @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -270,7 +279,7 @@ class MapPostUploadControllerTest {
     }
 
     @Test
-    void deletePostRemovesDatabaseRecordAndS3Object() throws Exception {
+    void deletePostRemovesDatabaseRecordAndCreatesS3DeleteOutboxEvent() throws Exception {
         String accessToken = signupAndLogin("writer05");
         Long userId = userRepository.findByUsername("writer05").orElseThrow().getId();
         MapImage mapImage = mapImageRepository.save(MapImage.builder()
@@ -286,8 +295,9 @@ class MapPostUploadControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
 
-        verify(s3ObjectStorage).delete("map/delete-post.jpg");
+        verify(s3ObjectStorage, never()).delete("map/delete-post.jpg");
         assertEquals(0L, mapImageRepository.count());
+        assertS3DeleteOutboxEvent(mapImage.getId(), "map/delete-post.jpg", "MAP_IMAGE_DELETED");
     }
 
     @Test
@@ -332,7 +342,22 @@ class MapPostUploadControllerTest {
         assertEquals(0L, deletedSnapshot.getPhotoCount());
         assertEquals(0L, deletedSnapshot.getTotalLikeCount());
         assertEquals(0L, mapImageRepository.count());
-        verify(s3ObjectStorage).delete("map/snapshot-post.jpg");
+        verify(s3ObjectStorage, never()).delete("map/snapshot-post.jpg");
+        assertS3DeleteOutboxEvent(saved.getId(), "map/snapshot-post.jpg", "MAP_IMAGE_DELETED");
+    }
+
+    private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
+        List<OutboxEvent> events = outboxEventRepository.findAll()
+                .stream()
+                .filter(event -> event.getEventType() == OutboxEventType.S3_OBJECT_DELETE_REQUESTED)
+                .toList();
+        assertEquals(1, events.size());
+        OutboxEvent event = events.get(0);
+        assertEquals(OutboxEventType.S3_OBJECT_DELETE_REQUESTED, event.getEventType());
+        assertEquals("MAP_IMAGE", event.getAggregateType());
+        assertEquals(String.valueOf(mapImageId), event.getAggregateId());
+        assertEquals(s3Key, objectMapper.readTree(event.getPayload()).get("s3Key").asText());
+        assertEquals(reason, objectMapper.readTree(event.getPayload()).get("reason").asText());
     }
 
     private String signupAndLogin(String username) throws Exception {
