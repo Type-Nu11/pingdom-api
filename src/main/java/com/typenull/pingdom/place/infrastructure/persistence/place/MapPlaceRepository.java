@@ -311,6 +311,15 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     @Query("""
             SELECT m
             FROM MapPlace m
+            WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(COALESCE(m.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            """)
+    List<MapPlace> findAutocompleteCandidates(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("""
+            SELECT m
+            FROM MapPlace m
             WHERE (:keyword IS NULL OR :keyword = ''
                    OR m.name LIKE CONCAT('%', :keyword, '%')
                    OR m.address LIKE CONCAT('%', :keyword, '%')
