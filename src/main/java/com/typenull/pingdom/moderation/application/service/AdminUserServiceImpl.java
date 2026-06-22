@@ -72,7 +72,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AdminBannedUserResponse listBannedUsers(Pageable pageable) {
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
@@ -83,6 +83,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         );
 
         LocalDateTime now = LocalDateTime.now();
+        userSanctionCommandService.expireExpiredTemporaryBans(now, normalizedLimit);
         Page<User> userPage = userRepository.findAllCurrentlyBanned(
                 UserBanType.TEMPORARY,
                 now,
@@ -102,12 +103,14 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AdminBannedUserDetailResponse getBannedUser(Long userId) {
         LocalDateTime now = LocalDateTime.now();
-        User user = userRepository.findById(userId)
-                .filter(foundUser -> foundUser.isCurrentlyBanned(now))
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User user = findUser(userId);
+        userSanctionCommandService.expireBanIfNeeded(user, now);
+        if (!user.isCurrentlyBanned(now)) {
+            throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
+        }
 
         return new AdminBannedUserDetailResponse(
                 user.getId(),
@@ -127,10 +130,11 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AdminUserSanctionStatusResponse getUserSanctionStatus(Long userId) {
         LocalDateTime now = LocalDateTime.now();
         User user = findUser(userId);
+        userSanctionCommandService.expireBanIfNeeded(user, now);
         boolean currentlyBanned = user.isCurrentlyBanned(now);
 
         return new AdminUserSanctionStatusResponse(
@@ -145,7 +149,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     @Override
-    @Transactional(readOnly = true)
+    @Transactional
     public AdminUserSanctionHistoryResponse listUserSanctionHistories(
             Long userId,
             UserBanType banType,
@@ -154,8 +158,9 @@ public class AdminUserServiceImpl implements AdminUserService {
             LocalDateTime to,
             Pageable pageable
     ) {
-        findUser(userId);
+        User user = findUser(userId);
         validateHistoryPeriod(from, to);
+        userSanctionCommandService.expireBanIfNeeded(user, LocalDateTime.now());
 
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);

@@ -43,6 +43,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     );
 
     @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.banned = true
+              AND u.banType = :temporaryType
+              AND u.banExpiresAt IS NOT NULL
+              AND u.banExpiresAt <= :now
+            ORDER BY u.banExpiresAt ASC, u.id ASC
+            """)
+    List<User> findExpiredTemporaryBannedUsers(
+            @Param("temporaryType") UserBanType temporaryType,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
+
+    @Query("""
             SELECT u.id
             FROM User u
             WHERE u.status = :status
