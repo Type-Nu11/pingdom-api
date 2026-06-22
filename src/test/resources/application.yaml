@@ -35,3 +35,15 @@ postmark:
 fcm:
   enabled: false
   key-path: src/test/resources/firebase-test-key.json
+
+outbox:
+  enabled: false
+  batch-size: 20
+  worker-concurrency: 2
+  worker-queue-capacity: 20
+  cleanup-batch-size: 100
+  max-attempts: 5
+  base-backoff: PT10S
+  max-backoff: PT10M
+  processing-timeout: PT5M
+  retention: P7D
