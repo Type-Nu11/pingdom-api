@@ -33,6 +33,15 @@ HAVING COUNT(*) > 1;
 인프라 관리자 또는 DBA가 최초 Flyway 실행 전에 PostGIS extension을 생성해야 한다.
 설치되지 않은 경우 `V2`는 명시적인 오류와 함께 중단된다.
 
+`V8`은 장소명/주소 부분일치 검색용 trigram index를 사용하므로 `pg_trgm` extension이
+필요하다. PostGIS와 동일하게 migration에서 extension을 직접 생성하지 않고 설치 여부만
+검증한다. 로컬 신규 DB는 `docker/postgres/initdb/01_enable_postgis.sql`에서 생성되며,
+기존 로컬 볼륨이나 운영 DB는 Flyway 실행 전에 다음 작업이 선행되어야 한다.
+
+```sql
+CREATE EXTENSION IF NOT EXISTS pg_trgm;
+```
+
 ## 마이그레이션 통합 테스트
 
 기존 애플리케이션 테스트는 빠른 실행을 위해 H2와 Hibernate `create-drop`을 유지한다.
