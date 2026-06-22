@@ -18,6 +18,8 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+import org.springframework.http.HttpStatus;
 
 @Service
 @RequiredArgsConstructor
@@ -69,7 +71,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             return new PlaceAutocompleteResponse(normalizedKeyword, safeLimit, 0, List.of());
         }
         if ((latitude == null) != (longitude == null)) {
-            throw new IllegalArgumentException("latitude와 longitude는 함께 전달해야 합니다.");
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "latitude와 longitude는 함께 전달해야 합니다.");
         }
 
         Pageable pageable = PageRequest.of(
@@ -161,7 +163,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         if (keyword == null) {
             return "";
         }
-        return keyword.trim().replaceAll("\\s+", " ");
+        String normalizedKeyword = keyword.trim().replaceAll("\\s+", " ");
+        if (normalizedKeyword.isEmpty()) {
+            return "";
+        }
+        if (!normalizedKeyword.matches(".*[0-9A-Za-z가-힣].*")) {
+            return "";
+        }
+        return normalizedKeyword;
     }
 
     private int compareAutocompletePlaces(

@@ -153,6 +153,89 @@ class PlaceControllerTest {
     }
 
     @Test
+    void autocompletePlacesPrioritizesNameMatchesAndAppliesMaxLimit() throws Exception {
+        String accessToken = signupAndLogin("autocompleteReader01");
+        createMapPlace("진주성", "경상남도 진주시 남강로 1", 35.1801, 128.1078, 1L, "문화");
+        createMapPlace("진주카페", "경상남도 진주시 진주성로 2", 35.1802, 128.1079, 1L, "카페");
+        createMapPlace("남강카페", "경상남도 진주시 진주성로 3", 35.1803, 128.1080, 1L, "디저트");
+        createMapPlace("남강식당", "경상남도 진주시 카테고리로 4", 35.1804, 128.1081, 1L, "진주");
+
+        for (int index = 0; index < 12; index++) {
+            createMapPlace(
+                    "진주 추가 장소 " + index,
+                    "경상남도 진주시 추가로 " + index,
+                    35.1810 + index * 0.0001,
+                    128.1090 + index * 0.0001,
+                    1L,
+                    "카페"
+            );
+        }
+
+        mockMvc.perform(get("/place/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "진주")
+                        .param("limit", "50"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.keyword").value("진주"))
+                .andExpect(jsonPath("$.limit").value(10))
+                .andExpect(jsonPath("$.totalCount").value(10))
+                .andExpect(jsonPath("$.places.length()").value(10))
+                .andExpect(jsonPath("$.places[0].name", containsString("진주")))
+                .andExpect(jsonPath("$.places[1].name", containsString("진주")))
+                .andExpect(jsonPath("$.places[2].name", containsString("진주")));
+    }
+
+    @Test
+    void autocompletePlacesSortsSameNameByDistanceWhenCoordinatesProvided() throws Exception {
+        String accessToken = signupAndLogin("autocompleteReader02");
+        createMapPlace("메가커피", "경상남도 진주시 가까운로 1", 35.1801, 128.1078, 1L, "카페");
+        createMapPlace("메가커피", "경상남도 진주시 먼로 2", 35.2801, 128.2078, 1L, "카페");
+
+        mockMvc.perform(get("/place/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "메가")
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 가까운로 1"))
+                .andExpect(jsonPath("$.places[0].distanceMeters").value(0.0))
+                .andExpect(jsonPath("$.places[1].address").value("경상남도 진주시 먼로 2"));
+    }
+
+    @Test
+    void autocompletePlacesReturnsEmptyWhenKeywordIsTooShortOrSpecialOnly() throws Exception {
+        String accessToken = signupAndLogin("autocompleteReader03");
+        createMapPlace("진주역", "경상남도 진주시 역로 1");
+
+        mockMvc.perform(get("/place/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "a"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.places.length()").value(0));
+
+        mockMvc.perform(get("/place/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "!@#"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.places.length()").value(0));
+    }
+
+    @Test
+    void autocompletePlacesReturnsBadRequestWhenOnlyOneCoordinateIsProvided() throws Exception {
+        String accessToken = signupAndLogin("autocompleteReader04");
+
+        mockMvc.perform(get("/place/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "진주")
+                        .param("latitude", "35.1801"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.message").value("latitude와 longitude는 함께 전달해야 합니다."));
+    }
+
+    @Test
     void getPlaceReturnsPlaceDetailOnly() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
@@ -1030,9 +1113,21 @@ class PlaceControllerTest {
     }
 
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
+        return createMapPlace(name, address, latitude, longitude, photoCount, null);
+    }
+
+    private MapPlace createMapPlace(
+            String name,
+            String address,
+            double latitude,
+            double longitude,
+            long photoCount,
+            String category
+    ) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
                 .address(address)
+                .category(category)
                 .latitude(latitude)
                 .longitude(longitude)
                 .userId(1L)
