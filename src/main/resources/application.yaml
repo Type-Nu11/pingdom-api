@@ -92,6 +92,13 @@ outbox:
   cleanup-delay: PT10M
   cleanup-initial-delay: PT1H
 
+user:
+  withdrawal:
+    retention: P30D
+    cleanup-batch-size: 100
+    cleanup-delay: PT24H
+    cleanup-initial-delay: PT1H
+
 place:
   recommendation:
     default-version: place-rec-v1

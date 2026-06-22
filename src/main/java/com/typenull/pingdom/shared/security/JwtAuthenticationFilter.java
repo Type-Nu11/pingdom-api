@@ -32,9 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final JwtTokenProvider jwtTokenProvider;
+    private final UserAccessStatusService userAccessStatusService;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider) {
+    public JwtAuthenticationFilter(
+            JwtTokenProvider jwtTokenProvider,
+            UserAccessStatusService userAccessStatusService
+    ) {
         this.jwtTokenProvider = jwtTokenProvider;
+        this.userAccessStatusService = userAccessStatusService;
     }
 
     @Override
@@ -60,7 +65,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
                 request.setAttribute(ACCESS_TOKEN_EXPIRED_ATTRIBUTE, true);
             }
 
-            if (status == JwtTokenProvider.TokenStatus.VALID && parsed.payload() != null) {
+            if (status == JwtTokenProvider.TokenStatus.VALID
+                    && parsed.payload() != null
+                    && userAccessStatusService.canAuthenticate(parsed.payload().userId())) {
                 String role = parsed.payload().role();
                 List<SimpleGrantedAuthority> authorities = (role == null)
                         ? Collections.emptyList()

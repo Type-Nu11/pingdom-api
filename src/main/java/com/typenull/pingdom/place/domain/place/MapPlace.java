@@ -54,7 +54,7 @@ public class MapPlace {
     @Column(name = "location", columnDefinition = "geometry(Point,4326)")
     private Point location;
 
-    @Column(name = "user_id", nullable = false)
+    @Column(name = "user_id")
     private Long userId;
 
     @Column(name = "registrant", nullable = false)

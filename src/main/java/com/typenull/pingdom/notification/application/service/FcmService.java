@@ -34,6 +34,9 @@ public class FcmService {
     public void updateFcmToken(Long userId, String token) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
         user.updateFcmToken(token);
     }
 
