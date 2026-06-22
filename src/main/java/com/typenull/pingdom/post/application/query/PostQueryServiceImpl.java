@@ -109,6 +109,43 @@ public class PostQueryServiceImpl implements PostQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    public PostListResponse listLikedPosts(int page, int limit, Long userId) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+
+        int safePage = Math.max(page, MIN_PAGE);
+        int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
+
+        Page<MapImage> imagePage = mapImageRepository.findLikedByUserId(
+                userId,
+                PageRequest.of(safePage - MIN_PAGE, safeLimit)
+        );
+        List<MapImage> mapImages = imagePage.getContent();
+        List<Long> placeIds = mapImages.stream()
+                .map(MapImage::getMapPlace)
+                .filter(java.util.Objects::nonNull)
+                .map(MapPlace::getId)
+                .toList();
+        Set<Long> bookmarkedPlaceIds = placeIds.isEmpty()
+                ? java.util.Collections.emptySet()
+                : mapBookmarkRepository.findPlaceIdsByUserIdAndPlaceIds(userId, placeIds);
+
+        List<PostListItem> posts = mapImages.stream()
+                .map(mapImage -> toListItem(mapImage, true, isBookmarked(mapImage, bookmarkedPlaceIds)))
+                .toList();
+
+        return PostListResponse.of(
+                posts,
+                safePage,
+                safeLimit,
+                imagePage.getTotalElements(),
+                imagePage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
     public PostDetailResponse getPost(Long postId, Long userId) {
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
