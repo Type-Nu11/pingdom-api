@@ -62,4 +62,8 @@ public class MapImage {
         this.imageUrl = imageUrl;
         this.s3Key = s3Key;
     }
+
+    public void reassignPlace(MapPlace targetPlace) {
+        this.mapPlace = targetPlace;
+    }
 }
