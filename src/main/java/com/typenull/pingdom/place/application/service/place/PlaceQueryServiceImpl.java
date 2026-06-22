@@ -16,25 +16,24 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
+import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
 public class PlaceQueryServiceImpl implements PlaceQueryService {
 
-<<<<<<< HEAD
     private static final int MAX_SEARCH_LIMIT = 100;
     private static final double KM_PER_LATITUDE_DEGREE = 111.32d;
     private static final double MIN_COSINE_FOR_LONGITUDE_DELTA = 0.000001d;
-=======
     private static final int AUTOCOMPLETE_MIN_LENGTH = 2;
-    private static final int AUTOCOMPLETE_DEFAULT_LIMIT = 10;
     private static final int AUTOCOMPLETE_MAX_LIMIT = 10;
     private static final int AUTOCOMPLETE_CANDIDATE_FETCH_SIZE = 100;
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
->>>>>>> d3e28cd (refactor : 장소 자동완성 후보 조회 범위 확대)
 
     private final MapPlaceRepository mapPlaceRepository;
 
@@ -211,6 +210,118 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 .replace("\\", "\\\\")
                 .replace("%", "\\%")
                 .replace("_", "\\_");
+    }
+
+    private PlaceAutocompleteItem toAutocompleteItem(MapPlace mapPlace, Double latitude, Double longitude) {
+        return new PlaceAutocompleteItem(
+                mapPlace.getId(),
+                mapPlace.getName(),
+                mapPlace.getAddress(),
+                mapPlace.getCategory(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                calculateDistanceMeters(latitude, longitude, mapPlace)
+        );
+    }
+
+    private String normalizeAutocompleteKeyword(String keyword) {
+        if (keyword == null) {
+            return "";
+        }
+        String normalizedKeyword = keyword.trim().replaceAll("\\s+", " ");
+        if (normalizedKeyword.isEmpty()) {
+            return "";
+        }
+        if (!normalizedKeyword.matches(".*[0-9A-Za-z가-힣].*")) {
+            return "";
+        }
+        return normalizedKeyword;
+    }
+
+    private int compareAutocompletePlaces(
+            MapPlace first,
+            MapPlace second,
+            String keyword,
+            Double latitude,
+            Double longitude
+    ) {
+        int scoreCompare = Integer.compare(
+                autocompleteScore(second, keyword),
+                autocompleteScore(first, keyword)
+        );
+        if (scoreCompare != 0) {
+            return scoreCompare;
+        }
+
+        Double firstDistance = calculateDistanceMeters(latitude, longitude, first);
+        Double secondDistance = calculateDistanceMeters(latitude, longitude, second);
+        if (firstDistance != null || secondDistance != null) {
+            if (firstDistance == null) {
+                return 1;
+            }
+            if (secondDistance == null) {
+                return -1;
+            }
+            int distanceCompare = Double.compare(firstDistance, secondDistance);
+            if (distanceCompare != 0) {
+                return distanceCompare;
+            }
+        }
+
+        int nameCompare = first.getName().compareToIgnoreCase(second.getName());
+        if (nameCompare != 0) {
+            return nameCompare;
+        }
+        int addressCompare = first.getAddress().compareToIgnoreCase(second.getAddress());
+        if (addressCompare != 0) {
+            return addressCompare;
+        }
+        return Long.compare(first.getId(), second.getId());
+    }
+
+    private int autocompleteScore(MapPlace mapPlace, String keyword) {
+        String normalizedKeyword = keyword.toLowerCase(Locale.ROOT);
+        String name = mapPlace.getName().toLowerCase(Locale.ROOT);
+        String address = mapPlace.getAddress().toLowerCase(Locale.ROOT);
+        String category = mapPlace.getCategory() == null ? "" : mapPlace.getCategory().toLowerCase(Locale.ROOT);
+
+        if (name.equals(normalizedKeyword)) {
+            return 400;
+        }
+        if (name.startsWith(normalizedKeyword)) {
+            return 300;
+        }
+        if (name.contains(normalizedKeyword)) {
+            return 200;
+        }
+        if (address.contains(normalizedKeyword)) {
+            return 100;
+        }
+        if (category.contains(normalizedKeyword)) {
+            return 50;
+        }
+        return 0;
+    }
+
+    private Double calculateDistanceMeters(Double latitude, Double longitude, MapPlace mapPlace) {
+        if (latitude == null || longitude == null
+                || mapPlace.getLatitude() == null
+                || mapPlace.getLongitude() == null) {
+            return null;
+        }
+
+        double latitude1 = Math.toRadians(latitude);
+        double longitude1 = Math.toRadians(longitude);
+        double latitude2 = Math.toRadians(mapPlace.getLatitude());
+        double longitude2 = Math.toRadians(mapPlace.getLongitude());
+
+        double deltaLatitude = latitude2 - latitude1;
+        double deltaLongitude = longitude2 - longitude1;
+        double a = Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2)
+                + Math.cos(latitude1) * Math.cos(latitude2)
+                * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return EARTH_RADIUS_METERS * c;
     }
 
     private record LocationSearch(
