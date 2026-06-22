@@ -36,8 +36,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = flyway.migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("6");
-        assertThat(result.migrationsExecuted).isEqualTo(6);
+        assertThat(result.targetSchemaVersion).isEqualTo("7");
+        assertThat(result.migrationsExecuted).isEqualTo(7);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -107,6 +107,29 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_constraint
                         WHERE conrelid = 'map_place'::regclass
                           AND conname = 'uk_map_place_kakao_place_id'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'ban_type'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'ban_expires_at'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'user_sanction_history'
                     )
                     """)).isTrue();
         }
