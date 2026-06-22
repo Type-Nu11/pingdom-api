@@ -1,11 +1,11 @@
 package com.typenull.pingdom.engagement.application.service;
 
 import com.typenull.pingdom.engagement.domain.MapImageLike;
-import com.typenull.pingdom.engagement.event.MapImageLikedEvent;
 import com.typenull.pingdom.notification.domain.Notifications;
 import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.outbox.MapImageLikedOutboxPayload;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationConversionService;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
@@ -15,8 +15,9 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -27,7 +28,7 @@ public class MapImageLikeService {
     private final MapImageLikeRepository mapImageLikeRepository;
     private final MapImageRepository mapImageRepository;
     private final PostQueryService postQueryService;
-    private final ApplicationEventPublisher applicationEventPublisher;
+    private final OutboxEventPublisher outboxEventPublisher;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final PlaceRecommendationConversionService placeRecommendationConversionService;
     private final NotificationsRepository notificationsRepository;
@@ -50,7 +51,7 @@ public class MapImageLikeService {
                 .userId(userId)
                 .build();
 
-        mapImageLikeRepository.save(mapImageLike);
+        MapImageLike savedLike = mapImageLikeRepository.save(mapImageLike);
         mapImageRepository.increaseLikeCount(mapImageId);
         if (mapImage.getMapPlace() != null) {
             placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());
@@ -60,8 +61,13 @@ public class MapImageLikeService {
                     PlaceRecommendationConversionType.LIKE
             );
         }
-        // 좋아요 확정 이후 부수효과는 커밋 후 이벤트 리스너가 처리한다.
-        applicationEventPublisher.publishEvent(new MapImageLikedEvent(mapImageId, ownerId, userId));
+        outboxEventPublisher.publish(
+                "MAP_IMAGE_LIKED:%d".formatted(savedLike.getLikeId()),
+                OutboxEventType.MAP_IMAGE_LIKED,
+                new MapImageLikedOutboxPayload(mapImageId, ownerId, userId),
+                "MAP_IMAGE",
+                String.valueOf(mapImageId)
+        );
 
         return new MapImageLikeResult(userId, mapImageId, "좋아요 추가되었습니다.");
     }
