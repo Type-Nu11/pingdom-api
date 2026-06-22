@@ -2,6 +2,7 @@ package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
 import com.typenull.pingdom.moderation.application.AdminReportService;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -10,6 +11,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -105,8 +107,11 @@ public class AdminReportController {
                     )
             )
     })
-    public AdminReportActionResponse acceptReport(@PathVariable Long id) {
-        return adminReportService.acceptReport(id);
+    public AdminReportActionResponse acceptReport(
+            @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        return adminReportService.acceptReport(id, adminUser.userId());
     }
 
     @PostMapping("/{id}/decline")

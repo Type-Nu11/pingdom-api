@@ -23,10 +23,11 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
     private final AdminPostService adminPostService;
+    private final UserSanctionCommandService userSanctionCommandService;
 
     @Override
     @Transactional
-    public AdminReportActionResponse acceptReport(Long reportId) {
+    public AdminReportActionResponse acceptReport(Long reportId, Long adminUserId) {
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
@@ -35,14 +36,14 @@ public class AdminReportServiceImpl implements AdminReportService {
         postReport.accept(now);
         postReport.detachMapImage();
         // 신고 수락은 대상 사진 소유자 제재까지 하나의 처리로 본다.
-        reportedUser.ban(postReport.getReason(), now);
+        userSanctionCommandService.applyBan(reportedUser, postReport.getReason(), now, null, adminUserId);
         adminPostService.deletePost(postReport.getReportedImageId());
 
         return new AdminReportActionResponse(
                 postReport.getId(),
                 postReport.getStatus(),
                 reportedUser.getId(),
-                reportedUser.isBanned(),
+                reportedUser.isCurrentlyBanned(now),
                 postReport.getProcessedAt()
         );
     }
@@ -51,9 +52,10 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Transactional
     public AdminReportActionResponse declineReport(Long reportId) {
         PostReport postReport = getPendingReport(reportId);
-        postReport.decline(LocalDateTime.now());
+        LocalDateTime now = LocalDateTime.now();
+        postReport.decline(now);
         boolean banned = userRepository.findById(postReport.getReportedUserId())
-                .map(User::isBanned)
+                .map(user -> user.isCurrentlyBanned(now))
                 .orElse(false);
 
         return new AdminReportActionResponse(
