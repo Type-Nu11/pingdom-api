@@ -8,6 +8,7 @@ import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -65,6 +66,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final Clock RECOMMENDATION_CLOCK = Clock.systemUTC();
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final MapPlaceRecommendationCandidateRepository mapPlaceRecommendationCandidateRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -403,7 +405,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double maxLongitude = longitude + longitudeDelta;
 
         if (Double.isInfinite(longitudeDelta)) {
-            return mapPlaceRepository.findRecommendationCandidatesInLatitudeBand(
+            return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInLatitudeBand(
                     latitude,
                     longitude,
                     minLatitude,
@@ -413,7 +415,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         if (minLongitude < -180d) {
-            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+            return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
                     latitude,
                     longitude,
                     minLatitude,
@@ -425,7 +427,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         if (maxLongitude > 180d) {
-            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+            return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
                     latitude,
                     longitude,
                     minLatitude,
@@ -436,7 +438,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             );
         }
 
-        return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+        return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 latitude,
                 longitude,
                 minLatitude,

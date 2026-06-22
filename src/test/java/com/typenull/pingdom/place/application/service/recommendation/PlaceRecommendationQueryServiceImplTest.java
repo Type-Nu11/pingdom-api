@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -37,6 +38,9 @@ class PlaceRecommendationQueryServiceImplTest {
 
     @Mock
     private MapPlaceRepository mapPlaceRepository;
+
+    @Mock
+    private MapPlaceRecommendationCandidateRepository mapPlaceRecommendationCandidateRepository;
 
     @Mock
     private MapBookmarkRepository mapBookmarkRepository;
@@ -77,6 +81,7 @@ class PlaceRecommendationQueryServiceImplTest {
     void setUp() {
         placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
                 mapPlaceRepository,
+                mapPlaceRecommendationCandidateRepository,
                 mapBookmarkRepository,
                 mapImageRepository,
                 mapImageLikeRepository,
@@ -103,7 +108,7 @@ class PlaceRecommendationQueryServiceImplTest {
 
         when(mapBookmarkRepository.findPlaceIdsByUserId(userId)).thenReturn(List.of(invalidSeed.getId(), validSeed.getId()));
         when(mapPlaceRepository.findAllById(any())).thenReturn(List.of(invalidSeed, validSeed));
-        when(mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 anyDouble(),
                 anyDouble(),
                 anyDouble(),
