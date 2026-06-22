@@ -76,6 +76,7 @@ outbox:
   batch-size: 20
   worker-concurrency: 4
   worker-queue-capacity: 40
+  cleanup-batch-size: 500
   max-attempts: 5
   base-backoff: PT10S
   max-backoff: PT10M
@@ -83,7 +84,7 @@ outbox:
   retention: P7D
   poll-delay: PT5S
   initial-delay: PT5S
-  cleanup-delay: PT24H
+  cleanup-delay: PT10M
   cleanup-initial-delay: PT1H
 
 place:

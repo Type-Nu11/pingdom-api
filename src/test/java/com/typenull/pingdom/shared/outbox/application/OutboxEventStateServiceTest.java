@@ -35,6 +35,7 @@ class OutboxEventStateServiceTest {
                 20,
                 2,
                 20,
+                100,
                 5,
                 Duration.ofSeconds(10),
                 Duration.ofMinutes(10),

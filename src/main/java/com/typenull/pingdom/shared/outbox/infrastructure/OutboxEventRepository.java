@@ -9,7 +9,6 @@ import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
-import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
@@ -48,14 +47,16 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             Pageable pageable
     );
 
-    @Modifying
     @Query("""
-            DELETE FROM OutboxEvent event
+            SELECT event.eventId
+            FROM OutboxEvent event
             WHERE event.status = :status
               AND event.processedAt < :threshold
+            ORDER BY event.processedAt, event.eventId
             """)
-    int deleteProcessedBefore(
+    List<String> findProcessedEventIdsBefore(
             @Param("status") OutboxEventStatus status,
-            @Param("threshold") LocalDateTime threshold
+            @Param("threshold") LocalDateTime threshold,
+            Pageable pageable
     );
 }
