@@ -14,6 +14,8 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
+import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import org.junit.jupiter.api.BeforeEach;
@@ -61,10 +63,14 @@ class AdminReportControllerTest {
     private PostReportRepository postReportRepository;
 
     @Autowired
+    private UserSanctionHistoryRepository userSanctionHistoryRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        userSanctionHistoryRepository.deleteAllInBatch();
         postReportRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -92,6 +98,7 @@ class AdminReportControllerTest {
         assertTrue(persistedOwner.isBanned());
         assertEquals("욕설이 포함된 이미지입니다.", persistedOwner.getBanReason());
         assertTrue(mapImageRepository.findById(mapImage.getId()).isEmpty());
+        assertEquals(UserSanctionAction.APPLIED, userSanctionHistoryRepository.findAll().getFirst().getAction());
     }
 
     @Test
