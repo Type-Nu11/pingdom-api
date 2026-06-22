@@ -8,6 +8,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -146,20 +147,36 @@ public class AdminMapPlaceService {
     }
 
     private ConversionMergeResult reassignConversions(MapPlace sourcePlace, MapPlace targetPlace) {
+        List<PlaceRecommendationConversion> sourceConversions =
+                placeRecommendationConversionRepository.findByPlaceId(sourcePlace.getId());
+        List<PlaceRecommendationConversion> targetConversions =
+                placeRecommendationConversionRepository.findByPlaceId(targetPlace.getId());
+
+        record ConversionKey(Long userId, PlaceRecommendationConversionType conversionType) {
+        }
+
+        Set<ConversionKey> targetConversionKeys = new HashSet<>();
+        for (PlaceRecommendationConversion targetConversion : targetConversions) {
+            targetConversionKeys.add(new ConversionKey(
+                    targetConversion.getUserId(),
+                    targetConversion.getConversionType()
+            ));
+        }
+
         int movedCount = 0;
         int deletedCount = 0;
-        for (PlaceRecommendationConversion sourceConversion :
-                placeRecommendationConversionRepository.findByPlaceId(sourcePlace.getId())) {
-            if (placeRecommendationConversionRepository.existsByUserIdAndPlaceIdAndConversionType(
+        for (PlaceRecommendationConversion sourceConversion : sourceConversions) {
+            ConversionKey conversionKey = new ConversionKey(
                     sourceConversion.getUserId(),
-                    targetPlace.getId(),
                     sourceConversion.getConversionType()
-            )) {
+            );
+            if (targetConversionKeys.contains(conversionKey)) {
                 placeRecommendationConversionRepository.delete(sourceConversion);
                 deletedCount++;
                 continue;
             }
             sourceConversion.reassignPlace(targetPlace.getId());
+            targetConversionKeys.add(conversionKey);
             movedCount++;
         }
         return new ConversionMergeResult(movedCount, deletedCount);
