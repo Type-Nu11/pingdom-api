@@ -1,5 +1,7 @@
 package com.typenull.pingdom.place.application.service.place;
 
+import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteItem;
+import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
@@ -8,6 +10,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.List;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -19,6 +22,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 public class PlaceQueryServiceImpl implements PlaceQueryService {
+
+    private static final int AUTOCOMPLETE_MIN_LENGTH = 2;
+    private static final int AUTOCOMPLETE_DEFAULT_LIMIT = 10;
+    private static final int AUTOCOMPLETE_MAX_LIMIT = 10;
+    private static final int AUTOCOMPLETE_CANDIDATE_FETCH_SIZE = 30;
+    private static final double EARTH_RADIUS_METERS = 6_371_000d;
 
     private final MapPlaceRepository mapPlaceRepository;
 
@@ -48,6 +57,41 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 placePage.getTotalElements(),
                 placePage.getTotalPages()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlaceAutocompleteResponse autocompletePlaces(String keyword, int limit, Double latitude, Double longitude) {
+        String normalizedKeyword = normalizeAutocompleteKeyword(keyword);
+        int safeLimit = Math.max(1, Math.min(limit, AUTOCOMPLETE_MAX_LIMIT));
+
+        if (normalizedKeyword.length() < AUTOCOMPLETE_MIN_LENGTH) {
+            return new PlaceAutocompleteResponse(normalizedKeyword, safeLimit, 0, List.of());
+        }
+        if ((latitude == null) != (longitude == null)) {
+            throw new IllegalArgumentException("latitude와 longitude는 함께 전달해야 합니다.");
+        }
+
+        Pageable pageable = PageRequest.of(
+                0,
+                AUTOCOMPLETE_CANDIDATE_FETCH_SIZE,
+                Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id"))
+        );
+
+        List<PlaceAutocompleteItem> places = mapPlaceRepository.findAutocompleteCandidates(normalizedKeyword, pageable)
+                .stream()
+                .sorted((first, second) -> compareAutocompletePlaces(
+                        first,
+                        second,
+                        normalizedKeyword,
+                        latitude,
+                        longitude
+                ))
+                .limit(safeLimit)
+                .map(place -> toAutocompleteItem(place, latitude, longitude))
+                .toList();
+
+        return new PlaceAutocompleteResponse(normalizedKeyword, safeLimit, places.size(), places);
     }
 
     @Override
@@ -99,6 +143,103 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude()
         );
+    }
+
+    private PlaceAutocompleteItem toAutocompleteItem(MapPlace mapPlace, Double latitude, Double longitude) {
+        return new PlaceAutocompleteItem(
+                mapPlace.getId(),
+                mapPlace.getName(),
+                mapPlace.getAddress(),
+                mapPlace.getCategory(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                calculateDistanceMeters(latitude, longitude, mapPlace)
+        );
+    }
+
+    private String normalizeAutocompleteKeyword(String keyword) {
+        if (keyword == null) {
+            return "";
+        }
+        return keyword.trim().replaceAll("\\s+", " ");
+    }
+
+    private int compareAutocompletePlaces(
+            MapPlace first,
+            MapPlace second,
+            String keyword,
+            Double latitude,
+            Double longitude
+    ) {
+        int scoreCompare = Integer.compare(
+                autocompleteScore(second, keyword),
+                autocompleteScore(first, keyword)
+        );
+        if (scoreCompare != 0) {
+            return scoreCompare;
+        }
+
+        Double firstDistance = calculateDistanceMeters(latitude, longitude, first);
+        Double secondDistance = calculateDistanceMeters(latitude, longitude, second);
+        if (firstDistance != null && secondDistance != null) {
+            int distanceCompare = Double.compare(firstDistance, secondDistance);
+            if (distanceCompare != 0) {
+                return distanceCompare;
+            }
+        }
+
+        int nameCompare = first.getName().compareToIgnoreCase(second.getName());
+        if (nameCompare != 0) {
+            return nameCompare;
+        }
+        int addressCompare = first.getAddress().compareToIgnoreCase(second.getAddress());
+        if (addressCompare != 0) {
+            return addressCompare;
+        }
+        return Long.compare(first.getId(), second.getId());
+    }
+
+    private int autocompleteScore(MapPlace mapPlace, String keyword) {
+        String normalizedKeyword = keyword.toLowerCase(Locale.ROOT);
+        String name = mapPlace.getName().toLowerCase(Locale.ROOT);
+        String address = mapPlace.getAddress().toLowerCase(Locale.ROOT);
+        String category = mapPlace.getCategory() == null ? "" : mapPlace.getCategory().toLowerCase(Locale.ROOT);
+
+        if (name.equals(normalizedKeyword)) {
+            return 400;
+        }
+        if (name.startsWith(normalizedKeyword)) {
+            return 300;
+        }
+        if (name.contains(normalizedKeyword)) {
+            return 200;
+        }
+        if (address.contains(normalizedKeyword)) {
+            return 100;
+        }
+        if (category.contains(normalizedKeyword)) {
+            return 50;
+        }
+        return 0;
+    }
+
+    private Double calculateDistanceMeters(Double latitude, Double longitude, MapPlace mapPlace) {
+        if (latitude == null || longitude == null) {
+            return null;
+        }
+
+        double latitude1 = Math.toRadians(latitude);
+        double longitude1 = Math.toRadians(longitude);
+        double latitude2 = Math.toRadians(mapPlace.getLatitude());
+        double longitude2 = Math.toRadians(mapPlace.getLongitude());
+
+        double deltaLatitude = latitude2 - latitude1;
+        double deltaLongitude = longitude2 - longitude1;
+        double a = Math.sin(deltaLatitude / 2) * Math.sin(deltaLatitude / 2)
+                + Math.cos(latitude1) * Math.cos(latitude2)
+                * Math.sin(deltaLongitude / 2) * Math.sin(deltaLongitude / 2);
+        double c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
+        return EARTH_RADIUS_METERS * c;
     }
 
 }

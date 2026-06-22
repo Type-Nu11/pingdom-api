@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
@@ -78,6 +79,55 @@ public class PlaceController {
             @RequestParam(required = false) String keyword
     ) {
         return ResponseEntity.ok(placeQueryService.listPlaces(page, limit, keyword));
+    }
+
+    @GetMapping("/autocomplete")
+    @Operation(summary = "장소 검색 자동완성", description = "검색어 입력 중 장소 후보를 자동완성으로 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 자동완성 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceAutocompleteResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청값",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "latitude와 longitude는 함께 전달해야 합니다."
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<PlaceAutocompleteResponse> autocompletePlaces(
+            @Parameter(description = "검색어", example = "진주")
+            @RequestParam String keyword,
+            @Parameter(description = "최대 반환 개수", example = "10")
+            @RequestParam(defaultValue = "10") int limit,
+            @Parameter(description = "현재 위도", example = "35.1801")
+            @RequestParam(required = false) Double latitude,
+            @Parameter(description = "현재 경도", example = "128.1078")
+            @RequestParam(required = false) Double longitude
+    ) {
+        return ResponseEntity.ok(placeQueryService.autocompletePlaces(keyword, limit, latitude, longitude));
     }
 
     @GetMapping("/recommendations")
