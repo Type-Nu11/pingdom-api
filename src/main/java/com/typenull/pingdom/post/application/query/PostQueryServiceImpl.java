@@ -52,6 +52,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 .map(MapImage::getMapPlace)
                 .filter(java.util.Objects::nonNull)
                 .map(MapPlace::getId)
+                .distinct()
                 .toList();
         Set<Long> bookmarkedPlaceIds = (userId != null && !placeIds.isEmpty())
                 ? mapBookmarkRepository.findPlaceIdsByUserIdAndPlaceIds(userId, placeIds)
