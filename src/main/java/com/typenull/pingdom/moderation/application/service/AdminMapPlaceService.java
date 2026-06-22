@@ -5,11 +5,11 @@ import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceMergeResponse;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -80,7 +80,7 @@ public class AdminMapPlaceService {
 
         targetPlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
         mapPlaceRepository.delete(sourcePlace);
-        placeRecommendationSnapshotResyncService.resyncAll();
+        placeRecommendationSnapshotResyncService.resyncMergedPlace(sourcePlace.getId(), targetPlace.getId());
 
         log.info(
                 "Admin place merge completed. adminUserId={}, sourcePlaceId={}, targetPlaceId={}, movedImageCount={}, movedBookmarkCount={}, removedBookmarkCount={}, movedConversionCount={}, removedConversionCount={}, movedClickCount={}, movedExposureCount={}, movedFeatureLogCount={}",
