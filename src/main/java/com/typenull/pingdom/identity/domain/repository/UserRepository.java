@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.domain.repository;
 
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserStatus;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -17,8 +18,6 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByEmail(String email);
 
-    boolean existsByIdAndStatusAndBannedFalse(Long id, UserStatus status);
-
     Optional<User> findByUsername(String username);
 
     // 이메일 기준 사용자 조회 메서드
@@ -26,7 +25,22 @@ public interface UserRepository extends JpaRepository<User, Long> {
 
     Optional<User> findByEmailAndEmailVerificationCode(String email, String emailVerificationCode);
 
-    Page<User> findAllByBannedTrue(Pageable pageable);
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.banned = true
+              AND (
+                    u.banType IS NULL
+                    OR u.banType <> :temporaryType
+                    OR u.banExpiresAt IS NULL
+                    OR u.banExpiresAt > :now
+                  )
+            """)
+    Page<User> findAllCurrentlyBanned(
+            @Param("temporaryType") UserBanType temporaryType,
+            @Param("now") LocalDateTime now,
+            Pageable pageable
+    );
 
     @Query("""
             SELECT u.id
