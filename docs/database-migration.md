@@ -32,3 +32,10 @@ HAVING COUNT(*) > 1;
 `docker/postgres/initdb/01_enable_postgis.sql`이 extension을 생성한다. 운영 환경에서는
 인프라 관리자 또는 DBA가 최초 Flyway 실행 전에 PostGIS extension을 생성해야 한다.
 설치되지 않은 경우 `V2`는 명시적인 오류와 함께 중단된다.
+
+## 마이그레이션 통합 테스트
+
+기존 애플리케이션 테스트는 빠른 실행을 위해 H2와 Hibernate `create-drop`을 유지한다.
+Flyway SQL은 `FlywayMigrationIntegrationTest`가 PostGIS Testcontainers 환경에서 별도로
+실행하고, migration version과 핵심 컬럼 및 제약 조건을 검증한다. 해당 테스트를
+실행하려면 로컬 Docker daemon이 필요하다.
