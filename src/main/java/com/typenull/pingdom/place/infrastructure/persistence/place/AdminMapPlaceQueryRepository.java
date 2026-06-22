@@ -9,7 +9,7 @@ import org.springframework.data.repository.query.Param;
 
 public interface AdminMapPlaceQueryRepository extends Repository<MapPlace, Long> {
 
-    @Query("SELECT m FROM MapPlace m WHERE (:keyword IS NULL OR :keyword = '' OR m.name LIKE %:keyword%)")
+    @Query("SELECT m FROM MapPlace m WHERE (:keyword IS NULL OR :keyword = '' OR m.name LIKE CONCAT('%', :keyword, '%'))")
     Page<MapPlace> findByNameContaining(@Param("keyword") String keyword, Pageable pageable);
 
     @Query("""

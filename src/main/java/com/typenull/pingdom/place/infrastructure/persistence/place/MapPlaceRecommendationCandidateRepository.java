@@ -18,8 +18,8 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
               AND m.longitude BETWEEN :minLongitude AND :maxLongitude
             ORDER BY ABS(m.latitude - :latitude)
                    + CASE
-                         WHEN ABS(m.longitude - :longitude) <= 180d THEN ABS(m.longitude - :longitude)
-                         ELSE 360d - ABS(m.longitude - :longitude)
+                         WHEN ABS(m.longitude - :longitude) <= 180.0 THEN ABS(m.longitude - :longitude)
+                         ELSE 360.0 - ABS(m.longitude - :longitude)
                      END
             """)
     List<MapPlace> findRecommendationCandidatesInBoundingBox(
@@ -40,8 +40,8 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
               AND m.latitude BETWEEN :minLatitude AND :maxLatitude
             ORDER BY ABS(m.latitude - :latitude)
                    + CASE
-                         WHEN ABS(m.longitude - :longitude) <= 180d THEN ABS(m.longitude - :longitude)
-                         ELSE 360d - ABS(m.longitude - :longitude)
+                         WHEN ABS(m.longitude - :longitude) <= 180.0 THEN ABS(m.longitude - :longitude)
+                         ELSE 360.0 - ABS(m.longitude - :longitude)
                      END
             """)
     List<MapPlace> findRecommendationCandidatesInLatitudeBand(
@@ -61,8 +61,8 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
               AND (m.longitude >= :westLongitude OR m.longitude <= :eastLongitude)
             ORDER BY ABS(m.latitude - :latitude)
                    + CASE
-                         WHEN ABS(m.longitude - :longitude) <= 180d THEN ABS(m.longitude - :longitude)
-                         ELSE 360d - ABS(m.longitude - :longitude)
+                         WHEN ABS(m.longitude - :longitude) <= 180.0 THEN ABS(m.longitude - :longitude)
+                         ELSE 360.0 - ABS(m.longitude - :longitude)
                      END
             """)
     List<MapPlace> findRecommendationCandidatesInWrappedLongitudeBoundingBox(

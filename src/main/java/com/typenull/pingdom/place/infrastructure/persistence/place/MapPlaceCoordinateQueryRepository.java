@@ -14,6 +14,7 @@ public interface MapPlaceCoordinateQueryRepository extends Repository<MapPlace, 
             FROM MapPlace m
             WHERE m.latitude IS NOT NULL
               AND m.longitude IS NOT NULL
+            ORDER BY m.id ASC
             """)
     List<MapPlace> findAllWithCoordinates(Pageable pageable);
 
