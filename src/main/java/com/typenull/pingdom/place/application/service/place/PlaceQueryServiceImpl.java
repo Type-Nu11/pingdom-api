@@ -24,9 +24,17 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class PlaceQueryServiceImpl implements PlaceQueryService {
 
+<<<<<<< HEAD
     private static final int MAX_SEARCH_LIMIT = 100;
     private static final double KM_PER_LATITUDE_DEGREE = 111.32d;
     private static final double MIN_COSINE_FOR_LONGITUDE_DELTA = 0.000001d;
+=======
+    private static final int AUTOCOMPLETE_MIN_LENGTH = 2;
+    private static final int AUTOCOMPLETE_DEFAULT_LIMIT = 10;
+    private static final int AUTOCOMPLETE_MAX_LIMIT = 10;
+    private static final int AUTOCOMPLETE_CANDIDATE_FETCH_SIZE = 100;
+    private static final double EARTH_RADIUS_METERS = 6_371_000d;
+>>>>>>> d3e28cd (refactor : 장소 자동완성 후보 조회 범위 확대)
 
     private final MapPlaceRepository mapPlaceRepository;
 
