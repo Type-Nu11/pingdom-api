@@ -14,6 +14,8 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -56,8 +58,12 @@ class AuthControllerTest {
     @Autowired
     private UserRepository userRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -75,6 +81,10 @@ class AuthControllerTest {
         User user = userRepository.findByUsername("tester01").orElseThrow();
         org.junit.jupiter.api.Assertions.assertNotNull(user.getEmailVerificationCode());
         org.junit.jupiter.api.Assertions.assertFalse(user.isEmailVerified());
+        org.junit.jupiter.api.Assertions.assertEquals(
+                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
+                outboxEventRepository.findAll().getFirst().getEventType()
+        );
     }
 
     @Test
