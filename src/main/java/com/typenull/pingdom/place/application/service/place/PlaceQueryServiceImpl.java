@@ -233,7 +233,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     }
 
     private Double calculateDistanceMeters(Double latitude, Double longitude, MapPlace mapPlace) {
-        if (latitude == null || longitude == null) {
+        if (latitude == null || longitude == null
+                || mapPlace.getLatitude() == null
+                || mapPlace.getLongitude() == null) {
             return null;
         }
 
