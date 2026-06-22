@@ -18,6 +18,39 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
 
     boolean existsByKakaoPlaceId(String kakaoPlaceId);
 
+    List<MapPlace> findAllByNameAndAddress(String name, String address);
+
+    @Query("""
+            SELECT m
+            FROM MapPlace m
+            WHERE EXISTS (
+                SELECT other.id
+                FROM MapPlace other
+                WHERE other.id <> m.id
+                  AND (
+                      (m.kakaoPlaceId IS NOT NULL
+                       AND TRIM(m.kakaoPlaceId) <> ''
+                       AND other.kakaoPlaceId IS NOT NULL
+                       AND TRIM(other.kakaoPlaceId) = TRIM(m.kakaoPlaceId))
+                      OR (other.name = m.name AND other.address = m.address)
+                  )
+            )
+            """)
+    List<MapPlace> findPotentialDuplicatePlaces();
+
+    @Query("""
+            SELECT m
+            FROM MapPlace m
+            WHERE m.id <> :placeId
+              AND m.kakaoPlaceId IS NOT NULL
+              AND TRIM(m.kakaoPlaceId) <> ''
+              AND TRIM(m.kakaoPlaceId) = TRIM(:kakaoPlaceId)
+            """)
+    List<MapPlace> findDuplicateCandidatesByKakaoPlaceId(
+            @Param("placeId") Long placeId,
+            @Param("kakaoPlaceId") String kakaoPlaceId
+    );
+
     @Query("""
             SELECT m
             FROM MapPlace m

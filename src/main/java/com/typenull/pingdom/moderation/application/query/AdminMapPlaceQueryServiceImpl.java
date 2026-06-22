@@ -31,6 +31,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -126,7 +127,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
         AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
-                adminPlaceDuplicateResolver.analyze(mapPlaceRepository.findAll());
+                adminPlaceDuplicateResolver.analyze(mapPlaceRepository.findPotentialDuplicatePlaces());
 
         List<AdminMapPlaceDuplicateGroupItem> groups = duplicateAnalysis.groups().stream()
                 .map(group -> new AdminMapPlaceDuplicateGroupItem(
@@ -142,19 +143,29 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     @Override
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId) {
-        List<MapPlace> places = mapPlaceRepository.findAll();
-        MapPlace mapPlace = places.stream()
-                .filter(place -> place.getId().equals(placeId))
-                .findFirst()
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND));
 
-        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis = adminPlaceDuplicateResolver.analyze(places);
+        Map<Long, MapPlace> candidatePlacesById = new LinkedHashMap<>();
+        candidatePlacesById.put(mapPlace.getId(), mapPlace);
+
+        if (mapPlace.getKakaoPlaceId() != null && !mapPlace.getKakaoPlaceId().trim().isEmpty()) {
+            mapPlaceRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, mapPlace.getKakaoPlaceId())
+                    .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
+        }
+
+        mapPlaceRepository.findAllByNameAndAddress(mapPlace.getName(), mapPlace.getAddress()).stream()
+                .filter(candidatePlace -> !candidatePlace.getId().equals(placeId))
+                .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
+
+        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
+                adminPlaceDuplicateResolver.analyze(candidatePlacesById.values());
         List<AdminMapPlaceDuplicateCandidateItem> candidates = duplicateAnalysis.candidatesOf(placeId).stream()
                 .map(candidate -> {
-                    MapPlace candidatePlace = places.stream()
-                            .filter(place -> place.getId().equals(candidate.placeId()))
-                            .findFirst()
-                            .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND));
+                    MapPlace candidatePlace = candidatePlacesById.get(candidate.placeId());
+                    if (candidatePlace == null) {
+                        throw new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND);
+                    }
                     return new AdminMapPlaceDuplicateCandidateItem(
                             candidatePlace.getId(),
                             candidatePlace.getName(),
