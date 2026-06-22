@@ -10,11 +10,16 @@ spring:
     password: ${DB_PASSWORD:pingdom}
   jpa:
     hibernate:
-      ddl-auto: update
+      ddl-auto: validate
     properties:
       hibernate:
         format_sql: true
     open-in-view: false
+  flyway:
+    enabled: true
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-version: 1
+    validate-on-migrate: true
   servlet:
     multipart:
       max-file-size: 10MB
