@@ -36,8 +36,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = flyway.migrate();
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("4");
-        assertThat(result.migrationsExecuted).isEqualTo(4);
+        assertThat(result.targetSchemaVersion).isEqualTo("6");
+        assertThat(result.migrationsExecuted).isEqualTo(6);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -46,6 +46,23 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM pg_extension
                         WHERE extname = 'postgis'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'status'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'withdrawn_at'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
