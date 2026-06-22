@@ -92,6 +92,23 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     Page<MapImage> findBookmarkedByUserId(@Param("userId") Long userId, Pageable pageable);
 
     @EntityGraph(attributePaths = "mapPlace")
+    @Query(
+            value = """
+                    SELECT m
+                    FROM MapImageLike liked
+                    JOIN MapImage m ON m.id = liked.mapImageId
+                    WHERE liked.userId = :userId
+                    ORDER BY liked.likeId DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(liked)
+                    FROM MapImageLike liked
+                    WHERE liked.userId = :userId
+                    """
+    )
+    Page<MapImage> findLikedByUserId(@Param("userId") Long userId, Pageable pageable);
+
+    @EntityGraph(attributePaths = "mapPlace")
     @Query("""
             SELECT m
             FROM MapImage m

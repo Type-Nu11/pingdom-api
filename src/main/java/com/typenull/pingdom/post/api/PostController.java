@@ -7,6 +7,8 @@ import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 import com.typenull.pingdom.post.application.query.PostQueryService;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -118,7 +120,49 @@ public class PostController {
             @RequestParam(defaultValue = "20") int limit,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
         return postQueryService.listBookmarkedPosts(page, limit, user.userId());
+    }
+
+    @GetMapping("/likes")
+    @Operation(
+            summary = "좋아요한 게시글 목록 조회",
+            description = "현재 인증된 사용자가 좋아요한 게시글을 최신 좋아요 순으로 페이지 단위 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "좋아요한 게시글 목록 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PostListResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public PostListResponse listLikedPosts(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return postQueryService.listLikedPosts(page, limit, user.userId());
     }
 
     @GetMapping("/posts/{id}")
