@@ -1,5 +1,7 @@
 package com.typenull.pingdom.admin;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -17,6 +19,10 @@ import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -68,10 +74,14 @@ class AdminPostControllerTest {
     private PostReportRepository postReportRepository;
 
     @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         postReportRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -228,6 +238,34 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.posts.length()").value(1))
                 .andExpect(jsonPath("$.posts[0].id").value(firstPost.getId()))
                 .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(secondPost.getId().intValue())));
+    }
+
+    @Test
+    void deletePostRemovesDatabaseRecordAndCreatesS3DeleteOutboxEvent() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("deleteTargetOwner");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/delete-target.jpg");
+
+        mockMvc.perform(delete("/admin/posts/{id}/delete", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNoContent());
+
+        assertEquals(0L, mapImageRepository.count());
+        assertS3DeleteOutboxEvent(mapImage.getId(), "test-key-" + owner.getId(), "ADMIN_MAP_IMAGE_DELETED");
+    }
+
+    private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
+        List<OutboxEvent> events = outboxEventRepository.findAll()
+                .stream()
+                .filter(event -> event.getEventType() == OutboxEventType.S3_OBJECT_DELETE_REQUESTED)
+                .toList();
+        assertEquals(1, events.size());
+        OutboxEvent event = events.get(0);
+        assertEquals(OutboxEventType.S3_OBJECT_DELETE_REQUESTED, event.getEventType());
+        assertEquals("MAP_IMAGE", event.getAggregateType());
+        assertEquals(String.valueOf(mapImageId), event.getAggregateId());
+        assertEquals(s3Key, objectMapper.readTree(event.getPayload()).get("s3Key").asText());
+        assertEquals(reason, objectMapper.readTree(event.getPayload()).get("reason").asText());
     }
 
     private User createUser(String username) {

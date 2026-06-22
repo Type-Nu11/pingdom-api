@@ -8,26 +8,22 @@ import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.shared.support.S3ObjectStorage;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
+import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import java.net.URI;
 import java.net.URISyntaxException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AdminPostServiceImpl implements AdminPostService {
 
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
-    private final S3ObjectStorage s3ObjectStorage;
     private final PlaceGrowthService placeGrowthService;
+    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
 
     @Override
     @Transactional
@@ -39,31 +35,13 @@ public class AdminPostServiceImpl implements AdminPostService {
         postReportRepository.detachMapImageByMapImageId(postId);
 
         String keyToDelete = resolveS3Key(mapImage);
-        if (StringUtils.hasText(keyToDelete)) {
-            deleteFromS3(keyToDelete);
-        }
 
         MapPlace mapPlace = mapImage.getMapPlace();
         if (mapPlace != null) {
             placeGrowthService.decreasePhotoCount(mapPlace.getId());
         }
         mapImageRepository.delete(mapImage);
-    }
-
-    private void deleteFromS3(String s3Key) {
-        try {
-            s3ObjectStorage.delete(s3Key);
-        } catch (S3StorageException exception) {
-            if (exception.getError() == S3StorageError.NOT_CONFIGURED) {
-                // 테스트/로컬 환경 등에서 S3 비활성화 상태일 수 있어, 강제 삭제는 DB 삭제를 우선
-                log.warn("S3 is not configured. Skipping S3 delete. key={}", s3Key);
-                return;
-            }
-            if (exception.getError() == S3StorageError.CONNECTION_ERROR) {
-                throw new AdminException(AdminErrorCode.S3_CONNECTION_ERROR, exception);
-            }
-            throw new AdminException(AdminErrorCode.POST_DELETE_FAILED, exception);
-        }
+        publishS3Delete(keyToDelete, postId);
     }
 
     private String resolveS3Key(MapImage mapImage) {
@@ -97,5 +75,14 @@ public class AdminPostServiceImpl implements AdminPostService {
         } catch (URISyntaxException ignored) {
             return null;
         }
+    }
+
+    private void publishS3Delete(String s3Key, Long postId) {
+        s3ObjectDeleteOutboxPublisher.publish(
+                s3Key,
+                "MAP_IMAGE",
+                postId == null ? null : String.valueOf(postId),
+                "ADMIN_MAP_IMAGE_DELETED"
+        );
     }
 }
