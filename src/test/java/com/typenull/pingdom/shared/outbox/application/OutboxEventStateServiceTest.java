@@ -33,6 +33,8 @@ class OutboxEventStateServiceTest {
     void setUp() {
         OutboxProperties properties = new OutboxProperties(
                 20,
+                2,
+                20,
                 5,
                 Duration.ofSeconds(10),
                 Duration.ofMinutes(10),

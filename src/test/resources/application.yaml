@@ -37,6 +37,8 @@ fcm:
 outbox:
   enabled: false
   batch-size: 20
+  worker-concurrency: 2
+  worker-queue-capacity: 20
   max-attempts: 5
   base-backoff: PT10S
   max-backoff: PT10M

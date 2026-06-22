@@ -10,6 +10,8 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "outbox")
 public record OutboxProperties(
         @Min(1) int batchSize,
+        @Min(1) int workerConcurrency,
+        @Min(0) int workerQueueCapacity,
         @Min(1) int maxAttempts,
         @NotNull Duration baseBackoff,
         @NotNull Duration maxBackoff,
