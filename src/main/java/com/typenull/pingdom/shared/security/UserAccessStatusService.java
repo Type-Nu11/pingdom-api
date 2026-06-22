@@ -4,12 +4,14 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import lombok.RequiredArgsConstructor;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -19,6 +21,7 @@ public class UserAccessStatusService {
     private static final Duration CACHE_TTL = Duration.ofSeconds(10);
 
     private final UserRepository userRepository;
+    private final Clock clock;
     private final Map<Long, CacheEntry> cache = new ConcurrentHashMap<>();
 
     public boolean canAuthenticate(Long userId) {
@@ -26,13 +29,13 @@ public class UserAccessStatusService {
             return false;
         }
 
-        Instant now = Instant.now();
+        Instant now = Instant.now(clock);
         CacheEntry cached = cache.get(userId);
         if (cached != null && now.isBefore(cached.expiresAt())) {
             return cached.allowed();
         }
 
-        LocalDateTime localNow = LocalDateTime.now();
+        LocalDateTime localNow = LocalDateTime.now(clock);
         User user = userRepository.findById(userId).orElse(null);
         boolean allowed = user != null
                 && user.getStatus() == UserStatus.ACTIVE
@@ -45,6 +48,15 @@ public class UserAccessStatusService {
         if (userId != null) {
             cache.remove(userId);
         }
+    }
+
+    @Scheduled(
+            fixedDelayString = "${user.access-status.cache-cleanup-delay:PT1M}",
+            initialDelayString = "${user.access-status.cache-cleanup-initial-delay:PT1M}"
+    )
+    public void cleanExpiredCache() {
+        Instant now = Instant.now(clock);
+        cache.entrySet().removeIf(entry -> !now.isBefore(entry.getValue().expiresAt()));
     }
 
     private record CacheEntry(boolean allowed, Instant expiresAt) {
