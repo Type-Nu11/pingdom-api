@@ -22,6 +22,7 @@ public class OutboxEventClaimService {
 
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxProperties properties;
+    private final OutboxBackoffPolicy backoffPolicy;
     private final Clock outboxClock;
 
     @Transactional
@@ -47,7 +48,7 @@ public class OutboxEventClaimService {
         events.forEach(event -> event.recover(
                 now,
                 properties.maxAttempts(),
-                now.plus(properties.baseBackoff()),
+                now.plus(backoffPolicy.calculateDelay(event.getAttemptCount() + 1)),
                 "PROCESSING timeout 이후 재처리 대상으로 복구"
         ));
         return events.size();

@@ -4,7 +4,6 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.Clock;
-import java.time.Duration;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -16,6 +15,7 @@ public class OutboxEventStateService {
 
     private final OutboxEventRepository outboxEventRepository;
     private final OutboxProperties properties;
+    private final OutboxBackoffPolicy backoffPolicy;
     private final Clock outboxClock;
 
     @Transactional(readOnly = true)
@@ -40,11 +40,10 @@ public class OutboxEventStateService {
         }
 
         LocalDateTime now = LocalDateTime.now(outboxClock);
-        Duration delay = calculateBackoff(event.getAttemptCount() + 1);
         event.fail(
                 now,
                 properties.maxAttempts(),
-                now.plus(delay),
+                now.plus(backoffPolicy.calculateDelay(event.getAttemptCount() + 1)),
                 failureMessage(failure)
         );
         return event.getStatus();
@@ -58,17 +57,6 @@ public class OutboxEventStateService {
         }
         event.retry(LocalDateTime.now(outboxClock));
         return true;
-    }
-
-    private Duration calculateBackoff(int attemptNumber) {
-        long multiplier = 1L << Math.min(attemptNumber - 1, 30);
-        Duration delay;
-        try {
-            delay = properties.baseBackoff().multipliedBy(multiplier);
-        } catch (ArithmeticException exception) {
-            return properties.maxBackoff();
-        }
-        return delay.compareTo(properties.maxBackoff()) > 0 ? properties.maxBackoff() : delay;
     }
 
     private String failureMessage(Throwable failure) {

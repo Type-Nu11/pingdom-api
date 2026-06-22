@@ -45,6 +45,7 @@ class OutboxEventStateServiceTest {
         stateService = new OutboxEventStateService(
                 outboxEventRepository,
                 properties,
+                new OutboxBackoffPolicy(properties),
                 Clock.fixed(NOW, ZoneOffset.UTC)
         );
     }
