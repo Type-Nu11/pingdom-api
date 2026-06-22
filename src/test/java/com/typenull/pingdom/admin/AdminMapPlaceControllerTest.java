@@ -2,9 +2,11 @@ package com.typenull.pingdom.admin;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -34,6 +36,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -316,6 +319,210 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void listDuplicatePlacesReturnsDuplicateGroups() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace firstPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("중복 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.642738)
+                .longitude(128.391626)
+                .userId(10L)
+                .registrant("ownerA")
+                .photoCount(1L)
+                .build());
+        MapPlace secondPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("중복 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.642900)
+                .longitude(128.391700)
+                .userId(11L)
+                .registrant("ownerB")
+                .photoCount(2L)
+                .build());
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("다른 장소")
+                .address("서울특별시 강남구 테헤란로 1")
+                .latitude(37.4981)
+                .longitude(127.0276)
+                .userId(12L)
+                .registrant("ownerC")
+                .photoCount(1L)
+                .build());
+
+        mockMvc.perform(get("/admin/places/duplicates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.groups[0].representativePlaceId").value(firstPlace.getId()))
+                .andExpect(jsonPath("$.groups[0].duplicatePlaceIds.length()").value(2))
+                .andExpect(jsonPath("$.groups[0].duplicatePlaceIds[1]").value(secondPlace.getId()))
+                .andExpect(jsonPath("$.groups[0].reasons[0]").value("NAME_ADDRESS_COORDINATE"));
+    }
+
+    @Test
+    void getDuplicatePlaceReturnsCandidates() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace firstPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("후보 장소")
+                .address("부산광역시 수영구 광안해변로 219")
+                .latitude(35.153169)
+                .longitude(129.118666)
+                .userId(20L)
+                .registrant("ownerA")
+                .photoCount(3L)
+                .build());
+        MapPlace secondPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("후보 장소")
+                .address("부산광역시 수영구 광안해변로 219")
+                .latitude(35.153200)
+                .longitude(129.118690)
+                .userId(21L)
+                .registrant("ownerB")
+                .photoCount(4L)
+                .build());
+
+        mockMvc.perform(get("/admin/places/duplicates/{id}", firstPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(firstPlace.getId()))
+                .andExpect(jsonPath("$.candidates.length()").value(1))
+                .andExpect(jsonPath("$.candidates[0].id").value(secondPlace.getId()))
+                .andExpect(jsonPath("$.candidates[0].reason").value("NAME_ADDRESS_COORDINATE"));
+    }
+
+    @Test
+    void mergePlacesMovesReferencesAndDeletesSourcePlace() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace sourcePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("병합 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.642738)
+                .longitude(128.391626)
+                .userId(30L)
+                .registrant("sourceOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace targetPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("병합 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.642900)
+                .longitude(128.391700)
+                .userId(31L)
+                .registrant("targetOwner")
+                .photoCount(1L)
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/source.jpg")
+                .s3Key("map/source.jpg")
+                .title("source")
+                .description("source image")
+                .userId(100L)
+                .username("sourceUser")
+                .likeCount(4L)
+                .mapPlace(sourcePlace)
+                .build());
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/target.jpg")
+                .s3Key("map/target.jpg")
+                .title("target")
+                .description("target image")
+                .userId(101L)
+                .username("targetUser")
+                .likeCount(3L)
+                .mapPlace(targetPlace)
+                .build());
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(200L)
+                .placeId(sourcePlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(201L)
+                .placeId(sourcePlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(201L)
+                .placeId(targetPlace.getId())
+                .build());
+
+        placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                .placeId(sourcePlace.getId())
+                .userId(300L)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                .placeId(sourcePlace.getId())
+                .userId(301L)
+                .requestLatitude(35.642738)
+                .requestLongitude(128.391626)
+                .ranking(1)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(1L)
+                .placeId(sourcePlace.getId())
+                .userId(400L)
+                .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(2L)
+                .placeId(sourcePlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(3L)
+                .placeId(targetPlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+
+        mockMvc.perform(post("/admin/places/merge")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of(
+                                        "sourcePlaceId", sourcePlace.getId(),
+                                        "targetPlaceId", targetPlace.getId()
+                                )
+                        )))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sourcePlaceId").value(sourcePlace.getId()))
+                .andExpect(jsonPath("$.targetPlaceId").value(targetPlace.getId()))
+                .andExpect(jsonPath("$.message").value("중복 장소를 병합했습니다."));
+
+        assertFalse(mapPlaceRepository.existsById(sourcePlace.getId()));
+        assertTrue(mapPlaceRepository.existsById(targetPlace.getId()));
+        assertEquals(2L, mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        assertEquals(2L, mapBookmarkRepository.countByPlaceId(targetPlace.getId()));
+
+        List<PlaceRecommendationConversionRepository.PlaceConversionCountProjection> conversionCounts =
+                placeRecommendationConversionRepository.countConversionsByPlaceIds(List.of(targetPlace.getId()));
+        long totalConversionCount = conversionCounts.stream()
+                .mapToLong(PlaceRecommendationConversionRepository.PlaceConversionCountProjection::getConversionCount)
+                .sum();
+        assertEquals(2L, totalConversionCount);
+        assertEquals(1L, placeRecommendationClickRepository.countByPlaceId(targetPlace.getId()));
+
+        PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(targetPlace.getId())
+                .orElseThrow();
+        assertEquals(2L, snapshot.getPhotoCount());
+        assertEquals(2L, snapshot.getBookmarkCount());
+        assertEquals(7L, snapshot.getTotalLikeCount());
+        assertEquals(1L, snapshot.getClickCount());
+        assertEquals(1L, snapshot.getBookmarkConversionCount());
+        assertEquals(1L, snapshot.getLikeConversionCount());
+        assertEquals(1L, snapshot.getExposureCount());
     }
 
     @Test

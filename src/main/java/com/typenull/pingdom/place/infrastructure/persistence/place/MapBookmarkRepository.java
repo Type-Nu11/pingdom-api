@@ -25,6 +25,8 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
 
     long countByPlaceId(Long placeId);
 
+    List<MapBookmark> findByPlaceId(Long placeId);
+
     void deleteByPlaceIdAndUserId(Long placeId, Long userId);
 
     @Query("""

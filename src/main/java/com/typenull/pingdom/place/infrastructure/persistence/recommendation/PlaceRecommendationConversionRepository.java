@@ -35,6 +35,8 @@ public interface PlaceRecommendationConversionRepository extends JpaRepository<P
             PlaceRecommendationConversionType conversionType
     );
 
+    List<PlaceRecommendationConversion> findByPlaceId(Long placeId);
+
     @Query("""
             SELECT c.placeId as placeId,
                    c.conversionType as conversionType,

@@ -82,4 +82,10 @@ public class MapPlace {
         this.photoCount = nextPhotoCount;
         return nextPhotoCount;
     }
+
+    public long replacePhotoCount(long photoCount) {
+        long nextPhotoCount = Math.max(0L, photoCount);
+        this.photoCount = nextPhotoCount;
+        return nextPhotoCount;
+    }
 }

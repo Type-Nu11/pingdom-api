@@ -1,6 +1,10 @@
 package com.typenull.pingdom.moderation.application.query;
 
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateCandidateItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateGroupItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceImageItem;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceItem;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
@@ -8,6 +12,7 @@ import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMet
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricSummary;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
+import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -53,6 +58,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
@@ -113,6 +119,73 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 Math.toIntExact(postPage.getTotalElements()),
                 placeGrowthService.snapshot(mapPlace),
                 posts
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
+        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
+                adminPlaceDuplicateResolver.analyze(mapPlaceRepository.findAll());
+
+        List<AdminMapPlaceDuplicateGroupItem> groups = duplicateAnalysis.groups().stream()
+                .map(group -> new AdminMapPlaceDuplicateGroupItem(
+                        group.representativePlaceId(),
+                        group.memberPlaceIds(),
+                        group.reasons()
+                ))
+                .toList();
+
+        return new AdminMapPlaceDuplicateResponse(groups, groups.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId) {
+        List<MapPlace> places = mapPlaceRepository.findAll();
+        MapPlace mapPlace = places.stream()
+                .filter(place -> place.getId().equals(placeId))
+                .findFirst()
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND));
+
+        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis = adminPlaceDuplicateResolver.analyze(places);
+        List<AdminMapPlaceDuplicateCandidateItem> candidates = duplicateAnalysis.candidatesOf(placeId).stream()
+                .map(candidate -> {
+                    MapPlace candidatePlace = places.stream()
+                            .filter(place -> place.getId().equals(candidate.placeId()))
+                            .findFirst()
+                            .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND));
+                    return new AdminMapPlaceDuplicateCandidateItem(
+                            candidatePlace.getId(),
+                            candidatePlace.getName(),
+                            candidatePlace.getAddress(),
+                            candidatePlace.getKakaoPlaceId(),
+                            candidatePlace.getLatitude(),
+                            candidatePlace.getLongitude(),
+                            candidatePlace.getUserId(),
+                            candidatePlace.getRegistrant(),
+                            candidatePlace.currentPhotoCount(),
+                            candidate.reason(),
+                            candidate.distanceMeters()
+                    );
+                })
+                .toList();
+
+        if (candidates.isEmpty()) {
+            throw new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND);
+        }
+
+        return new AdminMapPlaceDuplicateDetailResponse(
+                mapPlace.getId(),
+                mapPlace.getName(),
+                mapPlace.getAddress(),
+                mapPlace.getKakaoPlaceId(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                mapPlace.getUserId(),
+                mapPlace.getRegistrant(),
+                mapPlace.currentPhotoCount(),
+                candidates
         );
     }
 
