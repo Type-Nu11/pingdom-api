@@ -42,6 +42,17 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 """)
     void decreaseLikeCount(@Param("imageId") Long imageId);
 
+    @Modifying
+    @Query("""
+            UPDATE MapImage m
+            SET m.username = :displayName
+            WHERE m.userId = :userId
+            """)
+    int updateUsernameByUserId(
+            @Param("userId") Long userId,
+            @Param("displayName") String displayName
+    );
+
     @EntityGraph(attributePaths = "mapPlace")
     Page<MapImage> findAllBy(Pageable pageable);
 

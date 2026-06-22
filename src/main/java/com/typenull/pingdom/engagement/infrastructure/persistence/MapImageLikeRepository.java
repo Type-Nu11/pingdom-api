@@ -33,6 +33,13 @@ public interface MapImageLikeRepository extends JpaRepository<MapImageLike, Long
 """)
     void deleteLike(@Param("userId") Long userId, @Param("mapImageId") Long mapImageId);
 
+    @Modifying
+    @Query("""
+            DELETE FROM MapImageLike m
+            WHERE m.userId = :userId
+            """)
+    int deleteAllByUserId(@Param("userId") Long userId);
+
     @Query("""
             SELECT DISTINCT image.mapPlace.id
             FROM MapImageLike likeHistory
