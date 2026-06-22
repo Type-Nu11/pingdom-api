@@ -21,6 +21,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -38,11 +39,12 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final UserSanctionCommandService userSanctionCommandService;
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;
+    private final Clock clock;
 
     @Override
     @Transactional
     public BanResponse banUser(Long userId, BanRequest request, Long adminUserId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         User user = findUser(userId);
         LocalDateTime expiresAt = resolveBanExpiresAt(request, now);
         String reason = request == null ? null : request.reason();
@@ -62,7 +64,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional
     public UnbanResponse unbanUser(Long userId, UnbanRequest request, Long adminUserId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         User user = findUser(userId);
         String reason = request == null ? null : request.reason();
 
@@ -82,7 +84,7 @@ public class AdminUserServiceImpl implements AdminUserService {
                 Sort.by(Sort.Order.desc("bannedAt"), Sort.Order.desc("id"))
         );
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         userSanctionCommandService.expireExpiredTemporaryBans(now, normalizedLimit);
         Page<User> userPage = userRepository.findAllCurrentlyBanned(
                 UserBanType.TEMPORARY,
@@ -105,7 +107,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional
     public AdminBannedUserDetailResponse getBannedUser(Long userId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         User user = findUser(userId);
         userSanctionCommandService.expireBanIfNeeded(user, now);
         if (!user.isCurrentlyBanned(now)) {
@@ -132,7 +134,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional
     public AdminUserSanctionStatusResponse getUserSanctionStatus(Long userId) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = now();
         User user = findUser(userId);
         userSanctionCommandService.expireBanIfNeeded(user, now);
         boolean currentlyBanned = user.isCurrentlyBanned(now);
@@ -156,11 +158,11 @@ public class AdminUserServiceImpl implements AdminUserService {
             UserSanctionAction action,
             LocalDateTime from,
             LocalDateTime to,
-            Pageable pageable
+        Pageable pageable
     ) {
         User user = findUser(userId);
         validateHistoryPeriod(from, to);
-        userSanctionCommandService.expireBanIfNeeded(user, LocalDateTime.now());
+        userSanctionCommandService.expireBanIfNeeded(user, now());
 
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
@@ -246,5 +248,9 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (from != null && to != null && to.isBefore(from)) {
             throw new AdminException(AdminErrorCode.INVALID_SANCTION_FILTER_PERIOD);
         }
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 }
