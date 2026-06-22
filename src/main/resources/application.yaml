@@ -71,6 +71,19 @@ oauth2:
 fcm:
   key-path: src/main/resources/fcm-key.json
 
+outbox:
+  enabled: true
+  batch-size: 20
+  max-attempts: 5
+  base-backoff: PT10S
+  max-backoff: PT10M
+  processing-timeout: PT5M
+  retention: P7D
+  poll-delay: PT5S
+  initial-delay: PT5S
+  cleanup-delay: PT24H
+  cleanup-initial-delay: PT1H
+
 place:
   recommendation:
     default-version: place-rec-v1
