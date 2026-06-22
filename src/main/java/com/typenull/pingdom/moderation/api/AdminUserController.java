@@ -290,7 +290,8 @@ public class AdminUserController {
             @Valid @RequestBody(required = false) BanRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return adminUserService.banUser(userId, request, adminUser.userId());
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminUserService.banUser(userId, request, adminUserId);
     }
 
     @PostMapping("/ban/{userId}/release")
@@ -324,6 +325,7 @@ public class AdminUserController {
             @Valid @RequestBody(required = false) UnbanRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return adminUserService.unbanUser(userId, request, adminUser.userId());
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminUserService.unbanUser(userId, request, adminUserId);
     }
 }
