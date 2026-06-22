@@ -28,6 +28,7 @@ GROUP BY kakao_place_id
 HAVING COUNT(*) > 1;
 ```
 
-`V2`의 `CREATE EXTENSION postgis`를 실행하려면 DB 계정에 extension 생성 권한이 있어야
-한다. 운영 애플리케이션 계정에 권한을 부여하지 않는 환경에서는 인프라 관리자가 배포
-전에 PostGIS extension을 생성해야 한다.
+`V2`는 PostGIS extension을 직접 생성하지 않고 설치 여부만 검증한다. 로컬 환경은
+`docker/postgres/initdb/01_enable_postgis.sql`이 extension을 생성한다. 운영 환경에서는
+인프라 관리자 또는 DBA가 최초 Flyway 실행 전에 PostGIS extension을 생성해야 한다.
+설치되지 않은 경우 `V2`는 명시적인 오류와 함께 중단된다.

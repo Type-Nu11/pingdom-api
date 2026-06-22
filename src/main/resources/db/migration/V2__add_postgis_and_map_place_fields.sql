@@ -1,4 +1,15 @@
-CREATE EXTENSION IF NOT EXISTS postgis;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_extension
+        WHERE extname = 'postgis'
+    ) THEN
+        RAISE EXCEPTION
+            'PostGIS extension is required. Install it before running Flyway migrations.';
+    END IF;
+END
+$$;
 
 ALTER TABLE map_place
     ADD COLUMN IF NOT EXISTS location geometry(Point, 4326);
