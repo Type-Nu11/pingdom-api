@@ -11,6 +11,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String> {
@@ -18,6 +19,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
     boolean existsByDeduplicationKey(String deduplicationKey);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("""
             SELECT event
             FROM OutboxEvent event
@@ -32,6 +34,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("""
             SELECT event
             FROM OutboxEvent event
