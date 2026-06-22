@@ -246,9 +246,7 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
                                     + COS(RADIANS(:latitude)) * COS(RADIANS(mp.latitude))
                                     * POWER(SIN(RADIANS(mp.longitude - :longitude) / 2.0), 2.0)
                                 ))
-                            ELSE NULL
                         END ASC,
-                        CASE WHEN :sort = 'LATEST' THEN mp.map_place_id ELSE NULL END DESC,
                         mp.map_place_id DESC
                     """,
             countQuery = """

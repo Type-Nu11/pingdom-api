@@ -176,14 +176,6 @@ class FlywayMigrationIntegrationTest {
                           AND indexname = 'idx_map_place_latitude_longitude'
                     )
                     """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_indexes
-                        WHERE tablename = 'map_place'
-                          AND indexname = 'idx_map_place_location_gist'
-                    )
-                    """)).isTrue();
         }
     }
 

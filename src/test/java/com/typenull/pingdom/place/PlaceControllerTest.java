@@ -218,6 +218,19 @@ class PlaceControllerTest {
     }
 
     @Test
+    void listPlacesRejectsNonFiniteDistanceCondition() throws Exception {
+        String accessToken = signupAndLogin("readerSearch05");
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "Infinity")
+                        .param("radiusKm", "1.0")
+                        .param("sort", "NEAREST"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void getPlaceReturnsPlaceDetailOnly() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");

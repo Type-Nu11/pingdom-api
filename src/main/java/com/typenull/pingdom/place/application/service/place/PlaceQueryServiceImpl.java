@@ -190,7 +190,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             if (!hasLatitude) {
                 return new LocationSearch(false, null, null, null, null, null, null, null, false);
             }
-            if (radiusKm <= 0d) {
+            if (!Double.isFinite(latitude)
+                    || !Double.isFinite(longitude)
+                    || !Double.isFinite(radiusKm)
+                    || radiusKm <= 0d) {
                 throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
             }
 
@@ -235,6 +238,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         }
 
         private static double normalizeLongitude(double longitude) {
+            if (!Double.isFinite(longitude)) {
+                throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
+            }
+
             double normalized = longitude;
             while (normalized < -180d) {
                 normalized += 360d;
