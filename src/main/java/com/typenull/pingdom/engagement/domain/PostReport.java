@@ -25,15 +25,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 @Builder
 @AllArgsConstructor
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-@Table(
-        name = "post_report",
-        uniqueConstraints = {
-                @UniqueConstraint(
-                        name = "uk_post_report_user_image",
-                        columnNames = {"reporter_user_id", "map_image_id"}
-                )
-        }
-)
+@Table(name = "post_report")
 public class PostReport {
 
     @Id
