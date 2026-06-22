@@ -85,7 +85,6 @@ public class AdminUserServiceImpl implements AdminUserService {
         );
 
         LocalDateTime now = now();
-        userSanctionCommandService.expireExpiredTemporaryBans(now, normalizedLimit);
         Page<User> userPage = userRepository.findAllCurrentlyBanned(
                 UserBanType.TEMPORARY,
                 now,
