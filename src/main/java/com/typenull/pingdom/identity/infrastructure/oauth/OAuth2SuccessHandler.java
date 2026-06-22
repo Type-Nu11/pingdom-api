@@ -67,6 +67,10 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User를 찾을 수 없습니다."));
+        if (user.isWithdrawn()) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "탈퇴 처리된 사용자입니다.");
+            return;
+        }
         user.issueRefreshToken(refreshToken);
 
         boolean secureCookie = request.isSecure();
