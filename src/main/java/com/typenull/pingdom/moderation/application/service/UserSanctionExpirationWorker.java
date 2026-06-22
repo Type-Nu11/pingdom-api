@@ -1,5 +1,6 @@
 package com.typenull.pingdom.moderation.application.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +16,7 @@ import org.springframework.stereotype.Component;
 public class UserSanctionExpirationWorker {
 
     private final UserSanctionCommandService userSanctionCommandService;
+    private final Clock clock;
 
     @Value("${user.sanction.expiration-batch-size:100}")
     private int batchSize;
@@ -25,7 +27,7 @@ public class UserSanctionExpirationWorker {
     )
     public void expireTemporaryBans() {
         try {
-            int expiredCount = userSanctionCommandService.expireExpiredTemporaryBans(LocalDateTime.now(), batchSize);
+            int expiredCount = userSanctionCommandService.expireExpiredTemporaryBans(LocalDateTime.now(clock), batchSize);
             if (expiredCount > 0) {
                 log.info("만료된 기간 제재 정리를 완료했습니다. expiredCount={}", expiredCount);
             }

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.application.service;
 
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -14,6 +15,7 @@ import org.springframework.stereotype.Component;
 public class WithdrawnUserPurgeWorker {
 
     private final WithdrawnUserPurgeService purgeService;
+    private final Clock clock;
 
     @Scheduled(
             fixedDelayString = "${user.withdrawal.cleanup-delay:PT24H}",
@@ -21,7 +23,7 @@ public class WithdrawnUserPurgeWorker {
     )
     public void purgeExpiredUsers() {
         try {
-            int purgedCount = purgeService.purgeExpiredUsers(LocalDateTime.now());
+            int purgedCount = purgeService.purgeExpiredUsers(LocalDateTime.now(clock));
             if (purgedCount > 0) {
                 log.info("탈퇴 사용자 최종 삭제 배치를 완료했습니다. purgedCount={}", purgedCount);
             }
