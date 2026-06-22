@@ -1,6 +1,10 @@
 package com.typenull.pingdom.moderation.application.query;
 
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateCandidateItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateGroupItem;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceImageItem;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceItem;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
@@ -8,6 +12,7 @@ import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMet
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricSummary;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
+import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -26,6 +31,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
@@ -44,6 +50,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
 
     private static final int PLACE_DETAIL_POST_LIMIT = 20;
     private static final double CTR_PRIOR_WEIGHT = 8d;
+    private static final double DUPLICATE_DISTANCE_METERS = 50d;
+    private static final double EARTH_RADIUS_METERS = 6_371_000d;
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageRepository mapImageRepository;
@@ -53,6 +61,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
 
     //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
@@ -114,6 +123,100 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
                 placeGrowthService.snapshot(mapPlace),
                 posts
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
+        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
+                adminPlaceDuplicateResolver.analyze(mapPlaceRepository.findPotentialDuplicatePlaces());
+
+        List<AdminMapPlaceDuplicateGroupItem> groups = duplicateAnalysis.groups().stream()
+                .map(group -> new AdminMapPlaceDuplicateGroupItem(
+                        group.representativePlaceId(),
+                        group.memberPlaceIds(),
+                        group.reasons()
+                ))
+                .toList();
+
+        return new AdminMapPlaceDuplicateResponse(groups, groups.size());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND));
+
+        Map<Long, MapPlace> candidatePlacesById = new LinkedHashMap<>();
+        candidatePlacesById.put(mapPlace.getId(), mapPlace);
+
+        if (mapPlace.getKakaoPlaceId() != null && !mapPlace.getKakaoPlaceId().trim().isEmpty()) {
+            mapPlaceRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, mapPlace.getKakaoPlaceId())
+                    .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
+        }
+
+        double latitudeDelta = Math.toDegrees(DUPLICATE_DISTANCE_METERS / EARTH_RADIUS_METERS);
+        double longitudeDelta = calculateLongitudeDelta(mapPlace.getLatitude(), DUPLICATE_DISTANCE_METERS);
+        mapPlaceRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
+                        placeId,
+                        mapPlace.getName(),
+                        mapPlace.getAddress(),
+                        mapPlace.getLatitude() - latitudeDelta,
+                        mapPlace.getLatitude() + latitudeDelta,
+                        mapPlace.getLongitude() - longitudeDelta,
+                        mapPlace.getLongitude() + longitudeDelta
+                ).stream()
+                .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
+
+        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
+                adminPlaceDuplicateResolver.analyze(candidatePlacesById.values());
+        List<AdminMapPlaceDuplicateCandidateItem> candidates = duplicateAnalysis.candidatesOf(placeId).stream()
+                .map(candidate -> {
+                    MapPlace candidatePlace = candidatePlacesById.get(candidate.placeId());
+                    if (candidatePlace == null) {
+                        throw new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND);
+                    }
+                    return new AdminMapPlaceDuplicateCandidateItem(
+                            candidatePlace.getId(),
+                            candidatePlace.getName(),
+                            candidatePlace.getAddress(),
+                            candidatePlace.getKakaoPlaceId(),
+                            candidatePlace.getLatitude(),
+                            candidatePlace.getLongitude(),
+                            candidatePlace.getUserId(),
+                            candidatePlace.getRegistrant(),
+                            candidatePlace.currentPhotoCount(),
+                            candidate.reason(),
+                            candidate.distanceMeters()
+                    );
+                })
+                .toList();
+
+        if (candidates.isEmpty()) {
+            throw new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND);
+        }
+
+        return new AdminMapPlaceDuplicateDetailResponse(
+                mapPlace.getId(),
+                mapPlace.getName(),
+                mapPlace.getAddress(),
+                mapPlace.getKakaoPlaceId(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                mapPlace.getUserId(),
+                mapPlace.getRegistrant(),
+                mapPlace.currentPhotoCount(),
+                candidates
+        );
+    }
+
+    private double calculateLongitudeDelta(double latitude, double distanceMeters) {
+        double cosLatitude = Math.cos(Math.toRadians(latitude));
+        if (Math.abs(cosLatitude) < 1e-12) {
+            return 180d;
+        }
+        return Math.toDegrees(distanceMeters / (EARTH_RADIUS_METERS * cosLatitude));
     }
 
     @Override

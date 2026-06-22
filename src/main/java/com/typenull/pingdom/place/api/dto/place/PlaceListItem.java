@@ -4,7 +4,9 @@ public record PlaceListItem(
         Long id,
         String name,
         String address,
+        String category,
         Double latitude,
-        Double longitude
+        Double longitude,
+        Long distanceMeters
 ) {
 }

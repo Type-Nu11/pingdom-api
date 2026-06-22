@@ -57,4 +57,8 @@ public class PlaceRecommendationConversion {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void reassignPlace(Long targetPlaceId) {
+        this.placeId = targetPlaceId;
+    }
 }

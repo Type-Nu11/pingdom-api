@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -101,4 +102,12 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
             Long placeId,
             LocalDateTime createdAt
     );
+
+    @Modifying
+    @Query("""
+            UPDATE PlaceRecommendationClick c
+            SET c.placeId = :targetPlaceId
+            WHERE c.placeId = :sourcePlaceId
+            """)
+    int updatePlaceId(@Param("sourcePlaceId") Long sourcePlaceId, @Param("targetPlaceId") Long targetPlaceId);
 }

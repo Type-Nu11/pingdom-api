@@ -1,6 +1,8 @@
 package com.typenull.pingdom.moderation.application.query;
 
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
@@ -12,6 +14,10 @@ public interface AdminMapPlaceQueryService {
     AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword);
 
     AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword);
+
+    AdminMapPlaceDuplicateResponse listDuplicatePlaces();
+
+    AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId);
 
     AdminPlaceRecommendationMetricsResponse listRecommendationMetrics(
             int page,

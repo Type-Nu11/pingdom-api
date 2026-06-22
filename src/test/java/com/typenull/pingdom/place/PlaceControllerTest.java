@@ -153,86 +153,81 @@ class PlaceControllerTest {
     }
 
     @Test
-    void autocompletePlacesPrioritizesNameMatchesAndAppliesMaxLimit() throws Exception {
-        String accessToken = signupAndLogin("autocompleteReader01");
-        createMapPlace("진주성", "경상남도 진주시 남강로 1", 35.1801, 128.1078, 1L, "문화");
-        createMapPlace("진주카페", "경상남도 진주시 진주성로 2", 35.1802, 128.1079, 1L, "카페");
-        createMapPlace("남강카페", "경상남도 진주시 진주성로 3", 35.1803, 128.1080, 1L, "디저트");
-        createMapPlace("남강식당", "경상남도 진주시 카테고리로 4", 35.1804, 128.1081, 1L, "진주");
+    void listPlacesSearchesByAddressAndCategory() throws Exception {
+        String accessToken = signupAndLogin("readerSearch01");
+        MapPlace matchingPlace = createMapPlace(
+                "진주성",
+                "경상남도 진주시 남강로 626",
+                "관광",
+                35.1894,
+                128.0789
+        );
+        createMapPlace("남강 카페", "경상남도 진주시 남강로 10", "카페", 35.1801, 128.1078);
 
-        for (int index = 0; index < 12; index++) {
-            createMapPlace(
-                    "진주 추가 장소 " + index,
-                    "경상남도 진주시 추가로 " + index,
-                    35.1810 + index * 0.0001,
-                    128.1090 + index * 0.0001,
-                    1L,
-                    "카페"
-            );
-        }
-
-        mockMvc.perform(get("/place/autocomplete")
+        mockMvc.perform(get("/place")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("keyword", "진주")
-                        .param("limit", "50"))
+                        .param("keyword", "남강로")
+                        .param("category", " 관광 "))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.keyword").value("진주"))
-                .andExpect(jsonPath("$.limit").value(10))
-                .andExpect(jsonPath("$.totalCount").value(10))
-                .andExpect(jsonPath("$.places.length()").value(10))
-                .andExpect(jsonPath("$.places[0].name", containsString("진주")))
-                .andExpect(jsonPath("$.places[1].name", containsString("진주")))
-                .andExpect(jsonPath("$.places[2].name", containsString("진주")));
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].category").value("관광"))
+                .andExpect(jsonPath("$.totalCount").value(1));
     }
 
     @Test
-    void autocompletePlacesSortsSameNameByDistanceWhenCoordinatesProvided() throws Exception {
-        String accessToken = signupAndLogin("autocompleteReader02");
-        createMapPlace("메가커피", "경상남도 진주시 가까운로 1", 35.1801, 128.1078, 1L, "카페");
-        createMapPlace("메가커피", "경상남도 진주시 먼로 2", 35.2801, 128.2078, 1L, "카페");
+    void listPlacesFiltersByRadiusAndSortsNearest() throws Exception {
+        String accessToken = signupAndLogin("readerSearch02");
+        MapPlace nearPlace = createMapPlace("가까운 장소", "경상남도 진주시 가까운로 1", "카페", 35.1802, 128.1079);
+        createMapPlace("먼저 생성된 먼 장소", "경상남도 진주시 먼로 1", "카페", 35.1840, 128.1110);
+        createMapPlace("반경 밖 장소", "경상남도 진주시 바깥로 1", "카페", 35.2500, 128.2000);
 
-        mockMvc.perform(get("/place/autocomplete")
+        mockMvc.perform(get("/place")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("keyword", "메가")
                         .param("latitude", "35.1801")
-                        .param("longitude", "128.1078"))
+                        .param("longitude", "128.1078")
+                        .param("radiusKm", "1.0")
+                        .param("sort", "NEAREST"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(2))
-                .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 가까운로 1"))
-                .andExpect(jsonPath("$.places[0].distanceMeters").value(0.0))
-                .andExpect(jsonPath("$.places[1].address").value("경상남도 진주시 먼로 2"));
+                .andExpect(jsonPath("$.places[0].id").value(nearPlace.getId()))
+                .andExpect(jsonPath("$.places[0].distanceMeters").isNumber())
+                .andExpect(jsonPath("$.totalCount").value(2));
     }
 
     @Test
-    void autocompletePlacesReturnsEmptyWhenKeywordIsTooShortOrSpecialOnly() throws Exception {
-        String accessToken = signupAndLogin("autocompleteReader03");
-        createMapPlace("진주역", "경상남도 진주시 역로 1");
+    void listPlacesRejectsIncompleteDistanceCondition() throws Exception {
+        String accessToken = signupAndLogin("readerSearch03");
 
-        mockMvc.perform(get("/place/autocomplete")
+        mockMvc.perform(get("/place")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("keyword", "a"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(0))
-                .andExpect(jsonPath("$.places.length()").value(0));
-
-        mockMvc.perform(get("/place/autocomplete")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("keyword", "!@#"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(0))
-                .andExpect(jsonPath("$.places.length()").value(0));
-    }
-
-    @Test
-    void autocompletePlacesReturnsBadRequestWhenOnlyOneCoordinateIsProvided() throws Exception {
-        String accessToken = signupAndLogin("autocompleteReader04");
-
-        mockMvc.perform(get("/place/autocomplete")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("keyword", "진주")
                         .param("latitude", "35.1801"))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.message").value("latitude와 longitude는 함께 전달해야 합니다."));
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
+    }
+
+    @Test
+    void listPlacesRejectsNearestWithoutDistanceCondition() throws Exception {
+        String accessToken = signupAndLogin("readerSearch04");
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sort", "NEAREST"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
+    }
+
+    @Test
+    void listPlacesRejectsNonFiniteDistanceCondition() throws Exception {
+        String accessToken = signupAndLogin("readerSearch05");
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "Infinity")
+                        .param("radiusKm", "1.0")
+                        .param("sort", "NEAREST"))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -1112,17 +1107,21 @@ class PlaceControllerTest {
         return createMapPlace(name, address, 35.1801, 128.1078, 0L);
     }
 
+    private MapPlace createMapPlace(String name, String address, String category, double latitude, double longitude) {
+        return createMapPlace(name, address, category, latitude, longitude, 0L);
+    }
+
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
-        return createMapPlace(name, address, latitude, longitude, photoCount, null);
+        return createMapPlace(name, address, null, latitude, longitude, photoCount);
     }
 
     private MapPlace createMapPlace(
             String name,
             String address,
+            String category,
             double latitude,
             double longitude,
-            long photoCount,
-            String category
+            long photoCount
     ) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)

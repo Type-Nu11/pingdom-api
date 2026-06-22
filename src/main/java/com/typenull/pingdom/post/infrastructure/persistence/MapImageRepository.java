@@ -113,6 +113,8 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     long countByMapPlace_Id(Long placeId);
 
+    List<MapImage> findByMapPlace_Id(Long placeId);
+
     List<MapImage> findByMapPlace_Id(Long placeId, Pageable pageable);
 
     @Query("""
