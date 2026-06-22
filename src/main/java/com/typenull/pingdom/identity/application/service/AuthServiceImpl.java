@@ -18,6 +18,7 @@ import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import java.time.LocalDateTime;
+import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -35,6 +36,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final OutboxEventPublisher outboxEventPublisher;
+    private final UserWithdrawalDataService userWithdrawalDataService;
 
     @Override
     @Transactional
@@ -97,6 +99,9 @@ public class AuthServiceImpl implements AuthService {
         if (user.isBanned()) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
@@ -114,6 +119,9 @@ public class AuthServiceImpl implements AuthService {
         if (user.isBanned()) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
 
         if (user.isEmailVerified()) {
             throw new AuthException(AuthErrorCode.EMAIL_ALREADY_VERIFIED);
@@ -130,6 +138,10 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmailAndEmailVerificationCode(request.email(), request.code())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_EMAIL_VERIFICATION_CODE));
 
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
+
         if (user.isEmailVerificationExpired(LocalDateTime.now())) {
             throw new AuthException(AuthErrorCode.EXPIRED_EMAIL_VERIFICATION_CODE);
         }
@@ -145,6 +157,10 @@ public class AuthServiceImpl implements AuthService {
         Long userId = extractValidRefreshTokenUserId(request.refreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
 
         if (!user.matchesRefreshToken(request.refreshToken())) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -167,6 +183,10 @@ public class AuthServiceImpl implements AuthService {
         Long userId = extractValidRefreshTokenUserId(request.refreshToken());
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        if (user.isWithdrawn()) {
+            return;
+        }
 
         if (!user.matchesRefreshToken(request.refreshToken())) {
             return;
@@ -206,13 +226,22 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    // 회원탈퇴 하드 딜리트 메서드
+    // 회원탈퇴 익명화 및 보존 상태 전환 메서드
     public void withdraw(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        // 사용자 데이터 완전 삭제 호출
-        userRepository.delete(user);
+        if (user.isWithdrawn()) {
+            return;
+        }
+
+        user.withdraw(
+                anonymizedUsername(user.getId()),
+                anonymizedEmail(user.getId()),
+                passwordEncoder.encode(UUID.randomUUID().toString()),
+                LocalDateTime.now()
+        );
+        userWithdrawalDataService.cleanupUserOwnedData(user.getId());
     }
 
     private Long extractValidRefreshTokenUserId(String refreshToken) {
@@ -230,6 +259,9 @@ public class AuthServiceImpl implements AuthService {
         if (user.isBanned()) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
 
         if (!passwordEncoder.matches(request.password(), user.getPassword())) {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
@@ -239,6 +271,10 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private LoginResponse issueLoginResponse(User user) {
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
+
         // 로그인 성공 시 JWT 발급 호출
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
         String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
@@ -258,5 +294,13 @@ public class AuthServiceImpl implements AuthService {
                 accessToken,
                 refreshToken
         );
+    }
+
+    private String anonymizedUsername(Long userId) {
+        return "withdrawn_user_" + userId;
+    }
+
+    private String anonymizedEmail(Long userId) {
+        return "withdrawn_user_%d@withdrawn.local".formatted(userId);
     }
 }
