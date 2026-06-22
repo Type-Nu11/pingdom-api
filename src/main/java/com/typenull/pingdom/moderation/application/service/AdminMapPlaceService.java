@@ -18,7 +18,9 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.Comparator;
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -122,15 +124,22 @@ public class AdminMapPlaceService {
     }
 
     private BookmarkMergeResult reassignBookmarks(MapPlace sourcePlace, MapPlace targetPlace) {
+        List<MapBookmark> sourceBookmarks = mapBookmarkRepository.findByPlaceId(sourcePlace.getId());
+        Set<Long> targetBookmarkUserIds = new HashSet<>();
+        for (MapBookmark targetBookmark : mapBookmarkRepository.findByPlaceId(targetPlace.getId())) {
+            targetBookmarkUserIds.add(targetBookmark.getUserId());
+        }
+
         int movedCount = 0;
         int deletedCount = 0;
-        for (MapBookmark sourceBookmark : mapBookmarkRepository.findByPlaceId(sourcePlace.getId())) {
-            if (mapBookmarkRepository.existsByUserIdAndPlaceId(sourceBookmark.getUserId(), targetPlace.getId())) {
+        for (MapBookmark sourceBookmark : sourceBookmarks) {
+            if (targetBookmarkUserIds.contains(sourceBookmark.getUserId())) {
                 mapBookmarkRepository.delete(sourceBookmark);
                 deletedCount++;
                 continue;
             }
             sourceBookmark.reassignPlace(targetPlace.getId());
+            targetBookmarkUserIds.add(sourceBookmark.getUserId());
             movedCount++;
         }
         return new BookmarkMergeResult(movedCount, deletedCount);
