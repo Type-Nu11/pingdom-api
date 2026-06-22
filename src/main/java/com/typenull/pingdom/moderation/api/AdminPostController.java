@@ -146,7 +146,7 @@ public class AdminPostController {
     @DeleteMapping("/posts/{id}/delete")
     @Operation(
             summary = "관리자 게시글 삭제",
-            description = "관리자가 게시글을 강제로 삭제합니다."
+            description = "관리자가 게시글을 강제로 삭제합니다. S3 객체 삭제는 DB 삭제 확정 후 Outbox로 비동기 처리됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -193,32 +193,6 @@ public class AdminPostController {
                                             }
                                             """
                             )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "500",
-                    description = "게시글 삭제 처리 실패",
-                    content = @Content(
-                            examples = {
-                                    @ExampleObject(
-                                            name = "delete-failed",
-                                            value = """
-                                                    {
-                                                      "message": "게시글 삭제에 실패했습니다.",
-                                                      "code": "POST_DELETE_FAILED"
-                                                    }
-                                                    """
-                                    ),
-                                    @ExampleObject(
-                                            name = "s3-connection-error",
-                                            value = """
-                                                    {
-                                                      "message": "S3 연결에 실패했습니다.",
-                                                      "code": "S3_CONNECTION_ERROR"
-                                                    }
-                                                    """
-                                    )
-                            }
                     )
             )
     })

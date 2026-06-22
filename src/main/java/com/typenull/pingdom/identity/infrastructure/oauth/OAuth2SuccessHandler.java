@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -67,6 +68,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User를 찾을 수 없습니다."));
+        if (user.isWithdrawn()) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "탈퇴 처리된 사용자입니다.");
+            return;
+        }
+        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+            response.sendError(HttpServletResponse.SC_FORBIDDEN, "밴 처리된 사용자입니다.");
+            return;
+        }
         user.issueRefreshToken(refreshToken);
 
         boolean secureCookie = request.isSecure();

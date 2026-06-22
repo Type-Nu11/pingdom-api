@@ -28,7 +28,7 @@ public class UserController {
     @DeleteMapping("/me")
     @Operation(
             summary = "회원탈퇴",
-            description = "현재 인증된 사용자의 계정을 삭제합니다."
+            description = "현재 인증된 사용자의 개인정보를 익명화하고 탈퇴 상태로 전환합니다."
     )
     @ApiResponses({
             @ApiResponse(

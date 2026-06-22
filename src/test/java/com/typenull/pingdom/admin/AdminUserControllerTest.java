@@ -1,5 +1,10 @@
 package com.typenull.pingdom.admin;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,9 +13,16 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.application.service.UserSanctionCommandService;
+import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
+import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
+import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import java.time.LocalDateTime;
+import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,10 +64,17 @@ class AdminUserControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private UserSanctionHistoryRepository userSanctionHistoryRepository;
+
+    @Autowired
+    private UserSanctionCommandService userSanctionCommandService;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        userSanctionHistoryRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -135,6 +154,176 @@ class AdminUserControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void banUserAppliesTemporaryBanAndStoresHistory() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("temporaryBanUser");
+
+        mockMvc.perform(post("/admin/ban/{userId}", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "7일 제재",
+                                  "durationDays": 7
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(targetUser.getId()))
+                .andExpect(jsonPath("$.banned").value(true))
+                .andExpect(jsonPath("$.reason").value("7일 제재"))
+                .andExpect(jsonPath("$.banType").value(UserBanType.TEMPORARY.name()))
+                .andExpect(jsonPath("$.banExpiresAt").isString());
+
+        User persistedUser = userRepository.findById(targetUser.getId()).orElseThrow();
+        assertTrue(persistedUser.isBanned());
+        assertEquals(UserBanType.TEMPORARY, persistedUser.getBanType());
+        assertNotNull(persistedUser.getBanExpiresAt());
+
+        List<UserSanctionHistory> histories = userSanctionHistoryRepository.findAll();
+        assertEquals(1, histories.size());
+        UserSanctionHistory history = histories.getFirst();
+        assertEquals(UserSanctionAction.APPLIED, history.getAction());
+        assertEquals(UserBanType.TEMPORARY, history.getBanType());
+        assertEquals("7일 제재", history.getReason());
+        assertEquals("adminTester", history.getAdminUsername());
+        assertEquals(targetUser.getId(), history.getTargetUserId());
+    }
+
+    @Test
+    void getSanctionStatusAndHistoryReturnsAuditInfo() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("historyTargetUser");
+
+        mockMvc.perform(post("/admin/ban/{userId}", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "감사 이력 테스트",
+                                  "durationDays": 3
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/admin/users/{userId}/sanction", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(targetUser.getId()))
+                .andExpect(jsonPath("$.username").value("historyTargetUser"))
+                .andExpect(jsonPath("$.banned").value(true))
+                .andExpect(jsonPath("$.banType").value(UserBanType.TEMPORARY.name()))
+                .andExpect(jsonPath("$.banReason").value("감사 이력 테스트"));
+
+        mockMvc.perform(get("/admin/users/{userId}/sanctions", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20")
+                        .param("banType", UserBanType.TEMPORARY.name())
+                        .param("action", UserSanctionAction.APPLIED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.histories.length()").value(1))
+                .andExpect(jsonPath("$.histories[0].targetUserId").value(targetUser.getId()))
+                .andExpect(jsonPath("$.histories[0].targetUsername").value("historyTargetUser"))
+                .andExpect(jsonPath("$.histories[0].banType").value(UserBanType.TEMPORARY.name()))
+                .andExpect(jsonPath("$.histories[0].action").value(UserSanctionAction.APPLIED.name()))
+                .andExpect(jsonPath("$.histories[0].reason").value("감사 이력 테스트"))
+                .andExpect(jsonPath("$.histories[0].adminUsername").value("adminTester"));
+    }
+
+    @Test
+    void unbanUserReleasesCurrentBanAndStoresHistory() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("releaseTargetUser");
+
+        mockMvc.perform(post("/admin/ban/{userId}", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "해제 테스트"
+                                }
+                                """))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/admin/ban/{userId}/release", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "운영 검토 결과 해제"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(targetUser.getId()))
+                .andExpect(jsonPath("$.banned").value(false))
+                .andExpect(jsonPath("$.reason").value("운영 검토 결과 해제"));
+
+        User persistedUser = userRepository.findById(targetUser.getId()).orElseThrow();
+        assertFalse(persistedUser.isBanned());
+        assertEquals(2, userSanctionHistoryRepository.findAll().size());
+
+        mockMvc.perform(get("/admin/users/{userId}/sanction", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.banned").value(false));
+    }
+
+    @Test
+    void unbanUserReturnsConflictWhenUserIsNotBanned() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("notBannedUser");
+
+        mockMvc.perform(post("/admin/ban/{userId}/release", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "잘못된 해제 요청"
+                                }
+                                """))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("USER_NOT_BANNED"));
+    }
+
+    @Test
+    void getSanctionStatusExpiresTemporaryBanAndStoresHistory() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("expiredTemporaryBanUser");
+        LocalDateTime now = LocalDateTime.now();
+        targetUser.ban("만료 정리 테스트", now.minusDays(2), now.minusDays(1));
+        userRepository.saveAndFlush(targetUser);
+
+        mockMvc.perform(get("/admin/users/{userId}/sanction", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.userId").value(targetUser.getId()))
+                .andExpect(jsonPath("$.banned").value(false));
+
+        User persistedUser = userRepository.findById(targetUser.getId()).orElseThrow();
+        assertFalse(persistedUser.isBanned());
+
+        List<UserSanctionHistory> histories = userSanctionHistoryRepository.findAll();
+        assertEquals(1, histories.size());
+        UserSanctionHistory history = histories.getFirst();
+        assertEquals(UserSanctionAction.EXPIRED, history.getAction());
+        assertEquals(UserBanType.TEMPORARY, history.getBanType());
+        assertEquals("만료 정리 테스트", history.getReason());
+    }
+
+    @Test
+    void applyBanRejectsNullAdminUserId() {
+        User targetUser = createUser("nullAdminBanUser");
+
+        assertThrows(AuthException.class, () -> userSanctionCommandService.applyBan(
+                targetUser,
+                "관리자 정보 누락",
+                LocalDateTime.now(),
+                null,
+                null
+        ));
     }
 
     private User createUser(String username) {

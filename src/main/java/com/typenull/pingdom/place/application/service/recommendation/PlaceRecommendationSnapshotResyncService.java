@@ -10,6 +10,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -149,6 +151,41 @@ public class PlaceRecommendationSnapshotResyncService {
                 versionResult.synchronizedSnapshotCount(),
                 versionResult.deletedSnapshotCount()
         );
+    }
+
+    @Transactional
+    public void resyncMergedPlace(Long sourcePlaceId, Long targetPlaceId) {
+        LocalDateTime syncedAt = LocalDateTime.now();
+        MapPlace targetPlace = mapPlaceRepository.findById(targetPlaceId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        List<Long> targetPlaceIds = List.of(targetPlaceId);
+
+        Map<Long, Long> bookmarkCounts = loadBookmarkCounts(targetPlaceIds);
+        Map<Long, ImageAggregate> imageAggregates = loadImageAggregates(targetPlaceIds);
+        Map<Long, Long> clickCounts = loadClickCounts(targetPlaceIds);
+        Map<Long, ConversionCounts> conversionCounts = loadConversionCounts(targetPlaceIds);
+        Map<Long, Long> exposureCounts = loadExposureCounts(targetPlaceIds);
+        PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(targetPlaceId)
+                .orElseGet(() -> PlaceRecommendationSnapshot.builder()
+                        .placeId(targetPlaceId)
+                        .updatedAt(syncedAt)
+                        .build());
+        ImageAggregate imageAggregate = imageAggregates.getOrDefault(targetPlaceId, ImageAggregate.empty());
+
+        snapshot.synchronize(
+                targetPlace.currentPhotoCount(),
+                bookmarkCounts.getOrDefault(targetPlaceId, 0L),
+                imageAggregate.totalLikeCount(),
+                clickCounts.getOrDefault(targetPlaceId, 0L),
+                conversionCounts.getOrDefault(targetPlaceId, ConversionCounts.empty()).bookmarkConversionCount(),
+                conversionCounts.getOrDefault(targetPlaceId, ConversionCounts.empty()).likeConversionCount(),
+                exposureCounts.getOrDefault(targetPlaceId, 0L),
+                imageAggregate.latestPostCreatedAt(),
+                syncedAt
+        );
+
+        placeRecommendationSnapshotRepository.save(snapshot);
+        placeRecommendationSnapshotRepository.deleteById(sourcePlaceId);
     }
 
     private List<Long> collectOrphanSnapshotPlaceIds(Set<Long> activePlaceIds) {

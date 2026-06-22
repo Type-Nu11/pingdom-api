@@ -1,5 +1,6 @@
 package com.typenull.pingdom.moderation.api.dto.user;
 
+import com.typenull.pingdom.identity.domain.UserBanType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
@@ -23,6 +24,10 @@ public record AdminBannedUserDetailResponse(
         boolean banned,
         @Schema(description = "밴 시각", example = "2026-06-07T13:30:00")
         LocalDateTime bannedAt,
+        @Schema(description = "밴 유형", example = "PERMANENT")
+        UserBanType banType,
+        @Schema(description = "기간 밴 종료 시각", example = "2026-06-30T23:59:59")
+        LocalDateTime banExpiresAt,
         @Schema(description = "밴 사유", example = "반복적인 신고 누적")
         String banReason,
         @Schema(description = "가입 시각", example = "2026-06-01T10:00:00")

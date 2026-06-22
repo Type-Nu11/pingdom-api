@@ -20,6 +20,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
@@ -48,6 +49,7 @@ public class S3Service {
     private final PlatformTransactionManager transactionManager;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
 
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request, userId);
@@ -195,11 +197,10 @@ public class S3Service {
             );
 
             mapImageRepository.save(imageToUpdate);
+            publishS3Delete(oldS3Key, imageToUpdate.getId(), "MAP_IMAGE_REPLACED");
 
             return new PostUpdateResponse(imageToUpdate.getId(), "게시글을 수정했습니다.");
         });
-
-        deleteOldS3Quietly(oldS3Key);
 
         return response;
     }
@@ -215,8 +216,7 @@ public class S3Service {
         }
 
         String s3Key = mapImage.getS3Key();
-        deleteFromS3(s3Key);
-        PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage);
+        PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage, s3Key);
 
         Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
         return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
@@ -251,7 +251,7 @@ public class S3Service {
         });
     }
 
-    private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage) {
+    private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage, String s3Key) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         return transactionTemplate.execute(status -> {
             PlaceGrowthSnapshot placeGrowth = null;
@@ -264,6 +264,7 @@ public class S3Service {
             if (mapPlace != null) {
                 placeRecommendationSnapshotService.refresh(mapPlace.getId());
             }
+            publishS3Delete(s3Key, mapImage.getId(), "MAP_IMAGE_DELETED");
             return placeGrowth;
         });
     }
@@ -288,14 +289,6 @@ public class S3Service {
         });
     }
 
-    private void deleteFromS3(String s3Key) {
-        try {
-            s3ObjectStorage.delete(s3Key);
-        } catch (S3StorageException exception) {
-            throw toMapException(exception);
-        }
-    }
-
     private MapException toMapException(S3StorageException exception) {
         S3StorageError error = exception.getError();
         if (error == S3StorageError.NOT_CONFIGURED) {
@@ -307,15 +300,12 @@ public class S3Service {
         return new MapException(MapErrorCode.DELETE_ERROR);
     }
 
-    private void deleteOldS3Quietly(String oldS3Key) {
-        if (!StringUtils.hasText(oldS3Key)) {
-            return;
-        }
-
-        try {
-            s3ObjectStorage.delete(oldS3Key);
-        } catch (RuntimeException exception) {
-            log.warn("게시글 수정 후 기존 S3 파일 삭제에 실패했습니다. key={}", oldS3Key, exception);
-        }
+    private void publishS3Delete(String s3Key, Long mapImageId, String reason) {
+        s3ObjectDeleteOutboxPublisher.publish(
+                s3Key,
+                "MAP_IMAGE",
+                mapImageId == null ? null : String.valueOf(mapImageId),
+                reason
+        );
     }
 }

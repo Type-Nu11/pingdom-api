@@ -1,10 +1,17 @@
 package com.typenull.pingdom.moderation.api;
 
+import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.moderation.api.dto.ban.BanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
+import com.typenull.pingdom.moderation.api.dto.ban.UnbanRequest;
+import com.typenull.pingdom.moderation.api.dto.ban.UnbanResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
+import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -13,9 +20,13 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.format.annotation.DateTimeFormat;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -183,10 +194,47 @@ public class AdminUserController {
         return adminUserService.getBannedUser(userId);
     }
 
+    @GetMapping("/users/{userId}/sanction")
+    @Operation(
+            summary = "사용자 제재 상태 조회",
+            description = "관리자가 특정 사용자의 현재 제재 상태를 조회합니다. 만료된 기간 밴은 현재 제재로 보지 않습니다."
+    )
+    public AdminUserSanctionStatusResponse getUserSanctionStatus(
+            @Parameter(description = "조회할 사용자 ID", example = "7") @PathVariable Long userId
+    ) {
+        return adminUserService.getUserSanctionStatus(userId);
+    }
+
+    @GetMapping("/users/{userId}/sanctions")
+    @Operation(
+            summary = "사용자 제재 이력 조회",
+            description = "관리자가 특정 사용자의 제재 변경 이력을 페이지 단위로 조회합니다."
+    )
+    public AdminUserSanctionHistoryResponse listUserSanctionHistories(
+            @Parameter(description = "조회할 사용자 ID", example = "7") @PathVariable Long userId,
+            @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(description = "제재 유형 필터", example = "TEMPORARY")
+            @RequestParam(required = false) UserBanType banType,
+            @Parameter(description = "처리 상태 필터", example = "APPLIED")
+            @RequestParam(required = false) UserSanctionAction action,
+            @Parameter(description = "처리 시각 시작 필터", example = "2026-06-01T00:00:00")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            @RequestParam(required = false) LocalDateTime from,
+            @Parameter(description = "처리 시각 종료 필터", example = "2026-06-30T23:59:59")
+            @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
+            @RequestParam(required = false) LocalDateTime to
+    ) {
+        Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
+        return adminUserService.listUserSanctionHistories(userId, banType, action, from, to, normalizedPageable);
+    }
+
     @PostMapping("/ban/{userId}")
     @Operation(
             summary = "사용자 밴 처리",
-            description = "관리자가 특정 사용자를 밴 처리합니다. 요청 본문은 선택이며, 전달 시 밴 사유를 함께 저장합니다."
+            description = "관리자가 특정 사용자를 밴 처리합니다. expiresAt 또는 durationDays를 전달하면 기간 밴으로, 둘 다 비우면 영구 밴으로 처리합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -239,9 +287,45 @@ public class AdminUserController {
     })
     public BanResponse banUser(
             @Parameter(description = "밴 처리할 사용자 ID", example = "7") @PathVariable Long userId,
-            @RequestBody(required = false) BanRequest request
+            @Valid @RequestBody(required = false) BanRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        String reason = request == null ? null : request.reason();
-        return adminUserService.banUser(userId, reason);
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminUserService.banUser(userId, request, adminUserId);
+    }
+
+    @PostMapping("/ban/{userId}/release")
+    @Operation(
+            summary = "사용자 밴 해제",
+            description = "관리자가 영구 밴 또는 기간 밴 상태의 사용자를 명시적으로 해제합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "밴 해제 성공",
+                    content = @Content(schema = @Schema(implementation = UnbanResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "제재 중인 사용자가 아님",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "제재 중인 사용자가 아닙니다.",
+                                              "code": "USER_NOT_BANNED"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public UnbanResponse unbanUser(
+            @Parameter(description = "밴 해제할 사용자 ID", example = "7") @PathVariable Long userId,
+            @Valid @RequestBody(required = false) UnbanRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminUserService.unbanUser(userId, request, adminUserId);
     }
 }

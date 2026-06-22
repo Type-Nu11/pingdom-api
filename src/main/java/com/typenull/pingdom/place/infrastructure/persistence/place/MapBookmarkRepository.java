@@ -5,6 +5,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -26,7 +27,16 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
 
     long countByPlaceId(Long placeId);
 
+    List<MapBookmark> findByPlaceId(Long placeId);
+
     void deleteByPlaceIdAndUserId(Long placeId, Long userId);
+
+    @Modifying
+    @Query("""
+            DELETE FROM MapBookmark b
+            WHERE b.userId = :userId
+            """)
+    int deleteAllByUserId(@Param("userId") Long userId);
 
     @Query("""
             SELECT b.placeId

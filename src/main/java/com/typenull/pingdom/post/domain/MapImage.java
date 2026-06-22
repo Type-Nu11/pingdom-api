@@ -33,7 +33,7 @@ public class MapImage {
     @Column(name = "s3_key", length = 500, nullable = false)
     private String s3Key;
 
-    @Column(name = "title", length = 100)
+    @Column(name = "title", length = 100, nullable = false)
     private String title;
 
     @Column(name = "description", length = 1000)
@@ -61,5 +61,9 @@ public class MapImage {
         this.description = description;
         this.imageUrl = imageUrl;
         this.s3Key = s3Key;
+    }
+
+    public void reassignPlace(MapPlace targetPlace) {
+        this.mapPlace = targetPlace;
     }
 }
