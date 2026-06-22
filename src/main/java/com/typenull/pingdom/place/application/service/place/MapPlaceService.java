@@ -44,6 +44,10 @@ public class MapPlaceService {
         return new PlaceCoordinateCreateResponse(token, normalizedKakaoPlaceId);
     }
 
+    public PlaceCoordinateTokenStore.Entry peekCoordinateToken(String coordinateToken) {
+        return placeCoordinateTokenStore.peek(coordinateToken);
+    }
+
     @Transactional
     public PlaceCreateResponse uploadPlaceByToken(
             String kakaoPlaceId,
@@ -58,10 +62,6 @@ public class MapPlaceService {
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
                 .getUsername();
         String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
-        if (normalizedKakaoPlaceId != null && mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
-            throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
-        }
-
         PlaceCoordinateTokenStore.Entry entry = placeCoordinateTokenStore.consume(coordinateToken);
         if (entry == null || entry.userId() != userId) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
@@ -70,6 +70,19 @@ public class MapPlaceService {
         String tokenKakaoPlaceId = entry.kakaoPlaceId();
         if (!Objects.equals(normalizedKakaoPlaceId, tokenKakaoPlaceId)) {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
+        }
+
+        if (normalizedKakaoPlaceId != null) {
+            if (mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
+                throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
+            }
+        } else if (mapPlaceRepository.existsByNameAndAddressAndLatitudeAndLongitude(
+                name,
+                address,
+                entry.latitude(),
+                entry.longitude()
+        )) {
+            throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
         }
 
         Point location = toPoint(entry.latitude(), entry.longitude());

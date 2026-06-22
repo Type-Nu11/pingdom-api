@@ -3,7 +3,6 @@ package com.typenull.pingdom.place.api.dto.coordinate;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
-import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
@@ -21,9 +20,8 @@ public record PlaceCoordinateCreateRequest(
         @Schema(description = "기준 경도", example = "126.9780")
         Double baseLongitude,
 
-        @NotBlank(message = "카카오 장소 ID는 필수입니다.")
         @Size(max = 50, message = "카카오 장소 ID는 50자 이하여야 합니다.")
-        @Schema(description = "카카오 장소 ID", example = "27414316")
+        @Schema(description = "카카오 장소 ID(선택)", example = "27414316")
         String kakaoPlaceId
 ) {
 }

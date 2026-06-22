@@ -26,8 +26,10 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -236,6 +238,52 @@ class PlaceControllerTest {
         MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414316").orElseThrow();
         assertEquals("카페", saved.getCategory());
         assertEquals("https://example.com/images/place-upload.jpg", saved.getImageUrl());
+    }
+
+    @Test
+    void createCoordinatesAllowsMissingKakaoPlaceId() throws Exception {
+        String accessToken = signupAndLogin("placeUploaderNoKakao01");
+
+        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "baseLatitude", 35.1811,
+                                "baseLongitude", 128.1081
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        assertNotNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("coordinateToken").textValue());
+        assertNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("kakaoPlaceId").textValue());
+    }
+
+    @Test
+    void uploadPlaceStoresPlaceWithoutKakaoPlaceId() throws Exception {
+        String accessToken = signupAndLogin("placeUploaderNoKakao02");
+        String coordinateToken = createCoordinateToken(accessToken, null, 35.1812, 128.1082);
+
+        mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "핀 좌표 장소",
+                                "address", "경상남도 진주시 핀좌표로 2",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/pin-place.jpg",
+                                "coordinateToken", coordinateToken
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("핀 좌표 장소"))
+                .andExpect(jsonPath("$.address").value("경상남도 진주시 핀좌표로 2"));
+
+        MapPlace saved = mapPlaceRepository.findAll().stream()
+                .filter(place -> "핀 좌표 장소".equals(place.getName()))
+                .findFirst()
+                .orElseThrow();
+        assertNull(saved.getKakaoPlaceId());
+        assertEquals("풍경", saved.getCategory());
+        assertEquals("https://example.com/images/pin-place.jpg", saved.getImageUrl());
     }
 
     @Test
@@ -958,14 +1006,17 @@ class PlaceControllerTest {
     }
 
     private String createCoordinateToken(String accessToken, String kakaoPlaceId, double latitude, double longitude) throws Exception {
+        Map<String, Object> payload = new HashMap<>();
+        payload.put("baseLatitude", latitude);
+        payload.put("baseLongitude", longitude);
+        if (kakaoPlaceId != null) {
+            payload.put("kakaoPlaceId", kakaoPlaceId);
+        }
+
         MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "baseLatitude", latitude,
-                                "baseLongitude", longitude,
-                                "kakaoPlaceId", kakaoPlaceId
-                        ))))
+                        .content(objectMapper.writeValueAsString(payload)))
                 .andExpect(status().isCreated())
                 .andReturn();
 

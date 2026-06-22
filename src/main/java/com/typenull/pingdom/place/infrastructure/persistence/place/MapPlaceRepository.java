@@ -10,64 +10,46 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     Optional<MapPlace> findByKakaoPlaceId(String kakaoPlaceId);
 
-    boolean existsByKakaoPlaceId(String kakaoPlaceId);
-
-    List<MapPlace> findAllByNameAndAddress(String name, String address);
-
+    @Modifying
     @Query("""
-            SELECT m
-            FROM MapPlace m
-            WHERE m.id <> :placeId
-              AND m.name = :name
-              AND m.address = :address
-              AND m.latitude BETWEEN :minLatitude AND :maxLatitude
-              AND m.longitude BETWEEN :minLongitude AND :maxLongitude
+            UPDATE MapPlace m
+            SET m.registrant = :displayName
+            WHERE m.userId = :userId
             """)
-    List<MapPlace> findDuplicateCandidatesByNameAndAddressInBoundingBox(
-            @Param("placeId") Long placeId,
-            @Param("name") String name,
-            @Param("address") String address,
-            @Param("minLatitude") double minLatitude,
-            @Param("maxLatitude") double maxLatitude,
-            @Param("minLongitude") double minLongitude,
-            @Param("maxLongitude") double maxLongitude
+    int updateRegistrantByUserId(
+            @Param("userId") Long userId,
+            @Param("displayName") String displayName
     );
 
+    @Modifying
     @Query("""
-            SELECT m
-            FROM MapPlace m
-            WHERE EXISTS (
-                SELECT other.id
-                FROM MapPlace other
-                WHERE other.id <> m.id
-                  AND (
-                      (m.kakaoPlaceId IS NOT NULL
-                       AND TRIM(m.kakaoPlaceId) <> ''
-                       AND other.kakaoPlaceId IS NOT NULL
-                       AND TRIM(other.kakaoPlaceId) = TRIM(m.kakaoPlaceId))
-                      OR (other.name = m.name AND other.address = m.address)
-                  )
-            )
+            UPDATE MapPlace m
+            SET m.userId = NULL
+            WHERE m.userId IN :userIds
             """)
-    List<MapPlace> findPotentialDuplicatePlaces();
+    int clearUserIdByUserIds(@Param("userIds") java.util.Collection<Long> userIds);
 
-    @Query("""
-            SELECT m
-            FROM MapPlace m
-            WHERE m.id <> :placeId
-              AND m.kakaoPlaceId IS NOT NULL
-              AND TRIM(m.kakaoPlaceId) <> ''
-              AND TRIM(m.kakaoPlaceId) = TRIM(:kakaoPlaceId)
-            """)
-    List<MapPlace> findDuplicateCandidatesByKakaoPlaceId(
-            @Param("placeId") Long placeId,
-            @Param("kakaoPlaceId") String kakaoPlaceId
+    boolean existsByKakaoPlaceId(String kakaoPlaceId);
+
+    Optional<MapPlace> findFirstByNameAndAddressAndLatitudeAndLongitude(
+            String name,
+            String address,
+            Double latitude,
+            Double longitude
+    );
+
+    boolean existsByNameAndAddressAndLatitudeAndLongitude(
+            String name,
+            String address,
+            Double latitude,
+            Double longitude
     );
 
     @Query("""

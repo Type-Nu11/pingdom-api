@@ -42,8 +42,54 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 """)
     void decreaseLikeCount(@Param("imageId") Long imageId);
 
+    @Modifying
+    @Query("""
+            UPDATE MapImage m
+            SET m.username = :displayName
+            WHERE m.userId = :userId
+            """)
+    int updateUsernameByUserId(
+            @Param("userId") Long userId,
+            @Param("displayName") String displayName
+    );
+
+    @Modifying
+    @Query("""
+            UPDATE MapImage m
+            SET m.userId = NULL
+            WHERE m.userId IN :userIds
+            """)
+    int clearUserIdByUserIds(@Param("userIds") Collection<Long> userIds);
+
     @EntityGraph(attributePaths = "mapPlace")
     Page<MapImage> findAllBy(Pageable pageable);
+
+    @EntityGraph(attributePaths = "mapPlace")
+    @Query(
+            value = """
+                    SELECT m
+                    FROM MapImage m
+                    JOIN MapBookmark b ON b.placeId = m.mapPlace.id
+                    WHERE b.userId = :userId
+                      AND m.id = (
+                          SELECT MAX(latest.id)
+                          FROM MapImage latest
+                          WHERE latest.mapPlace.id = m.mapPlace.id
+                      )
+                    ORDER BY b.createdAt DESC, b.id DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(b)
+                    FROM MapBookmark b
+                    WHERE b.userId = :userId
+                      AND EXISTS (
+                          SELECT 1
+                          FROM MapImage m
+                          WHERE m.mapPlace.id = b.placeId
+                      )
+                    """
+    )
+    Page<MapImage> findBookmarkedByUserId(@Param("userId") Long userId, Pageable pageable);
 
     @EntityGraph(attributePaths = "mapPlace")
     @Query("""

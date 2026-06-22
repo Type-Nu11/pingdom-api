@@ -65,6 +65,7 @@ public class PostController {
                                                   "createdAt": "2026-06-04T16:20:00",
                                                   "likeCount": 12,
                                                   "likedByMe": false,
+                                                  "bookmarked": true,
                                                   "placeId": 5,
                                                   "placeName": "진주성"
                                                 }
@@ -103,6 +104,21 @@ public class PostController {
     ) {
         Long userId = user.userId();
         return postQueryService.listPosts(page, limit, userId);
+    }
+
+    @GetMapping("/bookmarks")
+    @Operation(
+            summary = "저장한 게시글 목록 조회",
+            description = "현재 인증된 사용자가 장소 기반으로 저장한 게시글을 북마크 최신순으로 조회합니다."
+    )
+    public PostListResponse listBookmarkedPosts(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return postQueryService.listBookmarkedPosts(page, limit, user.userId());
     }
 
     @GetMapping("/posts/{id}")
@@ -178,7 +194,7 @@ public class PostController {
     @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
-            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시), 제목, 부가 설명, 첨부 파일을 함께 업로드해 게시글로 저장합니다."
+            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시)를 사용해 게시글을 저장합니다. 기존 장소 선택 없이 업로드하는 경우에는 좌표 토큰과 장소 이름/주소/카테고리를 함께 보내 장소 생성 후 게시글을 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -195,7 +211,7 @@ public class PostController {
                                             {
                                               "message": "입력값을 확인해주세요.",
                                               "errors": {
-                                                "kakaoPlaceId": "카카오 장소 ID는 50자 이하여야 합니다.",
+                                                "placeName": "좌표 기반 업로드 시 장소 이름은 필수입니다.",
                                                 "title": "제목은 필수입니다.",
                                                 "file": "파일은 필수입니다."
                                               }

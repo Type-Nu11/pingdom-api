@@ -27,7 +27,11 @@ public class OAuthUserService {
                 .orElse(null);
 
         if (account != null) {
-            return account.getUser();
+            User user = account.getUser();
+            if (user.isWithdrawn()) {
+                throw new OAuth2AuthenticationException(new OAuth2Error("user_withdrawn"), "탈퇴 처리된 사용자입니다.");
+            }
+            return user;
         }
 
         if (userRepository.existsByEmail(email)) {

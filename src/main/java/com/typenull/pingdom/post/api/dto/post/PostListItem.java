@@ -23,6 +23,8 @@ public record PostListItem(
         long likeCount,
         @Schema(description = "좋아요 여부")
         Boolean likedByMe,
+        @Schema(description = "현재 사용자의 북마크 여부")
+        Boolean bookmarked,
         @Schema(description = "연결된 장소 ID", example = "5")
         Long placeId,
         @Schema(description = "연결된 장소명", example = "진주성")

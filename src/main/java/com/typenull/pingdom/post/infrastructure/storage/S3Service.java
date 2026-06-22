@@ -6,8 +6,11 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
+import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
@@ -17,6 +20,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
@@ -41,12 +45,14 @@ public class S3Service {
     private final MapPlaceRepository mapPlaceRepository;
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
+    private final MapPlaceService mapPlaceService;
     private final PlatformTransactionManager transactionManager;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
+    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
 
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
-        Long placeId = resolvePlaceId(request);
+        Long placeId = resolvePlaceId(request, userId);
 
         if(mapImageRepository.existsByUserIdAndMapPlace_Id(userId, placeId)){
             throw new MapException(MapErrorCode.ALREADY_POSTED);
@@ -74,7 +80,7 @@ public class S3Service {
         }
     }
 
-    private Long resolvePlaceId(PostUploadRequest request) {
+    private Long resolvePlaceId(PostUploadRequest request, long userId) {
         String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
         if (kakaoPlaceId != null) {
             return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
@@ -84,7 +90,7 @@ public class S3Service {
 
         Long placeId = request.placeId();
         if (placeId == null) {
-            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
+            return resolveOrCreatePlaceIdByCoordinateToken(request, userId);
         }
 
         return mapPlaceRepository.findById(placeId)
@@ -92,7 +98,67 @@ public class S3Service {
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
     }
 
+    private Long resolveOrCreatePlaceIdByCoordinateToken(PostUploadRequest request, long userId) {
+        String normalizedPlaceName = trimToNull(request.placeName());
+        String normalizedAddress = trimToNull(request.address());
+        String normalizedCategory = trimToNull(request.category());
+
+        if (normalizedPlaceName == null
+                || normalizedAddress == null
+                || normalizedCategory == null
+                || !StringUtils.hasText(request.coordinateToken())) {
+            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
+        }
+
+        Entry coordinateTokenEntry = previewCoordinateToken(request.coordinateToken(), userId);
+        return mapPlaceRepository.findFirstByNameAndAddressAndLatitudeAndLongitude(
+                        normalizedPlaceName,
+                        normalizedAddress,
+                        coordinateTokenEntry.latitude(),
+                        coordinateTokenEntry.longitude()
+                )
+                .map(MapPlace::getId)
+                .orElseGet(() -> createPlaceByCoordinateToken(
+                        request.coordinateToken(),
+                        normalizedPlaceName,
+                        normalizedAddress,
+                        normalizedCategory,
+                        userId
+                ));
+    }
+
+    private Long createPlaceByCoordinateToken(
+            String coordinateToken,
+            String placeName,
+            String address,
+            String category,
+            long userId
+    ) {
+        PlaceCreateResponse placeResponse = mapPlaceService.uploadPlaceByToken(
+                null,
+                placeName,
+                address,
+                category,
+                null,
+                coordinateToken,
+                userId
+        );
+        return placeResponse.id();
+    }
+
+    private Entry previewCoordinateToken(String coordinateToken, long userId) {
+        Entry entry = mapPlaceService.peekCoordinateToken(coordinateToken);
+        if (entry == null || entry.userId() != userId) {
+            throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
+        }
+        return entry;
+    }
+
     private String normalizeKakaoPlaceId(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
@@ -131,11 +197,10 @@ public class S3Service {
             );
 
             mapImageRepository.save(imageToUpdate);
+            publishS3Delete(oldS3Key, imageToUpdate.getId(), "MAP_IMAGE_REPLACED");
 
             return new PostUpdateResponse(imageToUpdate.getId(), "게시글을 수정했습니다.");
         });
-
-        deleteOldS3Quietly(oldS3Key);
 
         return response;
     }
@@ -151,10 +216,10 @@ public class S3Service {
         }
 
         String s3Key = mapImage.getS3Key();
-        deleteFromS3(s3Key);
-        PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage);
+        PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage, s3Key);
 
-        return new PostResponse(imageId, "게시글을 삭제했습니다", placeGrowth);
+        Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
+        return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
     }
 
     private PostResponse savePost(
@@ -182,11 +247,11 @@ public class S3Service {
             MapImage saved = mapImageRepository.save(mapImage);
             PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
             placeRecommendationSnapshotService.refresh(mapPlace.getId());
-            return new PostResponse(saved.getId(), "게시글을 저장했습니다.", placeGrowth);
+            return new PostResponse(saved.getId(), saved.getId(), mapPlace.getId(), "게시글을 저장했습니다.", placeGrowth);
         });
     }
 
-    private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage) {
+    private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage, String s3Key) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         return transactionTemplate.execute(status -> {
             PlaceGrowthSnapshot placeGrowth = null;
@@ -199,6 +264,7 @@ public class S3Service {
             if (mapPlace != null) {
                 placeRecommendationSnapshotService.refresh(mapPlace.getId());
             }
+            publishS3Delete(s3Key, mapImage.getId(), "MAP_IMAGE_DELETED");
             return placeGrowth;
         });
     }
@@ -223,14 +289,6 @@ public class S3Service {
         });
     }
 
-    private void deleteFromS3(String s3Key) {
-        try {
-            s3ObjectStorage.delete(s3Key);
-        } catch (S3StorageException exception) {
-            throw toMapException(exception);
-        }
-    }
-
     private MapException toMapException(S3StorageException exception) {
         S3StorageError error = exception.getError();
         if (error == S3StorageError.NOT_CONFIGURED) {
@@ -242,15 +300,12 @@ public class S3Service {
         return new MapException(MapErrorCode.DELETE_ERROR);
     }
 
-    private void deleteOldS3Quietly(String oldS3Key) {
-        if (!StringUtils.hasText(oldS3Key)) {
-            return;
-        }
-
-        try {
-            s3ObjectStorage.delete(oldS3Key);
-        } catch (RuntimeException exception) {
-            log.warn("게시글 수정 후 기존 S3 파일 삭제에 실패했습니다. key={}", oldS3Key, exception);
-        }
+    private void publishS3Delete(String s3Key, Long mapImageId, String reason) {
+        s3ObjectDeleteOutboxPublisher.publish(
+                s3Key,
+                "MAP_IMAGE",
+                mapImageId == null ? null : String.valueOf(mapImageId),
+                reason
+        );
     }
 }

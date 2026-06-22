@@ -25,6 +25,8 @@ import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 @Builder
 public class User {
 
+    public static final String WITHDRAWN_DISPLAY_NAME = "탈퇴 사용자";
+
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -79,6 +81,14 @@ public class User {
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private UserRole role = UserRole.USER;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private UserStatus status = UserStatus.ACTIVE;
+
+    @Column(name = "withdrawn_at")
+    private LocalDateTime withdrawnAt;
 
     // 관리자 밴 여부
     @Builder.Default
@@ -157,5 +167,33 @@ public class User {
 
     public void updateFcmToken(String token) {
         this.fcmToken = token;
+    }
+
+    public boolean isWithdrawn() {
+        return this.status == UserStatus.WITHDRAWN;
+    }
+
+    public void withdraw(String anonymizedUsername, String anonymizedEmail, String anonymizedPassword, LocalDateTime now) {
+        if (isWithdrawn()) {
+            return;
+        }
+
+        this.status = UserStatus.WITHDRAWN;
+        this.withdrawnAt = now;
+        this.username = anonymizedUsername;
+        this.email = anonymizedEmail;
+        this.password = anonymizedPassword;
+        this.birthYear = 0;
+        this.profileImageUrl = null;
+        this.language = "und";
+        this.country = "UNKNOWN";
+        this.emailVerified = false;
+        this.emailVerificationCode = null;
+        this.emailVerificationExpiresAt = null;
+        this.refreshToken = null;
+        this.fcmToken = null;
+        this.banned = false;
+        this.bannedAt = null;
+        this.banReason = null;
     }
 }
