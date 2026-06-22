@@ -4,6 +4,8 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventHandler;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
@@ -38,13 +40,32 @@ public class S3ObjectDeleteOutboxHandler implements OutboxEventHandler {
                     s3Key,
                     event.reason()
             );
-        } catch (RuntimeException exception) {
+        } catch (S3StorageException exception) {
+            if (exception.getError() == S3StorageError.NOT_CONFIGURED) {
+                log.warn(
+                        "S3 설정이 없어 S3 삭제 Outbox 처리를 건너뜁니다. eventId={}, s3Key={}, reason={}",
+                        eventId,
+                        s3Key,
+                        event.reason()
+                );
+                return;
+            }
+
             log.warn(
-                    "S3 삭제 Outbox 처리 실패. eventId={}, s3Key={}, reason={}, error={}",
+                    "S3 삭제 Outbox 처리 실패. eventId={}, s3Key={}, reason={}",
                     eventId,
                     s3Key,
                     event.reason(),
-                    exception.getMessage()
+                    exception
+            );
+            throw exception;
+        } catch (RuntimeException exception) {
+            log.warn(
+                    "S3 삭제 Outbox 처리 실패. eventId={}, s3Key={}, reason={}",
+                    eventId,
+                    s3Key,
+                    event.reason(),
+                    exception
             );
             throw exception;
         }

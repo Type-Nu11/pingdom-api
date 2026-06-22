@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.support;
 
+import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 
@@ -52,5 +53,21 @@ class S3ObjectDeleteOutboxHandlerTest {
                 .delete("map/delete-target.jpg");
 
         assertThrows(S3StorageException.class, () -> handler.handle("event-1", payload));
+    }
+
+    @Test
+    void s3NotConfiguredIsTreatedAsSuccessfulSkip() throws Exception {
+        String payload = objectMapper.writeValueAsString(
+                new S3ObjectDeleteOutboxPayload("map/delete-target.jpg", "MAP_IMAGE_DELETED")
+        );
+        org.mockito.Mockito.doThrow(new S3StorageException(
+                        S3StorageError.NOT_CONFIGURED,
+                        "s3 is not configured",
+                        null
+                ))
+                .when(s3ObjectStorage)
+                .delete("map/delete-target.jpg");
+
+        assertDoesNotThrow(() -> handler.handle("event-1", payload));
     }
 }
