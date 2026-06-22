@@ -126,7 +126,7 @@ public class PostController {
         return postQueryService.listBookmarkedPosts(page, limit, user.userId());
     }
 
-    @GetMapping("/like")
+    @GetMapping("/likes")
     @Operation(
             summary = "좋아요한 게시글 목록 조회",
             description = "현재 인증된 사용자가 좋아요한 게시글을 최신 좋아요 순으로 페이지 단위 조회합니다."
