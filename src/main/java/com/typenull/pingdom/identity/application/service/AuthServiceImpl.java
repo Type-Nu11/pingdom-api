@@ -18,6 +18,7 @@ import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import com.typenull.pingdom.shared.security.UserAccessStatusService;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -39,6 +40,7 @@ public class AuthServiceImpl implements AuthService {
     private final OutboxEventPublisher outboxEventPublisher;
     private final UserWithdrawalDataService userWithdrawalDataService;
     private final UserAccessStatusService userAccessStatusService;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -98,7 +100,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -118,7 +120,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -144,7 +146,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
         }
 
-        if (user.isEmailVerificationExpired(LocalDateTime.now())) {
+        if (user.isEmailVerificationExpired(now())) {
             throw new AuthException(AuthErrorCode.EXPIRED_EMAIL_VERIFICATION_CODE);
         }
 
@@ -164,7 +166,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
         }
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
 
@@ -210,7 +212,7 @@ public class AuthServiceImpl implements AuthService {
     private void issueEmailVerification(User user) {
         user.issueEmailVerification(
                 generateVerificationCode(),
-                LocalDateTime.now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
+                now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
         );
     }
 
@@ -245,7 +247,7 @@ public class AuthServiceImpl implements AuthService {
                 anonymizedUsername(user.getId()),
                 anonymizedEmail(user.getId()),
                 "WITHDRAWN_" + UUID.randomUUID(),
-                LocalDateTime.now()
+                now()
         );
         userAccessStatusService.evict(user.getId());
         userWithdrawalDataService.cleanupUserOwnedData(user.getId());
@@ -263,7 +265,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -309,5 +311,9 @@ public class AuthServiceImpl implements AuthService {
 
     private String anonymizedEmail(Long userId) {
         return "withdrawn_user_%d@withdrawn.local".formatted(userId);
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 }
