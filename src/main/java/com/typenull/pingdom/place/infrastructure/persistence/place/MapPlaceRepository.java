@@ -220,7 +220,7 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
                     WHERE (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\')
-                      AND (:category IS NULL OR LOWER(TRIM(mp.category)) = :category)
+                      AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (
                           :hasLocation = FALSE
                           OR (
@@ -255,7 +255,7 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
                     WHERE (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\')
-                      AND (:category IS NULL OR LOWER(TRIM(mp.category)) = :category)
+                      AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (
                           :hasLocation = FALSE
                           OR (
@@ -313,7 +313,6 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             FROM MapPlace m
             WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(COALESCE(m.category, '')) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
     List<MapPlace> findAutocompleteCandidates(@Param("keyword") String keyword, Pageable pageable);
 
