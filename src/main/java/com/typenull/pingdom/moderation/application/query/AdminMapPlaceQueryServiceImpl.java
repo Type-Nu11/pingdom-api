@@ -22,6 +22,9 @@ import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationVersionSnapshot;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
+import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.AdminPlaceRecommendationMetricRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
@@ -54,6 +57,9 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final AdminMapPlaceQueryRepository adminMapPlaceQueryRepository;
+    private final AdminPlaceRecommendationMetricRepository adminPlaceRecommendationMetricRepository;
+    private final MapPlaceDuplicateQueryRepository mapPlaceDuplicateQueryRepository;
     private final MapImageRepository mapImageRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
     private final PlaceRecommendationVersionSnapshotRepository placeRecommendationVersionSnapshotRepository;
@@ -73,7 +79,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         String safeKeyword = keyword == null ? "" : keyword.trim();
         Long numericKeyword = parseLongKeyword(safeKeyword);
 
-        Page<MapPlace> placePage = mapPlaceRepository.searchAdminPlaces(
+        Page<MapPlace> placePage = adminMapPlaceQueryRepository.searchAdminPlaces(
                 safeKeyword,
                 numericKeyword,
                 PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
@@ -129,7 +135,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
         AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
-                adminPlaceDuplicateResolver.analyze(mapPlaceRepository.findPotentialDuplicatePlaces());
+                adminPlaceDuplicateResolver.analyze(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces());
 
         List<AdminMapPlaceDuplicateGroupItem> groups = duplicateAnalysis.groups().stream()
                 .map(group -> new AdminMapPlaceDuplicateGroupItem(
@@ -152,13 +158,13 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         candidatePlacesById.put(mapPlace.getId(), mapPlace);
 
         if (mapPlace.getKakaoPlaceId() != null && !mapPlace.getKakaoPlaceId().trim().isEmpty()) {
-            mapPlaceRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, mapPlace.getKakaoPlaceId())
+            mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, mapPlace.getKakaoPlaceId())
                     .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
         }
 
         double latitudeDelta = Math.toDegrees(DUPLICATE_DISTANCE_METERS / EARTH_RADIUS_METERS);
         double longitudeDelta = calculateLongitudeDelta(mapPlace.getLatitude(), DUPLICATE_DISTANCE_METERS);
-        mapPlaceRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
+        mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
                         placeId,
                         mapPlace.getName(),
                         mapPlace.getAddress(),
@@ -236,7 +242,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         Integer safeDays = days == null || days <= 0 ? null : days;
 
         if (safeDays != null) {
-            List<MapPlace> places = mapPlaceRepository.findByNameContaining(keyword, Pageable.unpaged()).getContent();
+            List<MapPlace> places = adminMapPlaceQueryRepository.findByNameContaining(keyword, Pageable.unpaged()).getContent();
             List<Long> placeIds = places.stream()
                     .map(MapPlace::getId)
                     .toList();
@@ -395,33 +401,33 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             Pageable pageable
     ) {
         return switch (sortBy) {
-            case SMOOTHED_CTR -> mapPlaceRepository.findRecommendationMetricPageOrderBySmoothedCtr(
+            case SMOOTHED_CTR -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderBySmoothedCtr(
                     keyword,
                     globalCtr,
                     CTR_PRIOR_WEIGHT,
                     pageable
             );
-            case RAW_CTR -> mapPlaceRepository.findRecommendationMetricPageOrderByRawCtr(
+            case RAW_CTR -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByRawCtr(
                     keyword,
                     globalCtr,
                     CTR_PRIOR_WEIGHT,
                     pageable
             );
-            case BOOKMARK_CONVERSION -> mapPlaceRepository.findRecommendationMetricPageOrderByBookmarkConversion(
+            case BOOKMARK_CONVERSION -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByBookmarkConversion(
                     keyword,
                     pageable
             );
-            case LIKE_CONVERSION -> mapPlaceRepository.findRecommendationMetricPageOrderByLikeConversion(
+            case LIKE_CONVERSION -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByLikeConversion(
                     keyword,
                     pageable
             );
-            case TOTAL_CONVERSION -> mapPlaceRepository.findRecommendationMetricPageOrderByTotalConversion(
+            case TOTAL_CONVERSION -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByTotalConversion(
                     keyword,
                     pageable
             );
-            case EXPOSURE -> mapPlaceRepository.findRecommendationMetricPageOrderByExposure(keyword, pageable);
-            case CLICK -> mapPlaceRepository.findRecommendationMetricPageOrderByClick(keyword, pageable);
-            case UPDATED_AT -> mapPlaceRepository.findRecommendationMetricPageOrderByUpdatedAt(keyword, pageable);
+            case EXPOSURE -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByExposure(keyword, pageable);
+            case CLICK -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByClick(keyword, pageable);
+            case UPDATED_AT -> adminPlaceRecommendationMetricRepository.findRecommendationMetricPageOrderByUpdatedAt(keyword, pageable);
         };
     }
 
@@ -433,46 +439,46 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
             Pageable pageable
     ) {
         return switch (sortBy) {
-            case SMOOTHED_CTR -> mapPlaceRepository.findVersionRecommendationMetricPageOrderBySmoothedCtr(
+            case SMOOTHED_CTR -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderBySmoothedCtr(
                     keyword,
                     recommendationVersion,
                     globalCtr,
                     CTR_PRIOR_WEIGHT,
                     pageable
             );
-            case RAW_CTR -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByRawCtr(
+            case RAW_CTR -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByRawCtr(
                     keyword,
                     recommendationVersion,
                     globalCtr,
                     CTR_PRIOR_WEIGHT,
                     pageable
             );
-            case BOOKMARK_CONVERSION -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByBookmarkConversion(
+            case BOOKMARK_CONVERSION -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByBookmarkConversion(
                     keyword,
                     recommendationVersion,
                     pageable
             );
-            case LIKE_CONVERSION -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByLikeConversion(
+            case LIKE_CONVERSION -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByLikeConversion(
                     keyword,
                     recommendationVersion,
                     pageable
             );
-            case TOTAL_CONVERSION -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByTotalConversion(
+            case TOTAL_CONVERSION -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByTotalConversion(
                     keyword,
                     recommendationVersion,
                     pageable
             );
-            case EXPOSURE -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByExposure(
+            case EXPOSURE -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByExposure(
                     keyword,
                     recommendationVersion,
                     pageable
             );
-            case CLICK -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByClick(
+            case CLICK -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByClick(
                     keyword,
                     recommendationVersion,
                     pageable
             );
-            case UPDATED_AT -> mapPlaceRepository.findVersionRecommendationMetricPageOrderByUpdatedAt(
+            case UPDATED_AT -> adminPlaceRecommendationMetricRepository.findVersionRecommendationMetricPageOrderByUpdatedAt(
                     keyword,
                     recommendationVersion,
                     pageable
@@ -493,7 +499,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
         String safeKeyword = keyword == null ? "" : keyword;
         Integer safeDays = days == null || days <= 0 ? null : days;
 
-        List<MapPlace> places = mapPlaceRepository.findByNameContaining(safeKeyword, Pageable.unpaged()).getContent();
+        List<MapPlace> places = adminMapPlaceQueryRepository.findByNameContaining(safeKeyword, Pageable.unpaged()).getContent();
         List<Long> placeIds = places.stream()
                 .map(MapPlace::getId)
                 .toList();

@@ -16,7 +16,7 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.application.service.recommendation.PlaceSimilaritySnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
-import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceCoordinateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
@@ -45,7 +45,7 @@ import org.springframework.jdbc.core.JdbcTemplate;
 class PlaceSimilaritySnapshotResyncServiceTest {
 
     @Mock
-    private MapPlaceRepository mapPlaceRepository;
+    private MapPlaceCoordinateQueryRepository mapPlaceCoordinateQueryRepository;
 
     @Mock
     private PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
@@ -90,7 +90,7 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         List<MapPlace> places = createPlaces(34);
         List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
 
-        when(mapPlaceRepository.findCoordinatePage(any(PageRequest.class)))
+        when(mapPlaceCoordinateQueryRepository.findCoordinatePage(any(PageRequest.class)))
                 .thenAnswer(invocation -> coordinatePage(places, invocation.getArgument(0)));
         when(placeSimilaritySnapshotRepository.findExistingSnapshotSlice(anyLong(), any(Pageable.class)))
                 .thenAnswer(invocation -> snapshotSlice(

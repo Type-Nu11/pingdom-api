@@ -7,7 +7,8 @@ import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository.PlaceSearchProjection;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.List;
@@ -36,6 +37,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final PlaceSearchQueryRepository placeSearchQueryRepository;
 
     @Override
     @Transactional(readOnly = true)
@@ -57,7 +59,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
         }
 
-        Page<PlaceSearchProjection> placePage = mapPlaceRepository.searchPlaces(
+        Page<PlaceSearchProjection> placePage = placeSearchQueryRepository.searchPlaces(
                 toLikePattern(condition.keyword()),
                 normalizeCategory(condition.category()),
                 locationSearch.enabled(),
@@ -106,7 +108,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id"))
         );
 
-        List<PlaceAutocompleteItem> places = mapPlaceRepository.findAutocompleteCandidates(normalizedKeyword, pageable)
+        List<PlaceAutocompleteItem> places = placeSearchQueryRepository.findAutocompleteCandidates(normalizedKeyword, pageable)
                 .stream()
                 .sorted((first, second) -> compareAutocompletePlaces(
                         first,
@@ -149,7 +151,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         int safeLimit = Math.max(1, Math.min(limit, 100));
         Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
 
-        Page<MapPlace> placePage = mapPlaceRepository.findBookmarkedPlacesByUserId(userId, pageable);
+        Page<MapPlace> placePage = placeSearchQueryRepository.findBookmarkedPlacesByUserId(userId, pageable);
         List<PlaceListItem> places = placePage.getContent().stream()
                 .map(this::toListItem)
                 .toList();
