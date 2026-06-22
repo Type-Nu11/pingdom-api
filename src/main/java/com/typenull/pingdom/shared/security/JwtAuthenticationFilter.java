@@ -1,7 +1,5 @@
 package com.typenull.pingdom.shared.security;
 
-import com.typenull.pingdom.identity.domain.UserStatus;
-import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
@@ -34,11 +32,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final JwtTokenProvider jwtTokenProvider;
-    private final UserRepository userRepository;
+    private final UserAccessStatusService userAccessStatusService;
 
-    public JwtAuthenticationFilter(JwtTokenProvider jwtTokenProvider, UserRepository userRepository) {
+    public JwtAuthenticationFilter(
+            JwtTokenProvider jwtTokenProvider,
+            UserAccessStatusService userAccessStatusService
+    ) {
         this.jwtTokenProvider = jwtTokenProvider;
-        this.userRepository = userRepository;
+        this.userAccessStatusService = userAccessStatusService;
     }
 
     @Override
@@ -66,7 +67,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
             if (status == JwtTokenProvider.TokenStatus.VALID
                     && parsed.payload() != null
-                    && userRepository.existsByIdAndStatus(parsed.payload().userId(), UserStatus.ACTIVE)) {
+                    && userAccessStatusService.canAuthenticate(parsed.payload().userId())) {
                 String role = parsed.payload().role();
                 List<SimpleGrantedAuthority> authorities = (role == null)
                         ? Collections.emptyList()

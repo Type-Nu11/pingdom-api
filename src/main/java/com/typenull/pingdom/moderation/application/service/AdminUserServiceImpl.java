@@ -9,6 +9,7 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailRespons
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserItem;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
+import com.typenull.pingdom.shared.security.UserAccessStatusService;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class AdminUserServiceImpl implements AdminUserService {
 
     private final UserRepository userRepository;
+    private final UserAccessStatusService userAccessStatusService;
 
     @Override
     @Transactional
@@ -33,6 +35,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
         LocalDateTime now = LocalDateTime.now();
         user.ban(reason, now);
+        userAccessStatusService.evict(user.getId());
 
         return new BanResponse(user.getId(), user.isBanned(), user.getBannedAt(), user.getBanReason());
     }

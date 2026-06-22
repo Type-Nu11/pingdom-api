@@ -9,7 +9,7 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "user.withdrawal")
 public record UserWithdrawalProperties(
         Duration retention,
-        @Min(1) int cleanupBatchSize
+        @Min(1) Integer cleanupBatchSize
 ) {
 
     private static final Duration DEFAULT_RETENTION = Duration.ofDays(30);
@@ -19,7 +19,7 @@ public record UserWithdrawalProperties(
         if (retention == null) {
             retention = DEFAULT_RETENTION;
         }
-        if (cleanupBatchSize <= 0) {
+        if (cleanupBatchSize == null) {
             cleanupBatchSize = DEFAULT_CLEANUP_BATCH_SIZE;
         }
     }

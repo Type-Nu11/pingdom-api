@@ -496,6 +496,24 @@ class AuthControllerTest {
                 .language("ko")
                 .country("KR")
                 .build());
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("삭제 유예 장소")
+                .address("주소")
+                .latitude(35.1)
+                .longitude(128.1)
+                .userId(user.getId())
+                .registrant(User.WITHDRAWN_DISPLAY_NAME)
+                .build());
+        MapImage mapImage = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/purge.jpg")
+                .s3Key("map/purge.jpg")
+                .title("삭제 유예 게시글")
+                .description("설명")
+                .userId(user.getId())
+                .username(User.WITHDRAWN_DISPLAY_NAME)
+                .likeCount(0)
+                .mapPlace(mapPlace)
+                .build());
         LocalDateTime now = LocalDateTime.now();
         user.withdraw(
                 "withdrawn_user_" + user.getId(),
@@ -509,6 +527,8 @@ class AuthControllerTest {
 
         org.junit.jupiter.api.Assertions.assertEquals(1, purgedCount);
         org.junit.jupiter.api.Assertions.assertTrue(userRepository.findById(user.getId()).isEmpty());
+        org.junit.jupiter.api.Assertions.assertNull(mapPlaceRepository.findById(mapPlace.getId()).orElseThrow().getUserId());
+        org.junit.jupiter.api.Assertions.assertNull(mapImageRepository.findById(mapImage.getId()).orElseThrow().getUserId());
     }
 
     private String loginAndExtractAccessToken(String username) throws Exception {

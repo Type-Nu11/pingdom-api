@@ -6,6 +6,7 @@ import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.util.Collection;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -44,6 +45,23 @@ public class UserWithdrawalDataService {
                 deletedLikeCount,
                 deletedBookmarkCount,
                 deletedNotificationCount
+        );
+    }
+
+    @Transactional
+    public void detachContentUserReferences(Collection<Long> userIds) {
+        if (userIds == null || userIds.isEmpty()) {
+            return;
+        }
+
+        int detachedPostCount = mapImageRepository.clearUserIdByUserIds(userIds);
+        int detachedPlaceCount = mapPlaceRepository.clearUserIdByUserIds(userIds);
+
+        log.info(
+                "최종 삭제 대상 탈퇴 사용자의 콘텐츠 작성자 참조를 제거했습니다. userCount={}, detachedPostCount={}, detachedPlaceCount={}",
+                userIds.size(),
+                detachedPostCount,
+                detachedPlaceCount
         );
     }
 }

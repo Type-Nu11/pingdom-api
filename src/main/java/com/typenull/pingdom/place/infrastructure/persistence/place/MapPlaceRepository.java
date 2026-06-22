@@ -28,6 +28,14 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             @Param("displayName") String displayName
     );
 
+    @Modifying
+    @Query("""
+            UPDATE MapPlace m
+            SET m.userId = NULL
+            WHERE m.userId IN :userIds
+            """)
+    int clearUserIdByUserIds(@Param("userIds") java.util.Collection<Long> userIds);
+
     boolean existsByKakaoPlaceId(String kakaoPlaceId);
 
     Optional<MapPlace> findFirstByNameAndAddressAndLatitudeAndLongitude(

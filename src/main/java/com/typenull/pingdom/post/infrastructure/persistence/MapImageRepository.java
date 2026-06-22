@@ -53,6 +53,14 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
             @Param("displayName") String displayName
     );
 
+    @Modifying
+    @Query("""
+            UPDATE MapImage m
+            SET m.userId = NULL
+            WHERE m.userId IN :userIds
+            """)
+    int clearUserIdByUserIds(@Param("userIds") Collection<Long> userIds);
+
     @EntityGraph(attributePaths = "mapPlace")
     Page<MapImage> findAllBy(Pageable pageable);
 

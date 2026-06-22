@@ -17,6 +17,7 @@ import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.UserAccessStatusService;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -37,6 +38,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final OutboxEventPublisher outboxEventPublisher;
     private final UserWithdrawalDataService userWithdrawalDataService;
+    private final UserAccessStatusService userAccessStatusService;
 
     @Override
     @Transactional
@@ -238,9 +240,10 @@ public class AuthServiceImpl implements AuthService {
         user.withdraw(
                 anonymizedUsername(user.getId()),
                 anonymizedEmail(user.getId()),
-                passwordEncoder.encode(UUID.randomUUID().toString()),
+                "WITHDRAWN_" + UUID.randomUUID(),
                 LocalDateTime.now()
         );
+        userAccessStatusService.evict(user.getId());
         userWithdrawalDataService.cleanupUserOwnedData(user.getId());
     }
 

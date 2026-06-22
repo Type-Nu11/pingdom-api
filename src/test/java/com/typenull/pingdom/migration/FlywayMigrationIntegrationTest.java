@@ -61,6 +61,15 @@ class FlywayMigrationIntegrationTest {
                     SELECT EXISTS (
                         SELECT 1
                         FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'user_id'
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
                         WHERE table_name = 'users'
                           AND column_name = 'withdrawn_at'
                     )
