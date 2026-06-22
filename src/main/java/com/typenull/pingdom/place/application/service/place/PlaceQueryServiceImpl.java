@@ -242,14 +242,12 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
             }
 
-            double normalized = longitude;
-            while (normalized < -180d) {
+            double normalized = (longitude + 180d) % 360d;
+            if (normalized < 0d) {
                 normalized += 360d;
             }
-            while (normalized > 180d) {
-                normalized -= 360d;
-            }
-            return normalized;
+            double shifted = normalized - 180d;
+            return shifted == -180d && longitude > 0d ? 180d : shifted;
         }
     }
 
