@@ -9,12 +9,15 @@ import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.identity.application.service.AuthService;
+import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitService;
+import com.typenull.pingdom.shared.web.ClientIpResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,7 +34,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Common", description = "앱/웹 공통")
 public class AuthController {
 
-    private final  AuthService authService;
+    private final AuthService authService;
+    private final AbuseRateLimitService abuseRateLimitService;
 
     @PostMapping("/signup")
     @Operation(
@@ -192,7 +196,8 @@ public class AuthController {
                     )
             )
     })
-    public LoginResponse login(@Valid @RequestBody LoginRequest request) {
+    public LoginResponse login(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+        abuseRateLimitService.checkLogin(request.username(), ClientIpResolver.resolve(servletRequest));
         return authService.login(request);
     }
 
@@ -270,7 +275,8 @@ public class AuthController {
                     )
             )
     })
-    public LoginResponse adminLogin(@Valid @RequestBody LoginRequest request) {
+    public LoginResponse adminLogin(@Valid @RequestBody LoginRequest request, HttpServletRequest servletRequest) {
+        abuseRateLimitService.checkLogin(request.username(), ClientIpResolver.resolve(servletRequest));
         return authService.adminLogin(request);
     }
 
@@ -329,7 +335,11 @@ public class AuthController {
                     )
             )
     })
-    public ResponseEntity<Void> resendVerificationEmail(@Valid @RequestBody EmailResendRequest request) {
+    public ResponseEntity<Void> resendVerificationEmail(
+            @Valid @RequestBody EmailResendRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        abuseRateLimitService.checkEmailResend(request.email(), ClientIpResolver.resolve(servletRequest));
         authService.resendVerificationEmail(request);
         return ResponseEntity.ok().build();
     }
@@ -457,7 +467,11 @@ public class AuthController {
                     )
             )
     })
-    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+    public ResponseEntity<RefreshTokenResponse> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request,
+            HttpServletRequest servletRequest
+    ) {
+        abuseRateLimitService.checkTokenRefresh(request.refreshToken(), ClientIpResolver.resolve(servletRequest));
         return ResponseEntity.ok(authService.refreshToken(request));
     }
 
