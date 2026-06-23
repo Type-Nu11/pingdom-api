@@ -325,8 +325,10 @@ public class PostController {
             @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = (user != null) ? user.userId() : null;
-        return ResponseEntity.ok(postCommandService.uploadPost(request, userId));
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return ResponseEntity.ok(postCommandService.uploadPost(request, user.userId()));
     }
 
     @PostMapping("/post/{id}/update")
