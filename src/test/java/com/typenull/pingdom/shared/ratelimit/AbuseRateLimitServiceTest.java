@@ -10,6 +10,9 @@ import java.time.Duration;
 import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
+import java.util.Collection;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
@@ -39,9 +42,10 @@ class AbuseRateLimitServiceTest {
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(1, Duration.ofHours(1)),
                 new WindowPolicy(100, Duration.ofHours(1)),
-                1_000
+                "test:rate-limit:",
+                true
         );
-        InMemoryRateLimitStore store = new InMemoryRateLimitStore(properties, clock);
+        FakeRateLimitStore store = new FakeRateLimitStore(clock);
         abuseRateLimitService = new AbuseRateLimitService(properties, store);
     }
 
@@ -110,6 +114,71 @@ class AbuseRateLimitServiceTest {
 
         private void advance(Duration duration) {
             instant = instant.plus(duration);
+        }
+    }
+
+    private static class FakeRateLimitStore implements RateLimitStore {
+
+        private final Clock clock;
+        private final Map<String, WindowState> windows = new ConcurrentHashMap<>();
+        private final Map<String, CooldownState> cooldowns = new ConcurrentHashMap<>();
+
+        private FakeRateLimitStore(Clock clock) {
+            this.clock = clock;
+        }
+
+        @Override
+        public void acquire(
+                String message,
+                Collection<RateLimitWindowRule> windowRules,
+                Collection<RateLimitCooldownRule> cooldownRules
+        ) {
+            Instant now = Instant.now(clock);
+            for (RateLimitCooldownRule rule : cooldownRules) {
+                CooldownState state = cooldowns.get(rule.key());
+                if (state != null && now.isBefore(state.nextAllowedAt())) {
+                    throw new RateLimitException(message);
+                }
+            }
+
+            for (RateLimitWindowRule rule : windowRules) {
+                WindowState state = activeWindowState(rule, now);
+                if (state.count >= rule.limit()) {
+                    throw new RateLimitException(message);
+                }
+            }
+
+            for (RateLimitWindowRule rule : windowRules) {
+                WindowState state = activeWindowState(rule, now);
+                state.count++;
+                windows.put(rule.key(), state);
+            }
+
+            for (RateLimitCooldownRule rule : cooldownRules) {
+                cooldowns.put(rule.key(), new CooldownState(now.plus(rule.interval())));
+            }
+        }
+
+        private WindowState activeWindowState(RateLimitWindowRule rule, Instant now) {
+            WindowState state = windows.get(rule.key());
+            if (state == null || !now.isBefore(state.expiresAt)) {
+                return new WindowState(0, now.plus(rule.window()));
+            }
+            return state;
+        }
+
+        private static final class WindowState {
+
+            private int count;
+            private final Instant expiresAt;
+
+            private WindowState(int count, Instant expiresAt) {
+                this.count = count;
+                this.expiresAt = expiresAt;
+            }
+        }
+
+        private record CooldownState(Instant nextAllowedAt) {
         }
     }
 }
