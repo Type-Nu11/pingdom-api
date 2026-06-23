@@ -62,6 +62,9 @@ public class PostReport {
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
 
+    @Column(name = "report_score")
+    private Long reportScore = 0L;
+
     public boolean isPending() {
         return status == PostReportStatus.PENDING;
     }
@@ -78,5 +81,13 @@ public class PostReport {
 
     public void detachMapImage() {
         this.mapImage = null;
+    }
+
+    public void increaseReportScore(long score) {
+        this.reportScore += score;
+    }
+
+    public void decreaseReportScore(long score) {
+        this.reportScore -= score;
     }
 }
