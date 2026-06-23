@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.support;
+package com.typenull.pingdom.shared.storage.s3.outbox;
 
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;

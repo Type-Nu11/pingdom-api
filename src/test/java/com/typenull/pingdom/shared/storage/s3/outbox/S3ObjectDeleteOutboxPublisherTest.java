@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.support;
+package com.typenull.pingdom.shared.storage.s3.outbox;
 
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;

@@ -16,7 +16,7 @@ import java.util.Objects;
 import com.typenull.pingdom.notification.domain.Notifications;
 import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;

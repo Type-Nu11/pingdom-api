@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.security;
+package com.typenull.pingdom.shared.security.access;
 
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;

@@ -2,7 +2,7 @@ package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
 import com.typenull.pingdom.moderation.application.AdminReportService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

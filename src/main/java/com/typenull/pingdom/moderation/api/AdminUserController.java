@@ -11,7 +11,7 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResp
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
