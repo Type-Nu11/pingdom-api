@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.security;
+package com.typenull.pingdom.shared.security.jwt;
 
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.ExpiredJwtException;
@@ -9,6 +9,7 @@ import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
 import javax.crypto.SecretKey;
+import com.typenull.pingdom.shared.security.properties.JwtProperties;
 import org.springframework.stereotype.Component;
 
 // JWT Access Token, Refresh Token 생성 클래스
