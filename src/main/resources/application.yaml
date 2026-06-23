@@ -8,6 +8,11 @@ spring:
     driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${DB_USERNAME:pingdom}
     password: ${DB_PASSWORD:pingdom}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:2s}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -101,6 +106,8 @@ user:
 
 abuse:
   rate-limit:
+    redis-key-prefix: ${REDIS_RATE_LIMIT_KEY_PREFIX:pingdom:rate-limit:}
+    fail-open: ${REDIS_RATE_LIMIT_FAIL_OPEN:true}
     login-username:
       limit: 5
       window: PT1M
