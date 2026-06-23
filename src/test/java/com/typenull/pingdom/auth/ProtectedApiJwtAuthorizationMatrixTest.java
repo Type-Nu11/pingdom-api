@@ -5,18 +5,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
-import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.identity.domain.UserRole;
-import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
-import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
-import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import com.typenull.pingdom.shared.security.properties.JwtProperties;
 import io.jsonwebtoken.Jwts;
@@ -28,7 +17,6 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.stream.Stream;
 import javax.crypto.SecretKey;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -37,15 +25,10 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
-import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.test.web.servlet.MockMvc;
 
 @SpringBootTest
 @AutoConfigureMockMvc
-class ProtectedApiJwtAuthorizationMatrixTest {
-
-    @Autowired
-    private MockMvc mockMvc;
+class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTestSupport {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
@@ -54,54 +37,7 @@ class ProtectedApiJwtAuthorizationMatrixTest {
     private JwtProperties jwtProperties;
 
     @Autowired
-    private PasswordEncoder passwordEncoder;
-
-    @Autowired
     private Clock clock;
-
-    @Autowired
-    private UserRepository userRepository;
-
-    @Autowired
-    private OAuthAccountRepository oAuthAccountRepository;
-
-    @Autowired
-    private UserSanctionHistoryRepository userSanctionHistoryRepository;
-
-    @Autowired
-    private NotificationsRepository notificationsRepository;
-
-    @Autowired
-    private PostReportRepository postReportRepository;
-
-    @Autowired
-    private MapImageLikeRepository mapImageLikeRepository;
-
-    @Autowired
-    private MapBookmarkRepository mapBookmarkRepository;
-
-    @Autowired
-    private MapImageRepository mapImageRepository;
-
-    @Autowired
-    private MapPlaceRepository mapPlaceRepository;
-
-    @Autowired
-    private OutboxEventRepository outboxEventRepository;
-
-    @BeforeEach
-    void setUp() {
-        postReportRepository.deleteAllInBatch();
-        notificationsRepository.deleteAllInBatch();
-        mapImageLikeRepository.deleteAllInBatch();
-        mapBookmarkRepository.deleteAllInBatch();
-        mapImageRepository.deleteAllInBatch();
-        mapPlaceRepository.deleteAllInBatch();
-        userSanctionHistoryRepository.deleteAllInBatch();
-        oAuthAccountRepository.deleteAllInBatch();
-        outboxEventRepository.deleteAllInBatch();
-        userRepository.deleteAllInBatch();
-    }
 
     @ParameterizedTest(name = "{0} rejects missing token")
     @MethodSource("protectedGetEndpoints")
@@ -215,18 +151,6 @@ class ProtectedApiJwtAuthorizationMatrixTest {
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
-    private User createUser(String username) {
-        return userRepository.saveAndFlush(User.builder()
-                .username(username)
-                .email(username + "@example.com")
-                .password(passwordEncoder.encode("password123"))
-                .birthYear(1998)
-                .language("ko")
-                .country("KR")
-                .role(UserRole.USER)
-                .build());
-    }
-
     private String generateExpiredAccessToken(User user) {
         Instant issuedAt = Instant.now().minusSeconds(120);
         Instant expiredAt = Instant.now().minusSeconds(60);
@@ -244,9 +168,10 @@ class ProtectedApiJwtAuthorizationMatrixTest {
     }
 
     private String tamper(String token) {
-        char last = token.charAt(token.length() - 1);
-        char replacement = last == 'a' ? 'b' : 'a';
-        return token.substring(0, token.length() - 1) + replacement;
+        String[] parts = token.split("\\.", 3);
+        char firstPayloadChar = parts[1].charAt(0);
+        char replacement = firstPayloadChar == 'a' ? 'b' : 'a';
+        return parts[0] + "." + replacement + parts[1].substring(1) + "." + parts[2];
     }
 
     private String endpointName(String endpoint) {
