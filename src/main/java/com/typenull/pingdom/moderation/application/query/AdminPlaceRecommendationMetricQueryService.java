@@ -174,10 +174,10 @@ public class AdminPlaceRecommendationMetricQueryService {
     ) {
         String safeBaselineVersion = baselineVersion == null ? "" : baselineVersion.trim();
         String safeTargetVersion = targetVersion == null ? "" : targetVersion.trim();
-        String safeKeyword = keyword == null ? "" : keyword;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
         Integer safeDays = days == null || days <= 0 ? null : days;
 
-        List<MapPlace> places = adminMapPlaceQueryRepository.findByNameContaining(safeKeyword, Pageable.unpaged()).getContent();
+        List<MapPlace> places = findMetricCandidatePlaces(safeKeyword);
         List<Long> placeIds = places.stream()
                 .map(MapPlace::getId)
                 .toList();
@@ -262,12 +262,18 @@ public class AdminPlaceRecommendationMetricQueryService {
                 .map(MapPlace::getId)
                 .toList();
         Map<Long, PlaceRecommendationVersionSnapshot> snapshotsByPlaceId = new HashMap<>();
-        for (PlaceRecommendationVersionSnapshot snapshot :
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
-                        placeIds,
-                        recommendationVersion
-                )) {
-            snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+        for (int fromIndex = 0; fromIndex < placeIds.size(); fromIndex += PERIOD_METRIC_PLACE_BATCH_SIZE) {
+            List<Long> batchPlaceIds = placeIds.subList(
+                    fromIndex,
+                    Math.min(fromIndex + PERIOD_METRIC_PLACE_BATCH_SIZE, placeIds.size())
+            );
+            for (PlaceRecommendationVersionSnapshot snapshot :
+                    placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                            batchPlaceIds,
+                            recommendationVersion
+                    )) {
+                snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+            }
         }
 
         return places.stream()
