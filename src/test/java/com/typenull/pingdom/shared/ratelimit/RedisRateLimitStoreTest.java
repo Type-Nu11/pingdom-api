@@ -1,9 +1,11 @@
 package com.typenull.pingdom.shared.ratelimit;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyList;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.EmailResendPolicy;
@@ -13,6 +15,7 @@ import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -79,6 +82,32 @@ class RedisRateLimitStoreTest {
                 List.of(new RateLimitWindowRule("login:user", 1, Duration.ofMinutes(1))),
                 List.of()
         ));
+    }
+
+    @Test
+    void acquireUsesHashTagByRateLimitGroupForClusterCompatibility() {
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
+                .thenReturn(1L);
+
+        redisRateLimitStore.acquire(
+                "too many requests",
+                List.of(
+                        new RateLimitWindowRule("login:username:abc", 1, Duration.ofMinutes(1)),
+                        new RateLimitWindowRule("login:ip:198.51.100.10", 100, Duration.ofMinutes(1))
+                ),
+                List.of()
+        );
+
+        ArgumentCaptor<List> keysCaptor = ArgumentCaptor.forClass(List.class);
+        verify(redisTemplate).execute(any(DefaultRedisScript.class), keysCaptor.capture(), any(Object[].class));
+
+        assertEquals(
+                List.of(
+                        "test:rate-limit:{login}:login:username:abc",
+                        "test:rate-limit:{login}:login:ip:198.51.100.10"
+                ),
+                keysCaptor.getValue()
+        );
     }
 
     private AbuseRateLimitProperties properties(boolean failOpen) {

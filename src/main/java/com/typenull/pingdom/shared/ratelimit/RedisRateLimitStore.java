@@ -115,6 +115,14 @@ public class RedisRateLimitStore implements RateLimitStore {
     }
 
     private String redisKey(String key) {
-        return properties.redisKeyPrefix() + key;
+        return properties.redisKeyPrefix() + "{" + rateLimitGroup(key) + "}:" + key;
+    }
+
+    private String rateLimitGroup(String key) {
+        int delimiterIndex = key.indexOf(':');
+        if (delimiterIndex <= 0) {
+            return "default";
+        }
+        return key.substring(0, delimiterIndex);
     }
 }
