@@ -88,24 +88,36 @@ class PlaceRecommendationQueryServiceImplTest {
         );
         placeRecommendationCandidateCollector = new PlaceRecommendationCandidateCollector(
                 mapPlaceRepository,
+                mapPlaceRecommendationCandidateRepository,
                 placeRecommendationSnapshotRepository
         );
-
-        placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
-                mapPlaceRepository,
-                mapPlaceRecommendationCandidateRepository,
+        PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader = new PlaceRecommendationAggregateLoader(
                 mapBookmarkRepository,
                 mapImageRepository,
                 placeRecommendationSnapshotRepository,
                 placeRecommendationClickService,
-                placeRecommendationExposureService,
+                placeRecommendationExposureService
+        );
+        PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
+                placeRecommendationSimilarityService
+        );
+        PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
+                placeRecommendationSimilarityService
+        );
+
+        placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
+                mapPlaceRepository,
                 placeGrowthService,
                 placeRecommendationGraphAffinityService,
                 placeRecommendationSimilarityService,
                 placeRecommendationPolicyService,
                 placeRecommendationFeatureLogService,
+                placeRecommendationExposureService,
                 placeRecommendationUserSignalLoader,
-                placeRecommendationCandidateCollector
+                placeRecommendationCandidateCollector,
+                placeRecommendationAggregateLoader,
+                placeRecommendationScoringService,
+                placeRecommendationPortfolioService
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
