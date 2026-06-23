@@ -22,10 +22,11 @@ public record AbuseRateLimitProperties(
         @Valid WindowPolicy recommendationClickIp,
         @Valid WindowPolicy imageUploadUser,
         @Valid WindowPolicy imageUploadIp,
-        @Min(1) Integer maxKeys
+        String redisKeyPrefix,
+        Boolean failOpen
 ) {
 
-    private static final int DEFAULT_MAX_KEYS = 100_000;
+    private static final String DEFAULT_REDIS_KEY_PREFIX = "pingdom:rate-limit:";
 
     public AbuseRateLimitProperties {
         loginUsername = WindowPolicy.withDefaults(loginUsername, 5, Duration.ofMinutes(1));
@@ -41,8 +42,11 @@ public record AbuseRateLimitProperties(
         recommendationClickIp = WindowPolicy.withDefaults(recommendationClickIp, 1_000, Duration.ofMinutes(1));
         imageUploadUser = WindowPolicy.withDefaults(imageUploadUser, 10, Duration.ofHours(1));
         imageUploadIp = WindowPolicy.withDefaults(imageUploadIp, 100, Duration.ofHours(1));
-        if (maxKeys == null) {
-            maxKeys = DEFAULT_MAX_KEYS;
+        if (redisKeyPrefix == null || redisKeyPrefix.isBlank()) {
+            redisKeyPrefix = DEFAULT_REDIS_KEY_PREFIX;
+        }
+        if (failOpen == null) {
+            failOpen = true;
         }
     }
 
