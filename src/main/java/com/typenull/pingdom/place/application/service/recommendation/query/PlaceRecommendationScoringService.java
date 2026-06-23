@@ -141,7 +141,6 @@ class PlaceRecommendationScoringService {
                             PlaceRecommendationCandidateSource.FALLBACK
                     );
                 })
-                .map(ScoredCandidate.class::cast)
                 .toList();
     }
 
