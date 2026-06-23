@@ -127,6 +127,7 @@ public class PostQueryServiceImpl implements PostQueryService {
                 .map(MapImage::getMapPlace)
                 .filter(java.util.Objects::nonNull)
                 .map(MapPlace::getId)
+                .distinct()
                 .toList();
         Set<Long> bookmarkedPlaceIds = placeIds.isEmpty()
                 ? java.util.Collections.emptySet()
