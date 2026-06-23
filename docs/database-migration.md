@@ -5,15 +5,23 @@ Hibernate는 스키마를 변경하지 않고 애플리케이션 시작 시 매�
 
 ## 기존 DB 최초 전환
 
-기존 테이블이 있는 환경은 최초 전환 배포에만 다음 환경 변수를 설정한다.
+기존 테이블이 있지만 `flyway_schema_history`가 없는 환경은 Flyway가 기본으로 기존
+스키마를 version `1`로 baseline 처리한다.
 
 ```text
 FLYWAY_BASELINE_ON_MIGRATE=true
 ```
 
-Flyway는 기존 스키마를 version `1`로 baseline 처리하고 `V2` 이후 migration을 실행한다.
-전환이 완료되면 환경 변수를 제거하거나 `false`로 되돌린다. 신규 빈 DB에는 이 설정이
-필요하지 않으며 `V1`부터 모든 migration이 실행된다.
+이 값은 애플리케이션 기본값이므로 일반적으로 별도 설정이 필요 없다. Flyway는 기존
+스키마를 version `1`로 baseline 처리하고 `V2` 이후 migration을 실행한다. 신규 빈 DB에는
+baseline이 적용되지 않으며 `V1`부터 모든 migration이 실행된다.
+
+스키마가 비어 있지 않은데 baseline 처리를 명시적으로 막아야 하는 검증 환경에서는 다음과
+같이 끌 수 있다.
+
+```text
+FLYWAY_BASELINE_ON_MIGRATE=false
+```
 
 ## 배포 전 점검
 
