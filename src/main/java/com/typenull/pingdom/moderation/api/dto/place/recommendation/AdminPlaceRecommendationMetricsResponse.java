@@ -1,4 +1,4 @@
-package com.typenull.pingdom.moderation.api.dto.place;
+package com.typenull.pingdom.moderation.api.dto.place.recommendation;
 
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import io.swagger.v3.oas.annotations.media.Schema;

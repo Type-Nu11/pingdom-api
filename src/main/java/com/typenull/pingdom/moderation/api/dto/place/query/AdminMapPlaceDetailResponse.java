@@ -1,4 +1,4 @@
-package com.typenull.pingdom.moderation.api.dto.place;
+package com.typenull.pingdom.moderation.api.dto.place.query;
 
 import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
 import java.util.List;

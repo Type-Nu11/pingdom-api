@@ -1,11 +1,11 @@
 package com.typenull.pingdom.moderation.application.query;
 
-import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDetailResponse;
-import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateDetailResponse;
-import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceDuplicateResponse;
-import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceResponse;
-import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsCompareResponse;
-import com.typenull.pingdom.moderation.api.dto.place.AdminPlaceRecommendationMetricsResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 

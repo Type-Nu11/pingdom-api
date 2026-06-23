@@ -1,8 +1,6 @@
-package com.typenull.pingdom.moderation.api.dto.place;
+package com.typenull.pingdom.moderation.api.dto.place.duplicate;
 
-import java.util.List;
-
-public record AdminMapPlaceDuplicateDetailResponse(
+public record AdminMapPlaceDuplicateCandidateItem(
         Long id,
         String name,
         String address,
@@ -12,6 +10,7 @@ public record AdminMapPlaceDuplicateDetailResponse(
         Long userId,
         String registrant,
         long photoCount,
-        List<AdminMapPlaceDuplicateCandidateItem> candidates
+        String reason,
+        Double distanceMeters
 ) {
 }
