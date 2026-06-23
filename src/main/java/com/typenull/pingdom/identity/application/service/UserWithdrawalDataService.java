@@ -2,20 +2,22 @@ package com.typenull.pingdom.identity.application.service;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.Collection;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UserWithdrawalDataService {
+
+    private static final Logger log = LoggerFactory.getLogger(UserWithdrawalDataService.class);
 
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;

@@ -1,6 +1,6 @@
 package com.typenull.pingdom.identity.api;
 
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
 import com.typenull.pingdom.identity.application.service.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;

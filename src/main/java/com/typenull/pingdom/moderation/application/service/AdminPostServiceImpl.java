@@ -8,7 +8,7 @@ import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
+import com.typenull.pingdom.shared.storage.s3.outbox.S3ObjectDeleteOutboxPublisher;
 import java.net.URI;
 import java.net.URISyntaxException;
 import lombok.RequiredArgsConstructor;
