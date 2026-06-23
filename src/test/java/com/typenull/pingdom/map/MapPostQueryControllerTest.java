@@ -1,6 +1,8 @@
 package com.typenull.pingdom.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.engagement.domain.MapImageLike;
+import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -55,10 +57,14 @@ class MapPostQueryControllerTest {
     private MapBookmarkRepository mapBookmarkRepository;
 
     @Autowired
+    private MapImageLikeRepository mapImageLikeRepository;
+
+    @Autowired
     private MapImageRepository mapImageRepository;
 
     @BeforeEach
     void setUp() {
+        mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -123,6 +129,50 @@ class MapPostQueryControllerTest {
                 .andExpect(jsonPath("$.posts[0].title").value("최신 저장 게시글"))
                 .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
                 .andExpect(jsonPath("$.posts[0].placeId").value(savedPlace.getId()));
+    }
+
+    @Test
+    void listLikedPostsReturnsOnlyCurrentUsersLikedPostsInLatestLikeOrder() throws Exception {
+        String accessToken = signupAndLogin("like-reader");
+        Long userId = userRepository.findByUsername("like-reader").orElseThrow().getId();
+
+        MapPlace likedPlace = createMapPlace("좋아요한 장소", "경상남도 진주시 좋아요로 1");
+        MapPlace anotherPlace = createMapPlace("다른 장소", "경상남도 진주시 좋아요로 2");
+
+        MapImage olderLikedPost = createMapImage(41L, "writer01", "먼저 좋아요한 게시글", likedPlace, 4L);
+        MapImage latestLikedPost = createMapImage(42L, "writer02", "나중에 좋아요한 게시글", anotherPlace, 9L);
+        createMapImage(43L, "writer03", "좋아요하지 않은 게시글", anotherPlace, 1L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(userId)
+                .placeId(anotherPlace.getId())
+                .build());
+
+        mapImageLikeRepository.save(MapImageLike.builder()
+                .userId(userId)
+                .mapImageId(olderLikedPost.getId())
+                .build());
+        mapImageLikeRepository.save(MapImageLike.builder()
+                .userId(userId)
+                .mapImageId(latestLikedPost.getId())
+                .build());
+
+        mockMvc.perform(get("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.posts.length()").value(2))
+                .andExpect(jsonPath("$.posts[0].id").value(latestLikedPost.getId()))
+                .andExpect(jsonPath("$.posts[0].likedByMe").value(true))
+                .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
+                .andExpect(jsonPath("$.posts[0].placeName").value("다른 장소"))
+                .andExpect(jsonPath("$.posts[1].id").value(olderLikedPost.getId()))
+                .andExpect(jsonPath("$.posts[1].likedByMe").value(true))
+                .andExpect(jsonPath("$.posts[1].bookmarked").value(false));
     }
 
     @Test

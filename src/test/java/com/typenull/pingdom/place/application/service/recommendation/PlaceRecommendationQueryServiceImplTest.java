@@ -22,8 +22,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -72,14 +72,25 @@ class PlaceRecommendationQueryServiceImplTest {
     private PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
 
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
+    private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
+    private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
 
     @BeforeEach
     void setUp() {
+        placeRecommendationUserSignalLoader = new PlaceRecommendationUserSignalLoader(
+                mapBookmarkRepository,
+                mapImageLikeRepository,
+                mapImageRepository
+        );
+        placeRecommendationCandidateCollector = new PlaceRecommendationCandidateCollector(
+                mapPlaceRepository,
+                placeRecommendationSnapshotRepository
+        );
+
         placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
                 mapPlaceRepository,
                 mapBookmarkRepository,
                 mapImageRepository,
-                mapImageLikeRepository,
                 placeRecommendationSnapshotRepository,
                 placeRecommendationClickService,
                 placeRecommendationExposureService,
@@ -87,11 +98,15 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationGraphAffinityService,
                 placeRecommendationSimilarityService,
                 placeRecommendationPolicyService,
-                placeRecommendationFeatureLogService
+                placeRecommendationFeatureLogService,
+                placeRecommendationUserSignalLoader,
+                placeRecommendationCandidateCollector
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
         when(mapImageRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
+        when(placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(any(), any()))
+                .thenReturn(Page.empty());
     }
 
     @Test
@@ -113,22 +128,22 @@ class PlaceRecommendationQueryServiceImplTest {
                 any(Pageable.class)
         )).thenReturn(List.of(expandedCandidate));
 
-        Object signalContext = ReflectionTestUtils.invokeMethod(
-                placeRecommendationQueryService,
-                "loadUserSignals",
-                userId
-        );
+        UserSignalContext signalContext = placeRecommendationUserSignalLoader.loadUserSignals(userId);
 
-        @SuppressWarnings("unchecked")
-        List<MapPlace> personalCandidates = (List<MapPlace>) ReflectionTestUtils.invokeMethod(
-                placeRecommendationQueryService,
-                "loadPersonalCandidates",
+        List<CandidatePlace> candidatePool = placeRecommendationCandidateCollector.loadCandidatePool(
+                35.1800d,
+                128.1070d,
                 signalContext
         );
 
+        List<MapPlace> personalCandidates = candidatePool.stream()
+                .filter(candidate -> candidate.sources().contains(CandidateSource.PERSONAL))
+                .map(CandidatePlace::place)
+                .toList();
+
         assertThat(personalCandidates)
                 .extracting(MapPlace::getId)
-                .containsExactly(validSeed.getId(), expandedCandidate.getId());
+                .containsExactlyInAnyOrder(validSeed.getId(), expandedCandidate.getId());
     }
 
     private MapPlace createPlace(Long id, String name, Double latitude, Double longitude) {
