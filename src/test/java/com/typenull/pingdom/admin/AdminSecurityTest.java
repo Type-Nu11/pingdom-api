@@ -2,6 +2,7 @@ package com.typenull.pingdom.admin;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -10,6 +11,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -40,6 +42,9 @@ class AdminSecurityTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
+
     @BeforeEach
     void setUp() {
         userRepository.deleteAllInBatch();
@@ -60,6 +65,7 @@ class AdminSecurityTest {
         mockMvc.perform(get("/admin/posts")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
     }
@@ -89,6 +95,25 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.username").value("adminLoginUser"))
                 .andExpect(jsonPath("$.accessToken").isString())
                 .andExpect(jsonPath("$.refreshToken").isString());
+    }
+
+    @Test
+    void adminLoginAccessTokenContainsAdminRoleClaim() throws Exception {
+        createUser("adminClaimUser", UserRole.ADMIN);
+        LoginRequest loginRequest = new LoginRequest("adminClaimUser", "password123");
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/admin/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andReturn();
+
+        String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("accessToken")
+                .textValue();
+
+        org.junit.jupiter.api.Assertions.assertEquals("ADMIN", jwtTokenProvider.getRoleFromAccessToken(accessToken));
     }
 
     @Test
