@@ -122,7 +122,8 @@ public class AbuseRateLimitService {
     private String fingerprint(String value) {
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
-            return HexFormat.of().formatHex(digest.digest(normalize(value).getBytes(StandardCharsets.UTF_8)));
+            String input = value != null ? value : "unknown";
+            return HexFormat.of().formatHex(digest.digest(input.getBytes(StandardCharsets.UTF_8)));
         } catch (NoSuchAlgorithmException exception) {
             throw new IllegalStateException("SHA-256 digest를 사용할 수 없습니다.", exception);
         }

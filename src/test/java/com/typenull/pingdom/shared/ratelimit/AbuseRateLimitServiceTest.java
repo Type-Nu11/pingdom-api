@@ -11,6 +11,7 @@ import java.time.Instant;
 import java.time.ZoneId;
 import java.time.ZoneOffset;
 import java.util.Collection;
+import java.util.List;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
@@ -19,6 +20,7 @@ import org.junit.jupiter.api.Test;
 class AbuseRateLimitServiceTest {
 
     private MutableClock clock;
+    private FakeRateLimitStore store;
     private AbuseRateLimitService abuseRateLimitService;
 
     @BeforeEach
@@ -45,7 +47,7 @@ class AbuseRateLimitServiceTest {
                 "test:rate-limit:",
                 true
         );
-        FakeRateLimitStore store = new FakeRateLimitStore(clock);
+        store = new FakeRateLimitStore(clock);
         abuseRateLimitService = new AbuseRateLimitService(properties, store);
     }
 
@@ -87,6 +89,23 @@ class AbuseRateLimitServiceTest {
         assertDoesNotThrow(() -> abuseRateLimitService.checkImageUpload(2L, "203.0.113.32"));
     }
 
+    @Test
+    void tokenRefreshFingerprintPreservesCaseSensitiveValue() {
+        abuseRateLimitService.checkTokenRefresh("Refresh.Token.A", "203.0.113.40");
+        String upperTokenKey = store.lastWindowKeys().stream()
+                .filter(key -> key.startsWith("token-refresh:token:"))
+                .findFirst()
+                .orElseThrow();
+
+        abuseRateLimitService.checkTokenRefresh("Refresh.Token.a", "203.0.113.41");
+        String lowerTokenKey = store.lastWindowKeys().stream()
+                .filter(key -> key.startsWith("token-refresh:token:"))
+                .findFirst()
+                .orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertNotEquals(upperTokenKey, lowerTokenKey);
+    }
+
     private static class MutableClock extends Clock {
 
         private Instant instant;
@@ -122,6 +141,7 @@ class AbuseRateLimitServiceTest {
         private final Clock clock;
         private final Map<String, WindowState> windows = new ConcurrentHashMap<>();
         private final Map<String, CooldownState> cooldowns = new ConcurrentHashMap<>();
+        private List<String> lastWindowKeys = List.of();
 
         private FakeRateLimitStore(Clock clock) {
             this.clock = clock;
@@ -134,6 +154,9 @@ class AbuseRateLimitServiceTest {
                 Collection<RateLimitCooldownRule> cooldownRules
         ) {
             Instant now = Instant.now(clock);
+            lastWindowKeys = windowRules.stream()
+                    .map(RateLimitWindowRule::key)
+                    .toList();
             for (RateLimitCooldownRule rule : cooldownRules) {
                 CooldownState state = cooldowns.get(rule.key());
                 if (state != null && now.isBefore(state.nextAllowedAt())) {
@@ -179,6 +202,10 @@ class AbuseRateLimitServiceTest {
         }
 
         private record CooldownState(Instant nextAllowedAt) {
+        }
+
+        private List<String> lastWindowKeys() {
+            return lastWindowKeys;
         }
     }
 }
