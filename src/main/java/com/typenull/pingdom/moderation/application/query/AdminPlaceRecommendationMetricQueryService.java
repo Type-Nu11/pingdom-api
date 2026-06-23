@@ -64,41 +64,37 @@ public class AdminPlaceRecommendationMetricQueryService {
         Integer safeDays = days == null || days <= 0 ? null : days;
 
         if (safeDays != null) {
-            List<MapPlace> places = findMetricCandidatePlaces(safeKeyword);
-            if (places.isEmpty()) {
-                return AdminPlaceRecommendationMetricsResponse.of(
-                        List.of(),
-                        safeSortBy,
-                        safeRecommendationVersion,
-                        safeDays,
-                        safePage,
-                        safeLimit,
-                        0L,
-                        0L
-                );
-            }
-
-            List<AdminPlaceRecommendationMetricItem> sortedMetrics = buildPeriodFilteredMetrics(
-                    places,
+            LocalDateTime cutoff = LocalDateTime.now().minusDays(safeDays);
+            double globalCtr = calculatePeriodGlobalCtr(
+                    safeKeyword,
                     safeRecommendationVersion,
-                    safeSortBy,
-                    LocalDateTime.now().minusDays(safeDays)
+                    cutoff
             );
-            long totalCount = sortedMetrics.size();
-            long totalPages = totalCount == 0L ? 0L : (long) Math.ceil((double) totalCount / (double) safeLimit);
-            int fromIndex = Math.min((safePage - 1) * safeLimit, sortedMetrics.size());
-            int toIndex = Math.min(fromIndex + safeLimit, sortedMetrics.size());
-            List<AdminPlaceRecommendationMetricItem> pagedMetrics = sortedMetrics.subList(fromIndex, toIndex);
+            Page<MapPlace> placePage = adminPlaceRecommendationMetricRepository.findPeriodRecommendationMetricPage(
+                    safeKeyword,
+                    safeRecommendationVersion,
+                    safeSortBy.name(),
+                    globalCtr,
+                    AdminPlaceRecommendationMetricMapper.CTR_PRIOR_WEIGHT,
+                    cutoff,
+                    PageRequest.of(safePage - 1, safeLimit)
+            );
+            List<AdminPlaceRecommendationMetricItem> metrics = buildPeriodPageMetrics(
+                    placePage.getContent(),
+                    safeRecommendationVersion,
+                    cutoff,
+                    globalCtr
+            );
 
             return AdminPlaceRecommendationMetricsResponse.of(
-                    pagedMetrics,
+                    metrics,
                     safeSortBy,
                     safeRecommendationVersion,
                     safeDays,
                     safePage,
                     safeLimit,
-                    totalCount,
-                    totalPages
+                    placePage.getTotalElements(),
+                    placePage.getTotalPages()
             );
         }
 
@@ -285,6 +281,51 @@ public class AdminPlaceRecommendationMetricQueryService {
                 .toList();
     }
 
+    private List<AdminPlaceRecommendationMetricItem> buildPeriodPageMetrics(
+            List<MapPlace> places,
+            String recommendationVersion,
+            LocalDateTime cutoff,
+            double globalCtr
+    ) {
+        if (places.isEmpty()) {
+            return List.of();
+        }
+
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+        Map<Long, Long> exposureCounts = new HashMap<>();
+        Map<Long, Long> clickCounts = new HashMap<>();
+        Map<Long, ConversionCounts> conversionCounts = new HashMap<>();
+        if (recommendationVersion.isBlank()) {
+            collectPeriodMetrics(placeIds, cutoff, exposureCounts, clickCounts, conversionCounts);
+        } else {
+            collectVersionPeriodMetrics(
+                    placeIds,
+                    recommendationVersion,
+                    cutoff,
+                    exposureCounts,
+                    clickCounts,
+                    conversionCounts
+            );
+        }
+
+        return places.stream()
+                .map(place -> {
+                    ConversionCounts counts = conversionCounts.getOrDefault(place.getId(), new ConversionCounts());
+                    return metricMapper.toMetricItem(
+                            place,
+                            exposureCounts.getOrDefault(place.getId(), 0L),
+                            clickCounts.getOrDefault(place.getId(), 0L),
+                            counts.bookmarkConversionCount,
+                            counts.likeConversionCount,
+                            globalCtr,
+                            null
+                    );
+                })
+                .toList();
+    }
+
     private Page<MapPlace> findSnapshotMetricPage(
             String keyword,
             RecommendationMetricSortBy sortBy,
@@ -428,6 +469,26 @@ public class AdminPlaceRecommendationMetricQueryService {
                 })
                 .sorted(metricMapper.comparator(sortBy))
                 .toList();
+    }
+
+    private double calculatePeriodGlobalCtr(
+            String keyword,
+            String recommendationVersion,
+            LocalDateTime cutoff
+    ) {
+        AdminPlaceRecommendationMetricRepository.PeriodMetricCountProjection totals =
+                adminPlaceRecommendationMetricRepository.sumPeriodMetricCounts(
+                        keyword,
+                        recommendationVersion,
+                        cutoff
+                );
+        if (totals == null) {
+            return 0d;
+        }
+        return metricMapper.calculateGlobalCtr(
+                nullSafeCount(totals.getClickCount()),
+                nullSafeCount(totals.getExposureCount())
+        );
     }
 
     private void collectPeriodMetrics(
