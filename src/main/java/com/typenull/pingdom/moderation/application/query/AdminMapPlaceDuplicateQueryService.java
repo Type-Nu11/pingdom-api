@@ -52,8 +52,9 @@ public class AdminMapPlaceDuplicateQueryService {
         Map<Long, MapPlace> candidatePlacesById = new LinkedHashMap<>();
         candidatePlacesById.put(mapPlace.getId(), mapPlace);
 
-        if (mapPlace.getKakaoPlaceId() != null && !mapPlace.getKakaoPlaceId().trim().isEmpty()) {
-            mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, mapPlace.getKakaoPlaceId())
+        String kakaoPlaceId = trimToNull(mapPlace.getKakaoPlaceId());
+        if (kakaoPlaceId != null) {
+            mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, kakaoPlaceId)
                     .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
         }
 
@@ -124,5 +125,13 @@ public class AdminMapPlaceDuplicateQueryService {
 
     private boolean hasCoordinates(MapPlace mapPlace) {
         return mapPlace.getLatitude() != null && mapPlace.getLongitude() != null;
+    }
+
+    private String trimToNull(String value) {
+        if (value == null) {
+            return null;
+        }
+        String trimmed = value.trim();
+        return trimmed.isEmpty() ? null : trimmed;
     }
 }

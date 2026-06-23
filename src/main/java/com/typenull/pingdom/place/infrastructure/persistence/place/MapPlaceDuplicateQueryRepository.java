@@ -36,9 +36,10 @@ public interface MapPlaceDuplicateQueryRepository extends Repository<MapPlace, L
                 WHERE other.id <> m.id
                   AND (
                       (m.kakaoPlaceId IS NOT NULL
-                       AND TRIM(m.kakaoPlaceId) <> ''
+                       AND m.kakaoPlaceId <> ''
                        AND other.kakaoPlaceId IS NOT NULL
-                       AND TRIM(other.kakaoPlaceId) = TRIM(m.kakaoPlaceId))
+                       AND other.kakaoPlaceId <> ''
+                       AND other.kakaoPlaceId = m.kakaoPlaceId)
                       OR (other.name = m.name AND other.address = m.address)
                   )
             )
@@ -50,8 +51,8 @@ public interface MapPlaceDuplicateQueryRepository extends Repository<MapPlace, L
             FROM MapPlace m
             WHERE m.id <> :placeId
               AND m.kakaoPlaceId IS NOT NULL
-              AND TRIM(m.kakaoPlaceId) <> ''
-              AND TRIM(m.kakaoPlaceId) = TRIM(:kakaoPlaceId)
+              AND m.kakaoPlaceId <> ''
+              AND m.kakaoPlaceId = :kakaoPlaceId
             """)
     List<MapPlace> findDuplicateCandidatesByKakaoPlaceId(
             @Param("placeId") Long placeId,
