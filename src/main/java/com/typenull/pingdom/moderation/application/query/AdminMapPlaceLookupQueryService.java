@@ -69,8 +69,13 @@ public class AdminMapPlaceLookupQueryService {
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
         Sort sort = toSort(safeSortParam);
         Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
+        String safeKeyword = keyword == null ? "" : keyword.trim();
 
-        Page<MapImage> postPage = mapImageRepository.findByMapPlace_IdAndTitleContaining(placeId, keyword, latestPosts);
+        Page<MapImage> postPage = mapImageRepository.findByMapPlace_IdAndTitleContaining(
+                placeId,
+                safeKeyword,
+                latestPosts
+        );
 
         List<AdminMapPlaceImageItem> posts = postPage.getContent().stream()
                 .map(this::toImageItem)
