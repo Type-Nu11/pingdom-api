@@ -22,6 +22,7 @@ import com.typenull.pingdom.shared.security.properties.JwtProperties;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
+import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Date;
@@ -54,6 +55,9 @@ class ProtectedApiJwtAuthorizationMatrixTest {
 
     @Autowired
     private PasswordEncoder passwordEncoder;
+
+    @Autowired
+    private Clock clock;
 
     @Autowired
     private UserRepository userRepository;
