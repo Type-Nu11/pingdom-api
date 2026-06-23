@@ -10,7 +10,9 @@ import com.typenull.pingdom.post.application.service.PostCommandService;
 import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitService;
 import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.web.ClientIpResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,6 +21,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
@@ -41,6 +44,7 @@ public class PostController {
 
     private final PostCommandService postCommandService;
     private final PostQueryService postQueryService;
+    private final AbuseRateLimitService abuseRateLimitService;
 
     @GetMapping("/posts")
     @Operation(
@@ -323,11 +327,13 @@ public class PostController {
     })
     public ResponseEntity<PostResponse> uploadPost(
             @Valid @ModelAttribute PostUploadRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            HttpServletRequest servletRequest
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
+        abuseRateLimitService.checkImageUpload(user.userId(), ClientIpResolver.resolve(servletRequest));
         return ResponseEntity.ok(postCommandService.uploadPost(request, user.userId()));
     }
 

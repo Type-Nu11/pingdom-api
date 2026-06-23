@@ -10,7 +10,11 @@ import com.typenull.pingdom.place.application.service.recommendation.interaction
 import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitService;
 import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.web.ClientIpResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -19,6 +23,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
 import jakarta.validation.constraints.DecimalMin;
@@ -47,6 +52,7 @@ public class PlaceController {
     private final PlaceQueryService placeQueryService;
     private final PlaceRecommendationQueryService placeRecommendationQueryService;
     private final PlaceRecommendationClickService placeRecommendationClickService;
+    private final AbuseRateLimitService abuseRateLimitService;
 
     @GetMapping
     @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
@@ -285,8 +291,13 @@ public class PlaceController {
     })
     public ResponseEntity<PlaceRecommendationClickResponse> recordRecommendationClick(
             @Valid @RequestBody PlaceRecommendationClickRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            HttpServletRequest servletRequest
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        abuseRateLimitService.checkRecommendationClick(user.userId(), ClientIpResolver.resolve(servletRequest));
         placeRecommendationClickService.recordClick(
                 user.userId(),
                 request.placeId(),

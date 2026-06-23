@@ -8,7 +8,9 @@ import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitService;
 import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.web.ClientIpResolver;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +18,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -31,6 +34,7 @@ public class EngagementController {
 
     private final PostReportService postReportService;
     private final MapImageLikeService mapImageLikeService;
+    private final AbuseRateLimitService abuseRateLimitService;
 
     @PostMapping("/post/{id}/report")
     @Operation(
@@ -109,11 +113,13 @@ public class EngagementController {
     public ResponseEntity<String> report(
             @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Valid @RequestBody PostReportRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            HttpServletRequest servletRequest
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
+        abuseRateLimitService.checkPostReport(user.userId(), ClientIpResolver.resolve(servletRequest));
         postReportService.report(imageId, user.userId(), user.username(), request.reason());
         return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
@@ -121,8 +127,13 @@ public class EngagementController {
     @PostMapping("/like")
     public ResponseEntity<MapImageLikeResponse> like(
             @Valid @RequestBody MapImageLikeRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            HttpServletRequest servletRequest
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        abuseRateLimitService.checkMapImageLike(user.userId(), ClientIpResolver.resolve(servletRequest));
         MapImageLikeResult result = mapImageLikeService.like(request.mapImageId(), user.userId());
         return ResponseEntity.ok(toResponse(result));
     }
@@ -130,8 +141,13 @@ public class EngagementController {
     @DeleteMapping("/like/{postId}")
     public ResponseEntity<MapImageLikeResponse> likeClear(
             @PathVariable("postId") Long postId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @AuthenticationPrincipal JwtAuthenticatedUser user,
+            HttpServletRequest servletRequest
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        abuseRateLimitService.checkMapImageLike(user.userId(), ClientIpResolver.resolve(servletRequest));
         MapImageLikeResult result = mapImageLikeService.notLike(postId, user.userId());
         return ResponseEntity.ok(toResponse(result));
     }
@@ -142,6 +158,9 @@ public class EngagementController {
             @PathVariable("notificationsId") Long notificationsId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
         mapImageLikeService.likeReturn(postId, notificationsId, user.userId());
         return ResponseEntity.ok().body("게시물 반환");
     }
