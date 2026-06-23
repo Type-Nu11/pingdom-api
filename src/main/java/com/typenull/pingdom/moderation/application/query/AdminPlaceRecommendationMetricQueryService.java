@@ -53,10 +53,11 @@ public class AdminPlaceRecommendationMetricQueryService {
         int safeLimit = Math.max(1, Math.min(limit, 100));
         RecommendationMetricSortBy safeSortBy = sortBy == null ? RecommendationMetricSortBy.SMOOTHED_CTR : sortBy;
         String safeRecommendationVersion = recommendationVersion == null ? "" : recommendationVersion.trim();
+        String safeKeyword = keyword == null ? "" : keyword.trim();
         Integer safeDays = days == null || days <= 0 ? null : days;
 
         if (safeDays != null) {
-            List<MapPlace> places = adminMapPlaceQueryRepository.findByNameContaining(keyword, Pageable.unpaged()).getContent();
+            List<MapPlace> places = adminMapPlaceQueryRepository.findByNameContaining(safeKeyword, Pageable.unpaged()).getContent();
             List<Long> placeIds = places.stream()
                     .map(MapPlace::getId)
                     .toList();
@@ -104,7 +105,7 @@ public class AdminPlaceRecommendationMetricQueryService {
                     nullSafeCount(placeRecommendationSnapshotRepository.sumExposureCount())
             );
             Page<MapPlace> placePage = findSnapshotMetricPage(
-                    keyword,
+                    safeKeyword,
                     safeSortBy,
                     globalCtr,
                     PageRequest.of(safePage - 1, safeLimit)
@@ -137,7 +138,7 @@ public class AdminPlaceRecommendationMetricQueryService {
                 )
         );
         Page<MapPlace> placePage = findVersionSnapshotMetricPage(
-                keyword,
+                safeKeyword,
                 safeRecommendationVersion,
                 safeSortBy,
                 globalCtr,
