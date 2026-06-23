@@ -1,6 +1,8 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.interaction;
 
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationVersionSnapshotService;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;

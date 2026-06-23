@@ -5,7 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMerg
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
@@ -23,14 +23,16 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class AdminMapPlaceService {
+
+    private static final Logger log = LoggerFactory.getLogger(AdminMapPlaceService.class);
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;

@@ -7,7 +7,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;

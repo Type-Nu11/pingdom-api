@@ -1,7 +1,12 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.query;
 
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationItem;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
+import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationExposureService;
+import com.typenull.pingdom.place.application.service.recommendation.logging.PlaceRecommendationFeatureLogService;
+import com.typenull.pingdom.place.application.service.recommendation.policy.PlaceRecommendationPolicyService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationGraphAffinityService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -24,12 +29,12 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional(readOnly = true)
 public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQueryService {
 
+    private static final int CANDIDATE_POOL_LIMIT = 300;
     private static final int MIN_LIMIT = 1;
     private static final int MAX_LIMIT = 20;
     private static final double MIN_RADIUS_KM = 1.0d;
     private static final double MAX_RADIUS_KM = 20.0d;
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
-    private static final int CANDIDATE_POOL_LIMIT = 300;
     private static final int MIN_SELECTION_POOL_SIZE = 40;
 
     private final MapPlaceRepository mapPlaceRepository;

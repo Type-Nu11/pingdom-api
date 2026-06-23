@@ -1,5 +1,7 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.query;
 
+import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationClickService;
+import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationExposureService;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
