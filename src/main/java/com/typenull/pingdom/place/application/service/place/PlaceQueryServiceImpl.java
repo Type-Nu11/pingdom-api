@@ -6,6 +6,7 @@ import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
@@ -199,7 +200,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     }
 
     private String normalizeCategory(String value) {
-        String normalized = trimToNull(value);
+        String normalized = PlaceCategoryPolicy.normalize(value);
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
     }
 
