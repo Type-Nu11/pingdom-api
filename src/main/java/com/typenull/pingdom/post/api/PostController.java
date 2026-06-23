@@ -6,11 +6,11 @@ import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
-import com.typenull.pingdom.post.application.service.PostCommandService;
 import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
-import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
+import com.typenull.pingdom.post.infrastructure.storage.S3Service;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -39,7 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "App", description = "앱 전용 API")
 public class PostController {
 
-    private final PostCommandService postCommandService;
+    private final S3Service s3Service;
     private final PostQueryService postQueryService;
 
     @GetMapping("/posts")
@@ -325,10 +325,8 @@ public class PostController {
             @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-        return ResponseEntity.ok(postCommandService.uploadPost(request, user.userId()));
+        Long userId = (user != null) ? user.userId() : null;
+        return ResponseEntity.ok(s3Service.uploadImage(request, userId));
     }
 
     @PostMapping("/post/{id}/update")
@@ -338,7 +336,7 @@ public class PostController {
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ){
         Long userId = user.userId();
-        return ResponseEntity.ok(postCommandService.updatePost(request, userId, imageId));
+        return ResponseEntity.ok(s3Service.updateImage(request, userId, imageId));
     }
 
     @DeleteMapping("/post/{id}/delete")
@@ -404,7 +402,7 @@ public class PostController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         Long userId = user.userId();
-        postCommandService.deletePost(imageId, userId);
+        s3Service.deleteImage(imageId, userId);
         return ResponseEntity.ok("게시글을 삭제했습니다.");
     }
 }
