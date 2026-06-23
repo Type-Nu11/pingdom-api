@@ -10,7 +10,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
-import com.typenull.pingdom.shared.security.UserAccessStatusService;
+import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import jakarta.persistence.EntityManager;
 import java.sql.Connection;
 import java.sql.SQLException;
