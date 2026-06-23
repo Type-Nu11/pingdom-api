@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.similarity;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.domain.place.MapPlace;
@@ -130,7 +130,7 @@ public class PlaceRecommendationSimilarityService {
         return cachedTotalBookmarkUserCount();
     }
 
-    long cachedTotalBookmarkUserCount() {
+    public long cachedTotalBookmarkUserCount() {
         Instant now = SIMILARITY_CLOCK.instant();
         Instant loadedAt = cachedBookmarkUserCountLoadedAt;
         if (loadedAt != null && !loadedAt.plus(BOOKMARK_USER_COUNT_CACHE_TTL).isBefore(now)) {

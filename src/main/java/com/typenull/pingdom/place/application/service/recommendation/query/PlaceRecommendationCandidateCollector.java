@@ -1,8 +1,9 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.query;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -36,6 +37,7 @@ class PlaceRecommendationCandidateCollector {
     private static final Clock RECOMMENDATION_CLOCK = Clock.systemUTC();
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final MapPlaceRecommendationCandidateRepository mapPlaceRecommendationCandidateRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     List<CandidatePlace> loadCandidatePool(double latitude, double longitude, UserSignalContext signalContext) {
@@ -194,7 +196,7 @@ class PlaceRecommendationCandidateCollector {
         double maxLongitude = longitude + longitudeDelta;
 
         if (Double.isInfinite(longitudeDelta)) {
-            return mapPlaceRepository.findRecommendationCandidatesInLatitudeBand(
+            return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInLatitudeBand(
                     latitude,
                     longitude,
                     minLatitude,
@@ -204,7 +206,7 @@ class PlaceRecommendationCandidateCollector {
         }
 
         if (minLongitude < -180d) {
-            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+            return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
                     latitude,
                     longitude,
                     minLatitude,
@@ -216,7 +218,7 @@ class PlaceRecommendationCandidateCollector {
         }
 
         if (maxLongitude > 180d) {
-            return mapPlaceRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
+            return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInWrappedLongitudeBoundingBox(
                     latitude,
                     longitude,
                     minLatitude,
@@ -227,7 +229,7 @@ class PlaceRecommendationCandidateCollector {
             );
         }
 
-        return mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+        return mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 latitude,
                 longitude,
                 minLatitude,

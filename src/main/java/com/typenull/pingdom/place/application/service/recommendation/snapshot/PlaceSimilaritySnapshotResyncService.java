@@ -1,5 +1,6 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.snapshot;
 
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceCoordinateQueryRepository;

@@ -1,5 +1,6 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.query;
 
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
 import java.time.Clock;
@@ -140,6 +141,7 @@ class PlaceRecommendationScoringService {
                             PlaceRecommendationCandidateSource.FALLBACK
                     );
                 })
+                .map(ScoredCandidate.class::cast)
                 .toList();
     }
 

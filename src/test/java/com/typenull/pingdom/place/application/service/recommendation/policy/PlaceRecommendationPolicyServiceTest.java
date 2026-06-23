@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.policy;
 
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.CandidateMix;

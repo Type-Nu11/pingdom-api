@@ -19,7 +19,8 @@ import java.util.List;
 import java.util.Locale;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
@@ -27,10 +28,10 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class UserSanctionCommandService {
 
     private static final long SANCTION_EXPIRATION_LOCK_KEY = 27420260623L;
+    private static final Logger log = LoggerFactory.getLogger(UserSanctionCommandService.class);
 
     private final UserRepository userRepository;
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;

@@ -1,14 +1,13 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.query;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationExposureService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationFeatureLogService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationGraphAffinityService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryServiceImpl;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationClickService;
+import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationExposureService;
+import com.typenull.pingdom.place.application.service.recommendation.logging.PlaceRecommendationFeatureLogService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationGraphAffinityService;
+import com.typenull.pingdom.place.application.service.recommendation.policy.PlaceRecommendationPolicyService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
@@ -75,6 +74,15 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
 
+    @Mock
+    private PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
+
+    @Mock
+    private PlaceRecommendationScoringService placeRecommendationScoringService;
+
+    @Mock
+    private PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
@@ -88,16 +96,12 @@ class PlaceRecommendationQueryServiceImplTest {
         );
         placeRecommendationCandidateCollector = new PlaceRecommendationCandidateCollector(
                 mapPlaceRepository,
+                mapPlaceRecommendationCandidateRepository,
                 placeRecommendationSnapshotRepository
         );
 
         placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
                 mapPlaceRepository,
-                mapPlaceRecommendationCandidateRepository,
-                mapBookmarkRepository,
-                mapImageRepository,
-                placeRecommendationSnapshotRepository,
-                placeRecommendationClickService,
                 placeRecommendationExposureService,
                 placeGrowthService,
                 placeRecommendationGraphAffinityService,
@@ -105,7 +109,10 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationPolicyService,
                 placeRecommendationFeatureLogService,
                 placeRecommendationUserSignalLoader,
-                placeRecommendationCandidateCollector
+                placeRecommendationCandidateCollector,
+                placeRecommendationAggregateLoader,
+                placeRecommendationScoringService,
+                placeRecommendationPortfolioService
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());

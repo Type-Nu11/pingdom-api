@@ -9,7 +9,7 @@ import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
@@ -25,7 +25,6 @@ import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import lombok.RequiredArgsConstructor;
-import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -34,11 +33,14 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import java.io.IOException;
 import java.util.Objects;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 @RequiredArgsConstructor
-@Slf4j
 public class S3Service {
+
+    private static final Logger log = LoggerFactory.getLogger(S3Service.class);
 
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;

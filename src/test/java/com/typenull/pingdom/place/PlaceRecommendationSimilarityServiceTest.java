@@ -1,7 +1,7 @@
 package com.typenull.pingdom.place;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;

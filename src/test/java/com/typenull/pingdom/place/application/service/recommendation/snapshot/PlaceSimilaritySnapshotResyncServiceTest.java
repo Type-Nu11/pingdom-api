@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.snapshot;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
@@ -12,8 +12,8 @@ import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceSimilaritySnapshotResyncService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceSimilaritySnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceCoordinateQueryRepository;

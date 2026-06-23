@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.application.service.recommendation;
+package com.typenull.pingdom.place.application.service.recommendation.similarity;
 
 import java.util.ArrayList;
 import java.util.Collection;
