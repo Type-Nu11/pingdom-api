@@ -190,7 +190,7 @@ class ProtectedApiJwtAuthorizationMatrixTest {
     void expiredTemporaryBannedUserCanAccessProtectedApiWithExistingToken() throws Exception {
         User user = createUser("expiredTemporaryBanMatrixUser");
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         user.ban("만료된 임시 밴 테스트", now.minusDays(2), now.minusDays(1));
         userRepository.saveAndFlush(user);
