@@ -73,6 +73,7 @@ class UserAccessStatusServiceTest {
 
     private User activeUser() {
         return User.builder()
+                .id(USER_ID)
                 .username("accessStatusUser")
                 .email("access-status@example.com")
                 .password("encoded-password")
