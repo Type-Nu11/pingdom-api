@@ -5,6 +5,8 @@ import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRe
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
@@ -17,6 +19,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -24,12 +27,16 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class AdminPlaceRecommendationMetricQueryService {
+
+    private static final int PERIOD_METRIC_PLACE_BATCH_SIZE = 500;
+    private static final int MAX_PERIOD_METRIC_PLACE_COUNT = 10_000;
 
     private final AdminMapPlaceQueryRepository adminMapPlaceQueryRepository;
     private final AdminPlaceRecommendationMetricRepository adminPlaceRecommendationMetricRepository;
@@ -57,12 +64,8 @@ public class AdminPlaceRecommendationMetricQueryService {
         Integer safeDays = days == null || days <= 0 ? null : days;
 
         if (safeDays != null) {
-            List<MapPlace> places = adminMapPlaceQueryRepository.findByNameContaining(safeKeyword, Pageable.unpaged()).getContent();
-            List<Long> placeIds = places.stream()
-                    .map(MapPlace::getId)
-                    .toList();
-
-            if (placeIds.isEmpty()) {
+            List<MapPlace> places = findMetricCandidatePlaces(safeKeyword);
+            if (places.isEmpty()) {
                 return AdminPlaceRecommendationMetricsResponse.of(
                         List.of(),
                         safeSortBy,
@@ -381,57 +384,22 @@ public class AdminPlaceRecommendationMetricQueryService {
         Map<Long, Long> clickCounts = new HashMap<>();
         Map<Long, ConversionCounts> conversionCounts = new HashMap<>();
 
-        if (recommendationVersion.isBlank()) {
-            for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
-                    placeRecommendationExposureRepository.countExposuresByPlaceIdsAndCreatedAtGreaterThanEqual(
-                            placeIds,
-                            cutoff
-                    )) {
-                exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
-            }
-            for (PlaceRecommendationClickRepository.PlaceClickCountProjection projection :
-                    placeRecommendationClickRepository.countClicksByPlaceIdsAndCreatedAtGreaterThanEqual(
-                            placeIds,
-                            cutoff
-                    )) {
-                clickCounts.put(projection.getPlaceId(), projection.getClickCount());
-            }
-            for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
-                    placeRecommendationConversionRepository.countConversionsByPlaceIdsAndCreatedAtGreaterThanEqual(
-                            placeIds,
-                            cutoff
-                    )) {
-                conversionCounts.computeIfAbsent(projection.getPlaceId(), ignored -> new ConversionCounts())
-                        .accumulate(projection.getConversionType(), projection.getConversionCount());
-            }
-        } else {
-            for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
-                    placeRecommendationExposureRepository
-                            .countExposuresByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
-                                    placeIds,
-                                    recommendationVersion,
-                                    cutoff
-                            )) {
-                exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
-            }
-            for (PlaceRecommendationClickRepository.PlaceClickCountProjection projection :
-                    placeRecommendationClickRepository
-                            .countClicksByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
-                                    placeIds,
-                                    recommendationVersion,
-                                    cutoff
-                            )) {
-                clickCounts.put(projection.getPlaceId(), projection.getClickCount());
-            }
-            for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
-                    placeRecommendationConversionRepository
-                            .countConversionsByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
-                                    placeIds,
-                                    recommendationVersion,
-                                    cutoff
-                            )) {
-                conversionCounts.computeIfAbsent(projection.getPlaceId(), ignored -> new ConversionCounts())
-                        .accumulate(projection.getConversionType(), projection.getConversionCount());
+        for (int fromIndex = 0; fromIndex < placeIds.size(); fromIndex += PERIOD_METRIC_PLACE_BATCH_SIZE) {
+            List<Long> batchPlaceIds = placeIds.subList(
+                    fromIndex,
+                    Math.min(fromIndex + PERIOD_METRIC_PLACE_BATCH_SIZE, placeIds.size())
+            );
+            if (recommendationVersion.isBlank()) {
+                collectPeriodMetrics(batchPlaceIds, cutoff, exposureCounts, clickCounts, conversionCounts);
+            } else {
+                collectVersionPeriodMetrics(
+                        batchPlaceIds,
+                        recommendationVersion,
+                        cutoff,
+                        exposureCounts,
+                        clickCounts,
+                        conversionCounts
+                );
             }
         }
 
@@ -454,6 +422,75 @@ public class AdminPlaceRecommendationMetricQueryService {
                 })
                 .sorted(metricMapper.comparator(sortBy))
                 .toList();
+    }
+
+    private void collectPeriodMetrics(
+            List<Long> placeIds,
+            LocalDateTime cutoff,
+            Map<Long, Long> exposureCounts,
+            Map<Long, Long> clickCounts,
+            Map<Long, ConversionCounts> conversionCounts
+    ) {
+        for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
+                placeRecommendationExposureRepository.countExposuresByPlaceIdsAndCreatedAtGreaterThanEqual(
+                        placeIds,
+                        cutoff
+                )) {
+            exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
+        }
+        for (PlaceRecommendationClickRepository.PlaceClickCountProjection projection :
+                placeRecommendationClickRepository.countClicksByPlaceIdsAndCreatedAtGreaterThanEqual(
+                        placeIds,
+                        cutoff
+                )) {
+            clickCounts.put(projection.getPlaceId(), projection.getClickCount());
+        }
+        for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
+                placeRecommendationConversionRepository.countConversionsByPlaceIdsAndCreatedAtGreaterThanEqual(
+                        placeIds,
+                        cutoff
+                )) {
+            conversionCounts.computeIfAbsent(projection.getPlaceId(), ignored -> new ConversionCounts())
+                    .accumulate(projection.getConversionType(), projection.getConversionCount());
+        }
+    }
+
+    private void collectVersionPeriodMetrics(
+            List<Long> placeIds,
+            String recommendationVersion,
+            LocalDateTime cutoff,
+            Map<Long, Long> exposureCounts,
+            Map<Long, Long> clickCounts,
+            Map<Long, ConversionCounts> conversionCounts
+    ) {
+        for (PlaceRecommendationExposureRepository.PlaceExposureCountProjection projection :
+                placeRecommendationExposureRepository
+                        .countExposuresByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+                                placeIds,
+                                recommendationVersion,
+                                cutoff
+                        )) {
+            exposureCounts.put(projection.getPlaceId(), projection.getExposureCount());
+        }
+        for (PlaceRecommendationClickRepository.PlaceClickCountProjection projection :
+                placeRecommendationClickRepository
+                        .countClicksByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+                                placeIds,
+                                recommendationVersion,
+                                cutoff
+                        )) {
+            clickCounts.put(projection.getPlaceId(), projection.getClickCount());
+        }
+        for (PlaceRecommendationConversionRepository.PlaceConversionCountProjection projection :
+                placeRecommendationConversionRepository
+                        .countConversionsByPlaceIdsAndRecommendationVersionAndCreatedAtGreaterThanEqual(
+                                placeIds,
+                                recommendationVersion,
+                                cutoff
+                        )) {
+            conversionCounts.computeIfAbsent(projection.getPlaceId(), ignored -> new ConversionCounts())
+                    .accumulate(projection.getConversionType(), projection.getConversionCount());
+        }
     }
 
     private List<AdminPlaceRecommendationMetricItem> buildVersionFilteredMetrics(
@@ -488,6 +525,34 @@ public class AdminPlaceRecommendationMetricQueryService {
                 .map(place -> metricMapper.toMetricItem(place, snapshotsByPlaceId.get(place.getId()), globalCtr))
                 .sorted(metricMapper.comparator(sortBy))
                 .toList();
+    }
+
+    private List<MapPlace> findMetricCandidatePlaces(String keyword) {
+        Page<MapPlace> firstPage = adminMapPlaceQueryRepository.findByNameContaining(
+                keyword,
+                metricCandidatePageable(0)
+        );
+        if (firstPage.getTotalElements() > MAX_PERIOD_METRIC_PLACE_COUNT) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_METRIC_QUERY_TOO_LARGE);
+        }
+
+        List<MapPlace> places = new ArrayList<>(Math.toIntExact(firstPage.getTotalElements()));
+        places.addAll(firstPage.getContent());
+        for (int page = 1; page < firstPage.getTotalPages(); page++) {
+            places.addAll(adminMapPlaceQueryRepository.findByNameContaining(
+                    keyword,
+                    metricCandidatePageable(page)
+            ).getContent());
+        }
+        return places;
+    }
+
+    private Pageable metricCandidatePageable(int page) {
+        return PageRequest.of(
+                page,
+                PERIOD_METRIC_PLACE_BATCH_SIZE,
+                Sort.by(Sort.Order.asc("id"))
+        );
     }
 
     private long nullSafeCount(Long value) {
