@@ -1,11 +1,12 @@
-package com.typenull.pingdom.shared.support;
+package com.typenull.pingdom.shared.storage.s3.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventHandler;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
+import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage;
+import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage.S3StorageError;
+import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage.S3StorageException;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;

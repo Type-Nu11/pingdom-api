@@ -1,12 +1,13 @@
-package com.typenull.pingdom.shared.support;
+package com.typenull.pingdom.shared.storage.s3.outbox;
 
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
-import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
+import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage;
+import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage.S3StorageError;
+import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage.S3StorageException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
