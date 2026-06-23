@@ -168,7 +168,7 @@ class ProtectedApiJwtAuthorizationMatrixTest {
         User user = createUser("permanentBanMatrixUser");
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
 
-        user.ban("영구 밴 테스트", LocalDateTime.now());
+        user.ban("영구 밴 테스트", LocalDateTime.now(clock));
         userRepository.saveAndFlush(user);
 
         assertInvalidToken("/users/me", accessToken);
