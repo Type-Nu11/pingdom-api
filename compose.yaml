@@ -16,13 +16,22 @@ services:
     volumes:
       - './docker/postgres/initdb:/docker-entrypoint-initdb.d'
 
+  redis:
+    image: 'redis:7.2-alpine'
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+
   app:
     image: yongin1212/pingdom:latest
     ports:
       - '8080:8080'
     env_file:
       - .env
+    environment:
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
     depends_on:
       - postgres
+      - redis
     volumes:
       - ./src/main/resources/fcm-key.json:/app/fcm-key.json
