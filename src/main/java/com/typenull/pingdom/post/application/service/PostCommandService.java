@@ -288,10 +288,7 @@ public class PostCommandService {
         if (error == PostImageStorageError.CONNECTION_ERROR) {
             return new MapException(MapErrorCode.S3_CONNECTION_ERROR);
         }
-        if (error == PostImageStorageError.IO_ERROR) {
-            return new MapException(MapErrorCode.UPLOAD_ERROR);
-        }
-        return new MapException(MapErrorCode.DELETE_ERROR);
+        return new MapException(MapErrorCode.UPLOAD_ERROR);
     }
 
     private void publishS3Delete(String s3Key, Long mapImageId, String reason) {

@@ -18,9 +18,13 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.application.port.PostImageStorage;
+import com.typenull.pingdom.post.application.port.PostImageStorage.PostImageStorageError;
+import com.typenull.pingdom.post.application.port.PostImageStorage.PostImageStorageException;
 import com.typenull.pingdom.post.application.port.PostImageStorage.PostImageUploadResult;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.storage.s3.outbox.S3ObjectDeleteOutboxPublisher;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -141,6 +145,28 @@ class PostCommandServiceTest {
         assertThrows(RuntimeException.class, () -> postCommandService.updatePost(request, 1L, 10L));
 
         verify(postImageStorage).delete("map/new-target.jpg");
+        verify(s3ObjectDeleteOutboxPublisher, never()).publish(any(), any(), any(), any());
+    }
+
+    @Test
+    void updatePostMapsStorageFailureToUploadError() {
+        MapImage mapImage = mapImage();
+        when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
+        when(postImageStorage.upload(any()))
+                .thenThrow(new PostImageStorageException(PostImageStorageError.STORAGE_ERROR, "storage failure", null));
+        PostUpdateRequest request = new PostUpdateRequest(
+                "수정 제목",
+                "수정 설명",
+                new MockMultipartFile("file", "new.jpg", "image/jpeg", "new-image".getBytes())
+        );
+
+        MapException exception = assertThrows(
+                MapException.class,
+                () -> postCommandService.updatePost(request, 1L, 10L)
+        );
+
+        assertEquals(MapErrorCode.UPLOAD_ERROR, exception.getErrorCode());
+        verify(mapImageRepository, never()).save(any());
         verify(s3ObjectDeleteOutboxPublisher, never()).publish(any(), any(), any(), any());
     }
 
