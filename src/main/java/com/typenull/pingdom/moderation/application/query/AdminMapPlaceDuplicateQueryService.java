@@ -57,18 +57,20 @@ public class AdminMapPlaceDuplicateQueryService {
                     .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
         }
 
-        double latitudeDelta = Math.toDegrees(DUPLICATE_DISTANCE_METERS / EARTH_RADIUS_METERS);
-        double longitudeDelta = calculateLongitudeDelta(mapPlace.getLatitude(), DUPLICATE_DISTANCE_METERS);
-        mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
-                        placeId,
-                        mapPlace.getName(),
-                        mapPlace.getAddress(),
-                        mapPlace.getLatitude() - latitudeDelta,
-                        mapPlace.getLatitude() + latitudeDelta,
-                        mapPlace.getLongitude() - longitudeDelta,
-                        mapPlace.getLongitude() + longitudeDelta
-                ).stream()
-                .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
+        if (hasCoordinates(mapPlace)) {
+            double latitudeDelta = Math.toDegrees(DUPLICATE_DISTANCE_METERS / EARTH_RADIUS_METERS);
+            double longitudeDelta = calculateLongitudeDelta(mapPlace.getLatitude(), DUPLICATE_DISTANCE_METERS);
+            mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
+                            placeId,
+                            mapPlace.getName(),
+                            mapPlace.getAddress(),
+                            mapPlace.getLatitude() - latitudeDelta,
+                            mapPlace.getLatitude() + latitudeDelta,
+                            mapPlace.getLongitude() - longitudeDelta,
+                            mapPlace.getLongitude() + longitudeDelta
+                    ).stream()
+                    .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
+        }
 
         AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
                 adminPlaceDuplicateResolver.analyze(candidatePlacesById.values());
@@ -118,5 +120,9 @@ public class AdminMapPlaceDuplicateQueryService {
             return 180d;
         }
         return Math.toDegrees(distanceMeters / (EARTH_RADIUS_METERS * cosLatitude));
+    }
+
+    private boolean hasCoordinates(MapPlace mapPlace) {
+        return mapPlace.getLatitude() != null && mapPlace.getLongitude() != null;
     }
 }
