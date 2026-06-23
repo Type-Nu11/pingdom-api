@@ -31,17 +31,27 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
-import com.typenull.pingdom.shared.ratelimit.InMemoryRateLimitStore;
+import com.typenull.pingdom.shared.ratelimit.RateLimitCooldownRule;
+import com.typenull.pingdom.shared.ratelimit.RateLimitException;
+import com.typenull.pingdom.shared.ratelimit.RateLimitStore;
+import com.typenull.pingdom.shared.ratelimit.RateLimitWindowRule;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage;
+import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Primary;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.mock.web.MockMultipartFile;
@@ -66,6 +76,16 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class AbuseRateLimitControllerTest {
 
+    @TestConfiguration
+    static class TestRateLimitConfig {
+
+        @Bean
+        @Primary
+        TestRateLimitStore testRateLimitStore() {
+            return new TestRateLimitStore(Clock.systemUTC());
+        }
+    }
+
     @MockBean
     private S3ObjectStorage s3ObjectStorage;
 
@@ -82,7 +102,7 @@ class AbuseRateLimitControllerTest {
     private JwtTokenProvider jwtTokenProvider;
 
     @Autowired
-    private InMemoryRateLimitStore rateLimitStore;
+    private TestRateLimitStore rateLimitStore;
 
     @Autowired
     private UserRepository userRepository;
@@ -375,5 +395,75 @@ class AbuseRateLimitControllerTest {
             request.setRemoteAddr(remoteAddress);
             return request;
         };
+    }
+
+    static class TestRateLimitStore implements RateLimitStore {
+
+        private final Clock clock;
+        private final Map<String, WindowState> windows = new ConcurrentHashMap<>();
+        private final Map<String, CooldownState> cooldowns = new ConcurrentHashMap<>();
+
+        private TestRateLimitStore(Clock clock) {
+            this.clock = clock;
+        }
+
+        @Override
+        public void acquire(
+                String message,
+                Collection<RateLimitWindowRule> windowRules,
+                Collection<RateLimitCooldownRule> cooldownRules
+        ) {
+            Instant now = Instant.now(clock);
+            for (RateLimitCooldownRule rule : cooldownRules) {
+                CooldownState state = cooldowns.get(rule.key());
+                if (state != null && now.isBefore(state.nextAllowedAt())) {
+                    throw new RateLimitException(message);
+                }
+            }
+
+            for (RateLimitWindowRule rule : windowRules) {
+                WindowState state = activeWindowState(rule, now);
+                if (state.count >= rule.limit()) {
+                    throw new RateLimitException(message);
+                }
+            }
+
+            for (RateLimitWindowRule rule : windowRules) {
+                WindowState state = activeWindowState(rule, now);
+                state.count++;
+                windows.put(rule.key(), state);
+            }
+
+            for (RateLimitCooldownRule rule : cooldownRules) {
+                cooldowns.put(rule.key(), new CooldownState(now.plus(rule.interval())));
+            }
+        }
+
+        private void clear() {
+            windows.clear();
+            cooldowns.clear();
+        }
+
+        private WindowState activeWindowState(RateLimitWindowRule rule, Instant now) {
+            WindowState state = windows.get(rule.key());
+            if (state == null || !now.isBefore(state.expiresAt)) {
+                return new WindowState(0, now.plus(rule.window()));
+            }
+            return state;
+        }
+
+        private static final class WindowState {
+
+            private int count;
+            private final Instant expiresAt;
+
+            private WindowState(int count, Instant expiresAt) {
+                this.count = count;
+                this.expiresAt = expiresAt;
+            }
+        }
+
+        private record CooldownState(Instant nextAllowedAt) {
+        }
     }
 }
