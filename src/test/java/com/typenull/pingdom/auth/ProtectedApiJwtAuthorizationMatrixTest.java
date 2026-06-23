@@ -156,7 +156,7 @@ class ProtectedApiJwtAuthorizationMatrixTest {
                 "withdrawn_user_" + user.getId(),
                 "withdrawn_user_%d@withdrawn.local".formatted(user.getId()),
                 "encoded-withdrawn-password",
-                LocalDateTime.now()
+                LocalDateTime.now(clock)
         );
         userRepository.saveAndFlush(user);
 
