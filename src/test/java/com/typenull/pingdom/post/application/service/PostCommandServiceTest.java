@@ -1,9 +1,9 @@
-package com.typenull.pingdom.post.infrastructure.storage;
+package com.typenull.pingdom.post.application.service;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
-import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -17,10 +17,15 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
+import com.typenull.pingdom.post.application.port.PostImageStorage;
+import com.typenull.pingdom.post.application.port.PostImageStorage.PostImageStorageError;
+import com.typenull.pingdom.post.application.port.PostImageStorage.PostImageStorageException;
+import com.typenull.pingdom.post.application.port.PostImageStorage.PostImageUploadResult;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.storage.s3.outbox.S3ObjectDeleteOutboxPublisher;
-import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -35,10 +40,10 @@ import org.springframework.transaction.support.AbstractPlatformTransactionManage
 import org.springframework.transaction.support.DefaultTransactionStatus;
 
 @ExtendWith(MockitoExtension.class)
-class S3ServiceTest {
+class PostCommandServiceTest {
 
     @Mock
-    private S3ObjectStorage s3ObjectStorage;
+    private PostImageStorage postImageStorage;
 
     @Mock
     private MapImageRepository mapImageRepository;
@@ -64,12 +69,12 @@ class S3ServiceTest {
     @Mock
     private S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
 
-    private S3Service s3Service;
+    private PostCommandService postCommandService;
 
     @BeforeEach
     void setUp() {
-        s3Service = new S3Service(
-                s3ObjectStorage,
+        postCommandService = new PostCommandService(
+                postImageStorage,
                 mapImageRepository,
                 mapPlaceRepository,
                 postReportRepository,
@@ -83,26 +88,26 @@ class S3ServiceTest {
     }
 
     @Test
-    void deleteImageDeletesDatabaseRecordBeforePublishingS3DeleteEvent() {
+    void deletePostDeletesDatabaseRecordBeforePublishingS3DeleteEvent() {
         MapImage mapImage = mapImage();
         when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
 
-        PostResponse response = s3Service.deleteImage(10L, 1L);
+        PostResponse response = postCommandService.deletePost(10L, 1L);
 
         assertEquals(10L, response.postId());
         InOrder inOrder = inOrder(mapImageRepository, s3ObjectDeleteOutboxPublisher);
         inOrder.verify(mapImageRepository).delete(mapImage);
         inOrder.verify(s3ObjectDeleteOutboxPublisher)
                 .publish("map/delete-target.jpg", "MAP_IMAGE", "10", "MAP_IMAGE_DELETED");
-        verify(s3ObjectStorage, never()).delete(any());
+        verify(postImageStorage, never()).delete(any());
     }
 
     @Test
-    void updateImagePublishesOldS3DeleteEventInsteadOfDeletingImmediately() throws Exception {
+    void updatePostPublishesOldS3DeleteEventInsteadOfDeletingImmediately() {
         MapImage mapImage = mapImage();
         when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
-        when(s3ObjectStorage.put(any(), eq("map")))
-                .thenReturn(new S3ObjectStorage.S3PutResult(
+        when(postImageStorage.upload(any()))
+                .thenReturn(new PostImageUploadResult(
                         "map/new-target.jpg",
                         "https://example.com/new-target.jpg"
                 ));
@@ -112,26 +117,70 @@ class S3ServiceTest {
                 new MockMultipartFile("file", "new.jpg", "image/jpeg", "new-image".getBytes())
         );
 
-        s3Service.updateImage(request, 1L, 10L);
+        postCommandService.updatePost(request, 1L, 10L);
 
         assertEquals("map/new-target.jpg", mapImage.getS3Key());
         verify(mapImageRepository).save(mapImage);
         verify(s3ObjectDeleteOutboxPublisher)
                 .publish("map/delete-target.jpg", "MAP_IMAGE", "10", "MAP_IMAGE_REPLACED");
-        verify(s3ObjectStorage, never()).delete("map/delete-target.jpg");
+        verify(postImageStorage, never()).delete("map/delete-target.jpg");
     }
 
     @Test
-    void deleteImageDoesNotDeleteOrPublishS3WhenDatabaseDeleteFails() {
+    void updatePostDeletesNewS3ObjectWhenTransactionRollsBack() {
         MapImage mapImage = mapImage();
         when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
-        org.mockito.Mockito.doThrow(new RuntimeException("db failure"))
+        when(postImageStorage.upload(any()))
+                .thenReturn(new PostImageUploadResult(
+                        "map/new-target.jpg",
+                        "https://example.com/new-target.jpg"
+                ));
+        doThrow(new RuntimeException("db failure")).when(mapImageRepository).save(mapImage);
+        PostUpdateRequest request = new PostUpdateRequest(
+                "수정 제목",
+                "수정 설명",
+                new MockMultipartFile("file", "new.jpg", "image/jpeg", "new-image".getBytes())
+        );
+
+        assertThrows(RuntimeException.class, () -> postCommandService.updatePost(request, 1L, 10L));
+
+        verify(postImageStorage).delete("map/new-target.jpg");
+        verify(s3ObjectDeleteOutboxPublisher, never()).publish(any(), any(), any(), any());
+    }
+
+    @Test
+    void updatePostMapsStorageFailureToUploadError() {
+        MapImage mapImage = mapImage();
+        when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
+        when(postImageStorage.upload(any()))
+                .thenThrow(new PostImageStorageException(PostImageStorageError.STORAGE_ERROR, "storage failure", null));
+        PostUpdateRequest request = new PostUpdateRequest(
+                "수정 제목",
+                "수정 설명",
+                new MockMultipartFile("file", "new.jpg", "image/jpeg", "new-image".getBytes())
+        );
+
+        MapException exception = assertThrows(
+                MapException.class,
+                () -> postCommandService.updatePost(request, 1L, 10L)
+        );
+
+        assertEquals(MapErrorCode.UPLOAD_ERROR, exception.getErrorCode());
+        verify(mapImageRepository, never()).save(any());
+        verify(s3ObjectDeleteOutboxPublisher, never()).publish(any(), any(), any(), any());
+    }
+
+    @Test
+    void deletePostDoesNotDeleteOrPublishS3WhenDatabaseDeleteFails() {
+        MapImage mapImage = mapImage();
+        when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
+        doThrow(new RuntimeException("db failure"))
                 .when(mapImageRepository)
                 .delete(mapImage);
 
-        assertThrows(RuntimeException.class, () -> s3Service.deleteImage(10L, 1L));
+        assertThrows(RuntimeException.class, () -> postCommandService.deletePost(10L, 1L));
 
-        verify(s3ObjectStorage, never()).delete(any());
+        verify(postImageStorage, never()).delete(any());
         verify(s3ObjectDeleteOutboxPublisher, never()).publish(any(), any(), any(), any());
     }
 
