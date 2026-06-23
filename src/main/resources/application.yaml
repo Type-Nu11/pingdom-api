@@ -99,6 +99,53 @@ user:
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
 
+abuse:
+  rate-limit:
+    login-username:
+      limit: 5
+      window: PT1M
+    login-ip:
+      limit: 120
+      window: PT1M
+    token-refresh-token:
+      limit: 10
+      window: PT1M
+    token-refresh-ip:
+      limit: 240
+      window: PT1M
+    email-resend:
+      minimum-interval: PT1M
+      email-daily:
+        limit: 5
+        window: P1D
+      ip-daily:
+        limit: 100
+        window: P1D
+    report-user:
+      limit: 10
+      window: PT1H
+    report-ip:
+      limit: 200
+      window: PT1H
+    map-image-like-user:
+      limit: 60
+      window: PT1M
+    map-image-like-ip:
+      limit: 600
+      window: PT1M
+    recommendation-click-user:
+      limit: 120
+      window: PT1M
+    recommendation-click-ip:
+      limit: 1000
+      window: PT1M
+    image-upload-user:
+      limit: 10
+      window: PT1H
+    image-upload-ip:
+      limit: 100
+      window: PT1H
+
 place:
   recommendation:
     default-version: place-rec-v1
