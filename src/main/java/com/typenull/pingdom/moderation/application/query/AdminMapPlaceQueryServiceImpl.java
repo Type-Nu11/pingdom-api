@@ -68,161 +68,31 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceGrowthService placeGrowthService;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
+    private final AdminMapPlaceLookupQueryService lookupQueryService;
+    private final AdminMapPlaceDuplicateQueryService duplicateQueryService;
 
-    //장소 전체 조회 기능 - 키워드를 받아서 검색 가능
     @Override
     @Transactional(readOnly = true)
     public AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword) {
-        int safePage = Math.max(page, 1);
-        int safeLimit = Math.max(1, Math.min(limit, 100));
-        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
-        String safeKeyword = keyword == null ? "" : keyword.trim();
-        Long numericKeyword = parseLongKeyword(safeKeyword);
-
-        Page<MapPlace> placePage = adminMapPlaceQueryRepository.searchAdminPlaces(
-                safeKeyword,
-                numericKeyword,
-                PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
-        );
-
-        List<AdminMapPlaceItem> places = placePage.getContent()
-                .stream()
-                .map(this::toItem)
-                .toList();
-
-        return AdminMapPlaceResponse.of(
-                places,
-                safePage,
-                safeLimit,
-                placePage.getTotalElements(),
-                placePage.getTotalPages()
-        );
+        return lookupQueryService.listPlaces(page, limit, sortParam, keyword);
     }
 
-    // 장소 상세 조회 기능 - 장소 정보를 불러오고 장소 내 사진들 키워드 검색 가능
     @Override
     @Transactional(readOnly = true)
     public AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword) {
-        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
-                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
-
-        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
-        Sort sort = toSort(safeSortParam);
-        Pageable latestPosts = PageRequest.of(0, PLACE_DETAIL_POST_LIMIT, sort);
-
-        Page<MapImage> postPage = mapImageRepository.findByMapPlace_IdAndTitleContaining(placeId, keyword, latestPosts);
-
-        List<AdminMapPlaceImageItem> posts = postPage.getContent().stream()
-                .map(this::toImageItem)
-                .toList();
-
-        return new AdminMapPlaceDetailResponse(
-                mapPlace.getId(),
-                mapPlace.getName(),
-                mapPlace.getAddress(),
-                mapPlace.getLatitude(),
-                mapPlace.getLongitude(),
-                mapPlace.getUserId(),
-                mapPlace.getRegistrant(),
-                safeSortParam,
-                Math.toIntExact(postPage.getTotalElements()),
-                placeGrowthService.snapshot(mapPlace),
-                posts
-        );
+        return lookupQueryService.getPlace(placeId, sortParam, keyword);
     }
 
     @Override
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
-        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
-                adminPlaceDuplicateResolver.analyze(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces());
-
-        List<AdminMapPlaceDuplicateGroupItem> groups = duplicateAnalysis.groups().stream()
-                .map(group -> new AdminMapPlaceDuplicateGroupItem(
-                        group.representativePlaceId(),
-                        group.memberPlaceIds(),
-                        group.reasons()
-                ))
-                .toList();
-
-        return new AdminMapPlaceDuplicateResponse(groups, groups.size());
+        return duplicateQueryService.listDuplicatePlaces();
     }
 
     @Override
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId) {
-        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
-                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND));
-
-        Map<Long, MapPlace> candidatePlacesById = new LinkedHashMap<>();
-        candidatePlacesById.put(mapPlace.getId(), mapPlace);
-
-        if (mapPlace.getKakaoPlaceId() != null && !mapPlace.getKakaoPlaceId().trim().isEmpty()) {
-            mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByKakaoPlaceId(placeId, mapPlace.getKakaoPlaceId())
-                    .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
-        }
-
-        double latitudeDelta = Math.toDegrees(DUPLICATE_DISTANCE_METERS / EARTH_RADIUS_METERS);
-        double longitudeDelta = calculateLongitudeDelta(mapPlace.getLatitude(), DUPLICATE_DISTANCE_METERS);
-        mapPlaceDuplicateQueryRepository.findDuplicateCandidatesByNameAndAddressInBoundingBox(
-                        placeId,
-                        mapPlace.getName(),
-                        mapPlace.getAddress(),
-                        mapPlace.getLatitude() - latitudeDelta,
-                        mapPlace.getLatitude() + latitudeDelta,
-                        mapPlace.getLongitude() - longitudeDelta,
-                        mapPlace.getLongitude() + longitudeDelta
-                ).stream()
-                .forEach(candidatePlace -> candidatePlacesById.put(candidatePlace.getId(), candidatePlace));
-
-        AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
-                adminPlaceDuplicateResolver.analyze(candidatePlacesById.values());
-        List<AdminMapPlaceDuplicateCandidateItem> candidates = duplicateAnalysis.candidatesOf(placeId).stream()
-                .map(candidate -> {
-                    MapPlace candidatePlace = candidatePlacesById.get(candidate.placeId());
-                    if (candidatePlace == null) {
-                        throw new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND);
-                    }
-                    return new AdminMapPlaceDuplicateCandidateItem(
-                            candidatePlace.getId(),
-                            candidatePlace.getName(),
-                            candidatePlace.getAddress(),
-                            candidatePlace.getKakaoPlaceId(),
-                            candidatePlace.getLatitude(),
-                            candidatePlace.getLongitude(),
-                            candidatePlace.getUserId(),
-                            candidatePlace.getRegistrant(),
-                            candidatePlace.currentPhotoCount(),
-                            candidate.reason(),
-                            candidate.distanceMeters()
-                    );
-                })
-                .toList();
-
-        if (candidates.isEmpty()) {
-            throw new AdminException(AdminErrorCode.PLACE_DUPLICATE_NOT_FOUND);
-        }
-
-        return new AdminMapPlaceDuplicateDetailResponse(
-                mapPlace.getId(),
-                mapPlace.getName(),
-                mapPlace.getAddress(),
-                mapPlace.getKakaoPlaceId(),
-                mapPlace.getLatitude(),
-                mapPlace.getLongitude(),
-                mapPlace.getUserId(),
-                mapPlace.getRegistrant(),
-                mapPlace.currentPhotoCount(),
-                candidates
-        );
-    }
-
-    private double calculateLongitudeDelta(double latitude, double distanceMeters) {
-        double cosLatitude = Math.cos(Math.toRadians(latitude));
-        if (Math.abs(cosLatitude) < 1e-12) {
-            return 180d;
-        }
-        return Math.toDegrees(distanceMeters / (EARTH_RADIUS_METERS * cosLatitude));
+        return duplicateQueryService.getDuplicatePlace(placeId);
     }
 
     @Override
