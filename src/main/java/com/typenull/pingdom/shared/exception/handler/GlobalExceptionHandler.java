@@ -5,6 +5,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.ratelimit.RateLimitException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -36,6 +37,12 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleMapException(MapException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(RateLimitException.class)
+    public ResponseEntity<Map<String, String>> handleRateLimitException(RateLimitException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getCode()));
     }
 
     @ExceptionHandler(MethodArgumentNotValidException.class)
