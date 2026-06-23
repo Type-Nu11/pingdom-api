@@ -334,6 +334,54 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         return new ArrayList<>(radiusSteps);
     }
 
+    private PlaceRecommendationSimilarityService.SimilarityContext buildSimilarityContext(
+            List<PlaceDistance> candidates,
+            Set<Long> interactedPlaceIds,
+            Map<Long, MapPlace> placeIndex
+    ) {
+        Set<Long> relatedPlaceIds = new LinkedHashSet<>(interactedPlaceIds);
+        candidates.stream()
+                .map(candidate -> candidate.place().getId())
+                .forEach(relatedPlaceIds::add);
+
+        return placeRecommendationSimilarityService.buildContext(relatedPlaceIds, placeIndex);
+    }
+
+    private String buildReason(ScoredCandidate candidate, boolean hasPersonalSignals) {
+        if (hasPersonalSignals
+                && candidate.personalScore() >= 0.25d
+                && candidate.dominantSignalType() != PersonalSignalType.NONE) {
+            return switch (candidate.dominantSignalType()) {
+                case BOOKMARK -> "저장한 장소와 가까운 추천 장소입니다.";
+                case LIKE -> "좋아요한 장소와 가까운 추천 장소입니다.";
+                case UPLOAD -> "업로드한 장소와 가까운 추천 장소입니다.";
+                case NONE -> "회원님의 반응 이력과 가까운 장소입니다.";
+            };
+        }
+
+        if (candidate.freshnessScore() >= 0.60d) {
+            return "현재 위치 주변에서 최근 업로드가 활발한 장소입니다.";
+        }
+
+        if (candidate.engagementScore() >= 0.60d) {
+            return "현재 위치 주변에서 추천 클릭 반응이 좋은 장소입니다.";
+        }
+
+        if (candidate.conversionScore() >= 0.55d) {
+            return "현재 위치 주변에서 저장 전환 반응이 좋은 장소입니다.";
+        }
+
+        if (candidate.explorationScore() >= 0.65d && candidate.qualityScore() < 0.45d) {
+            return "현재 위치 주변에서 새롭게 탐색 중인 장소입니다.";
+        }
+
+        if (candidate.qualityScore() >= 0.45d) {
+            return "현재 위치 주변에서 반응이 좋은 장소입니다.";
+        }
+
+        return "현재 위치와 가까운 장소입니다.";
+    }
+
     private double calculateDistanceMeters(
             double baseLatitude,
             double baseLongitude,
