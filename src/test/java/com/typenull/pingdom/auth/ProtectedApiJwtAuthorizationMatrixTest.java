@@ -178,7 +178,7 @@ class ProtectedApiJwtAuthorizationMatrixTest {
     void activeTemporaryBannedUserCannotAccessProtectedApiWithExistingToken() throws Exception {
         User user = createUser("temporaryBanMatrixUser");
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         user.ban("임시 밴 테스트", now, now.plusDays(1));
         userRepository.saveAndFlush(user);
