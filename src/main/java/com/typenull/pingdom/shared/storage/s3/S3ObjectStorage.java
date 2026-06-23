@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.support;
+package com.typenull.pingdom.shared.storage.s3;
 
 import java.io.InputStream;
 import java.io.IOException;
