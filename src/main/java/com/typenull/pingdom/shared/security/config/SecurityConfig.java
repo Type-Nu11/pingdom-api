@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.security;
+package com.typenull.pingdom.shared.security.config;
 
 import java.util.List;
 import org.springframework.context.annotation.Bean;
@@ -27,6 +27,9 @@ import com.typenull.pingdom.identity.infrastructure.oauth.CustomOAuth2UserServic
 import com.typenull.pingdom.identity.infrastructure.oauth.CustomOidcUserService;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2FailureHandler;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2SuccessHandler;
+import com.typenull.pingdom.shared.security.handler.JwtAccessDeniedHandler;
+import com.typenull.pingdom.shared.security.handler.JwtAuthenticationEntryPoint;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity

@@ -10,8 +10,6 @@ import com.typenull.pingdom.place.application.service.recommendation.similarity.
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
-import java.time.Clock;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -40,12 +38,12 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final int MIN_SELECTION_POOL_SIZE = 40;
 
     private final MapPlaceRepository mapPlaceRepository;
-    private final PlaceRecommendationExposureService placeRecommendationExposureService;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationGraphAffinityService placeRecommendationGraphAffinityService;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
+    private final PlaceRecommendationExposureService placeRecommendationExposureService;
     private final PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private final PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
@@ -218,10 +216,6 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 safeRadiusKm,
                 appliedRadiusKm
         );
-    }
-
-    private boolean hasCoordinates(MapPlace place) {
-        return place != null && place.getLatitude() != null && place.getLongitude() != null;
     }
 
     private Map<Long, MapPlace> buildPlaceIndex(List<CandidatePlace> candidatePool, Set<Long> interactedPlaceIds) {

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.shared.security;
+package com.typenull.pingdom.shared.security.properties;
 
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotBlank;

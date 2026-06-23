@@ -99,15 +99,28 @@ class PlaceRecommendationQueryServiceImplTest {
                 mapPlaceRecommendationCandidateRepository,
                 placeRecommendationSnapshotRepository
         );
+        PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader = new PlaceRecommendationAggregateLoader(
+                mapBookmarkRepository,
+                mapImageRepository,
+                placeRecommendationSnapshotRepository,
+                placeRecommendationClickService,
+                placeRecommendationExposureService
+        );
+        PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
+                placeRecommendationSimilarityService
+        );
+        PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
+                placeRecommendationSimilarityService
+        );
 
         placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
                 mapPlaceRepository,
-                placeRecommendationExposureService,
                 placeGrowthService,
                 placeRecommendationGraphAffinityService,
                 placeRecommendationSimilarityService,
                 placeRecommendationPolicyService,
                 placeRecommendationFeatureLogService,
+                placeRecommendationExposureService,
                 placeRecommendationUserSignalLoader,
                 placeRecommendationCandidateCollector,
                 placeRecommendationAggregateLoader,

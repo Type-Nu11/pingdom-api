@@ -17,7 +17,7 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
-    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: 1
     validate-on-migrate: true
   servlet:

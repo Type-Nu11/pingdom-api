@@ -6,7 +6,7 @@ import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
 import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import com.typenull.pingdom.identity.application.query.MyPageService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

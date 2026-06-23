@@ -7,10 +7,10 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClic
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationClickService;
+import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
-import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

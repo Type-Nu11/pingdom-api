@@ -2,7 +2,7 @@ package com.typenull.pingdom.identity.application.service;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;

@@ -3,7 +3,7 @@ package com.typenull.pingdom.identity.infrastructure.oauth;
 import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
