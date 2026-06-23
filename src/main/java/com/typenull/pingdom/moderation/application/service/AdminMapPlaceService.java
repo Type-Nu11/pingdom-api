@@ -1,7 +1,7 @@
 package com.typenull.pingdom.moderation.application.service;
 
-import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceMergeRequest;
-import com.typenull.pingdom.moderation.api.dto.place.AdminMapPlaceMergeResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;

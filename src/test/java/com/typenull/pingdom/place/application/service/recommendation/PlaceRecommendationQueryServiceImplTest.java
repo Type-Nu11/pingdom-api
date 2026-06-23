@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -37,6 +38,9 @@ class PlaceRecommendationQueryServiceImplTest {
 
     @Mock
     private MapPlaceRepository mapPlaceRepository;
+
+    @Mock
+    private MapPlaceRecommendationCandidateRepository mapPlaceRecommendationCandidateRepository;
 
     @Mock
     private MapBookmarkRepository mapBookmarkRepository;
@@ -84,23 +88,36 @@ class PlaceRecommendationQueryServiceImplTest {
         );
         placeRecommendationCandidateCollector = new PlaceRecommendationCandidateCollector(
                 mapPlaceRepository,
+                mapPlaceRecommendationCandidateRepository,
                 placeRecommendationSnapshotRepository
         );
-
-        placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
-                mapPlaceRepository,
+        PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader = new PlaceRecommendationAggregateLoader(
                 mapBookmarkRepository,
                 mapImageRepository,
                 placeRecommendationSnapshotRepository,
                 placeRecommendationClickService,
-                placeRecommendationExposureService,
+                placeRecommendationExposureService
+        );
+        PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
+                placeRecommendationSimilarityService
+        );
+        PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
+                placeRecommendationSimilarityService
+        );
+
+        placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
+                mapPlaceRepository,
                 placeGrowthService,
                 placeRecommendationGraphAffinityService,
                 placeRecommendationSimilarityService,
                 placeRecommendationPolicyService,
                 placeRecommendationFeatureLogService,
+                placeRecommendationExposureService,
                 placeRecommendationUserSignalLoader,
-                placeRecommendationCandidateCollector
+                placeRecommendationCandidateCollector,
+                placeRecommendationAggregateLoader,
+                placeRecommendationScoringService,
+                placeRecommendationPortfolioService
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
@@ -118,7 +135,7 @@ class PlaceRecommendationQueryServiceImplTest {
 
         when(mapBookmarkRepository.findPlaceIdsByUserId(userId)).thenReturn(List.of(invalidSeed.getId(), validSeed.getId()));
         when(mapPlaceRepository.findAllById(any())).thenReturn(List.of(invalidSeed, validSeed));
-        when(mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 anyDouble(),
                 anyDouble(),
                 anyDouble(),

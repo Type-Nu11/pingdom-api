@@ -95,8 +95,8 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     @Query(
             value = """
                     SELECT m
-                    FROM MapImageLike liked
-                    JOIN MapImage m ON m.id = liked.mapImageId
+                    FROM MapImage m
+                    JOIN MapImageLike liked ON liked.mapImageId = m.id
                     WHERE liked.userId = :userId
                     ORDER BY liked.likeId DESC
                     """,

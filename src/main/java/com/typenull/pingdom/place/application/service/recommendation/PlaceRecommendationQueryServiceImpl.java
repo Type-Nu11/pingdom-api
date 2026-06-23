@@ -5,10 +5,6 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResp
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
-import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
-import java.time.Clock;
-import java.time.Instant;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -20,7 +16,6 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,15 +31,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private static final double EARTH_RADIUS_METERS = 6_371_000d;
     private static final int CANDIDATE_POOL_LIMIT = 300;
     private static final int MIN_SELECTION_POOL_SIZE = 40;
-    private static final Clock RECOMMENDATION_CLOCK = Clock.systemUTC();
 
     private final MapPlaceRepository mapPlaceRepository;
-    private final PlaceRecommendationExposureService placeRecommendationExposureService;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationGraphAffinityService placeRecommendationGraphAffinityService;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
+    private final PlaceRecommendationExposureService placeRecommendationExposureService;
     private final PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private final PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
