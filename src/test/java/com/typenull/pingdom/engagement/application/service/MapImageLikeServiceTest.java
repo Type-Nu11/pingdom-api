@@ -7,10 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
-import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import com.typenull.pingdom.notification.outbox.MapImageLikedOutboxPayload;
-import com.typenull.pingdom.place.application.service.recommendation.interaction.PlaceRecommendationConversionService;
-import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationConversionService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
