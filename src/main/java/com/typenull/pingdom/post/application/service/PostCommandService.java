@@ -117,18 +117,31 @@ public class PostCommandService {
     }
 
     public PostResponse deletePost(Long imageId, Long userId) {
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
-                .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
+        return transactionTemplate.execute(status -> {
+            MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
+                    .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
-        if (!Objects.equals(mapImage.getUserId(), userId)) {
-            throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
-        }
+            if (!Objects.equals(mapImage.getUserId(), userId)) {
+                throw new MapException(MapErrorCode.OTHERS_NOT_DELETED);
+            }
 
-        String s3Key = mapImage.getS3Key();
-        PlaceGrowthSnapshot placeGrowth = deletePostRecord(mapImage, s3Key);
-
-        Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
-        return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
+            String s3Key = mapImage.getS3Key();
+            PlaceGrowthSnapshot placeGrowth = null;
+            MapPlace mapPlace = mapImage.getMapPlace();
+            Long placeId = null;
+            if (mapPlace != null) {
+                placeId = mapPlace.getId();
+                placeGrowth = placeGrowthService.decreasePhotoCount(placeId);
+            }
+            postReportRepository.detachMapImageByMapImageId(mapImage.getId());
+            mapImageRepository.delete(mapImage);
+            if (placeId != null) {
+                placeRecommendationSnapshotService.refresh(placeId);
+            }
+            publishS3Delete(s3Key, mapImage.getId(), "MAP_IMAGE_DELETED");
+            return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
+        });
     }
 
     private Long resolvePlaceId(PostUploadRequest request, long userId) {
@@ -239,24 +252,6 @@ public class PostCommandService {
             PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
             placeRecommendationSnapshotService.refresh(mapPlace.getId());
             return new PostResponse(saved.getId(), saved.getId(), mapPlace.getId(), "게시글을 저장했습니다.", placeGrowth);
-        });
-    }
-
-    private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage, String s3Key) {
-        TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
-        return transactionTemplate.execute(status -> {
-            PlaceGrowthSnapshot placeGrowth = null;
-            MapPlace mapPlace = mapImage.getMapPlace();
-            if (mapPlace != null) {
-                placeGrowth = placeGrowthService.decreasePhotoCount(mapPlace.getId());
-            }
-            postReportRepository.detachMapImageByMapImageId(mapImage.getId());
-            mapImageRepository.delete(mapImage);
-            if (mapPlace != null) {
-                placeRecommendationSnapshotService.refresh(mapPlace.getId());
-            }
-            publishS3Delete(s3Key, mapImage.getId(), "MAP_IMAGE_DELETED");
-            return placeGrowth;
         });
     }
 
