@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.application.service;
 
 import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
@@ -18,6 +19,8 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.infrastructure.persistence.ReportAppealRepository;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
@@ -37,6 +40,7 @@ public class ReportAppealService {
 
     private final ReportAppealRepository reportAppealRepository;
     private final PostReportRepository postReportRepository;
+    private final MapImageRepository mapImageRepository;
     private final UserRepository userRepository;
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
@@ -47,6 +51,9 @@ public class ReportAppealService {
         PostReport report = postReportRepository.findById(reportId)
                 .orElseThrow(() -> new MapException(MapErrorCode.REPORT_NOT_FOUND));
         if (!report.getReportedUserId().equals(userId)) {
+            throw new MapException(MapErrorCode.REPORT_APPEAL_NOT_ALLOWED);
+        }
+        if (!canSubmitAppeal(report)) {
             throw new MapException(MapErrorCode.REPORT_APPEAL_NOT_ALLOWED);
         }
         if (reportAppealRepository.existsByReportIdAndAppellantUserIdAndStatus(
@@ -73,6 +80,14 @@ public class ReportAppealService {
                 appeal.getStatus(),
                 appeal.getCreatedAt()
         );
+    }
+
+    private boolean canSubmitAppeal(PostReport report) {
+        boolean acceptedReport = report.getStatus() == PostReportStatus.ACCEPTED;
+        boolean hiddenPost = mapImageRepository.findById(report.getReportedImageId())
+                .map(mapImage -> mapImage.getVisibilityStatus() == MapImageVisibilityStatus.AUTO_HIDDEN)
+                .orElse(false);
+        return acceptedReport || hiddenPost;
     }
 
     @Transactional(readOnly = true)
