@@ -4,6 +4,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDupl
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
@@ -23,6 +25,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -32,6 +35,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -306,6 +310,69 @@ public class AdminMapPlaceController {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         AdminMapPlaceMergeResponse response = adminMapPlaceService.mergePlaces(adminUserId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @PatchMapping("/{id}/coordinates")
+    @Operation(
+            summary = "관리자 장소 좌표 수정",
+            description = "관리자가 잘못 등록된 장소의 위도와 경도를 수정합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 좌표 수정 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminMapPlaceCoordinateUpdateResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "placeId": 1,
+                                              "latitude": 35.1796,
+                                              "longitude": 128.1076,
+                                              "message": "장소 좌표를 수정했습니다."
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "latitude": "위도는 90.0 이하여야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "장소를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "장소를 찾을 수 없습니다.",
+                                              "code": "PLACE_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<AdminMapPlaceCoordinateUpdateResponse> updatePlaceCoordinates(
+            @Parameter(description = "좌표를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceCoordinateUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updatePlaceCoordinates(adminUserId, placeId, request));
     }
 
     @DeleteMapping("/{id}/delete")
