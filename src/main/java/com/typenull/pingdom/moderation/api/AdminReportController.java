@@ -194,7 +194,11 @@ public class AdminReportController {
                     )
             )
     })
-    public AdminReportActionResponse declineReport(@PathVariable Long id) {
-        return adminReportService.declineReport(id);
+    public AdminReportActionResponse declineReport(
+            @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminReportService.declineReport(id, adminUserId);
     }
 }
