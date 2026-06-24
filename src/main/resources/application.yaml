@@ -149,6 +149,20 @@ abuse:
       ip-daily:
         limit: 100
         window: P1D
+    password-reset-request:
+      minimum-interval: PT1M
+      email-daily:
+        limit: 5
+        window: P1D
+      ip-daily:
+        limit: 100
+        window: P1D
+    password-reset-confirm-token:
+      limit: 5
+      window: PT1M
+    password-reset-confirm-ip:
+      limit: 120
+      window: PT1M
     report-user:
       limit: 10
       window: PT1H
