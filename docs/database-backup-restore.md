@@ -51,6 +51,8 @@ RESTORE_CHECK_DB="${POSTGRES_DB}_restore_check"
 
 docker compose exec -T postgres dropdb -U "$POSTGRES_USER" --if-exists "$RESTORE_CHECK_DB"
 docker compose exec -T postgres createdb -U "$POSTGRES_USER" "$RESTORE_CHECK_DB"
+docker compose exec -T postgres psql -U "$POSTGRES_USER" -d "$RESTORE_CHECK_DB" -c \
+  'CREATE EXTENSION IF NOT EXISTS postgis; CREATE EXTENSION IF NOT EXISTS pg_trgm;'
 docker compose exec -T postgres pg_restore \
   -U "$POSTGRES_USER" \
   -d "$RESTORE_CHECK_DB" \

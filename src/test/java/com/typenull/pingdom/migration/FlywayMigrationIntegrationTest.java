@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.core.io.ClassPathResource;
@@ -29,17 +30,33 @@ class FlywayMigrationIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    @BeforeAll
+    static void ensureRequiredExtensions() throws Exception {
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
+            statement.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm");
+        }
+    }
+
     @BeforeEach
     void resetDatabase() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
-            statement.execute("DROP EXTENSION IF EXISTS postgis CASCADE");
-            statement.execute("DROP EXTENSION IF EXISTS pg_trgm CASCADE");
-            statement.execute("DROP SCHEMA IF EXISTS public CASCADE");
-            statement.execute("CREATE SCHEMA public");
-            statement.execute("GRANT ALL ON SCHEMA public TO PUBLIC");
-            statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
-            statement.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm");
+            statement.execute("""
+                    DO $$ DECLARE
+                        r RECORD;
+                    BEGIN
+                        FOR r IN (
+                            SELECT tablename
+                            FROM pg_tables
+                            WHERE schemaname = 'public'
+                              AND tablename != 'spatial_ref_sys'
+                        ) LOOP
+                            EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+                        END LOOP;
+                    END $$;
+                    """);
         }
     }
 
