@@ -4,7 +4,7 @@ import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
 
 public interface AdminReportService {
 
-    AdminReportActionResponse acceptUserReport(Long reportId, Long adminUserId);
+    AdminReportActionResponse acceptReport(Long reportId, Long adminUserId);
 
-    AdminReportActionResponse declineUserReport(Long reportId);
+    AdminReportActionResponse declineReport(Long reportId);
 }

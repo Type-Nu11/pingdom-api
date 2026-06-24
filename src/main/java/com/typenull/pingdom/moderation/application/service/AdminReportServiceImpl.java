@@ -27,13 +27,13 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     @Override
     @Transactional
-    public AdminReportActionResponse acceptUserReport(Long reportId, Long adminUserId) {
+    public AdminReportActionResponse acceptReport(Long reportId, Long adminUserId) {
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-
         User reporter = userRepository.findById(postReport.getReporterUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
 
         LocalDateTime now = LocalDateTime.now();
         postReport.accept(now);
@@ -54,7 +54,7 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     @Override
     @Transactional
-    public AdminReportActionResponse declineUserReport(Long reportId) {
+    public AdminReportActionResponse declineReport(Long reportId) {
         PostReport postReport = getPendingReport(reportId);
         User reporter = userRepository.findById(postReport.getReporterUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
@@ -64,7 +64,8 @@ public class AdminReportServiceImpl implements AdminReportService {
         boolean banned = userRepository.findById(postReport.getReportedUserId())
                 .map(user -> user.isCurrentlyBanned(now))
                 .orElse(false);
-        reporter.increaseUnacceptedReportCount();
+
+        reporter.getUnacceptedReportPercent();
 
         return new AdminReportActionResponse(
                 postReport.getId(),
