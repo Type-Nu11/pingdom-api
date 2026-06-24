@@ -1,7 +1,7 @@
 package com.typenull.pingdom.place;
 
-import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationGraphAffinityService;
-import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationGraphAffinityService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
 import java.util.List;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;

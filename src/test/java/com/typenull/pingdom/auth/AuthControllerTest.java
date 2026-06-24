@@ -21,7 +21,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
-import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
+import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
