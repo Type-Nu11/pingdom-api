@@ -21,10 +21,10 @@ import lombok.NoArgsConstructor;
 @Table(
         name = "admin_audit_log",
         indexes = {
-                @Index(name = "idx_admin_audit_log_created", columnList = "created_at, id"),
-                @Index(name = "idx_admin_audit_log_actor_created", columnList = "actor_user_id, created_at"),
-                @Index(name = "idx_admin_audit_log_action_created", columnList = "action, created_at"),
-                @Index(name = "idx_admin_audit_log_target_created", columnList = "target_type, target_id, created_at"),
+                @Index(name = "idx_admin_audit_log_created", columnList = "created_at DESC, id DESC"),
+                @Index(name = "idx_admin_audit_log_actor_created", columnList = "actor_user_id, created_at DESC"),
+                @Index(name = "idx_admin_audit_log_action_created", columnList = "action, created_at DESC"),
+                @Index(name = "idx_admin_audit_log_target_created", columnList = "target_type, target_id, created_at DESC"),
                 @Index(name = "idx_admin_audit_log_request_id", columnList = "request_id")
         }
 )
