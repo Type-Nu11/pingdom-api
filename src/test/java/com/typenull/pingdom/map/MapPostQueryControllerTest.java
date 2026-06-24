@@ -220,6 +220,22 @@ class MapPostQueryControllerTest {
     }
 
     @Test
+    void getPostAllowsOwnerToReadHiddenPostDetail() throws Exception {
+        String accessToken = signupAndLogin("hidden-owner");
+        Long ownerId = userRepository.findByUsername("hidden-owner").orElseThrow().getId();
+        MapPlace mapPlace = createMapPlace("숨김 소유자 장소", "경상남도 진주시 소유자로 1");
+        MapImage hiddenPost = createMapImage(ownerId, "hidden-owner", "소유자 숨김 게시글", mapPlace, 1L);
+        hiddenPost.autoHide("테스트 숨김", java.time.LocalDateTime.now(), null);
+        mapImageRepository.saveAndFlush(hiddenPost);
+
+        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(hiddenPost.getId()))
+                .andExpect(jsonPath("$.title").value("소유자 숨김 게시글"));
+    }
+
+    @Test
     void getPostFailsWhenPostDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reader03");
 

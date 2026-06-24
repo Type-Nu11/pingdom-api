@@ -13,6 +13,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.List;
+import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -151,11 +152,11 @@ public class PostQueryServiceImpl implements PostQueryService {
     @Override
     @Transactional(readOnly = true)
     public PostDetailResponse getPost(Long postId, Long userId) {
-        MapImage mapImage = mapImageRepository.findWithMapPlaceByIdAndVisibilityStatus(
-                        postId,
-                        MapImageVisibilityStatus.ACTIVE
-                )
+        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+        if (!mapImage.isVisible() && !Objects.equals(mapImage.getUserId(), userId)) {
+            throw new MapException(MapErrorCode.IMAGE_NOT_FOUND);
+        }
 
         MapPlace mapPlace = mapImage.getMapPlace();
         boolean liked = userId != null
