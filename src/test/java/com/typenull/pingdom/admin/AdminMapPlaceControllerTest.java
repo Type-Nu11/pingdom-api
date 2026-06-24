@@ -3,6 +3,7 @@ package com.typenull.pingdom.admin;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
@@ -319,6 +320,40 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void updatePlaceCoordinatesUpdatesLatitudeLongitudeAndLocation() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("좌표 수정 장소")
+                .address("경상남도 진주시 수정로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(90L)
+                .registrant("coordinateOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/coordinates", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "latitude", 35.1796,
+                                "longitude", 128.1076
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.latitude").value(35.1796))
+                .andExpect(jsonPath("$.longitude").value(128.1076))
+                .andExpect(jsonPath("$.message").value("장소 좌표를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(35.1796, updatedPlace.getLatitude());
+        assertEquals(128.1076, updatedPlace.getLongitude());
+        assertNotNull(updatedPlace.getLocation());
+        assertEquals(128.1076, updatedPlace.getLocation().getX());
+        assertEquals(35.1796, updatedPlace.getLocation().getY());
     }
 
     @Test
