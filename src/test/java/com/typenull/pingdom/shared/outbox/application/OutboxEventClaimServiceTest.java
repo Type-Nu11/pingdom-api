@@ -3,8 +3,10 @@ package com.typenull.pingdom.shared.outbox.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.typenull.pingdom.shared.observability.OutboxMetrics;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
@@ -30,6 +32,9 @@ class OutboxEventClaimServiceTest {
     @Mock
     private OutboxEventRepository outboxEventRepository;
 
+    @Mock
+    private OutboxMetrics outboxMetrics;
+
     private OutboxEventClaimService claimService;
 
     @BeforeEach
@@ -49,7 +54,8 @@ class OutboxEventClaimServiceTest {
                 outboxEventRepository,
                 properties,
                 new OutboxBackoffPolicy(properties),
-                Clock.fixed(NOW, ZoneOffset.UTC)
+                Clock.fixed(NOW, ZoneOffset.UTC),
+                outboxMetrics
         );
     }
 
@@ -79,5 +85,6 @@ class OutboxEventClaimServiceTest {
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(event.getAttemptCount()).isEqualTo(2);
         assertThat(event.getNextAttemptAt()).isEqualTo(now.plusSeconds(20));
+        verify(outboxMetrics).recordStaleRecovered(1);
     }
 }
