@@ -44,16 +44,16 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
 
     Page<PostReport> findByStatus(PostReportStatus status, Pageable pageable);
 
-    @Query("""
-        select pr
-        from PostReport pr
-        where pr.status = :status
-          and (
-                lower(pr.reporterUsername) like lower(concat('%', :keyword, '%'))
-                or lower(pr.reason) like lower(concat('%', :keyword, '%'))
-                or (:numericKeyword is not null and pr.reportedUserId = :numericKeyword)
-          )
-        """)
+    @Query(
+            "select pr " +
+                    "from PostReport pr " +
+                    "where pr.status = :status " +
+                    "and ( " +
+                    "   lower(pr.reporterUsername) like lower(concat('%', :keyword, '%')) " +
+                    "   or lower(pr.reason) like lower(concat('%', :keyword, '%')) " +
+                    "   or (:numericKeyword is not null and pr.reportedUserId = :numericKeyword) " +
+                    ")"
+    )
     Page<PostReport> searchPendingReports(
             @Param("status") PostReportStatus status,
             @Param("keyword") String keyword,
