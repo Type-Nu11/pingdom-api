@@ -9,6 +9,7 @@ import com.typenull.pingdom.moderation.domain.ad.AdminAd;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAdRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -22,6 +23,7 @@ public class AdminAdServiceImpl implements AdminAdService {
 
     private final AdminAdRepository adminAdRepository;
     private final AdminAuditLogService adminAuditLogService;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -36,7 +38,7 @@ public class AdminAdServiceImpl implements AdminAdService {
                 .redirectUrl(request.redirectUrl())
                 .startAt(request.startAt())
                 .endAt(request.endAt())
-                .createdAt(LocalDateTime.now())
+                .createdAt(LocalDateTime.now(clock))
                 .build());
         adminAuditLogService.record(
                 adminUserId,

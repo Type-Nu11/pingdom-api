@@ -13,6 +13,8 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -29,6 +31,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final PlaceGrowthService placeGrowthService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final AdminAuditLogService adminAuditLogService;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -66,7 +69,7 @@ public class AdminPostServiceImpl implements AdminPostService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
-        boolean hidden = mapImage.autoHide(reason, java.time.LocalDateTime.now(), adminUserId);
+        boolean hidden = mapImage.autoHide(reason, LocalDateTime.now(clock), adminUserId);
         if (hidden && mapImage.getMapPlace() != null) {
             placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
         }
@@ -88,7 +91,7 @@ public class AdminPostServiceImpl implements AdminPostService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
-        boolean restored = mapImage.restore(reason, java.time.LocalDateTime.now(), adminUserId);
+        boolean restored = mapImage.restore(reason, LocalDateTime.now(clock), adminUserId);
         if (restored && mapImage.getMapPlace() != null) {
             placeGrowthService.increasePhotoCount(mapImage.getMapPlace().getId());
         }

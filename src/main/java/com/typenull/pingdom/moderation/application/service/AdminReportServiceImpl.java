@@ -14,6 +14,7 @@ import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.AdminReportService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -31,6 +32,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
     private final ReportPolicyService reportPolicyService;
+    private final Clock clock;
 
     @Override
     @Transactional
@@ -39,7 +41,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = reportState(postReport, reportedUser.isCurrentlyBanned(now), false);
         postReport.accept(now);
         reportPolicyService.recordAccepted(postReport.getReporterUserId(), postReport.getReporterUsername());
@@ -69,7 +71,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Transactional
     public AdminReportActionResponse declineReport(Long reportId, Long adminUserId) {
         PostReport postReport = getPendingReport(reportId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         boolean beforeBanned = userRepository.findById(postReport.getReportedUserId())
                 .map(user -> user.isCurrentlyBanned(now))
                 .orElse(false);

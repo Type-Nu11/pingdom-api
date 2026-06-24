@@ -23,6 +23,7 @@ import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -45,6 +46,7 @@ public class ReportAppealService {
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
+    private final Clock clock;
 
     @Transactional
     public ReportAppealCreateResponse submit(Long reportId, String reason, Long userId, String username) {
@@ -122,7 +124,7 @@ public class ReportAppealService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
         User targetUser = userRepository.findById(appeal.getTargetUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = appealState(appeal);
 
         report.restore(now);
@@ -146,7 +148,7 @@ public class ReportAppealService {
     @Transactional
     public AdminReportAppealActionResponse reject(Long appealId, String reason, Long adminUserId) {
         ReportAppeal appeal = getSubmittedAppeal(appealId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = appealState(appeal);
 
         appeal.reject(adminUserId, reason, now);

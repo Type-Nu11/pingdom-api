@@ -33,6 +33,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
@@ -72,6 +73,7 @@ public class AdminMapPlaceService {
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
+    private final Clock clock;
 
     @Transactional
     public void deletePlace(long placeId, Long adminUserId) {
@@ -313,7 +315,7 @@ public class AdminMapPlaceService {
 
         restoredSourcePlace.replacePhotoCount(countActiveImages(restoredSourcePlace.getId()));
         targetPlace.replacePhotoCount(countActiveImages(targetPlace.getId()));
-        history.markRestored(LocalDateTime.now());
+        history.markRestored(now());
 
         placeRecommendationSnapshotResyncService.resyncMergedPlace(restoredSourcePlace.getId(), targetPlace.getId());
         adminAuditLogService.record(
@@ -500,6 +502,10 @@ public class AdminMapPlaceService {
 
     private long countActiveImages(Long placeId) {
         return mapImageRepository.countByMapPlace_IdAndVisibilityStatus(placeId, MapImageVisibilityStatus.ACTIVE);
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 
     private static Point toPoint(double latitude, double longitude) {
@@ -709,7 +715,7 @@ public class AdminMapPlaceService {
                     .movedClickIds(writeValue(movedClickIds))
                     .movedExposureIds(writeValue(movedExposureIds))
                     .movedFeatureLogIds(writeValue(movedFeatureLogIds))
-                    .mergedAt(LocalDateTime.now())
+                    .mergedAt(now())
                     .build();
         }
     }

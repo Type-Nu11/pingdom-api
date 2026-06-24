@@ -18,6 +18,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashMap;
@@ -46,6 +47,7 @@ public class AdminPlaceRecommendationMetricQueryService {
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final AdminPlaceRecommendationMetricMapper metricMapper;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public AdminPlaceRecommendationMetricsResponse listRecommendationMetrics(
@@ -64,7 +66,7 @@ public class AdminPlaceRecommendationMetricQueryService {
         Integer safeDays = days == null || days <= 0 ? null : days;
 
         if (safeDays != null) {
-            LocalDateTime cutoff = LocalDateTime.now().minusDays(safeDays);
+            LocalDateTime cutoff = LocalDateTime.now(clock).minusDays(safeDays);
             double globalCtr = calculatePeriodGlobalCtr(
                     safeKeyword,
                     safeRecommendationVersion,
@@ -184,7 +186,7 @@ public class AdminPlaceRecommendationMetricQueryService {
             baselineMetrics = List.of();
             targetMetrics = List.of();
         } else if (safeDays != null) {
-            LocalDateTime cutoff = LocalDateTime.now().minusDays(safeDays);
+            LocalDateTime cutoff = LocalDateTime.now(clock).minusDays(safeDays);
             baselineMetrics = buildPeriodFilteredMetrics(
                     places,
                     safeBaselineVersion,
