@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("13");
-        assertThat(result.migrationsExecuted).isEqualTo(13);
+        assertThat(result.targetSchemaVersion).isEqualTo("14");
+        assertThat(result.migrationsExecuted).isEqualTo(14);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("13");
-        assertThat(result.migrationsExecuted).isEqualTo(12);
+        assertThat(result.targetSchemaVersion).isEqualTo("14");
+        assertThat(result.migrationsExecuted).isEqualTo(13);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -332,6 +332,24 @@ class FlywayMigrationIntegrationTest {
                         FROM information_schema.columns
                         WHERE table_name = 'post_report'
                           AND column_name = 'report_score'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'report_count'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'unaccepted_report_count'
                           AND is_nullable = 'NO'
                     )
                     """)).isTrue();
