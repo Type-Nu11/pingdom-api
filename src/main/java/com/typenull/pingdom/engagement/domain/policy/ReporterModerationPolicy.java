@@ -105,6 +105,8 @@ public class ReporterModerationPolicy {
         if (restrictedUntil != null && !restrictedUntil.isAfter(now)) {
             this.restrictedUntil = null;
             this.restrictionReason = null;
+            this.falseReportCount = 0L;
+            recalculateTrustScore();
         }
     }
 
