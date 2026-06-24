@@ -292,9 +292,10 @@ class AdminPostControllerTest {
     }
 
     private String createAdminAndLogin() throws Exception {
+        String username = "adminTester" + System.nanoTime();
         userRepository.save(User.builder()
-                .username("adminTester")
-                .email("admin@example.com")
+                .username(username)
+                .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .birthYear(1998)
                 .language("ko")
@@ -302,7 +303,7 @@ class AdminPostControllerTest {
                 .role(UserRole.ADMIN)
                 .build());
 
-        LoginRequest loginRequest = new LoginRequest("adminTester", "password123");
+        LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
