@@ -59,6 +59,10 @@ public class AdminMapPlaceService {
             Long placeId,
             AdminMapPlaceCoordinateUpdateRequest request
     ) {
+        if (request == null || request.latitude() == null || request.longitude() == null) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
+        }
+
         MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
