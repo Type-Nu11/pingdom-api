@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("10");
-        assertThat(result.migrationsExecuted).isEqualTo(10);
+        assertThat(result.targetSchemaVersion).isEqualTo("11");
+        assertThat(result.migrationsExecuted).isEqualTo(11);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("10");
-        assertThat(result.migrationsExecuted).isEqualTo(9);
+        assertThat(result.targetSchemaVersion).isEqualTo("11");
+        assertThat(result.migrationsExecuted).isEqualTo(10);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -293,6 +293,13 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'report_appeal'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_recommendation_traffic_policy'
                     )
                     """)).isTrue();
         }
