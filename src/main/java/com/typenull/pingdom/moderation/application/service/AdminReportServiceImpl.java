@@ -120,14 +120,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         Page<PostReport> reportPage = loadReportedUsersPage(safeKeyword, numericKeyword, pageable);
 
         List<ReportedUsersItem> users = reportPage.getContent().stream()
-                .map(report -> new ReportedUsersItem(
-                        report.getId(),
-                        report.getReporterUserId(),
-                        report.getReporterUsername(),
-                        report.getReportedImageId(),
-                        report.getReportedUserId(),
-                        report.getReason()
-                ))
+                .map(this::toReportedUsersItem)
                 .toList();
 
         return ReportedUsersResponse.of(

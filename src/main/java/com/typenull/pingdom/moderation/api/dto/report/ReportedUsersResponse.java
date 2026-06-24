@@ -1,8 +1,5 @@
 package com.typenull.pingdom.moderation.api.dto.report;
 
-import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
-import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
-
 import java.util.List;
 
 public record ReportedUsersResponse (
