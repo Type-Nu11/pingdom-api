@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.application.service;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.application.service.ReportPolicyService;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
@@ -29,6 +30,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
+    private final ReportPolicyService reportPolicyService;
 
     @Override
     @Transactional
@@ -40,10 +42,10 @@ public class AdminReportServiceImpl implements AdminReportService {
         LocalDateTime now = LocalDateTime.now();
         Map<String, Object> beforeState = reportState(postReport, reportedUser.isCurrentlyBanned(now), false);
         postReport.accept(now);
-        postReport.detachMapImage();
-        // 신고 수락은 대상 사진 소유자 제재까지 하나의 처리로 본다.
+        reportPolicyService.recordAccepted(postReport.getReporterUserId(), postReport.getReporterUsername());
+        // 신고 수락은 대상 사진 숨김과 소유자 제재까지 하나의 처리로 본다.
         userSanctionCommandService.applyBan(reportedUser, postReport.getReason(), now, null, adminUserId);
-        adminPostService.deletePost(postReport.getReportedImageId(), adminUserId);
+        adminPostService.hidePost(postReport.getReportedImageId(), "REPORT_ACCEPTED", adminUserId);
         adminAuditLogService.record(
                 adminUserId,
                 AdminAuditAction.REPORT_ACCEPTED,
@@ -74,6 +76,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         Map<String, Object> beforeState = reportState(postReport, beforeBanned, false);
 
         postReport.decline(now);
+        reportPolicyService.recordDeclined(postReport.getReporterUserId(), postReport.getReporterUsername(), now);
         boolean banned = userRepository.findById(postReport.getReportedUserId())
                 .map(user -> user.isCurrentlyBanned(now))
                 .orElse(false);
@@ -107,14 +110,14 @@ public class AdminReportServiceImpl implements AdminReportService {
         return postReport;
     }
 
-    private Map<String, Object> reportState(PostReport postReport, boolean reportedUserBanned, boolean postDeleted) {
+    private Map<String, Object> reportState(PostReport postReport, boolean reportedUserBanned, boolean postHidden) {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("reportId", postReport.getId());
         state.put("status", postReport.getStatus());
         state.put("reportedUserId", postReport.getReportedUserId());
         state.put("reportedImageId", postReport.getReportedImageId());
         state.put("reportedUserBanned", reportedUserBanned);
-        state.put("postDeleted", postDeleted);
+        state.put("postHidden", postHidden);
         state.put("processedAt", postReport.getProcessedAt());
         return state;
     }
