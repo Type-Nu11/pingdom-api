@@ -5,7 +5,7 @@ import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRespon
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceUploadRequest;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
-import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

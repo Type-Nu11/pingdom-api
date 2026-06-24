@@ -13,7 +13,7 @@ import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.shared.storage.s3.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
