@@ -6,20 +6,40 @@ import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import io.micrometer.core.instrument.Gauge;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 @Component
 public class OutboxMetrics {
 
     private final MeterRegistry meterRegistry;
+    private final OutboxEventRepository outboxEventRepository;
+    private final Map<OutboxEventStatus, AtomicLong> statusCounts = new ConcurrentHashMap<>();
 
     public OutboxMetrics(MeterRegistry meterRegistry, OutboxEventRepository outboxEventRepository) {
         this.meterRegistry = meterRegistry;
+        this.outboxEventRepository = outboxEventRepository;
         for (OutboxEventStatus status : OutboxEventStatus.values()) {
-            Gauge.builder("pingdom.outbox.events", outboxEventRepository, repository -> repository.countByStatus(status))
+            AtomicLong count = new AtomicLong(0L);
+            statusCounts.put(status, count);
+            Gauge.builder("pingdom.outbox.events", count, AtomicLong::get)
                     .description("Current outbox event count by status")
                     .tag("status", tagValue(status))
                     .register(meterRegistry);
+        }
+        refreshStatusCounts();
+    }
+
+    @Scheduled(fixedDelayString = "PT30S", initialDelayString = "PT30S")
+    public void refreshStatusCounts() {
+        for (OutboxEventStatus status : OutboxEventStatus.values()) {
+            AtomicLong count = statusCounts.get(status);
+            if (count != null) {
+                count.set(outboxEventRepository.countByStatus(status));
+            }
         }
     }
 
