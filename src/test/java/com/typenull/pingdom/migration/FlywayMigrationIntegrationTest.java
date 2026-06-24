@@ -308,8 +308,6 @@ class FlywayMigrationIntegrationTest {
                         FROM information_schema.columns
                         WHERE table_name = 'place_recommendation_traffic_policy'
                           AND column_name = 'enabled'
-                        FROM information_schema.tables
-                        WHERE table_name = 'admin_place_merge_history'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -318,6 +316,19 @@ class FlywayMigrationIntegrationTest {
                         FROM information_schema.columns
                         WHERE table_name = 'place_recommendation_traffic_policy'
                           AND column_name = 'fallback_version'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'admin_place_merge_history'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
                         WHERE table_name = 'admin_place_merge_history'
                           AND column_name = 'restored'
                           AND is_nullable = 'NO'
