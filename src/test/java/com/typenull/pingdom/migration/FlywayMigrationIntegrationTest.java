@@ -7,7 +7,10 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -26,24 +29,77 @@ class FlywayMigrationIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
-    @Test
-    void appliesAllMigrationsToPostgisDatabase() throws Exception {
+    @BeforeEach
+    void resetDatabase() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            statement.execute("DROP EXTENSION IF EXISTS postgis CASCADE");
+            statement.execute("DROP EXTENSION IF EXISTS pg_trgm CASCADE");
+            statement.execute("DROP SCHEMA IF EXISTS public CASCADE");
+            statement.execute("CREATE SCHEMA public");
+            statement.execute("GRANT ALL ON SCHEMA public TO PUBLIC");
+            statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
             statement.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm");
         }
+    }
 
-        Flyway flyway = Flyway.configure()
-                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
-                .locations("classpath:db/migration")
-                .load();
-
-        MigrateResult result = flyway.migrate();
+    @Test
+    void appliesAllMigrationsToPostgisDatabase() throws Exception {
+        MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo("8");
         assertThat(result.migrationsExecuted).isEqualTo(8);
 
+        assertPostMigrationSchema();
+    }
+
+    @Test
+    void baselinesExistingVersionOneSchemaAndAppliesIncrementalMigrations() throws Exception {
+        executeBaselineSchemaScript();
+
+        MigrateResult result = migrate(true);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo("8");
+        assertThat(result.migrationsExecuted).isEqualTo(7);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM flyway_schema_history
+                        WHERE version = '1'
+                          AND type = 'BASELINE'
+                          AND success = true
+                    )
+                    """)).isTrue();
+        }
+        assertPostMigrationSchema();
+    }
+
+    private MigrateResult migrate(boolean baselineOnMigrate) {
+        Flyway flyway = Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .locations("classpath:db/migration")
+                .baselineOnMigrate(baselineOnMigrate)
+                .baselineVersion("1")
+                .load();
+
+        return flyway.migrate();
+    }
+
+    private void executeBaselineSchemaScript() throws Exception {
+        try (Connection connection = postgres.createConnection("")) {
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource("db/migration/V1__baseline_schema.sql")
+            );
+        }
+    }
+
+    private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
