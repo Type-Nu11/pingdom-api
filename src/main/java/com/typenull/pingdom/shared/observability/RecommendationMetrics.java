@@ -4,25 +4,30 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
+import java.util.Map;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
 @Component
 public class RecommendationMetrics {
 
     private final MeterRegistry meterRegistry;
+    private final Map<String, DistributionSummary> resultCountSummaries = new ConcurrentHashMap<>();
 
     public RecommendationMetrics(MeterRegistry meterRegistry) {
         this.meterRegistry = meterRegistry;
     }
 
     public void recordRequest(String recommendationVersion, int recommendedCount) {
-        Tags tags = Tags.of("recommendation_version", safeTag(recommendationVersion));
+        String version = safeTag(recommendationVersion);
+        Tags tags = Tags.of("recommendation_version", version);
         meterRegistry.counter("pingdom.recommendation.requests", tags).increment();
-        DistributionSummary.builder("pingdom.recommendation.result_count")
-                .description("Recommended place count per request")
-                .tags(tags)
-                .register(meterRegistry)
-                .record(recommendedCount);
+        resultCountSummaries.computeIfAbsent(version, key ->
+                DistributionSummary.builder("pingdom.recommendation.result_count")
+                        .description("Recommended place count per request")
+                        .tags(tags)
+                        .register(meterRegistry)
+        ).record(recommendedCount);
     }
 
     public void recordSnapshotResyncSuccess(SnapshotResyncResult result) {
