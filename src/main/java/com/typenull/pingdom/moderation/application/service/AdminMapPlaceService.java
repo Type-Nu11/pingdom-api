@@ -63,7 +63,7 @@ public class AdminMapPlaceService {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
         }
 
-        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
         Double beforeLatitude = mapPlace.getLatitude();
