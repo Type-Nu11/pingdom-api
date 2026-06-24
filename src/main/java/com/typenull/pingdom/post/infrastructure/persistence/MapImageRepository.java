@@ -1,6 +1,7 @@
 package com.typenull.pingdom.post.infrastructure.persistence;
 
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -65,16 +66,21 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     Page<MapImage> findAllBy(Pageable pageable);
 
     @EntityGraph(attributePaths = "mapPlace")
+    Page<MapImage> findAllByVisibilityStatus(MapImageVisibilityStatus visibilityStatus, Pageable pageable);
+
+    @EntityGraph(attributePaths = "mapPlace")
     @Query(
             value = """
                     SELECT m
                     FROM MapImage m
                     JOIN MapBookmark b ON b.placeId = m.mapPlace.id
                     WHERE b.userId = :userId
+                      AND m.visibilityStatus = com.typenull.pingdom.post.domain.MapImageVisibilityStatus.ACTIVE
                       AND m.id = (
                           SELECT MAX(latest.id)
                           FROM MapImage latest
                           WHERE latest.mapPlace.id = m.mapPlace.id
+                            AND latest.visibilityStatus = com.typenull.pingdom.post.domain.MapImageVisibilityStatus.ACTIVE
                       )
                     ORDER BY b.createdAt DESC, b.id DESC
                     """,
@@ -86,6 +92,7 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                           SELECT 1
                           FROM MapImage m
                           WHERE m.mapPlace.id = b.placeId
+                            AND m.visibilityStatus = com.typenull.pingdom.post.domain.MapImageVisibilityStatus.ACTIVE
                       )
                     """
     )
@@ -98,12 +105,15 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                     FROM MapImage m
                     JOIN MapImageLike liked ON liked.mapImageId = m.id
                     WHERE liked.userId = :userId
+                      AND m.visibilityStatus = com.typenull.pingdom.post.domain.MapImageVisibilityStatus.ACTIVE
                     ORDER BY liked.likeId DESC
                     """,
             countQuery = """
                     SELECT COUNT(liked)
                     FROM MapImageLike liked
+                    JOIN MapImage m ON m.id = liked.mapImageId
                     WHERE liked.userId = :userId
+                      AND m.visibilityStatus = com.typenull.pingdom.post.domain.MapImageVisibilityStatus.ACTIVE
                     """
     )
     Page<MapImage> findLikedByUserId(@Param("userId") Long userId, Pageable pageable);
@@ -127,6 +137,9 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     @EntityGraph(attributePaths = "mapPlace")
     Optional<MapImage> findWithMapPlaceById(Long id);
+
+    @EntityGraph(attributePaths = "mapPlace")
+    Optional<MapImage> findWithMapPlaceByIdAndVisibilityStatus(Long id, MapImageVisibilityStatus visibilityStatus);
 
     long countByMapPlace_Id(Long placeId);
 
