@@ -21,12 +21,14 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 public class AdminMapPlaceLookupQueryService {
 
     private static final int PLACE_DETAIL_POST_LIMIT = 20;
+    private static final String UNCATEGORIZED_CATEGORY_NAME = "미분류";
 
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminMapPlaceQueryRepository adminMapPlaceQueryRepository;
@@ -81,10 +83,14 @@ public class AdminMapPlaceLookupQueryService {
                 .map(this::toImageItem)
                 .toList();
 
+        String category = toResponseCategory(mapPlace.getCategory());
+
         return new AdminMapPlaceDetailResponse(
                 mapPlace.getId(),
                 mapPlace.getName(),
                 mapPlace.getAddress(),
+                category,
+                toCategoryName(category),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
@@ -113,10 +119,14 @@ public class AdminMapPlaceLookupQueryService {
     }
 
     private AdminMapPlaceItem toItem(MapPlace mapPlace) {
+        String category = toResponseCategory(mapPlace.getCategory());
+
         return new AdminMapPlaceItem(
                 mapPlace.getId(),
                 mapPlace.getName(),
                 mapPlace.getAddress(),
+                category,
+                toCategoryName(category),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
@@ -136,6 +146,14 @@ public class AdminMapPlaceLookupQueryService {
                 mapImage.getCreatedAt(),
                 mapImage.getLikeCount()
         );
+    }
+
+    private String toResponseCategory(String category) {
+        return StringUtils.hasText(category) ? category.trim() : null;
+    }
+
+    private String toCategoryName(String category) {
+        return category == null ? UNCATEGORIZED_CATEGORY_NAME : category;
     }
 
     private Long parseLongKeyword(String keyword) {

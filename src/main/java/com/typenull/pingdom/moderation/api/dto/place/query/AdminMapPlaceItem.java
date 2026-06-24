@@ -6,6 +6,8 @@ public record AdminMapPlaceItem(
         Long id,
         String name,
         String address,
+        String category,
+        String categoryName,
         Double latitude,
         Double longitude,
         Long userId,

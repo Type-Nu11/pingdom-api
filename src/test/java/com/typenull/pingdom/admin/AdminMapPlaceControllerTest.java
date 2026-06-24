@@ -1,5 +1,6 @@
 package com.typenull.pingdom.admin;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -119,6 +120,7 @@ class AdminMapPlaceControllerTest {
         mapPlaceRepository.save(MapPlace.builder()
                 .name("진주성")
                 .address("경상남도 진주시 남강로 626")
+                .category("관광")
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(11L)
@@ -132,10 +134,31 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].name").value("진주성"))
                 .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].category").value("관광"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("관광"))
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.limit").value(20))
                 .andExpect(jsonPath("$.totalCount").value(1))
                 .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listPlacesReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("미분류 장소")
+                .address("경상남도 진주시 미분류로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(12L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value(nullValue()))
+                .andExpect(jsonPath("$.places[0].categoryName").value("미분류"));
     }
 
     @Test
@@ -235,6 +258,7 @@ class AdminMapPlaceControllerTest {
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("남강")
                 .address("경상남도 진주시 남강변")
+                .category("풍경")
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(placeOwner.getId())
@@ -257,6 +281,8 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.category").value("풍경"))
+                .andExpect(jsonPath("$.categoryName").value("풍경"))
                 .andExpect(jsonPath("$.username").value("placeOwner"))
                 .andExpect(jsonPath("$.sortParam").value(SortParam.LATEST.name()))
                 .andExpect(jsonPath("$.postCount").value(1))
