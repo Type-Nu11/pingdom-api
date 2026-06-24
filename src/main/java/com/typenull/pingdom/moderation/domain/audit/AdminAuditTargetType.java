@@ -1,0 +1,10 @@
+package com.typenull.pingdom.moderation.domain.audit;
+
+public enum AdminAuditTargetType {
+    USER,
+    REPORT,
+    APPEAL,
+    POST,
+    PLACE,
+    AD
+}

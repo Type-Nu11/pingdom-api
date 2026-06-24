@@ -87,4 +87,14 @@ public class MapPlace {
         this.photoCount = nextPhotoCount;
         return nextPhotoCount;
     }
+
+    public void updateCoordinates(Double latitude, Double longitude, Point location) {
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.location = location;
+    }
+
+    public void updateKakaoPlaceId(String kakaoPlaceId) {
+        this.kakaoPlaceId = kakaoPlaceId;
+    }
 }

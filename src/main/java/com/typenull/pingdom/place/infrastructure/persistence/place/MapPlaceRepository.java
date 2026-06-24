@@ -14,6 +14,8 @@ import org.springframework.data.repository.query.Param;
 public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     Optional<MapPlace> findByKakaoPlaceId(String kakaoPlaceId);
 
+    Optional<MapPlace> findByKakaoPlaceIdAndIdNot(String kakaoPlaceId, Long id);
+
     @Modifying
     @Query("""
             UPDATE MapPlace m

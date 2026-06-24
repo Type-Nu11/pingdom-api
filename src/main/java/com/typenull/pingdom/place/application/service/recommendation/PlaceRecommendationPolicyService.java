@@ -5,25 +5,42 @@ import com.typenull.pingdom.place.support.PlaceRecommendationProperties.Candidat
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.VersionPolicy;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationTrafficPolicyRepository;
 import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.support.TransactionSynchronization;
+import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class PlaceRecommendationPolicyService {
 
     private final PlaceRecommendationProperties properties;
-    private Map<String, VersionPolicy> policiesByVersion = Map.of();
+    private final PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository;
+    private volatile Map<String, VersionPolicy> policiesByVersion = Map.of();
+    private volatile Map<String, Integer> trafficOverridesByVersion = Map.of();
 
-    public PlaceRecommendationPolicyService(PlaceRecommendationProperties properties) {
+    public PlaceRecommendationPolicyService(
+            PlaceRecommendationProperties properties,
+            PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository
+    ) {
         this.properties = properties;
+        this.trafficPolicyRepository = trafficPolicyRepository;
     }
 
     @PostConstruct
     void initialize() {
+        refreshPolicies();
+    }
+
+    @Transactional(readOnly = true)
+    public synchronized void refreshPolicies() {
         List<VersionPolicy> configuredPolicies = properties.versions();
         if (configuredPolicies == null || configuredPolicies.isEmpty()) {
             configuredPolicies = defaultPolicies();
@@ -43,9 +60,14 @@ public class PlaceRecommendationPolicyService {
 
         policiesByVersion = Map.copyOf(policyMap);
         resolvedDefaultVersion = defaultVersion;
+        trafficOverridesByVersion = trafficPolicyRepository.findAll().stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        PlaceRecommendationTrafficPolicy::getRecommendationVersion,
+                        PlaceRecommendationTrafficPolicy::getTrafficPercentage
+                ));
     }
 
-    private String resolvedDefaultVersion;
+    private volatile String resolvedDefaultVersion;
 
     public ResolvedRecommendationPolicy resolve(
             Long userId,
@@ -64,7 +86,7 @@ public class PlaceRecommendationPolicyService {
         int bucket = resolveBucket(userId, latitude, longitude);
         int cumulative = 0;
         for (VersionPolicy policy : policiesByVersion.values()) {
-            cumulative += policy.trafficPercentage();
+            cumulative += currentTrafficPercentage(policy);
             if (bucket < cumulative) {
                 return ResolvedRecommendationPolicy.from(policy);
             }
@@ -81,6 +103,71 @@ public class PlaceRecommendationPolicyService {
         int latitudeBucket = (int) Math.round(latitude * 10_000d);
         int longitudeBucket = (int) Math.round(longitude * 10_000d);
         return Math.floorMod((31 * latitudeBucket) + longitudeBucket, 100);
+    }
+
+    @Transactional(readOnly = true)
+    public List<RecommendationTrafficPolicy> getTrafficPolicies() {
+        return buildTrafficPolicies(trafficOverridesByVersion);
+    }
+
+    @Transactional
+    public synchronized List<RecommendationTrafficPolicy> updateTrafficPolicies(Map<String, Integer> trafficByVersion) {
+        Map<String, Integer> updatedOverrides = new LinkedHashMap<>(trafficOverridesByVersion);
+        for (VersionPolicy policy : policiesByVersion.values()) {
+            Integer trafficPercentage = trafficByVersion.get(policy.version());
+            if (trafficPercentage == null) {
+                continue;
+            }
+
+            PlaceRecommendationTrafficPolicy savedPolicy = trafficPolicyRepository.findById(policy.version())
+                    .orElseGet(() -> PlaceRecommendationTrafficPolicy.create(policy.version(), trafficPercentage));
+            savedPolicy.updateTrafficPercentage(trafficPercentage);
+            trafficPolicyRepository.save(savedPolicy);
+            updatedOverrides.put(policy.version(), trafficPercentage);
+        }
+
+        registerRefreshAfterCommit();
+        return buildTrafficPolicies(updatedOverrides);
+    }
+
+    private List<RecommendationTrafficPolicy> buildTrafficPolicies(Map<String, Integer> trafficOverrides) {
+        return policiesByVersion.values().stream()
+                .map(policy -> new RecommendationTrafficPolicy(
+                        policy.version(),
+                        policy.stage() == null ? RecommendationStage.STABLE : policy.stage(),
+                        currentTrafficPercentage(policy, trafficOverrides)
+                ))
+                .toList();
+    }
+
+    public String getDefaultVersion() {
+        return resolvedDefaultVersion;
+    }
+
+    public boolean supportsVersion(String version) {
+        return StringUtils.hasText(version) && policiesByVersion.containsKey(version.trim());
+    }
+
+    private int currentTrafficPercentage(VersionPolicy policy) {
+        return currentTrafficPercentage(policy, trafficOverridesByVersion);
+    }
+
+    private int currentTrafficPercentage(VersionPolicy policy, Map<String, Integer> trafficOverrides) {
+        return trafficOverrides.getOrDefault(policy.version(), policy.trafficPercentage());
+    }
+
+    private void registerRefreshAfterCommit() {
+        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            refreshPolicies();
+            return;
+        }
+
+        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
+            @Override
+            public void afterCommit() {
+                refreshPolicies();
+            }
+        });
     }
 
     private List<VersionPolicy> defaultPolicies() {
@@ -136,5 +223,12 @@ public class PlaceRecommendationPolicyService {
         public PlaceRecommendationProperties.RankingWeights weights(boolean hasPersonalSignals) {
             return hasPersonalSignals ? personalizedWeights : anonymousWeights;
         }
+    }
+
+    public record RecommendationTrafficPolicy(
+            String version,
+            RecommendationStage stage,
+            int trafficPercentage
+    ) {
     }
 }

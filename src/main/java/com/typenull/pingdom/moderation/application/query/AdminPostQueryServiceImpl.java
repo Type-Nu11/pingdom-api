@@ -101,6 +101,9 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 mapImage.getDescription(),
                 mapImage.getLikeCount(),
                 mapImage.getMapPlace() != null ? mapImage.getMapPlace().getName() : null,
+                mapImage.getVisibilityStatus(),
+                mapImage.getHiddenAt(),
+                mapImage.getHiddenReason(),
                 reports
         );
     }
@@ -138,7 +141,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             return mapImageRepository.findByIdOrUserId(numericKeyword, pageable);
         }
 
-        // 3. 텍스트인 경우 -> 텍스트 포함 검색
-        return mapImageRepository.findByTitleOrDescriptionContaining(keyword, pageable);
+        // 3. 텍스트인 경우 -> 게시글/작성자/장소명 포함 검색
+        return mapImageRepository.searchAdminPosts(keyword, null, pageable);
     }
 }

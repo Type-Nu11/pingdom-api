@@ -18,8 +18,12 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.UserSanctionCommandService;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -67,6 +71,9 @@ class AdminUserControllerTest {
     private UserSanctionHistoryRepository userSanctionHistoryRepository;
 
     @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
+    @Autowired
     private UserSanctionCommandService userSanctionCommandService;
 
     @Autowired
@@ -74,6 +81,7 @@ class AdminUserControllerTest {
 
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         userSanctionHistoryRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -190,6 +198,17 @@ class AdminUserControllerTest {
         assertEquals("7일 제재", history.getReason());
         assertEquals("adminTester", history.getAdminUsername());
         assertEquals(targetUser.getId(), history.getTargetUserId());
+
+        List<AdminAuditLog> auditLogs = adminAuditLogRepository.findAll();
+        assertEquals(1, auditLogs.size());
+        AdminAuditLog auditLog = auditLogs.getFirst();
+        assertEquals(AdminAuditAction.USER_BAN_APPLIED, auditLog.getAction());
+        assertEquals(AdminAuditTargetType.USER, auditLog.getTargetType());
+        assertEquals(String.valueOf(targetUser.getId()), auditLog.getTargetId());
+        assertEquals("7일 제재", auditLog.getReason());
+        assertEquals("adminTester", auditLog.getActorUsername());
+        assertTrue(auditLog.getBeforeState().contains("\"banned\":false"));
+        assertTrue(auditLog.getAfterState().contains("\"banned\":true"));
     }
 
     @Test
@@ -264,6 +283,9 @@ class AdminUserControllerTest {
         User persistedUser = userRepository.findById(targetUser.getId()).orElseThrow();
         assertFalse(persistedUser.isBanned());
         assertEquals(2, userSanctionHistoryRepository.findAll().size());
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.USER_BAN_RELEASED
+                        && log.getTargetId().equals(String.valueOf(targetUser.getId()))));
 
         mockMvc.perform(get("/admin/users/{userId}/sanction", targetUser.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))

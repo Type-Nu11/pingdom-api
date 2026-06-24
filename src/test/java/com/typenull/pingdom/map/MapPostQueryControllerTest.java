@@ -196,6 +196,46 @@ class MapPostQueryControllerTest {
     }
 
     @Test
+    void listAndDetailExcludeHiddenPosts() throws Exception {
+        String accessToken = signupAndLogin("hidden-reader");
+        MapPlace mapPlace = createMapPlace("숨김 장소", "경상남도 진주시 숨김로 1");
+        MapImage visiblePost = createMapImage(51L, "visible-writer", "노출 게시글", mapPlace, 1L);
+        MapImage hiddenPost = createMapImage(52L, "hidden-writer", "숨김 게시글", mapPlace, 1L);
+        hiddenPost.autoHide("테스트 숨김", java.time.LocalDateTime.now(), null);
+        mapImageRepository.saveAndFlush(hiddenPost);
+
+        mockMvc.perform(get("/map/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(visiblePost.getId()));
+
+        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
+    }
+
+    @Test
+    void getPostAllowsOwnerToReadHiddenPostDetail() throws Exception {
+        String accessToken = signupAndLogin("hidden-owner");
+        Long ownerId = userRepository.findByUsername("hidden-owner").orElseThrow().getId();
+        MapPlace mapPlace = createMapPlace("숨김 소유자 장소", "경상남도 진주시 소유자로 1");
+        MapImage hiddenPost = createMapImage(ownerId, "hidden-owner", "소유자 숨김 게시글", mapPlace, 1L);
+        hiddenPost.autoHide("테스트 숨김", java.time.LocalDateTime.now(), null);
+        mapImageRepository.saveAndFlush(hiddenPost);
+
+        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(hiddenPost.getId()))
+                .andExpect(jsonPath("$.title").value("소유자 숨김 게시글"));
+    }
+
+    @Test
     void getPostFailsWhenPostDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reader03");
 

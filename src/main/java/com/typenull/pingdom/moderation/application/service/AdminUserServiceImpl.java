@@ -16,6 +16,8 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryItem
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
@@ -23,7 +25,9 @@ import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -39,6 +43,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserRepository userRepository;
     private final UserSanctionCommandService userSanctionCommandService;
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;
+    private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
 
     @Override
@@ -48,8 +53,18 @@ public class AdminUserServiceImpl implements AdminUserService {
         User user = findUser(userId);
         LocalDateTime expiresAt = resolveBanExpiresAt(request, now);
         String reason = request == null ? null : request.reason();
+        Map<String, Object> beforeState = userSanctionState(user, now);
 
         userSanctionCommandService.applyBan(user, reason, now, expiresAt, adminUserId);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.USER_BAN_APPLIED,
+                AdminAuditTargetType.USER,
+                user.getId(),
+                reason,
+                beforeState,
+                userSanctionState(user, now)
+        );
 
         return new BanResponse(
                 user.getId(),
@@ -67,8 +82,18 @@ public class AdminUserServiceImpl implements AdminUserService {
         LocalDateTime now = now();
         User user = findUser(userId);
         String reason = request == null ? null : request.reason();
+        Map<String, Object> beforeState = userSanctionState(user, now);
 
         userSanctionCommandService.releaseBan(user, reason, now, adminUserId);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.USER_BAN_RELEASED,
+                AdminAuditTargetType.USER,
+                user.getId(),
+                reason,
+                beforeState,
+                userSanctionState(user, now)
+        );
 
         return new UnbanResponse(user.getId(), user.isCurrentlyBanned(now), now, reason);
     }
@@ -251,5 +276,17 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
+    }
+
+    private Map<String, Object> userSanctionState(User user, LocalDateTime now) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("userId", user.getId());
+        state.put("username", user.getUsername());
+        state.put("banned", user.isCurrentlyBanned(now));
+        state.put("banType", user.getBanType());
+        state.put("bannedAt", user.getBannedAt());
+        state.put("banExpiresAt", user.getBanExpiresAt());
+        state.put("banReason", user.getBanReason());
+        return state;
     }
 }

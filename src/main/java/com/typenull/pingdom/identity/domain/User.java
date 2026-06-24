@@ -90,6 +90,14 @@ public class User {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
+    @Builder.Default
+    @Column(name = "unaccepted_report_count")
+    private Long unacceptedReportCount = 0L;
+
+    @Builder.Default
+    @Column(name = "report_count")
+    private Long reportCount = 0L;
+
     // 관리자 밴 여부
     @Builder.Default
     @Column(nullable = false)
@@ -151,6 +159,23 @@ public class User {
         this.refreshToken = null;
     }
 
+    // 총 신고 횟수
+    public void increaseReportCount(){
+        this.reportCount += 1;
+    }
+
+    // 기각 신고 횟수 증가
+    public void increaseUnacceptedReportCount(){
+        this.unacceptedReportCount += 1;
+    }
+
+    public Long getUnacceptedReportPercent() {
+        if(reportCount == null || reportCount == 0)
+        {
+            return 0L;
+        }
+        return (unacceptedReportCount * 100) / reportCount;
+    }
     public void ban(String reason, LocalDateTime now) {
         ban(reason, now, null);
     }

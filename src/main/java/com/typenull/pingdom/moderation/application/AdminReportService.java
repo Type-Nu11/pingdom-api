@@ -6,5 +6,5 @@ public interface AdminReportService {
 
     AdminReportActionResponse acceptReport(Long reportId, Long adminUserId);
 
-    AdminReportActionResponse declineReport(Long reportId);
+    AdminReportActionResponse declineReport(Long reportId, Long adminUserId);
 }
