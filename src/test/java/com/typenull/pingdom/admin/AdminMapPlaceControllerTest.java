@@ -594,6 +594,33 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void updateRecommendationTrafficRejectsFallbackCycle() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(patch("/admin/places/recommendation-traffic")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "policies", List.of(
+                                        java.util.Map.of(
+                                                "recommendationVersion", "place-rec-v1",
+                                                "trafficPercentage", 50,
+                                                "enabled", false,
+                                                "fallbackVersion", "place-rec-v2"
+                                        ),
+                                        java.util.Map.of(
+                                                "recommendationVersion", "place-rec-v2",
+                                                "trafficPercentage", 50,
+                                                "enabled", false,
+                                                "fallbackVersion", "place-rec-v1"
+                                        )
+                                )
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST"));
+    }
+
+    @Test
     void listDuplicatePlacesReturnsDuplicateGroups() throws Exception {
         String accessToken = createAdminAndLogin();
 

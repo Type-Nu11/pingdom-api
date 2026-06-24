@@ -46,6 +46,7 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -143,6 +144,7 @@ public class AdminMapPlaceService {
         if (requestedTrafficByVersion.size() != beforePolicies.size()) {
             throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID);
         }
+        validateFallbackCycle(policyCommands);
 
         long enabledPolicyCount = policyCommands.values().stream()
                 .filter(PlaceRecommendationPolicyService.PolicyUpdateCommand::enabled)
@@ -627,6 +629,23 @@ public class AdminMapPlaceService {
                         || policy.trafficPercentage() == null
         )) {
             throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+        }
+    }
+
+    private void validateFallbackCycle(Map<String, PlaceRecommendationPolicyService.PolicyUpdateCommand> policyCommands) {
+        for (String version : policyCommands.keySet()) {
+            Set<String> visitedVersions = new HashSet<>();
+            String currentVersion = version;
+            while (currentVersion != null) {
+                if (!visitedVersions.add(currentVersion)) {
+                    throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+                }
+                PlaceRecommendationPolicyService.PolicyUpdateCommand command = policyCommands.get(currentVersion);
+                if (command == null || command.enabled()) {
+                    break;
+                }
+                currentVersion = command.fallbackVersion();
+            }
         }
     }
 
