@@ -571,10 +571,16 @@ public class AdminMapPlaceService {
                 .forEach(bookmark -> bookmark.reassignPlace(restoredSourcePlace.getId()));
         List<BookmarkSnapshot> removedBookmarks = readValue(deletedBookmarks, new TypeReference<>() {
         });
-        removedBookmarks.forEach(snapshot -> mapBookmarkRepository.save(MapBookmark.builder()
-                .userId(snapshot.userId())
-                .placeId(restoredSourcePlace.getId())
-                .build()));
+        if (removedBookmarks.isEmpty()) {
+            return;
+        }
+        List<MapBookmark> bookmarksToSave = removedBookmarks.stream()
+                .map(snapshot -> MapBookmark.builder()
+                        .userId(snapshot.userId())
+                        .placeId(restoredSourcePlace.getId())
+                        .build())
+                .toList();
+        mapBookmarkRepository.saveAll(bookmarksToSave);
     }
 
     private void restoreConversions(MapPlace restoredSourcePlace, String movedConversionIds, String deletedConversions) {
@@ -582,7 +588,13 @@ public class AdminMapPlaceService {
                 .forEach(conversion -> conversion.reassignPlace(restoredSourcePlace.getId()));
         List<ConversionSnapshot> removedConversions = readValue(deletedConversions, new TypeReference<>() {
         });
-        removedConversions.forEach(snapshot -> placeRecommendationConversionRepository.save(snapshot.toEntity(restoredSourcePlace.getId())));
+        if (removedConversions.isEmpty()) {
+            return;
+        }
+        List<PlaceRecommendationConversion> conversionsToSave = removedConversions.stream()
+                .map(snapshot -> snapshot.toEntity(restoredSourcePlace.getId()))
+                .toList();
+        placeRecommendationConversionRepository.saveAll(conversionsToSave);
     }
 
     private void restoreClicks(Long sourcePlaceId, List<Long> movedClickIds) {
