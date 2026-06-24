@@ -31,6 +31,11 @@ Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기�
 | API Docs | dev 프로필에서 제공되는 SpringDoc OpenAPI 문서 |
 | Build & Deploy | Gradle, Docker, Docker Compose, GitHub Actions, AWS EC2 배포 |
 
+## 운영 문서
+
+- [DB 마이그레이션 운영 Runbook](database-migration.md)
+- [DB 백업/복구 절차](database-backup-restore.md)
+
 ## Features
 
 - **Auth**: 회원가입, 로그인, 관리자 로그인, 이메일 인증, 토큰 재발급, 로그아웃, Google OAuth2/OIDC
