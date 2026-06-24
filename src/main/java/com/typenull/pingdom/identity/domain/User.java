@@ -90,9 +90,11 @@ public class User {
     @Column(name = "withdrawn_at")
     private LocalDateTime withdrawnAt;
 
+    @Builder.Default
     @Column(name = "unaccepted_report_count")
     private Long unacceptedReportCount;
 
+    @Builder.Default
     @Column(name = "report_count")
     private Long reportCount;
 
@@ -168,6 +170,10 @@ public class User {
     }
 
     public Long getUnacceptedReportPercent() {
+        if(reportCount == null || reportCount == 0)
+        {
+            return 0L;
+        }
         return (unacceptedReportCount * 100) / reportCount;
     }
     public void ban(String reason, LocalDateTime now) {

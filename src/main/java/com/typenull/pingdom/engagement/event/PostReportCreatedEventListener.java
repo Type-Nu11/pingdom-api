@@ -31,10 +31,6 @@ public class PostReportCreatedEventListener {
         User reporter = userRepository.findById(report.getReporterUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (reporter.getUnacceptedReportCount() >= 5 && reporter.getUnacceptedReportPercent() >= 90){
-            report.increaseReportScore(10);
-        }
-
         // 최근 3개 신고 사유 복붙 체크
         if (postReportRepository.existsSameReasonInLatestThreeBeforeCurrent(
                 report.getReporterUserId(),

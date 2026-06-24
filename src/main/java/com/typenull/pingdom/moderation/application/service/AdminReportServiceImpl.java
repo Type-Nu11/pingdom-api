@@ -27,9 +27,12 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     @Override
     @Transactional
-    public AdminReportActionResponse acceptReport(Long reportId, Long adminUserId) {
+    public AdminReportActionResponse acceptUserReport(Long reportId, Long adminUserId) {
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        User reporter = userRepository.findById(postReport.getReporterUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         LocalDateTime now = LocalDateTime.now();
@@ -38,6 +41,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         // 신고 수락은 대상 사진 소유자 제재까지 하나의 처리로 본다.
         userSanctionCommandService.applyBan(reportedUser, postReport.getReason(), now, null, adminUserId);
         adminPostService.deletePost(postReport.getReportedImageId());
+        reporter.increaseReportCount();
 
         return new AdminReportActionResponse(
                 postReport.getId(),
@@ -50,13 +54,17 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     @Override
     @Transactional
-    public AdminReportActionResponse declineReport(Long reportId) {
+    public AdminReportActionResponse declineUserReport(Long reportId) {
         PostReport postReport = getPendingReport(reportId);
+        User reporter = userRepository.findById(postReport.getReporterUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
         LocalDateTime now = LocalDateTime.now();
         postReport.decline(now);
         boolean banned = userRepository.findById(postReport.getReportedUserId())
                 .map(user -> user.isCurrentlyBanned(now))
                 .orElse(false);
+        reporter.increaseUnacceptedReportCount();
 
         return new AdminReportActionResponse(
                 postReport.getId(),

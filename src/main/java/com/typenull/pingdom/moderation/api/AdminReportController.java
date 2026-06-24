@@ -111,7 +111,7 @@ public class AdminReportController {
             @PathVariable Long id,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return adminReportService.acceptReport(id, adminUser.userId());
+        return adminReportService.acceptUserReport(id, adminUser.userId());
     }
 
     @PostMapping("/{id}/decline")
@@ -195,6 +195,6 @@ public class AdminReportController {
             )
     })
     public AdminReportActionResponse declineReport(@PathVariable Long id) {
-        return adminReportService.declineReport(id);
+        return adminReportService.declineUserReport(id);
     }
 }
