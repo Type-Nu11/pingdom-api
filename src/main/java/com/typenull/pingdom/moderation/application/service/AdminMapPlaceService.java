@@ -1,7 +1,13 @@
 package com.typenull.pingdom.moderation.application.service;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHistoryItem;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHistoryResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
@@ -11,6 +17,8 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.moderation.domain.place.AdminPlaceMergeHistory;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
@@ -24,6 +32,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -37,6 +47,7 @@ import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -57,6 +68,9 @@ public class AdminMapPlaceService {
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
+    private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
+    private final ObjectMapper objectMapper;
+    private final JdbcTemplate jdbcTemplate;
 
     @Transactional
     public void deletePlace(long placeId, Long adminUserId) {
@@ -191,18 +205,23 @@ public class AdminMapPlaceService {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
         Map<String, Object> beforeState = placeMergeBeforeState(sourcePlace, targetPlace);
+        MergeExecutionContext mergeExecutionContext = new MergeExecutionContext(
+                placeSnapshot(sourcePlace),
+                placeSnapshot(targetPlace)
+        );
 
         transferKakaoPlaceIdIfNeeded(sourcePlace, targetPlace);
 
-        long movedImageCount = reassignImages(sourcePlace, targetPlace);
-        BookmarkMergeResult bookmarkMergeResult = reassignBookmarks(sourcePlace, targetPlace);
-        ConversionMergeResult conversionMergeResult = reassignConversions(sourcePlace, targetPlace);
-        int movedClickCount = placeRecommendationClickRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
-        int movedExposureCount = placeRecommendationExposureRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
-        int movedFeatureLogCount = placeRecommendationFeatureLogRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
+        long movedImageCount = reassignImages(sourcePlace, targetPlace, mergeExecutionContext);
+        BookmarkMergeResult bookmarkMergeResult = reassignBookmarks(sourcePlace, targetPlace, mergeExecutionContext);
+        ConversionMergeResult conversionMergeResult = reassignConversions(sourcePlace, targetPlace, mergeExecutionContext);
+        int movedClickCount = reassignClicks(sourcePlace, targetPlace, mergeExecutionContext);
+        int movedExposureCount = reassignExposures(sourcePlace, targetPlace, mergeExecutionContext);
+        int movedFeatureLogCount = reassignFeatureLogs(sourcePlace, targetPlace, mergeExecutionContext);
 
         targetPlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
         mapPlaceRepository.delete(sourcePlace);
+        adminPlaceMergeHistoryRepository.save(mergeExecutionContext.toHistory(adminUserId));
         placeRecommendationSnapshotResyncService.resyncMergedPlace(sourcePlace.getId(), targetPlace.getId());
         adminAuditLogService.record(
                 adminUserId,
@@ -245,6 +264,75 @@ public class AdminMapPlaceService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public AdminPlaceMergeHistoryResponse listMergeHistories() {
+        List<AdminPlaceMergeHistoryItem> histories = adminPlaceMergeHistoryRepository.findTop50ByOrderByMergedAtDescIdDesc().stream()
+                .map(history -> new AdminPlaceMergeHistoryItem(
+                        history.getId(),
+                        history.getSourcePlaceId(),
+                        history.getTargetPlaceId(),
+                        history.getAdminUserId(),
+                        history.isRestored(),
+                        history.getMergedAt(),
+                        history.getRestoredAt()
+                ))
+                .toList();
+        return new AdminPlaceMergeHistoryResponse(histories);
+    }
+
+    @Transactional
+    public AdminPlaceMergeRestoreResponse restoreMerge(Long adminUserId, Long historyId) {
+        AdminPlaceMergeHistory history = adminPlaceMergeHistoryRepository.findByIdForUpdate(historyId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_HISTORY_NOT_FOUND));
+        if (history.isRestored()) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_ALREADY_RESTORED);
+        }
+
+        PlaceSnapshot sourceSnapshot = readValue(history.getSourcePlaceSnapshot(), new TypeReference<>() {
+        });
+        PlaceSnapshot targetSnapshot = readValue(history.getTargetPlaceSnapshot(), new TypeReference<>() {
+        });
+
+        if (mapPlaceRepository.existsById(sourceSnapshot.id())) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED);
+        }
+
+        MapPlace targetPlace = mapPlaceRepository.findByIdForUpdate(history.getTargetPlaceId())
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED));
+        prepareTargetBeforeRestore(targetPlace, sourceSnapshot, targetSnapshot);
+
+        MapPlace restoredSourcePlace = insertRestoredPlace(sourceSnapshot);
+        restoreImages(restoredSourcePlace, readLongList(history.getMovedImageIds()));
+        restoreBookmarks(restoredSourcePlace, history.getMovedBookmarkIds(), history.getDeletedBookmarks());
+        restoreConversions(restoredSourcePlace, history.getMovedConversionIds(), history.getDeletedConversions());
+        restoreClicks(restoredSourcePlace.getId(), readLongList(history.getMovedClickIds()));
+        restoreExposures(restoredSourcePlace.getId(), readLongList(history.getMovedExposureIds()));
+        restoreFeatureLogs(restoredSourcePlace.getId(), readLongList(history.getMovedFeatureLogIds()));
+        restoreKakaoPlaceIds(restoredSourcePlace, targetPlace, sourceSnapshot, targetSnapshot);
+
+        restoredSourcePlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(restoredSourcePlace.getId()));
+        targetPlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        history.markRestored(LocalDateTime.now());
+
+        placeRecommendationSnapshotResyncService.resyncMergedPlace(restoredSourcePlace.getId(), targetPlace.getId());
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_MERGED,
+                AdminAuditTargetType.PLACE,
+                restoredSourcePlace.getId(),
+                "PLACE_MERGE_RESTORED",
+                Map.of("historyId", historyId, "targetPlaceId", targetPlace.getId()),
+                Map.of("historyId", historyId, "sourcePlaceId", restoredSourcePlace.getId(), "restored", true)
+        );
+
+        return new AdminPlaceMergeRestoreResponse(
+                history.getId(),
+                restoredSourcePlace.getId(),
+                targetPlace.getId(),
+                "장소 병합을 복구했습니다."
+        );
+    }
+
     @Transactional
     public PlaceRecommendationSnapshotResyncService.SnapshotResyncResult resyncRecommendationSnapshots() {
         return placeRecommendationSnapshotResyncService.resyncAll();
@@ -259,13 +347,20 @@ public class AdminMapPlaceService {
         }
     }
 
-    private long reassignImages(MapPlace sourcePlace, MapPlace targetPlace) {
+    private long reassignImages(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
         List<MapImage> sourceImages = mapImageRepository.findByMapPlace_Id(sourcePlace.getId());
-        sourceImages.forEach(image -> image.reassignPlace(targetPlace));
+        sourceImages.forEach(image -> {
+            mergeExecutionContext.movedImageIds().add(image.getId());
+            image.reassignPlace(targetPlace);
+        });
         return sourceImages.size();
     }
 
-    private BookmarkMergeResult reassignBookmarks(MapPlace sourcePlace, MapPlace targetPlace) {
+    private BookmarkMergeResult reassignBookmarks(
+            MapPlace sourcePlace,
+            MapPlace targetPlace,
+            MergeExecutionContext mergeExecutionContext
+    ) {
         List<MapBookmark> sourceBookmarks = mapBookmarkRepository.findByPlaceId(sourcePlace.getId());
         Set<Long> targetBookmarkUserIds = new HashSet<>();
         for (MapBookmark targetBookmark : mapBookmarkRepository.findByPlaceId(targetPlace.getId())) {
@@ -276,10 +371,12 @@ public class AdminMapPlaceService {
         int deletedCount = 0;
         for (MapBookmark sourceBookmark : sourceBookmarks) {
             if (targetBookmarkUserIds.contains(sourceBookmark.getUserId())) {
+                mergeExecutionContext.deletedBookmarks().add(new BookmarkSnapshot(sourceBookmark.getUserId()));
                 mapBookmarkRepository.delete(sourceBookmark);
                 deletedCount++;
                 continue;
             }
+            mergeExecutionContext.movedBookmarkIds().add(sourceBookmark.getId());
             sourceBookmark.reassignPlace(targetPlace.getId());
             targetBookmarkUserIds.add(sourceBookmark.getUserId());
             movedCount++;
@@ -287,7 +384,11 @@ public class AdminMapPlaceService {
         return new BookmarkMergeResult(movedCount, deletedCount);
     }
 
-    private ConversionMergeResult reassignConversions(MapPlace sourcePlace, MapPlace targetPlace) {
+    private ConversionMergeResult reassignConversions(
+            MapPlace sourcePlace,
+            MapPlace targetPlace,
+            MergeExecutionContext mergeExecutionContext
+    ) {
         List<PlaceRecommendationConversion> sourceConversions =
                 placeRecommendationConversionRepository.findByPlaceId(sourcePlace.getId());
         List<PlaceRecommendationConversion> targetConversions =
@@ -312,15 +413,35 @@ public class AdminMapPlaceService {
                     sourceConversion.getConversionType()
             );
             if (targetConversionKeys.contains(conversionKey)) {
+                mergeExecutionContext.deletedConversions().add(ConversionSnapshot.from(sourceConversion));
                 placeRecommendationConversionRepository.delete(sourceConversion);
                 deletedCount++;
                 continue;
             }
+            mergeExecutionContext.movedConversionIds().add(sourceConversion.getId());
             sourceConversion.reassignPlace(targetPlace.getId());
             targetConversionKeys.add(conversionKey);
             movedCount++;
         }
         return new ConversionMergeResult(movedCount, deletedCount);
+    }
+
+    private int reassignClicks(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
+        List<Long> clickIds = placeRecommendationClickRepository.findIdsByPlaceId(sourcePlace.getId());
+        mergeExecutionContext.movedClickIds().addAll(clickIds);
+        return placeRecommendationClickRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
+    }
+
+    private int reassignExposures(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
+        List<Long> exposureIds = placeRecommendationExposureRepository.findIdsByPlaceId(sourcePlace.getId());
+        mergeExecutionContext.movedExposureIds().addAll(exposureIds);
+        return placeRecommendationExposureRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
+    }
+
+    private int reassignFeatureLogs(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
+        List<Long> featureLogIds = placeRecommendationFeatureLogRepository.findIdsByPlaceId(sourcePlace.getId());
+        mergeExecutionContext.movedFeatureLogIds().addAll(featureLogIds);
+        return placeRecommendationFeatureLogRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
     }
 
     private record BookmarkMergeResult(int movedCount, int deletedCount) {
@@ -393,5 +514,242 @@ public class AdminMapPlaceService {
         sourcePlace.updateKakaoPlaceId(null);
         mapPlaceRepository.flush();
         targetPlace.updateKakaoPlaceId(sourceKakaoPlaceId);
+    }
+
+    private PlaceSnapshot placeSnapshot(MapPlace place) {
+        return new PlaceSnapshot(
+                place.getId(),
+                place.getName(),
+                place.getAddress(),
+                place.getCategory(),
+                place.getImageUrl(),
+                place.getKakaoPlaceId(),
+                place.getLatitude(),
+                place.getLongitude(),
+                place.getUserId(),
+                place.getRegistrant(),
+                place.currentPhotoCount()
+        );
+    }
+
+    private void restoreImages(MapPlace restoredSourcePlace, List<Long> movedImageIds) {
+        mapImageRepository.findAllById(movedImageIds).forEach(image -> image.reassignPlace(restoredSourcePlace));
+    }
+
+    private MapPlace insertRestoredPlace(PlaceSnapshot sourceSnapshot) {
+        jdbcTemplate.update(
+                """
+                INSERT INTO map_place (
+                    map_place_id, place_name, address, category, image_url, kakao_place_id,
+                    latitude, longitude, user_id, registrant, photo_count
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                """,
+                sourceSnapshot.id(),
+                sourceSnapshot.name(),
+                sourceSnapshot.address(),
+                sourceSnapshot.category(),
+                sourceSnapshot.imageUrl(),
+                sourceSnapshot.kakaoPlaceId(),
+                sourceSnapshot.latitude(),
+                sourceSnapshot.longitude(),
+                sourceSnapshot.userId(),
+                sourceSnapshot.registrant(),
+                sourceSnapshot.photoCount()
+        );
+        MapPlace restoredSourcePlace = mapPlaceRepository.findById(sourceSnapshot.id())
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED));
+        restoredSourcePlace.updateCoordinates(
+                sourceSnapshot.latitude(),
+                sourceSnapshot.longitude(),
+                toPoint(sourceSnapshot.latitude(), sourceSnapshot.longitude())
+        );
+        return restoredSourcePlace;
+    }
+
+    private void restoreBookmarks(MapPlace restoredSourcePlace, String movedBookmarkIds, String deletedBookmarks) {
+        mapBookmarkRepository.findAllById(readLongList(movedBookmarkIds))
+                .forEach(bookmark -> bookmark.reassignPlace(restoredSourcePlace.getId()));
+        List<BookmarkSnapshot> removedBookmarks = readValue(deletedBookmarks, new TypeReference<>() {
+        });
+        if (removedBookmarks.isEmpty()) {
+            return;
+        }
+        List<MapBookmark> bookmarksToSave = removedBookmarks.stream()
+                .map(snapshot -> MapBookmark.builder()
+                        .userId(snapshot.userId())
+                        .placeId(restoredSourcePlace.getId())
+                        .build())
+                .toList();
+        mapBookmarkRepository.saveAll(bookmarksToSave);
+    }
+
+    private void restoreConversions(MapPlace restoredSourcePlace, String movedConversionIds, String deletedConversions) {
+        placeRecommendationConversionRepository.findAllById(readLongList(movedConversionIds))
+                .forEach(conversion -> conversion.reassignPlace(restoredSourcePlace.getId()));
+        List<ConversionSnapshot> removedConversions = readValue(deletedConversions, new TypeReference<>() {
+        });
+        if (removedConversions.isEmpty()) {
+            return;
+        }
+        List<PlaceRecommendationConversion> conversionsToSave = removedConversions.stream()
+                .map(snapshot -> snapshot.toEntity(restoredSourcePlace.getId()))
+                .toList();
+        placeRecommendationConversionRepository.saveAll(conversionsToSave);
+    }
+
+    private void restoreClicks(Long sourcePlaceId, List<Long> movedClickIds) {
+        if (movedClickIds.isEmpty()) {
+            return;
+        }
+        placeRecommendationClickRepository.updatePlaceIdForIds(sourcePlaceId, movedClickIds);
+    }
+
+    private void restoreExposures(Long sourcePlaceId, List<Long> movedExposureIds) {
+        if (movedExposureIds.isEmpty()) {
+            return;
+        }
+        placeRecommendationExposureRepository.updatePlaceIdForIds(sourcePlaceId, movedExposureIds);
+    }
+
+    private void restoreFeatureLogs(Long sourcePlaceId, List<Long> movedFeatureLogIds) {
+        if (movedFeatureLogIds.isEmpty()) {
+            return;
+        }
+        placeRecommendationFeatureLogRepository.updatePlaceIdForIds(sourcePlaceId, movedFeatureLogIds);
+    }
+
+    private void restoreKakaoPlaceIds(
+            MapPlace restoredSourcePlace,
+            MapPlace targetPlace,
+            PlaceSnapshot sourceSnapshot,
+            PlaceSnapshot targetSnapshot
+    ) {
+        restoredSourcePlace.updateKakaoPlaceId(sourceSnapshot.kakaoPlaceId());
+        targetPlace.updateKakaoPlaceId(targetSnapshot.kakaoPlaceId());
+    }
+
+    private void prepareTargetBeforeRestore(
+            MapPlace targetPlace,
+            PlaceSnapshot sourceSnapshot,
+            PlaceSnapshot targetSnapshot
+    ) {
+        if (sourceSnapshot.kakaoPlaceId() == null || targetSnapshot.kakaoPlaceId() != null) {
+            return;
+        }
+        if (sourceSnapshot.kakaoPlaceId().equals(targetPlace.getKakaoPlaceId())) {
+            targetPlace.updateKakaoPlaceId(null);
+            mapPlaceRepository.flush();
+        }
+    }
+
+    private List<Long> readLongList(String value) {
+        return readValue(value, new TypeReference<>() {
+        });
+    }
+
+    private <T> T readValue(String value, TypeReference<T> typeReference) {
+        try {
+            return objectMapper.readValue(value, typeReference);
+        } catch (JsonProcessingException exception) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED);
+        }
+    }
+
+    private String writeValue(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException exception) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED);
+        }
+    }
+
+    private final class MergeExecutionContext {
+        private final PlaceSnapshot sourcePlaceSnapshot;
+        private final PlaceSnapshot targetPlaceSnapshot;
+        private final List<Long> movedImageIds = new ArrayList<>();
+        private final List<Long> movedBookmarkIds = new ArrayList<>();
+        private final List<BookmarkSnapshot> deletedBookmarks = new ArrayList<>();
+        private final List<Long> movedConversionIds = new ArrayList<>();
+        private final List<ConversionSnapshot> deletedConversions = new ArrayList<>();
+        private final List<Long> movedClickIds = new ArrayList<>();
+        private final List<Long> movedExposureIds = new ArrayList<>();
+        private final List<Long> movedFeatureLogIds = new ArrayList<>();
+
+        private MergeExecutionContext(PlaceSnapshot sourcePlaceSnapshot, PlaceSnapshot targetPlaceSnapshot) {
+            this.sourcePlaceSnapshot = sourcePlaceSnapshot;
+            this.targetPlaceSnapshot = targetPlaceSnapshot;
+        }
+
+        private List<Long> movedImageIds() { return movedImageIds; }
+        private List<Long> movedBookmarkIds() { return movedBookmarkIds; }
+        private List<BookmarkSnapshot> deletedBookmarks() { return deletedBookmarks; }
+        private List<Long> movedConversionIds() { return movedConversionIds; }
+        private List<ConversionSnapshot> deletedConversions() { return deletedConversions; }
+        private List<Long> movedClickIds() { return movedClickIds; }
+        private List<Long> movedExposureIds() { return movedExposureIds; }
+        private List<Long> movedFeatureLogIds() { return movedFeatureLogIds; }
+
+        private AdminPlaceMergeHistory toHistory(Long adminUserId) {
+            return AdminPlaceMergeHistory.builder()
+                    .sourcePlaceId(sourcePlaceSnapshot.id())
+                    .targetPlaceId(targetPlaceSnapshot.id())
+                    .adminUserId(adminUserId)
+                    .sourcePlaceSnapshot(writeValue(sourcePlaceSnapshot))
+                    .targetPlaceSnapshot(writeValue(targetPlaceSnapshot))
+                    .movedImageIds(writeValue(movedImageIds))
+                    .movedBookmarkIds(writeValue(movedBookmarkIds))
+                    .deletedBookmarks(writeValue(deletedBookmarks))
+                    .movedConversionIds(writeValue(movedConversionIds))
+                    .deletedConversions(writeValue(deletedConversions))
+                    .movedClickIds(writeValue(movedClickIds))
+                    .movedExposureIds(writeValue(movedExposureIds))
+                    .movedFeatureLogIds(writeValue(movedFeatureLogIds))
+                    .mergedAt(LocalDateTime.now())
+                    .build();
+        }
+    }
+
+    private record PlaceSnapshot(
+            Long id,
+            String name,
+            String address,
+            String category,
+            String imageUrl,
+            String kakaoPlaceId,
+            Double latitude,
+            Double longitude,
+            Long userId,
+            String registrant,
+            Long photoCount
+    ) {
+    }
+
+    private record BookmarkSnapshot(Long userId) {
+    }
+
+    private record ConversionSnapshot(
+            Long placeRecommendationClickId,
+            Long userId,
+            PlaceRecommendationConversionType conversionType,
+            String recommendationVersion
+    ) {
+        private static ConversionSnapshot from(PlaceRecommendationConversion conversion) {
+            return new ConversionSnapshot(
+                    conversion.getPlaceRecommendationClickId(),
+                    conversion.getUserId(),
+                    conversion.getConversionType(),
+                    conversion.getRecommendationVersion()
+            );
+        }
+
+        private PlaceRecommendationConversion toEntity(Long placeId) {
+            return PlaceRecommendationConversion.builder()
+                    .placeRecommendationClickId(placeRecommendationClickId)
+                    .placeId(placeId)
+                    .userId(userId)
+                    .conversionType(conversionType)
+                    .recommendationVersion(recommendationVersion)
+                    .build();
+        }
     }
 }

@@ -18,6 +18,7 @@ import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
@@ -34,6 +35,7 @@ import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -88,6 +90,9 @@ class AdminMapPlaceControllerTest {
     private PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
 
     @Autowired
+    private PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
+
+    @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @Autowired
@@ -99,6 +104,9 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private AdminAuditLogRepository adminAuditLogRepository;
 
+    @Autowired
+    private AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
+
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
@@ -107,9 +115,11 @@ class AdminMapPlaceControllerTest {
         placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
+        placeRecommendationFeatureLogRepository.deleteAllInBatch();
         placeRecommendationVersionSnapshotRepository.deleteAllInBatch();
         placeSimilaritySnapshotRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
+        adminPlaceMergeHistoryRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -681,6 +691,133 @@ class AdminMapPlaceControllerTest {
         assertEquals(String.valueOf(targetPlace.getId()), adminAuditLogRepository.findAll().getFirst().getTargetId());
         assertTrue(adminAuditLogRepository.findAll().getFirst().getAfterState()
                 .contains("\"sourcePlaceDeleted\":true"));
+        assertEquals(1, adminPlaceMergeHistoryRepository.findAll().size());
+    }
+
+    @Test
+    void listMergeHistoriesAndRestoreMergeWork() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace sourcePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("복구 병합 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .kakaoPlaceId("restore-source-id")
+                .latitude(35.642738)
+                .longitude(128.391626)
+                .userId(30L)
+                .registrant("sourceOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace targetPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("복구 병합 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.642900)
+                .longitude(128.391700)
+                .userId(31L)
+                .registrant("targetOwner")
+                .photoCount(1L)
+                .build());
+
+        MapImage movedImage = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/source.jpg")
+                .s3Key("map/source.jpg")
+                .title("source")
+                .description("source image")
+                .userId(100L)
+                .username("sourceUser")
+                .likeCount(4L)
+                .mapPlace(sourcePlace)
+                .build());
+
+        MapBookmark movedBookmark = mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(200L)
+                .placeId(sourcePlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(201L)
+                .placeId(sourcePlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(201L)
+                .placeId(targetPlace.getId())
+                .build());
+
+        PlaceRecommendationClick movedClick = placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                .placeId(sourcePlace.getId())
+                .userId(300L)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        PlaceRecommendationExposure movedExposure = placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                .placeId(sourcePlace.getId())
+                .userId(301L)
+                .requestLatitude(35.642738)
+                .requestLongitude(128.391626)
+                .ranking(1)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        PlaceRecommendationConversion movedConversion =
+                placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                        .placeRecommendationClickId(movedClick.getId())
+                        .placeId(sourcePlace.getId())
+                        .userId(400L)
+                        .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                        .recommendationVersion("place-rec-v1")
+                        .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(movedClick.getId())
+                .placeId(sourcePlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(movedClick.getId())
+                .placeId(targetPlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+
+        mockMvc.perform(post("/admin/places/merge")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of(
+                                        "sourcePlaceId", sourcePlace.getId(),
+                                        "targetPlaceId", targetPlace.getId()
+                                )
+                        )))
+                .andExpect(status().isOk());
+
+        Long historyId = adminPlaceMergeHistoryRepository.findAll().getFirst().getId();
+
+        mockMvc.perform(get("/admin/places/merge-histories")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.histories[0].historyId").value(historyId))
+                .andExpect(jsonPath("$.histories[0].sourcePlaceId").value(sourcePlace.getId()))
+                .andExpect(jsonPath("$.histories[0].targetPlaceId").value(targetPlace.getId()))
+                .andExpect(jsonPath("$.histories[0].restored").value(false));
+
+        mockMvc.perform(post("/admin/places/merge-histories/{historyId}/restore", historyId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.historyId").value(historyId))
+                .andExpect(jsonPath("$.sourcePlaceId").value(sourcePlace.getId()))
+                .andExpect(jsonPath("$.targetPlaceId").value(targetPlace.getId()))
+                .andExpect(jsonPath("$.message").value("장소 병합을 복구했습니다."));
+
+        assertTrue(mapPlaceRepository.existsById(sourcePlace.getId()));
+        assertEquals(sourcePlace.getId(), mapImageRepository.findById(movedImage.getId()).orElseThrow().getMapPlace().getId());
+        assertEquals(sourcePlace.getId(), mapBookmarkRepository.findById(movedBookmark.getId()).orElseThrow().getPlaceId());
+        assertEquals(sourcePlace.getId(), placeRecommendationClickRepository.findById(movedClick.getId()).orElseThrow().getPlaceId());
+        assertEquals(sourcePlace.getId(), placeRecommendationExposureRepository.findById(movedExposure.getId()).orElseThrow().getPlaceId());
+        assertEquals(sourcePlace.getId(), placeRecommendationConversionRepository.findById(movedConversion.getId()).orElseThrow().getPlaceId());
+        assertEquals(2L, mapBookmarkRepository.countByPlaceId(sourcePlace.getId()));
+        assertEquals(2L, placeRecommendationConversionRepository.countConversionsByPlaceIds(List.of(sourcePlace.getId())).stream()
+                .mapToLong(PlaceRecommendationConversionRepository.PlaceConversionCountProjection::getConversionCount)
+                .sum());
+        assertTrue(adminPlaceMergeHistoryRepository.findById(historyId).orElseThrow().isRestored());
     }
 
     @Test
