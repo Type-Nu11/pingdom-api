@@ -15,7 +15,7 @@ public record AdminPlaceRecommendationTrafficUpdateItem(
         @Schema(description = "트래픽 비율", example = "30")
         Integer trafficPercentage,
 
-        @Schema(description = "kill switch 비활성화 여부", example = "true")
+        @Schema(description = "활성화 여부", example = "true")
         Boolean enabled,
 
         @Schema(description = "비활성화된 추천 버전 요청 시 대체할 버전", example = "place-rec-v1", nullable = true)
