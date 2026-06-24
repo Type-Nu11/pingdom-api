@@ -10,6 +10,9 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -66,8 +69,9 @@ public class ReportPolicyService {
                 mapImage.getId(),
                 List.of(PostReportStatus.PENDING, PostReportStatus.ACCEPTED)
         );
+        Map<Long, ReporterModerationPolicy> policiesByReporterId = loadPoliciesByReporterId(activeReports);
         double weightedScore = activeReports.stream()
-                .mapToDouble(report -> reporterWeight(report.getReporterUserId()))
+                .mapToDouble(report -> reporterWeight(policiesByReporterId.get(report.getReporterUserId())))
                 .sum();
 
         if (weightedScore < AUTO_HIDE_WEIGHT_THRESHOLD) {
@@ -78,18 +82,26 @@ public class ReportPolicyService {
         return true;
     }
 
-    private double reporterWeight(Long reporterUserId) {
-        return reporterPolicyRepository.findById(reporterUserId)
-                .map(policy -> {
-                    if (policy.getTrustScore() >= 80) {
-                        return 1.0;
-                    }
-                    if (policy.getTrustScore() >= 50) {
-                        return 0.75;
-                    }
-                    return 0.5;
-                })
-                .orElse(1.0);
+    private Map<Long, ReporterModerationPolicy> loadPoliciesByReporterId(List<PostReport> activeReports) {
+        List<Long> reporterIds = activeReports.stream()
+                .map(PostReport::getReporterUserId)
+                .distinct()
+                .toList();
+        return reporterPolicyRepository.findAllById(reporterIds).stream()
+                .collect(Collectors.toMap(ReporterModerationPolicy::getReporterUserId, Function.identity()));
+    }
+
+    private double reporterWeight(ReporterModerationPolicy policy) {
+        if (policy == null) {
+            return 1.0;
+        }
+        if (policy.getTrustScore() >= 80) {
+            return 1.0;
+        }
+        if (policy.getTrustScore() >= 50) {
+            return 0.75;
+        }
+        return 0.5;
     }
 
     private ReporterModerationPolicy getOrCreate(Long reporterUserId, String reporterUsername) {
