@@ -21,8 +21,8 @@ public class PlaceRecommendationPolicyService {
 
     private final PlaceRecommendationProperties properties;
     private final PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository;
-    private Map<String, VersionPolicy> policiesByVersion = Map.of();
-    private Map<String, Integer> trafficOverridesByVersion = Map.of();
+    private volatile Map<String, VersionPolicy> policiesByVersion = Map.of();
+    private volatile Map<String, Integer> trafficOverridesByVersion = Map.of();
 
     public PlaceRecommendationPolicyService(
             PlaceRecommendationProperties properties,
