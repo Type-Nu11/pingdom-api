@@ -59,6 +59,44 @@ public class AdminPostServiceImpl implements AdminPostService {
         );
     }
 
+    @Override
+    @Transactional
+    public void hidePost(Long postId, String reason, Long adminUserId) {
+        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        Map<String, Object> beforeState = postState(mapImage, false, null);
+
+        mapImage.autoHide(reason, java.time.LocalDateTime.now(), adminUserId);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.POST_HIDDEN,
+                AdminAuditTargetType.POST,
+                postId,
+                reason,
+                beforeState,
+                postState(mapImage, false, null)
+        );
+    }
+
+    @Override
+    @Transactional
+    public void restorePost(Long postId, String reason, Long adminUserId) {
+        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+        Map<String, Object> beforeState = postState(mapImage, false, null);
+
+        mapImage.restore(reason, java.time.LocalDateTime.now(), adminUserId);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.POST_RESTORED,
+                AdminAuditTargetType.POST,
+                postId,
+                reason,
+                beforeState,
+                postState(mapImage, false, null)
+        );
+    }
+
     private String resolveS3Key(MapImage mapImage) {
         if (StringUtils.hasText(mapImage.getS3Key())) {
             return mapImage.getS3Key();
@@ -111,6 +149,11 @@ public class AdminPostServiceImpl implements AdminPostService {
         state.put("userId", mapImage.getUserId());
         state.put("username", mapImage.getUsername());
         state.put("placeId", mapImage.getMapPlace() == null ? null : mapImage.getMapPlace().getId());
+        state.put("visibilityStatus", mapImage.getVisibilityStatus());
+        state.put("hiddenAt", mapImage.getHiddenAt());
+        state.put("hiddenReason", mapImage.getHiddenReason());
+        state.put("restoredAt", mapImage.getRestoredAt());
+        state.put("restoredReason", mapImage.getRestoredReason());
         state.put("deleted", deleted);
         return state;
     }
