@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("11");
-        assertThat(result.migrationsExecuted).isEqualTo(11);
+        assertThat(result.targetSchemaVersion).isEqualTo("12");
+        assertThat(result.migrationsExecuted).isEqualTo(12);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("11");
-        assertThat(result.migrationsExecuted).isEqualTo(10);
+        assertThat(result.targetSchemaVersion).isEqualTo("12");
+        assertThat(result.migrationsExecuted).isEqualTo(11);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -300,6 +300,30 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'place_recommendation_traffic_policy'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'admin_place_merge_history'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'admin_place_merge_history'
+                          AND column_name = 'restored'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'admin_place_merge_history'
+                          AND indexname = 'idx_admin_place_merge_history_created'
                     )
                     """)).isTrue();
         }
