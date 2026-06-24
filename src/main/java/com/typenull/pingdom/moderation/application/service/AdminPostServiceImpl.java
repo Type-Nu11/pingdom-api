@@ -66,7 +66,10 @@ public class AdminPostServiceImpl implements AdminPostService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
-        mapImage.autoHide(reason, java.time.LocalDateTime.now(), adminUserId);
+        boolean hidden = mapImage.autoHide(reason, java.time.LocalDateTime.now(), adminUserId);
+        if (hidden && mapImage.getMapPlace() != null) {
+            placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
+        }
         adminAuditLogService.record(
                 adminUserId,
                 AdminAuditAction.POST_HIDDEN,
@@ -85,7 +88,10 @@ public class AdminPostServiceImpl implements AdminPostService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
-        mapImage.restore(reason, java.time.LocalDateTime.now(), adminUserId);
+        boolean restored = mapImage.restore(reason, java.time.LocalDateTime.now(), adminUserId);
+        if (restored && mapImage.getMapPlace() != null) {
+            placeGrowthService.increasePhotoCount(mapImage.getMapPlace().getId());
+        }
         adminAuditLogService.record(
                 adminUserId,
                 AdminAuditAction.POST_RESTORED,

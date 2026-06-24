@@ -5,6 +5,7 @@ import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.domain.policy.ReporterModerationPolicy;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModerationPolicyRepository;
+import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -28,6 +29,7 @@ public class ReportPolicyService {
 
     private final ReporterModerationPolicyRepository reporterPolicyRepository;
     private final PostReportRepository postReportRepository;
+    private final PlaceGrowthService placeGrowthService;
 
     public void validateCanReport(Long reporterUserId, LocalDateTime now) {
         reporterPolicyRepository.findById(reporterUserId)
@@ -78,8 +80,16 @@ public class ReportPolicyService {
             return false;
         }
 
-        mapImage.autoHide(AUTO_HIDE_REASON, now, null);
-        return true;
+        boolean hidden = mapImage.autoHide(AUTO_HIDE_REASON, now, null);
+        decreasePhotoCountIfNeeded(mapImage, hidden);
+        return hidden;
+    }
+
+    private void decreasePhotoCountIfNeeded(MapImage mapImage, boolean hidden) {
+        if (!hidden || mapImage.getMapPlace() == null) {
+            return;
+        }
+        placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
     }
 
     private Map<Long, ReporterModerationPolicy> loadPoliciesByReporterId(List<PostReport> activeReports) {

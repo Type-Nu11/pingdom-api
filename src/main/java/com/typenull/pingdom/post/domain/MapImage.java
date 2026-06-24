@@ -91,9 +91,9 @@ public class MapImage {
         return visibilityStatus == MapImageVisibilityStatus.ACTIVE;
     }
 
-    public void autoHide(String reason, LocalDateTime hiddenAt, Long updatedBy) {
+    public boolean autoHide(String reason, LocalDateTime hiddenAt, Long updatedBy) {
         if (!isVisible()) {
-            return;
+            return false;
         }
         this.visibilityStatus = MapImageVisibilityStatus.AUTO_HIDDEN;
         this.hiddenAt = hiddenAt;
@@ -101,15 +101,17 @@ public class MapImage {
         this.restoredAt = null;
         this.restoredReason = null;
         this.visibilityUpdatedBy = updatedBy;
+        return true;
     }
 
-    public void restore(String reason, LocalDateTime restoredAt, Long updatedBy) {
+    public boolean restore(String reason, LocalDateTime restoredAt, Long updatedBy) {
         if (isVisible()) {
-            return;
+            return false;
         }
         this.visibilityStatus = MapImageVisibilityStatus.ACTIVE;
         this.restoredAt = restoredAt;
         this.restoredReason = reason;
         this.visibilityUpdatedBy = updatedBy;
+        return true;
     }
 }
