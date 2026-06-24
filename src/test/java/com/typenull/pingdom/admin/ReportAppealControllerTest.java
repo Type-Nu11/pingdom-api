@@ -154,6 +154,55 @@ class ReportAppealControllerTest {
                 .anyMatch(log -> log.getAction() == AdminAuditAction.USER_BAN_RELEASED));
     }
 
+    @Test
+    void approveAppealKeepsBanWhenAnotherAcceptedReportExists() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("multiAppealOwner", UserRole.USER);
+        User firstReporter = createUser("firstAppealReporter", UserRole.USER);
+        User secondReporter = createUser("secondAppealReporter", UserRole.USER);
+        String ownerAccessToken = login(owner.getUsername());
+        MapImage firstImage = createMapImage(owner.getId(), owner.getUsername());
+        MapImage secondImage = createMapImage(owner.getId(), owner.getUsername());
+        PostReport firstReport = createPostReport(firstReporter, firstImage, "첫 번째 신고");
+        PostReport secondReport = createPostReport(secondReporter, secondImage, "두 번째 신고");
+
+        mockMvc.perform(post("/admin/reports/{id}/accept", firstReport.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk());
+        secondReport.accept(LocalDateTime.now());
+        postReportRepository.saveAndFlush(secondReport);
+
+        MvcResult appealResult = mockMvc.perform(post("/map/report-appeals")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reportId": %d,
+                                  "reason": "첫 번째 신고는 오처리입니다."
+                                }
+                                """.formatted(firstReport.getId())))
+                .andExpect(status().isCreated())
+                .andReturn();
+        Long appealId = objectMapper.readTree(appealResult.getResponse().getContentAsString())
+                .get("appealId")
+                .asLong();
+
+        mockMvc.perform(post("/admin/report-appeals/{id}/approve", appealId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "첫 번째 신고 오처리 확인"
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value(ReportAppealStatus.APPROVED.name()));
+
+        assertTrue(userRepository.findById(owner.getId()).orElseThrow().isCurrentlyBanned(LocalDateTime.now()));
+        assertEquals(PostReportStatus.RESTORED, postReportRepository.findById(firstReport.getId()).orElseThrow().getStatus());
+        assertEquals(PostReportStatus.ACCEPTED, postReportRepository.findById(secondReport.getId()).orElseThrow().getStatus());
+    }
+
     private User createUser(String username, UserRole role) {
         return userRepository.save(User.builder()
                 .username(username)

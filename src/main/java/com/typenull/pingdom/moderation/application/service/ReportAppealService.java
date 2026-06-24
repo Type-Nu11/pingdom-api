@@ -27,6 +27,7 @@ import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -127,7 +128,7 @@ public class ReportAppealService {
 
         report.restore(now);
         adminPostService.restorePost(appeal.getPostId(), reason, adminUserId);
-        releaseBanIfNeeded(targetUser, reason, now, adminUserId);
+        releaseBanIfNeeded(targetUser, report, reason, now, adminUserId);
         appeal.approve(adminUserId, reason, now);
 
         adminAuditLogService.record(
@@ -163,8 +164,17 @@ public class ReportAppealService {
         return toActionResponse(appeal);
     }
 
-    private void releaseBanIfNeeded(User targetUser, String reason, LocalDateTime now, Long adminUserId) {
+    private void releaseBanIfNeeded(
+            User targetUser,
+            PostReport report,
+            String reason,
+            LocalDateTime now,
+            Long adminUserId
+    ) {
         if (!targetUser.isCurrentlyBanned(now)) {
+            return;
+        }
+        if (!shouldReleaseBan(targetUser, report)) {
             return;
         }
         Map<String, Object> beforeState = userSanctionState(targetUser, now);
@@ -178,6 +188,16 @@ public class ReportAppealService {
                 beforeState,
                 userSanctionState(targetUser, now)
         );
+    }
+
+    private boolean shouldReleaseBan(User targetUser, PostReport report) {
+        boolean reportLinkedBan = Objects.equals(targetUser.getBanReason(), report.getReason());
+        boolean hasOtherAcceptedReport = postReportRepository.existsByReportedUserIdAndStatusAndIdNot(
+                targetUser.getId(),
+                PostReportStatus.ACCEPTED,
+                report.getId()
+        );
+        return reportLinkedBan && !hasOtherAcceptedReport;
     }
 
     private ReportAppeal getSubmittedAppeal(Long appealId) {
