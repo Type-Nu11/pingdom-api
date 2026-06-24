@@ -365,6 +365,48 @@ class PlaceControllerTest {
     }
 
     @Test
+    void uploadPlaceNormalizesCategoryAlias() throws Exception {
+        String accessToken = signupAndLogin("placeUploaderCategory01");
+        String coordinateToken = createCoordinateToken(accessToken, "27414319", 35.1804, 128.1081);
+
+        mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "kakaoPlaceId", "27414319",
+                                "name", "카테고리 표준화 장소",
+                                "address", "경상남도 진주시 표준화로 1",
+                                "category", "  커피  ",
+                                "coordinateToken", coordinateToken
+                        ))))
+                .andExpect(status().isCreated());
+
+        MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414319").orElseThrow();
+        assertEquals("카페", saved.getCategory());
+    }
+
+    @Test
+    void listPlacesSearchesByStandardizedCategoryAlias() throws Exception {
+        String accessToken = signupAndLogin("readerSearchCategory01");
+        MapPlace matchingPlace = createMapPlace(
+                "표준 카페",
+                "경상남도 진주시 표준로 10",
+                "카페",
+                35.1894,
+                128.0789
+        );
+        createMapPlace("표준 식당", "경상남도 진주시 표준로 11", "식당", 35.1801, 128.1078);
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", " coffee "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].category").value("카페"));
+    }
+
+    @Test
     void uploadPlaceStoresNullImageUrlWhenBlank() throws Exception {
         String accessToken = signupAndLogin("placeUploader02");
         String coordinateToken = createCoordinateToken(accessToken, "27414317", 35.1802, 128.1079);
