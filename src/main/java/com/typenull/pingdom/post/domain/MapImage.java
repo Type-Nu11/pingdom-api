@@ -52,6 +52,26 @@ public class MapImage {
     @Column(nullable = false, name = "like_count")
     private long likeCount = 0L;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "visibility_status", nullable = false, length = 30)
+    private MapImageVisibilityStatus visibilityStatus = MapImageVisibilityStatus.ACTIVE;
+
+    @Column(name = "hidden_at")
+    private LocalDateTime hiddenAt;
+
+    @Column(name = "hidden_reason", length = 500)
+    private String hiddenReason;
+
+    @Column(name = "restored_at")
+    private LocalDateTime restoredAt;
+
+    @Column(name = "restored_reason", length = 500)
+    private String restoredReason;
+
+    @Column(name = "visibility_updated_by")
+    private Long visibilityUpdatedBy;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
@@ -65,5 +85,31 @@ public class MapImage {
 
     public void reassignPlace(MapPlace targetPlace) {
         this.mapPlace = targetPlace;
+    }
+
+    public boolean isVisible() {
+        return visibilityStatus == MapImageVisibilityStatus.ACTIVE;
+    }
+
+    public void autoHide(String reason, LocalDateTime hiddenAt, Long updatedBy) {
+        if (!isVisible()) {
+            return;
+        }
+        this.visibilityStatus = MapImageVisibilityStatus.AUTO_HIDDEN;
+        this.hiddenAt = hiddenAt;
+        this.hiddenReason = reason;
+        this.restoredAt = null;
+        this.restoredReason = null;
+        this.visibilityUpdatedBy = updatedBy;
+    }
+
+    public void restore(String reason, LocalDateTime restoredAt, Long updatedBy) {
+        if (isVisible()) {
+            return;
+        }
+        this.visibilityStatus = MapImageVisibilityStatus.ACTIVE;
+        this.restoredAt = restoredAt;
+        this.restoredReason = reason;
+        this.visibilityUpdatedBy = updatedBy;
     }
 }
