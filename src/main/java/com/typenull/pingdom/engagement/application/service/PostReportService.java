@@ -1,6 +1,7 @@
 package com.typenull.pingdom.engagement.application.service;
 
 import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.event.PostReportCreatedEvent;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -9,6 +10,7 @@ import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -19,6 +21,7 @@ public class PostReportService {
 
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final ReportPolicyService reportPolicyService;
     private final Clock clock;
 
@@ -50,6 +53,7 @@ public class PostReportService {
 
         try {
             postReportRepository.saveAndFlush(postReport);
+            eventPublisher.publishEvent(new PostReportCreatedEvent(postReport.getId()));
         } catch (DataIntegrityViolationException exception) {
             throw new MapException(MapErrorCode.ALREADY_REPORTED_IMAGE);
         }
