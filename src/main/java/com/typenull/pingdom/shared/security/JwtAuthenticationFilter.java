@@ -112,7 +112,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     }
 
     private boolean isAppealPath(HttpServletRequest request) {
-        String requestUri = request.getServletPath();
+        String requestUri = request.getRequestURI();
         return APPEAL_PATH_PATTERNS.stream()
                 .anyMatch(pattern -> PATH_MATCHER.match(pattern, requestUri));
     }
