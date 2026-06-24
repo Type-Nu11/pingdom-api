@@ -7,6 +7,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
+import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -33,6 +34,7 @@ import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConve
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationExposure;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationTrafficPolicyRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
@@ -45,7 +47,11 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+<<<<<<< HEAD
 import java.util.concurrent.atomic.AtomicInteger;
+=======
+import java.util.Map;
+>>>>>>> 35454dc (feat : 추천 버전 트래픽 조정 관리자 API 추가)
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -106,6 +112,9 @@ class AdminMapPlaceControllerTest {
     private PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
 
     @Autowired
+    private PlaceRecommendationTrafficPolicyRepository placeRecommendationTrafficPolicyRepository;
+
+    @Autowired
     private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
@@ -122,6 +131,7 @@ class AdminMapPlaceControllerTest {
         placeRecommendationFeatureLogRepository.deleteAllInBatch();
         placeRecommendationVersionSnapshotRepository.deleteAllInBatch();
         placeSimilaritySnapshotRepository.deleteAllInBatch();
+        placeRecommendationTrafficPolicyRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         adminPlaceMergeHistoryRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -483,6 +493,64 @@ class AdminMapPlaceControllerTest {
                         ))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("PLACE_KAKAO_PLACE_ID_CONFLICT"));
+    }
+
+    @Test
+    void updateRecommendationTrafficOverridesTrafficPercentages() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MvcResult result = mockMvc.perform(patch("/admin/places/recommendation-traffic")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "policies", List.of(
+                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 70),
+                                        java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 30)
+                                )
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.defaultVersion").value("place-rec-v1"))
+                .andExpect(jsonPath("$.policies.length()").value(2))
+                .andExpect(jsonPath("$.message").value("추천 버전 트래픽 비율을 수정했습니다."))
+                .andReturn();
+
+        List<?> policies = objectMapper.readTree(result.getResponse().getContentAsString())
+                .get("policies")
+                .traverse(objectMapper)
+                .readValueAs(List.class);
+        Map<?, ?> firstPolicy = assertInstanceOf(Map.class, policies.get(0));
+        Map<?, ?> secondPolicy = assertInstanceOf(Map.class, policies.get(1));
+        Map<String, Integer> trafficByVersion = Map.of(
+                String.valueOf(firstPolicy.get("recommendationVersion")),
+                ((Number) firstPolicy.get("trafficPercentage")).intValue(),
+                String.valueOf(secondPolicy.get("recommendationVersion")),
+                ((Number) secondPolicy.get("trafficPercentage")).intValue()
+        );
+        assertEquals(70, trafficByVersion.get("place-rec-v1"));
+        assertEquals(30, trafficByVersion.get("place-rec-v2"));
+
+        assertEquals(2L, placeRecommendationTrafficPolicyRepository.count());
+        assertEquals(
+                AdminAuditAction.PLACE_RECOMMENDATION_TRAFFIC_UPDATED,
+                adminAuditLogRepository.findAll().getFirst().getAction()
+        );
+    }
+
+    @Test
+    void updateRecommendationTrafficRejectsInvalidTotal() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(patch("/admin/places/recommendation-traffic")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "policies", List.of(
+                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 60),
+                                        java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 20)
+                                )
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID"));
     }
 
     @Test
