@@ -12,6 +12,7 @@ public enum AdminErrorCode {
     PLACE_DUPLICATE_NOT_FOUND(HttpStatus.NOT_FOUND, "중복 후보 장소를 찾을 수 없습니다."),
     PLACE_MERGE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 병합 요청이 올바르지 않습니다."),
     PLACE_MERGE_NOT_ALLOWED(HttpStatus.CONFLICT, "중복 장소로 확인되지 않아 병합할 수 없습니다."),
+    PLACE_KAKAO_PLACE_ID_CONFLICT(HttpStatus.CONFLICT, "이미 다른 장소에 연결된 Kakao place id입니다."),
     RECOMMENDATION_METRIC_QUERY_TOO_LARGE(HttpStatus.BAD_REQUEST, "추천 성과 조회 대상 장소가 너무 많습니다. 검색어 또는 기간 조건을 좁혀주세요."),
     AD_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트/광고를 찾을 수 없습니다."),
     AD_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "이벤트/광고 종료 시각은 시작 시각보다 이후여야 합니다."),

@@ -7,6 +7,7 @@ public enum AdminAuditAction {
     REPORT_DECLINED,
     POST_DELETED,
     PLACE_DELETED,
+    PLACE_KAKAO_PLACE_ID_UPDATED,
     PLACE_MERGED,
     AD_CREATED,
     AD_DELETED

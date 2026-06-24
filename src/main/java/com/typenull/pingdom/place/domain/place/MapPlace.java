@@ -93,4 +93,8 @@ public class MapPlace {
         this.longitude = longitude;
         this.location = location;
     }
+
+    public void updateKakaoPlaceId(String kakaoPlaceId) {
+        this.kakaoPlaceId = kakaoPlaceId;
+    }
 }

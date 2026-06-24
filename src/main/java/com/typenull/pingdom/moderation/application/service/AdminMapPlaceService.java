@@ -4,6 +4,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMerg
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -36,6 +38,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -116,6 +119,51 @@ public class AdminMapPlaceService {
     }
 
     @Transactional
+    public AdminMapPlaceKakaoPlaceIdUpdateResponse updatePlaceKakaoPlaceId(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceKakaoPlaceIdUpdateRequest request
+    ) {
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+
+        String normalizedKakaoPlaceId = trimToNull(request == null ? null : request.kakaoPlaceId());
+        String beforeKakaoPlaceId = mapPlace.getKakaoPlaceId();
+
+        if (normalizedKakaoPlaceId != null) {
+            mapPlaceRepository.findByKakaoPlaceIdAndIdNot(normalizedKakaoPlaceId, placeId)
+                    .ifPresent(ignored -> {
+                        throw new AdminException(AdminErrorCode.PLACE_KAKAO_PLACE_ID_CONFLICT);
+                    });
+        }
+
+        mapPlace.updateKakaoPlaceId(normalizedKakaoPlaceId);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_KAKAO_PLACE_ID_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                "PLACE_KAKAO_PLACE_ID_UPDATED",
+                Map.of("placeId", placeId, "kakaoPlaceId", beforeKakaoPlaceId),
+                Map.of("placeId", placeId, "kakaoPlaceId", normalizedKakaoPlaceId)
+        );
+
+        log.info(
+                "Admin updated place kakaoPlaceId. adminUserId={}, placeId={}, beforeKakaoPlaceId={}, afterKakaoPlaceId={}",
+                adminUserId,
+                placeId,
+                beforeKakaoPlaceId,
+                normalizedKakaoPlaceId
+        );
+
+        return new AdminMapPlaceKakaoPlaceIdUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getKakaoPlaceId(),
+                "장소 Kakao place id를 수정했습니다."
+        );
+    }
+
+    @Transactional
     public AdminMapPlaceMergeResponse mergePlaces(Long adminUserId, AdminMapPlaceMergeRequest request) {
         validateMergeRequest(request);
 
@@ -135,6 +183,8 @@ public class AdminMapPlaceService {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
         Map<String, Object> beforeState = placeMergeBeforeState(sourcePlace, targetPlace);
+
+        transferKakaoPlaceIdIfNeeded(sourcePlace, targetPlace);
 
         long movedImageCount = reassignImages(sourcePlace, targetPlace);
         BookmarkMergeResult bookmarkMergeResult = reassignBookmarks(sourcePlace, targetPlace);
@@ -320,5 +370,20 @@ public class AdminMapPlaceService {
 
     private static Point toPoint(double latitude, double longitude) {
         return WGS84.createPoint(new Coordinate(longitude, latitude));
+    }
+
+    private String trimToNull(String value) {
+        return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private void transferKakaoPlaceIdIfNeeded(MapPlace sourcePlace, MapPlace targetPlace) {
+        if (StringUtils.hasText(targetPlace.getKakaoPlaceId()) || !StringUtils.hasText(sourcePlace.getKakaoPlaceId())) {
+            return;
+        }
+
+        String sourceKakaoPlaceId = sourcePlace.getKakaoPlaceId();
+        sourcePlace.updateKakaoPlaceId(null);
+        mapPlaceRepository.flush();
+        targetPlace.updateKakaoPlaceId(sourceKakaoPlaceId);
     }
 }
