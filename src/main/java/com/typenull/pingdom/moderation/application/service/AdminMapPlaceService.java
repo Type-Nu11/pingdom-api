@@ -138,14 +138,22 @@ public class AdminMapPlaceService {
         }
 
         mapPlace.updateKakaoPlaceId(normalizedKakaoPlaceId);
+        Map<String, Object> beforeState = new LinkedHashMap<>();
+        beforeState.put("placeId", placeId);
+        beforeState.put("kakaoPlaceId", beforeKakaoPlaceId);
+
+        Map<String, Object> afterState = new LinkedHashMap<>();
+        afterState.put("placeId", placeId);
+        afterState.put("kakaoPlaceId", normalizedKakaoPlaceId);
+
         adminAuditLogService.record(
                 adminUserId,
                 AdminAuditAction.PLACE_KAKAO_PLACE_ID_UPDATED,
                 AdminAuditTargetType.PLACE,
                 placeId,
                 "PLACE_KAKAO_PLACE_ID_UPDATED",
-                Map.of("placeId", placeId, "kakaoPlaceId", beforeKakaoPlaceId),
-                Map.of("placeId", placeId, "kakaoPlaceId", normalizedKakaoPlaceId)
+                beforeState,
+                afterState
         );
 
         log.info(
