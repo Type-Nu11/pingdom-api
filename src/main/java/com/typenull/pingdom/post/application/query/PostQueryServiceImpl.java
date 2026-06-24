@@ -8,6 +8,7 @@ import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListItem;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -39,7 +40,8 @@ public class PostQueryServiceImpl implements PostQueryService {
         int safePage = Math.max(page, MIN_PAGE);
         int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
 
-        Page<MapImage> imagePage = mapImageRepository.findAllBy(
+        Page<MapImage> imagePage = mapImageRepository.findAllByVisibilityStatus(
+                MapImageVisibilityStatus.ACTIVE,
                 PageRequest.of(safePage - MIN_PAGE, safeLimit, latestFirstSort())
         );
 
@@ -149,7 +151,10 @@ public class PostQueryServiceImpl implements PostQueryService {
     @Override
     @Transactional(readOnly = true)
     public PostDetailResponse getPost(Long postId, Long userId) {
-        MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
+        MapImage mapImage = mapImageRepository.findWithMapPlaceByIdAndVisibilityStatus(
+                        postId,
+                        MapImageVisibilityStatus.ACTIVE
+                )
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
 
         MapPlace mapPlace = mapImage.getMapPlace();
