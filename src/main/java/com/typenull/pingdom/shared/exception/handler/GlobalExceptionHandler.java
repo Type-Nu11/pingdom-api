@@ -5,6 +5,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.ratelimit.RateLimitException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
@@ -21,6 +22,12 @@ import org.springframework.web.server.ResponseStatusException;
 @RestControllerAdvice
 public class GlobalExceptionHandler {
 
+    private final AuthMetrics authMetrics;
+
+    public GlobalExceptionHandler(AuthMetrics authMetrics) {
+        this.authMetrics = authMetrics;
+    }
+
     @ExceptionHandler(AdminException.class)
     public ResponseEntity<Map<String, String>> handleAdminException(AdminException exception) {
         return ResponseEntity.status(exception.getStatus())
@@ -29,6 +36,7 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<Map<String, String>> handleAuthException(AuthException exception) {
+        authMetrics.recordAuthFailure(exception.getErrorCode(), "controller_advice");
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }
