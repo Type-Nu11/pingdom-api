@@ -8,7 +8,11 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum MapErrorCode {
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "신고 내역을 찾을 수 없습니다."),
     ALREADY_REPORTED_IMAGE(HttpStatus.CONFLICT, "같은 게시글은 한 번만 신고할 수 있습니다."),
+    REPORTER_RESTRICTED(HttpStatus.FORBIDDEN, "허위 신고 누적으로 신고 기능이 일시 제한되었습니다."),
+    REPORT_APPEAL_NOT_ALLOWED(HttpStatus.FORBIDDEN, "해당 신고에 대해 이의제기할 수 없습니다."),
+    REPORT_APPEAL_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 처리 대기 중인 이의제기가 있습니다."),
     OTHERS_NOT_DELETED(HttpStatus.FORBIDDEN,"자신의 게시글만 삭제할 수 있습니다."),
     OTHERS_NOT_UPDATE(HttpStatus.FORBIDDEN,"자신의 게시글만 수정할 수 있습니다."),
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."),

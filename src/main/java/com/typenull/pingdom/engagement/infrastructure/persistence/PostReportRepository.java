@@ -22,6 +22,8 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
 
     List<PostReport> findAllByMapImage_IdInOrderByIdDesc(Collection<Long> mapImageIds);
 
+    List<PostReport> findAllByMapImage_IdAndStatusIn(Long mapImageId, Collection<com.typenull.pingdom.engagement.domain.PostReportStatus> statuses);
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update PostReport pr set pr.mapImage = null where pr.mapImage.id = :mapImageId")
     int detachMapImageByMapImageId(@Param("mapImageId") Long mapImageId);
