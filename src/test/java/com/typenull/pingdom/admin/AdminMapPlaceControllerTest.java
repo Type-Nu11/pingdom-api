@@ -162,6 +162,25 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void getPlaceReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("미분류 상세 장소")
+                .address("경상남도 진주시 미분류로 2")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(13L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value(nullValue()))
+                .andExpect(jsonPath("$.categoryName").value("미분류"));
+    }
+
+    @Test
     void listPlacesRejectsMostLikedSort() throws Exception {
         String accessToken = createAdminAndLogin();
 
