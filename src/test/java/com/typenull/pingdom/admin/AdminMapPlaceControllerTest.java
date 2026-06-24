@@ -364,6 +364,69 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void updatePlaceKakaoPlaceIdReconnectsPlace() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("카카오 재연결 장소")
+                .address("경상남도 진주시 연결로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .kakaoPlaceId("old-place-id")
+                .userId(91L)
+                .registrant("kakaoOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/kakao-place-id", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "kakaoPlaceId", "27414316"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.kakaoPlaceId").value("27414316"))
+                .andExpect(jsonPath("$.message").value("장소 Kakao place id를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals("27414316", updatedPlace.getKakaoPlaceId());
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        assertEquals(AdminAuditAction.PLACE_KAKAO_PLACE_ID_UPDATED, adminAuditLogRepository.findAll().getFirst().getAction());
+    }
+
+    @Test
+    void updatePlaceKakaoPlaceIdRejectsDuplicateId() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("기존 연결 장소")
+                .address("경상남도 진주시 연결로 2")
+                .latitude(35.1802)
+                .longitude(128.1079)
+                .kakaoPlaceId("27414316")
+                .userId(92L)
+                .registrant("existingOwner")
+                .build());
+        MapPlace targetPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("변경 대상 장소")
+                .address("경상남도 진주시 연결로 3")
+                .latitude(35.1803)
+                .longitude(128.1080)
+                .userId(93L)
+                .registrant("targetOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/kakao-place-id", targetPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "kakaoPlaceId", "27414316"
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PLACE_KAKAO_PLACE_ID_CONFLICT"));
+    }
+
+    @Test
     void listDuplicatePlacesReturnsDuplicateGroups() throws Exception {
         String accessToken = createAdminAndLogin();
 
@@ -444,6 +507,7 @@ class AdminMapPlaceControllerTest {
         MapPlace sourcePlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("병합 장소")
                 .address("대구광역시 달성군 구지면 창리로11길 93")
+                .kakaoPlaceId("27414316")
                 .latitude(35.642738)
                 .longitude(128.391626)
                 .userId(30L)
@@ -545,6 +609,7 @@ class AdminMapPlaceControllerTest {
 
         assertFalse(mapPlaceRepository.existsById(sourcePlace.getId()));
         assertTrue(mapPlaceRepository.existsById(targetPlace.getId()));
+        assertEquals("27414316", mapPlaceRepository.findById(targetPlace.getId()).orElseThrow().getKakaoPlaceId());
         assertEquals(2L, mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
         assertEquals(2L, mapBookmarkRepository.countByPlaceId(targetPlace.getId()));
 

@@ -6,6 +6,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMerg
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
@@ -373,6 +375,82 @@ public class AdminMapPlaceController {
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminMapPlaceService.updatePlaceCoordinates(adminUserId, placeId, request));
+    }
+
+    @PatchMapping("/{id}/kakao-place-id")
+    @Operation(
+            summary = "관리자 장소 Kakao place id 수정",
+            description = "관리자가 장소에 연결된 Kakao place id를 재연결하거나 해제합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "Kakao place id 수정 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminMapPlaceKakaoPlaceIdUpdateResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "placeId": 1,
+                                              "kakaoPlaceId": "27414316",
+                                              "message": "장소 Kakao place id를 수정했습니다."
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "입력값을 확인해주세요.",
+                                              "errors": {
+                                                "kakaoPlaceId": "카카오 장소 ID는 50자 이하여야 합니다."
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "장소를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "장소를 찾을 수 없습니다.",
+                                              "code": "PLACE_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "이미 다른 장소에 연결된 Kakao place id",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "이미 다른 장소에 연결된 Kakao place id입니다.",
+                                              "code": "PLACE_KAKAO_PLACE_ID_CONFLICT"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<AdminMapPlaceKakaoPlaceIdUpdateResponse> updatePlaceKakaoPlaceId(
+            @Parameter(description = "Kakao place id를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceKakaoPlaceIdUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updatePlaceKakaoPlaceId(adminUserId, placeId, request));
     }
 
     @DeleteMapping("/{id}/delete")
