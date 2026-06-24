@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("12");
-        assertThat(result.migrationsExecuted).isEqualTo(12);
+        assertThat(result.targetSchemaVersion).isEqualTo("13");
+        assertThat(result.migrationsExecuted).isEqualTo(13);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("12");
-        assertThat(result.migrationsExecuted).isEqualTo(11);
+        assertThat(result.targetSchemaVersion).isEqualTo("13");
+        assertThat(result.migrationsExecuted).isEqualTo(12);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -324,6 +324,15 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'admin_place_merge_history'
                           AND indexname = 'idx_admin_place_merge_history_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'post_report'
+                          AND column_name = 'report_score'
+                          AND is_nullable = 'NO'
                     )
                     """)).isTrue();
         }
