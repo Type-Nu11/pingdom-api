@@ -48,10 +48,9 @@ public class AdminReportServiceImpl implements AdminReportService {
         Map<String, Object> beforeState = reportState(postReport, reportedUser.isCurrentlyBanned(now), false);
         postReport.accept(now);
         reportPolicyService.recordAccepted(postReport.getReporterUserId(), postReport.getReporterUsername());
+        reporter.increaseReportCount();
         // 신고 수락은 대상 사진 숨김과 소유자 제재까지 하나의 처리로 본다.
         userSanctionCommandService.applyBan(reportedUser, postReport.getReason(), now, null, adminUserId);
-        adminPostService.deletePost(postReport.getReportedImageId());
-        reporter.increaseReportCount();
         adminPostService.hidePost(postReport.getReportedImageId(), "REPORT_ACCEPTED", adminUserId);
         adminAuditLogService.record(
                 adminUserId,
