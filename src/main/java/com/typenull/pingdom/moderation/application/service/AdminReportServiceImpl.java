@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.application.service;
 
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
+import com.typenull.pingdom.moderation.api.dto.report.ReportedUsersItem;
+import com.typenull.pingdom.moderation.api.dto.report.ReportedUsersResponse;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.engagement.domain.PostReport;
@@ -17,8 +20,12 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
+import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -101,6 +108,56 @@ public class AdminReportServiceImpl implements AdminReportService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public ReportedUsersResponse getReportedUsers(int page, int limit, String keyword) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        int targetPage = safePage - 1;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        Long numericKeyword = parseLongKeyword(safeKeyword);
+
+        PageRequest pageable = PageRequest.of(targetPage, safeLimit);
+        Page<PostReport> reportPage = loadReportedUsersPage(safeKeyword, numericKeyword, pageable);
+
+        List<ReportedUsersItem> users = reportPage.getContent().stream()
+                .map(report -> new ReportedUsersItem(
+                        report.getId(),
+                        report.getReporterUserId(),
+                        report.getReporterUsername(),
+                        report.getReportedImageId(),
+                        report.getReportedUserId(),
+                        report.getReason()
+                ))
+                .toList();
+
+        return ReportedUsersResponse.of(
+                users,
+                safePage,
+                safeLimit,
+                reportPage.getTotalElements(),
+                reportPage.getTotalPages()
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public ReportedUsersItem getReportedUser(Long reportId) {
+        PostReport report = postReportRepository.findById(reportId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
+
+        return toReportedUsersItem(report);
+    }
+
+    private ReportedUsersItem toReportedUsersItem(PostReport report) {
+        return new ReportedUsersItem(
+                report.getId(),
+                report.getReporterUserId(),
+                report.getReporterUsername(),
+                report.getReportedImageId(),
+                report.getReportedUserId(),
+                report.getReason()
+        );
+    }
+
     private PostReport getPendingReport(Long reportId) {
         PostReport postReport = postReportRepository.findById(reportId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
@@ -110,6 +167,31 @@ public class AdminReportServiceImpl implements AdminReportService {
         }
 
         return postReport;
+    }
+
+    private Long parseLongKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+
+        try {
+            return Long.parseLong(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
+    }
+
+    private Page<PostReport> loadReportedUsersPage(String keyword, Long numericKeyword, Pageable pageable) {
+        if (keyword.isBlank()) {
+            return postReportRepository.findByStatus(PostReportStatus.PENDING, pageable);
+        }
+
+        return postReportRepository.searchPendingReports(
+                PostReportStatus.PENDING,
+                keyword,
+                numericKeyword,
+                pageable
+        );
     }
 
     private Map<String, Object> reportState(PostReport postReport, boolean reportedUserBanned, boolean postHidden) {
