@@ -51,4 +51,8 @@ public class PlaceRecommendationExposure {
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void reassignPlace(Long placeId) {
+        this.placeId = placeId;
+    }
 }

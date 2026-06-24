@@ -4,6 +4,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDupl
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHistoryResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
@@ -13,6 +15,7 @@ import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationSnapshotResyncResponse;
+import com.typenull.pingdom.moderation.application.query.AdminMapPlaceLookupQueryService;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
@@ -52,6 +55,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminMapPlaceController {
 
+    private final AdminMapPlaceLookupQueryService adminMapPlaceLookupQueryService;
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
     private final AdminMapPlaceService adminMapPlaceService;
     private final RecommendationMetrics recommendationMetrics;
@@ -75,6 +79,8 @@ public class AdminMapPlaceController {
                                                   "id": 1,
                                                   "name": "진주성",
                                                   "address": "경상남도 진주시 남강로 626",
+                                                  "category": "관광",
+                                                  "categoryName": "관광",
                                                   "latitude": 35.1894,
                                                   "longitude": 128.0789,
                                                   "userId": 3,
@@ -127,7 +133,7 @@ public class AdminMapPlaceController {
             @Parameter(description = "장소 검색 키워드. 장소명, 등록자 ID, 주소로 검색합니다.", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.listPlaces(page, limit, sortParam, keyword);
+        return adminMapPlaceLookupQueryService.listPlaces(page, limit, sortParam, keyword);
     }
 
     @GetMapping("/{id}")
@@ -147,6 +153,8 @@ public class AdminMapPlaceController {
                                               "id": 1,
                                               "name": "진주성",
                                               "address": "경상남도 진주시 남강로 626",
+                                              "category": "관광",
+                                              "categoryName": "관광",
                                               "latitude": 35.1894,
                                               "longitude": 128.0789,
                                               "userId": 3,
@@ -199,7 +207,7 @@ public class AdminMapPlaceController {
             @Parameter(description = "게시글 검색", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.getPlace(id, sortParam, keyword);
+        return adminMapPlaceLookupQueryService.getPlace(id, sortParam, keyword);
     }
 
     @GetMapping("/recommendation-metrics")
@@ -312,6 +320,28 @@ public class AdminMapPlaceController {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         AdminMapPlaceMergeResponse response = adminMapPlaceService.mergePlaces(adminUserId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/merge-histories")
+    @Operation(
+            summary = "관리자 장소 병합 이력 조회",
+            description = "관리자가 최근 장소 병합 이력을 조회합니다."
+    )
+    public AdminPlaceMergeHistoryResponse listMergeHistories() {
+        return adminMapPlaceService.listMergeHistories();
+    }
+
+    @PostMapping("/merge-histories/{historyId}/restore")
+    @Operation(
+            summary = "관리자 장소 병합 복구",
+            description = "관리자가 저장된 장소 병합 이력을 기준으로 복구합니다."
+    )
+    public ResponseEntity<AdminPlaceMergeRestoreResponse> restoreMerge(
+            @PathVariable Long historyId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.restoreMerge(adminUserId, historyId));
     }
 
     @PatchMapping("/{id}/coordinates")

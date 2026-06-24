@@ -23,11 +23,11 @@ import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -46,6 +46,7 @@ public class ReportAppealService {
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
+    private final Clock clock;
 
     @Transactional
     public ReportAppealCreateResponse submit(Long reportId, String reason, Long userId, String username) {
@@ -123,7 +124,7 @@ public class ReportAppealService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
         User targetUser = userRepository.findById(appeal.getTargetUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = appealState(appeal);
 
         report.restore(now);
@@ -147,7 +148,7 @@ public class ReportAppealService {
     @Transactional
     public AdminReportAppealActionResponse reject(Long appealId, String reason, Long adminUserId) {
         ReportAppeal appeal = getSubmittedAppeal(appealId);
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = appealState(appeal);
 
         appeal.reject(adminUserId, reason, now);
@@ -191,13 +192,19 @@ public class ReportAppealService {
     }
 
     private boolean shouldReleaseBan(User targetUser, PostReport report) {
-        boolean reportLinkedBan = Objects.equals(targetUser.getBanReason(), report.getReason());
         boolean hasOtherAcceptedReport = postReportRepository.existsByReportedUserIdAndStatusAndIdNot(
                 targetUser.getId(),
                 PostReportStatus.ACCEPTED,
                 report.getId()
         );
-        return reportLinkedBan && !hasOtherAcceptedReport;
+        if (hasOtherAcceptedReport) {
+            return false;
+        }
+        return postReportRepository.existsByReportedUserIdAndStatusAndReason(
+                targetUser.getId(),
+                PostReportStatus.RESTORED,
+                targetUser.getBanReason()
+        );
     }
 
     private ReportAppeal getSubmittedAppeal(Long appealId) {

@@ -7,6 +7,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -22,10 +23,11 @@ public class PostReportService {
     private final PostReportRepository postReportRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final ReportPolicyService reportPolicyService;
+    private final Clock clock;
 
     @Transactional
     public void report(Long imageId, Long reporterUserId, String reporterUsername, String reason) {
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         reportPolicyService.validateCanReport(reporterUserId, now);
 
         MapImage mapImage = mapImageRepository.findById(imageId)

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.admin;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -17,12 +18,14 @@ import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
@@ -33,6 +36,7 @@ import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -41,6 +45,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -55,6 +60,8 @@ import org.springframework.test.web.servlet.MvcResult;
 @SpringBootTest
 @AutoConfigureMockMvc
 class AdminMapPlaceControllerTest {
+
+    private static final AtomicInteger ADMIN_SEQUENCE = new AtomicInteger();
 
     @Autowired
     private MockMvc mockMvc;
@@ -87,6 +94,9 @@ class AdminMapPlaceControllerTest {
     private PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
 
     @Autowired
+    private PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
+
+    @Autowired
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @Autowired
@@ -98,6 +108,9 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private AdminAuditLogRepository adminAuditLogRepository;
 
+    @Autowired
+    private AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
+
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
@@ -106,9 +119,11 @@ class AdminMapPlaceControllerTest {
         placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
         placeRecommendationExposureRepository.deleteAllInBatch();
+        placeRecommendationFeatureLogRepository.deleteAllInBatch();
         placeRecommendationVersionSnapshotRepository.deleteAllInBatch();
         placeSimilaritySnapshotRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
+        adminPlaceMergeHistoryRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -119,6 +134,7 @@ class AdminMapPlaceControllerTest {
         mapPlaceRepository.save(MapPlace.builder()
                 .name("진주성")
                 .address("경상남도 진주시 남강로 626")
+                .category("관광")
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(11L)
@@ -132,10 +148,50 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].name").value("진주성"))
                 .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].category").value("관광"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("관광"))
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.limit").value(20))
                 .andExpect(jsonPath("$.totalCount").value(1))
                 .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listPlacesReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("미분류 장소")
+                .address("경상남도 진주시 미분류로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(12L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value(nullValue()))
+                .andExpect(jsonPath("$.places[0].categoryName").value("미분류"));
+    }
+
+    @Test
+    void getPlaceReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("미분류 상세 장소")
+                .address("경상남도 진주시 미분류로 2")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(13L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value(nullValue()))
+                .andExpect(jsonPath("$.categoryName").value("미분류"));
     }
 
     @Test
@@ -235,6 +291,7 @@ class AdminMapPlaceControllerTest {
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("남강")
                 .address("경상남도 진주시 남강변")
+                .category("풍경")
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(placeOwner.getId())
@@ -257,6 +314,8 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.category").value("풍경"))
+                .andExpect(jsonPath("$.categoryName").value("풍경"))
                 .andExpect(jsonPath("$.username").value("placeOwner"))
                 .andExpect(jsonPath("$.sortParam").value(SortParam.LATEST.name()))
                 .andExpect(jsonPath("$.postCount").value(1))
@@ -544,6 +603,17 @@ class AdminMapPlaceControllerTest {
                 .likeCount(3L)
                 .mapPlace(targetPlace)
                 .build());
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/hidden.jpg")
+                .s3Key("map/hidden.jpg")
+                .title("hidden")
+                .description("hidden image")
+                .userId(102L)
+                .username("hiddenUser")
+                .likeCount(0L)
+                .visibilityStatus(MapImageVisibilityStatus.AUTO_HIDDEN)
+                .mapPlace(sourcePlace)
+                .build());
 
         mapBookmarkRepository.save(MapBookmark.builder()
                 .userId(200L)
@@ -610,7 +680,8 @@ class AdminMapPlaceControllerTest {
         assertFalse(mapPlaceRepository.existsById(sourcePlace.getId()));
         assertTrue(mapPlaceRepository.existsById(targetPlace.getId()));
         assertEquals("27414316", mapPlaceRepository.findById(targetPlace.getId()).orElseThrow().getKakaoPlaceId());
-        assertEquals(2L, mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        assertEquals(3L, mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        assertEquals(2L, mapPlaceRepository.findById(targetPlace.getId()).orElseThrow().currentPhotoCount());
         assertEquals(2L, mapBookmarkRepository.countByPlaceId(targetPlace.getId()));
 
         List<PlaceRecommendationConversionRepository.PlaceConversionCountProjection> conversionCounts =
@@ -636,6 +707,133 @@ class AdminMapPlaceControllerTest {
         assertEquals(String.valueOf(targetPlace.getId()), adminAuditLogRepository.findAll().getFirst().getTargetId());
         assertTrue(adminAuditLogRepository.findAll().getFirst().getAfterState()
                 .contains("\"sourcePlaceDeleted\":true"));
+        assertEquals(1, adminPlaceMergeHistoryRepository.findAll().size());
+    }
+
+    @Test
+    void listMergeHistoriesAndRestoreMergeWork() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace sourcePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("복구 병합 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .kakaoPlaceId("restore-source-id")
+                .latitude(35.642738)
+                .longitude(128.391626)
+                .userId(30L)
+                .registrant("sourceOwner")
+                .photoCount(1L)
+                .build());
+        MapPlace targetPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("복구 병합 장소")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.642900)
+                .longitude(128.391700)
+                .userId(31L)
+                .registrant("targetOwner")
+                .photoCount(1L)
+                .build());
+
+        MapImage movedImage = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/source.jpg")
+                .s3Key("map/source.jpg")
+                .title("source")
+                .description("source image")
+                .userId(100L)
+                .username("sourceUser")
+                .likeCount(4L)
+                .mapPlace(sourcePlace)
+                .build());
+
+        MapBookmark movedBookmark = mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(200L)
+                .placeId(sourcePlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(201L)
+                .placeId(sourcePlace.getId())
+                .build());
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(201L)
+                .placeId(targetPlace.getId())
+                .build());
+
+        PlaceRecommendationClick movedClick = placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+                .placeId(sourcePlace.getId())
+                .userId(300L)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        PlaceRecommendationExposure movedExposure = placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+                .placeId(sourcePlace.getId())
+                .userId(301L)
+                .requestLatitude(35.642738)
+                .requestLongitude(128.391626)
+                .ranking(1)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        PlaceRecommendationConversion movedConversion =
+                placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                        .placeRecommendationClickId(movedClick.getId())
+                        .placeId(sourcePlace.getId())
+                        .userId(400L)
+                        .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                        .recommendationVersion("place-rec-v1")
+                        .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(movedClick.getId())
+                .placeId(sourcePlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+        placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+                .placeRecommendationClickId(movedClick.getId())
+                .placeId(targetPlace.getId())
+                .userId(401L)
+                .conversionType(PlaceRecommendationConversionType.LIKE)
+                .recommendationVersion("place-rec-v1")
+                .build());
+
+        mockMvc.perform(post("/admin/places/merge")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(
+                                java.util.Map.of(
+                                        "sourcePlaceId", sourcePlace.getId(),
+                                        "targetPlaceId", targetPlace.getId()
+                                )
+                        )))
+                .andExpect(status().isOk());
+
+        Long historyId = adminPlaceMergeHistoryRepository.findAll().getFirst().getId();
+
+        mockMvc.perform(get("/admin/places/merge-histories")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.histories[0].historyId").value(historyId))
+                .andExpect(jsonPath("$.histories[0].sourcePlaceId").value(sourcePlace.getId()))
+                .andExpect(jsonPath("$.histories[0].targetPlaceId").value(targetPlace.getId()))
+                .andExpect(jsonPath("$.histories[0].restored").value(false));
+
+        mockMvc.perform(post("/admin/places/merge-histories/{historyId}/restore", historyId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.historyId").value(historyId))
+                .andExpect(jsonPath("$.sourcePlaceId").value(sourcePlace.getId()))
+                .andExpect(jsonPath("$.targetPlaceId").value(targetPlace.getId()))
+                .andExpect(jsonPath("$.message").value("장소 병합을 복구했습니다."));
+
+        assertTrue(mapPlaceRepository.existsById(sourcePlace.getId()));
+        assertEquals(sourcePlace.getId(), mapImageRepository.findById(movedImage.getId()).orElseThrow().getMapPlace().getId());
+        assertEquals(sourcePlace.getId(), mapBookmarkRepository.findById(movedBookmark.getId()).orElseThrow().getPlaceId());
+        assertEquals(sourcePlace.getId(), placeRecommendationClickRepository.findById(movedClick.getId()).orElseThrow().getPlaceId());
+        assertEquals(sourcePlace.getId(), placeRecommendationExposureRepository.findById(movedExposure.getId()).orElseThrow().getPlaceId());
+        assertEquals(sourcePlace.getId(), placeRecommendationConversionRepository.findById(movedConversion.getId()).orElseThrow().getPlaceId());
+        assertEquals(2L, mapBookmarkRepository.countByPlaceId(sourcePlace.getId()));
+        assertEquals(2L, placeRecommendationConversionRepository.countConversionsByPlaceIds(List.of(sourcePlace.getId())).stream()
+                .mapToLong(PlaceRecommendationConversionRepository.PlaceConversionCountProjection::getConversionCount)
+                .sum());
+        assertTrue(adminPlaceMergeHistoryRepository.findById(historyId).orElseThrow().isRestored());
     }
 
     @Test
@@ -1244,9 +1442,10 @@ class AdminMapPlaceControllerTest {
     }
 
     private String createAdminAndLogin() throws Exception {
+        String username = "adminPlaceTester" + ADMIN_SEQUENCE.incrementAndGet();
         userRepository.save(User.builder()
-                .username("adminPlaceTester")
-                .email("admin-place@example.com")
+                .username(username)
+                .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .birthYear(1998)
                 .language("ko")
@@ -1254,7 +1453,7 @@ class AdminMapPlaceControllerTest {
                 .role(UserRole.ADMIN)
                 .build());
 
-        LoginRequest loginRequest = new LoginRequest("adminPlaceTester", "password123");
+        LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))

@@ -92,11 +92,11 @@ public class User {
 
     @Builder.Default
     @Column(name = "unaccepted_report_count")
-    private Long unacceptedReportCount;
+    private Long unacceptedReportCount = 0L;
 
     @Builder.Default
     @Column(name = "report_count")
-    private Long reportCount;
+    private Long reportCount = 0L;
 
     // 관리자 밴 여부
     @Builder.Default
