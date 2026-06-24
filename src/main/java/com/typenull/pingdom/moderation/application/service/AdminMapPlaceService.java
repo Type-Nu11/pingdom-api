@@ -31,6 +31,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -219,7 +220,7 @@ public class AdminMapPlaceService {
         int movedExposureCount = reassignExposures(sourcePlace, targetPlace, mergeExecutionContext);
         int movedFeatureLogCount = reassignFeatureLogs(sourcePlace, targetPlace, mergeExecutionContext);
 
-        targetPlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        targetPlace.replacePhotoCount(countActiveImages(targetPlace.getId()));
         mapPlaceRepository.delete(sourcePlace);
         adminPlaceMergeHistoryRepository.save(mergeExecutionContext.toHistory(adminUserId));
         placeRecommendationSnapshotResyncService.resyncMergedPlace(sourcePlace.getId(), targetPlace.getId());
@@ -310,8 +311,8 @@ public class AdminMapPlaceService {
         restoreFeatureLogs(restoredSourcePlace.getId(), readLongList(history.getMovedFeatureLogIds()));
         restoreKakaoPlaceIds(restoredSourcePlace, targetPlace, sourceSnapshot, targetSnapshot);
 
-        restoredSourcePlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(restoredSourcePlace.getId()));
-        targetPlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        restoredSourcePlace.replacePhotoCount(countActiveImages(restoredSourcePlace.getId()));
+        targetPlace.replacePhotoCount(countActiveImages(targetPlace.getId()));
         history.markRestored(LocalDateTime.now());
 
         placeRecommendationSnapshotResyncService.resyncMergedPlace(restoredSourcePlace.getId(), targetPlace.getId());
@@ -495,6 +496,10 @@ public class AdminMapPlaceService {
         state.put("movedExposureCount", movedExposureCount);
         state.put("movedFeatureLogCount", movedFeatureLogCount);
         return state;
+    }
+
+    private long countActiveImages(Long placeId) {
+        return mapImageRepository.countByMapPlace_IdAndVisibilityStatus(placeId, MapImageVisibilityStatus.ACTIVE);
     }
 
     private static Point toPoint(double latitude, double longitude) {

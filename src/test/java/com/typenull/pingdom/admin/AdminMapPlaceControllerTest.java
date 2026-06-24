@@ -25,6 +25,7 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
@@ -599,6 +600,17 @@ class AdminMapPlaceControllerTest {
                 .likeCount(3L)
                 .mapPlace(targetPlace)
                 .build());
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/hidden.jpg")
+                .s3Key("map/hidden.jpg")
+                .title("hidden")
+                .description("hidden image")
+                .userId(102L)
+                .username("hiddenUser")
+                .likeCount(0L)
+                .visibilityStatus(MapImageVisibilityStatus.AUTO_HIDDEN)
+                .mapPlace(sourcePlace)
+                .build());
 
         mapBookmarkRepository.save(MapBookmark.builder()
                 .userId(200L)
@@ -665,7 +677,8 @@ class AdminMapPlaceControllerTest {
         assertFalse(mapPlaceRepository.existsById(sourcePlace.getId()));
         assertTrue(mapPlaceRepository.existsById(targetPlace.getId()));
         assertEquals("27414316", mapPlaceRepository.findById(targetPlace.getId()).orElseThrow().getKakaoPlaceId());
-        assertEquals(2L, mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        assertEquals(3L, mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
+        assertEquals(2L, mapPlaceRepository.findById(targetPlace.getId()).orElseThrow().currentPhotoCount());
         assertEquals(2L, mapBookmarkRepository.countByPlaceId(targetPlace.getId()));
 
         List<PlaceRecommendationConversionRepository.PlaceConversionCountProjection> conversionCounts =
