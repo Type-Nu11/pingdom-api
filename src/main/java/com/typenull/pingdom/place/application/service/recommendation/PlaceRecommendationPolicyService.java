@@ -65,7 +65,7 @@ public class PlaceRecommendationPolicyService {
                 ));
     }
 
-    private String resolvedDefaultVersion;
+    private volatile String resolvedDefaultVersion;
 
     public ResolvedRecommendationPolicy resolve(
             Long userId,
