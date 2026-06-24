@@ -18,6 +18,8 @@ public enum AdminErrorCode {
     UNSUPPORTED_PLACE_SORT_PARAM(HttpStatus.BAD_REQUEST, "장소 목록은 LATEST 또는 OLDEST 정렬만 지원합니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "신고 내역을 찾을 수 없습니다."),
     REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 신고입니다."),
+    APPEAL_NOT_FOUND(HttpStatus.NOT_FOUND, "이의제기 내역을 찾을 수 없습니다."),
+    APPEAL_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 이의제기입니다."),
     USER_NOT_BANNED(HttpStatus.CONFLICT, "제재 중인 사용자가 아닙니다."),
     INVALID_SANCTION_PERIOD(HttpStatus.BAD_REQUEST, "제재 종료 시각 또는 기간이 올바르지 않습니다."),
     INVALID_SANCTION_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "제재 이력 조회 종료 시각은 시작 시각보다 이후여야 합니다."),

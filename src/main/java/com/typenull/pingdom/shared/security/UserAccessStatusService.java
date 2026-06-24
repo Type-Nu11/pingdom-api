@@ -44,6 +44,15 @@ public class UserAccessStatusService {
         return allowed;
     }
 
+    public boolean canAuthenticateForAppeal(Long userId) {
+        if (userId == null) {
+            return false;
+        }
+
+        User user = userRepository.findById(userId).orElse(null);
+        return user != null && user.getStatus() == UserStatus.ACTIVE;
+    }
+
     public void evict(Long userId) {
         if (userId != null) {
             cache.remove(userId);
