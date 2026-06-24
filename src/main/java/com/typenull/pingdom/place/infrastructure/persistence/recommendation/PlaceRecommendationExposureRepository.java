@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -92,4 +93,12 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
             GROUP BY e.placeId, e.recommendationVersion
             """)
     List<PlaceVersionExposureCountProjection> countExposuresGroupedByPlaceIdAndRecommendationVersion();
+
+    @Modifying
+    @Query("""
+            UPDATE PlaceRecommendationExposure e
+            SET e.placeId = :targetPlaceId
+            WHERE e.placeId = :sourcePlaceId
+            """)
+    int updatePlaceId(@Param("sourcePlaceId") Long sourcePlaceId, @Param("targetPlaceId") Long targetPlaceId);
 }

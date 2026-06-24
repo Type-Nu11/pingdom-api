@@ -1,14 +1,18 @@
 package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
+import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
+import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
+import com.typenull.pingdom.shared.ratelimit.RateLimited;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -71,13 +75,94 @@ public class PlaceController {
     })
     public ResponseEntity<PlaceListResponse> listPlaces(
             @Parameter(description = "페이지 번호", example = "1")
+            @Min(value = 1, message = "page는 1 이상이어야 합니다.")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
+            @Min(value = 1, message = "limit는 1 이상이어야 합니다.")
+            @Max(value = 100, message = "limit는 100 이하여야 합니다.")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "장소명 검색어", example = "카페")
-            @RequestParam(required = false) String keyword
+            @Parameter(description = "장소명 또는 주소 검색어", example = "카페")
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "카테고리 필터", example = "카페")
+            @RequestParam(required = false) String category,
+            @Parameter(description = "현재 위도. 거리 검색 시 longitude, radiusKm와 함께 전달합니다.", example = "35.1801")
+            @DecimalMin(value = "-90.0", message = "위도는 -90.0 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90.0 이하여야 합니다.")
+            @RequestParam(required = false) Double latitude,
+            @Parameter(description = "현재 경도. 거리 검색 시 latitude, radiusKm와 함께 전달합니다.", example = "128.1078")
+            @DecimalMin(value = "-180.0", message = "경도는 -180.0 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180.0 이하여야 합니다.")
+            @RequestParam(required = false) Double longitude,
+            @Parameter(description = "검색 반경(km). 거리 검색 시 latitude, longitude와 함께 전달합니다.", example = "3.0")
+            @DecimalMin(value = "0.1", message = "radiusKm는 0.1 이상이어야 합니다.")
+            @DecimalMax(value = "20.0", message = "radiusKm는 20.0 이하여야 합니다.")
+            @RequestParam(required = false) Double radiusKm,
+            @Parameter(description = "정렬 기준. LATEST 또는 NEAREST", example = "LATEST")
+            @RequestParam(defaultValue = "LATEST") String sort
     ) {
-        return ResponseEntity.ok(placeQueryService.listPlaces(page, limit, keyword));
+        return ResponseEntity.ok(placeQueryService.listPlaces(new PlaceSearchCondition(
+                page,
+                limit,
+                keyword,
+                category,
+                latitude,
+                longitude,
+                radiusKm,
+                sort
+        )));
+    }
+
+    @GetMapping("/autocomplete")
+    @Operation(summary = "장소 검색 자동완성", description = "검색어 입력 중 장소 후보를 자동완성으로 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 자동완성 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceAutocompleteResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "잘못된 요청값",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "latitude와 longitude는 함께 전달해야 합니다."
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<PlaceAutocompleteResponse> autocompletePlaces(
+            @Parameter(description = "검색어", example = "진주")
+            @RequestParam String keyword,
+            @Parameter(description = "최대 반환 개수", example = "10")
+            @RequestParam(defaultValue = "10") int limit,
+            @Parameter(description = "현재 위도", example = "35.1801")
+            @DecimalMin(value = "-90.0", message = "위도는 -90.0 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "위도는 90.0 이하여야 합니다.")
+            @RequestParam(required = false) Double latitude,
+            @Parameter(description = "현재 경도", example = "128.1078")
+            @DecimalMin(value = "-180.0", message = "경도는 -180.0 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "경도는 180.0 이하여야 합니다.")
+            @RequestParam(required = false) Double longitude
+    ) {
+        return ResponseEntity.ok(placeQueryService.autocompletePlaces(keyword, limit, latitude, longitude));
     }
 
     @GetMapping("/recommendations")
@@ -200,6 +285,7 @@ public class PlaceController {
                     )
             )
     })
+    @RateLimited(RateLimitAction.RECOMMENDATION_CLICK)
     public ResponseEntity<PlaceRecommendationClickResponse> recordRecommendationClick(
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user

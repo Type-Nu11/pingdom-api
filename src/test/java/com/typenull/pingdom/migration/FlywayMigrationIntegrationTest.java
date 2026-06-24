@@ -7,7 +7,11 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
+import org.junit.jupiter.api.BeforeAll;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.core.io.ClassPathResource;
+import org.springframework.jdbc.datasource.init.ScriptUtils;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -26,19 +30,93 @@ class FlywayMigrationIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    @BeforeAll
+    static void ensureRequiredExtensions() throws Exception {
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
+            statement.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm");
+        }
+    }
+
+    @BeforeEach
+    void resetDatabase() throws Exception {
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.execute("""
+                    DO $$ DECLARE
+                        r RECORD;
+                    BEGIN
+                        FOR r IN (
+                            SELECT tablename
+                            FROM pg_tables
+                            WHERE schemaname = 'public'
+                              AND tablename != 'spatial_ref_sys'
+                        ) LOOP
+                            EXECUTE 'DROP TABLE IF EXISTS ' || quote_ident(r.tablename) || ' CASCADE';
+                        END LOOP;
+                    END $$;
+                    """);
+        }
+    }
+
     @Test
     void appliesAllMigrationsToPostgisDatabase() throws Exception {
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo("10");
+        assertThat(result.migrationsExecuted).isEqualTo(10);
+
+        assertPostMigrationSchema();
+    }
+
+    @Test
+    void baselinesExistingVersionOneSchemaAndAppliesIncrementalMigrations() throws Exception {
+        executeBaselineSchemaScript();
+
+        MigrateResult result = migrate(true);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo("10");
+        assertThat(result.migrationsExecuted).isEqualTo(9);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM flyway_schema_history
+                        WHERE version = '1'
+                          AND type = 'BASELINE'
+                          AND success = true
+                    )
+                    """)).isTrue();
+        }
+        assertPostMigrationSchema();
+    }
+
+    private MigrateResult migrate(boolean baselineOnMigrate) {
         Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
+                .baselineOnMigrate(baselineOnMigrate)
+                .baselineVersion("1")
                 .load();
 
-        MigrateResult result = flyway.migrate();
+        return flyway.migrate();
+    }
 
-        assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("7");
-        assertThat(result.migrationsExecuted).isEqualTo(7);
+    private void executeBaselineSchemaScript() throws Exception {
+        try (Connection connection = postgres.createConnection("")) {
+            ScriptUtils.executeSqlScript(
+                    connection,
+                    new ClassPathResource("db/migration/V1__baseline_schema.sql")
+            );
+        }
+    }
 
+    private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -46,6 +124,13 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM pg_extension
                         WHERE extname = 'postgis'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_extension
+                        WHERE extname = 'pg_trgm'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -130,6 +215,84 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'user_sanction_history'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place'
+                          AND indexname = 'idx_map_place_name_trgm'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place'
+                          AND indexname = 'idx_map_place_address_trgm'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place'
+                          AND indexname = 'idx_map_place_category_lower'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place'
+                          AND indexname = 'idx_map_place_latitude_longitude'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'admin_audit_log'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'admin_audit_log'
+                          AND column_name = 'request_id'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'admin_audit_log'
+                          AND indexname = 'idx_admin_audit_log_target_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_image'
+                          AND column_name = 'visibility_status'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'reporter_moderation_policy'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'report_appeal'
                     )
                     """)).isTrue();
         }

@@ -1,6 +1,8 @@
 package com.typenull.pingdom.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.engagement.domain.MapImageLike;
+import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -55,10 +57,14 @@ class MapPostQueryControllerTest {
     private MapBookmarkRepository mapBookmarkRepository;
 
     @Autowired
+    private MapImageLikeRepository mapImageLikeRepository;
+
+    @Autowired
     private MapImageRepository mapImageRepository;
 
     @BeforeEach
     void setUp() {
+        mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
@@ -126,6 +132,50 @@ class MapPostQueryControllerTest {
     }
 
     @Test
+    void listLikedPostsReturnsOnlyCurrentUsersLikedPostsInLatestLikeOrder() throws Exception {
+        String accessToken = signupAndLogin("like-reader");
+        Long userId = userRepository.findByUsername("like-reader").orElseThrow().getId();
+
+        MapPlace likedPlace = createMapPlace("좋아요한 장소", "경상남도 진주시 좋아요로 1");
+        MapPlace anotherPlace = createMapPlace("다른 장소", "경상남도 진주시 좋아요로 2");
+
+        MapImage olderLikedPost = createMapImage(41L, "writer01", "먼저 좋아요한 게시글", likedPlace, 4L);
+        MapImage latestLikedPost = createMapImage(42L, "writer02", "나중에 좋아요한 게시글", anotherPlace, 9L);
+        createMapImage(43L, "writer03", "좋아요하지 않은 게시글", anotherPlace, 1L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(userId)
+                .placeId(anotherPlace.getId())
+                .build());
+
+        mapImageLikeRepository.save(MapImageLike.builder()
+                .userId(userId)
+                .mapImageId(olderLikedPost.getId())
+                .build());
+        mapImageLikeRepository.save(MapImageLike.builder()
+                .userId(userId)
+                .mapImageId(latestLikedPost.getId())
+                .build());
+
+        mockMvc.perform(get("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.posts.length()").value(2))
+                .andExpect(jsonPath("$.posts[0].id").value(latestLikedPost.getId()))
+                .andExpect(jsonPath("$.posts[0].likedByMe").value(true))
+                .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
+                .andExpect(jsonPath("$.posts[0].placeName").value("다른 장소"))
+                .andExpect(jsonPath("$.posts[1].id").value(olderLikedPost.getId()))
+                .andExpect(jsonPath("$.posts[1].likedByMe").value(true))
+                .andExpect(jsonPath("$.posts[1].bookmarked").value(false));
+    }
+
+    @Test
     void getPostReturnsPostDetailWithPlaceInformation() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
@@ -143,6 +193,46 @@ class MapPostQueryControllerTest {
                 .andExpect(jsonPath("$.placeAddress").value("경상남도 진주시 남강로 626"))
                 .andExpect(jsonPath("$.latitude").value(35.1801))
                 .andExpect(jsonPath("$.longitude").value(128.1078));
+    }
+
+    @Test
+    void listAndDetailExcludeHiddenPosts() throws Exception {
+        String accessToken = signupAndLogin("hidden-reader");
+        MapPlace mapPlace = createMapPlace("숨김 장소", "경상남도 진주시 숨김로 1");
+        MapImage visiblePost = createMapImage(51L, "visible-writer", "노출 게시글", mapPlace, 1L);
+        MapImage hiddenPost = createMapImage(52L, "hidden-writer", "숨김 게시글", mapPlace, 1L);
+        hiddenPost.autoHide("테스트 숨김", java.time.LocalDateTime.now(), null);
+        mapImageRepository.saveAndFlush(hiddenPost);
+
+        mockMvc.perform(get("/map/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(visiblePost.getId()));
+
+        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
+    }
+
+    @Test
+    void getPostAllowsOwnerToReadHiddenPostDetail() throws Exception {
+        String accessToken = signupAndLogin("hidden-owner");
+        Long ownerId = userRepository.findByUsername("hidden-owner").orElseThrow().getId();
+        MapPlace mapPlace = createMapPlace("숨김 소유자 장소", "경상남도 진주시 소유자로 1");
+        MapImage hiddenPost = createMapImage(ownerId, "hidden-owner", "소유자 숨김 게시글", mapPlace, 1L);
+        hiddenPost.autoHide("테스트 숨김", java.time.LocalDateTime.now(), null);
+        mapImageRepository.saveAndFlush(hiddenPost);
+
+        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(hiddenPost.getId()))
+                .andExpect(jsonPath("$.title").value("소유자 숨김 게시글"));
     }
 
     @Test

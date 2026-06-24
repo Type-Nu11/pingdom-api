@@ -17,6 +17,8 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
 
     boolean existsByDeduplicationKey(String deduplicationKey);
 
+    long countByStatus(OutboxEventStatus status);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("""

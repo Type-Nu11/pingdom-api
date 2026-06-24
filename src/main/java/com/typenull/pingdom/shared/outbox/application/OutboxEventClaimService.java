@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.outbox.application;
 
+import com.typenull.pingdom.shared.observability.OutboxMetrics;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
@@ -24,6 +25,7 @@ public class OutboxEventClaimService {
     private final OutboxProperties properties;
     private final OutboxBackoffPolicy backoffPolicy;
     private final Clock outboxClock;
+    private final OutboxMetrics outboxMetrics;
 
     @Transactional
     public List<String> claimReadyEvents() {
@@ -51,6 +53,7 @@ public class OutboxEventClaimService {
                 now.plus(backoffPolicy.calculateDelay(event.getAttemptCount() + 1)),
                 "PROCESSING timeout 이후 재처리 대상으로 복구"
         ));
+        outboxMetrics.recordStaleRecovered(events.size());
         return events.size();
     }
 }

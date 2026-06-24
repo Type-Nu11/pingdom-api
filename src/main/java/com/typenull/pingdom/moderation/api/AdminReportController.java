@@ -30,7 +30,7 @@ public class AdminReportController {
     @PostMapping("/{id}/accept")
     @Operation(
             summary = "신고 수락 처리",
-            description = "관리자가 신고를 수락하고 대상 사용자를 제재하며 신고 대상 게시글을 삭제합니다."
+            description = "관리자가 신고를 수락하고 대상 사용자를 제재하며 신고 대상 게시글을 숨김 처리합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -194,7 +194,11 @@ public class AdminReportController {
                     )
             )
     })
-    public AdminReportActionResponse declineReport(@PathVariable Long id) {
-        return adminReportService.declineReport(id);
+    public AdminReportActionResponse declineReport(
+            @PathVariable Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminReportService.declineReport(id, adminUserId);
     }
 }

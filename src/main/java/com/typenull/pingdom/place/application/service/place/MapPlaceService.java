@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRespon
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -90,7 +91,7 @@ public class MapPlaceService {
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
                 .address(address)
-                .category(trimToNull(category))
+                .category(PlaceCategoryPolicy.normalize(category))
                 .imageUrl(trimToNull(imageUrl))
                 .latitude(entry.latitude())
                 .longitude(entry.longitude())

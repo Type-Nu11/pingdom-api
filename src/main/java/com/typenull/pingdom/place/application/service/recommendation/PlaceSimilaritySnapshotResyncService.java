@@ -2,7 +2,7 @@ package com.typenull.pingdom.place.application.service.recommendation;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
-import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceCoordinateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import jakarta.persistence.EntityManager;
 import java.time.Clock;
@@ -43,7 +43,7 @@ public class PlaceSimilaritySnapshotResyncService {
             WHERE place_similarity_snapshot_id = ?
             """;
 
-    private final MapPlaceRepository mapPlaceRepository;
+    private final MapPlaceCoordinateQueryRepository mapPlaceCoordinateQueryRepository;
     private final PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
     private final EntityManager entityManager;
@@ -90,7 +90,7 @@ public class PlaceSimilaritySnapshotResyncService {
         int pageNumber = 0;
 
         while (true) {
-            Page<MapPlace> placePage = mapPlaceRepository.findCoordinatePage(PageRequest.of(pageNumber, PLACE_PAGE_SIZE));
+            Page<MapPlace> placePage = mapPlaceCoordinateQueryRepository.findCoordinatePage(PageRequest.of(pageNumber, PLACE_PAGE_SIZE));
             if (placePage.isEmpty()) {
                 break;
             }
@@ -162,7 +162,7 @@ public class PlaceSimilaritySnapshotResyncService {
         int pageNumber = 0;
 
         while (true) {
-            Page<MapPlace> placePage = mapPlaceRepository.findCoordinatePage(PageRequest.of(pageNumber, PLACE_PAGE_SIZE));
+            Page<MapPlace> placePage = mapPlaceCoordinateQueryRepository.findCoordinatePage(PageRequest.of(pageNumber, PLACE_PAGE_SIZE));
             if (placePage.isEmpty()) {
                 break;
             }

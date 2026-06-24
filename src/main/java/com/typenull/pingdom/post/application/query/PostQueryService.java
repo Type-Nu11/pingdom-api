@@ -9,5 +9,7 @@ public interface PostQueryService {
 
     PostListResponse listBookmarkedPosts(int page, int limit, Long userId);
 
+    PostListResponse listLikedPosts(int page, int limit, Long userId);
+
     PostDetailResponse getPost(Long postId, Long userId);
 }

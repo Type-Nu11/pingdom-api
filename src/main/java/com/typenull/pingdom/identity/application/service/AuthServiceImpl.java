@@ -14,10 +14,12 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.application.service.AuthService;
 import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
+import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import com.typenull.pingdom.shared.security.UserAccessStatusService;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
@@ -39,6 +41,8 @@ public class AuthServiceImpl implements AuthService {
     private final OutboxEventPublisher outboxEventPublisher;
     private final UserWithdrawalDataService userWithdrawalDataService;
     private final UserAccessStatusService userAccessStatusService;
+    private final Clock clock;
+    private final AuthMetrics authMetrics;
 
     @Override
     @Transactional
@@ -98,7 +102,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.INVALID_CREDENTIALS);
         }
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -118,7 +122,7 @@ public class AuthServiceImpl implements AuthService {
         User user = userRepository.findByEmail(request.email())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -144,7 +148,7 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
         }
 
-        if (user.isEmailVerificationExpired(LocalDateTime.now())) {
+        if (user.isEmailVerificationExpired(now())) {
             throw new AuthException(AuthErrorCode.EXPIRED_EMAIL_VERIFICATION_CODE);
         }
 
@@ -156,30 +160,36 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
-        Long userId = extractValidRefreshTokenUserId(request.refreshToken());
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        try {
+            Long userId = extractValidRefreshTokenUserId(request.refreshToken());
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (user.isWithdrawn()) {
-            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+            if (user.isWithdrawn()) {
+                throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+            }
+
+            if (user.isCurrentlyBanned(now())) {
+                throw new AuthException(AuthErrorCode.USER_BANNED);
+            }
+
+            if (!user.matchesRefreshToken(request.refreshToken())) {
+                throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+            }
+
+            // 재발급용 Access Token, Refresh Token 생성 호출
+            String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
+            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+            // 새 Refresh Token 회전 반영 호출
+            user.issueRefreshToken(refreshToken);
+            authMetrics.recordRefreshTokenSuccess();
+
+            return new RefreshTokenResponse(accessToken, refreshToken);
+        } catch (RuntimeException exception) {
+            authMetrics.recordRefreshTokenFailure(refreshTokenFailureReason(exception));
+            throw exception;
         }
-
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
-            throw new AuthException(AuthErrorCode.USER_BANNED);
-        }
-
-        if (!user.matchesRefreshToken(request.refreshToken())) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-
-        // 재발급용 Access Token, Refresh Token 생성 호출
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-
-        // 새 Refresh Token 회전 반영 호출
-        user.issueRefreshToken(refreshToken);
-
-        return new RefreshTokenResponse(accessToken, refreshToken);
     }
 
     @Override
@@ -210,7 +220,7 @@ public class AuthServiceImpl implements AuthService {
     private void issueEmailVerification(User user) {
         user.issueEmailVerification(
                 generateVerificationCode(),
-                LocalDateTime.now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
+                now().plusMinutes(EMAIL_VERIFICATION_EXPIRATION_MINUTES)
         );
     }
 
@@ -245,7 +255,7 @@ public class AuthServiceImpl implements AuthService {
                 anonymizedUsername(user.getId()),
                 anonymizedEmail(user.getId()),
                 "WITHDRAWN_" + UUID.randomUUID(),
-                LocalDateTime.now()
+                now()
         );
         userAccessStatusService.evict(user.getId());
         userWithdrawalDataService.cleanupUserOwnedData(user.getId());
@@ -259,11 +269,18 @@ public class AuthServiceImpl implements AuthService {
         return parsed.userId();
     }
 
+    private String refreshTokenFailureReason(RuntimeException exception) {
+        if (exception instanceof AuthException authException) {
+            return authException.getErrorCode().name();
+        }
+        return exception.getClass().getSimpleName();
+    }
+
     private User authenticateUser(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
-        if (user.isCurrentlyBanned(LocalDateTime.now())) {
+        if (user.isCurrentlyBanned(now())) {
             throw new AuthException(AuthErrorCode.USER_BANNED);
         }
         if (user.isWithdrawn()) {
@@ -309,5 +326,9 @@ public class AuthServiceImpl implements AuthService {
 
     private String anonymizedEmail(Long userId) {
         return "withdrawn_user_%d@withdrawn.local".formatted(userId);
+    }
+
+    private LocalDateTime now() {
+        return LocalDateTime.now(clock);
     }
 }

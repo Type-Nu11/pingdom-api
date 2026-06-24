@@ -8,6 +8,11 @@ spring:
     driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${DB_USERNAME:pingdom}
     password: ${DB_PASSWORD:pingdom}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      timeout: ${REDIS_TIMEOUT:2s}
   jpa:
     hibernate:
       ddl-auto: validate
@@ -17,7 +22,7 @@ spring:
     open-in-view: false
   flyway:
     enabled: true
-    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:false}
+    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: 1
     validate-on-migrate: true
   servlet:
@@ -70,6 +75,26 @@ springdoc:
   swagger-ui:
     enabled: false
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+
 oauth2:
   redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:5173/oauth2/redirect}
 
@@ -98,6 +123,55 @@ user:
     cleanup-batch-size: 100
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
+
+abuse:
+  rate-limit:
+    redis-key-prefix: ${REDIS_RATE_LIMIT_KEY_PREFIX:pingdom:rate-limit:}
+    fail-open: ${REDIS_RATE_LIMIT_FAIL_OPEN:true}
+    login-username:
+      limit: 5
+      window: PT1M
+    login-ip:
+      limit: 120
+      window: PT1M
+    token-refresh-token:
+      limit: 10
+      window: PT1M
+    token-refresh-ip:
+      limit: 240
+      window: PT1M
+    email-resend:
+      minimum-interval: PT1M
+      email-daily:
+        limit: 5
+        window: P1D
+      ip-daily:
+        limit: 100
+        window: P1D
+    report-user:
+      limit: 10
+      window: PT1H
+    report-ip:
+      limit: 200
+      window: PT1H
+    map-image-like-user:
+      limit: 60
+      window: PT1M
+    map-image-like-ip:
+      limit: 600
+      window: PT1M
+    recommendation-click-user:
+      limit: 120
+      window: PT1M
+    recommendation-click-ip:
+      limit: 1000
+      window: PT1M
+    image-upload-user:
+      limit: 10
+      window: PT1H
+    image-upload-ip:
+      limit: 100
+      window: PT1H
 
 place:
   recommendation:

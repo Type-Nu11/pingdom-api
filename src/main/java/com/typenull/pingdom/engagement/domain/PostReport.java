@@ -79,6 +79,11 @@ public class PostReport {
         this.processedAt = processedAt;
     }
 
+    public void restore(LocalDateTime processedAt) {
+        this.status = PostReportStatus.RESTORED;
+        this.processedAt = processedAt;
+    }
+
     public void detachMapImage() {
         this.mapImage = null;
     }

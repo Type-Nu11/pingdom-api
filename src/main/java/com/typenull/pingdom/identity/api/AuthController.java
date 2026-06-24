@@ -9,6 +9,8 @@ import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.identity.application.service.AuthService;
+import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
+import com.typenull.pingdom.shared.ratelimit.RateLimited;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -31,7 +33,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @Tag(name = "Common", description = "앱/웹 공통")
 public class AuthController {
 
-    private final  AuthService authService;
+    private final AuthService authService;
 
     @PostMapping("/signup")
     @Operation(
@@ -192,6 +194,7 @@ public class AuthController {
                     )
             )
     })
+    @RateLimited(RateLimitAction.LOGIN)
     public LoginResponse login(@Valid @RequestBody LoginRequest request) {
         return authService.login(request);
     }
@@ -270,6 +273,7 @@ public class AuthController {
                     )
             )
     })
+    @RateLimited(RateLimitAction.LOGIN)
     public LoginResponse adminLogin(@Valid @RequestBody LoginRequest request) {
         return authService.adminLogin(request);
     }
@@ -329,7 +333,10 @@ public class AuthController {
                     )
             )
     })
-    public ResponseEntity<Void> resendVerificationEmail(@Valid @RequestBody EmailResendRequest request) {
+    @RateLimited(RateLimitAction.EMAIL_RESEND)
+    public ResponseEntity<Void> resendVerificationEmail(
+            @Valid @RequestBody EmailResendRequest request
+    ) {
         authService.resendVerificationEmail(request);
         return ResponseEntity.ok().build();
     }
@@ -457,7 +464,10 @@ public class AuthController {
                     )
             )
     })
-    public ResponseEntity<RefreshTokenResponse> refreshToken(@Valid @RequestBody RefreshTokenRequest request) {
+    @RateLimited(RateLimitAction.TOKEN_REFRESH)
+    public ResponseEntity<RefreshTokenResponse> refreshToken(
+            @Valid @RequestBody RefreshTokenRequest request
+    ) {
         return ResponseEntity.ok(authService.refreshToken(request));
     }
 
