@@ -9,8 +9,10 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResp
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
+import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
+import com.typenull.pingdom.shared.ratelimit.RateLimited;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -283,6 +285,7 @@ public class PlaceController {
                     )
             )
     })
+    @RateLimited(RateLimitAction.RECOMMENDATION_CLICK)
     public ResponseEntity<PlaceRecommendationClickResponse> recordRecommendationClick(
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
