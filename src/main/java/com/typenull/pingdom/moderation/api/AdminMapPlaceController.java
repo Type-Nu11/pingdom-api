@@ -16,6 +16,8 @@ import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRe
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationSnapshotResyncResponse;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceLookupQueryService;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateResponse;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
@@ -285,6 +287,19 @@ public class AdminMapPlaceController {
                 keyword,
                 days
         );
+    }
+
+    @PatchMapping("/recommendation-traffic")
+    @Operation(
+            summary = "관리자 추천 버전 트래픽 비율 수정",
+            description = "관리자가 추천 버전별 traffic percentage를 수정하고 즉시 반영합니다."
+    )
+    public ResponseEntity<AdminPlaceRecommendationTrafficUpdateResponse> updateRecommendationTraffic(
+            @Valid @RequestBody AdminPlaceRecommendationTrafficUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updateRecommendationTraffic(adminUserId, request));
     }
 
     @GetMapping("/duplicates")
