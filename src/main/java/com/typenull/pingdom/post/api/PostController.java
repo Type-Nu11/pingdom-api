@@ -11,7 +11,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.RateLimited;
-import com.typenull.pingdom.shared.security.principal.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
