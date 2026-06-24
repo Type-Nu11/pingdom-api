@@ -11,9 +11,11 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -22,8 +24,8 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
-import org.springframework.test.util.ReflectionTestUtils;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
@@ -37,6 +39,9 @@ class PlaceRecommendationQueryServiceImplTest {
 
     @Mock
     private MapPlaceRepository mapPlaceRepository;
+
+    @Mock
+    private MapPlaceRecommendationCandidateRepository mapPlaceRecommendationCandidateRepository;
 
     @Mock
     private MapBookmarkRepository mapBookmarkRepository;
@@ -71,27 +76,59 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
 
+    @Mock
+    private RecommendationMetrics recommendationMetrics;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
+    private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
+    private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
 
     @BeforeEach
     void setUp() {
-        placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
+        placeRecommendationUserSignalLoader = new PlaceRecommendationUserSignalLoader(
+                mapBookmarkRepository,
+                mapImageLikeRepository,
+                mapImageRepository
+        );
+        placeRecommendationCandidateCollector = new PlaceRecommendationCandidateCollector(
                 mapPlaceRepository,
+                mapPlaceRecommendationCandidateRepository,
+                placeRecommendationSnapshotRepository
+        );
+        PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader = new PlaceRecommendationAggregateLoader(
                 mapBookmarkRepository,
                 mapImageRepository,
-                mapImageLikeRepository,
                 placeRecommendationSnapshotRepository,
                 placeRecommendationClickService,
-                placeRecommendationExposureService,
+                placeRecommendationExposureService
+        );
+        PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
+                placeRecommendationSimilarityService
+        );
+        PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
+                placeRecommendationSimilarityService
+        );
+
+        placeRecommendationQueryService = new PlaceRecommendationQueryServiceImpl(
+                mapPlaceRepository,
                 placeGrowthService,
                 placeRecommendationGraphAffinityService,
                 placeRecommendationSimilarityService,
                 placeRecommendationPolicyService,
-                placeRecommendationFeatureLogService
+                placeRecommendationFeatureLogService,
+                placeRecommendationExposureService,
+                placeRecommendationUserSignalLoader,
+                placeRecommendationCandidateCollector,
+                placeRecommendationAggregateLoader,
+                placeRecommendationScoringService,
+                placeRecommendationPortfolioService,
+                recommendationMetrics
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
         when(mapImageRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
+        when(placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(any(), any()))
+                .thenReturn(Page.empty());
     }
 
     @Test
@@ -103,7 +140,7 @@ class PlaceRecommendationQueryServiceImplTest {
 
         when(mapBookmarkRepository.findPlaceIdsByUserId(userId)).thenReturn(List.of(invalidSeed.getId(), validSeed.getId()));
         when(mapPlaceRepository.findAllById(any())).thenReturn(List.of(invalidSeed, validSeed));
-        when(mapPlaceRepository.findRecommendationCandidatesInBoundingBox(
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 anyDouble(),
                 anyDouble(),
                 anyDouble(),
@@ -113,22 +150,22 @@ class PlaceRecommendationQueryServiceImplTest {
                 any(Pageable.class)
         )).thenReturn(List.of(expandedCandidate));
 
-        Object signalContext = ReflectionTestUtils.invokeMethod(
-                placeRecommendationQueryService,
-                "loadUserSignals",
-                userId
-        );
+        UserSignalContext signalContext = placeRecommendationUserSignalLoader.loadUserSignals(userId);
 
-        @SuppressWarnings("unchecked")
-        List<MapPlace> personalCandidates = (List<MapPlace>) ReflectionTestUtils.invokeMethod(
-                placeRecommendationQueryService,
-                "loadPersonalCandidates",
+        List<CandidatePlace> candidatePool = placeRecommendationCandidateCollector.loadCandidatePool(
+                35.1800d,
+                128.1070d,
                 signalContext
         );
 
+        List<MapPlace> personalCandidates = candidatePool.stream()
+                .filter(candidate -> candidate.sources().contains(CandidateSource.PERSONAL))
+                .map(CandidatePlace::place)
+                .toList();
+
         assertThat(personalCandidates)
                 .extracting(MapPlace::getId)
-                .containsExactly(validSeed.getId(), expandedCandidate.getId());
+                .containsExactlyInAnyOrder(validSeed.getId(), expandedCandidate.getId());
     }
 
     private MapPlace createPlace(Long id, String name, Double latitude, Double longitude) {

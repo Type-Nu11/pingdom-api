@@ -30,6 +30,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -204,7 +205,8 @@ class AuthControllerTest {
         org.junit.jupiter.api.Assertions.assertFalse(updatedUser.isEmailVerified());
         org.junit.jupiter.api.Assertions.assertNotNull(updatedUser.getEmailVerificationCode());
         org.junit.jupiter.api.Assertions.assertNotEquals("TEMP-CODE", updatedUser.getEmailVerificationCode());
-        org.junit.jupiter.api.Assertions.assertTrue(updatedUser.getEmailVerificationExpiresAt().isAfter(LocalDateTime.now()));
+        org.junit.jupiter.api.Assertions.assertTrue(updatedUser.getEmailVerificationExpiresAt()
+                .isAfter(LocalDateTime.now(Clock.systemUTC())));
 
         EmailVerifyRequest oldVerifyRequest = new EmailVerifyRequest("resenduser@example.com", "TEMP-CODE");
         mockMvc.perform(post("/auth/email/verify")

@@ -15,6 +15,23 @@ services:
       - '${POSTGRES_PORT:-5432}:5432'
     volumes:
       - './docker/postgres/initdb:/docker-entrypoint-initdb.d'
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U \"$${POSTGRES_USER}\" -d \"$${POSTGRES_DB}\""]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  redis:
+    image: 'redis:7.2-alpine'
+    ports:
+      - '${REDIS_PORT:-6379}:6379'
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 3s
+      retries: 5
+      start_period: 5s
 
   app:
     image: yongin1212/pingdom:latest
@@ -22,7 +39,13 @@ services:
       - '8080:8080'
     env_file:
       - .env
+    environment:
+      REDIS_HOST: ${REDIS_HOST:-redis}
+      REDIS_PORT: ${REDIS_PORT:-6379}
     depends_on:
-      - postgres
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
     volumes:
       - ./src/main/resources/fcm-key.json:/app/fcm-key.json

@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.api;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateRequest;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateResponse;
 import com.typenull.pingdom.moderation.application.AdminAdService;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -16,6 +17,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -114,10 +116,12 @@ public class AdminAdController {
             )
     })
     public ResponseEntity<AdminAdCreateResponse> createAd(
-            @Valid @RequestBody AdminAdCreateRequest request
+            @Valid @RequestBody AdminAdCreateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.status(HttpStatus.CREATED)
-                .body(adminAdService.create(request));
+                .body(adminAdService.create(request, adminUserId));
     }
 
     @DeleteMapping("/{adId}")
@@ -175,9 +179,11 @@ public class AdminAdController {
     })
     public ResponseEntity<Void> deleteAd(
             @Parameter(description = "삭제할 이벤트/광고 ID", example = "1")
-            @PathVariable("adId") Long adId
+            @PathVariable("adId") Long adId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        adminAdService.delete(adId);
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        adminAdService.delete(adId, adminUserId);
         return ResponseEntity.noContent().build();
     }
 }

@@ -6,3 +6,5 @@
 
 - [place-recommendation.md](./place-recommendation.md)
   장소 추천 알고리즘의 목적, 입력 신호, 단계별 처리 흐름, 고도화 방향을 정의한다.
+- [report-moderation-policy.md](./report-moderation-policy.md)
+  신고자 신뢰도, 자동 숨김, 이의제기/복구 운영 기준을 정의한다.

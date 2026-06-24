@@ -10,13 +10,18 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.engagement.domain.PostReport;
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
+import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModerationPolicyRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -63,15 +68,23 @@ class AdminReportControllerTest {
     private PostReportRepository postReportRepository;
 
     @Autowired
+    private ReporterModerationPolicyRepository reporterModerationPolicyRepository;
+
+    @Autowired
     private UserSanctionHistoryRepository userSanctionHistoryRepository;
+
+    @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         userSanctionHistoryRepository.deleteAllInBatch();
         postReportRepository.deleteAllInBatch();
+        reporterModerationPolicyRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -97,8 +110,17 @@ class AdminReportControllerTest {
         assertEquals(PostReportStatus.ACCEPTED, persistedReport.getStatus());
         assertTrue(persistedOwner.isBanned());
         assertEquals("욕설이 포함된 이미지입니다.", persistedOwner.getBanReason());
-        assertTrue(mapImageRepository.findById(mapImage.getId()).isEmpty());
+        MapImage persistedImage = mapImageRepository.findById(mapImage.getId()).orElseThrow();
+        assertEquals(MapImageVisibilityStatus.AUTO_HIDDEN, persistedImage.getVisibilityStatus());
         assertEquals(UserSanctionAction.APPLIED, userSanctionHistoryRepository.findAll().getFirst().getAction());
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.REPORT_ACCEPTED
+                        && log.getTargetType() == AdminAuditTargetType.REPORT
+                        && log.getTargetId().equals(String.valueOf(postReport.getId()))));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.POST_HIDDEN
+                        && log.getTargetType() == AdminAuditTargetType.POST
+                        && log.getTargetId().equals(String.valueOf(mapImage.getId()))));
     }
 
     @Test
@@ -119,6 +141,9 @@ class AdminReportControllerTest {
 
         assertEquals(PostReportStatus.DECLINED, persistedReport.getStatus());
         assertTrue(!persistedOwner.isBanned());
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.REPORT_DECLINED
+                        && log.getTargetId().equals(String.valueOf(postReport.getId()))));
     }
 
     @Test

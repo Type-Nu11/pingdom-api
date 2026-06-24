@@ -1,6 +1,7 @@
 package com.typenull.pingdom.shared.security;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.shared.observability.AuthMetrics;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,13 +18,16 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
     private final ObjectMapper objectMapper;
     private final CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter;
+    private final AuthMetrics authMetrics;
 
     public JwtAuthenticationEntryPoint(
             ObjectMapper objectMapper,
-            CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter
+            CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter,
+            AuthMetrics authMetrics
     ) {
         this.objectMapper = objectMapper;
         this.corsErrorResponseHeaderWriter = corsErrorResponseHeaderWriter;
+        this.authMetrics = authMetrics;
     }
 
     @Override
@@ -35,6 +39,7 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     ) throws IOException, ServletException {
         boolean expired = Boolean.TRUE.equals(request.getAttribute(JwtAuthenticationFilter.ACCESS_TOKEN_EXPIRED_ATTRIBUTE));
         AuthErrorCode errorCode = expired ? AuthErrorCode.EXPIRED_TOKEN : AuthErrorCode.INVALID_TOKEN;
+        authMetrics.recordAuthFailure(errorCode, "security_entry_point");
 
         corsErrorResponseHeaderWriter.apply(request, response);
         response.setStatus(errorCode.getStatus().value());

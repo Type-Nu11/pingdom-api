@@ -5,7 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateResponse;
 
 public interface AdminAdService {
 
-    AdminAdCreateResponse create(AdminAdCreateRequest request);
+    AdminAdCreateResponse create(AdminAdCreateRequest request, Long adminUserId);
 
-    void delete(Long adId);
+    void delete(Long adId, Long adminUserId);
 }

@@ -15,6 +15,9 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -77,10 +80,14 @@ class AdminPostControllerTest {
     private OutboxEventRepository outboxEventRepository;
 
     @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         outboxEventRepository.deleteAllInBatch();
         postReportRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
@@ -252,6 +259,10 @@ class AdminPostControllerTest {
 
         assertEquals(0L, mapImageRepository.count());
         assertS3DeleteOutboxEvent(mapImage.getId(), "test-key-" + owner.getId(), "ADMIN_MAP_IMAGE_DELETED");
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        assertEquals(AdminAuditAction.POST_DELETED, adminAuditLogRepository.findAll().getFirst().getAction());
+        assertEquals(AdminAuditTargetType.POST, adminAuditLogRepository.findAll().getFirst().getTargetType());
+        assertEquals(String.valueOf(mapImage.getId()), adminAuditLogRepository.findAll().getFirst().getTargetId());
     }
 
     private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
@@ -281,9 +292,10 @@ class AdminPostControllerTest {
     }
 
     private String createAdminAndLogin() throws Exception {
+        String username = "adminTester" + System.nanoTime();
         userRepository.save(User.builder()
-                .username("adminTester")
-                .email("admin@example.com")
+                .username(username)
+                .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .birthYear(1998)
                 .language("ko")
@@ -291,7 +303,7 @@ class AdminPostControllerTest {
                 .role(UserRole.ADMIN)
                 .build());
 
-        LoginRequest loginRequest = new LoginRequest("adminTester", "password123");
+        LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))

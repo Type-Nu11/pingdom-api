@@ -32,6 +32,22 @@ postmark:
   from-email: no-reply@pingdom.local
   verification-base-url: http://localhost:8080/auth/email/verify
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
 fcm:
   enabled: false
   key-path: src/test/resources/firebase-test-key.json

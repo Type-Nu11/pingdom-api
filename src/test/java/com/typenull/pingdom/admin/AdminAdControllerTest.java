@@ -1,5 +1,6 @@
 package com.typenull.pingdom.admin;
 
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -11,7 +12,11 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateRequest;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.ad.AdminAd;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAdRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,8 +66,12 @@ class AdminAdControllerTest {
     @Autowired
     private AdminAdRepository adminAdRepository;
 
+    @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         adminAdRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
@@ -87,6 +96,11 @@ class AdminAdControllerTest {
                 .andExpect(jsonPath("$.adId").isNumber())
                 .andExpect(jsonPath("$.title").value("여름 한정 출석 이벤트"))
                 .andExpect(jsonPath("$.message").value("이벤트/광고를 등록했습니다."));
+
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        AdminAuditLog auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.AD_CREATED, auditLog.getAction());
+        assertEquals(AdminAuditTargetType.AD, auditLog.getTargetType());
     }
 
     @Test
@@ -124,6 +138,11 @@ class AdminAdControllerTest {
         mockMvc.perform(delete("/admin/ad/{adId}", savedAd.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isNoContent());
+
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        AdminAuditLog auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.AD_DELETED, auditLog.getAction());
+        assertEquals(String.valueOf(savedAd.getId()), auditLog.getTargetId());
     }
 
     @Test

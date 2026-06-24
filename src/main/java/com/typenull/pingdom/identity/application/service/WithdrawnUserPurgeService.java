@@ -31,6 +31,8 @@ public class WithdrawnUserPurgeService {
     private final EntityManager entityManager;
     private final DataSource dataSource;
 
+    private volatile Boolean postgreSQL;
+
     @Transactional
     public int purgeExpiredUsers(LocalDateTime now) {
         if (!tryAcquirePurgeLock()) {
@@ -75,6 +77,20 @@ public class WithdrawnUserPurgeService {
     }
 
     private boolean isPostgreSQL() {
+        Boolean cached = postgreSQL;
+        if (cached != null) {
+            return cached;
+        }
+
+        Boolean detected = detectPostgreSQL();
+        if (detected != null) {
+            postgreSQL = detected;
+            return detected;
+        }
+        return false;
+    }
+
+    private Boolean detectPostgreSQL() {
         Connection connection = DataSourceUtils.getConnection(dataSource);
         try {
             String databaseProductName = connection.getMetaData().getDatabaseProductName();
@@ -82,7 +98,7 @@ public class WithdrawnUserPurgeService {
                     && databaseProductName.toLowerCase(Locale.ROOT).contains("postgresql");
         } catch (SQLException exception) {
             log.warn("데이터베이스 종류를 확인하지 못해 탈퇴 사용자 삭제 배치 분산 락을 생략합니다.", exception);
-            return false;
+            return null;
         } finally {
             DataSourceUtils.releaseConnection(connection, dataSource);
         }

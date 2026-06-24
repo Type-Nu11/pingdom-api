@@ -7,6 +7,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -20,11 +21,19 @@ public class PostReportService {
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final ReportPolicyService reportPolicyService;
 
     @Transactional
     public void report(Long imageId, Long reporterUserId, String reporterUsername, String reason) {
+        LocalDateTime now = LocalDateTime.now();
+        reportPolicyService.validateCanReport(reporterUserId, now);
+
         MapImage mapImage = mapImageRepository.findById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
+
+        if (!mapImage.isVisible()) {
+            throw new MapException(MapErrorCode.IMAGE_NOT_FOUND);
+        }
 
         if (postReportRepository.existsByReporterUserIdAndMapImage_Id(reporterUserId, imageId)) {
             throw new MapException(MapErrorCode.ALREADY_REPORTED_IMAGE);
@@ -46,5 +55,7 @@ public class PostReportService {
         } catch (DataIntegrityViolationException exception) {
             throw new MapException(MapErrorCode.ALREADY_REPORTED_IMAGE);
         }
+        reportPolicyService.recordSubmitted(reporterUserId, reporterUsername);
+        reportPolicyService.autoHideIfNeeded(mapImage, now);
     }
 }
