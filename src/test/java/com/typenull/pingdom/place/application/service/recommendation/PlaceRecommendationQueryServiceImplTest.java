@@ -15,6 +15,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecom
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -75,6 +76,9 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
 
+    @Mock
+    private RecommendationMetrics recommendationMetrics;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
@@ -117,7 +121,8 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationCandidateCollector,
                 placeRecommendationAggregateLoader,
                 placeRecommendationScoringService,
-                placeRecommendationPortfolioService
+                placeRecommendationPortfolioService,
+                recommendationMetrics
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());

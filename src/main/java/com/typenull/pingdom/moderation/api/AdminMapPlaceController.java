@@ -14,6 +14,7 @@ import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -47,6 +48,7 @@ public class AdminMapPlaceController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
     private final AdminMapPlaceService adminMapPlaceService;
+    private final RecommendationMetrics recommendationMetrics;
 
     @GetMapping
     @Operation(
@@ -403,23 +405,29 @@ public class AdminMapPlaceController {
     public ResponseEntity<AdminPlaceRecommendationSnapshotResyncResponse> resyncRecommendationSnapshots(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        PlaceRecommendationSnapshotResyncService.SnapshotResyncResult result =
-                adminMapPlaceService.resyncRecommendationSnapshots();
+        String adminUserId = adminUser == null ? "unknown" : String.valueOf(adminUser.userId());
+        PlaceRecommendationSnapshotResyncService.SnapshotResyncResult result;
 
-        if (adminUser != null) {
-            log.info(
-                    "Admin resynced place recommendation snapshots. adminUserId={}, placeCount={}, deletedSnapshotCount={}",
-                    adminUser.userId(),
-                    result.placeCount(),
-                    result.deletedSnapshotCount()
-            );
-        } else {
-            log.info(
-                    "Admin resynced place recommendation snapshots. adminUserId=unknown, placeCount={}, deletedSnapshotCount={}",
-                    result.placeCount(),
-                    result.deletedSnapshotCount()
-            );
+        try {
+            result = adminMapPlaceService.resyncRecommendationSnapshots();
+            recommendationMetrics.recordSnapshotResyncSuccess(result);
+        } catch (RuntimeException exception) {
+            recommendationMetrics.recordSnapshotResyncFailure(exception);
+            log.error("Admin recommendation snapshot resync failed. adminUserId={}", adminUserId, exception);
+            throw exception;
         }
+
+        log.info(
+                "Admin resynced place recommendation snapshots. adminUserId={}, placeCount={}, synchronizedSnapshotCount={}, deletedSnapshotCount={}, synchronizedSimilaritySnapshotCount={}, deletedSimilaritySnapshotCount={}, synchronizedVersionSnapshotCount={}, deletedVersionSnapshotCount={}",
+                adminUserId,
+                result.placeCount(),
+                result.synchronizedSnapshotCount(),
+                result.deletedSnapshotCount(),
+                result.synchronizedSimilaritySnapshotCount(),
+                result.deletedSimilaritySnapshotCount(),
+                result.synchronizedVersionSnapshotCount(),
+                result.deletedVersionSnapshotCount()
+        );
 
         return ResponseEntity.ok(new AdminPlaceRecommendationSnapshotResyncResponse(
                 result.placeCount(),
