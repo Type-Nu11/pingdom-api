@@ -103,7 +103,12 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
             LocalDateTime createdAt
     );
 
-    List<PlaceRecommendationClick> findByPlaceId(Long placeId);
+    @Query("""
+            SELECT c.id
+            FROM PlaceRecommendationClick c
+            WHERE c.placeId = :placeId
+            """)
+    List<Long> findIdsByPlaceId(@Param("placeId") Long placeId);
 
     @Modifying
     @Query("""

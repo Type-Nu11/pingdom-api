@@ -11,7 +11,12 @@ public interface PlaceRecommendationFeatureLogRepository extends JpaRepository<P
 
     List<PlaceRecommendationFeatureLog> findByRequestIdOrderByRankingAsc(String requestId);
 
-    List<PlaceRecommendationFeatureLog> findByPlaceId(Long placeId);
+    @Query("""
+            SELECT l.id
+            FROM PlaceRecommendationFeatureLog l
+            WHERE l.placeId = :placeId
+            """)
+    List<Long> findIdsByPlaceId(@Param("placeId") Long placeId);
 
     @Modifying
     @Query("""

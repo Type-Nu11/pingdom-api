@@ -22,11 +22,8 @@ import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMerg
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationExposure;
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationFeatureLog;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -430,31 +427,21 @@ public class AdminMapPlaceService {
     }
 
     private int reassignClicks(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
-        List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findByPlaceId(sourcePlace.getId());
-        clicks.forEach(click -> {
-            mergeExecutionContext.movedClickIds().add(click.getId());
-            click.reassignPlace(targetPlace.getId());
-        });
-        return clicks.size();
+        List<Long> clickIds = placeRecommendationClickRepository.findIdsByPlaceId(sourcePlace.getId());
+        mergeExecutionContext.movedClickIds().addAll(clickIds);
+        return placeRecommendationClickRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
     }
 
     private int reassignExposures(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
-        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findByPlaceId(sourcePlace.getId());
-        exposures.forEach(exposure -> {
-            mergeExecutionContext.movedExposureIds().add(exposure.getId());
-            exposure.reassignPlace(targetPlace.getId());
-        });
-        return exposures.size();
+        List<Long> exposureIds = placeRecommendationExposureRepository.findIdsByPlaceId(sourcePlace.getId());
+        mergeExecutionContext.movedExposureIds().addAll(exposureIds);
+        return placeRecommendationExposureRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
     }
 
     private int reassignFeatureLogs(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {
-        List<PlaceRecommendationFeatureLog> featureLogs =
-                placeRecommendationFeatureLogRepository.findByPlaceId(sourcePlace.getId());
-        featureLogs.forEach(featureLog -> {
-            mergeExecutionContext.movedFeatureLogIds().add(featureLog.getId());
-            featureLog.reassignPlace(targetPlace.getId());
-        });
-        return featureLogs.size();
+        List<Long> featureLogIds = placeRecommendationFeatureLogRepository.findIdsByPlaceId(sourcePlace.getId());
+        mergeExecutionContext.movedFeatureLogIds().addAll(featureLogIds);
+        return placeRecommendationFeatureLogRepository.updatePlaceId(sourcePlace.getId(), targetPlace.getId());
     }
 
     private record BookmarkMergeResult(int movedCount, int deletedCount) {

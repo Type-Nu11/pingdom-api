@@ -94,7 +94,12 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
             """)
     List<PlaceVersionExposureCountProjection> countExposuresGroupedByPlaceIdAndRecommendationVersion();
 
-    List<PlaceRecommendationExposure> findByPlaceId(Long placeId);
+    @Query("""
+            SELECT e.id
+            FROM PlaceRecommendationExposure e
+            WHERE e.placeId = :placeId
+            """)
+    List<Long> findIdsByPlaceId(@Param("placeId") Long placeId);
 
     @Modifying
     @Query("""
