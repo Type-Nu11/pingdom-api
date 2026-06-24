@@ -47,11 +47,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-<<<<<<< HEAD
 import java.util.concurrent.atomic.AtomicInteger;
-=======
 import java.util.Map;
->>>>>>> 35454dc (feat : 추천 버전 트래픽 조정 관리자 API 추가)
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
