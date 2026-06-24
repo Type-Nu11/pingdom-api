@@ -19,7 +19,7 @@ public final class PlaceCategoryPolicy {
         }
 
         String trimmed = category.trim();
-        return STANDARD_CATEGORY_MAP.getOrDefault(trimmed.toLowerCase(Locale.ROOT), trimmed);
+        return STANDARD_CATEGORY_MAP.getOrDefault(trimmed.toLowerCase(Locale.ROOT), trimmed.toLowerCase(Locale.ROOT));
     }
 
     private static Map<String, String> createStandardCategoryMap() {
