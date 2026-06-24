@@ -365,7 +365,8 @@ public class AdminMapPlaceController {
             @Parameter(description = "강제 삭제할 장소 ID", example = "5") @PathVariable Long id,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        adminMapPlaceService.deletePlace(id);
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        adminMapPlaceService.deletePlace(id, adminUserId);
         if (adminUser != null) {
             log.info("Admin force deleted place. adminUserId={}, placeId={}", adminUser.userId(), id);
         } else {
