@@ -105,6 +105,8 @@ public class AdminMapPlaceService {
             AdminPlaceRecommendationTrafficUpdateRequest request
     ) {
         validateRecommendationTrafficRequest(request);
+        List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> beforePolicies =
+                placeRecommendationPolicyService.getTrafficPolicies();
 
         Map<String, Integer> requestedTrafficByVersion = new LinkedHashMap<>();
         for (AdminPlaceRecommendationTrafficUpdateItem policy : request.policies()) {
@@ -116,6 +118,9 @@ public class AdminMapPlaceService {
                 throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
             }
         }
+        if (requestedTrafficByVersion.size() != beforePolicies.size()) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID);
+        }
 
         int totalTrafficPercentage = requestedTrafficByVersion.values().stream()
                 .mapToInt(Integer::intValue)
@@ -124,8 +129,6 @@ public class AdminMapPlaceService {
             throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID);
         }
 
-        List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> beforePolicies =
-                placeRecommendationPolicyService.getTrafficPolicies();
         List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> updatedPolicies =
                 placeRecommendationPolicyService.updateTrafficPolicies(requestedTrafficByVersion);
 
