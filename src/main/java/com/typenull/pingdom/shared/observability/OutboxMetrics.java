@@ -9,6 +9,8 @@ import io.micrometer.core.instrument.Tags;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.atomic.AtomicLong;
+import org.springframework.boot.context.event.ApplicationReadyEvent;
+import org.springframework.context.event.EventListener;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
@@ -30,9 +32,9 @@ public class OutboxMetrics {
                     .tag("status", tagValue(status))
                     .register(meterRegistry);
         }
-        refreshStatusCounts();
     }
 
+    @EventListener(ApplicationReadyEvent.class)
     @Scheduled(fixedDelayString = "PT30S", initialDelayString = "PT30S")
     public void refreshStatusCounts() {
         for (OutboxEventStatus status : OutboxEventStatus.values()) {
