@@ -189,7 +189,7 @@ public class PlaceRecommendationPolicyService {
     ) {
         VersionPolicy policy = policiesByVersion.get(version);
         if (policy == null) {
-            return ResolvedRecommendationPolicy.from(policiesByVersion.get(resolvedDefaultVersion), sourceVersion, fallbackReason);
+            return resolveFirstEnabledPolicy(sourceVersion, fallbackReason);
         }
         if (isEnabled(policy.version(), killSwitchOverridesByVersion)) {
             return ResolvedRecommendationPolicy.from(policy, sourceVersion, fallbackReason);

@@ -43,6 +43,44 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     @Test
+    void invalidRequestedVersionFallsBackToFirstEnabledVersionWhenDefaultDisabled() {
+        PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
+                "place-rec-v1",
+                List.of(
+                        createPolicy("place-rec-v1", RecommendationStage.STABLE, 100),
+                        createPolicy("place-rec-v2", RecommendationStage.EXPERIMENTAL, 0)
+                )
+        );
+        PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
+        Mockito.when(context.repository().findAll()).thenReturn(List.of(
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v1",
+                        100,
+                        false,
+                        "place-rec-v2"
+                ),
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        0,
+                        true,
+                        null
+                )
+        ));
+        PlaceRecommendationPolicyService service = context.service();
+        service.initialize();
+
+        PlaceRecommendationPolicyService.ResolvedRecommendationPolicy policy = service.resolve(
+                99L,
+                35.1801d,
+                128.1078d,
+                "unknown-version"
+        );
+
+        assertEquals("place-rec-v2", policy.version());
+        assertEquals("unknown-version", policy.sourceVersion());
+    }
+
+    @Test
     void overrideTrafficPercentageChangesBucketResolution() {
         PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
                 "place-rec-v1",
