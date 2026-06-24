@@ -282,7 +282,7 @@ public class AdminMapPlaceService {
 
     @Transactional
     public AdminPlaceMergeRestoreResponse restoreMerge(Long adminUserId, Long historyId) {
-        AdminPlaceMergeHistory history = adminPlaceMergeHistoryRepository.findById(historyId)
+        AdminPlaceMergeHistory history = adminPlaceMergeHistoryRepository.findByIdForUpdate(historyId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_HISTORY_NOT_FOUND));
         if (history.isRestored()) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_ALREADY_RESTORED);
