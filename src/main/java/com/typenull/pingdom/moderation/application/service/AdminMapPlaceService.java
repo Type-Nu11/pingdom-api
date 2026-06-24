@@ -316,6 +316,8 @@ public class AdminMapPlaceService {
         state.put("movedExposureCount", movedExposureCount);
         state.put("movedFeatureLogCount", movedFeatureLogCount);
         return state;
+    }
+
     private static Point toPoint(double latitude, double longitude) {
         return WGS84.createPoint(new Coordinate(longitude, latitude));
     }
