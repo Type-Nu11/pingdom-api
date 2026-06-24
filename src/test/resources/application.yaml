@@ -8,19 +8,10 @@ spring:
     hibernate:
       ddl-auto: create-drop
     open-in-view: false
-  flyway:
-    enabled: false
   cloud:
     aws:
       s3:
         enabled: false
-  security:
-    oauth2:
-      client:
-        registration:
-          google:
-            client-id: test-google-client-id
-            client-secret: test-google-client-secret
 
 jwt:
   secret: 01234567890123456789012345678901
@@ -32,34 +23,6 @@ postmark:
   from-email: no-reply@pingdom.local
   verification-base-url: http://localhost:8080/auth/email/verify
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,metrics
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: never
-      group:
-        liveness:
-          include: livenessState
-        readiness:
-          include: readinessState,db
-
 fcm:
   enabled: false
   key-path: src/test/resources/firebase-test-key.json
-
-outbox:
-  enabled: false
-  batch-size: 20
-  worker-concurrency: 2
-  worker-queue-capacity: 20
-  cleanup-batch-size: 100
-  max-attempts: 5
-  base-backoff: PT10S
-  max-backoff: PT10M
-  processing-timeout: PT5M
-  retention: P7D

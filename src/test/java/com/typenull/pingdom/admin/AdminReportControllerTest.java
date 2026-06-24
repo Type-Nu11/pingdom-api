@@ -2,25 +2,21 @@ package com.typenull.pingdom.admin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.engagement.domain.PostReport;
-import com.typenull.pingdom.engagement.domain.PostReportStatus;
-import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
-import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.identity.domain.UserRole;
-import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
-import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
-import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
-import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
-import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
-import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
-import com.typenull.pingdom.post.domain.MapImage;
-import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.domain.auth.domain.User;
+import com.typenull.pingdom.domain.auth.domain.UserRole;
+import com.typenull.pingdom.domain.auth.dto.login.LoginRequest;
+import com.typenull.pingdom.domain.auth.repository.UserRepository;
+import com.typenull.pingdom.domain.map.domain.MapImage;
+import com.typenull.pingdom.domain.map.domain.PictureReport;
+import com.typenull.pingdom.domain.map.domain.PictureReportStatus;
+import com.typenull.pingdom.domain.map.repository.MapImageRepository;
+import com.typenull.pingdom.domain.map.repository.PictureReportRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -39,8 +35,6 @@ import software.amazon.awssdk.services.s3.S3Client;
         "spring.cloud.aws.region.static=ap-northeast-2",
         "spring.cloud.aws.credentials.access-key=test-access-key",
         "spring.cloud.aws.credentials.secret-key=test-secret-key",
-        "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
-        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret",
         "fcm.enabled=false",
         "fcm.key-path=dummy"
 })
@@ -63,24 +57,81 @@ class AdminReportControllerTest {
     private MapImageRepository mapImageRepository;
 
     @Autowired
-    private PostReportRepository postReportRepository;
-
-    @Autowired
-    private UserSanctionHistoryRepository userSanctionHistoryRepository;
-
-    @Autowired
-    private AdminAuditLogRepository adminAuditLogRepository;
+    private PictureReportRepository pictureReportRepository;
 
     @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
-        adminAuditLogRepository.deleteAllInBatch();
-        userSanctionHistoryRepository.deleteAllInBatch();
-        postReportRepository.deleteAllInBatch();
-        mapImageRepository.deleteAllInBatch();
-        userRepository.deleteAllInBatch();
+        pictureReportRepository.deleteAll();
+        mapImageRepository.deleteAll();
+        userRepository.deleteAll();
+    }
+
+    @Test
+    void listReportsReturnsRegisteredReports() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("owner01");
+        MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-1.jpg");
+        PictureReport pictureReport = createPictureReport(11L, "reporter01", mapImage, "부적절한 사진입니다.");
+
+        mockMvc.perform(get("/admin/reports")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "0")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content[0].reportId").value(pictureReport.getId()))
+                .andExpect(jsonPath("$.content[0].imageId").value(mapImage.getId()))
+                .andExpect(jsonPath("$.content[0].reporterUsername").value("reporter01"))
+                .andExpect(jsonPath("$.content[0].reason").value("부적절한 사진입니다."))
+                .andExpect(jsonPath("$.content[0].reportedUserId").doesNotExist())
+                .andExpect(jsonPath("$.content[0].reporterUserId").doesNotExist())
+                .andExpect(jsonPath("$.content[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.content[0].status").value(PictureReportStatus.PENDING.name()));
+    }
+
+    @Test
+    void listReportsAppliesPageParameter() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User firstOwner = createUser("ownerPage01");
+        User secondOwner = createUser("ownerPage02");
+        MapImage firstImage = createMapImage(firstOwner.getId(), "https://example.com/page-image-1.jpg");
+        MapImage secondImage = createMapImage(secondOwner.getId(), "https://example.com/page-image-2.jpg");
+        PictureReport firstReport = createPictureReport(21L, "reporterPage01", firstImage, "첫 번째 신고");
+        PictureReport latestReport = createPictureReport(22L, "reporterPage02", secondImage, "두 번째 신고");
+
+        mockMvc.perform(get("/admin/reports")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "0")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].reportId").value(latestReport.getId()));
+
+        mockMvc.perform(get("/admin/reports")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.content.length()").value(1))
+                .andExpect(jsonPath("$.content[0].reportId").value(firstReport.getId()));
+    }
+
+    @Test
+    void getReportReturnsReportDetail() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("owner02");
+        MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-2.jpg");
+        PictureReport pictureReport = createPictureReport(12L, "reporter02", mapImage, "선정적인 이미지입니다.");
+
+        mockMvc.perform(get("/admin/reports/{id}", pictureReport.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reportId").value(pictureReport.getId()))
+                .andExpect(jsonPath("$.imageId").value(mapImage.getId()))
+                .andExpect(jsonPath("$.imageUrl").value(mapImage.getImageUrl()))
+                .andExpect(jsonPath("$.status").value(PictureReportStatus.PENDING.name()));
     }
 
     @Test
@@ -88,32 +139,23 @@ class AdminReportControllerTest {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("owner03");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-3.jpg");
-        PostReport postReport = createPostReport(13L, "reporter03", mapImage, "욕설이 포함된 이미지입니다.");
+        PictureReport pictureReport = createPictureReport(13L, "reporter03", mapImage, "욕설이 포함된 이미지입니다.");
 
-        mockMvc.perform(post("/admin/reports/{id}/accept", postReport.getId())
+        mockMvc.perform(post("/admin/reports/{id}/accept", pictureReport.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.reportId").value(postReport.getId()))
-                .andExpect(jsonPath("$.status").value(PostReportStatus.ACCEPTED.name()))
+                .andExpect(jsonPath("$.reportId").value(pictureReport.getId()))
+                .andExpect(jsonPath("$.status").value(PictureReportStatus.ACCEPTED.name()))
                 .andExpect(jsonPath("$.reportedUserId").value(owner.getId()))
                 .andExpect(jsonPath("$.banned").value(true));
 
-        PostReport persistedReport = postReportRepository.findById(postReport.getId()).orElseThrow();
+        PictureReport persistedReport = pictureReportRepository.findById(pictureReport.getId()).orElseThrow();
         User persistedOwner = userRepository.findById(owner.getId()).orElseThrow();
 
-        assertEquals(PostReportStatus.ACCEPTED, persistedReport.getStatus());
+        assertEquals(PictureReportStatus.ACCEPTED, persistedReport.getStatus());
         assertTrue(persistedOwner.isBanned());
         assertEquals("욕설이 포함된 이미지입니다.", persistedOwner.getBanReason());
         assertTrue(mapImageRepository.findById(mapImage.getId()).isEmpty());
-        assertEquals(UserSanctionAction.APPLIED, userSanctionHistoryRepository.findAll().getFirst().getAction());
-        assertTrue(adminAuditLogRepository.findAll().stream()
-                .anyMatch(log -> log.getAction() == AdminAuditAction.REPORT_ACCEPTED
-                        && log.getTargetType() == AdminAuditTargetType.REPORT
-                        && log.getTargetId().equals(String.valueOf(postReport.getId()))));
-        assertTrue(adminAuditLogRepository.findAll().stream()
-                .anyMatch(log -> log.getAction() == AdminAuditAction.POST_DELETED
-                        && log.getTargetType() == AdminAuditTargetType.POST
-                        && log.getTargetId().equals(String.valueOf(mapImage.getId()))));
     }
 
     @Test
@@ -121,22 +163,19 @@ class AdminReportControllerTest {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("owner04");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-4.jpg");
-        PostReport postReport = createPostReport(14L, "reporter04", mapImage, "잘못된 위치 정보입니다.");
+        PictureReport pictureReport = createPictureReport(14L, "reporter04", mapImage, "잘못된 위치 정보입니다.");
 
-        mockMvc.perform(post("/admin/reports/{id}/decline", postReport.getId())
+        mockMvc.perform(post("/admin/reports/{id}/decline", pictureReport.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.status").value(PostReportStatus.DECLINED.name()))
+                .andExpect(jsonPath("$.status").value(PictureReportStatus.DECLINED.name()))
                 .andExpect(jsonPath("$.banned").value(false));
 
-        PostReport persistedReport = postReportRepository.findById(postReport.getId()).orElseThrow();
+        PictureReport persistedReport = pictureReportRepository.findById(pictureReport.getId()).orElseThrow();
         User persistedOwner = userRepository.findById(owner.getId()).orElseThrow();
 
-        assertEquals(PostReportStatus.DECLINED, persistedReport.getStatus());
+        assertEquals(PictureReportStatus.DECLINED, persistedReport.getStatus());
         assertTrue(!persistedOwner.isBanned());
-        assertTrue(adminAuditLogRepository.findAll().stream()
-                .anyMatch(log -> log.getAction() == AdminAuditAction.REPORT_DECLINED
-                        && log.getTargetId().equals(String.valueOf(postReport.getId()))));
     }
 
     @Test
@@ -144,11 +183,11 @@ class AdminReportControllerTest {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("owner05");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-5.jpg");
-        PostReport postReport = createPostReport(15L, "reporter05", mapImage, "중복 이미지입니다.");
-        postReport.decline(java.time.LocalDateTime.now());
-        postReportRepository.save(postReport);
+        PictureReport pictureReport = createPictureReport(15L, "reporter05", mapImage, "중복 이미지입니다.");
+        pictureReport.decline(java.time.LocalDateTime.now());
+        pictureReportRepository.save(pictureReport);
 
-        mockMvc.perform(post("/admin/reports/{id}/accept", postReport.getId())
+        mockMvc.perform(post("/admin/reports/{id}/accept", pictureReport.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("REPORT_ALREADY_PROCESSED"));
@@ -199,8 +238,8 @@ class AdminReportControllerTest {
                 .build());
     }
 
-    private PostReport createPostReport(Long reporterUserId, String reporterUsername, MapImage mapImage, String reason) {
-        return postReportRepository.save(PostReport.builder()
+    private PictureReport createPictureReport(Long reporterUserId, String reporterUsername, MapImage mapImage, String reason) {
+        return pictureReportRepository.save(PictureReport.builder()
                 .reporterUserId(reporterUserId)
                 .reporterUsername(reporterUsername)
                 .reportedImageId(mapImage.getId())

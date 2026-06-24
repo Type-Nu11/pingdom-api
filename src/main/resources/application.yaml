@@ -8,23 +8,13 @@ spring:
     driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${DB_USERNAME:pingdom}
     password: ${DB_PASSWORD:pingdom}
-  data:
-    redis:
-      host: ${REDIS_HOST:localhost}
-      port: ${REDIS_PORT:6379}
-      timeout: ${REDIS_TIMEOUT:2s}
   jpa:
     hibernate:
-      ddl-auto: validate
+      ddl-auto: update
     properties:
       hibernate:
         format_sql: true
     open-in-view: false
-  flyway:
-    enabled: true
-    baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
-    baseline-version: 1
-    validate-on-migrate: true
   servlet:
     multipart:
       max-file-size: 10MB
@@ -75,159 +65,8 @@ springdoc:
   swagger-ui:
     enabled: false
 
-management:
-  endpoints:
-    web:
-      exposure:
-        include: health,metrics
-  endpoint:
-    health:
-      probes:
-        enabled: true
-      show-details: never
-      group:
-        liveness:
-          include: livenessState
-        readiness:
-          include: readinessState,db
-
-logging:
-  pattern:
-    level: "%5p [requestId:%X{requestId:-}]"
-
 oauth2:
   redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:5173/oauth2/redirect}
 
 fcm:
   key-path: src/main/resources/fcm-key.json
-
-outbox:
-  enabled: true
-  batch-size: 20
-  worker-concurrency: 4
-  worker-queue-capacity: 40
-  cleanup-batch-size: 500
-  max-attempts: 5
-  base-backoff: PT10S
-  max-backoff: PT10M
-  processing-timeout: PT5M
-  retention: P7D
-  poll-delay: PT5S
-  initial-delay: PT5S
-  cleanup-delay: PT10M
-  cleanup-initial-delay: PT1H
-
-user:
-  withdrawal:
-    retention: P30D
-    cleanup-batch-size: 100
-    cleanup-delay: PT24H
-    cleanup-initial-delay: PT1H
-
-abuse:
-  rate-limit:
-    redis-key-prefix: ${REDIS_RATE_LIMIT_KEY_PREFIX:pingdom:rate-limit:}
-    fail-open: ${REDIS_RATE_LIMIT_FAIL_OPEN:true}
-    login-username:
-      limit: 5
-      window: PT1M
-    login-ip:
-      limit: 120
-      window: PT1M
-    token-refresh-token:
-      limit: 10
-      window: PT1M
-    token-refresh-ip:
-      limit: 240
-      window: PT1M
-    email-resend:
-      minimum-interval: PT1M
-      email-daily:
-        limit: 5
-        window: P1D
-      ip-daily:
-        limit: 100
-        window: P1D
-    report-user:
-      limit: 10
-      window: PT1H
-    report-ip:
-      limit: 200
-      window: PT1H
-    map-image-like-user:
-      limit: 60
-      window: PT1M
-    map-image-like-ip:
-      limit: 600
-      window: PT1M
-    recommendation-click-user:
-      limit: 120
-      window: PT1M
-    recommendation-click-ip:
-      limit: 1000
-      window: PT1M
-    image-upload-user:
-      limit: 10
-      window: PT1H
-    image-upload-ip:
-      limit: 100
-      window: PT1H
-
-place:
-  recommendation:
-    default-version: place-rec-v1
-    versions:
-      - version: place-rec-v1
-        stage: STABLE
-        traffic-percentage: 100
-        feature-logging-enabled: false
-        portfolio-size-multiplier: 4
-        mmr-relevance-weight: 0.75
-        mix:
-          personal-ratio: 0.35
-          popular-ratio: 0.25
-          fresh-ratio: 0.20
-          geo-ratio: 0.20
-        personalized-weights:
-          geo-weight: 0.33
-          personal-weight: 0.30
-          quality-weight: 0.13
-          engagement-weight: 0.07
-          conversion-weight: 0.07
-          freshness-weight: 0.08
-          exploration-weight: 0.06
-        anonymous-weights:
-          geo-weight: 0.48
-          personal-weight: 0.00
-          quality-weight: 0.16
-          engagement-weight: 0.10
-          conversion-weight: 0.08
-          freshness-weight: 0.12
-          exploration-weight: 0.09
-      - version: place-rec-v2
-        stage: EXPERIMENTAL
-        traffic-percentage: 0
-        feature-logging-enabled: true
-        portfolio-size-multiplier: 5
-        mmr-relevance-weight: 0.70
-        mix:
-          personal-ratio: 0.40
-          popular-ratio: 0.20
-          fresh-ratio: 0.25
-          geo-ratio: 0.15
-        personalized-weights:
-          geo-weight: 0.28
-          personal-weight: 0.32
-          quality-weight: 0.11
-          engagement-weight: 0.08
-          conversion-weight: 0.09
-          freshness-weight: 0.06
-          exploration-weight: 0.06
-        anonymous-weights:
-          geo-weight: 0.40
-          personal-weight: 0.00
-          quality-weight: 0.14
-          engagement-weight: 0.10
-          conversion-weight: 0.10
-          freshness-weight: 0.16
-          exploration-weight: 0.10
