@@ -109,6 +109,7 @@ public class AdminMapPlaceService {
                 placeRecommendationPolicyService.getTrafficPolicies();
 
         Map<String, Integer> requestedTrafficByVersion = new LinkedHashMap<>();
+        Map<String, PlaceRecommendationPolicyService.PolicyUpdateCommand> policyCommands = new LinkedHashMap<>();
         for (AdminPlaceRecommendationTrafficUpdateItem policy : request.policies()) {
             String recommendationVersion = policy.recommendationVersion().trim();
             if (!placeRecommendationPolicyService.supportsVersion(recommendationVersion)) {
@@ -117,9 +118,37 @@ public class AdminMapPlaceService {
             if (requestedTrafficByVersion.putIfAbsent(recommendationVersion, policy.trafficPercentage()) != null) {
                 throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
             }
+            boolean enabled = policy.enabled() == null || policy.enabled();
+            String fallbackVersion = trimToNull(policy.fallbackVersion());
+            if (!enabled) {
+                if (!StringUtils.hasText(fallbackVersion)) {
+                    throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+                }
+                if (!placeRecommendationPolicyService.supportsVersion(fallbackVersion)
+                        || recommendationVersion.equals(fallbackVersion)) {
+                    throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+                }
+            } else {
+                fallbackVersion = null;
+            }
+            policyCommands.put(
+                    recommendationVersion,
+                    new PlaceRecommendationPolicyService.PolicyUpdateCommand(
+                            policy.trafficPercentage(),
+                            enabled,
+                            fallbackVersion
+                    )
+            );
         }
         if (requestedTrafficByVersion.size() != beforePolicies.size()) {
             throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID);
+        }
+
+        long enabledPolicyCount = policyCommands.values().stream()
+                .filter(PlaceRecommendationPolicyService.PolicyUpdateCommand::enabled)
+                .count();
+        if (enabledPolicyCount == 0) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
         }
 
         int totalTrafficPercentage = requestedTrafficByVersion.values().stream()
@@ -130,11 +159,13 @@ public class AdminMapPlaceService {
         }
 
         List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> updatedPolicies =
-                placeRecommendationPolicyService.updateTrafficPolicies(requestedTrafficByVersion);
+                placeRecommendationPolicyService.updateTrafficPolicies(policyCommands);
 
         adminAuditLogService.record(
                 adminUserId,
-                AdminAuditAction.PLACE_RECOMMENDATION_TRAFFIC_UPDATED,
+                updatedPolicies.stream().anyMatch(policy -> !policy.enabled())
+                        ? AdminAuditAction.PLACE_RECOMMENDATION_KILL_SWITCH_UPDATED
+                        : AdminAuditAction.PLACE_RECOMMENDATION_TRAFFIC_UPDATED,
                 AdminAuditTargetType.PLACE,
                 placeRecommendationPolicyService.getDefaultVersion(),
                 "PLACE_RECOMMENDATION_TRAFFIC_UPDATED",
@@ -154,7 +185,9 @@ public class AdminMapPlaceService {
                         .map(policy -> new AdminPlaceRecommendationTrafficPolicyItem(
                                 policy.version(),
                                 policy.stage().name(),
-                                policy.trafficPercentage()
+                                policy.trafficPercentage(),
+                                policy.enabled(),
+                                policy.fallbackVersion()
                         ))
                         .toList(),
                 "추천 버전 트래픽 비율을 수정했습니다."
@@ -603,11 +636,15 @@ public class AdminMapPlaceService {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("defaultVersion", placeRecommendationPolicyService.getDefaultVersion());
         state.put("policies", policies.stream()
-                .map(policy -> Map.of(
-                        "recommendationVersion", policy.version(),
-                        "stage", policy.stage().name(),
-                        "trafficPercentage", policy.trafficPercentage()
-                ))
+                .map(policy -> {
+                    Map<String, Object> policyState = new LinkedHashMap<>();
+                    policyState.put("recommendationVersion", policy.version());
+                    policyState.put("stage", policy.stage().name());
+                    policyState.put("trafficPercentage", policy.trafficPercentage());
+                    policyState.put("enabled", policy.enabled());
+                    policyState.put("fallbackVersion", policy.fallbackVersion());
+                    return policyState;
+                })
                 .toList());
         return state;
     }

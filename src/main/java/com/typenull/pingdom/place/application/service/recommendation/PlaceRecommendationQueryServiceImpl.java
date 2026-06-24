@@ -61,6 +61,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         double safeRadiusKm = Math.max(MIN_RADIUS_KM, Math.min(radiusKm, MAX_RADIUS_KM));
         PlaceRecommendationPolicyService.ResolvedRecommendationPolicy resolvedPolicy =
                 placeRecommendationPolicyService.resolve(userId, latitude, longitude, requestedRecommendationVersion);
+        if (resolvedPolicy.sourceVersion() != null
+                && !resolvedPolicy.sourceVersion().equals(resolvedPolicy.version())
+                && resolvedPolicy.fallbackReason() != null) {
+            recommendationMetrics.recordKillSwitchFallback(
+                    resolvedPolicy.sourceVersion(),
+                    resolvedPolicy.version(),
+                    resolvedPolicy.fallbackReason()
+            );
+        }
         String recommendationRequestId = UUID.randomUUID().toString();
 
         UserSignalContext signalContext = placeRecommendationUserSignalLoader.loadUserSignals(userId);

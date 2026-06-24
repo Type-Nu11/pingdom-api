@@ -11,6 +11,8 @@ import jakarta.annotation.PostConstruct;
 import java.util.List;
 import java.util.LinkedHashMap;
 import java.util.Map;
+import java.util.Objects;
+import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -25,6 +27,7 @@ public class PlaceRecommendationPolicyService {
     private final PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository;
     private volatile Map<String, VersionPolicy> policiesByVersion = Map.of();
     private volatile Map<String, Integer> trafficOverridesByVersion = Map.of();
+    private volatile Map<String, KillSwitchOverride> killSwitchOverridesByVersion = Map.of();
 
     public PlaceRecommendationPolicyService(
             PlaceRecommendationProperties properties,
@@ -60,10 +63,16 @@ public class PlaceRecommendationPolicyService {
 
         policiesByVersion = Map.copyOf(policyMap);
         resolvedDefaultVersion = defaultVersion;
-        trafficOverridesByVersion = trafficPolicyRepository.findAll().stream()
+        List<PlaceRecommendationTrafficPolicy> storedPolicies = trafficPolicyRepository.findAll();
+        trafficOverridesByVersion = storedPolicies.stream()
                 .collect(Collectors.toUnmodifiableMap(
                         PlaceRecommendationTrafficPolicy::getRecommendationVersion,
                         PlaceRecommendationTrafficPolicy::getTrafficPercentage
+                ));
+        killSwitchOverridesByVersion = storedPolicies.stream()
+                .collect(Collectors.toUnmodifiableMap(
+                        PlaceRecommendationTrafficPolicy::getRecommendationVersion,
+                        policy -> new KillSwitchOverride(policy.isEnabled(), policy.getFallbackVersion())
                 ));
     }
 
@@ -78,9 +87,9 @@ public class PlaceRecommendationPolicyService {
         if (StringUtils.hasText(requestedVersion)) {
             VersionPolicy requestedPolicy = policiesByVersion.get(requestedVersion.trim());
             if (requestedPolicy != null) {
-                return ResolvedRecommendationPolicy.from(requestedPolicy);
+                return resolveActivePolicy(requestedPolicy.version(), Set.of(), requestedPolicy.version(), "requested_version_disabled");
             }
-            return ResolvedRecommendationPolicy.from(policiesByVersion.get(resolvedDefaultVersion));
+            return resolveActivePolicy(resolvedDefaultVersion, Set.of(), requestedVersion.trim(), "requested_version_not_found");
         }
 
         int bucket = resolveBucket(userId, latitude, longitude);
@@ -88,11 +97,11 @@ public class PlaceRecommendationPolicyService {
         for (VersionPolicy policy : policiesByVersion.values()) {
             cumulative += currentTrafficPercentage(policy);
             if (bucket < cumulative) {
-                return ResolvedRecommendationPolicy.from(policy);
+                return resolveActivePolicy(policy.version(), Set.of(), policy.version(), "bucket_version_disabled");
             }
         }
 
-        return ResolvedRecommendationPolicy.from(policiesByVersion.get(resolvedDefaultVersion));
+        return resolveActivePolicy(resolvedDefaultVersion, Set.of(), resolvedDefaultVersion, "default_version_disabled");
     }
 
     private int resolveBucket(Long userId, double latitude, double longitude) {
@@ -111,31 +120,47 @@ public class PlaceRecommendationPolicyService {
     }
 
     @Transactional
-    public synchronized List<RecommendationTrafficPolicy> updateTrafficPolicies(Map<String, Integer> trafficByVersion) {
+    public synchronized List<RecommendationTrafficPolicy> updateTrafficPolicies(Map<String, PolicyUpdateCommand> policyCommands) {
         Map<String, Integer> updatedOverrides = new LinkedHashMap<>(trafficOverridesByVersion);
+        Map<String, KillSwitchOverride> updatedKillSwitchOverrides = new LinkedHashMap<>(killSwitchOverridesByVersion);
         for (VersionPolicy policy : policiesByVersion.values()) {
-            Integer trafficPercentage = trafficByVersion.get(policy.version());
-            if (trafficPercentage == null) {
+            PolicyUpdateCommand command = policyCommands.get(policy.version());
+            if (command == null) {
                 continue;
             }
 
             PlaceRecommendationTrafficPolicy savedPolicy = trafficPolicyRepository.findById(policy.version())
-                    .orElseGet(() -> PlaceRecommendationTrafficPolicy.create(policy.version(), trafficPercentage));
-            savedPolicy.updateTrafficPercentage(trafficPercentage);
+                    .orElseGet(() -> PlaceRecommendationTrafficPolicy.create(
+                            policy.version(),
+                            command.trafficPercentage(),
+                            command.enabled(),
+                            command.fallbackVersion()
+                    ));
+            savedPolicy.update(command.trafficPercentage(), command.enabled(), command.fallbackVersion());
             trafficPolicyRepository.save(savedPolicy);
-            updatedOverrides.put(policy.version(), trafficPercentage);
+            updatedOverrides.put(policy.version(), command.trafficPercentage());
+            updatedKillSwitchOverrides.put(policy.version(), new KillSwitchOverride(command.enabled(), command.fallbackVersion()));
         }
 
         registerRefreshAfterCommit();
-        return buildTrafficPolicies(updatedOverrides);
+        return buildTrafficPolicies(updatedOverrides, updatedKillSwitchOverrides);
     }
 
     private List<RecommendationTrafficPolicy> buildTrafficPolicies(Map<String, Integer> trafficOverrides) {
+        return buildTrafficPolicies(trafficOverrides, killSwitchOverridesByVersion);
+    }
+
+    private List<RecommendationTrafficPolicy> buildTrafficPolicies(
+            Map<String, Integer> trafficOverrides,
+            Map<String, KillSwitchOverride> killSwitchOverrides
+    ) {
         return policiesByVersion.values().stream()
                 .map(policy -> new RecommendationTrafficPolicy(
                         policy.version(),
                         policy.stage() == null ? RecommendationStage.STABLE : policy.stage(),
-                        currentTrafficPercentage(policy, trafficOverrides)
+                        currentTrafficPercentage(policy, trafficOverrides),
+                        isEnabled(policy.version(), killSwitchOverrides),
+                        fallbackVersion(policy.version(), killSwitchOverrides)
                 ))
                 .toList();
     }
@@ -154,6 +179,55 @@ public class PlaceRecommendationPolicyService {
 
     private int currentTrafficPercentage(VersionPolicy policy, Map<String, Integer> trafficOverrides) {
         return trafficOverrides.getOrDefault(policy.version(), policy.trafficPercentage());
+    }
+
+    private ResolvedRecommendationPolicy resolveActivePolicy(
+            String version,
+            Set<String> visitedVersions,
+            String sourceVersion,
+            String fallbackReason
+    ) {
+        VersionPolicy policy = policiesByVersion.get(version);
+        if (policy == null) {
+            return ResolvedRecommendationPolicy.from(policiesByVersion.get(resolvedDefaultVersion), sourceVersion, fallbackReason);
+        }
+        if (isEnabled(policy.version(), killSwitchOverridesByVersion)) {
+            return ResolvedRecommendationPolicy.from(policy, sourceVersion, fallbackReason);
+        }
+
+        if (visitedVersions.contains(policy.version())) {
+            return resolveFirstEnabledPolicy(sourceVersion, "fallback_cycle_detected");
+        }
+
+        String fallbackVersion = fallbackVersion(policy.version(), killSwitchOverridesByVersion);
+        if (StringUtils.hasText(fallbackVersion) && policiesByVersion.containsKey(fallbackVersion)) {
+            Set<String> nextVisitedVersions = new java.util.HashSet<>(visitedVersions);
+            nextVisitedVersions.add(policy.version());
+            return resolveActivePolicy(fallbackVersion, nextVisitedVersions, sourceVersion, fallbackReason);
+        }
+
+        return resolveFirstEnabledPolicy(sourceVersion, "fallback_version_missing");
+    }
+
+    private ResolvedRecommendationPolicy resolveFirstEnabledPolicy(String sourceVersion, String fallbackReason) {
+        for (VersionPolicy candidate : policiesByVersion.values()) {
+            if (isEnabled(candidate.version(), killSwitchOverridesByVersion)) {
+                return ResolvedRecommendationPolicy.from(candidate, sourceVersion, fallbackReason);
+            }
+        }
+        return ResolvedRecommendationPolicy.from(
+                Objects.requireNonNull(policiesByVersion.get(resolvedDefaultVersion)),
+                sourceVersion,
+                fallbackReason
+        );
+    }
+
+    private boolean isEnabled(String version, Map<String, KillSwitchOverride> killSwitchOverrides) {
+        return killSwitchOverrides.getOrDefault(version, KillSwitchOverride.DEFAULT).enabled();
+    }
+
+    private String fallbackVersion(String version, Map<String, KillSwitchOverride> killSwitchOverrides) {
+        return killSwitchOverrides.getOrDefault(version, KillSwitchOverride.DEFAULT).fallbackVersion();
     }
 
     private void registerRefreshAfterCommit() {
@@ -205,9 +279,11 @@ public class PlaceRecommendationPolicyService {
             double mmrRelevanceWeight,
             PlaceRecommendationProperties.CandidateMix mix,
             PlaceRecommendationProperties.RankingWeights personalizedWeights,
-            PlaceRecommendationProperties.RankingWeights anonymousWeights
+            PlaceRecommendationProperties.RankingWeights anonymousWeights,
+            String sourceVersion,
+            String fallbackReason
     ) {
-        private static ResolvedRecommendationPolicy from(VersionPolicy policy) {
+        private static ResolvedRecommendationPolicy from(VersionPolicy policy, String sourceVersion, String fallbackReason) {
             return new ResolvedRecommendationPolicy(
                     policy.version(),
                     policy.stage() == null ? RecommendationStage.STABLE : policy.stage(),
@@ -216,7 +292,9 @@ public class PlaceRecommendationPolicyService {
                     policy.mmrRelevanceWeight(),
                     policy.mix(),
                     policy.personalizedWeights(),
-                    policy.anonymousWeights()
+                    policy.anonymousWeights(),
+                    sourceVersion,
+                    fallbackReason
             );
         }
 
@@ -228,7 +306,23 @@ public class PlaceRecommendationPolicyService {
     public record RecommendationTrafficPolicy(
             String version,
             RecommendationStage stage,
-            int trafficPercentage
+            int trafficPercentage,
+            boolean enabled,
+            String fallbackVersion
     ) {
+    }
+
+    public record PolicyUpdateCommand(
+            int trafficPercentage,
+            boolean enabled,
+            String fallbackVersion
+    ) {
+    }
+
+    private record KillSwitchOverride(
+            boolean enabled,
+            String fallbackVersion
+    ) {
+        private static final KillSwitchOverride DEFAULT = new KillSwitchOverride(true, null);
     }
 }
