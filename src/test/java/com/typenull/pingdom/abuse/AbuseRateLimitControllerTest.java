@@ -13,9 +13,11 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
+import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
@@ -68,6 +70,7 @@ import org.springframework.test.web.servlet.MockMvc;
         "abuse.rate-limit.login-username.limit=2",
         "abuse.rate-limit.token-refresh-token.limit=2",
         "abuse.rate-limit.email-resend.minimum-interval=PT1M",
+        "abuse.rate-limit.password-reset-request.minimum-interval=PT1M",
         "abuse.rate-limit.report-user.limit=1",
         "abuse.rate-limit.map-image-like-user.limit=1",
         "abuse.rate-limit.recommendation-click-user.limit=1",
@@ -152,6 +155,9 @@ class AbuseRateLimitControllerTest {
     @Autowired
     private OutboxEventRepository outboxEventRepository;
 
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
+
     @BeforeEach
     void setUp() {
         rateLimitStore.clear();
@@ -170,6 +176,7 @@ class AbuseRateLimitControllerTest {
         userSanctionHistoryRepository.deleteAllInBatch();
         oAuthAccountRepository.deleteAllInBatch();
         outboxEventRepository.deleteAllInBatch();
+        passwordResetTokenRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -229,6 +236,25 @@ class AbuseRateLimitControllerTest {
 
         mockMvc.perform(post("/auth/email/resend")
                         .with(remoteAddress("198.51.100.30"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void passwordResetRequestReturnsTooManyRequestsWhenMinimumIntervalExceeded() throws Exception {
+        User user = createUser("limitedPasswordResetUser");
+        PasswordResetRequest request = new PasswordResetRequest(user.getEmail());
+
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .with(remoteAddress("198.51.100.31"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .with(remoteAddress("198.51.100.31"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())

@@ -15,10 +15,15 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
+import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
+import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
+import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
@@ -30,8 +35,13 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import com.typenull.pingdom.shared.ratelimit.RateLimitStore;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.HexFormat;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -59,7 +69,21 @@ class AuthControllerTest {
         @Primary
         // 테스트용 메일 발송 대체 빈
         EmailSender emailSender() {
-            return (recipientEmail, verificationCode) -> {
+            return new EmailSender() {
+                @Override
+                public void sendVerificationEmail(String recipientEmail, String verificationCode) {
+                }
+
+                @Override
+                public void sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+                }
+            };
+        }
+
+        @Bean
+        @Primary
+        RateLimitStore rateLimitStore() {
+            return (message, windowRules, cooldownRules) -> {
             };
         }
     }
@@ -75,6 +99,9 @@ class AuthControllerTest {
 
     @Autowired
     private OAuthAccountRepository oAuthAccountRepository;
+
+    @Autowired
+    private PasswordResetTokenRepository passwordResetTokenRepository;
 
     @Autowired
     private MapImageRepository mapImageRepository;
@@ -106,6 +133,7 @@ class AuthControllerTest {
         mapPlaceRepository.deleteAllInBatch();
         oAuthAccountRepository.deleteAllInBatch();
         outboxEventRepository.deleteAllInBatch();
+        passwordResetTokenRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -271,6 +299,171 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(resendRequest)))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void passwordResetRequestCreatesTokenAndOutboxEvent() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("resetuser", "resetuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+        outboxEventRepository.deleteAllInBatch();
+
+        PasswordResetRequest request = new PasswordResetRequest("resetuser@example.com");
+
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        PasswordResetOutboxPayload payload = passwordResetPayload();
+        PasswordResetToken token = passwordResetTokenRepository.findAll().getFirst();
+        org.junit.jupiter.api.Assertions.assertEquals("resetuser@example.com", payload.recipientEmail());
+        org.junit.jupiter.api.Assertions.assertNotNull(payload.resetToken());
+        org.junit.jupiter.api.Assertions.assertEquals(64, token.getTokenHash().length());
+        org.junit.jupiter.api.Assertions.assertNotEquals(payload.resetToken(), token.getTokenHash());
+    }
+
+    @Test
+    void passwordResetRequestDoesNotRevealMissingEmail() throws Exception {
+        PasswordResetRequest request = new PasswordResetRequest("missing-reset@example.com");
+
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        org.junit.jupiter.api.Assertions.assertTrue(passwordResetTokenRepository.findAll().isEmpty());
+        org.junit.jupiter.api.Assertions.assertTrue(outboxEventRepository.findAll().isEmpty());
+    }
+
+    @Test
+    void passwordResetConfirmChangesPasswordAndInvalidatesRefreshToken() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("resetconfirmuser", "resetconfirmuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("resetconfirmuser", "password123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("refreshToken")
+                .textValue();
+
+        outboxEventRepository.deleteAllInBatch();
+        requestPasswordReset("resetconfirmuser@example.com");
+        PasswordResetOutboxPayload payload = passwordResetPayload();
+        PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
+                payload.recipientEmail(),
+                payload.resetToken(),
+                "newPassword123",
+                "newPassword123"
+        );
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("resetconfirmuser", "password123"))))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(post("/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+        mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("resetconfirmuser", "newPassword123"))))
+                .andExpect(status().isOk());
+    }
+
+    @Test
+    void passwordResetConfirmRejectsExpiredToken() throws Exception {
+        User user = userRepository.saveAndFlush(User.builder()
+                .username("expiredresetuser")
+                .email("expiredresetuser@example.com")
+                .password("encoded-password")
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .build());
+        passwordResetTokenRepository.saveAndFlush(PasswordResetToken.create(
+                user,
+                passwordResetTokenHash("expired-reset-token"),
+                LocalDateTime.now(Clock.systemUTC()).minusMinutes(1),
+                LocalDateTime.now(Clock.systemUTC()).minusMinutes(31)
+        ));
+        PasswordResetConfirmRequest request = new PasswordResetConfirmRequest(
+                user.getEmail(),
+                "expired-reset-token",
+                "newPassword123",
+                "newPassword123"
+        );
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("EXPIRED_PASSWORD_RESET_TOKEN"));
+    }
+
+    @Test
+    void passwordResetConfirmRejectsReusedToken() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("resetreuseuser", "resetreuseuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+        outboxEventRepository.deleteAllInBatch();
+        requestPasswordReset("resetreuseuser@example.com");
+        PasswordResetOutboxPayload payload = passwordResetPayload();
+        PasswordResetConfirmRequest request = new PasswordResetConfirmRequest(
+                payload.recipientEmail(),
+                payload.resetToken(),
+                "newPassword123",
+                "newPassword123"
+        );
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isNoContent());
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PASSWORD_RESET_TOKEN"));
+    }
+
+    @Test
+    void passwordResetConfirmRejectsOtherUserToken() throws Exception {
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new SignupRequest("resetowner", "resetowner@example.com", "password123", 1998, null, "ko", "KR"))));
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(new SignupRequest("resetother", "resetother@example.com", "password123", 1998, null, "ko", "KR"))));
+        outboxEventRepository.deleteAllInBatch();
+        requestPasswordReset("resetowner@example.com");
+        PasswordResetOutboxPayload payload = passwordResetPayload();
+        PasswordResetConfirmRequest request = new PasswordResetConfirmRequest(
+                "resetother@example.com",
+                payload.resetToken(),
+                "newPassword123",
+                "newPassword123"
+        );
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_PASSWORD_RESET_TOKEN"));
     }
 
     @Test
@@ -609,5 +802,35 @@ class AuthControllerTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private void requestPasswordReset(String email) throws Exception {
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new PasswordResetRequest(email))))
+                .andExpect(status().isOk());
+    }
+
+    private PasswordResetOutboxPayload passwordResetPayload() throws Exception {
+        return outboxEventRepository.findAll().stream()
+                .filter(event -> event.getEventType() == OutboxEventType.PASSWORD_RESET_REQUESTED)
+                .findFirst()
+                .map(event -> {
+                    try {
+                        return objectMapper.readValue(event.getPayload(), PasswordResetOutboxPayload.class);
+                    } catch (Exception exception) {
+                        throw new IllegalStateException(exception);
+                    }
+                })
+                .orElseThrow();
+    }
+
+    private String passwordResetTokenHash(String token) {
+        try {
+            MessageDigest digest = MessageDigest.getInstance("SHA-256");
+            return HexFormat.of().formatHex(digest.digest(token.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException(exception);
+        }
     }
 }
