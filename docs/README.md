@@ -33,6 +33,7 @@ Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기�
 
 ## 운영 문서
 
+- [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
 

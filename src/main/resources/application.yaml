@@ -75,6 +75,26 @@ springdoc:
   swagger-ui:
     enabled: false
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,metrics
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: never
+      group:
+        liveness:
+          include: livenessState
+        readiness:
+          include: readinessState,db
+
+logging:
+  pattern:
+    level: "%5p [requestId:%X{requestId:-}]"
+
 oauth2:
   redirect-uri: ${OAUTH2_REDIRECT_URI:http://localhost:5173/oauth2/redirect}
 

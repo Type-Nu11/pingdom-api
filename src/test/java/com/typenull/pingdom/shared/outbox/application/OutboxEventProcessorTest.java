@@ -8,6 +8,7 @@ import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.typenull.pingdom.shared.observability.OutboxMetrics;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventStateService.OutboxEventSnapshot;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
@@ -29,12 +30,15 @@ class OutboxEventProcessorTest {
     @Mock
     private OutboxEventHandler handler;
 
+    @Mock
+    private OutboxMetrics outboxMetrics;
+
     private OutboxEventProcessor processor;
 
     @BeforeEach
     void setUp() {
         when(handler.supportedType()).thenReturn(OutboxEventType.EMAIL_VERIFICATION_REQUESTED);
-        processor = new OutboxEventProcessor(stateService, List.of(handler));
+        processor = new OutboxEventProcessor(stateService, List.of(handler), outboxMetrics);
     }
 
     @Test
@@ -45,6 +49,7 @@ class OutboxEventProcessorTest {
 
         verify(handler).handle(EVENT_ID, "{}");
         verify(stateService).markSucceeded(EVENT_ID);
+        verify(outboxMetrics).recordSuccess(eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED), any());
     }
 
     @Test
@@ -57,6 +62,7 @@ class OutboxEventProcessorTest {
         processor.process(EVENT_ID);
 
         verify(stateService).markFailed(eq(EVENT_ID), any(IllegalStateException.class));
+        verify(outboxMetrics).recordFailure(eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED), any(), eq(OutboxEventStatus.RETRY));
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.application.service.AuthService;
 import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
+import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
@@ -41,6 +42,7 @@ public class AuthServiceImpl implements AuthService {
     private final UserWithdrawalDataService userWithdrawalDataService;
     private final UserAccessStatusService userAccessStatusService;
     private final Clock clock;
+    private final AuthMetrics authMetrics;
 
     @Override
     @Transactional
@@ -158,30 +160,36 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
-        Long userId = extractValidRefreshTokenUserId(request.refreshToken());
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        try {
+            Long userId = extractValidRefreshTokenUserId(request.refreshToken());
+            User user = userRepository.findById(userId)
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        if (user.isWithdrawn()) {
-            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+            if (user.isWithdrawn()) {
+                throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+            }
+
+            if (user.isCurrentlyBanned(now())) {
+                throw new AuthException(AuthErrorCode.USER_BANNED);
+            }
+
+            if (!user.matchesRefreshToken(request.refreshToken())) {
+                throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+            }
+
+            // 재발급용 Access Token, Refresh Token 생성 호출
+            String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
+            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+
+            // 새 Refresh Token 회전 반영 호출
+            user.issueRefreshToken(refreshToken);
+            authMetrics.recordRefreshTokenSuccess();
+
+            return new RefreshTokenResponse(accessToken, refreshToken);
+        } catch (RuntimeException exception) {
+            authMetrics.recordRefreshTokenFailure(refreshTokenFailureReason(exception));
+            throw exception;
         }
-
-        if (user.isCurrentlyBanned(now())) {
-            throw new AuthException(AuthErrorCode.USER_BANNED);
-        }
-
-        if (!user.matchesRefreshToken(request.refreshToken())) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-
-        // 재발급용 Access Token, Refresh Token 생성 호출
-        String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-        String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
-
-        // 새 Refresh Token 회전 반영 호출
-        user.issueRefreshToken(refreshToken);
-
-        return new RefreshTokenResponse(accessToken, refreshToken);
     }
 
     @Override
@@ -259,6 +267,13 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
         return parsed.userId();
+    }
+
+    private String refreshTokenFailureReason(RuntimeException exception) {
+        if (exception instanceof AuthException authException) {
+            return authException.getErrorCode().name();
+        }
+        return exception.getClass().getSimpleName();
     }
 
     private User authenticateUser(LoginRequest request) {
