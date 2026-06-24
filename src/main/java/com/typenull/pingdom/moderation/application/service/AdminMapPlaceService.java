@@ -26,6 +26,10 @@ import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -33,6 +37,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminMapPlaceService {
+
+    private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
