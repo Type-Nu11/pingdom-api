@@ -59,6 +59,8 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
             Pageable pageable
+    );
+
     @Query(value = """
         SELECT CASE
                    WHEN COUNT(*) = 3
