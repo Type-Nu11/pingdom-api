@@ -59,5 +59,37 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
             Pageable pageable
+    @Query(value = """
+        SELECT CASE
+                   WHEN COUNT(*) = 3
+                    AND COUNT(CASE WHEN recent_reports.reason = :currentReason THEN 1 END) = 3
+                   THEN true
+                   ELSE false
+               END
+        FROM (
+            SELECT reason
+            FROM post_report
+            WHERE reporter_user_id = :reporterUserId
+              AND id < :currentReportId
+            ORDER BY id DESC
+            LIMIT 3
+        ) recent_reports
+        """, nativeQuery = true)
+    boolean existsSameReasonInLatestThreeBeforeCurrent(
+            @Param("reporterUserId") Long reporterUserId,
+            @Param("currentReportId") Long currentReportId,
+            @Param("currentReason") String currentReason
+    );
+
+    @Query(value = """
+        SELECT CASE
+                   WHEN COUNT(DISTINCT pr.reporter_user_id) >= 10 THEN true
+                   ELSE false
+               END
+        FROM post_report pr
+        WHERE pr.reported_image_id = :reportedImageId
+        """, nativeQuery = true)
+    boolean existsAtLeastTenDistinctReportersByReportedImageId(
+            @Param("reportedImageId") Long reportedImageId
     );
 }

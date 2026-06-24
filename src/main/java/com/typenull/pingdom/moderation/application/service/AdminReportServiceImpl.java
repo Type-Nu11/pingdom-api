@@ -47,11 +47,15 @@ public class AdminReportServiceImpl implements AdminReportService {
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        User reporter = userRepository.findById(postReport.getReporterUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
 
         LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = reportState(postReport, reportedUser.isCurrentlyBanned(now), false);
         postReport.accept(now);
         reportPolicyService.recordAccepted(postReport.getReporterUserId(), postReport.getReporterUsername());
+        reporter.increaseReportCount();
         // 신고 수락은 대상 사진 숨김과 소유자 제재까지 하나의 처리로 본다.
         userSanctionCommandService.applyBan(reportedUser, postReport.getReason(), now, null, adminUserId);
         adminPostService.hidePost(postReport.getReportedImageId(), "REPORT_ACCEPTED", adminUserId);
@@ -79,6 +83,9 @@ public class AdminReportServiceImpl implements AdminReportService {
     public AdminReportActionResponse declineReport(Long reportId, Long adminUserId) {
         PostReport postReport = getPendingReport(reportId);
         LocalDateTime now = LocalDateTime.now(clock);
+        User reporter = userRepository.findById(postReport.getReporterUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
         boolean beforeBanned = userRepository.findById(postReport.getReportedUserId())
                 .map(user -> user.isCurrentlyBanned(now))
                 .orElse(false);
@@ -98,6 +105,8 @@ public class AdminReportServiceImpl implements AdminReportService {
                 beforeState,
                 reportState(postReport, banned, false)
         );
+
+        reporter.getUnacceptedReportPercent();
 
         return new AdminReportActionResponse(
                 postReport.getId(),

@@ -12,6 +12,10 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordi
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficPolicyItem;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateItem;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateResponse;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -19,6 +23,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.place.AdminPlaceMergeHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
@@ -67,6 +72,7 @@ public class AdminMapPlaceService {
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
+    private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
@@ -90,6 +96,68 @@ public class AdminMapPlaceService {
                 "PLACE_DELETED",
                 beforeState,
                 Map.of("placeId", placeId, "deleted", true)
+        );
+    }
+
+    @Transactional
+    public AdminPlaceRecommendationTrafficUpdateResponse updateRecommendationTraffic(
+            Long adminUserId,
+            AdminPlaceRecommendationTrafficUpdateRequest request
+    ) {
+        validateRecommendationTrafficRequest(request);
+        List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> beforePolicies =
+                placeRecommendationPolicyService.getTrafficPolicies();
+
+        Map<String, Integer> requestedTrafficByVersion = new LinkedHashMap<>();
+        for (AdminPlaceRecommendationTrafficUpdateItem policy : request.policies()) {
+            String recommendationVersion = policy.recommendationVersion().trim();
+            if (!placeRecommendationPolicyService.supportsVersion(recommendationVersion)) {
+                throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_VERSION_NOT_FOUND);
+            }
+            if (requestedTrafficByVersion.putIfAbsent(recommendationVersion, policy.trafficPercentage()) != null) {
+                throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+            }
+        }
+        if (requestedTrafficByVersion.size() != beforePolicies.size()) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID);
+        }
+
+        int totalTrafficPercentage = requestedTrafficByVersion.values().stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+        if (totalTrafficPercentage != 100) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID);
+        }
+
+        List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> updatedPolicies =
+                placeRecommendationPolicyService.updateTrafficPolicies(requestedTrafficByVersion);
+
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_RECOMMENDATION_TRAFFIC_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeRecommendationPolicyService.getDefaultVersion(),
+                "PLACE_RECOMMENDATION_TRAFFIC_UPDATED",
+                toTrafficAuditState(beforePolicies),
+                toTrafficAuditState(updatedPolicies)
+        );
+
+        log.info(
+                "Admin updated recommendation traffic. adminUserId={}, policies={}",
+                adminUserId,
+                requestedTrafficByVersion
+        );
+
+        return new AdminPlaceRecommendationTrafficUpdateResponse(
+                placeRecommendationPolicyService.getDefaultVersion(),
+                updatedPolicies.stream()
+                        .map(policy -> new AdminPlaceRecommendationTrafficPolicyItem(
+                                policy.version(),
+                                policy.stage().name(),
+                                policy.trafficPercentage()
+                        ))
+                        .toList(),
+                "추천 버전 트래픽 비율을 수정했습니다."
         );
     }
 
@@ -514,6 +582,34 @@ public class AdminMapPlaceService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private void validateRecommendationTrafficRequest(AdminPlaceRecommendationTrafficUpdateRequest request) {
+        if (request == null || request.policies() == null || request.policies().isEmpty()) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+        }
+        if (request.policies().stream().anyMatch(policy ->
+                policy == null
+                        || !StringUtils.hasText(policy.recommendationVersion())
+                        || policy.trafficPercentage() == null
+        )) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
+        }
+    }
+
+    private Map<String, Object> toTrafficAuditState(
+            List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> policies
+    ) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("defaultVersion", placeRecommendationPolicyService.getDefaultVersion());
+        state.put("policies", policies.stream()
+                .map(policy -> Map.of(
+                        "recommendationVersion", policy.version(),
+                        "stage", policy.stage().name(),
+                        "trafficPercentage", policy.trafficPercentage()
+                ))
+                .toList());
+        return state;
     }
 
     private void transferKakaoPlaceIdIfNeeded(MapPlace sourcePlace, MapPlace targetPlace) {

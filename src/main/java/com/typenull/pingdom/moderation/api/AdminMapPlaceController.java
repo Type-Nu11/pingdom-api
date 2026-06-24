@@ -15,6 +15,9 @@ import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationSnapshotResyncResponse;
+import com.typenull.pingdom.moderation.application.query.AdminMapPlaceLookupQueryService;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateResponse;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
@@ -54,6 +57,7 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminMapPlaceController {
 
+    private final AdminMapPlaceLookupQueryService adminMapPlaceLookupQueryService;
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
     private final AdminMapPlaceService adminMapPlaceService;
     private final RecommendationMetrics recommendationMetrics;
@@ -131,7 +135,7 @@ public class AdminMapPlaceController {
             @Parameter(description = "장소 검색 키워드. 장소명, 등록자 ID, 주소로 검색합니다.", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.listPlaces(page, limit, sortParam, keyword);
+        return adminMapPlaceLookupQueryService.listPlaces(page, limit, sortParam, keyword);
     }
 
     @GetMapping("/{id}")
@@ -205,7 +209,7 @@ public class AdminMapPlaceController {
             @Parameter(description = "게시글 검색", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceQueryService.getPlace(id, sortParam, keyword);
+        return adminMapPlaceLookupQueryService.getPlace(id, sortParam, keyword);
     }
 
     @GetMapping("/recommendation-metrics")
@@ -283,6 +287,19 @@ public class AdminMapPlaceController {
                 keyword,
                 days
         );
+    }
+
+    @PatchMapping("/recommendation-traffic")
+    @Operation(
+            summary = "관리자 추천 버전 트래픽 비율 수정",
+            description = "관리자가 추천 버전별 traffic percentage를 수정하고 즉시 반영합니다."
+    )
+    public ResponseEntity<AdminPlaceRecommendationTrafficUpdateResponse> updateRecommendationTraffic(
+            @Valid @RequestBody AdminPlaceRecommendationTrafficUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updateRecommendationTraffic(adminUserId, request));
     }
 
     @GetMapping("/duplicates")

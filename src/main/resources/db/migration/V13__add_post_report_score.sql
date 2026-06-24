@@ -1,0 +1,2 @@
+ALTER TABLE post_report
+    ADD COLUMN IF NOT EXISTS report_score BIGINT NOT NULL DEFAULT 0;
