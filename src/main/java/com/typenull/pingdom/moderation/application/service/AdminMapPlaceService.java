@@ -2,6 +2,8 @@ package com.typenull.pingdom.moderation.application.service;
 
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -28,6 +30,10 @@ import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.locationtech.jts.geom.Coordinate;
+import org.locationtech.jts.geom.GeometryFactory;
+import org.locationtech.jts.geom.Point;
+import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -35,6 +41,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 @Slf4j
 public class AdminMapPlaceService {
+
+    private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
 
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
@@ -62,6 +70,48 @@ public class AdminMapPlaceService {
                 "PLACE_DELETED",
                 beforeState,
                 Map.of("placeId", placeId, "deleted", true)
+        );
+    }
+
+    @Transactional
+    public AdminMapPlaceCoordinateUpdateResponse updatePlaceCoordinates(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceCoordinateUpdateRequest request
+    ) {
+        if (request == null || request.latitude() == null || request.longitude() == null) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+
+        Double beforeLatitude = mapPlace.getLatitude();
+        Double beforeLongitude = mapPlace.getLongitude();
+
+        mapPlace.updateCoordinates(
+                request.latitude(),
+                request.longitude(),
+                toPoint(request.latitude(), request.longitude())
+        );
+
+        placeRecommendationSnapshotResyncService.resyncAll();
+
+        log.info(
+                "Admin updated place coordinates. adminUserId={}, placeId={}, beforeLatitude={}, beforeLongitude={}, afterLatitude={}, afterLongitude={}",
+                adminUserId,
+                placeId,
+                beforeLatitude,
+                beforeLongitude,
+                request.latitude(),
+                request.longitude()
+        );
+
+        return new AdminMapPlaceCoordinateUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                "장소 좌표를 수정했습니다."
         );
     }
 
@@ -266,5 +316,7 @@ public class AdminMapPlaceService {
         state.put("movedExposureCount", movedExposureCount);
         state.put("movedFeatureLogCount", movedFeatureLogCount);
         return state;
+    private static Point toPoint(double latitude, double longitude) {
+        return WGS84.createPoint(new Coordinate(longitude, latitude));
     }
 }
