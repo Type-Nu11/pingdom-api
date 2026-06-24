@@ -11,6 +11,8 @@ public interface PlaceRecommendationFeatureLogRepository extends JpaRepository<P
 
     List<PlaceRecommendationFeatureLog> findByRequestIdOrderByRankingAsc(String requestId);
 
+    List<PlaceRecommendationFeatureLog> findByPlaceId(Long placeId);
+
     @Modifying
     @Query("""
             UPDATE PlaceRecommendationFeatureLog l

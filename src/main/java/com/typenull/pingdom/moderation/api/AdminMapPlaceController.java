@@ -4,6 +4,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDupl
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHistoryResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
@@ -312,6 +314,28 @@ public class AdminMapPlaceController {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         AdminMapPlaceMergeResponse response = adminMapPlaceService.mergePlaces(adminUserId, request);
         return ResponseEntity.ok(response);
+    }
+
+    @GetMapping("/merge-histories")
+    @Operation(
+            summary = "관리자 장소 병합 이력 조회",
+            description = "관리자가 최근 장소 병합 이력을 조회합니다."
+    )
+    public AdminPlaceMergeHistoryResponse listMergeHistories() {
+        return adminMapPlaceService.listMergeHistories();
+    }
+
+    @PostMapping("/merge-histories/{historyId}/restore")
+    @Operation(
+            summary = "관리자 장소 병합 복구",
+            description = "관리자가 저장된 장소 병합 이력을 기준으로 복구합니다."
+    )
+    public ResponseEntity<AdminPlaceMergeRestoreResponse> restoreMerge(
+            @PathVariable Long historyId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.restoreMerge(adminUserId, historyId));
     }
 
     @PatchMapping("/{id}/coordinates")
