@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResp
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashMap;
@@ -44,6 +45,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
     private final PlaceRecommendationScoringService placeRecommendationScoringService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
+    private final RecommendationMetrics recommendationMetrics;
 
     @Override
     @Transactional
@@ -69,14 +71,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         );
 
         if (candidatePool.isEmpty()) {
-            return PlaceRecommendationResponse.of(
+            return recordRecommendationRequest(PlaceRecommendationResponse.of(
                     List.of(),
                     resolvedPolicy.version(),
                     recommendationRequestId,
                     safeLimit,
                     safeRadiusKm,
                     safeRadiusKm
-            );
+            ));
         }
 
         Map<Long, MapPlace> placeIndex = buildPlaceIndex(candidatePool, signalContext.interactedPlaceIds());
@@ -101,14 +103,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         if (selection.candidates().isEmpty()) {
-            return PlaceRecommendationResponse.of(
+            return recordRecommendationRequest(PlaceRecommendationResponse.of(
                     List.of(),
                     resolvedPolicy.version(),
                     recommendationRequestId,
                     safeLimit,
                     safeRadiusKm,
                     selection.appliedRadiusKm()
-            );
+            ));
         }
 
         Map<Long, PlaceAggregate> aggregateMap = placeRecommendationAggregateLoader.loadAggregates(selection.candidates());
@@ -203,14 +205,19 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 resolvedPolicy.version()
         );
 
-        return PlaceRecommendationResponse.of(
+        return recordRecommendationRequest(PlaceRecommendationResponse.of(
                 places,
                 resolvedPolicy.version(),
                 recommendationRequestId,
                 safeLimit,
                 safeRadiusKm,
                 appliedRadiusKm
-        );
+        ));
+    }
+
+    private PlaceRecommendationResponse recordRecommendationRequest(PlaceRecommendationResponse response) {
+        recommendationMetrics.recordRequest(response.recommendationVersion(), response.recommendedCount());
+        return response;
     }
 
     private Map<Long, MapPlace> buildPlaceIndex(List<CandidatePlace> candidatePool, Set<Long> interactedPlaceIds) {

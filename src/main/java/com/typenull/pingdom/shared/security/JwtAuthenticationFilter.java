@@ -24,6 +24,8 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     static final String ACCESS_TOKEN_EXPIRED_ATTRIBUTE = "ACCESS_TOKEN_EXPIRED";
     private static final List<String> EXCLUDED_PATH_PATTERNS = List.of(
             "/auth/**",
+            "/actuator/health",
+            "/actuator/health/**",
             "/swagger-ui",
             "/swagger-ui.html",
             "/swagger-ui/**",
