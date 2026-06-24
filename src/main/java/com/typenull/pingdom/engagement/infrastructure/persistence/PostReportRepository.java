@@ -3,6 +3,8 @@ package com.typenull.pingdom.engagement.infrastructure.persistence;
 import com.typenull.pingdom.engagement.domain.PostReport;
 import java.util.Collection;
 import java.util.List;
+
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.EntityGraph;
@@ -39,6 +41,25 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("update PostReport pr set pr.mapImage = null where pr.mapImage.id = :mapImageId")
     int detachMapImageByMapImageId(@Param("mapImageId") Long mapImageId);
+
+    Page<PostReport> findByStatus(PostReportStatus status, Pageable pageable);
+
+    @Query(
+            "select pr " +
+                    "from PostReport pr " +
+                    "where pr.status = :status " +
+                    "and ( " +
+                    "   lower(pr.reporterUsername) like lower(concat('%', :keyword, '%')) " +
+                    "   or lower(pr.reason) like lower(concat('%', :keyword, '%')) " +
+                    "   or (:numericKeyword is not null and pr.reportedUserId = :numericKeyword) " +
+                    ")"
+    )
+    Page<PostReport> searchPendingReports(
+            @Param("status") PostReportStatus status,
+            @Param("keyword") String keyword,
+            @Param("numericKeyword") Long numericKeyword,
+            Pageable pageable
+    );
 
     @Query(value = """
         SELECT CASE
