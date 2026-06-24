@@ -25,4 +25,12 @@ public interface PlaceRecommendationFeatureLogRepository extends JpaRepository<P
             WHERE l.placeId = :sourcePlaceId
             """)
     int updatePlaceId(@Param("sourcePlaceId") Long sourcePlaceId, @Param("targetPlaceId") Long targetPlaceId);
+
+    @Modifying
+    @Query("""
+            UPDATE PlaceRecommendationFeatureLog l
+            SET l.placeId = :targetPlaceId
+            WHERE l.id IN :featureLogIds
+            """)
+    int updatePlaceIdForIds(@Param("targetPlaceId") Long targetPlaceId, @Param("featureLogIds") List<Long> featureLogIds);
 }

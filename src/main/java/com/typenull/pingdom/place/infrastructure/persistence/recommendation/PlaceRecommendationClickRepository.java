@@ -117,4 +117,12 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
             WHERE c.placeId = :sourcePlaceId
             """)
     int updatePlaceId(@Param("sourcePlaceId") Long sourcePlaceId, @Param("targetPlaceId") Long targetPlaceId);
+
+    @Modifying
+    @Query("""
+            UPDATE PlaceRecommendationClick c
+            SET c.placeId = :targetPlaceId
+            WHERE c.id IN :clickIds
+            """)
+    int updatePlaceIdForIds(@Param("targetPlaceId") Long targetPlaceId, @Param("clickIds") List<Long> clickIds);
 }

@@ -108,4 +108,12 @@ public interface PlaceRecommendationExposureRepository extends JpaRepository<Pla
             WHERE e.placeId = :sourcePlaceId
             """)
     int updatePlaceId(@Param("sourcePlaceId") Long sourcePlaceId, @Param("targetPlaceId") Long targetPlaceId);
+
+    @Modifying
+    @Query("""
+            UPDATE PlaceRecommendationExposure e
+            SET e.placeId = :targetPlaceId
+            WHERE e.id IN :exposureIds
+            """)
+    int updatePlaceIdForIds(@Param("targetPlaceId") Long targetPlaceId, @Param("exposureIds") List<Long> exposureIds);
 }

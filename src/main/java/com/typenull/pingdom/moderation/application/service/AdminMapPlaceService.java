@@ -586,18 +586,24 @@ public class AdminMapPlaceService {
     }
 
     private void restoreClicks(Long sourcePlaceId, List<Long> movedClickIds) {
-        placeRecommendationClickRepository.findAllById(movedClickIds)
-                .forEach(click -> click.reassignPlace(sourcePlaceId));
+        if (movedClickIds.isEmpty()) {
+            return;
+        }
+        placeRecommendationClickRepository.updatePlaceIdForIds(sourcePlaceId, movedClickIds);
     }
 
     private void restoreExposures(Long sourcePlaceId, List<Long> movedExposureIds) {
-        placeRecommendationExposureRepository.findAllById(movedExposureIds)
-                .forEach(exposure -> exposure.reassignPlace(sourcePlaceId));
+        if (movedExposureIds.isEmpty()) {
+            return;
+        }
+        placeRecommendationExposureRepository.updatePlaceIdForIds(sourcePlaceId, movedExposureIds);
     }
 
     private void restoreFeatureLogs(Long sourcePlaceId, List<Long> movedFeatureLogIds) {
-        placeRecommendationFeatureLogRepository.findAllById(movedFeatureLogIds)
-                .forEach(featureLog -> featureLog.reassignPlace(sourcePlaceId));
+        if (movedFeatureLogIds.isEmpty()) {
+            return;
+        }
+        placeRecommendationFeatureLogRepository.updatePlaceIdForIds(sourcePlaceId, movedFeatureLogIds);
     }
 
     private void restoreKakaoPlaceIds(
