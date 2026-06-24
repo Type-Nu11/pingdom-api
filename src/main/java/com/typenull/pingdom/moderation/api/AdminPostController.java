@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;
+import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -15,6 +16,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -197,9 +199,11 @@ public class AdminPostController {
             )
     })
     public ResponseEntity<Void> deletePost(
-            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable("id") Long id
+            @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable("id") Long id,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        adminPostService.deletePost(id);
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        adminPostService.deletePost(id, adminUserId);
         return ResponseEntity.noContent().build();
     }
 }

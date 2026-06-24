@@ -14,6 +14,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
@@ -92,8 +95,12 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private PlaceSimilaritySnapshotRepository placeSimilaritySnapshotRepository;
 
+    @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         placeRecommendationConversionRepository.deleteAllInBatch();
@@ -558,6 +565,12 @@ class AdminMapPlaceControllerTest {
         assertEquals(1L, snapshot.getBookmarkConversionCount());
         assertEquals(1L, snapshot.getLikeConversionCount());
         assertEquals(1L, snapshot.getExposureCount());
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        assertEquals(AdminAuditAction.PLACE_MERGED, adminAuditLogRepository.findAll().getFirst().getAction());
+        assertEquals(AdminAuditTargetType.PLACE, adminAuditLogRepository.findAll().getFirst().getTargetType());
+        assertEquals(String.valueOf(targetPlace.getId()), adminAuditLogRepository.findAll().getFirst().getTargetId());
+        assertTrue(adminAuditLogRepository.findAll().getFirst().getAfterState()
+                .contains("\"sourcePlaceDeleted\":true"));
     }
 
     @Test

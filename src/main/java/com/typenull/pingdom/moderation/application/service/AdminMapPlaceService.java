@@ -5,6 +5,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMerg
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
@@ -22,7 +24,9 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.Comparator;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -49,14 +53,24 @@ public class AdminMapPlaceService {
     private final PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
+    private final AdminAuditLogService adminAuditLogService;
 
     @Transactional
-    public void deletePlace(long placeId) {
-        boolean exists = mapPlaceRepository.existsById(placeId);
-        if (!exists) {
-            throw new AdminException(AdminErrorCode.PLACE_NOT_FOUND);
-        }
-        mapPlaceRepository.deleteById(placeId);
+    public void deletePlace(long placeId, Long adminUserId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = placeState(mapPlace);
+
+        mapPlaceRepository.delete(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_DELETED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                "PLACE_DELETED",
+                beforeState,
+                Map.of("placeId", placeId, "deleted", true)
+        );
     }
 
     @Transactional
@@ -120,6 +134,7 @@ public class AdminMapPlaceService {
         if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
+        Map<String, Object> beforeState = placeMergeBeforeState(sourcePlace, targetPlace);
 
         long movedImageCount = reassignImages(sourcePlace, targetPlace);
         BookmarkMergeResult bookmarkMergeResult = reassignBookmarks(sourcePlace, targetPlace);
@@ -131,6 +146,24 @@ public class AdminMapPlaceService {
         targetPlace.replacePhotoCount(mapImageRepository.countByMapPlace_Id(targetPlace.getId()));
         mapPlaceRepository.delete(sourcePlace);
         placeRecommendationSnapshotResyncService.resyncMergedPlace(sourcePlace.getId(), targetPlace.getId());
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_MERGED,
+                AdminAuditTargetType.PLACE,
+                targetPlace.getId(),
+                "PLACE_MERGED",
+                beforeState,
+                placeMergeAfterState(
+                        sourcePlace.getId(),
+                        targetPlace,
+                        movedImageCount,
+                        bookmarkMergeResult,
+                        conversionMergeResult,
+                        movedClickCount,
+                        movedExposureCount,
+                        movedFeatureLogCount
+                )
+        );
 
         log.info(
                 "Admin place merge completed. adminUserId={}, sourcePlaceId={}, targetPlaceId={}, movedImageCount={}, movedBookmarkCount={}, removedBookmarkCount={}, movedConversionCount={}, removedConversionCount={}, movedClickCount={}, movedExposureCount={}, movedFeatureLogCount={}",
@@ -236,6 +269,53 @@ public class AdminMapPlaceService {
     }
 
     private record ConversionMergeResult(int movedCount, int deletedCount) {
+    }
+
+    private Map<String, Object> placeState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("name", place.getName());
+        state.put("address", place.getAddress());
+        state.put("category", place.getCategory());
+        state.put("kakaoPlaceId", place.getKakaoPlaceId());
+        state.put("latitude", place.getLatitude());
+        state.put("longitude", place.getLongitude());
+        state.put("userId", place.getUserId());
+        state.put("registrant", place.getRegistrant());
+        state.put("photoCount", place.currentPhotoCount());
+        return state;
+    }
+
+    private Map<String, Object> placeMergeBeforeState(MapPlace sourcePlace, MapPlace targetPlace) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("sourcePlace", placeState(sourcePlace));
+        state.put("targetPlace", placeState(targetPlace));
+        return state;
+    }
+
+    private Map<String, Object> placeMergeAfterState(
+            Long sourcePlaceId,
+            MapPlace targetPlace,
+            long movedImageCount,
+            BookmarkMergeResult bookmarkMergeResult,
+            ConversionMergeResult conversionMergeResult,
+            int movedClickCount,
+            int movedExposureCount,
+            int movedFeatureLogCount
+    ) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("sourcePlaceId", sourcePlaceId);
+        state.put("sourcePlaceDeleted", true);
+        state.put("targetPlace", placeState(targetPlace));
+        state.put("movedImageCount", movedImageCount);
+        state.put("movedBookmarkCount", bookmarkMergeResult.movedCount());
+        state.put("deletedBookmarkCount", bookmarkMergeResult.deletedCount());
+        state.put("movedConversionCount", conversionMergeResult.movedCount());
+        state.put("deletedConversionCount", conversionMergeResult.deletedCount());
+        state.put("movedClickCount", movedClickCount);
+        state.put("movedExposureCount", movedExposureCount);
+        state.put("movedFeatureLogCount", movedFeatureLogCount);
+        return state;
     }
 
     private static Point toPoint(double latitude, double longitude) {
