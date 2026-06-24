@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("9");
-        assertThat(result.migrationsExecuted).isEqualTo(9);
+        assertThat(result.targetSchemaVersion).isEqualTo("10");
+        assertThat(result.migrationsExecuted).isEqualTo(10);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("9");
-        assertThat(result.migrationsExecuted).isEqualTo(8);
+        assertThat(result.targetSchemaVersion).isEqualTo("10");
+        assertThat(result.migrationsExecuted).isEqualTo(9);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -270,6 +270,29 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'admin_audit_log'
                           AND indexname = 'idx_admin_audit_log_target_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_image'
+                          AND column_name = 'visibility_status'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'reporter_moderation_policy'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'report_appeal'
                     )
                     """)).isTrue();
         }
