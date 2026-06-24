@@ -123,19 +123,26 @@ public class PlaceRecommendationPolicyService {
     public synchronized List<RecommendationTrafficPolicy> updateTrafficPolicies(Map<String, PolicyUpdateCommand> policyCommands) {
         Map<String, Integer> updatedOverrides = new LinkedHashMap<>(trafficOverridesByVersion);
         Map<String, KillSwitchOverride> updatedKillSwitchOverrides = new LinkedHashMap<>(killSwitchOverridesByVersion);
+        Map<String, PlaceRecommendationTrafficPolicy> existingPolicies = trafficPolicyRepository.findAll().stream()
+                .collect(Collectors.toMap(
+                        PlaceRecommendationTrafficPolicy::getRecommendationVersion,
+                        policy -> policy
+                ));
         for (VersionPolicy policy : policiesByVersion.values()) {
             PolicyUpdateCommand command = policyCommands.get(policy.version());
             if (command == null) {
                 continue;
             }
 
-            PlaceRecommendationTrafficPolicy savedPolicy = trafficPolicyRepository.findById(policy.version())
-                    .orElseGet(() -> PlaceRecommendationTrafficPolicy.create(
-                            policy.version(),
-                            command.trafficPercentage(),
-                            command.enabled(),
-                            command.fallbackVersion()
-                    ));
+            PlaceRecommendationTrafficPolicy savedPolicy = existingPolicies.get(policy.version());
+            if (savedPolicy == null) {
+                savedPolicy = PlaceRecommendationTrafficPolicy.create(
+                        policy.version(),
+                        command.trafficPercentage(),
+                        command.enabled(),
+                        command.fallbackVersion()
+                );
+            }
             savedPolicy.update(command.trafficPercentage(), command.enabled(), command.fallbackVersion());
             trafficPolicyRepository.save(savedPolicy);
             updatedOverrides.put(policy.version(), command.trafficPercentage());
