@@ -501,14 +501,24 @@ class AdminMapPlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "policies", List.of(
-                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 70),
-                                        java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 30)
+                                        java.util.Map.of(
+                                                "recommendationVersion", "place-rec-v1",
+                                                "trafficPercentage", 70,
+                                                "enabled", true
+                                        ),
+                                        java.util.Map.of(
+                                                "recommendationVersion", "place-rec-v2",
+                                                "trafficPercentage", 30,
+                                                "enabled", false,
+                                                "fallbackVersion", "place-rec-v1"
+                                        )
                                 )
                         ))))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.defaultVersion").value("place-rec-v1"))
                 .andExpect(jsonPath("$.policies.length()").value(2))
                 .andExpect(jsonPath("$.message").value("추천 버전 트래픽 비율을 수정했습니다."))
+                .andExpect(jsonPath("$.policies[0].enabled").isBoolean())
                 .andReturn();
 
         List<?> policies = objectMapper.readTree(result.getResponse().getContentAsString())
@@ -528,7 +538,7 @@ class AdminMapPlaceControllerTest {
 
         assertEquals(2L, placeRecommendationTrafficPolicyRepository.count());
         assertEquals(
-                AdminAuditAction.PLACE_RECOMMENDATION_TRAFFIC_UPDATED,
+                AdminAuditAction.PLACE_RECOMMENDATION_KILL_SWITCH_UPDATED,
                 adminAuditLogRepository.findAll().getFirst().getAction()
         );
     }
@@ -542,8 +552,8 @@ class AdminMapPlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "policies", List.of(
-                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 60),
-                                        java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 20)
+                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 60, "enabled", true),
+                                        java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 20, "enabled", true)
                                 )
                         ))))
                 .andExpect(status().isBadRequest())
@@ -559,11 +569,55 @@ class AdminMapPlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "policies", List.of(
-                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 100)
+                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 100, "enabled", true)
                                 )
                         ))))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID"));
+    }
+
+    @Test
+    void updateRecommendationTrafficRejectsDisabledPolicyWithoutFallbackVersion() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(patch("/admin/places/recommendation-traffic")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "policies", List.of(
+                                        java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 100, "enabled", true),
+                                        java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 0, "enabled", false)
+                                )
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST"));
+    }
+
+    @Test
+    void updateRecommendationTrafficRejectsFallbackCycle() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(patch("/admin/places/recommendation-traffic")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "policies", List.of(
+                                        java.util.Map.of(
+                                                "recommendationVersion", "place-rec-v1",
+                                                "trafficPercentage", 50,
+                                                "enabled", false,
+                                                "fallbackVersion", "place-rec-v2"
+                                        ),
+                                        java.util.Map.of(
+                                                "recommendationVersion", "place-rec-v2",
+                                                "trafficPercentage", 50,
+                                                "enabled", false,
+                                                "fallbackVersion", "place-rec-v1"
+                                        )
+                                )
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST"));
     }
 
     @Test

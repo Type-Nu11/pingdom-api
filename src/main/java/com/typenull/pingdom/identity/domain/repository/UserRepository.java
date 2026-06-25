@@ -23,6 +23,8 @@ public interface UserRepository extends JpaRepository<User, Long> {
     // 이메일 기준 사용자 조회 메서드
     Optional<User> findByEmail(String email);
 
+    Optional<User> findByEmailIgnoreCase(String email);
+
     Optional<User> findByEmailAndEmailVerificationCode(String email, String emailVerificationCode);
 
     @Query("""

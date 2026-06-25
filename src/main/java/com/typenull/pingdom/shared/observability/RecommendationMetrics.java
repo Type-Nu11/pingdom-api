@@ -55,6 +55,17 @@ public class RecommendationMetrics {
         ).increment();
     }
 
+    public void recordKillSwitchFallback(String fromVersion, String toVersion, String reason) {
+        meterRegistry.counter(
+                "pingdom.recommendation.kill_switch_fallback",
+                Tags.of(
+                        "from_version", safeTag(fromVersion),
+                        "to_version", safeTag(toVersion),
+                        "reason", safeTag(reason)
+                )
+        ).increment();
+    }
+
     private void recordSnapshotResyncItemCount(String item, long count) {
         if (count <= 0) {
             return;

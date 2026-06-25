@@ -9,8 +9,14 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.util.List;
+import java.util.Map;
+import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
+import org.springframework.transaction.TransactionDefinition;
+import org.springframework.transaction.support.AbstractPlatformTransactionManager;
+import org.springframework.transaction.support.DefaultTransactionStatus;
+import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -43,6 +49,44 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     @Test
+    void invalidRequestedVersionFallsBackToFirstEnabledVersionWhenDefaultDisabled() {
+        PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
+                "place-rec-v1",
+                List.of(
+                        createPolicy("place-rec-v1", RecommendationStage.STABLE, 100),
+                        createPolicy("place-rec-v2", RecommendationStage.EXPERIMENTAL, 0)
+                )
+        );
+        PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
+        Mockito.when(context.repository().findAll()).thenReturn(List.of(
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v1",
+                        100,
+                        false,
+                        "place-rec-v2"
+                ),
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        0,
+                        true,
+                        null
+                )
+        ));
+        PlaceRecommendationPolicyService service = context.service();
+        service.initialize();
+
+        PlaceRecommendationPolicyService.ResolvedRecommendationPolicy policy = service.resolve(
+                99L,
+                35.1801d,
+                128.1078d,
+                "unknown-version"
+        );
+
+        assertEquals("place-rec-v2", policy.version());
+        assertEquals("unknown-version", policy.sourceVersion());
+    }
+
+    @Test
     void overrideTrafficPercentageChangesBucketResolution() {
         PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
                 "place-rec-v1",
@@ -53,8 +97,18 @@ class PlaceRecommendationPolicyServiceTest {
         );
         PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
         Mockito.when(context.repository().findAll()).thenReturn(List.of(
-                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create("place-rec-v1", 0),
-                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create("place-rec-v2", 100)
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v1",
+                        0,
+                        true,
+                        null
+                ),
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        100,
+                        true,
+                        null
+                )
         ));
         PlaceRecommendationPolicyService service = context.service();
         service.initialize();
@@ -69,12 +123,68 @@ class PlaceRecommendationPolicyServiceTest {
         assertEquals("place-rec-v2", policy.version());
     }
 
+    @Test
+    void disabledRequestedVersionFallsBackToConfiguredVersion() {
+        PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
+                "place-rec-v1",
+                List.of(
+                        createPolicy("place-rec-v1", RecommendationStage.STABLE, 100),
+                        createPolicy("place-rec-v2", RecommendationStage.EXPERIMENTAL, 0)
+                )
+        );
+        PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
+        Mockito.when(context.repository().findAll()).thenReturn(List.of(
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        0,
+                        false,
+                        "place-rec-v1"
+                )
+        ));
+        PlaceRecommendationPolicyService service = context.service();
+        service.initialize();
+
+        PlaceRecommendationPolicyService.ResolvedRecommendationPolicy policy = service.resolve(
+                1L,
+                35.1801d,
+                128.1078d,
+                "place-rec-v2"
+        );
+
+        assertEquals("place-rec-v1", policy.version());
+        assertEquals("place-rec-v2", policy.sourceVersion());
+    }
+
+    @Test
+    void updateTrafficPoliciesCommitsInsideServiceMethod() {
+        PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
+                "place-rec-v1",
+                List.of(createPolicy("place-rec-v1", RecommendationStage.STABLE, 100))
+        );
+        RecordingTransactionManager transactionManager = new RecordingTransactionManager();
+        PlaceRecommendationTrafficPolicyRepository repository = Mockito.mock(PlaceRecommendationTrafficPolicyRepository.class);
+        Mockito.when(repository.findAll()).thenReturn(List.of());
+        PlaceRecommendationPolicyService service = new PlaceRecommendationPolicyService(
+                properties,
+                repository,
+                new TransactionTemplate(transactionManager)
+        );
+        service.initialize();
+
+        service.updateTrafficPolicies(Map.of(
+                "place-rec-v1",
+                new PlaceRecommendationPolicyService.PolicyUpdateCommand(100, true, null)
+        ));
+
+        assertTrue(transactionManager.committed());
+    }
+
     private PlaceRecommendationPolicyRepositoryContext createContext(PlaceRecommendationProperties properties) {
         PlaceRecommendationTrafficPolicyRepository repository = Mockito.mock(PlaceRecommendationTrafficPolicyRepository.class);
         Mockito.when(repository.findAll()).thenReturn(List.of());
         return new PlaceRecommendationPolicyRepositoryContext(
                 repository,
-                new PlaceRecommendationPolicyService(properties, repository)
+                new PlaceRecommendationPolicyService(properties, repository, new TransactionTemplate(new RecordingTransactionManager()))
         );
     }
 
@@ -126,5 +236,32 @@ class PlaceRecommendationPolicyServiceTest {
 
     private RankingWeights createWeights() {
         return new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d);
+    }
+
+    private static final class RecordingTransactionManager extends AbstractPlatformTransactionManager {
+
+        private final AtomicBoolean committed = new AtomicBoolean();
+
+        boolean committed() {
+            return committed.get();
+        }
+
+        @Override
+        protected Object doGetTransaction() {
+            return new Object();
+        }
+
+        @Override
+        protected void doBegin(Object transaction, TransactionDefinition definition) {
+        }
+
+        @Override
+        protected void doCommit(DefaultTransactionStatus status) {
+            committed.set(true);
+        }
+
+        @Override
+        protected void doRollback(DefaultTransactionStatus status) {
+        }
     }
 }

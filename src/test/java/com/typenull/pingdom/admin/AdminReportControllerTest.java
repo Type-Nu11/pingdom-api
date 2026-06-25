@@ -2,6 +2,7 @@ package com.typenull.pingdom.admin;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -93,8 +94,14 @@ class AdminReportControllerTest {
     void acceptReportMarksAcceptedAndBansReportedUser() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("owner03");
+        User reporter = createUser("reporter03");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-3.jpg");
-        PostReport postReport = createPostReport(13L, "reporter03", mapImage, "욕설이 포함된 이미지입니다.");
+        PostReport postReport = createPostReport(
+                reporter.getId(),
+                reporter.getUsername(),
+                mapImage,
+                "욕설이 포함된 이미지입니다."
+        );
 
         mockMvc.perform(post("/admin/reports/{id}/accept", postReport.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -127,8 +134,14 @@ class AdminReportControllerTest {
     void declineReportMarksDeclinedWithoutBanningUser() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("owner04");
+        User reporter = createUser("reporter04");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-4.jpg");
-        PostReport postReport = createPostReport(14L, "reporter04", mapImage, "잘못된 위치 정보입니다.");
+        PostReport postReport = createPostReport(
+                reporter.getId(),
+                reporter.getUsername(),
+                mapImage,
+                "잘못된 위치 정보입니다."
+        );
 
         mockMvc.perform(post("/admin/reports/{id}/decline", postReport.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -159,6 +172,24 @@ class AdminReportControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("REPORT_ALREADY_PROCESSED"));
+    }
+
+    @Test
+    void reportedUsersSearchEscapesLikeWildcards() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User firstOwner = createUser("ownerWildcard01");
+        User secondOwner = createUser("ownerWildcard02");
+        MapImage firstImage = createMapImage(firstOwner.getId(), "https://example.com/image-wildcard-1.jpg");
+        MapImage secondImage = createMapImage(secondOwner.getId(), "https://example.com/image-wildcard-2.jpg");
+        createPostReport(16L, "reporterWildcard01", firstImage, "문자 % 포함 신고입니다.");
+        createPostReport(17L, "reporterWildcard02", secondImage, "일반 신고입니다.");
+
+        mockMvc.perform(get("/admin/reports/reported-users")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", "%"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.users[0].reason").value("문자 % 포함 신고입니다."));
     }
 
     private User createUser(String username) {

@@ -4,6 +4,8 @@ import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
@@ -21,6 +23,12 @@ public interface AuthService {
 
     // 이메일 인증 처리 메서드
     public void verifyEmail(EmailVerifyRequest request);
+
+    // 비밀번호 재설정 토큰 발급 처리 메서드
+    public void requestPasswordReset(PasswordResetRequest request);
+
+    // 비밀번호 재설정 완료 처리 메서드
+    public void confirmPasswordReset(PasswordResetConfirmRequest request);
 
     // Refresh Token 재발급 처리 메서드
     public RefreshTokenResponse refreshToken(RefreshTokenRequest request);
