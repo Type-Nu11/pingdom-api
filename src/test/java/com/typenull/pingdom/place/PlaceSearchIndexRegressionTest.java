@@ -17,7 +17,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @Testcontainers
-class PlaceSearchPerformanceRegressionTest {
+class PlaceSearchIndexRegressionTest {
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -68,7 +68,7 @@ class PlaceSearchPerformanceRegressionTest {
     }
 
     @Test
-    void 장소_반경_검색은_latitude_longitude_인덱스를_사용한다() throws Exception {
+    void 장소_반경_검색은_latitude_longitude_btree_인덱스를_사용한다() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
@@ -90,7 +90,7 @@ class PlaceSearchPerformanceRegressionTest {
     }
 
     @Test
-    void 추천_후보_바운딩박스_조회는_latitude_longitude_인덱스를_사용한다() throws Exception {
+    void 추천_후보_바운딩박스_조회는_latitude_longitude_btree_인덱스를_사용한다() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
