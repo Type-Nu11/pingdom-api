@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("13");
-        assertThat(result.migrationsExecuted).isEqualTo(13);
+        assertThat(result.targetSchemaVersion).isEqualTo("16");
+        assertThat(result.migrationsExecuted).isEqualTo(16);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("13");
-        assertThat(result.migrationsExecuted).isEqualTo(12);
+        assertThat(result.targetSchemaVersion).isEqualTo("16");
+        assertThat(result.migrationsExecuted).isEqualTo(15);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -340,6 +340,57 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'admin_place_merge_history'
                           AND indexname = 'idx_admin_place_merge_history_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'post_report'
+                          AND column_name = 'report_score'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'report_count'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'unaccepted_report_count'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'password_reset_token'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'password_reset_token'
+                          AND column_name = 'token_hash'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'password_reset_token'::regclass
+                          AND conname = 'fk_password_reset_token_user'
                     )
                     """)).isTrue();
         }

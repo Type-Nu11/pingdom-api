@@ -36,6 +36,13 @@ class AbuseRateLimitServiceTest {
                         new WindowPolicy(5, Duration.ofDays(1)),
                         new WindowPolicy(100, Duration.ofDays(1))
                 ),
+                new EmailResendPolicy(
+                        Duration.ofMinutes(1),
+                        new WindowPolicy(5, Duration.ofDays(1)),
+                        new WindowPolicy(100, Duration.ofDays(1))
+                ),
+                new WindowPolicy(2, Duration.ofMinutes(1)),
+                new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(2, Duration.ofHours(1)),
                 new WindowPolicy(100, Duration.ofHours(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),
@@ -76,6 +83,38 @@ class AbuseRateLimitServiceTest {
         clock.advance(Duration.ofMinutes(1));
 
         assertDoesNotThrow(() -> abuseRateLimitService.checkEmailResend("user@example.com", "203.0.113.22"));
+    }
+
+    @Test
+    void passwordResetRequestUsesMinimumIntervalPerEmail() {
+        abuseRateLimitService.checkPasswordResetRequest("User@Example.com", "203.0.113.20");
+
+        assertThrows(RateLimitException.class, () ->
+                abuseRateLimitService.checkPasswordResetRequest("user@example.com", "203.0.113.21")
+        );
+
+        clock.advance(Duration.ofMinutes(1));
+
+        assertDoesNotThrow(() ->
+                abuseRateLimitService.checkPasswordResetRequest("user@example.com", "203.0.113.22")
+        );
+    }
+
+    @Test
+    void passwordResetConfirmFingerprintPreservesCaseSensitiveToken() {
+        abuseRateLimitService.checkPasswordResetConfirm("Reset.Token.A", "203.0.113.50");
+        String upperTokenKey = store.lastWindowKeys().stream()
+                .filter(key -> key.startsWith("password-reset-confirm:token:"))
+                .findFirst()
+                .orElseThrow();
+
+        abuseRateLimitService.checkPasswordResetConfirm("Reset.Token.a", "203.0.113.51");
+        String lowerTokenKey = store.lastWindowKeys().stream()
+                .filter(key -> key.startsWith("password-reset-confirm:token:"))
+                .findFirst()
+                .orElseThrow();
+
+        org.junit.jupiter.api.Assertions.assertNotEquals(upperTokenKey, lowerTokenKey);
     }
 
     @Test

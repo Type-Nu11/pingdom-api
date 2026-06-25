@@ -2,6 +2,8 @@ package com.typenull.pingdom.shared.ratelimit;
 
 import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
+import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -42,6 +44,14 @@ public class RateLimitAspect {
             case EMAIL_RESEND -> {
                 EmailResendRequest request = requiredArg(args, EmailResendRequest.class);
                 abuseRateLimitService.checkEmailResend(request.email(), clientIp);
+            }
+            case PASSWORD_RESET_REQUEST -> {
+                PasswordResetRequest request = requiredArg(args, PasswordResetRequest.class);
+                abuseRateLimitService.checkPasswordResetRequest(request.email(), clientIp);
+            }
+            case PASSWORD_RESET_CONFIRM -> {
+                PasswordResetConfirmRequest request = requiredArg(args, PasswordResetConfirmRequest.class);
+                abuseRateLimitService.checkPasswordResetConfirm(request.token(), clientIp);
             }
             case POST_REPORT -> abuseRateLimitService.checkPostReport(requiredUser(args).userId(), clientIp);
             case MAP_IMAGE_LIKE -> abuseRateLimitService.checkMapImageLike(requiredUser(args).userId(), clientIp);

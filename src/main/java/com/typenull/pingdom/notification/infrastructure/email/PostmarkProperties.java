@@ -15,7 +15,9 @@ public record PostmarkProperties(
         String fromEmail,
 
         @NotBlank(message = "인증 메일 기본 URL은 필수입니다.")
-        String verificationBaseUrl
+        String verificationBaseUrl,
+
+        String passwordResetBaseUrl
 ) {
     public PostmarkProperties {
         if (fromEmail == null) {
@@ -23,6 +25,9 @@ public record PostmarkProperties(
         }
         if (verificationBaseUrl == null) {
             verificationBaseUrl = "http://localhost:8080/auth/email/verify";
+        }
+        if (passwordResetBaseUrl == null) {
+            passwordResetBaseUrl = "http://localhost:8080/auth/password-reset/confirm";
         }
     }
 }

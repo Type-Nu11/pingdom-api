@@ -68,6 +68,7 @@ postmark:
   server-token: ${POSTMARK_SERVER_TOKEN}
   from-email: ${MAIL_FROM}
   verification-base-url: ${MAIL_VERIFICATION_BASE_URL}
+  password-reset-base-url: ${MAIL_PASSWORD_RESET_BASE_URL:http://localhost:8080/auth/password-reset/confirm}
 
 springdoc:
   api-docs:
@@ -148,6 +149,20 @@ abuse:
       ip-daily:
         limit: 100
         window: P1D
+    password-reset-request:
+      minimum-interval: PT1M
+      email-daily:
+        limit: 5
+        window: P1D
+      ip-daily:
+        limit: 100
+        window: P1D
+    password-reset-confirm-token:
+      limit: 5
+      window: PT1M
+    password-reset-confirm-ip:
+      limit: 120
+      window: PT1M
     report-user:
       limit: 10
       window: PT1H
