@@ -22,7 +22,10 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.place.AdminPlaceMergeHistory;
+import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendationPolicyChangeHistory;
+import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendationPolicyChangeType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminRecommendationPolicyChangeHistoryRepository;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
@@ -46,7 +49,6 @@ import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.HashSet;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -78,6 +80,7 @@ public class AdminMapPlaceService {
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
+    private final AdminRecommendationPolicyChangeHistoryRepository adminRecommendationPolicyChangeHistoryRepository;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
@@ -162,6 +165,15 @@ public class AdminMapPlaceService {
 
         List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> updatedPolicies =
                 placeRecommendationPolicyService.updateTrafficPolicies(policyCommands);
+        List<AdminRecommendationPolicyChangeHistory> policyHistories = buildRecommendationPolicyHistories(
+                adminUserId,
+                trimToNull(request.reason()),
+                beforePolicies,
+                updatedPolicies
+        );
+        if (!policyHistories.isEmpty()) {
+            adminRecommendationPolicyChangeHistoryRepository.saveAll(policyHistories);
+        }
 
         adminAuditLogService.record(
                 adminUserId,
@@ -170,7 +182,7 @@ public class AdminMapPlaceService {
                         : AdminAuditAction.PLACE_RECOMMENDATION_TRAFFIC_UPDATED,
                 AdminAuditTargetType.PLACE,
                 placeRecommendationPolicyService.getDefaultVersion(),
-                "PLACE_RECOMMENDATION_TRAFFIC_UPDATED",
+                request.reason().trim(),
                 toTrafficAuditState(beforePolicies),
                 toTrafficAuditState(updatedPolicies)
         );
@@ -620,7 +632,10 @@ public class AdminMapPlaceService {
     }
 
     private void validateRecommendationTrafficRequest(AdminPlaceRecommendationTrafficUpdateRequest request) {
-        if (request == null || request.policies() == null || request.policies().isEmpty()) {
+        if (request == null
+                || !StringUtils.hasText(request.reason())
+                || request.policies() == null
+                || request.policies().isEmpty()) {
             throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
         }
         if (request.policies().stream().anyMatch(policy ->
@@ -647,6 +662,61 @@ public class AdminMapPlaceService {
                 currentVersion = command.fallbackVersion();
             }
         }
+    }
+
+    private List<AdminRecommendationPolicyChangeHistory> buildRecommendationPolicyHistories(
+            Long adminUserId,
+            String reason,
+            List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> beforePolicies,
+            List<PlaceRecommendationPolicyService.RecommendationTrafficPolicy> afterPolicies
+    ) {
+        Map<String, PlaceRecommendationPolicyService.RecommendationTrafficPolicy> beforePolicyMap = beforePolicies.stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        PlaceRecommendationPolicyService.RecommendationTrafficPolicy::version,
+                        policy -> policy
+                ));
+        List<AdminRecommendationPolicyChangeHistory> histories = new ArrayList<>();
+        LocalDateTime changedAt = LocalDateTime.now(clock);
+
+        for (PlaceRecommendationPolicyService.RecommendationTrafficPolicy afterPolicy : afterPolicies) {
+            PlaceRecommendationPolicyService.RecommendationTrafficPolicy beforePolicy =
+                    beforePolicyMap.get(afterPolicy.version());
+            if (beforePolicy == null || isSameRecommendationPolicy(beforePolicy, afterPolicy)) {
+                continue;
+            }
+
+            histories.add(AdminRecommendationPolicyChangeHistory.builder()
+                    .recommendationVersion(afterPolicy.version())
+                    .changeType(AdminRecommendationPolicyChangeType.TRAFFIC_POLICY)
+                    .actorUserId(adminUserId)
+                    .reason(reason)
+                    .beforeState(writeValue(toRecommendationPolicyHistoryState(beforePolicy)))
+                    .afterState(writeValue(toRecommendationPolicyHistoryState(afterPolicy)))
+                    .changedAt(changedAt)
+                    .build());
+        }
+        return histories;
+    }
+
+    private boolean isSameRecommendationPolicy(
+            PlaceRecommendationPolicyService.RecommendationTrafficPolicy beforePolicy,
+            PlaceRecommendationPolicyService.RecommendationTrafficPolicy afterPolicy
+    ) {
+        return beforePolicy.trafficPercentage() == afterPolicy.trafficPercentage()
+                && beforePolicy.enabled() == afterPolicy.enabled()
+                && java.util.Objects.equals(beforePolicy.fallbackVersion(), afterPolicy.fallbackVersion());
+    }
+
+    private Map<String, Object> toRecommendationPolicyHistoryState(
+            PlaceRecommendationPolicyService.RecommendationTrafficPolicy policy
+    ) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("recommendationVersion", policy.version());
+        state.put("stage", policy.stage().name());
+        state.put("trafficPercentage", policy.trafficPercentage());
+        state.put("enabled", policy.enabled());
+        state.put("fallbackVersion", policy.fallbackVersion());
+        return state;
     }
 
     private Map<String, Object> toTrafficAuditState(
