@@ -43,6 +43,29 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
         }
     }
 
+    @Test
+    void refreshedAccessTokenCanAccessPlaceWithIssueQueryParameters() throws Exception {
+        createUser("refreshPlaceQueryUser");
+
+        String refreshToken = loginAndReadToken("refreshPlaceQueryUser", "refreshToken");
+        MvcResult refreshResult = mockMvc.perform(post("/auth/token/refresh")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.accessToken").isString())
+                .andReturn();
+
+        String refreshedAccessToken = objectMapper.readTree(refreshResult.getResponse().getContentAsString())
+                .get("accessToken")
+                .textValue();
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshedAccessToken)
+                        .param("limit", "100")
+                        .param("page", "1"))
+                .andExpect(status().isOk());
+    }
+
     private static Stream<String> protectedGetEndpoints() {
         return Stream.of("/place", "/map/posts", "/users/me");
     }

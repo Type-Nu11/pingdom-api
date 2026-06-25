@@ -10,6 +10,9 @@ import com.typenull.pingdom.shared.security.JwtProperties;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
+import jakarta.servlet.DispatcherType;
+import jakarta.servlet.RequestDispatcher;
+import jakarta.servlet.http.HttpServletResponse;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.Instant;
@@ -132,6 +135,19 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
         userRepository.saveAndFlush(user);
 
         assertProtectedGetSucceeds("/users/me", accessToken);
+    }
+
+    @Test
+    void errorDispatchIsNotRejectedAsInvalidToken() throws Exception {
+        mockMvc.perform(get("/error")
+                        .with(request -> {
+                            request.setDispatcherType(DispatcherType.ERROR);
+                            request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
+                            request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, "/place");
+                            return request;
+                        }))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.code").doesNotExist());
     }
 
     private static Stream<String> protectedGetEndpoints() {
