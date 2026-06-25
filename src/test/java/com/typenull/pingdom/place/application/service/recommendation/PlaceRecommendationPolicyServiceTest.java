@@ -10,13 +10,8 @@ import jakarta.validation.Validation;
 import jakarta.validation.Validator;
 import java.util.List;
 import java.util.Map;
-import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
 import org.mockito.Mockito;
-import org.springframework.transaction.TransactionDefinition;
-import org.springframework.transaction.support.AbstractPlatformTransactionManager;
-import org.springframework.transaction.support.DefaultTransactionStatus;
-import org.springframework.transaction.support.TransactionTemplate;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -156,19 +151,15 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     @Test
-    void updateTrafficPoliciesCommitsInsideServiceMethod() {
+    void updateTrafficPoliciesLoadsPoliciesWithPessimisticLockQuery() {
         PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
                 "place-rec-v1",
                 List.of(createPolicy("place-rec-v1", RecommendationStage.STABLE, 100))
         );
-        RecordingTransactionManager transactionManager = new RecordingTransactionManager();
         PlaceRecommendationTrafficPolicyRepository repository = Mockito.mock(PlaceRecommendationTrafficPolicyRepository.class);
         Mockito.when(repository.findAll()).thenReturn(List.of());
-        PlaceRecommendationPolicyService service = new PlaceRecommendationPolicyService(
-                properties,
-                repository,
-                new TransactionTemplate(transactionManager)
-        );
+        Mockito.when(repository.findAllForUpdate()).thenReturn(List.of());
+        PlaceRecommendationPolicyService service = new PlaceRecommendationPolicyService(properties, repository);
         service.initialize();
 
         service.updateTrafficPolicies(Map.of(
@@ -176,7 +167,7 @@ class PlaceRecommendationPolicyServiceTest {
                 new PlaceRecommendationPolicyService.PolicyUpdateCommand(100, true, null)
         ));
 
-        assertTrue(transactionManager.committed());
+        Mockito.verify(repository).findAllForUpdate();
     }
 
     private PlaceRecommendationPolicyRepositoryContext createContext(PlaceRecommendationProperties properties) {
@@ -184,7 +175,7 @@ class PlaceRecommendationPolicyServiceTest {
         Mockito.when(repository.findAll()).thenReturn(List.of());
         return new PlaceRecommendationPolicyRepositoryContext(
                 repository,
-                new PlaceRecommendationPolicyService(properties, repository, new TransactionTemplate(new RecordingTransactionManager()))
+                new PlaceRecommendationPolicyService(properties, repository)
         );
     }
 
@@ -236,32 +227,5 @@ class PlaceRecommendationPolicyServiceTest {
 
     private RankingWeights createWeights() {
         return new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d);
-    }
-
-    private static final class RecordingTransactionManager extends AbstractPlatformTransactionManager {
-
-        private final AtomicBoolean committed = new AtomicBoolean();
-
-        boolean committed() {
-            return committed.get();
-        }
-
-        @Override
-        protected Object doGetTransaction() {
-            return new Object();
-        }
-
-        @Override
-        protected void doBegin(Object transaction, TransactionDefinition definition) {
-        }
-
-        @Override
-        protected void doCommit(DefaultTransactionStatus status) {
-            committed.set(true);
-        }
-
-        @Override
-        protected void doRollback(DefaultTransactionStatus status) {
-        }
     }
 }
