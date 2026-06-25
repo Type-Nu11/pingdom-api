@@ -167,7 +167,7 @@ public class AdminMapPlaceService {
                 placeRecommendationPolicyService.updateTrafficPolicies(policyCommands);
         List<AdminRecommendationPolicyChangeHistory> policyHistories = buildRecommendationPolicyHistories(
                 adminUserId,
-                trimToNull(request.reason()),
+                request.reason().trim(),
                 beforePolicies,
                 updatedPolicies
         );
