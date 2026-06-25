@@ -1,6 +1,5 @@
 package com.typenull.pingdom.notification.outbox;
 
-import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.application.port.EmailSendException;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
@@ -56,8 +55,11 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
 
     private EmailVerificationOutboxPayload deserialize(String eventId, String payload) {
         try {
+            if (payload == null || payload.isBlank()) {
+                throw new IllegalArgumentException("Payload is empty");
+            }
             return objectMapper.readValue(payload, EmailVerificationOutboxPayload.class);
-        } catch (JsonProcessingException exception) {
+        } catch (Exception exception) {
             notificationDeliveryRecorder.recordEmailFailure(
                     null,
                     eventId,
@@ -65,7 +67,7 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
                     null,
                     null,
                     NotificationDeliveryRecorder.ERROR_EMAIL_PAYLOAD_INVALID,
-                    exception.getOriginalMessage(),
+                    failureReason(exception),
                     false
             );
             throw new IllegalArgumentException("이메일 Outbox payload 역직렬화에 실패했습니다.", exception);
@@ -86,7 +88,7 @@ public class EmailVerificationOutboxHandler implements OutboxEventHandler {
         return NotificationDeliveryRecorder.ERROR_EMAIL_SEND_FAILED;
     }
 
-    private String failureReason(RuntimeException exception) {
+    private String failureReason(Exception exception) {
         return exception.getMessage() == null ? exception.getClass().getSimpleName() : exception.getMessage();
     }
 

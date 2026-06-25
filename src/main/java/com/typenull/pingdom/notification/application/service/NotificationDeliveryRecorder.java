@@ -35,7 +35,7 @@ public class NotificationDeliveryRecorder {
                 notificationId,
                 notificationType == null ? null : notificationType.name(),
                 outboxEventId,
-                fcmOutboxEventType(outboxEventId),
+                fcmOutboxEventType(notificationType, outboxEventId),
                 token,
                 providerMessageId,
                 null,
@@ -63,7 +63,7 @@ public class NotificationDeliveryRecorder {
                 notificationId,
                 notificationType == null ? null : notificationType.name(),
                 outboxEventId,
-                fcmOutboxEventType(outboxEventId),
+                fcmOutboxEventType(notificationType, outboxEventId),
                 token,
                 null,
                 providerErrorCode,
@@ -138,9 +138,13 @@ public class NotificationDeliveryRecorder {
         }
     }
 
-    private String fcmOutboxEventType(String outboxEventId) {
-        return outboxEventId == null || outboxEventId.isBlank()
-                ? null
-                : OutboxEventType.MAP_IMAGE_LIKED.name();
+    private String fcmOutboxEventType(NotificationType notificationType, String outboxEventId) {
+        if (outboxEventId == null || outboxEventId.isBlank()) {
+            return null;
+        }
+        if (notificationType == NotificationType.NEW_LIKE) {
+            return OutboxEventType.MAP_IMAGE_LIKED.name();
+        }
+        return null;
     }
 }

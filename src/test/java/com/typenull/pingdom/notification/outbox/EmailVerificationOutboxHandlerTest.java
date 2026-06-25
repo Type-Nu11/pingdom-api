@@ -82,4 +82,20 @@ class EmailVerificationOutboxHandlerTest {
                 true
         );
     }
+
+    @Test
+    void handleRecordsInvalidPayloadWhenPayloadIsNull() {
+        assertThrows(IllegalArgumentException.class, () -> handler.handle(EVENT_ID, null));
+
+        verify(notificationDeliveryRecorder).recordEmailFailure(
+                null,
+                EVENT_ID,
+                OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
+                null,
+                null,
+                NotificationDeliveryRecorder.ERROR_EMAIL_PAYLOAD_INVALID,
+                "Payload is empty",
+                false
+        );
+    }
 }
