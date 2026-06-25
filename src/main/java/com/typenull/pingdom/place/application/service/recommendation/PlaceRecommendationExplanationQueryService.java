@@ -34,7 +34,7 @@ public class PlaceRecommendationExplanationQueryService {
         List<PlaceRecommendationExplanationItem> items = logs.stream()
                 .map(log -> new PlaceRecommendationExplanationItem(
                         log.getPlaceId(),
-                        placeNames.get(log.getPlaceId()),
+                        placeNames.getOrDefault(log.getPlaceId(), "알 수 없는 장소"),
                         log.getRanking(),
                         log.getCandidateSource(),
                         log.getDistanceMeters(),
