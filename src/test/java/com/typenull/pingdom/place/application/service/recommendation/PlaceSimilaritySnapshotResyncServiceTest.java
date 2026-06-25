@@ -114,6 +114,7 @@ class PlaceSimilaritySnapshotResyncServiceTest {
 
     @Test
     void update_snapshot이_500건을_초과하면_배치_크기를_나눠서_처리한다() {
+        // 33개 장소는 33 * 32 / 2 = 528개의 스냅샷 쌍을 만들어 500건 배치 분할을 검증하기에 충분하다.
         List<MapPlace> places = createPlaces(33);
         List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
         List<Integer> batchSizes = new ArrayList<>();
