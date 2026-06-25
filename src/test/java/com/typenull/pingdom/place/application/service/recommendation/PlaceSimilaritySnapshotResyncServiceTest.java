@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -8,7 +9,9 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.Mockito.atLeastOnce;
+import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -107,6 +110,62 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         assertEquals(0L, result.deletedSnapshotCount());
         verify(placeSimilaritySnapshotRepository, never()).saveAll(any());
         verify(jdbcTemplate, atLeastOnce()).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+    }
+
+    @Test
+    void update_snapshot이_500건을_초과하면_배치_크기를_나눠서_처리한다() {
+        // 33개 장소는 33 * 32 / 2 = 528개의 스냅샷 쌍을 만들어 500건 배치 분할을 검증하기에 충분하다.
+        List<MapPlace> places = createPlaces(33);
+        List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
+        List<Integer> batchSizes = new ArrayList<>();
+
+        when(mapPlaceCoordinateQueryRepository.findCoordinatePage(any(PageRequest.class)))
+                .thenAnswer(invocation -> coordinatePage(places, invocation.getArgument(0)));
+        when(placeSimilaritySnapshotRepository.findExistingSnapshotSlice(anyLong(), any(Pageable.class)))
+                .thenAnswer(invocation -> snapshotSlice(
+                        existingSnapshots,
+                        invocation.getArgument(0),
+                        invocation.getArgument(1)
+                ));
+        doAnswer(invocation -> {
+            BatchPreparedStatementSetter setter = invocation.getArgument(1);
+            batchSizes.add(setter.getBatchSize());
+            return new int[setter.getBatchSize()];
+        }).when(jdbcTemplate).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+
+        placeSimilaritySnapshotResyncService.resyncAll();
+
+        verify(jdbcTemplate, times(2)).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
+
+        int totalBatchSize = batchSizes.stream()
+                .mapToInt(Integer::intValue)
+                .sum();
+
+        assertTrue(batchSizes.stream().allMatch(batchSize -> batchSize <= 500));
+        assertEquals(existingSnapshots.size(), totalBatchSize);
+        verify(placeSimilaritySnapshotRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void existing_snapshot조회는_pair별_개별조회없이_slice_페이지로_처리한다() {
+        List<MapPlace> places = createPlaces(33);
+        List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
+
+        when(mapPlaceCoordinateQueryRepository.findCoordinatePage(any(PageRequest.class)))
+                .thenAnswer(invocation -> coordinatePage(places, invocation.getArgument(0)));
+        when(placeSimilaritySnapshotRepository.findExistingSnapshotSlice(anyLong(), any(Pageable.class)))
+                .thenAnswer(invocation -> snapshotSlice(
+                        existingSnapshots,
+                        invocation.getArgument(0),
+                        invocation.getArgument(1)
+                ));
+
+        placeSimilaritySnapshotResyncService.resyncAll();
+
+        verify(placeSimilaritySnapshotRepository, times(2))
+                .findExistingSnapshotSlice(anyLong(), any(Pageable.class));
+        verify(placeRecommendationSimilarityService, times(1))
+                .buildContext(anyCollection(), anyMap(), anyBoolean(), anyLong());
     }
 
     private Page<MapPlace> coordinatePage(List<MapPlace> places, PageRequest pageable) {
