@@ -9,6 +9,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import org.hibernate.SessionFactory;
 import org.hibernate.stat.Statistics;
@@ -64,7 +65,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     void 비로그인_후보_수집은_PERSONAL_후보_없이_GEO와_TREND만_포함한다() {
         MapPlace geoPlace = createPlace("geo-place", 37.5000d, 127.0300d);
         MapPlace trendPlace = createPlace("trend-place", 37.5010d, 127.0310d);
-        saveSnapshot(trendPlace.getId(), LocalDateTime.now().minusDays(1));
+        saveSnapshot(trendPlace.getId(), nowUtc().minusDays(1));
 
         List<CandidatePlace> candidatePool = placeRecommendationCandidateCollector.loadCandidatePool(
                 37.5002d,
@@ -116,8 +117,8 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     void trend_후보_수집은_최근_7일_이내_snapshot만_사용한다() {
         MapPlace freshTrendPlace = createPlace("fresh-trend", 37.5100d, 127.0400d);
         MapPlace staleTrendPlace = createPlace("stale-trend", 37.5200d, 127.0500d);
-        saveSnapshot(freshTrendPlace.getId(), LocalDateTime.now().minusDays(6));
-        saveSnapshot(staleTrendPlace.getId(), LocalDateTime.now().minusDays(8));
+        saveSnapshot(freshTrendPlace.getId(), nowUtc().minusDays(6));
+        saveSnapshot(staleTrendPlace.getId(), nowUtc().minusDays(8));
 
         List<CandidatePlace> candidatePool = placeRecommendationCandidateCollector.loadCandidatePool(
                 37.5002d,
@@ -136,7 +137,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     void trend_후보_다건_조회시_쿼리_수가_과도하게_증가하지_않는다() {
         for (int index = 0; index < 12; index++) {
             MapPlace place = createPlace("trend-" + index, 37.5000d + (index * 0.001d), 127.0300d + (index * 0.001d));
-            saveSnapshot(place.getId(), LocalDateTime.now().minusHours(index + 1L));
+            saveSnapshot(place.getId(), nowUtc().minusHours(index + 1L));
         }
 
         entityManager.flush();
@@ -180,6 +181,10 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .latestPostCreatedAt(updatedAt.minusHours(1))
                 .updatedAt(updatedAt)
                 .build());
+    }
+
+    private LocalDateTime nowUtc() {
+        return LocalDateTime.now(ZoneOffset.UTC);
     }
 
     private Statistics statistics() {
