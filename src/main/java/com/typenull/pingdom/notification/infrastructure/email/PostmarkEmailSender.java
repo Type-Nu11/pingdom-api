@@ -2,7 +2,10 @@ package com.typenull.pingdom.notification.infrastructure.email;
 
 import com.postmarkapp.postmark.client.ApiClient;
 import com.postmarkapp.postmark.client.data.model.message.Message;
+import com.postmarkapp.postmark.client.data.model.message.MessageResponse;
 import com.postmarkapp.postmark.client.exception.PostmarkException;
+import com.typenull.pingdom.identity.application.port.EmailSendException;
+import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
@@ -11,6 +14,7 @@ import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 import com.typenull.pingdom.identity.application.port.EmailSender;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
@@ -22,12 +26,16 @@ public class PostmarkEmailSender implements EmailSender {
     private static final String POSTMARK_SERVER_TOKEN_HEADER = "X-Postmark-Server-Token";
     private static final String VERIFICATION_SUBJECT = "Pingdom 이메일 인증";
     private static final String PASSWORD_RESET_SUBJECT = "Pingdom 비밀번호 재설정";
+    private static final String ERROR_POSTMARK_CONFIGURATION_INVALID = "POSTMARK_CONFIGURATION_INVALID";
+    private static final String ERROR_POSTMARK_SEND_FAILED = "POSTMARK_SEND_FAILED";
+    private static final String ERROR_POSTMARK_IO_ERROR = "POSTMARK_IO_ERROR";
     private static final DateTimeFormatter PASSWORD_RESET_EXPIRATION_FORMATTER =
             DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PostmarkProperties postmarkProperties;
     private final ApiClient apiClient;
 
+    @Autowired
     public PostmarkEmailSender(PostmarkProperties postmarkProperties) {
         this.postmarkProperties = postmarkProperties;
         this.apiClient = new ApiClient(
@@ -36,9 +44,14 @@ public class PostmarkEmailSender implements EmailSender {
         );
     }
 
+    PostmarkEmailSender(PostmarkProperties postmarkProperties, ApiClient apiClient) {
+        this.postmarkProperties = postmarkProperties;
+        this.apiClient = apiClient;
+    }
+
     @Override
     // 인증 코드 메일 발송 메서드
-    public void sendVerificationEmail(String recipientEmail, String verificationCode) {
+    public EmailSendResult sendVerificationEmail(String recipientEmail, String verificationCode) {
         validateConfiguration();
 
         Message message = new Message();
@@ -49,14 +62,15 @@ public class PostmarkEmailSender implements EmailSender {
         message.setHtmlBody(buildHtmlBody(recipientEmail, verificationCode));
 
         try {
-            apiClient.deliverMessage(message);
+            MessageResponse response = apiClient.deliverMessage(message);
+            return EmailSendResult.sent(response.getMessageId());
         } catch (PostmarkException | IOException exception) {
-            throw new IllegalStateException("인증 메일 발송에 실패했습니다.", exception);
+            throw mapSendException("인증 메일 발송에 실패했습니다.", exception);
         }
     }
 
     @Override
-    public void sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+    public EmailSendResult sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
         validateConfiguration();
 
         Message message = new Message();
@@ -67,26 +81,46 @@ public class PostmarkEmailSender implements EmailSender {
         message.setHtmlBody(buildPasswordResetHtmlBody(recipientEmail, resetToken, expiresAt));
 
         try {
-            apiClient.deliverMessage(message);
+            MessageResponse response = apiClient.deliverMessage(message);
+            return EmailSendResult.sent(response.getMessageId());
         } catch (PostmarkException | IOException exception) {
-            throw new IllegalStateException("비밀번호 재설정 메일 발송에 실패했습니다.", exception);
+            throw mapSendException("비밀번호 재설정 메일 발송에 실패했습니다.", exception);
         }
     }
 
     // 메일 발송 설정 검증 메서드
     private void validateConfiguration() {
         if (!StringUtils.hasText(postmarkProperties.serverToken())) {
-            throw new IllegalStateException("POSTMARK_SERVER_TOKEN 설정이 필요합니다.");
+            throw configurationException("POSTMARK_SERVER_TOKEN 설정이 필요합니다.");
         }
         if (!StringUtils.hasText(postmarkProperties.fromEmail())) {
-            throw new IllegalStateException("MAIL_FROM 설정이 필요합니다.");
+            throw configurationException("MAIL_FROM 설정이 필요합니다.");
         }
         if (!StringUtils.hasText(postmarkProperties.verificationBaseUrl())) {
-            throw new IllegalStateException("MAIL_VERIFICATION_BASE_URL 설정이 필요합니다.");
+            throw configurationException("MAIL_VERIFICATION_BASE_URL 설정이 필요합니다.");
         }
         if (!StringUtils.hasText(postmarkProperties.passwordResetBaseUrl())) {
-            throw new IllegalStateException("MAIL_PASSWORD_RESET_BASE_URL 설정이 필요합니다.");
+            throw configurationException("MAIL_PASSWORD_RESET_BASE_URL 설정이 필요합니다.");
         }
+    }
+
+    private EmailSendException configurationException(String message) {
+        return new EmailSendException(message, ERROR_POSTMARK_CONFIGURATION_INVALID, null, false, null);
+    }
+
+    private EmailSendException mapSendException(String message, Exception exception) {
+        if (exception instanceof PostmarkException postmarkException) {
+            Integer providerErrorCode = postmarkException.getErrorCode();
+            return new EmailSendException(
+                    message,
+                    ERROR_POSTMARK_SEND_FAILED,
+                    providerErrorCode == null ? null : String.valueOf(providerErrorCode),
+                    providerErrorCode == null || providerErrorCode >= 500,
+                    exception
+            );
+        }
+
+        return new EmailSendException(message, ERROR_POSTMARK_IO_ERROR, null, true, exception);
     }
 
     // 인증 메일 텍스트 본문 생성 메서드
