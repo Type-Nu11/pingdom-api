@@ -3,6 +3,7 @@ package com.typenull.pingdom.shared.exception.handler;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
@@ -43,6 +44,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(MapException.class)
     public ResponseEntity<Map<String, String>> handleMapException(MapException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(NotificationsException.class)
+    public ResponseEntity<Map<String, String>> handleNotificationsException(NotificationsException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }

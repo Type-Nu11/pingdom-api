@@ -50,7 +50,9 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/users/me",
             "/map/posts",
             "/map/bookmarks",
-            "/firebase/fcm-token"
+            "/firebase/fcm-token",
+            "/firebase/fcm-tokens",
+            "/notifications/settings"
     );
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
