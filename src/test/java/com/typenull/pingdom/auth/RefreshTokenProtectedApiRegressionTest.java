@@ -44,7 +44,7 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     }
 
     @Test
-    void refreshedAccessTokenCanAccessPlaceWithIssueQueryParameters() throws Exception {
+    void refreshedAccessTokenCanAccessPlaceWithPaginationQueryParameters() throws Exception {
         createUser("refreshPlaceQueryUser");
 
         String refreshToken = loginAndReadToken("refreshPlaceQueryUser", "refreshToken");

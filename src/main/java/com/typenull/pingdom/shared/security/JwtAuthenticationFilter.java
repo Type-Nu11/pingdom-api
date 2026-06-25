@@ -29,6 +29,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
     static final String AUTH_DIAGNOSTIC_ATTRIBUTE = "AUTH_DIAGNOSTIC";
     private static final List<String> EXCLUDED_PATH_PATTERNS = List.of(
             "/auth/**",
+            "/error",
             "/actuator/health",
             "/actuator/health/**",
             "/swagger-ui",
