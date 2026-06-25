@@ -14,6 +14,9 @@ public record AbuseRateLimitProperties(
         @Valid WindowPolicy tokenRefreshToken,
         @Valid WindowPolicy tokenRefreshIp,
         @Valid EmailResendPolicy emailResend,
+        @Valid EmailResendPolicy passwordResetRequest,
+        @Valid WindowPolicy passwordResetConfirmToken,
+        @Valid WindowPolicy passwordResetConfirmIp,
         @Valid WindowPolicy reportUser,
         @Valid WindowPolicy reportIp,
         @Valid WindowPolicy mapImageLikeUser,
@@ -34,6 +37,9 @@ public record AbuseRateLimitProperties(
         tokenRefreshToken = WindowPolicy.withDefaults(tokenRefreshToken, 10, Duration.ofMinutes(1));
         tokenRefreshIp = WindowPolicy.withDefaults(tokenRefreshIp, 240, Duration.ofMinutes(1));
         emailResend = EmailResendPolicy.withDefaults(emailResend);
+        passwordResetRequest = EmailResendPolicy.withDefaults(passwordResetRequest);
+        passwordResetConfirmToken = WindowPolicy.withDefaults(passwordResetConfirmToken, 5, Duration.ofMinutes(1));
+        passwordResetConfirmIp = WindowPolicy.withDefaults(passwordResetConfirmIp, 120, Duration.ofMinutes(1));
         reportUser = WindowPolicy.withDefaults(reportUser, 10, Duration.ofHours(1));
         reportIp = WindowPolicy.withDefaults(reportIp, 200, Duration.ofHours(1));
         mapImageLikeUser = WindowPolicy.withDefaults(mapImageLikeUser, 60, Duration.ofMinutes(1));

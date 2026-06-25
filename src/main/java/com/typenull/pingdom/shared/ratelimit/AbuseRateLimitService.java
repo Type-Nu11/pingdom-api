@@ -15,6 +15,7 @@ public class AbuseRateLimitService {
 
     private static final String DEFAULT_MESSAGE = "요청 횟수가 너무 많습니다. 잠시 후 다시 시도해주세요.";
     private static final String EMAIL_MESSAGE = "인증 메일 재발송 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+    private static final String PASSWORD_RESET_MESSAGE = "비밀번호 재설정 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
 
     private final AbuseRateLimitProperties properties;
     private final RateLimitStore store;
@@ -60,6 +61,46 @@ public class AbuseRateLimitService {
                                 properties.emailResend().minimumInterval()
                         )
                 )
+        );
+    }
+
+    public void checkPasswordResetRequest(String email, String clientIp) {
+        String emailFingerprint = fingerprint(normalize(email));
+        store.acquire(
+                PASSWORD_RESET_MESSAGE,
+                List.of(
+                        windowRule(
+                                "password-reset-request:email-daily:" + emailFingerprint,
+                                properties.passwordResetRequest().emailDaily()
+                        ),
+                        windowRule(
+                                "password-reset-request:ip-daily:" + normalizeIp(clientIp),
+                                properties.passwordResetRequest().ipDaily()
+                        )
+                ),
+                List.of(
+                        new RateLimitCooldownRule(
+                                "password-reset-request:email-cooldown:" + emailFingerprint,
+                                properties.passwordResetRequest().minimumInterval()
+                        )
+                )
+        );
+    }
+
+    public void checkPasswordResetConfirm(String token, String clientIp) {
+        store.acquire(
+                PASSWORD_RESET_MESSAGE,
+                List.of(
+                        windowRule(
+                                "password-reset-confirm:token:" + fingerprint(token),
+                                properties.passwordResetConfirmToken()
+                        ),
+                        windowRule(
+                                "password-reset-confirm:ip:" + normalizeIp(clientIp),
+                                properties.passwordResetConfirmIp()
+                        )
+                ),
+                List.of()
         );
     }
 
