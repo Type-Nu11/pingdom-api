@@ -3,6 +3,7 @@ package com.typenull.pingdom.place;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
+import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -71,7 +72,7 @@ class PlaceControllerTest {
         @Bean
         @Primary
         EmailSender emailSender() {
-            return (recipientEmail, verificationCode) -> {};
+            return (recipientEmail, verificationCode) -> EmailSendResult.sent(null);
         }
     }
 
