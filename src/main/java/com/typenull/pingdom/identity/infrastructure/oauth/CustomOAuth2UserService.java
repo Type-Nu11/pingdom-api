@@ -1,6 +1,5 @@
 package com.typenull.pingdom.identity.infrastructure.oauth;
 
-import com.typenull.pingdom.identity.application.command.OAuthUserService;
 import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.User;
 import java.util.List;
@@ -18,7 +17,7 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
 
-    private final OAuthUserService oAuthUserService;
+    private final OAuth2UserResolver oAuth2UserResolver;
 
     @Override
     public OAuth2User loadUser(OAuth2UserRequest userRequest) throws OAuth2AuthenticationException {
@@ -44,7 +43,7 @@ public class CustomOAuth2UserService extends DefaultOAuth2UserService {
             throw new OAuth2AuthenticationException(new OAuth2Error("missing_email"), "Google 사용자 이메일을 찾을 수 없습니다.");
         }
 
-        User user = oAuthUserService.provisionGoogleUser(providerId, email);
+        User user = oAuth2UserResolver.resolveGoogleUser(providerId, email);
 
         return new CustomOAuth2User(
                 user.getId(),

@@ -22,6 +22,13 @@ public enum AuthErrorCode {
     EMAIL_ALREADY_VERIFIED(HttpStatus.CONFLICT, "이미 이메일 인증이 완료된 사용자입니다."),
     DUPLICATE_USERNAME(HttpStatus.CONFLICT, "이미 사용 중인 아이디입니다."),
     DUPLICATE_EMAIL(HttpStatus.CONFLICT, "이미 사용 중인 이메일입니다."),
+    OAUTH_EMAIL_CONFLICT(HttpStatus.CONFLICT, "이미 로컬 계정으로 가입된 이메일입니다."),
+    OAUTH_EMAIL_MISMATCH(HttpStatus.CONFLICT, "현재 계정 이메일과 OAuth 계정 이메일이 일치하지 않습니다."),
+    OAUTH_ACCOUNT_ALREADY_LINKED(HttpStatus.CONFLICT, "이미 다른 계정에 연결된 OAuth 계정입니다."),
+    OAUTH_ACCOUNT_NOT_LINKED(HttpStatus.NOT_FOUND, "연결된 OAuth 계정을 찾을 수 없습니다."),
+    OAUTH_LINK_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "OAuth 계정 연결 요청이 유효하지 않습니다."),
+    OAUTH_PASSWORD_CONFIRMATION_REQUIRED(HttpStatus.CONFLICT, "OAuth 계정 해제를 위해 현재 비밀번호 확인이 필요합니다."),
+    OAUTH_LOCAL_PASSWORD_REQUIRED(HttpStatus.CONFLICT, "OAuth 계정 해제 전 로컬 비밀번호를 먼저 설정해주세요."),
     USER_NOT_FOUND(HttpStatus.NOT_FOUND, "사용자를 찾을 수 없습니다.");
 
     private final HttpStatus status;

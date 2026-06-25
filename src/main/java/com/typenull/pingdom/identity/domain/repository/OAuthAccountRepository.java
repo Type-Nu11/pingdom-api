@@ -16,6 +16,10 @@ public interface OAuthAccountRepository extends JpaRepository<OAuthAccount, Long
     @EntityGraph(attributePaths = "user")
     Optional<OAuthAccount> findWithUserByProviderAndProviderId(AuthProvider provider, String providerId);
 
+    Optional<OAuthAccount> findByUser_IdAndProvider(Long userId, AuthProvider provider);
+
+    long countByUser_Id(Long userId);
+
     @Modifying
     @Query("""
             DELETE FROM OAuthAccount o

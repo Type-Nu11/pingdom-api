@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("16");
-        assertThat(result.migrationsExecuted).isEqualTo(16);
+        assertThat(result.targetSchemaVersion).isEqualTo("17");
+        assertThat(result.migrationsExecuted).isEqualTo(17);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("16");
-        assertThat(result.migrationsExecuted).isEqualTo(15);
+        assertThat(result.targetSchemaVersion).isEqualTo("17");
+        assertThat(result.migrationsExecuted).isEqualTo(16);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -391,6 +391,15 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_constraint
                         WHERE conrelid = 'password_reset_token'::regclass
                           AND conname = 'fk_password_reset_token_user'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'users'
+                          AND column_name = 'local_password_enabled'
+                          AND is_nullable = 'NO'
                     )
                     """)).isTrue();
         }
