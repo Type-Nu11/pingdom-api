@@ -32,6 +32,7 @@ public enum AdminErrorCode {
     INVALID_SANCTION_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "제재 이력 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
     INVALID_AUDIT_LOG_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "감사 로그 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
     AUDIT_LOG_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "감사 로그 저장에 실패했습니다."),
+    RECOMMENDATION_POLICY_HISTORY_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "추천 정책 변경 이력 저장에 실패했습니다."),
     POST_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "게시글 삭제에 실패했습니다."),
     S3_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, "S3 설정이 누락되었습니다."),
     S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S3 연결에 실패했습니다.");

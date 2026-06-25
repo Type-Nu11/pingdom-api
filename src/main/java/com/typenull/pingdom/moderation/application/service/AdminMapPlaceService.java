@@ -690,8 +690,8 @@ public class AdminMapPlaceService {
                     .changeType(AdminRecommendationPolicyChangeType.TRAFFIC_POLICY)
                     .actorUserId(adminUserId)
                     .reason(reason)
-                    .beforeState(writeValue(toRecommendationPolicyHistoryState(beforePolicy)))
-                    .afterState(writeValue(toRecommendationPolicyHistoryState(afterPolicy)))
+                    .beforeState(writeRecommendationPolicyHistoryValue(toRecommendationPolicyHistoryState(beforePolicy)))
+                    .afterState(writeRecommendationPolicyHistoryValue(toRecommendationPolicyHistoryState(afterPolicy)))
                     .changedAt(changedAt)
                     .build());
         }
@@ -893,6 +893,14 @@ public class AdminMapPlaceService {
             return objectMapper.writeValueAsString(value);
         } catch (JsonProcessingException exception) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED);
+        }
+    }
+
+    private String writeRecommendationPolicyHistoryValue(Object value) {
+        try {
+            return objectMapper.writeValueAsString(value);
+        } catch (JsonProcessingException exception) {
+            throw new AdminException(AdminErrorCode.RECOMMENDATION_POLICY_HISTORY_WRITE_FAILED, exception);
         }
     }
 
