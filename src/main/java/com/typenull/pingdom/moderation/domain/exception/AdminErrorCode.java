@@ -16,6 +16,7 @@ public enum AdminErrorCode {
     PLACE_MERGE_ALREADY_RESTORED(HttpStatus.CONFLICT, "이미 복구된 장소 병합 이력입니다."),
     PLACE_MERGE_RESTORE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 장소 상태로는 병합 복구를 진행할 수 없습니다."),
     PLACE_KAKAO_PLACE_ID_CONFLICT(HttpStatus.CONFLICT, "이미 다른 장소에 연결된 Kakao place id입니다."),
+    RECOMMENDATION_EXPLANATION_NOT_FOUND(HttpStatus.NOT_FOUND, "추천 설명 정보를 찾을 수 없습니다."),
     RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "추천 트래픽 정책 요청이 올바르지 않습니다."),
     RECOMMENDATION_TRAFFIC_POLICY_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 추천 버전입니다."),
     RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID(HttpStatus.BAD_REQUEST, "추천 트래픽 비율 합계는 100이어야 합니다."),

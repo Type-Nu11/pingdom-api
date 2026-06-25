@@ -28,10 +28,12 @@ import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationExposure;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationFeatureLog;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationTrafficPolicyRepository;
@@ -45,6 +47,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -249,6 +252,61 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
                 .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void getRecommendationExplanationReturnsFeatureLogsForAdmin() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("관리자 설명 장소")
+                .address("경상남도 진주시 관리자설명로 1")
+                .category("카페")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(31L)
+                .registrant("placeRegistrar")
+                .build());
+        placeRecommendationFeatureLogRepository.save(PlaceRecommendationFeatureLog.builder()
+                .requestId("admin-request-1")
+                .userId(31L)
+                .placeId(mapPlace.getId())
+                .recommendationVersion("place-rec-v2")
+                .recommendationStage(RecommendationStage.EXPERIMENTAL)
+                .candidateSource(PlaceRecommendationCandidateSource.PERSONAL)
+                .ranking(1)
+                .distanceMeters(144)
+                .geoScore(0.9d)
+                .personalScore(0.8d)
+                .qualityScore(0.7d)
+                .engagementScore(0.6d)
+                .conversionScore(0.5d)
+                .explorationScore(0.4d)
+                .freshnessScore(0.3d)
+                .finalScore(0.95d)
+                .build());
+
+        mockMvc.perform(get("/admin/places/recommendations/{requestId}/explanation", "admin-request-1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestId").value("admin-request-1"))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.items[0].placeName").value("관리자 설명 장소"))
+                .andExpect(jsonPath("$.items[0].userId").value(31))
+                .andExpect(jsonPath("$.items[0].recommendationVersion").value("place-rec-v2"))
+                .andExpect(jsonPath("$.items[0].recommendationStage").value("EXPERIMENTAL"))
+                .andExpect(jsonPath("$.items[0].source").value("PERSONAL"))
+                .andExpect(jsonPath("$.items[0].ranking").value(1));
+    }
+
+    @Test
+    void getRecommendationExplanationReturnsNotFoundWhenMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/places/recommendations/{requestId}/explanation", "missing-request-id")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_EXPLANATION_NOT_FOUND"));
     }
 
     @Test

@@ -5,8 +5,10 @@ import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
+import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationExplanationResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
+import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
 import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
@@ -49,6 +51,7 @@ public class PlaceController {
     private final PlaceQueryService placeQueryService;
     private final PlaceRecommendationQueryService placeRecommendationQueryService;
     private final PlaceRecommendationClickService placeRecommendationClickService;
+    private final PlaceRecommendationExplanationQueryService placeRecommendationExplanationQueryService;
 
     @GetMapping
     @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
@@ -298,6 +301,40 @@ public class PlaceController {
         );
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(new PlaceRecommendationClickResponse(request.placeId(), "추천 장소 클릭을 기록했습니다."));
+    }
+
+    @GetMapping("/recommendations/{requestId}/explanation")
+    @Operation(summary = "추천 설명 조회", description = "사용자가 본인 추천 응답 requestId의 후보 source, score, ranking 정보를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "추천 설명 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceRecommendationExplanationResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "추천 설명 정보를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "추천 설명 정보를 찾을 수 없습니다.",
+                                              "code": "RECOMMENDATION_EXPLANATION_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<PlaceRecommendationExplanationResponse> getRecommendationExplanation(
+            @Parameter(description = "추천 응답 requestId", example = "9f7263d5-65f1-4834-9ca3-86ad2fc4e7d0")
+            @PathVariable String requestId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
     }
 
     @GetMapping("/{id}")
