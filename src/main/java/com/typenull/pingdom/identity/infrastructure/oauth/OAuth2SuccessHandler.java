@@ -1,6 +1,5 @@
 package com.typenull.pingdom.identity.infrastructure.oauth;
 
-import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
@@ -9,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -18,6 +18,7 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.web.authentication.AuthenticationSuccessHandler;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 @RequiredArgsConstructor
@@ -25,6 +26,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final OAuth2LinkCookieService oAuth2LinkCookieService;
 
     @Value("${oauth2.redirect-uri:http://localhost:5173/oauth2/redirect}")
     private String redirectUri;
@@ -63,9 +65,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
-        String accessToken = jwtTokenProvider.generateAccessToken(userId, username, roleName);
-        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
-
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new IllegalStateException("User를 찾을 수 없습니다."));
         if (user.isWithdrawn()) {
@@ -76,6 +75,15 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "밴 처리된 사용자입니다.");
             return;
         }
+
+        if (oAuth2LinkCookieService.readToken(request).isPresent()) {
+            oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
+            response.sendRedirect(linkSuccessRedirectUri(oauthToken.getAuthorizedClientRegistrationId()));
+            return;
+        }
+
+        String accessToken = jwtTokenProvider.generateAccessToken(userId, username, roleName);
+        String refreshToken = jwtTokenProvider.generateRefreshToken(userId);
         user.issueRefreshToken(refreshToken);
 
         boolean secureCookie = request.isSecure();
@@ -83,6 +91,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // access/refresh token을 URL에 노출하지 않고, /auth/oauth2/success 호출로 토큰을 회수할 수 있도록 쿠키로 전달한다.
         addShortLivedCookie(response, ACCESS_COOKIE, accessToken, secureCookie);
         addShortLivedCookie(response, REFRESH_COOKIE, refreshToken, secureCookie);
+        oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
         response.sendRedirect(normalizeRedirectUri(redirectUri));
     }
 
@@ -114,6 +123,14 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
 
         return trimmed;
+    }
+
+    private String linkSuccessRedirectUri(String registrationId) {
+        return UriComponentsBuilder.fromUriString(normalizeRedirectUri(redirectUri))
+                .queryParam("linked", registrationId.trim().toUpperCase(Locale.ROOT))
+                .encode()
+                .build()
+                .toUriString();
     }
 
     // providerId는 CustomOAuth2UserService에서 nameAttributeKey(sub)로 지정했으므로 getName()으로 가져온다.

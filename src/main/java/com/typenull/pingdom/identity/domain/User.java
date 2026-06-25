@@ -53,6 +53,10 @@ public class User {
     @Column(nullable = false)
     private String password;
 
+    @Builder.Default
+    @Column(name = "local_password_enabled", nullable = false)
+    private boolean localPasswordEnabled = true;
+
     @Column(name = "birth_year", nullable = false)
     private Integer birthYear;
 
@@ -212,6 +216,7 @@ public class User {
 
     public void changePassword(String password) {
         this.password = password;
+        this.localPasswordEnabled = true;
     }
 
     public void changeUsername(String username) {
@@ -240,6 +245,7 @@ public class User {
         this.username = anonymizedUsername;
         this.email = anonymizedEmail;
         this.password = anonymizedPassword;
+        this.localPasswordEnabled = false;
         this.birthYear = 0;
         this.profileImageUrl = null;
         this.language = "und";

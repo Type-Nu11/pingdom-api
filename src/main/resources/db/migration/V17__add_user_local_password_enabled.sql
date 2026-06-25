@@ -1,0 +1,2 @@
+ALTER TABLE users
+    ADD COLUMN local_password_enabled BOOLEAN NOT NULL DEFAULT TRUE;

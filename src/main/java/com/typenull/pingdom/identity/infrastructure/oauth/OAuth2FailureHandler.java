@@ -4,6 +4,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
+import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.security.core.AuthenticationException;
@@ -14,7 +15,10 @@ import org.springframework.web.util.UriComponentsBuilder;
 
 @Component
 @Slf4j
+@RequiredArgsConstructor
 public class OAuth2FailureHandler implements AuthenticationFailureHandler {
+
+    private final OAuth2LinkCookieService oAuth2LinkCookieService;
 
     @Value("${oauth2.redirect-uri:http://localhost:5173/oauth2/redirect}")
     private String redirectUri;
@@ -48,6 +52,7 @@ public class OAuth2FailureHandler implements AuthenticationFailureHandler {
                 .build()
                 .toUriString();
 
+        oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
         response.sendRedirect(targetUrl);
     }
 

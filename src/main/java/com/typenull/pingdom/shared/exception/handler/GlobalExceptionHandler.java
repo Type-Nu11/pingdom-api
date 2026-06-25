@@ -3,6 +3,7 @@ package com.typenull.pingdom.shared.exception.handler;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
@@ -47,6 +48,12 @@ public class GlobalExceptionHandler {
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }
 
+    @ExceptionHandler(NotificationsException.class)
+    public ResponseEntity<Map<String, String>> handleNotificationsException(NotificationsException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
     @ExceptionHandler(RateLimitException.class)
     public ResponseEntity<Map<String, String>> handleRateLimitException(RateLimitException exception) {
         return ResponseEntity.status(exception.getStatus())
@@ -78,11 +85,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleDataIntegrityViolationException(DataIntegrityViolationException exception) {
         String message = exception.getMessage();
         if (message != null) {
-            if (message.contains("users_username_key")) {
+            String normalizedMessage = message.toLowerCase();
+            if (normalizedMessage.contains("users_username_key")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("message", AuthErrorCode.DUPLICATE_USERNAME.getMessage(), "code", AuthErrorCode.DUPLICATE_USERNAME.name()));
             }
-            if (message.contains("map_bookmark")) {
+            if (normalizedMessage.contains("uk_oauth_accounts_provider_provider_id")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("message", AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED.getMessage(), "code", AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED.name()));
+            }
+            if (normalizedMessage.contains("map_bookmark")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("message", MapErrorCode.BOOKMARK_ALREADY_EXISTS.getMessage(), "code", MapErrorCode.BOOKMARK_ALREADY_EXISTS.name()));
             }

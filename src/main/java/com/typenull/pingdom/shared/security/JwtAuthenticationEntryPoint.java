@@ -94,6 +94,8 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
                 || "/users/me".equals(requestUri)
                 || "/map/posts".equals(requestUri)
                 || "/map/bookmarks".equals(requestUri)
-                || "/firebase/fcm-token".equals(requestUri);
+                || "/firebase/fcm-token".equals(requestUri)
+                || "/firebase/fcm-tokens".equals(requestUri)
+                || "/notifications/settings".equals(requestUri);
     }
 }
