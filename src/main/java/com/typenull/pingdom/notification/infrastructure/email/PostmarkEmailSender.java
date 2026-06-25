@@ -136,11 +136,13 @@ public class PostmarkEmailSender implements EmailSender {
                 """.formatted(buildPasswordResetLink(recipientEmail, resetToken), formattedExpiresAt);
     }
 
-    private String buildPasswordResetLink(String recipientEmail, String resetToken) {
+    String buildPasswordResetLink(String recipientEmail, String resetToken) {
         String encodedEmail = URLEncoder.encode(recipientEmail, StandardCharsets.UTF_8);
         String encodedToken = URLEncoder.encode(resetToken, StandardCharsets.UTF_8);
-        return postmarkProperties.passwordResetBaseUrl()
-                + "?email=" + encodedEmail
+        String baseUrl = postmarkProperties.passwordResetBaseUrl();
+        String separator = baseUrl.contains("?") ? "&" : "?";
+        return baseUrl
+                + separator + "email=" + encodedEmail
                 + "&token=" + encodedToken;
     }
 
