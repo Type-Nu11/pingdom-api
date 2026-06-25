@@ -6,10 +6,10 @@ import java.time.LocalDateTime;
 public interface EmailSender {
 
     // 이메일 인증 메일 발송 메서드
-    void sendVerificationEmail(String recipientEmail, String verificationCode);
+    EmailSendResult sendVerificationEmail(String recipientEmail, String verificationCode);
 
     // 비밀번호 재설정 메일 발송 메서드
-    default void sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+    default EmailSendResult sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
         throw new UnsupportedOperationException("비밀번호 재설정 메일 발송을 지원하지 않습니다.");
     }
 }
