@@ -1,6 +1,5 @@
 package com.typenull.pingdom.identity.infrastructure.oauth;
 
-import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
@@ -9,6 +8,7 @@ import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
 import java.time.LocalDateTime;
+import java.util.Locale;
 import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
@@ -78,7 +78,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         if (oAuth2LinkCookieService.readToken(request).isPresent()) {
             clearLinkCookie(request, response);
-            response.sendRedirect(linkSuccessRedirectUri());
+            response.sendRedirect(linkSuccessRedirectUri(oauthToken.getAuthorizedClientRegistrationId()));
             return;
         }
 
@@ -131,9 +131,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         return trimmed;
     }
 
-    private String linkSuccessRedirectUri() {
+    private String linkSuccessRedirectUri(String registrationId) {
         return UriComponentsBuilder.fromUriString(normalizeRedirectUri(redirectUri))
-                .queryParam("linked", AuthProvider.GOOGLE.name())
+                .queryParam("linked", registrationId.trim().toUpperCase(Locale.ROOT))
                 .encode()
                 .build()
                 .toUriString();
