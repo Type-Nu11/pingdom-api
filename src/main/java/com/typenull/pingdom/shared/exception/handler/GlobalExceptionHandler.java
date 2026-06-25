@@ -78,11 +78,16 @@ public class GlobalExceptionHandler {
     public ResponseEntity<Map<String, String>> handleDataIntegrityViolationException(DataIntegrityViolationException exception) {
         String message = exception.getMessage();
         if (message != null) {
-            if (message.contains("users_username_key")) {
+            String normalizedMessage = message.toLowerCase();
+            if (normalizedMessage.contains("users_username_key")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("message", AuthErrorCode.DUPLICATE_USERNAME.getMessage(), "code", AuthErrorCode.DUPLICATE_USERNAME.name()));
             }
-            if (message.contains("map_bookmark")) {
+            if (normalizedMessage.contains("uk_oauth_accounts_provider_provider_id")) {
+                return ResponseEntity.status(HttpStatus.CONFLICT)
+                        .body(Map.of("message", AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED.getMessage(), "code", AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED.name()));
+            }
+            if (normalizedMessage.contains("map_bookmark")) {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("message", MapErrorCode.BOOKMARK_ALREADY_EXISTS.getMessage(), "code", MapErrorCode.BOOKMARK_ALREADY_EXISTS.name()));
             }
