@@ -30,7 +30,7 @@ public class OAuthAccountCommandService {
         User user = findActiveUser(userId);
         validateGoogleAccountAttributes(providerId, email);
 
-        if (!user.getEmail().equalsIgnoreCase(email.trim())) {
+        if (!email.trim().equalsIgnoreCase(user.getEmail())) {
             throw new AuthException(AuthErrorCode.OAUTH_EMAIL_MISMATCH);
         }
 
