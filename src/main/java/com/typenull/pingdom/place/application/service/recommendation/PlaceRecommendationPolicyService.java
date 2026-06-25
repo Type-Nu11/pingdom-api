@@ -15,26 +15,28 @@ import java.util.Objects;
 import java.util.Set;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Service;
-import org.springframework.transaction.support.TransactionSynchronization;
-import org.springframework.transaction.support.TransactionSynchronizationManager;
-import org.springframework.util.StringUtils;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 
 @Service
 public class PlaceRecommendationPolicyService {
 
     private final PlaceRecommendationProperties properties;
     private final PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository;
+    private final TransactionTemplate transactionTemplate;
     private volatile Map<String, VersionPolicy> policiesByVersion = Map.of();
     private volatile Map<String, Integer> trafficOverridesByVersion = Map.of();
     private volatile Map<String, KillSwitchOverride> killSwitchOverridesByVersion = Map.of();
 
     public PlaceRecommendationPolicyService(
             PlaceRecommendationProperties properties,
-            PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository
+            PlaceRecommendationTrafficPolicyRepository trafficPolicyRepository,
+            TransactionTemplate transactionTemplate
     ) {
         this.properties = properties;
         this.trafficPolicyRepository = trafficPolicyRepository;
+        this.transactionTemplate = transactionTemplate;
     }
 
     @PostConstruct
@@ -119,8 +121,16 @@ public class PlaceRecommendationPolicyService {
         return buildTrafficPolicies(trafficOverridesByVersion);
     }
 
-    @Transactional
     public synchronized List<RecommendationTrafficPolicy> updateTrafficPolicies(Map<String, PolicyUpdateCommand> policyCommands) {
+        // Commit must complete before this monitor is released so the next update cannot read stale policy rows.
+        List<RecommendationTrafficPolicy> updatedPolicies = Objects.requireNonNull(
+                transactionTemplate.execute(status -> updateTrafficPoliciesInTransaction(policyCommands))
+        );
+        refreshPolicies();
+        return updatedPolicies;
+    }
+
+    private List<RecommendationTrafficPolicy> updateTrafficPoliciesInTransaction(Map<String, PolicyUpdateCommand> policyCommands) {
         Map<String, Integer> updatedOverrides = new LinkedHashMap<>(trafficOverridesByVersion);
         Map<String, KillSwitchOverride> updatedKillSwitchOverrides = new LinkedHashMap<>(killSwitchOverridesByVersion);
         Map<String, PlaceRecommendationTrafficPolicy> existingPolicies = trafficPolicyRepository.findAll().stream()
@@ -149,7 +159,6 @@ public class PlaceRecommendationPolicyService {
             updatedKillSwitchOverrides.put(policy.version(), new KillSwitchOverride(command.enabled(), command.fallbackVersion()));
         }
 
-        registerRefreshAfterCommit();
         return buildTrafficPolicies(updatedOverrides, updatedKillSwitchOverrides);
     }
 
@@ -235,20 +244,6 @@ public class PlaceRecommendationPolicyService {
 
     private String fallbackVersion(String version, Map<String, KillSwitchOverride> killSwitchOverrides) {
         return killSwitchOverrides.getOrDefault(version, KillSwitchOverride.DEFAULT).fallbackVersion();
-    }
-
-    private void registerRefreshAfterCommit() {
-        if (!TransactionSynchronizationManager.isSynchronizationActive()) {
-            refreshPolicies();
-            return;
-        }
-
-        TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
-            @Override
-            public void afterCommit() {
-                refreshPolicies();
-            }
-        });
     }
 
     private List<VersionPolicy> defaultPolicies() {
