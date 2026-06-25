@@ -11,10 +11,10 @@ import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
 import java.time.Clock;
+import java.time.DateTimeException;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
-import java.time.DateTimeException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,10 +28,19 @@ public class NotificationSettingService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final Clock clock;
 
-    @Transactional
+    @Transactional(readOnly = true)
     public NotificationSettingResponse getSetting(Long userId) {
-        NotificationSetting setting = findOrCreateSetting(userId);
-        return NotificationSettingResponse.from(setting);
+        ensureActiveUser(userId);
+        return notificationSettingRepository.findByUserId(userId)
+                .map(NotificationSettingResponse::from)
+                .orElseGet(() -> new NotificationSettingResponse(
+                        true,
+                        true,
+                        false,
+                        null,
+                        null,
+                        NotificationSetting.DEFAULT_TIMEZONE
+                ));
     }
 
     @Transactional
@@ -72,16 +81,20 @@ public class NotificationSettingService {
     }
 
     private NotificationSetting findOrCreateSetting(Long userId) {
-        User user = userRepository.findById(userId)
-                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
-        if (user.isWithdrawn()) {
-            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
-        }
+        ensureActiveUser(userId);
 
         return notificationSettingRepository.findByUserId(userId)
                 .orElseGet(() -> notificationSettingRepository.save(
                         NotificationSetting.createDefault(userId, LocalDateTime.now(clock))
                 ));
+    }
+
+    private void ensureActiveUser(Long userId) {
+        User user = userRepository.findById(userId)
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        if (user.isWithdrawn()) {
+            throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
+        }
     }
 
     private String resolveTimezone(NotificationSetting setting, String timezone) {

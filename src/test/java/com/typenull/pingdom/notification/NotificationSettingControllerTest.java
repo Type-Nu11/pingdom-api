@@ -46,7 +46,7 @@ class NotificationSettingControllerTest {
     }
 
     @Test
-    void getSettingCreatesDefaultSetting() throws Exception {
+    void getSettingReturnsDefaultSettingWithoutCreatingRow() throws Exception {
         User user = saveUser("settinguser");
 
         mockMvc.perform(get("/notifications/settings")
@@ -58,7 +58,7 @@ class NotificationSettingControllerTest {
                 .andExpect(jsonPath("$.timezone").value("Asia/Seoul"));
 
         org.junit.jupiter.api.Assertions.assertTrue(
-                notificationSettingRepository.findByUserId(user.getId()).isPresent()
+                notificationSettingRepository.findByUserId(user.getId()).isEmpty()
         );
     }
 
