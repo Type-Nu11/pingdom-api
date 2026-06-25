@@ -3,6 +3,7 @@ package com.typenull.pingdom.post.infrastructure.storage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
 import static org.mockito.Mockito.never;
@@ -19,8 +20,12 @@ import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.storage.image.ImageUploadProcessor;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
+import javax.imageio.ImageIO;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -78,7 +83,8 @@ class S3ServiceTest {
                 transactionManager(),
                 placeGrowthService,
                 placeRecommendationSnapshotService,
-                s3ObjectDeleteOutboxPublisher
+                s3ObjectDeleteOutboxPublisher,
+                new ImageUploadProcessor()
         );
     }
 
@@ -94,6 +100,8 @@ class S3ServiceTest {
         inOrder.verify(mapImageRepository).delete(mapImage);
         inOrder.verify(s3ObjectDeleteOutboxPublisher)
                 .publish("map/delete-target.jpg", "MAP_IMAGE", "10", "MAP_IMAGE_DELETED");
+        inOrder.verify(s3ObjectDeleteOutboxPublisher)
+                .publish("map/delete-target-thumbnail.jpg", "MAP_IMAGE", "10", "MAP_IMAGE_THUMBNAIL_DELETED");
         verify(s3ObjectStorage, never()).delete(any());
     }
 
@@ -101,23 +109,31 @@ class S3ServiceTest {
     void updateImagePublishesOldS3DeleteEventInsteadOfDeletingImmediately() throws Exception {
         MapImage mapImage = mapImage();
         when(mapImageRepository.findWithMapPlaceById(10L)).thenReturn(Optional.of(mapImage));
-        when(s3ObjectStorage.put(any(), eq("map")))
+        when(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map")))
                 .thenReturn(new S3ObjectStorage.S3PutResult(
                         "map/new-target.jpg",
                         "https://example.com/new-target.jpg"
                 ));
+        when(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map/thumbnails")))
+                .thenReturn(new S3ObjectStorage.S3PutResult(
+                        "map/thumbnails/new-target-thumbnail.jpg",
+                        "https://example.com/new-target-thumbnail.jpg"
+                ));
         PostUpdateRequest request = new PostUpdateRequest(
                 "수정 제목",
                 "수정 설명",
-                new MockMultipartFile("file", "new.jpg", "image/jpeg", "new-image".getBytes())
+                new MockMultipartFile("file", "new.jpg", "image/jpeg", validJpegBytes())
         );
 
         s3Service.updateImage(request, 1L, 10L);
 
         assertEquals("map/new-target.jpg", mapImage.getS3Key());
+        assertEquals("map/thumbnails/new-target-thumbnail.jpg", mapImage.getThumbnailS3Key());
         verify(mapImageRepository).save(mapImage);
         verify(s3ObjectDeleteOutboxPublisher)
                 .publish("map/delete-target.jpg", "MAP_IMAGE", "10", "MAP_IMAGE_REPLACED");
+        verify(s3ObjectDeleteOutboxPublisher)
+                .publish("map/delete-target-thumbnail.jpg", "MAP_IMAGE", "10", "MAP_IMAGE_THUMBNAIL_REPLACED");
         verify(s3ObjectStorage, never()).delete("map/delete-target.jpg");
     }
 
@@ -140,11 +156,20 @@ class S3ServiceTest {
                 .id(10L)
                 .imageUrl("https://example.com/delete-target.jpg")
                 .s3Key("map/delete-target.jpg")
+                .thumbnailUrl("https://example.com/delete-target-thumbnail.jpg")
+                .thumbnailS3Key("map/delete-target-thumbnail.jpg")
                 .title("삭제 대상")
                 .description("삭제 대상 설명")
                 .userId(1L)
                 .username("writer")
                 .build();
+    }
+
+    private byte[] validJpegBytes() throws Exception {
+        BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", outputStream);
+        return outputStream.toByteArray();
     }
 
     private PlatformTransactionManager transactionManager() {
