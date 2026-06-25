@@ -2,6 +2,7 @@ package com.typenull.pingdom.auth;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -129,6 +130,22 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
                 .andExpect(jsonPath("$.code").value("OAUTH_PASSWORD_CONFIRMATION_REQUIRED"));
 
         assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "unlink-required-sub").isPresent());
+    }
+
+    @Test
+    void unlinkGoogleRejectsOAuthOnlyUserUntilLocalPasswordIsSet() throws Exception {
+        User user = oAuthUserService.provisionGoogleUser("oauth-only-sub", "oauth-only@example.com");
+        assertFalse(user.isLocalPasswordEnabled());
+        OAuthAccountDisconnectRequest request = new OAuthAccountDisconnectRequest("password123");
+
+        mockMvc.perform(delete("/users/me/oauth-accounts/google")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("OAUTH_LOCAL_PASSWORD_REQUIRED"));
+
+        assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "oauth-only-sub").isPresent());
     }
 
     @Test

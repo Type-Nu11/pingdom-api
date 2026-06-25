@@ -88,6 +88,9 @@ public class OAuthAccountCommandService {
     }
 
     private void verifyCurrentPassword(User user, String currentPassword) {
+        if (!user.isLocalPasswordEnabled()) {
+            throw new AuthException(AuthErrorCode.OAUTH_LOCAL_PASSWORD_REQUIRED);
+        }
         if (!StringUtils.hasText(currentPassword)) {
             throw new AuthException(AuthErrorCode.OAUTH_PASSWORD_CONFIRMATION_REQUIRED);
         }

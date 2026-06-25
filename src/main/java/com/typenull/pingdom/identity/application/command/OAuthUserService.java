@@ -50,6 +50,10 @@ public class OAuthUserService {
                 .email(email)
                 .emailVerified(true)
                 .password(passwordEncoder.encode(UUID.randomUUID().toString()))
+                .localPasswordEnabled(false)
+                .birthYear(0)
+                .language("und")
+                .country("UNKNOWN")
                 .build());
 
         oAuthAccountRepository.save(OAuthAccount.builder()
