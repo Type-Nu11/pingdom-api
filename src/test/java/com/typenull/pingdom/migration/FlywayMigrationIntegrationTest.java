@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("17");
-        assertThat(result.migrationsExecuted).isEqualTo(17);
+        assertThat(result.targetSchemaVersion).isEqualTo("18");
+        assertThat(result.migrationsExecuted).isEqualTo(18);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("17");
-        assertThat(result.migrationsExecuted).isEqualTo(16);
+        assertThat(result.targetSchemaVersion).isEqualTo("18");
+        assertThat(result.migrationsExecuted).isEqualTo(17);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
