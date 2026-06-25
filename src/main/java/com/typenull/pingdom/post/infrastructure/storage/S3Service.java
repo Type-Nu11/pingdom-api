@@ -33,12 +33,20 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import java.io.IOException;
+import java.time.LocalDateTime;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class S3Service {
+
+    private static final String MAP_IMAGE_S3_PREFIX = "map/";
+    private static final String ORPHAN_REASON = "DB(MapImage)에 존재하지 않는 S3 객체";
 
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
@@ -222,6 +230,77 @@ public class S3Service {
         return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
     }
 
+    public S3OrphanReport createMapImageS3OrphanReport(int page, int limit) {
+        // DB에 저장된 MapImage.s3Key를 기준으로 S3의 map/ 객체 중 고아 파일을 찾는다.
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+
+        Set<String> dbKeys = mapImageRepository.findAllS3Keys()
+                .stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .collect(Collectors.toSet());
+        List<String> s3Keys = s3ObjectStorage.listKeys(MAP_IMAGE_S3_PREFIX)
+                .stream()
+                .filter(StringUtils::hasText)
+                .toList();
+        List<S3OrphanCandidate> deleteCandidates = s3Keys.stream()
+                .filter(key -> !dbKeys.contains(key))
+                .map(key -> new S3OrphanCandidate(key, ORPHAN_REASON))
+                .toList();
+        int deleteCandidateCount = deleteCandidates.size();
+        int totalPages = (int) Math.ceil((double) deleteCandidateCount / safeLimit);
+        int fromIndex = Math.min((safePage - 1) * safeLimit, deleteCandidateCount);
+        int toIndex = Math.min(fromIndex + safeLimit, deleteCandidateCount);
+        List<S3OrphanCandidate> pagedDeleteCandidates = deleteCandidates.subList(fromIndex, toIndex);
+
+        return new S3OrphanReport(
+                pagedDeleteCandidates,
+                dbKeys.size(),
+                s3Keys.size(),
+                deleteCandidateCount,
+                LocalDateTime.now(),
+                safePage,
+                safeLimit,
+                deleteCandidateCount,
+                totalPages,
+                safePage < totalPages
+        );
+    }
+
+    public S3OrphanDeleteResult deleteMapImageS3Keys(List<String> keys) {
+        // 리포트를 확인한 뒤 전달받은 key만 삭제한다. 여기서는 후보를 다시 계산하지 않는다.
+        Set<String> normalizedKeys = keys == null
+                ? Set.of()
+                : keys.stream()
+                        .filter(StringUtils::hasText)
+                        .map(String::trim)
+                        .filter(StringUtils::hasText)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> deletedKeys = new java.util.ArrayList<>();
+        List<S3OrphanDeleteFailure> failedKeys = new java.util.ArrayList<>();
+
+        for (String key : normalizedKeys) {
+            try {
+                s3ObjectStorage.delete(key);
+                deletedKeys.add(key);
+                log.info("S3 고아 파일 삭제 성공. key={}", key);
+            } catch (RuntimeException exception) {
+                failedKeys.add(new S3OrphanDeleteFailure(key, exception.getMessage()));
+                log.warn("S3 고아 파일 삭제 실패. key={}", key, exception);
+            }
+        }
+
+        return new S3OrphanDeleteResult(
+                normalizedKeys.size(),
+                deletedKeys.size(),
+                failedKeys.size(),
+                deletedKeys,
+                failedKeys
+        );
+    }
+
     private PostResponse savePost(
             PostUploadRequest request,
             long userId,
@@ -307,5 +386,34 @@ public class S3Service {
                 mapImageId == null ? null : String.valueOf(mapImageId),
                 reason
         );
+    }
+
+    public record S3OrphanCandidate(String key, String reason) {
+    }
+
+    public record S3OrphanReport(
+            List<S3OrphanCandidate> deleteCandidates,
+            int dbKeyCount,
+            int s3KeyCount,
+            int deleteCandidateCount,
+            LocalDateTime generatedAt,
+            int page,
+            int limit,
+            long totalCount,
+            long totalPages,
+            boolean hasNext
+    ) {
+    }
+
+    public record S3OrphanDeleteFailure(String key, String reason) {
+    }
+
+    public record S3OrphanDeleteResult(
+            int requestedKeyCount,
+            int deletedKeyCount,
+            int failedKeyCount,
+            List<String> deletedKeys,
+            List<S3OrphanDeleteFailure> failedKeys
+    ) {
     }
 }

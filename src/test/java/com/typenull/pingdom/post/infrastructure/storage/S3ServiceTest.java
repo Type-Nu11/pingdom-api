@@ -2,6 +2,7 @@ package com.typenull.pingdom.post.infrastructure.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.inOrder;
@@ -21,6 +22,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -133,6 +135,78 @@ class S3ServiceTest {
 
         verify(s3ObjectStorage, never()).delete(any());
         verify(s3ObjectDeleteOutboxPublisher, never()).publish(any(), any(), any(), any());
+    }
+
+    @Test
+    void createMapImageS3OrphanReportComparesS3KeysWithDatabaseS3Keys() {
+        when(mapImageRepository.findAllS3Keys())
+                .thenReturn(List.of("map/used.jpg", " map/trimmed.jpg ", ""));
+        when(s3ObjectStorage.listKeys("map/"))
+                .thenReturn(List.of("map/used.jpg", "map/orphan.jpg", "map/trimmed.jpg"));
+
+        S3Service.S3OrphanReport report = s3Service.createMapImageS3OrphanReport(1, 20);
+
+        assertEquals(2, report.dbKeyCount());
+        assertEquals(3, report.s3KeyCount());
+        assertEquals(1, report.deleteCandidateCount());
+        assertEquals(1, report.page());
+        assertEquals(20, report.limit());
+        assertEquals(1, report.totalCount());
+        assertEquals(1, report.totalPages());
+        assertEquals(false, report.hasNext());
+        assertEquals("map/orphan.jpg", report.deleteCandidates().getFirst().key());
+        assertEquals("DB(MapImage)에 존재하지 않는 S3 객체", report.deleteCandidates().getFirst().reason());
+    }
+
+    @Test
+    void createMapImageS3OrphanReportPaginatesDeleteCandidates() {
+        when(mapImageRepository.findAllS3Keys()).thenReturn(List.of("map/used.jpg"));
+        when(s3ObjectStorage.listKeys("map/")).thenReturn(List.of(
+                "map/used.jpg",
+                "map/orphan-1.jpg",
+                "map/orphan-2.jpg",
+                "map/orphan-3.jpg"
+        ));
+
+        S3Service.S3OrphanReport report = s3Service.createMapImageS3OrphanReport(2, 2);
+
+        assertEquals(3, report.deleteCandidateCount());
+        assertEquals(3, report.totalCount());
+        assertEquals(2, report.totalPages());
+        assertEquals(2, report.page());
+        assertEquals(2, report.limit());
+        assertEquals(false, report.hasNext());
+        assertEquals(1, report.deleteCandidates().size());
+        assertEquals("map/orphan-3.jpg", report.deleteCandidates().getFirst().key());
+    }
+
+    @Test
+    void deleteMapImageS3KeysIgnoresBlankKeysAndContinuesAfterFailure() {
+        org.mockito.Mockito.doAnswer(invocation -> {
+                    String key = invocation.getArgument(0);
+                    if ("map/fail.jpg".equals(key)) {
+                        throw new RuntimeException("delete failed");
+                    }
+                    return null;
+                })
+                .when(s3ObjectStorage)
+                .delete(any());
+
+        S3Service.S3OrphanDeleteResult result = s3Service.deleteMapImageS3Keys(List.of(
+                "map/success.jpg",
+                " ",
+                "map/fail.jpg",
+                "map/success.jpg"
+        ));
+
+        assertEquals(2, result.requestedKeyCount());
+        assertEquals(1, result.deletedKeyCount());
+        assertEquals(1, result.failedKeyCount());
+        assertEquals(List.of("map/success.jpg"), result.deletedKeys());
+        assertEquals("map/fail.jpg", result.failedKeys().getFirst().key());
+        assertTrue(result.failedKeys().getFirst().reason().contains("delete failed"));
+        verify(s3ObjectStorage).delete("map/success.jpg");
+        verify(s3ObjectStorage).delete("map/fail.jpg");
     }
 
     private MapImage mapImage() {

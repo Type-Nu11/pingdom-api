@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;
+import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,7 +15,9 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -22,8 +25,10 @@ import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/admin")
@@ -34,6 +39,7 @@ public class AdminPostController {
 
     private final AdminPostService adminPostService;
     private final AdminPostQueryService adminPostQueryService;
+    private final S3Service s3Service;
 
     @GetMapping("/posts")
     @Operation(
@@ -205,5 +211,37 @@ public class AdminPostController {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         adminPostService.deletePost(id, adminUserId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/posts/s3/orphans/report")
+    @Operation(
+            summary = "MapImage S3 고아 파일 삭제 후보 리포트 생성",
+            description = "DB의 MapImage.s3Key 목록과 S3 map/ prefix 아래 객체 key를 비교해 DB에 없는 S3 key를 페이지 단위 삭제 후보로 반환합니다. 이 API는 실제 삭제를 수행하지 않습니다."
+    )
+    // 먼저 삭제 후보만 보여주고, 실제 삭제는 별도 확인 요청에서 처리한다.
+    public S3Service.S3OrphanReport createS3OrphanReport(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return s3Service.createMapImageS3OrphanReport(page, limit);
+    }
+
+    @DeleteMapping("/posts/s3/orphans")
+    @Operation(
+            summary = "MapImage S3 고아 파일 삭제",
+            description = "요청 본문으로 받은 key 목록만 삭제합니다. 삭제 후보를 다시 계산하지 않으며 null 또는 blank key는 무시합니다."
+    )
+    public S3Service.S3OrphanDeleteResult deleteS3Orphans(
+            @RequestBody(required = false) AdminS3OrphanDeleteRequest request
+    ) {
+        if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 삭제 리포트 확인이 필요합니다.");
+        }
+        return s3Service.deleteMapImageS3Keys(request.keys());
+    }
+
+    public record AdminS3OrphanDeleteRequest(List<String> keys, Boolean confirmed) {
     }
 }
