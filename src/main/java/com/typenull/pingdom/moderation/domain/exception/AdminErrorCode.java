@@ -37,7 +37,8 @@ public enum AdminErrorCode {
     RECOMMENDATION_POLICY_HISTORY_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "추천 정책 변경 이력 저장에 실패했습니다."),
     POST_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "게시글 삭제에 실패했습니다."),
     S3_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, "S3 설정이 누락되었습니다."),
-    S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S3 연결에 실패했습니다.");
+    S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S3 연결에 실패했습니다."),
+    S3_REPORT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3 객체 리포트 생성에 실패했습니다.");
 
     private final HttpStatus status;
     private final String message;

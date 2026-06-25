@@ -196,6 +196,22 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     boolean existsByUserIdAndMapPlace_Id(Long userId, Long placeId);
 
+    @Query("""
+            SELECT m.s3Key
+            FROM MapImage m
+            WHERE m.s3Key IS NOT NULL
+              AND m.s3Key <> ''
+            """)
+    List<String> findAllOriginalS3Keys();
+
+    @Query("""
+            SELECT m.thumbnailS3Key
+            FROM MapImage m
+            WHERE m.thumbnailS3Key IS NOT NULL
+              AND m.thumbnailS3Key <> ''
+            """)
+    List<String> findAllThumbnailS3Keys();
+
     @Query("SELECT m FROM MapImage m WHERE m.id = :id OR m.userId = :id")
     Page<MapImage> findByIdOrUserId(@Param("id") Long id, Pageable pageable);
 
