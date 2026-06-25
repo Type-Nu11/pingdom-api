@@ -13,6 +13,7 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.application.service.WithdrawnUserPurgeService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
+import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
@@ -71,11 +72,13 @@ class AuthControllerTest {
         EmailSender emailSender() {
             return new EmailSender() {
                 @Override
-                public void sendVerificationEmail(String recipientEmail, String verificationCode) {
+                public EmailSendResult sendVerificationEmail(String recipientEmail, String verificationCode) {
+                    return EmailSendResult.sent(null);
                 }
 
                 @Override
-                public void sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+                public EmailSendResult sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+                    return EmailSendResult.sent(null);
                 }
             };
         }

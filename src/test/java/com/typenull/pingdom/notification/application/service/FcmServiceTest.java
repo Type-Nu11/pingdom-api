@@ -47,6 +47,9 @@ class FcmServiceTest {
     @Mock
     private FcmMessageSender fcmMessageSender;
 
+    @Mock
+    private NotificationDeliveryRecorder notificationDeliveryRecorder;
+
     private FcmService fcmService;
 
     @BeforeEach
@@ -58,6 +61,7 @@ class FcmServiceTest {
                 fcmDeviceTokenService,
                 notificationDeliveryPolicy,
                 fcmMessageSender,
+                notificationDeliveryRecorder,
                 clock
         );
     }
@@ -82,6 +86,22 @@ class FcmServiceTest {
         assertThat(notificationCaptor.getValue().getToken()).isNull();
         verify(fcmMessageSender).send(eq("token-1"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L));
         verify(fcmMessageSender).send(eq("token-2"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L));
+        verify(notificationDeliveryRecorder).recordFcmSuccess(
+                eq(OWNER_ID),
+                eq(100L),
+                eq(NotificationType.NEW_LIKE),
+                eq(null),
+                eq("token-1"),
+                eq("sent")
+        );
+        verify(notificationDeliveryRecorder).recordFcmSuccess(
+                eq(OWNER_ID),
+                eq(100L),
+                eq(NotificationType.NEW_LIKE),
+                eq(null),
+                eq("token-2"),
+                eq("sent")
+        );
     }
 
     @Test
@@ -112,6 +132,17 @@ class FcmServiceTest {
         fcmService.sendLikeNotification(OWNER_ID, LIKER_ID);
 
         verify(fcmDeviceTokenService).deleteInvalidToken("invalid-token");
+        verify(notificationDeliveryRecorder).recordFcmFailure(
+                eq(OWNER_ID),
+                eq(100L),
+                eq(NotificationType.NEW_LIKE),
+                eq(null),
+                eq("invalid-token"),
+                eq(null),
+                eq(NotificationDeliveryRecorder.ERROR_FCM_INVALID_TOKEN),
+                eq("invalid"),
+                eq(false)
+        );
     }
 
     @Test
@@ -129,6 +160,17 @@ class FcmServiceTest {
         fcmService.sendLikeNotification(OWNER_ID, LIKER_ID);
 
         verify(notificationsRepository).save(any(Notifications.class));
+        verify(notificationDeliveryRecorder).recordFcmFailure(
+                eq(OWNER_ID),
+                eq(100L),
+                eq(NotificationType.NEW_LIKE),
+                eq(null),
+                eq("token"),
+                eq(null),
+                eq(NotificationDeliveryRecorder.ERROR_FCM_SEND_FAILED),
+                eq("temporary"),
+                eq(true)
+        );
     }
 
     private User user(Long userId, String username) {
