@@ -10,7 +10,6 @@ import java.util.List;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.BeforeAll;
-import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
@@ -31,17 +30,14 @@ class PlaceSearchPerformanceRegressionTest {
             .withPassword("pingdom");
 
     @BeforeAll
-    static void ensureRequiredExtensions() throws Exception {
+    static void setUp() throws Exception {
+        resetDatabase();
+
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
             statement.execute("CREATE EXTENSION IF NOT EXISTS pg_trgm");
         }
-    }
-
-    @BeforeEach
-    void setUp() throws Exception {
-        resetDatabase();
 
         MigrateResult result = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -114,7 +110,7 @@ class PlaceSearchPerformanceRegressionTest {
                 .anyMatch(line -> line.contains("idx_map_place_latitude_longitude"));
     }
 
-    private void resetDatabase() throws Exception {
+    private static void resetDatabase() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             statement.execute("""
@@ -134,7 +130,7 @@ class PlaceSearchPerformanceRegressionTest {
         }
     }
 
-    private void seedPlaces() throws Exception {
+    private static void seedPlaces() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             statement.executeUpdate("""
@@ -210,7 +206,7 @@ class PlaceSearchPerformanceRegressionTest {
         }
     }
 
-    private List<String> explain(String sql) throws Exception {
+    private static List<String> explain(String sql) throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             statement.execute("SET enable_seqscan = off");
