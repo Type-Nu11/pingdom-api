@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyBoolean;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -25,7 +26,6 @@ import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
-import org.junit.jupiter.api.Assertions;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -140,8 +140,8 @@ class PlaceSimilaritySnapshotResyncServiceTest {
                 .mapToInt(Integer::intValue)
                 .sum();
 
-        Assertions.assertTrue(batchSizes.stream().allMatch(batchSize -> batchSize <= 500));
-        Assertions.assertEquals(existingSnapshots.size(), totalBatchSize);
+        assertTrue(batchSizes.stream().allMatch(batchSize -> batchSize <= 500));
+        assertEquals(existingSnapshots.size(), totalBatchSize);
         verify(placeSimilaritySnapshotRepository, never()).saveAll(any());
     }
 
