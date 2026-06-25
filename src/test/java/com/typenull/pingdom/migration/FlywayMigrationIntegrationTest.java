@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("15");
-        assertThat(result.migrationsExecuted).isEqualTo(15);
+        assertThat(result.targetSchemaVersion).isEqualTo("16");
+        assertThat(result.migrationsExecuted).isEqualTo(16);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("15");
-        assertThat(result.migrationsExecuted).isEqualTo(14);
+        assertThat(result.targetSchemaVersion).isEqualTo("16");
+        assertThat(result.migrationsExecuted).isEqualTo(15);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -300,6 +300,22 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'place_recommendation_traffic_policy'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_recommendation_traffic_policy'
+                          AND column_name = 'enabled'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_recommendation_traffic_policy'
+                          AND column_name = 'fallback_version'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

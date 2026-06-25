@@ -28,6 +28,12 @@ public class PlaceRecommendationTrafficPolicy {
     @Column(name = "traffic_percentage", nullable = false)
     private int trafficPercentage;
 
+    @Column(name = "enabled", nullable = false)
+    private boolean enabled;
+
+    @Column(name = "fallback_version", length = 100)
+    private String fallbackVersion;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -36,14 +42,23 @@ public class PlaceRecommendationTrafficPolicy {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    public static PlaceRecommendationTrafficPolicy create(String recommendationVersion, int trafficPercentage) {
+    public static PlaceRecommendationTrafficPolicy create(
+            String recommendationVersion,
+            int trafficPercentage,
+            boolean enabled,
+            String fallbackVersion
+    ) {
         return PlaceRecommendationTrafficPolicy.builder()
                 .recommendationVersion(recommendationVersion)
                 .trafficPercentage(trafficPercentage)
+                .enabled(enabled)
+                .fallbackVersion(fallbackVersion)
                 .build();
     }
 
-    public void updateTrafficPercentage(int trafficPercentage) {
+    public void update(int trafficPercentage, boolean enabled, String fallbackVersion) {
         this.trafficPercentage = trafficPercentage;
+        this.enabled = enabled;
+        this.fallbackVersion = fallbackVersion;
     }
 }

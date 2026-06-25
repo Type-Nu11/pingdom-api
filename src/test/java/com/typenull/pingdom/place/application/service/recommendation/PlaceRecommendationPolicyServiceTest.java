@@ -43,6 +43,44 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     @Test
+    void invalidRequestedVersionFallsBackToFirstEnabledVersionWhenDefaultDisabled() {
+        PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
+                "place-rec-v1",
+                List.of(
+                        createPolicy("place-rec-v1", RecommendationStage.STABLE, 100),
+                        createPolicy("place-rec-v2", RecommendationStage.EXPERIMENTAL, 0)
+                )
+        );
+        PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
+        Mockito.when(context.repository().findAll()).thenReturn(List.of(
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v1",
+                        100,
+                        false,
+                        "place-rec-v2"
+                ),
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        0,
+                        true,
+                        null
+                )
+        ));
+        PlaceRecommendationPolicyService service = context.service();
+        service.initialize();
+
+        PlaceRecommendationPolicyService.ResolvedRecommendationPolicy policy = service.resolve(
+                99L,
+                35.1801d,
+                128.1078d,
+                "unknown-version"
+        );
+
+        assertEquals("place-rec-v2", policy.version());
+        assertEquals("unknown-version", policy.sourceVersion());
+    }
+
+    @Test
     void overrideTrafficPercentageChangesBucketResolution() {
         PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
                 "place-rec-v1",
@@ -53,8 +91,18 @@ class PlaceRecommendationPolicyServiceTest {
         );
         PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
         Mockito.when(context.repository().findAll()).thenReturn(List.of(
-                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create("place-rec-v1", 0),
-                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create("place-rec-v2", 100)
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v1",
+                        0,
+                        true,
+                        null
+                ),
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        100,
+                        true,
+                        null
+                )
         ));
         PlaceRecommendationPolicyService service = context.service();
         service.initialize();
@@ -67,6 +115,38 @@ class PlaceRecommendationPolicyServiceTest {
         );
 
         assertEquals("place-rec-v2", policy.version());
+    }
+
+    @Test
+    void disabledRequestedVersionFallsBackToConfiguredVersion() {
+        PlaceRecommendationProperties properties = new PlaceRecommendationProperties(
+                "place-rec-v1",
+                List.of(
+                        createPolicy("place-rec-v1", RecommendationStage.STABLE, 100),
+                        createPolicy("place-rec-v2", RecommendationStage.EXPERIMENTAL, 0)
+                )
+        );
+        PlaceRecommendationPolicyRepositoryContext context = createContext(properties);
+        Mockito.when(context.repository().findAll()).thenReturn(List.of(
+                com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy.create(
+                        "place-rec-v2",
+                        0,
+                        false,
+                        "place-rec-v1"
+                )
+        ));
+        PlaceRecommendationPolicyService service = context.service();
+        service.initialize();
+
+        PlaceRecommendationPolicyService.ResolvedRecommendationPolicy policy = service.resolve(
+                1L,
+                35.1801d,
+                128.1078d,
+                "place-rec-v2"
+        );
+
+        assertEquals("place-rec-v1", policy.version());
+        assertEquals("place-rec-v2", policy.sourceVersion());
     }
 
     private PlaceRecommendationPolicyRepositoryContext createContext(PlaceRecommendationProperties properties) {
