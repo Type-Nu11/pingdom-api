@@ -44,13 +44,15 @@ public class AdminPostServiceImpl implements AdminPostService {
         postReportRepository.detachMapImageByMapImageId(postId);
 
         String keyToDelete = resolveS3Key(mapImage);
+        String thumbnailKeyToDelete = mapImage.getThumbnailS3Key();
 
         MapPlace mapPlace = mapImage.getMapPlace();
         if (mapPlace != null) {
             placeGrowthService.decreasePhotoCount(mapPlace.getId());
         }
         mapImageRepository.delete(mapImage);
-        publishS3Delete(keyToDelete, postId);
+        publishS3Delete(keyToDelete, postId, "ADMIN_MAP_IMAGE_DELETED");
+        publishS3Delete(thumbnailKeyToDelete, postId, "ADMIN_MAP_IMAGE_THUMBNAIL_DELETED");
         adminAuditLogService.record(
                 adminUserId,
                 AdminAuditAction.POST_DELETED,
@@ -139,12 +141,12 @@ public class AdminPostServiceImpl implements AdminPostService {
         }
     }
 
-    private void publishS3Delete(String s3Key, Long postId) {
+    private void publishS3Delete(String s3Key, Long postId, String reason) {
         s3ObjectDeleteOutboxPublisher.publish(
                 s3Key,
                 "MAP_IMAGE",
                 postId == null ? null : String.valueOf(postId),
-                "ADMIN_MAP_IMAGE_DELETED"
+                reason
         );
     }
 
@@ -154,6 +156,8 @@ public class AdminPostServiceImpl implements AdminPostService {
         state.put("title", mapImage.getTitle());
         state.put("imageUrl", mapImage.getImageUrl());
         state.put("s3Key", mapImage.getS3Key());
+        state.put("thumbnailUrl", mapImage.getThumbnailUrl());
+        state.put("thumbnailS3Key", mapImage.getThumbnailS3Key());
         state.put("s3KeyToDelete", s3KeyToDelete);
         state.put("userId", mapImage.getUserId());
         state.put("username", mapImage.getUsername());
