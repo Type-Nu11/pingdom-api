@@ -59,6 +59,7 @@ public class AdminPlaceRecommendationExplanationQueryService {
         Map<Long, String> placeNames = new HashMap<>();
         List<Long> placeIds = logs.stream()
                 .map(PlaceRecommendationFeatureLog::getPlaceId)
+                .filter(placeId -> placeId != null)
                 .distinct()
                 .toList();
         for (MapPlace place : mapPlaceRepository.findAllById(placeIds)) {
