@@ -32,7 +32,6 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Base64;
 import java.util.HexFormat;
-import java.util.Objects;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
@@ -197,7 +196,7 @@ public class AuthServiceImpl implements AuthService {
         }
 
         User user = resetToken.getUser();
-        if (!Objects.equals(user.getEmail(), request.email().trim())) {
+        if (user.getEmail() == null || !user.getEmail().equalsIgnoreCase(request.email().trim())) {
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
         if (user.isWithdrawn()) {

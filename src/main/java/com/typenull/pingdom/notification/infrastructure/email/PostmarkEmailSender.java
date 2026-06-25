@@ -7,6 +7,7 @@ import java.io.IOException;
 import java.net.URLEncoder;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDateTime;
+import java.time.format.DateTimeFormatter;
 import java.util.Map;
 
 import com.typenull.pingdom.identity.application.port.EmailSender;
@@ -21,6 +22,8 @@ public class PostmarkEmailSender implements EmailSender {
     private static final String POSTMARK_SERVER_TOKEN_HEADER = "X-Postmark-Server-Token";
     private static final String VERIFICATION_SUBJECT = "Pingdom 이메일 인증";
     private static final String PASSWORD_RESET_SUBJECT = "Pingdom 비밀번호 재설정";
+    private static final DateTimeFormatter PASSWORD_RESET_EXPIRATION_FORMATTER =
+            DateTimeFormatter.ofPattern("yyyy-MM-dd HH:mm:ss");
 
     private final PostmarkProperties postmarkProperties;
     private final ApiClient apiClient;
@@ -115,20 +118,22 @@ public class PostmarkEmailSender implements EmailSender {
     }
 
     private String buildPasswordResetTextBody(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+        String formattedExpiresAt = formatPasswordResetExpiration(expiresAt);
         return """
                 Pingdom 비밀번호 재설정
 
                 재설정 링크: %s
                 만료 시각: %s
-                """.formatted(buildPasswordResetLink(recipientEmail, resetToken), expiresAt);
+                """.formatted(buildPasswordResetLink(recipientEmail, resetToken), formattedExpiresAt);
     }
 
     private String buildPasswordResetHtmlBody(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
+        String formattedExpiresAt = formatPasswordResetExpiration(expiresAt);
         return """
                 <h2>Pingdom 비밀번호 재설정</h2>
                 <p><a href="%s">비밀번호 재설정 링크 열기</a></p>
                 <p>만료 시각: %s</p>
-                """.formatted(buildPasswordResetLink(recipientEmail, resetToken), expiresAt);
+                """.formatted(buildPasswordResetLink(recipientEmail, resetToken), formattedExpiresAt);
     }
 
     private String buildPasswordResetLink(String recipientEmail, String resetToken) {
@@ -137,5 +142,9 @@ public class PostmarkEmailSender implements EmailSender {
         return postmarkProperties.passwordResetBaseUrl()
                 + "?email=" + encodedEmail
                 + "&token=" + encodedToken;
+    }
+
+    private String formatPasswordResetExpiration(LocalDateTime expiresAt) {
+        return expiresAt.format(PASSWORD_RESET_EXPIRATION_FORMATTER);
     }
 }

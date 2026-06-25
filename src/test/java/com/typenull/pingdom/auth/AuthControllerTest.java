@@ -384,6 +384,28 @@ class AuthControllerTest {
     }
 
     @Test
+    void passwordResetConfirmIgnoresEmailCase() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("resetcaseuser", "resetcaseuser@example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+        outboxEventRepository.deleteAllInBatch();
+        requestPasswordReset("resetcaseuser@example.com");
+        PasswordResetOutboxPayload payload = passwordResetPayload();
+        PasswordResetConfirmRequest confirmRequest = new PasswordResetConfirmRequest(
+                "RESETCASEUSER@EXAMPLE.COM",
+                payload.resetToken(),
+                "newPassword123",
+                "newPassword123"
+        );
+
+        mockMvc.perform(post("/auth/password-reset/confirm")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(confirmRequest)))
+                .andExpect(status().isNoContent());
+    }
+
+    @Test
     void passwordResetConfirmRejectsExpiredToken() throws Exception {
         User user = userRepository.saveAndFlush(User.builder()
                 .username("expiredresetuser")

@@ -30,7 +30,7 @@ public record PasswordResetConfirmRequest(
 ) {
 
     public void validatePassword() {
-        if (!newPassword.equals(confirmPassword)) {
+        if (newPassword == null || !newPassword.equals(confirmPassword)) {
             throw new AuthException(AuthErrorCode.PASSWORD_MISMATCH);
         }
     }
