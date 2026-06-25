@@ -42,10 +42,16 @@ CREATE INDEX IF NOT EXISTS idx_fcm_device_token_user_updated
     ON fcm_device_token (user_id, updated_at DESC);
 
 INSERT INTO fcm_device_token (user_id, token, created_at, updated_at, last_registered_at)
-SELECT id, fcm_token, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+SELECT DISTINCT ON (btrim(fcm_token))
+    id,
+    btrim(fcm_token),
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP,
+    CURRENT_TIMESTAMP
 FROM users
 WHERE fcm_token IS NOT NULL
   AND btrim(fcm_token) <> ''
+ORDER BY btrim(fcm_token), id DESC
 ON CONFLICT (token) DO UPDATE
 SET user_id = EXCLUDED.user_id,
     updated_at = CURRENT_TIMESTAMP,
