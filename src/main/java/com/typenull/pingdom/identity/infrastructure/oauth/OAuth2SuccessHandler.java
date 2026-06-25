@@ -77,7 +77,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         }
 
         if (oAuth2LinkCookieService.readToken(request).isPresent()) {
-            clearLinkCookie(request, response);
+            oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
             response.sendRedirect(linkSuccessRedirectUri(oauthToken.getAuthorizedClientRegistrationId()));
             return;
         }
@@ -91,7 +91,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
         // access/refresh token을 URL에 노출하지 않고, /auth/oauth2/success 호출로 토큰을 회수할 수 있도록 쿠키로 전달한다.
         addShortLivedCookie(response, ACCESS_COOKIE, accessToken, secureCookie);
         addShortLivedCookie(response, REFRESH_COOKIE, refreshToken, secureCookie);
-        clearLinkCookie(request, response);
+        oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
         response.sendRedirect(normalizeRedirectUri(redirectUri));
     }
 
@@ -106,12 +106,6 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .maxAge(COOKIE_EXPIRE_SECONDS)
                 .build();
         response.addHeader(HttpHeaders.SET_COOKIE, cookie.toString());
-    }
-
-    private void clearLinkCookie(HttpServletRequest request, HttpServletResponse response) {
-        if (oAuth2LinkCookieService.readToken(request).isPresent()) {
-            response.addHeader(HttpHeaders.SET_COOKIE, oAuth2LinkCookieService.clearLinkCookie(request).toString());
-        }
     }
 
     private String normalizeRedirectUri(String value) {

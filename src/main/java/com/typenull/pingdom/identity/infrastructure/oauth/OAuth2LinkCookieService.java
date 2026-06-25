@@ -2,7 +2,9 @@ package com.typenull.pingdom.identity.infrastructure.oauth;
 
 import jakarta.servlet.http.Cookie;
 import jakarta.servlet.http.HttpServletRequest;
+import jakarta.servlet.http.HttpServletResponse;
 import java.util.Optional;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
@@ -25,6 +27,12 @@ public class OAuth2LinkCookieService {
         return baseCookie(request, "")
                 .maxAge(0)
                 .build();
+    }
+
+    public void clearLinkCookieIfPresent(HttpServletRequest request, HttpServletResponse response) {
+        if (readToken(request).isPresent()) {
+            response.addHeader(HttpHeaders.SET_COOKIE, clearLinkCookie(request).toString());
+        }
     }
 
     public Optional<String> readToken() {

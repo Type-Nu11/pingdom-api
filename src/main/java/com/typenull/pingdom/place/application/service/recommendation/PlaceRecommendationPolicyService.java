@@ -43,7 +43,7 @@ public class PlaceRecommendationPolicyService {
     }
 
     @Transactional(readOnly = true)
-    public void refreshPolicies() {
+    public synchronized void refreshPolicies() {
         List<VersionPolicy> configuredPolicies = properties.versions();
         if (configuredPolicies == null || configuredPolicies.isEmpty()) {
             configuredPolicies = defaultPolicies();

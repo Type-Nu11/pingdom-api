@@ -30,7 +30,11 @@ public class FcmController {
 
     private final FcmDeviceTokenService fcmDeviceTokenService;
 
-    @Operation(summary = "FCM 토큰 업데이트", description = "사용자의 기기 토큰을 최신화합니다. 로그인 시 또는 토큰 갱신 시 호출합니다.")
+    @Deprecated
+    @Operation(
+            summary = "FCM 토큰 업데이트",
+            description = "하위 호환성을 위한 기존 엔드포인트입니다. 곧 지원 중단될 예정이므로 POST /firebase/fcm-tokens를 사용하세요."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "토큰 업데이트 성공"),
             @ApiResponse(
