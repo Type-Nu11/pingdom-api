@@ -3,6 +3,7 @@ package com.typenull.pingdom.identity.application.command;
 import com.typenull.pingdom.identity.domain.AuthProvider;
 import com.typenull.pingdom.identity.domain.OAuthAccount;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import java.util.UUID;
@@ -29,13 +30,19 @@ public class OAuthUserService {
         if (account != null) {
             User user = account.getUser();
             if (user.isWithdrawn()) {
-                throw new OAuth2AuthenticationException(new OAuth2Error("user_withdrawn"), "탈퇴 처리된 사용자입니다.");
+                throw new OAuth2AuthenticationException(
+                        new OAuth2Error(AuthErrorCode.USER_WITHDRAWN.name()),
+                        AuthErrorCode.USER_WITHDRAWN.getMessage()
+                );
             }
             return user;
         }
 
         if (userRepository.existsByEmail(email)) {
-            throw new OAuth2AuthenticationException(new OAuth2Error("email_conflict"), "이미 로컬 계정으로 가입된 이메일입니다.");
+            throw new OAuth2AuthenticationException(
+                    new OAuth2Error(AuthErrorCode.OAUTH_EMAIL_CONFLICT.name()),
+                    AuthErrorCode.OAUTH_EMAIL_CONFLICT.getMessage()
+            );
         }
 
         User user = userRepository.save(User.builder()
