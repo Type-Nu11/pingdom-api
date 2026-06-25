@@ -190,10 +190,17 @@ public class AdminReportServiceImpl implements AdminReportService {
 
         return postReportRepository.searchPendingReports(
                 PostReportStatus.PENDING,
-                keyword,
+                escapeLikeKeyword(keyword),
                 numericKeyword,
                 pageable
         );
+    }
+
+    private String escapeLikeKeyword(String keyword) {
+        return keyword
+                .replace("\\", "\\\\")
+                .replace("%", "\\%")
+                .replace("_", "\\_");
     }
 
     private Map<String, Object> reportState(PostReport postReport, boolean reportedUserBanned, boolean postHidden) {

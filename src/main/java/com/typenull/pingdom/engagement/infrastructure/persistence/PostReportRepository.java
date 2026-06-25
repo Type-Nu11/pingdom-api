@@ -49,8 +49,8 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
                     "from PostReport pr " +
                     "where pr.status = :status " +
                     "and ( " +
-                    "   lower(pr.reporterUsername) like lower(concat('%', :keyword, '%')) " +
-                    "   or lower(pr.reason) like lower(concat('%', :keyword, '%')) " +
+                    "   lower(pr.reporterUsername) like lower(concat('%', :keyword, '%')) escape '\\' " +
+                    "   or lower(pr.reason) like lower(concat('%', :keyword, '%')) escape '\\' " +
                     "   or (:numericKeyword is not null and pr.reportedUserId = :numericKeyword) " +
                     ")"
     )
