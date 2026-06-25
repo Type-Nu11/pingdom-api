@@ -325,6 +325,25 @@ class AuthControllerTest {
     }
 
     @Test
+    void passwordResetRequestFindsEmailIgnoringCase() throws Exception {
+        SignupRequest signupRequest = new SignupRequest("resetrequestcaseuser", "ResetRequestCase@Example.com", "password123", 1998, null, "ko", "KR");
+        mockMvc.perform(post("/auth/signup")
+                .contentType(MediaType.APPLICATION_JSON)
+                .content(objectMapper.writeValueAsString(signupRequest)));
+        outboxEventRepository.deleteAllInBatch();
+
+        PasswordResetRequest request = new PasswordResetRequest("resetrequestcase@example.com");
+
+        mockMvc.perform(post("/auth/password-reset/request")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isOk());
+
+        PasswordResetOutboxPayload payload = passwordResetPayload();
+        org.junit.jupiter.api.Assertions.assertEquals("ResetRequestCase@Example.com", payload.recipientEmail());
+    }
+
+    @Test
     void passwordResetRequestDoesNotRevealMissingEmail() throws Exception {
         PasswordResetRequest request = new PasswordResetRequest("missing-reset@example.com");
 

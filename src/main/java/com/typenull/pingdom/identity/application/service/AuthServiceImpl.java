@@ -173,7 +173,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public void requestPasswordReset(PasswordResetRequest request) {
-        userRepository.findByEmail(request.email().trim())
+        userRepository.findByEmailIgnoreCase(request.email().trim())
                 .filter(user -> !user.isWithdrawn())
                 .filter(user -> !user.isCurrentlyBanned(now()))
                 .ifPresent(this::issuePasswordReset);
