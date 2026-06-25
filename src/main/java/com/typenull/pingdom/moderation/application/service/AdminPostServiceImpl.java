@@ -142,6 +142,9 @@ public class AdminPostServiceImpl implements AdminPostService {
     }
 
     private void publishS3Delete(String s3Key, Long postId, String reason) {
+        if (!StringUtils.hasText(s3Key)) {
+            return;
+        }
         s3ObjectDeleteOutboxPublisher.publish(
                 s3Key,
                 "MAP_IMAGE",
