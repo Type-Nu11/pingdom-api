@@ -910,6 +910,12 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "missing-request-id"))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void likeRecordsRecommendationLikeConversion() throws Exception {
         String accessToken = signupAndLogin("reader16");
         MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);

@@ -331,6 +331,9 @@ public class PlaceController {
             @PathVariable String requestId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
     }
 
