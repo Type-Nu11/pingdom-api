@@ -6,8 +6,6 @@ import com.typenull.pingdom.notification.api.dto.fcm.NotificationResponse;
 import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
-import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
-import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -77,13 +75,14 @@ public class FcmService {
         );
 
         for (FcmDeviceToken deviceToken : deviceTokens) {
-            sendToToken(deviceToken.getToken(), type, title, body, savedNotification.getId());
+            sendToToken(userId, deviceToken.getToken(), type, title, body, savedNotification.getId());
         }
 
         return new NotificationResponse(savedNotification.getId());
     }
 
     private void sendToToken(
+            Long userId,
             String token,
             NotificationType type,
             String title,
@@ -99,11 +98,21 @@ public class FcmService {
                 log.warn("무효 FCM 토큰을 삭제했습니다. type={}, reason={}", type, exception.getMessage());
                 return;
             }
-            log.error("FCM 전송 실패 - type: {}, reason: {}", type, exception.getMessage());
-            throw new NotificationsException(NotificationsErrorCode.NOTIFICATION_SEND_FAILED, exception);
+            log.error(
+                    "FCM 개별 토큰 전송 실패 - userId={}, type={}, reason={}",
+                    userId,
+                    type,
+                    exception.getMessage(),
+                    exception
+            );
         } catch (RuntimeException exception) {
-            log.error("FCM 전송 실패 - type: {}, reason: {}", type, exception.getMessage());
-            throw new NotificationsException(NotificationsErrorCode.NOTIFICATION_SEND_FAILED, exception);
+            log.error(
+                    "FCM 개별 토큰 전송 실패 - userId={}, type={}, reason={}",
+                    userId,
+                    type,
+                    exception.getMessage(),
+                    exception
+            );
         }
     }
 }

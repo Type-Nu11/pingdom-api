@@ -1,7 +1,6 @@
 package com.typenull.pingdom.notification.application.service;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
@@ -13,7 +12,6 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
-import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -117,7 +115,7 @@ class FcmServiceTest {
     }
 
     @Test
-    void transientSendFailureIsRetriedByOutbox() {
+    void transientSendFailureDoesNotRollbackNotificationDispatch() {
         when(userRepository.findById(OWNER_ID)).thenReturn(Optional.of(user(OWNER_ID, "owner")));
         when(userRepository.findById(LIKER_ID)).thenReturn(Optional.of(user(LIKER_ID, "liker")));
         when(notificationDeliveryPolicy.canReceive(OWNER_ID, NotificationType.NEW_LIKE)).thenReturn(true);
@@ -128,8 +126,9 @@ class FcmServiceTest {
         when(fcmMessageSender.send(eq("token"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L)))
                 .thenThrow(new FcmSendException("temporary", false, null));
 
-        assertThatThrownBy(() -> fcmService.sendLikeNotification(OWNER_ID, LIKER_ID))
-                .isInstanceOf(NotificationsException.class);
+        fcmService.sendLikeNotification(OWNER_ID, LIKER_ID);
+
+        verify(notificationsRepository).save(any(Notifications.class));
     }
 
     private User user(Long userId, String username) {
