@@ -6,6 +6,7 @@ import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnaps
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import jakarta.persistence.EntityManager;
 import jakarta.persistence.EntityManagerFactory;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -44,6 +45,9 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
 
     @Autowired
     private EntityManagerFactory entityManagerFactory;
+
+    @Autowired
+    private EntityManager entityManager;
 
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
@@ -135,6 +139,8 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
             saveSnapshot(place.getId(), LocalDateTime.now().minusHours(index + 1L));
         }
 
+        entityManager.flush();
+        entityManager.clear();
         statistics().clear();
 
         List<CandidatePlace> candidatePool = placeRecommendationCandidateCollector.loadCandidatePool(
