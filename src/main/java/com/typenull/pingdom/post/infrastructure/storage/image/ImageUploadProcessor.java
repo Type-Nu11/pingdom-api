@@ -97,7 +97,7 @@ public class ImageUploadProcessor {
                 throw new MapException(MapErrorCode.INVALID_IMAGE_FILE);
             }
             return image;
-        } catch (IOException exception) {
+        } catch (Exception exception) {
             throw new MapException(MapErrorCode.INVALID_IMAGE_FILE);
         }
     }

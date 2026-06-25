@@ -66,6 +66,20 @@ class ImageUploadProcessorTest {
         assertEquals(MapErrorCode.INVALID_IMAGE_FILE, exception.getErrorCode());
     }
 
+    @Test
+    void processRejectsBrokenImagePayloadWithValidMagicBytes() {
+        MockMultipartFile file = new MockMultipartFile(
+                "file",
+                "broken.jpg",
+                "image/jpeg",
+                new byte[]{(byte) 0xFF, (byte) 0xD8, (byte) 0xFF, 0x00, 0x01}
+        );
+
+        MapException exception = assertThrows(MapException.class, () -> processor.process(file));
+
+        assertEquals(MapErrorCode.INVALID_IMAGE_FILE, exception.getErrorCode());
+    }
+
     private byte[] imageBytes(String format, int width, int height) throws Exception {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
