@@ -8,6 +8,7 @@ public record AdminPostItem(
         Long id,
         String name,
         String imageUrl,
+        String thumbnailUrl,
         Long userId,
         String username,
         LocalDateTime createdAt,
