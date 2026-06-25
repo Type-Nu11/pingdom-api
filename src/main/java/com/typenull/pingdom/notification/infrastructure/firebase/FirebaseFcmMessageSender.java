@@ -31,6 +31,7 @@ public class FirebaseFcmMessageSender implements FcmMessageSender {
             throw new FcmSendException(
                     "FCM 전송에 실패했습니다.",
                     isInvalidTokenFailure(exception),
+                    providerErrorCode(exception),
                     exception
             );
         } catch (RuntimeException exception) {
@@ -42,5 +43,10 @@ public class FirebaseFcmMessageSender implements FcmMessageSender {
         MessagingErrorCode errorCode = exception.getMessagingErrorCode();
         return errorCode == MessagingErrorCode.UNREGISTERED
                 || errorCode == MessagingErrorCode.INVALID_ARGUMENT;
+    }
+
+    private String providerErrorCode(FirebaseMessagingException exception) {
+        MessagingErrorCode errorCode = exception.getMessagingErrorCode();
+        return errorCode == null ? null : errorCode.name();
     }
 }
