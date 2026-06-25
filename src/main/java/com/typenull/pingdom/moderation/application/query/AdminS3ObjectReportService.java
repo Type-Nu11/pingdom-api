@@ -7,7 +7,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
-import java.util.LinkedHashSet;
+import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
@@ -30,22 +30,25 @@ public class AdminS3ObjectReportService {
     public AdminS3OrphanObjectReportResponse reportOrphanObjects(String prefix, Integer limit) {
         String safePrefix = StringUtils.hasText(prefix) ? prefix.trim() : DEFAULT_PREFIX;
         int safeLimit = normalizeLimit(limit);
-        Set<String> usedKeys = usedS3Keys();
 
         try {
             S3ObjectStorage.S3ListResult s3ListResult = s3ObjectStorage.listKeys(safePrefix, safeLimit);
-            List<String> orphanKeys = s3ListResult.keys().stream()
-                    .filter(key -> !usedKeys.contains(key))
+            List<String> s3Keys = s3ListResult.keys();
+            Set<String> usedKeysInBatch = usedS3KeysInBatch(s3Keys);
+            List<String> orphanKeys = s3Keys.stream()
+                    .filter(key -> !usedKeysInBatch.contains(key))
                     .sorted()
                     .toList();
+            long totalDbKeys = mapImageRepository.countOriginalS3Keys()
+                    + mapImageRepository.countThumbnailS3Keys();
 
             return new AdminS3OrphanObjectReportResponse(
                     safePrefix,
                     safeLimit,
                     true,
                     s3ListResult.truncated(),
-                    usedKeys.size(),
-                    s3ListResult.keys().size(),
+                    totalDbKeys,
+                    s3Keys.size(),
                     orphanKeys.size(),
                     orphanKeys
             );
@@ -54,10 +57,13 @@ public class AdminS3ObjectReportService {
         }
     }
 
-    private Set<String> usedS3Keys() {
-        Set<String> usedKeys = new LinkedHashSet<>();
-        usedKeys.addAll(mapImageRepository.findAllOriginalS3Keys());
-        usedKeys.addAll(mapImageRepository.findAllThumbnailS3Keys());
+    private Set<String> usedS3KeysInBatch(List<String> s3Keys) {
+        Set<String> usedKeys = new HashSet<>();
+        if (s3Keys.isEmpty()) {
+            return usedKeys;
+        }
+        usedKeys.addAll(mapImageRepository.findUsedOriginalS3Keys(s3Keys));
+        usedKeys.addAll(mapImageRepository.findUsedThumbnailS3Keys(s3Keys));
         return usedKeys;
     }
 

@@ -31,13 +31,16 @@ class AdminS3ObjectReportServiceTest {
 
     @Test
     void reportOrphanObjectsComparesS3ObjectsWithOriginalAndThumbnailKeys() {
-        when(mapImageRepository.findAllOriginalS3Keys()).thenReturn(List.of("map/used.jpg"));
-        when(mapImageRepository.findAllThumbnailS3Keys()).thenReturn(List.of("map/thumbnails/used-thumb.jpg"));
         when(s3ObjectStorage.listKeys("map/", 100))
                 .thenReturn(new S3ObjectStorage.S3ListResult(
                         List.of("map/used.jpg", "map/orphan.jpg", "map/thumbnails/used-thumb.jpg"),
                         false
                 ));
+        List<String> listedKeys = List.of("map/used.jpg", "map/orphan.jpg", "map/thumbnails/used-thumb.jpg");
+        when(mapImageRepository.findUsedOriginalS3Keys(listedKeys)).thenReturn(List.of("map/used.jpg"));
+        when(mapImageRepository.findUsedThumbnailS3Keys(listedKeys)).thenReturn(List.of("map/thumbnails/used-thumb.jpg"));
+        when(mapImageRepository.countOriginalS3Keys()).thenReturn(1L);
+        when(mapImageRepository.countThumbnailS3Keys()).thenReturn(1L);
 
         AdminS3OrphanObjectReportResponse response = service.reportOrphanObjects("map/", 100);
 
