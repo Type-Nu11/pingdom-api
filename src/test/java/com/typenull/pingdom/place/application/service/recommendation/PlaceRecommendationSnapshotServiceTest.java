@@ -62,8 +62,8 @@ class PlaceRecommendationSnapshotServiceTest {
                 .updatedAt(LocalDateTime.now().minusMinutes(1))
                 .build();
 
-        when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any()))
-                .thenReturn(List.of(), List.of(snapshot));
+        when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of());
+        when(placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(any())).thenReturn(List.of(snapshot));
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(createPlace(1L)));
 
         placeRecommendationSnapshotService.increaseExposureCounts(List.of(1L));

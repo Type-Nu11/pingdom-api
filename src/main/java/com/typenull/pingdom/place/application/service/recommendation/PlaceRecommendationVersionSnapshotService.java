@@ -230,7 +230,7 @@ public class PlaceRecommendationVersionSnapshotService {
 
         Map<Long, PlaceRecommendationVersionSnapshot> snapshotsAfterLock = new HashMap<>();
         for (PlaceRecommendationVersionSnapshot snapshot :
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersionForReadLock(
                         missingPlaceIds,
                         recommendationVersion
                 )) {
@@ -270,7 +270,7 @@ public class PlaceRecommendationVersionSnapshotService {
         mapPlaceRepository.findByIdForUpdate(placeId).orElseThrow();
 
         PlaceRecommendationVersionSnapshot snapshotAfterLock =
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdAndRecommendationVersion(
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdAndRecommendationVersionForReadLock(
                         placeId,
                         recommendationVersion
                 ).orElse(null);

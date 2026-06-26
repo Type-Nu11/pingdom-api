@@ -139,7 +139,8 @@ public class PlaceRecommendationSnapshotService {
         }
 
         Map<Long, PlaceRecommendationSnapshot> snapshotsAfterLock = new HashMap<>();
-        for (PlaceRecommendationSnapshot snapshot : placeRecommendationSnapshotRepository.findByPlaceIdIn(missingPlaceIds)) {
+        for (PlaceRecommendationSnapshot snapshot :
+                placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(missingPlaceIds)) {
             snapshotsAfterLock.put(snapshot.getPlaceId(), snapshot);
         }
 
@@ -170,7 +171,7 @@ public class PlaceRecommendationSnapshotService {
         MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
-        PlaceRecommendationSnapshot snapshotAfterLock = placeRecommendationSnapshotRepository.findById(placeId)
+        PlaceRecommendationSnapshot snapshotAfterLock = placeRecommendationSnapshotRepository.findByPlaceIdForReadLock(placeId)
                 .orElse(null);
         if (snapshotAfterLock != null) {
             return snapshotAfterLock;

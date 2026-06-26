@@ -71,7 +71,11 @@ class PlaceRecommendationVersionSnapshotServiceTest {
         when(placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
                 any(),
                 eq(RECOMMENDATION_VERSION)
-        )).thenReturn(List.of(), List.of(snapshot));
+        )).thenReturn(List.of());
+        when(placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersionForReadLock(
+                any(),
+                eq(RECOMMENDATION_VERSION)
+        )).thenReturn(List.of(snapshot));
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(createPlace(1L)));
 
         placeRecommendationVersionSnapshotService.increaseExposureCounts(List.of(1L), RECOMMENDATION_VERSION);
