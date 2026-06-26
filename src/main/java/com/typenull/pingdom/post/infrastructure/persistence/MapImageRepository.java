@@ -5,6 +5,7 @@ import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
 import org.springframework.data.jpa.repository.EntityGraph;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -200,8 +201,9 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
             SELECT m.s3Key
             FROM MapImage m
             WHERE m.s3Key IS NOT NULL
+            ORDER BY m.id ASC
             """)
-    List<String> findAllS3Keys();
+    Slice<String> findS3Keys(Pageable pageable);
 
     @Query("SELECT m FROM MapImage m WHERE m.id = :id OR m.userId = :id")
     Page<MapImage> findByIdOrUserId(@Param("id") Long id, Pageable pageable);

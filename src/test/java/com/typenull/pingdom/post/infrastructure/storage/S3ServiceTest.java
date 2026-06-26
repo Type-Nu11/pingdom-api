@@ -30,6 +30,9 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InOrder;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.redis.core.HashOperations;
+import org.springframework.data.redis.core.ListOperations;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.TransactionDefinition;
@@ -66,12 +69,22 @@ class S3ServiceTest {
     @Mock
     private S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
 
+    @Mock
+    private StringRedisTemplate redisTemplate;
+
+    @Mock
+    private HashOperations<String, Object, Object> hashOperations;
+
+    @Mock
+    private ListOperations<String, String> listOperations;
+
     private S3Service s3Service;
 
     @BeforeEach
     void setUp() {
         s3Service = new S3Service(
                 s3ObjectStorage,
+                redisTemplate,
                 mapImageRepository,
                 mapPlaceRepository,
                 postReportRepository,
@@ -138,37 +151,32 @@ class S3ServiceTest {
     }
 
     @Test
-    void createMapImageS3OrphanReportComparesS3KeysWithDatabaseS3Keys() {
-        when(mapImageRepository.findAllS3Keys())
-                .thenReturn(List.of("map/used.jpg", " map/trimmed.jpg ", ""));
-        when(s3ObjectStorage.listKeys("map/"))
-                .thenReturn(List.of("map/used.jpg", "map/orphan.jpg", "map/trimmed.jpg"));
+    void getMapImageS3OrphanReportReadsCachedReportPage() {
+        stubCachedReport();
+        when(listOperations.range(any(), eq(0L), eq(1L)))
+                .thenReturn(List.of("map/orphan-1.jpg", "map/orphan-2.jpg"));
 
-        S3Service.S3OrphanReport report = s3Service.createMapImageS3OrphanReport(1, 20);
+        S3Service.S3OrphanReport report = s3Service.getMapImageS3OrphanReport("report-1", 1, 2);
 
         assertEquals(2, report.dbKeyCount());
-        assertEquals(3, report.s3KeyCount());
-        assertEquals(1, report.deleteCandidateCount());
+        assertEquals(4, report.s3KeyCount());
+        assertEquals(3, report.deleteCandidateCount());
         assertEquals(1, report.page());
-        assertEquals(20, report.limit());
-        assertEquals(1, report.totalCount());
-        assertEquals(1, report.totalPages());
-        assertEquals(false, report.hasNext());
-        assertEquals("map/orphan.jpg", report.deleteCandidates().getFirst().key());
+        assertEquals(2, report.limit());
+        assertEquals(3, report.totalCount());
+        assertEquals(2, report.totalPages());
+        assertEquals(true, report.hasNext());
+        assertEquals("map/orphan-1.jpg", report.deleteCandidates().getFirst().key());
         assertEquals("DB(MapImage)에 존재하지 않는 S3 객체", report.deleteCandidates().getFirst().reason());
     }
 
     @Test
-    void createMapImageS3OrphanReportPaginatesDeleteCandidates() {
-        when(mapImageRepository.findAllS3Keys()).thenReturn(List.of("map/used.jpg"));
-        when(s3ObjectStorage.listKeys("map/")).thenReturn(List.of(
-                "map/used.jpg",
-                "map/orphan-1.jpg",
-                "map/orphan-2.jpg",
-                "map/orphan-3.jpg"
-        ));
+    void getMapImageS3OrphanReportPaginatesCachedDeleteCandidates() {
+        stubCachedReport();
+        when(listOperations.range(any(), eq(2L), eq(2L)))
+                .thenReturn(List.of("map/orphan-3.jpg"));
 
-        S3Service.S3OrphanReport report = s3Service.createMapImageS3OrphanReport(2, 2);
+        S3Service.S3OrphanReport report = s3Service.getMapImageS3OrphanReport("report-1", 2, 2);
 
         assertEquals(3, report.deleteCandidateCount());
         assertEquals(3, report.totalCount());
@@ -207,6 +215,19 @@ class S3ServiceTest {
         assertTrue(result.failedKeys().getFirst().reason().contains("delete failed"));
         verify(s3ObjectStorage).delete("map/success.jpg");
         verify(s3ObjectStorage).delete("map/fail.jpg");
+    }
+
+    private void stubCachedReport() {
+        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(redisTemplate.opsForList()).thenReturn(listOperations);
+        when(hashOperations.get(any(), any())).thenAnswer(invocation -> switch (String.valueOf((Object) invocation.getArgument(1))) {
+            case "status" -> "COMPLETED";
+            case "generatedAt" -> "2026-06-25T21:00:00";
+            case "dbKeyCount" -> "2";
+            case "s3KeyCount" -> "4";
+            case "deleteCandidateCount" -> "3";
+            default -> null;
+        });
     }
 
     private MapImage mapImage() {

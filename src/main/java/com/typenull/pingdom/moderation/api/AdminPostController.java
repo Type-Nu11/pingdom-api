@@ -24,6 +24,7 @@ import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -216,16 +217,46 @@ public class AdminPostController {
     @GetMapping("/posts/s3/orphans/report")
     @Operation(
             summary = "MapImage S3 고아 파일 삭제 후보 리포트 생성",
-            description = "DB의 MapImage.s3Key 목록과 S3 map/ prefix 아래 객체 key를 비교해 DB에 없는 S3 key를 페이지 단위 삭제 후보로 반환합니다. 이 API는 실제 삭제를 수행하지 않습니다."
+            description = "최근 생성된 S3 고아 파일 리포트의 삭제 후보를 페이지 단위로 조회합니다. 이 API는 S3/DB 전체 스캔이나 실제 삭제를 수행하지 않습니다."
     )
-    // 먼저 삭제 후보만 보여주고, 실제 삭제는 별도 확인 요청에서 처리한다.
     public S3Service.S3OrphanReport createS3OrphanReport(
+            @Parameter(description = "조회할 리포트 ID. 생략하면 최근 생성된 리포트를 조회합니다.")
+            @RequestParam(required = false) String reportId,
             @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit
     ) {
-        return s3Service.createMapImageS3OrphanReport(page, limit);
+        try {
+            return s3Service.getMapImageS3OrphanReport(reportId, page, limit);
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage());
+        }
+    }
+
+    @PostMapping("/posts/s3/orphans/report/refresh")
+    @Operation(
+            summary = "MapImage S3 고아 파일 리포트 생성 시작",
+            description = "DB와 S3를 백그라운드에서 비교해 Redis에 리포트 결과를 저장합니다. 생성된 리포트는 GET report API로 페이지 조회합니다."
+    )
+    public S3Service.S3OrphanReportStatus refreshS3OrphanReport() {
+        return s3Service.refreshMapImageS3OrphanReport();
+    }
+
+    @GetMapping("/posts/s3/orphans/report/status")
+    @Operation(
+            summary = "MapImage S3 고아 파일 리포트 생성 상태 조회",
+            description = "리포트 생성 작업의 RUNNING/COMPLETED/FAILED 상태와 집계 정보를 조회합니다."
+    )
+    public S3Service.S3OrphanReportStatus getS3OrphanReportStatus(
+            @Parameter(description = "조회할 리포트 ID. 생략하면 최근 생성된 리포트를 조회합니다.")
+            @RequestParam(required = false) String reportId
+    ) {
+        try {
+            return s3Service.getMapImageS3OrphanReportStatus(reportId);
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage());
+        }
     }
 
     @DeleteMapping("/posts/s3/orphans")
