@@ -2,6 +2,8 @@ package com.typenull.pingdom.shared.support;
 
 import java.io.InputStream;
 import java.io.IOException;
+import java.util.ArrayList;
+import java.util.List;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -15,6 +17,8 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
+import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 
@@ -97,6 +101,80 @@ public class S3ObjectStorage {
         }
     }
 
+    public List<String> listKeys(String keyPrefix) {
+        // 지정한 prefix 아래의 모든 S3 객체 key를 페이지 단위로 모은다.
+        if (!StringUtils.hasText(bucket)) {
+            throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 bucket is not configured.", null);
+        }
+
+        S3Client s3Client = s3ClientProvider.getIfAvailable();
+        if (s3Client == null) {
+            throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 client is not configured.", null);
+        }
+
+        String prefix = StringUtils.hasText(keyPrefix) ? keyPrefix.trim() : "";
+        if (StringUtils.hasText(prefix) && !prefix.endsWith("/")) {
+            prefix = prefix + "/";
+        }
+
+        List<String> keys = new ArrayList<>();
+        String continuationToken = null;
+        try {
+            do {
+                ListObjectsV2Request request = ListObjectsV2Request.builder()
+                        .bucket(bucket)
+                        .prefix(prefix)
+                        .continuationToken(continuationToken)
+                        .build();
+                ListObjectsV2Response response = s3Client.listObjectsV2(request);
+                response.contents().forEach(object -> keys.add(object.key()));
+                continuationToken = response.nextContinuationToken();
+            } while (continuationToken != null);
+            return keys;
+        } catch (S3Exception exception) {
+            log.error("S3 목록 조회 실패: {}", exception.awsErrorDetails() == null ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 listObjectsV2 failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
+    public S3KeyPage listKeysPage(String keyPrefix, String continuationToken) {
+        if (!StringUtils.hasText(bucket)) {
+            throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 bucket is not configured.", null);
+        }
+
+        S3Client s3Client = s3ClientProvider.getIfAvailable();
+        if (s3Client == null) {
+            throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 client is not configured.", null);
+        }
+
+        String prefix = StringUtils.hasText(keyPrefix) ? keyPrefix.trim() : "";
+        if (StringUtils.hasText(prefix) && !prefix.endsWith("/")) {
+            prefix = prefix + "/";
+        }
+
+        try {
+            ListObjectsV2Response response = s3Client.listObjectsV2(ListObjectsV2Request.builder()
+                    .bucket(bucket)
+                    .prefix(prefix)
+                    .continuationToken(continuationToken)
+                    .build());
+            List<String> keys = response.contents()
+                    .stream()
+                    .map(object -> object.key())
+                    .toList();
+            return new S3KeyPage(keys, response.nextContinuationToken());
+        } catch (S3Exception exception) {
+            log.error("S3 목록 조회 실패: {}", exception.awsErrorDetails() == null ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 listObjectsV2 failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
     public enum S3StorageError {
         NOT_CONFIGURED,
         S3_ERROR,
@@ -104,6 +182,9 @@ public class S3ObjectStorage {
     }
 
     public record S3PutResult(String key, String url) {
+    }
+
+    public record S3KeyPage(List<String> keys, String nextContinuationToken) {
     }
 
     public static class S3StorageException extends RuntimeException {

@@ -265,6 +265,40 @@ class AdminPostControllerTest {
         assertEquals(String.valueOf(mapImage.getId()), adminAuditLogRepository.findAll().getFirst().getTargetId());
     }
 
+    @Test
+    void deleteS3OrphansRequiresReportConfirmation() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(delete("/admin/posts/s3/orphans")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "keys": ["map/orphan.jpg"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deleteS3OrphansAcceptsConfirmedRequest() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(delete("/admin/posts/s3/orphans")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "keys": [],
+                                  "confirmed": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestedKeyCount").value(0))
+                .andExpect(jsonPath("$.deletedKeyCount").value(0))
+                .andExpect(jsonPath("$.failedKeyCount").value(0));
+    }
+
     private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
         List<OutboxEvent> events = outboxEventRepository.findAll()
                 .stream()
