@@ -221,14 +221,31 @@ public class PlaceRecommendationVersionSnapshotService {
             return Map.of();
         }
 
-        Map<Long, MapPlace> placesById = new HashMap<>();
-        for (MapPlace mapPlace : mapPlaceRepository.findAllById(missingPlaceIds)) {
-            placesById.put(mapPlace.getId(), mapPlace);
+        Set<Long> lockedPlaceIds = new HashSet<>();
+        for (Long placeId : missingPlaceIds.stream().sorted().toList()) {
+            mapPlaceRepository.findByIdForUpdate(placeId)
+                    .map(MapPlace::getId)
+                    .ifPresent(lockedPlaceIds::add);
+        }
+
+        Map<Long, PlaceRecommendationVersionSnapshot> snapshotsAfterLock = new HashMap<>();
+        for (PlaceRecommendationVersionSnapshot snapshot :
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                        missingPlaceIds,
+                        recommendationVersion
+                )) {
+            snapshotsAfterLock.put(snapshot.getPlaceId(), snapshot);
         }
 
         Map<Long, PlaceRecommendationVersionSnapshot> snapshots = new HashMap<>();
         for (Long placeId : missingPlaceIds) {
-            if (!placesById.containsKey(placeId)) {
+            PlaceRecommendationVersionSnapshot existingSnapshot = snapshotsAfterLock.get(placeId);
+            if (existingSnapshot != null) {
+                snapshots.put(placeId, existingSnapshot);
+                continue;
+            }
+
+            if (!lockedPlaceIds.contains(placeId)) {
                 throw new IllegalArgumentException("Place not found: " + placeId);
             }
             snapshots.put(placeId, createSnapshot(placeId, recommendationVersion, now));
@@ -250,7 +267,16 @@ public class PlaceRecommendationVersionSnapshotService {
             return existingSnapshot;
         }
 
-        mapPlaceRepository.findById(placeId).orElseThrow();
+        mapPlaceRepository.findByIdForUpdate(placeId).orElseThrow();
+
+        PlaceRecommendationVersionSnapshot snapshotAfterLock =
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdAndRecommendationVersion(
+                        placeId,
+                        recommendationVersion
+                ).orElse(null);
+        if (snapshotAfterLock != null) {
+            return snapshotAfterLock;
+        }
 
         return createSnapshot(placeId, recommendationVersion, now);
     }
