@@ -26,8 +26,12 @@ import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
+import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionSynchronization;
@@ -35,15 +39,32 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import java.util.Arrays;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
+import java.util.UUID;
+import java.util.concurrent.ExecutorService;
+import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class S3Service {
 
+    private static final String MAP_IMAGE_S3_PREFIX = "map/";
+    private static final String ORPHAN_REASON = "DB(MapImage)에 존재하지 않는 S3 객체";
+    private static final String REPORT_KEY_PREFIX = "pingdom:admin:s3-orphan-report:";
+    private static final String LATEST_REPORT_KEY = REPORT_KEY_PREFIX + "latest";
+    private static final Duration REPORT_TTL = Duration.ofHours(1);
+    private static final int SCAN_BATCH_SIZE = 1_000;
+
     private final S3ObjectStorage s3ObjectStorage;
+    private final StringRedisTemplate redisTemplate;
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final PostReportRepository postReportRepository;
@@ -54,6 +75,7 @@ public class S3Service {
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final ImageUploadProcessor imageUploadProcessor;
+    private final ExecutorService orphanReportExecutor = Executors.newSingleThreadExecutor();
 
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request, userId);
@@ -215,6 +237,257 @@ public class S3Service {
         Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
         return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
     }
+    //POST refresh
+    //→ 오래 걸리는 비교 작업 시작
+    //→ DB s3Key를 Redis set에 저장
+    //→ S3 map/ key를 한 페이지씩 읽음
+    //→ Redis set에 없으면 고아 파일 후보로 Redis list에 저장
+    //
+    //GET report
+    //→ Redis list에서 page/limit만큼 꺼내서 보여줌
+    //
+    //DELETE
+    //→ 프론트가 확인한 key만 삭제
+    public S3OrphanReportStatus refreshMapImageS3OrphanReport() {
+        String reportId = UUID.randomUUID().toString();
+        String metaKey = reportMetaKey(reportId);
+        LocalDateTime now = LocalDateTime.now();
+
+        redisTemplate.opsForHash().put(metaKey, "status", "RUNNING");
+        redisTemplate.opsForHash().put(metaKey, "generatedAt", now.toString());
+        redisTemplate.expire(metaKey, REPORT_TTL);
+        redisTemplate.opsForValue().set(LATEST_REPORT_KEY, reportId, REPORT_TTL);
+
+        orphanReportExecutor.execute(() -> buildMapImageS3OrphanReport(reportId));
+        return getMapImageS3OrphanReportStatus(reportId);
+    }
+
+    public S3OrphanReport getMapImageS3OrphanReport(String reportId, int page, int limit) {
+        String resolvedReportId = resolveReportId(reportId);
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        String metaKey = reportMetaKey(resolvedReportId);
+        String candidatesKey = reportCandidatesKey(resolvedReportId);
+        String status = readMeta(metaKey, "status", "NOT_FOUND");
+
+        long deleteCandidateCount = parseLong(readMeta(metaKey, "deleteCandidateCount", "0"));
+        long totalPages = (long) Math.ceil((double) deleteCandidateCount / safeLimit);
+        long fromIndex = Math.min((long) (safePage - 1) * safeLimit, deleteCandidateCount);
+        long toIndex = Math.min(fromIndex + safeLimit, deleteCandidateCount) - 1;
+        List<String> pagedKeys = toIndex < fromIndex
+                ? List.of()
+                : redisTemplate.opsForList().range(candidatesKey, fromIndex, toIndex);
+        List<S3OrphanCandidate> deleteCandidates = (pagedKeys == null ? List.<String>of() : pagedKeys)
+                .stream()
+                .map(key -> new S3OrphanCandidate(key, ORPHAN_REASON))
+                .toList();
+
+        return new S3OrphanReport(
+                resolvedReportId,
+                status,
+                readMeta(metaKey, "errorMessage", null),
+                deleteCandidates,
+                parseLong(readMeta(metaKey, "dbKeyCount", "0")),
+                parseLong(readMeta(metaKey, "s3KeyCount", "0")),
+                deleteCandidateCount,
+                parseDateTime(readMeta(metaKey, "generatedAt", null)),
+                safePage,
+                safeLimit,
+                deleteCandidateCount,
+                totalPages,
+                safePage < totalPages
+        );
+    }
+
+    public S3OrphanReportStatus getMapImageS3OrphanReportStatus(String reportId) {
+        String resolvedReportId = resolveReportId(reportId);
+        String metaKey = reportMetaKey(resolvedReportId);
+        return new S3OrphanReportStatus(
+                resolvedReportId,
+                readMeta(metaKey, "status", "NOT_FOUND"),
+                parseDateTime(readMeta(metaKey, "generatedAt", null)),
+                parseDateTime(readMeta(metaKey, "completedAt", null)),
+                parseLong(readMeta(metaKey, "dbKeyCount", "0")),
+                parseLong(readMeta(metaKey, "s3KeyCount", "0")),
+                parseLong(readMeta(metaKey, "deleteCandidateCount", "0")),
+                readMeta(metaKey, "errorMessage", null)
+        );
+    }
+
+    private void buildMapImageS3OrphanReport(String reportId) {
+        String metaKey = reportMetaKey(reportId);
+        String dbSetKey = reportDbSetKey(reportId);
+        String candidatesKey = reportCandidatesKey(reportId);
+        long dbKeyCount = 0;
+        long s3KeyCount = 0;
+        long deleteCandidateCount = 0;
+
+        try {
+            redisTemplate.delete(List.of(dbSetKey, candidatesKey));
+
+            dbKeyCount += cacheDbS3Keys(dbSetKey, false);
+            dbKeyCount += cacheDbS3Keys(dbSetKey, true);
+
+            // S3 객체도 페이지 단위로 읽어 Redis에 후보 key만 남긴다.
+            String continuationToken = null;
+            do {
+                S3ObjectStorage.S3KeyPage s3KeyPage = s3ObjectStorage.listKeysPage(MAP_IMAGE_S3_PREFIX, continuationToken);
+                List<String> candidateKeys = new ArrayList<>();
+                for (String key : s3KeyPage.keys()) {
+                    if (!StringUtils.hasText(key)) {
+                        continue;
+                    }
+                    s3KeyCount++;
+                    Boolean existsInDb = redisTemplate.opsForSet().isMember(dbSetKey, key);
+                    if (!Boolean.TRUE.equals(existsInDb)) {
+                        candidateKeys.add(key);
+                    }
+                }
+                if (!candidateKeys.isEmpty()) {
+                    redisTemplate.opsForList().rightPushAll(candidatesKey, candidateKeys);
+                    deleteCandidateCount += candidateKeys.size();
+                }
+                continuationToken = s3KeyPage.nextContinuationToken();
+            } while (continuationToken != null);
+
+            redisTemplate.opsForHash().put(metaKey, "status", "COMPLETED");
+            redisTemplate.opsForHash().put(metaKey, "completedAt", LocalDateTime.now().toString());
+            redisTemplate.opsForHash().put(metaKey, "dbKeyCount", String.valueOf(dbKeyCount));
+            redisTemplate.opsForHash().put(metaKey, "s3KeyCount", String.valueOf(s3KeyCount));
+            redisTemplate.opsForHash().put(metaKey, "deleteCandidateCount", String.valueOf(deleteCandidateCount));
+            expireReportKeys(reportId);
+        } catch (RuntimeException exception) {
+            log.warn("S3 고아 파일 리포트 생성 실패. reportId={}", reportId, exception);
+            redisTemplate.opsForHash().put(metaKey, "status", "FAILED");
+            redisTemplate.opsForHash().put(metaKey, "completedAt", LocalDateTime.now().toString());
+            redisTemplate.opsForHash().put(metaKey, "errorMessage", exception.getMessage());
+            expireReportKeys(reportId);
+        } finally {
+            redisTemplate.delete(dbSetKey);
+        }
+    }
+
+    private long cacheDbS3Keys(String dbSetKey, boolean thumbnail) {
+        long dbKeyCount = 0;
+        int page = 0;
+        Slice<String> dbKeySlice;
+        do {
+            PageRequest pageRequest = PageRequest.of(page, SCAN_BATCH_SIZE);
+            dbKeySlice = thumbnail
+                    ? mapImageRepository.findThumbnailS3Keys(pageRequest)
+                    : mapImageRepository.findS3Keys(pageRequest);
+            List<String> dbKeys = dbKeySlice.getContent()
+                    .stream()
+                    .filter(StringUtils::hasText)
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .distinct()
+                    .toList();
+            if (!dbKeys.isEmpty()) {
+                redisTemplate.opsForSet().add(dbSetKey, dbKeys.toArray(String[]::new));
+                dbKeyCount += dbKeys.size();
+            }
+            page++;
+        } while (dbKeySlice.hasNext());
+        return dbKeyCount;
+    }
+
+    private String resolveReportId(String reportId) {
+        if (StringUtils.hasText(reportId)) {
+            return reportId.trim();
+        }
+        String latestReportId = redisTemplate.opsForValue().get(LATEST_REPORT_KEY);
+        if (!StringUtils.hasText(latestReportId)) {
+            throw new IllegalStateException("생성된 S3 고아 파일 리포트가 없습니다.");
+        }
+        return latestReportId;
+    }
+
+    private void expireReportKeys(String reportId) {
+        redisTemplate.expire(reportMetaKey(reportId), REPORT_TTL);
+        redisTemplate.expire(reportCandidatesKey(reportId), REPORT_TTL);
+    }
+
+    private String readMeta(String metaKey, String field, String defaultValue) {
+        Object value = redisTemplate.opsForHash().get(metaKey, field);
+        return value == null ? defaultValue : String.valueOf(value);
+    }
+
+    private long parseLong(String value) {
+        if (!StringUtils.hasText(value)) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(value);
+        } catch (NumberFormatException exception) {
+            return 0L;
+        }
+    }
+
+    private LocalDateTime parseDateTime(String value) {
+        if (!StringUtils.hasText(value)) {
+            return null;
+        }
+        try {
+            return LocalDateTime.parse(value);
+        } catch (RuntimeException exception) {
+            return null;
+        }
+    }
+
+    private String reportMetaKey(String reportId) {
+        return REPORT_KEY_PREFIX + reportId + ":meta";
+    }
+
+    private String reportDbSetKey(String reportId) {
+        return REPORT_KEY_PREFIX + reportId + ":db-keys";
+    }
+
+    private String reportCandidatesKey(String reportId) {
+        return REPORT_KEY_PREFIX + reportId + ":candidates";
+    }
+
+    @PreDestroy
+    void shutdownOrphanReportExecutor() {
+        orphanReportExecutor.shutdown();
+    }
+
+    public S3OrphanReport createMapImageS3OrphanReport(int page, int limit) {
+        return getMapImageS3OrphanReport(null, page, limit);
+    }
+
+    public S3OrphanDeleteResult deleteMapImageS3Keys(List<String> keys) {
+        // 리포트를 확인한 뒤 전달받은 key만 삭제한다. 여기서는 후보를 다시 계산하지 않는다.
+        Set<String> normalizedKeys = keys == null
+                ? Set.of()
+                : keys.stream()
+                        .filter(StringUtils::hasText)
+                        .map(String::trim)
+                        .filter(StringUtils::hasText)
+                        .collect(Collectors.toCollection(LinkedHashSet::new));
+
+        List<String> deletedKeys = new ArrayList<>();
+        List<S3OrphanDeleteFailure> failedKeys = new ArrayList<>();
+
+        for (String key : normalizedKeys) {
+            try {
+                s3ObjectStorage.delete(key);
+                deletedKeys.add(key);
+                log.info("S3 고아 파일 삭제 성공. key={}", key);
+            } catch (RuntimeException exception) {
+                failedKeys.add(new S3OrphanDeleteFailure(key, exception.getMessage()));
+                log.warn("S3 고아 파일 삭제 실패. key={}", key, exception);
+            }
+        }
+
+        return new S3OrphanDeleteResult(
+                normalizedKeys.size(),
+                deletedKeys.size(),
+                failedKeys.size(),
+                deletedKeys,
+                failedKeys
+        );
+    }
 
     private PostResponse savePost(
             PostUploadRequest request,
@@ -344,6 +617,9 @@ public class S3Service {
     }
 
     private void publishS3Delete(String s3Key, Long mapImageId, String reason) {
+        if (!StringUtils.hasText(s3Key)) {
+            return;
+        }
         s3ObjectDeleteOutboxPublisher.publish(
                 s3Key,
                 "MAP_IMAGE",
@@ -359,5 +635,49 @@ public class S3Service {
         private List<String> keys() {
             return Arrays.asList(original.key(), thumbnail.key());
         }
+    }
+
+    public record S3OrphanCandidate(String key, String reason) {
+    }
+
+    public record S3OrphanReportStatus(
+            String reportId,
+            String status,
+            LocalDateTime generatedAt,
+            LocalDateTime completedAt,
+            long dbKeyCount,
+            long s3KeyCount,
+            long deleteCandidateCount,
+            String errorMessage
+    ) {
+    }
+
+    public record S3OrphanReport(
+            String reportId,
+            String status,
+            String errorMessage,
+            List<S3OrphanCandidate> deleteCandidates,
+            long dbKeyCount,
+            long s3KeyCount,
+            long deleteCandidateCount,
+            LocalDateTime generatedAt,
+            int page,
+            int limit,
+            long totalCount,
+            long totalPages,
+            boolean hasNext
+    ) {
+    }
+
+    public record S3OrphanDeleteFailure(String key, String reason) {
+    }
+
+    public record S3OrphanDeleteResult(
+            int requestedKeyCount,
+            int deletedKeyCount,
+            int failedKeyCount,
+            List<String> deletedKeys,
+            List<S3OrphanDeleteFailure> failedKeys
+    ) {
     }
 }

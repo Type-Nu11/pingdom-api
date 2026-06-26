@@ -124,6 +124,7 @@ public class S3ObjectStorage {
         }
 
         S3Client s3Client = s3Client();
+        String prefix = normalizePrefix(keyPrefix);
         List<String> keys = new ArrayList<>();
         String continuationToken = null;
 
@@ -132,10 +133,8 @@ public class S3ObjectStorage {
                 int remaining = limit - keys.size();
                 ListObjectsV2Request.Builder requestBuilder = ListObjectsV2Request.builder()
                         .bucket(bucket)
+                        .prefix(prefix)
                         .maxKeys(Math.min(1_000, remaining));
-                if (StringUtils.hasText(keyPrefix)) {
-                    requestBuilder.prefix(keyPrefix.trim());
-                }
                 if (StringUtils.hasText(continuationToken)) {
                     requestBuilder.continuationToken(continuationToken);
                 }
@@ -155,6 +154,57 @@ public class S3ObjectStorage {
         }
     }
 
+    public List<String> listKeys(String keyPrefix) {
+        // 지정한 prefix 아래의 모든 S3 객체 key를 페이지 단위로 모은다.
+        S3Client s3Client = s3Client();
+        String prefix = normalizePrefix(keyPrefix);
+        List<String> keys = new ArrayList<>();
+        String continuationToken = null;
+        try {
+            do {
+                ListObjectsV2Request request = ListObjectsV2Request.builder()
+                        .bucket(bucket)
+                        .prefix(prefix)
+                        .continuationToken(continuationToken)
+                        .build();
+                ListObjectsV2Response response = s3Client.listObjectsV2(request);
+                response.contents().forEach(object -> keys.add(object.key()));
+                continuationToken = response.nextContinuationToken();
+            } while (continuationToken != null);
+            return keys;
+        } catch (S3Exception exception) {
+            log.error("S3 목록 조회 실패: {}", exception.awsErrorDetails() == null ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 listObjectsV2 failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
+    public S3KeyPage listKeysPage(String keyPrefix, String continuationToken) {
+        S3Client s3Client = s3Client();
+        String prefix = normalizePrefix(keyPrefix);
+
+        try {
+            ListObjectsV2Response response = s3Client.listObjectsV2(ListObjectsV2Request.builder()
+                    .bucket(bucket)
+                    .prefix(prefix)
+                    .continuationToken(continuationToken)
+                    .build());
+            List<String> keys = response.contents()
+                    .stream()
+                    .map(object -> object.key())
+                    .toList();
+            return new S3KeyPage(keys, response.nextContinuationToken());
+        } catch (S3Exception exception) {
+            log.error("S3 목록 조회 실패: {}", exception.awsErrorDetails() == null ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 listObjectsV2 failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
     private S3Client s3Client() {
         if (!StringUtils.hasText(bucket)) {
             throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 bucket is not configured.", null);
@@ -167,6 +217,14 @@ public class S3ObjectStorage {
         return s3Client;
     }
 
+    private String normalizePrefix(String keyPrefix) {
+        String prefix = StringUtils.hasText(keyPrefix) ? keyPrefix.trim() : "";
+        if (StringUtils.hasText(prefix) && !prefix.endsWith("/")) {
+            return prefix + "/";
+        }
+        return prefix;
+    }
+
     public enum S3StorageError {
         NOT_CONFIGURED,
         S3_ERROR,
@@ -177,6 +235,9 @@ public class S3ObjectStorage {
     }
 
     public record S3ListResult(List<String> keys, boolean truncated) {
+    }
+
+    public record S3KeyPage(List<String> keys, String nextContinuationToken) {
     }
 
     public static class S3StorageException extends RuntimeException {

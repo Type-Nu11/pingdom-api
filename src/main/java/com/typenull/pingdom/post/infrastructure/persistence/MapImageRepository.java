@@ -2,13 +2,14 @@ package com.typenull.pingdom.post.infrastructure.persistence;
 
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
-import java.util.Optional;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
-import org.springframework.data.jpa.repository.EntityGraph;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Slice;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -215,6 +216,22 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     @Query("SELECT COUNT(m) FROM MapImage m WHERE m.thumbnailS3Key IS NOT NULL AND m.thumbnailS3Key <> ''")
     long countThumbnailS3Keys();
+
+    @Query("""
+            SELECT m.s3Key
+            FROM MapImage m
+            WHERE m.s3Key IS NOT NULL
+            ORDER BY m.id ASC
+            """)
+    Slice<String> findS3Keys(Pageable pageable);
+
+    @Query("""
+            SELECT m.thumbnailS3Key
+            FROM MapImage m
+            WHERE m.thumbnailS3Key IS NOT NULL
+            ORDER BY m.id ASC
+            """)
+    Slice<String> findThumbnailS3Keys(Pageable pageable);
 
     @Query("SELECT m FROM MapImage m WHERE m.id = :id OR m.userId = :id")
     Page<MapImage> findByIdOrUserId(@Param("id") Long id, Pageable pageable);
