@@ -3,17 +3,19 @@ package com.typenull.pingdom.place;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
+import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationFeatureLog;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationExposure;
+import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationFeatureLog;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -25,6 +27,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.Comparator;
@@ -71,7 +74,7 @@ class PlaceControllerTest {
         @Bean
         @Primary
         EmailSender emailSender() {
-            return (recipientEmail, verificationCode) -> {};
+            return (recipientEmail, verificationCode) -> EmailSendResult.sent(null);
         }
     }
 
@@ -830,6 +833,87 @@ class PlaceControllerTest {
         assertEquals(1, clicks.size());
         assertEquals("place-rec-v2", clicks.get(0).getRecommendationVersion());
         assertEquals(requestId, clicks.get(0).getRequestId());
+    }
+
+    @Test
+    void getRecommendationExplanationReturnsOnlyOwnedLogs() throws Exception {
+        String ownerToken = signupAndLogin("reader20");
+        String otherToken = signupAndLogin("reader21");
+
+        Long ownerId = userRepository.findByUsername("reader20").orElseThrow().getId();
+        Long otherId = userRepository.findByUsername("reader21").orElseThrow().getId();
+        MapPlace ownerPlace = createMapPlace("설명 조회 장소", "경상남도 진주시 설명로 1", "카페", 35.1803, 128.1079);
+        MapPlace otherPlace = createMapPlace("다른 사용자 장소", "경상남도 진주시 설명로 2", "카페", 35.1804, 128.1080);
+
+        placeRecommendationFeatureLogRepository.save(PlaceRecommendationFeatureLog.builder()
+                .requestId("req-owner-1")
+                .userId(ownerId)
+                .placeId(ownerPlace.getId())
+                .recommendationVersion("place-rec-v2")
+                .recommendationStage(RecommendationStage.EXPERIMENTAL)
+                .candidateSource(PlaceRecommendationCandidateSource.PERSONAL)
+                .ranking(1)
+                .distanceMeters(120)
+                .geoScore(0.9d)
+                .personalScore(0.8d)
+                .qualityScore(0.7d)
+                .engagementScore(0.6d)
+                .conversionScore(0.5d)
+                .explorationScore(0.4d)
+                .freshnessScore(0.3d)
+                .finalScore(0.95d)
+                .build());
+        placeRecommendationFeatureLogRepository.save(PlaceRecommendationFeatureLog.builder()
+                .requestId("req-owner-1")
+                .userId(otherId)
+                .placeId(otherPlace.getId())
+                .recommendationVersion("place-rec-v2")
+                .recommendationStage(RecommendationStage.EXPERIMENTAL)
+                .candidateSource(PlaceRecommendationCandidateSource.POPULAR)
+                .ranking(1)
+                .distanceMeters(180)
+                .geoScore(0.5d)
+                .personalScore(0.4d)
+                .qualityScore(0.3d)
+                .engagementScore(0.2d)
+                .conversionScore(0.1d)
+                .explorationScore(0.2d)
+                .freshnessScore(0.1d)
+                .finalScore(0.55d)
+                .build());
+
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "req-owner-1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestId").value("req-owner-1"))
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].placeId").value(ownerPlace.getId()))
+                .andExpect(jsonPath("$.items[0].placeName").value("설명 조회 장소"))
+                .andExpect(jsonPath("$.items[0].source").value("PERSONAL"))
+                .andExpect(jsonPath("$.items[0].ranking").value(1))
+                .andExpect(jsonPath("$.items[0].finalScore").value(0.95d));
+
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "req-owner-1")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items.length()").value(1))
+                .andExpect(jsonPath("$.items[0].placeId").value(otherPlace.getId()));
+    }
+
+    @Test
+    void getRecommendationExplanationReturnsNotFoundWhenMissing() throws Exception {
+        String accessToken = signupAndLogin("reader22");
+
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "missing-request-id")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("RECOMMENDATION_EXPLANATION_NOT_FOUND"));
+    }
+
+    @Test
+    void getRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "missing-request-id"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test

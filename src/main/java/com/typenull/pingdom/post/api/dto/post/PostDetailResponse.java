@@ -12,6 +12,8 @@ public record PostDetailResponse(
         String title,
         @Schema(description = "게시글 이미지 URL", example = "https://example.com/images/post-10.jpg")
         String imageUrl,
+        @Schema(description = "게시글 썸네일 이미지 URL", example = "https://example.com/images/post-10-thumbnail.jpg", nullable = true)
+        String thumbnailUrl,
         @Schema(description = "게시글 설명", example = "남강 산책 중 찍은 사진입니다.")
         String description,
         @Schema(description = "작성자 사용자 ID", example = "3")

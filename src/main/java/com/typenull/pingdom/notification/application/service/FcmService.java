@@ -26,10 +26,16 @@ public class FcmService {
     private final FcmDeviceTokenService fcmDeviceTokenService;
     private final NotificationDeliveryPolicy notificationDeliveryPolicy;
     private final FcmMessageSender fcmMessageSender;
+    private final NotificationDeliveryRecorder notificationDeliveryRecorder;
     private final Clock clock;
 
     @Transactional
     public NotificationResponse sendLikeNotification(Long ownerId, Long likerId) {
+        return sendLikeNotification(ownerId, likerId, null);
+    }
+
+    @Transactional
+    public NotificationResponse sendLikeNotification(Long ownerId, Long likerId, String outboxEventId) {
         if (Objects.equals(ownerId, likerId)) {
             return null;
         }
@@ -46,10 +52,10 @@ public class FcmService {
             return null;
         }
 
-        return sendNotification(ownerId, NotificationType.NEW_LIKE, liker.getUsername());
+        return sendNotification(ownerId, NotificationType.NEW_LIKE, outboxEventId, liker.getUsername());
     }
 
-    private NotificationResponse sendNotification(Long userId, NotificationType type, String... args) {
+    private NotificationResponse sendNotification(Long userId, NotificationType type, String outboxEventId, String... args) {
         if (!notificationDeliveryPolicy.canReceive(userId, type)) {
             log.debug("사용자 알림 설정에 의해 발송을 생략합니다. userId={}, type={}", userId, type);
             return null;
@@ -75,7 +81,7 @@ public class FcmService {
         );
 
         for (FcmDeviceToken deviceToken : deviceTokens) {
-            sendToToken(userId, deviceToken.getToken(), type, title, body, savedNotification.getId());
+            sendToToken(userId, deviceToken.getToken(), type, title, body, savedNotification.getId(), outboxEventId);
         }
 
         return new NotificationResponse(savedNotification.getId());
@@ -87,17 +93,41 @@ public class FcmService {
             NotificationType type,
             String title,
             String body,
-            Long notificationId
+            Long notificationId,
+            String outboxEventId
     ) {
         try {
             String response = fcmMessageSender.send(token, type, title, body, notificationId);
+            notificationDeliveryRecorder.recordFcmSuccess(userId, notificationId, type, outboxEventId, token, response);
             log.info("FCM 전송 성공: {}", response);
         } catch (FcmSendException exception) {
             if (exception.isInvalidToken()) {
+                notificationDeliveryRecorder.recordFcmFailure(
+                        userId,
+                        notificationId,
+                        type,
+                        outboxEventId,
+                        token,
+                        exception.getProviderErrorCode(),
+                        NotificationDeliveryRecorder.ERROR_FCM_INVALID_TOKEN,
+                        exception.getMessage(),
+                        false
+                );
                 fcmDeviceTokenService.deleteInvalidToken(token);
                 log.warn("무효 FCM 토큰을 삭제했습니다. type={}, reason={}", type, exception.getMessage());
                 return;
             }
+            notificationDeliveryRecorder.recordFcmFailure(
+                    userId,
+                    notificationId,
+                    type,
+                    outboxEventId,
+                    token,
+                    exception.getProviderErrorCode(),
+                    NotificationDeliveryRecorder.ERROR_FCM_SEND_FAILED,
+                    exception.getMessage(),
+                    true
+            );
             log.error(
                     "FCM 개별 토큰 전송 실패 - userId={}, type={}, reason={}",
                     userId,
@@ -106,6 +136,17 @@ public class FcmService {
                     exception
             );
         } catch (RuntimeException exception) {
+            notificationDeliveryRecorder.recordFcmFailure(
+                    userId,
+                    notificationId,
+                    type,
+                    outboxEventId,
+                    token,
+                    null,
+                    NotificationDeliveryRecorder.ERROR_FCM_SEND_FAILED,
+                    exception.getMessage(),
+                    true
+            );
             log.error(
                     "FCM 개별 토큰 전송 실패 - userId={}, type={}, reason={}",
                     userId,

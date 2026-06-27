@@ -289,7 +289,7 @@ public class AuthServiceImpl implements AuthService {
                             user.getEmailVerificationExpiresAt()
                     ),
                     OutboxEventType.EMAIL_VERIFICATION_REQUESTED,
-                    new EmailVerificationOutboxPayload(user.getEmail(), user.getEmailVerificationCode()),
+                    new EmailVerificationOutboxPayload(user.getId(), user.getEmail(), user.getEmailVerificationCode()),
                     "USER",
                     String.valueOf(user.getId())
             );
@@ -331,7 +331,7 @@ public class AuthServiceImpl implements AuthService {
         outboxEventPublisher.publish(
                 "PASSWORD_RESET:%s:%s:%s".formatted(user.getId(), tokenHash, expiresAt),
                 OutboxEventType.PASSWORD_RESET_REQUESTED,
-                new PasswordResetOutboxPayload(user.getEmail(), resetToken, expiresAt),
+                new PasswordResetOutboxPayload(user.getId(), user.getEmail(), resetToken, expiresAt),
                 "USER",
                 String.valueOf(user.getId())
         );

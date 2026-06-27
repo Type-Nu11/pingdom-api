@@ -1,6 +1,7 @@
 package com.typenull.pingdom.abuse;
 
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
@@ -39,12 +40,15 @@ import com.typenull.pingdom.shared.ratelimit.RateLimitStore;
 import com.typenull.pingdom.shared.ratelimit.RateLimitWindowRule;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -345,11 +349,13 @@ class AbuseRateLimitControllerTest {
 
     @Test
     void imageUploadReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
-        given(s3ObjectStorage.put(any(), eq("map")))
-                .willReturn(
-                        new S3ObjectStorage.S3PutResult("map/first.jpg", "https://example.com/first.jpg"),
-                        new S3ObjectStorage.S3PutResult("map/second.jpg", "https://example.com/second.jpg")
-                );
+        given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map")))
+                .willReturn(new S3ObjectStorage.S3PutResult("map/first.jpg", "https://example.com/first.jpg"));
+        given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map/thumbnails")))
+                .willReturn(new S3ObjectStorage.S3PutResult(
+                        "map/thumbnails/first-thumbnail.jpg",
+                        "https://example.com/first-thumbnail.jpg"
+                ));
         User user = createUser("limitedUploadUser");
         String accessToken = accessToken(user);
         MapPlace firstPlace = createMapPlace("첫 번째 업로드 장소");
@@ -412,8 +418,15 @@ class AbuseRateLimitControllerTest {
                 .build());
     }
 
-    private MockMultipartFile imageFile(String filename) {
-        return new MockMultipartFile("file", filename, "image/jpeg", "image-bytes".getBytes());
+    private MockMultipartFile imageFile(String filename) throws Exception {
+        return new MockMultipartFile("file", filename, "image/jpeg", validJpegBytes());
+    }
+
+    private byte[] validJpegBytes() throws Exception {
+        BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", outputStream);
+        return outputStream.toByteArray();
     }
 
     private org.springframework.test.web.servlet.request.RequestPostProcessor remoteAddress(String remoteAddress) {

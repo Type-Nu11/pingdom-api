@@ -33,6 +33,12 @@ public class MapImage {
     @Column(name = "s3_key", length = 500, nullable = false)
     private String s3Key;
 
+    @Column(name = "thumbnail_url", length = 500)
+    private String thumbnailUrl;
+
+    @Column(name = "thumbnail_s3_key", length = 500)
+    private String thumbnailS3Key;
+
     @Column(name = "title", length = 100, nullable = false)
     private String title;
 
@@ -76,11 +82,20 @@ public class MapImage {
     @JoinColumn(name = "map_place_id")
     private MapPlace mapPlace;
 
-    public void update(String title, String description, String imageUrl, String s3Key) {
+    public void update(
+            String title,
+            String description,
+            String imageUrl,
+            String s3Key,
+            String thumbnailUrl,
+            String thumbnailS3Key
+    ) {
         this.title = title;
         this.description = description;
         this.imageUrl = imageUrl;
         this.s3Key = s3Key;
+        this.thumbnailUrl = thumbnailUrl;
+        this.thumbnailS3Key = thumbnailS3Key;
     }
 
     public void reassignPlace(MapPlace targetPlace) {

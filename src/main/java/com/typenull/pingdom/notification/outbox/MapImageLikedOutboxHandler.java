@@ -23,7 +23,7 @@ public class MapImageLikedOutboxHandler implements OutboxEventHandler {
     @Override
     public void handle(String eventId, String payload) {
         MapImageLikedOutboxPayload event = deserialize(payload);
-        fcmService.sendLikeNotification(event.ownerId(), event.likerId());
+        fcmService.sendLikeNotification(event.ownerId(), event.likerId(), eventId);
     }
 
     private MapImageLikedOutboxPayload deserialize(String payload) {

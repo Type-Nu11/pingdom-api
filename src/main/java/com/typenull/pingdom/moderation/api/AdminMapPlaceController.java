@@ -13,12 +13,14 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoP
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
+import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationExplanationResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationSnapshotResyncResponse;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceLookupQueryService;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateResponse;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceQueryService;
+import com.typenull.pingdom.moderation.application.query.AdminPlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
@@ -59,6 +61,7 @@ public class AdminMapPlaceController {
 
     private final AdminMapPlaceLookupQueryService adminMapPlaceLookupQueryService;
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
+    private final AdminPlaceRecommendationExplanationQueryService adminPlaceRecommendationExplanationQueryService;
     private final AdminMapPlaceService adminMapPlaceService;
     private final RecommendationMetrics recommendationMetrics;
 
@@ -287,6 +290,27 @@ public class AdminMapPlaceController {
                 keyword,
                 days
         );
+    }
+
+    @GetMapping("/recommendations/{requestId}/explanation")
+    @Operation(
+            summary = "관리자 추천 설명 조회",
+            description = "관리자가 추천 응답 requestId의 후보 source, score, ranking, feature log 정보를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "추천 설명 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminPlaceRecommendationExplanationResponse.class)
+                    )
+            )
+    })
+    public AdminPlaceRecommendationExplanationResponse getRecommendationExplanation(
+            @Parameter(description = "추천 응답 requestId", example = "9f7263d5-65f1-4834-9ca3-86ad2fc4e7d0")
+            @PathVariable String requestId
+    ) {
+        return adminPlaceRecommendationExplanationQueryService.getExplanation(requestId);
     }
 
     @PatchMapping("/recommendation-traffic")

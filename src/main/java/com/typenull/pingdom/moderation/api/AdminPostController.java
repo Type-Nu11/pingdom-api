@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;
+import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -14,16 +15,21 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
 
 @RestController
 @RequestMapping("/admin")
@@ -34,6 +40,7 @@ public class AdminPostController {
 
     private final AdminPostService adminPostService;
     private final AdminPostQueryService adminPostQueryService;
+    private final S3Service s3Service;
 
     @GetMapping("/posts")
     @Operation(
@@ -205,5 +212,67 @@ public class AdminPostController {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         adminPostService.deletePost(id, adminUserId);
         return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/posts/s3/orphans/report")
+    @Operation(
+            summary = "MapImage S3 고아 파일 삭제 후보 리포트 생성",
+            description = "최근 생성된 S3 고아 파일 리포트의 삭제 후보를 페이지 단위로 조회합니다. 이 API는 S3/DB 전체 스캔이나 실제 삭제를 수행하지 않습니다."
+    )
+    public S3Service.S3OrphanReport createS3OrphanReport(
+            @Parameter(description = "조회할 리포트 ID. 생략하면 최근 생성된 리포트를 조회합니다.")
+            @RequestParam(required = false) String reportId,
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        try {
+            return s3Service.getMapImageS3OrphanReport(reportId, page, limit);
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage());
+        }
+    }
+
+    @PostMapping("/posts/s3/orphans/report/refresh")
+    @Operation(
+            summary = "MapImage S3 고아 파일 리포트 생성 시작",
+            description = "DB와 S3를 백그라운드에서 비교해 Redis에 리포트 결과를 저장합니다. 생성된 리포트는 GET report API로 페이지 조회합니다."
+    )
+    public S3Service.S3OrphanReportStatus refreshS3OrphanReport() {
+        return s3Service.refreshMapImageS3OrphanReport();
+    }
+
+    @GetMapping("/posts/s3/orphans/report/status")
+    @Operation(
+            summary = "MapImage S3 고아 파일 리포트 생성 상태 조회",
+            description = "리포트 생성 작업의 RUNNING/COMPLETED/FAILED 상태와 집계 정보를 조회합니다."
+    )
+    public S3Service.S3OrphanReportStatus getS3OrphanReportStatus(
+            @Parameter(description = "조회할 리포트 ID. 생략하면 최근 생성된 리포트를 조회합니다.")
+            @RequestParam(required = false) String reportId
+    ) {
+        try {
+            return s3Service.getMapImageS3OrphanReportStatus(reportId);
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage());
+        }
+    }
+
+    @DeleteMapping("/posts/s3/orphans")
+    @Operation(
+            summary = "MapImage S3 고아 파일 삭제",
+            description = "요청 본문으로 받은 key 목록만 삭제합니다. 삭제 후보를 다시 계산하지 않으며 null 또는 blank key는 무시합니다."
+    )
+    public S3Service.S3OrphanDeleteResult deleteS3Orphans(
+            @RequestBody(required = false) AdminS3OrphanDeleteRequest request
+    ) {
+        if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 삭제 리포트 확인이 필요합니다.");
+        }
+        return s3Service.deleteMapImageS3Keys(request.keys());
+    }
+
+    public record AdminS3OrphanDeleteRequest(List<String> keys, Boolean confirmed) {
     }
 }

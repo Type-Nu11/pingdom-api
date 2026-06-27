@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("19");
-        assertThat(result.migrationsExecuted).isEqualTo(19);
+        assertThat(result.targetSchemaVersion).isEqualTo("21");
+        assertThat(result.migrationsExecuted).isEqualTo(21);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("19");
-        assertThat(result.migrationsExecuted).isEqualTo(18);
+        assertThat(result.targetSchemaVersion).isEqualTo("21");
+        assertThat(result.migrationsExecuted).isEqualTo(20);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -284,6 +284,26 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_image'
+                          AND column_name = 'thumbnail_url'
+                          AND character_maximum_length = 500
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_image'
+                          AND column_name = 'thumbnail_s3_key'
+                          AND character_maximum_length = 500
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'reporter_moderation_policy'
                     )
@@ -423,6 +443,29 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'admin_recommendation_policy_change_history'
                           AND indexname = 'idx_admin_recommendation_policy_change_history_version'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'notification_delivery'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'notification_delivery'
+                          AND column_name = 'recipient_hash'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'notification_delivery'
+                          AND indexname = 'idx_notification_delivery_channel_status_created'
                     )
                     """)).isTrue();
         }

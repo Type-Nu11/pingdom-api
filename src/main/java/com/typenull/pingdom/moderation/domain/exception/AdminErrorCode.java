@@ -16,6 +16,7 @@ public enum AdminErrorCode {
     PLACE_MERGE_ALREADY_RESTORED(HttpStatus.CONFLICT, "이미 복구된 장소 병합 이력입니다."),
     PLACE_MERGE_RESTORE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 장소 상태로는 병합 복구를 진행할 수 없습니다."),
     PLACE_KAKAO_PLACE_ID_CONFLICT(HttpStatus.CONFLICT, "이미 다른 장소에 연결된 Kakao place id입니다."),
+    RECOMMENDATION_EXPLANATION_NOT_FOUND(HttpStatus.NOT_FOUND, "추천 설명 정보를 찾을 수 없습니다."),
     RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "추천 트래픽 정책 요청이 올바르지 않습니다."),
     RECOMMENDATION_TRAFFIC_POLICY_VERSION_NOT_FOUND(HttpStatus.NOT_FOUND, "존재하지 않는 추천 버전입니다."),
     RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID(HttpStatus.BAD_REQUEST, "추천 트래픽 비율 합계는 100이어야 합니다."),
@@ -31,11 +32,13 @@ public enum AdminErrorCode {
     INVALID_SANCTION_PERIOD(HttpStatus.BAD_REQUEST, "제재 종료 시각 또는 기간이 올바르지 않습니다."),
     INVALID_SANCTION_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "제재 이력 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
     INVALID_AUDIT_LOG_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "감사 로그 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
+    INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "알림 발송 결과 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
     AUDIT_LOG_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "감사 로그 저장에 실패했습니다."),
     RECOMMENDATION_POLICY_HISTORY_WRITE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "추천 정책 변경 이력 저장에 실패했습니다."),
     POST_DELETE_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "게시글 삭제에 실패했습니다."),
     S3_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR, "S3 설정이 누락되었습니다."),
-    S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S3 연결에 실패했습니다.");
+    S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "S3 연결에 실패했습니다."),
+    S3_REPORT_FAILED(HttpStatus.INTERNAL_SERVER_ERROR, "S3 객체 리포트 생성에 실패했습니다.");
 
     private final HttpStatus status;
     private final String message;
