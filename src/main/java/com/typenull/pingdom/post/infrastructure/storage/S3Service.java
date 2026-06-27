@@ -464,6 +464,7 @@ public class S3Service {
                         .filter(StringUtils::hasText)
                         .map(String::trim)
                         .filter(StringUtils::hasText)
+                        .filter(key -> key.startsWith(MAP_IMAGE_S3_PREFIX))
                         .collect(Collectors.toCollection(LinkedHashSet::new));
 
         List<String> deletedKeys = new ArrayList<>();

@@ -233,6 +233,23 @@ class S3ServiceTest {
         verify(s3ObjectStorage).delete("map/fail.jpg");
     }
 
+    @Test
+    void deleteMapImageS3KeysIgnoresKeysOutsideMapPrefix() {
+        S3Service.S3OrphanDeleteResult result = s3Service.deleteMapImageS3Keys(List.of(
+                "map/success.jpg",
+                "profile/avatar.jpg",
+                "private/file.jpg"
+        ));
+
+        assertEquals(1, result.requestedKeyCount());
+        assertEquals(1, result.deletedKeyCount());
+        assertEquals(0, result.failedKeyCount());
+        assertEquals(List.of("map/success.jpg"), result.deletedKeys());
+        verify(s3ObjectStorage).delete("map/success.jpg");
+        verify(s3ObjectStorage, never()).delete("profile/avatar.jpg");
+        verify(s3ObjectStorage, never()).delete("private/file.jpg");
+    }
+
     private void stubCachedReport() {
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         when(redisTemplate.opsForList()).thenReturn(listOperations);
