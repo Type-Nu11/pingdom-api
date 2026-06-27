@@ -132,10 +132,10 @@ public class PlaceRecommendationSnapshotService {
             return Map.of();
         }
 
+        List<Long> sortedMissingPlaceIds = missingPlaceIds.stream().sorted().toList();
         Map<Long, MapPlace> placesById = new HashMap<>();
-        for (Long placeId : missingPlaceIds.stream().sorted().toList()) {
-            mapPlaceRepository.findByIdForUpdate(placeId)
-                    .ifPresent(mapPlace -> placesById.put(mapPlace.getId(), mapPlace));
+        for (MapPlace mapPlace : mapPlaceRepository.findAllByIdInForUpdate(sortedMissingPlaceIds)) {
+            placesById.put(mapPlace.getId(), mapPlace);
         }
 
         Map<Long, PlaceRecommendationSnapshot> snapshotsAfterLock = new HashMap<>();

@@ -8,7 +8,6 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -64,14 +63,28 @@ class PlaceRecommendationSnapshotServiceTest {
 
         when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of());
         when(placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(any())).thenReturn(List.of(snapshot));
-        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(createPlace(1L)));
+        when(mapPlaceRepository.findAllByIdInForUpdate(List.of(1L))).thenReturn(List.of(createPlace(1L)));
 
         placeRecommendationSnapshotService.increaseExposureCounts(List.of(1L));
 
         assertThat(snapshot.getExposureCount()).isEqualTo(4L);
         verify(placeRecommendationSnapshotRepository).saveAll(List.of(snapshot));
+        verify(mapPlaceRepository).findAllByIdInForUpdate(List.of(1L));
         verify(mapBookmarkRepository, never()).countByPlaceId(1L);
         verify(mapImageRepository, never()).sumLikeCountByPlaceId(1L);
+    }
+
+    @Test
+    void increaseExposureCountsLocksMissingPlacesWithSingleSortedBulkQuery() {
+        when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of());
+        when(placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(any())).thenReturn(List.of());
+        when(mapPlaceRepository.findAllByIdInForUpdate(List.of(1L, 2L, 3L)))
+                .thenReturn(List.of(createPlace(1L), createPlace(2L), createPlace(3L)));
+
+        placeRecommendationSnapshotService.increaseExposureCounts(List.of(3L, 1L, 3L, 2L));
+
+        verify(mapPlaceRepository).findAllByIdInForUpdate(List.of(1L, 2L, 3L));
+        verify(mapPlaceRepository, never()).findByIdForUpdate(any());
     }
 
     private MapPlace createPlace(Long placeId) {

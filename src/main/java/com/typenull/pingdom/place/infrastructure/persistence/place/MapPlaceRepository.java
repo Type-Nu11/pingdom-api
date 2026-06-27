@@ -56,4 +56,8 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MapPlace m WHERE m.id = :placeId")
     Optional<MapPlace> findByIdForUpdate(@Param("placeId") Long placeId);
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("SELECT m FROM MapPlace m WHERE m.id IN :placeIds ORDER BY m.id ASC")
+    List<MapPlace> findAllByIdInForUpdate(@Param("placeIds") List<Long> placeIds);
 }
