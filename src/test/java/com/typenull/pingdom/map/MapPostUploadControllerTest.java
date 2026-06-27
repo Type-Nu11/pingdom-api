@@ -14,9 +14,12 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import java.awt.image.BufferedImage;
+import java.io.ByteArrayOutputStream;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
+import javax.imageio.ImageIO;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -30,7 +33,9 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.BDDMockito.given;
 import static org.mockito.Mockito.never;
@@ -83,17 +88,16 @@ class MapPostUploadControllerTest {
 
     @Test
     void uploadPostStoresTitleDescriptionAndFileMetadata() throws Exception {
-        given(s3ObjectStorage.put(any(), eq("map")))
-                .willReturn(new S3ObjectStorage.S3PutResult("map/test-key.jpg", "https://example.com/test-key.jpg"));
+        givenSuccessfulImageUpload(
+                "map/test-key.jpg",
+                "https://example.com/test-key.jpg",
+                "map/thumbnails/test-key-thumbnail.jpg",
+                "https://example.com/test-key-thumbnail.jpg"
+        );
 
         String accessToken = signupAndLogin("writer01");
         MapPlace mapPlace = createMapPlace();
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "post.jpg",
-                "image/jpeg",
-                "image-bytes".getBytes()
-        );
+        MockMultipartFile file = imageFile("post.jpg");
 
         mockMvc.perform(multipart("/map/post/create")
                         .file(file)
@@ -109,23 +113,24 @@ class MapPostUploadControllerTest {
         assertEquals("게시글 부가 설명", saved.getDescription());
         assertEquals("https://example.com/test-key.jpg", saved.getImageUrl());
         assertEquals("map/test-key.jpg", saved.getS3Key());
+        assertEquals("https://example.com/test-key-thumbnail.jpg", saved.getThumbnailUrl());
+        assertEquals("map/thumbnails/test-key-thumbnail.jpg", saved.getThumbnailS3Key());
         assertNotNull(saved.getUserId());
         assertEquals(mapPlace.getId(), saved.getMapPlace().getId());
     }
 
     @Test
     void uploadPostStoresPlaceWhenKakaoPlaceIdIsProvided() throws Exception {
-        given(s3ObjectStorage.put(any(), eq("map")))
-                .willReturn(new S3ObjectStorage.S3PutResult("map/test-key-kakao.jpg", "https://example.com/test-key-kakao.jpg"));
+        givenSuccessfulImageUpload(
+                "map/test-key-kakao.jpg",
+                "https://example.com/test-key-kakao.jpg",
+                "map/thumbnails/test-key-kakao-thumbnail.jpg",
+                "https://example.com/test-key-kakao-thumbnail.jpg"
+        );
 
         String accessToken = signupAndLogin("writer-kakao-01");
         MapPlace mapPlace = createMapPlaceWithKakaoPlaceId("27414316");
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "post.jpg",
-                "image/jpeg",
-                "image-bytes".getBytes()
-        );
+        MockMultipartFile file = imageFile("post.jpg");
 
         mockMvc.perform(multipart("/map/post/create")
                         .file(file)
@@ -141,17 +146,16 @@ class MapPostUploadControllerTest {
 
     @Test
     void uploadPostCreatesPlaceFromCoordinateTokenWhenPlaceReferenceIsMissing() throws Exception {
-        given(s3ObjectStorage.put(any(), eq("map")))
-                .willReturn(new S3ObjectStorage.S3PutResult("map/test-key-pin.jpg", "https://example.com/test-key-pin.jpg"));
+        givenSuccessfulImageUpload(
+                "map/test-key-pin.jpg",
+                "https://example.com/test-key-pin.jpg",
+                "map/thumbnails/test-key-pin-thumbnail.jpg",
+                "https://example.com/test-key-pin-thumbnail.jpg"
+        );
 
         String accessToken = signupAndLogin("writer-pin-01");
         String coordinateToken = createCoordinateToken(accessToken, null, 35.1804, 128.1081);
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "post.jpg",
-                "image/jpeg",
-                "image-bytes".getBytes()
-        );
+        MockMultipartFile file = imageFile("post.jpg");
 
         mockMvc.perform(multipart("/map/post/create")
                         .file(file)
@@ -179,9 +183,6 @@ class MapPostUploadControllerTest {
 
     @Test
     void uploadPostFailsWhenKakaoPlaceIdIsUnknown() throws Exception {
-        given(s3ObjectStorage.put(any(), eq("map")))
-                .willReturn(new S3ObjectStorage.S3PutResult("map/test-key-kakao.jpg", "https://example.com/test-key-kakao.jpg"));
-
         String accessToken = signupAndLogin("writer-kakao-02");
         MockMultipartFile file = new MockMultipartFile(
                 "file",
@@ -285,6 +286,8 @@ class MapPostUploadControllerTest {
         MapImage mapImage = mapImageRepository.save(MapImage.builder()
                 .imageUrl("https://example.com/delete-post.jpg")
                 .s3Key("map/delete-post.jpg")
+                .thumbnailUrl("https://example.com/delete-post-thumbnail.jpg")
+                .thumbnailS3Key("map/thumbnails/delete-post-thumbnail.jpg")
                 .title("삭제 테스트 제목")
                 .description("삭제 테스트 설명")
                 .userId(userId)
@@ -298,21 +301,21 @@ class MapPostUploadControllerTest {
         verify(s3ObjectStorage, never()).delete("map/delete-post.jpg");
         assertEquals(0L, mapImageRepository.count());
         assertS3DeleteOutboxEvent(mapImage.getId(), "map/delete-post.jpg", "MAP_IMAGE_DELETED");
+        assertS3DeleteOutboxEvent(mapImage.getId(), "map/thumbnails/delete-post-thumbnail.jpg", "MAP_IMAGE_THUMBNAIL_DELETED");
     }
 
     @Test
     void uploadAndDeletePostRefreshRecommendationSnapshot() throws Exception {
-        given(s3ObjectStorage.put(any(), eq("map")))
-                .willReturn(new S3ObjectStorage.S3PutResult("map/snapshot-post.jpg", "https://example.com/snapshot-post.jpg"));
+        givenSuccessfulImageUpload(
+                "map/snapshot-post.jpg",
+                "https://example.com/snapshot-post.jpg",
+                "map/thumbnails/snapshot-post-thumbnail.jpg",
+                "https://example.com/snapshot-post-thumbnail.jpg"
+        );
 
         String accessToken = signupAndLogin("writer06");
         MapPlace mapPlace = createMapPlace();
-        MockMultipartFile file = new MockMultipartFile(
-                "file",
-                "snapshot-post.jpg",
-                "image/jpeg",
-                "image-bytes".getBytes()
-        );
+        MockMultipartFile file = imageFile("snapshot-post.jpg");
 
         mockMvc.perform(multipart("/map/post/create")
                         .file(file)
@@ -344,6 +347,7 @@ class MapPostUploadControllerTest {
         assertEquals(0L, mapImageRepository.count());
         verify(s3ObjectStorage, never()).delete("map/snapshot-post.jpg");
         assertS3DeleteOutboxEvent(saved.getId(), "map/snapshot-post.jpg", "MAP_IMAGE_DELETED");
+        assertS3DeleteOutboxEvent(saved.getId(), "map/thumbnails/snapshot-post-thumbnail.jpg", "MAP_IMAGE_THUMBNAIL_DELETED");
     }
 
     private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
@@ -351,13 +355,34 @@ class MapPostUploadControllerTest {
                 .stream()
                 .filter(event -> event.getEventType() == OutboxEventType.S3_OBJECT_DELETE_REQUESTED)
                 .toList();
-        assertEquals(1, events.size());
-        OutboxEvent event = events.get(0);
-        assertEquals(OutboxEventType.S3_OBJECT_DELETE_REQUESTED, event.getEventType());
-        assertEquals("MAP_IMAGE", event.getAggregateType());
-        assertEquals(String.valueOf(mapImageId), event.getAggregateId());
-        assertEquals(s3Key, objectMapper.readTree(event.getPayload()).get("s3Key").asText());
-        assertEquals(reason, objectMapper.readTree(event.getPayload()).get("reason").asText());
+        for (OutboxEvent event : events) {
+            if (s3Key.equals(objectMapper.readTree(event.getPayload()).get("s3Key").asText())) {
+                assertEquals(OutboxEventType.S3_OBJECT_DELETE_REQUESTED, event.getEventType());
+                assertEquals("MAP_IMAGE", event.getAggregateType());
+                assertEquals(String.valueOf(mapImageId), event.getAggregateId());
+                assertEquals(reason, objectMapper.readTree(event.getPayload()).get("reason").asText());
+                return;
+            }
+        }
+        fail("Expected S3 delete outbox event was not found. s3Key=" + s3Key);
+    }
+
+    private void givenSuccessfulImageUpload(String key, String url, String thumbnailKey, String thumbnailUrl) {
+        given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map")))
+                .willReturn(new S3ObjectStorage.S3PutResult(key, url));
+        given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map/thumbnails")))
+                .willReturn(new S3ObjectStorage.S3PutResult(thumbnailKey, thumbnailUrl));
+    }
+
+    private MockMultipartFile imageFile(String filename) throws Exception {
+        return new MockMultipartFile("file", filename, "image/jpeg", validJpegBytes());
+    }
+
+    private byte[] validJpegBytes() throws Exception {
+        BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
+        ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
+        ImageIO.write(image, "jpg", outputStream);
+        return outputStream.toByteArray();
     }
 
     private String signupAndLogin(String username) throws Exception {

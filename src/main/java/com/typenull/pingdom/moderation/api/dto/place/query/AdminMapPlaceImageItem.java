@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 public record AdminMapPlaceImageItem(
         Long id,
         String imageUrl,
+        String thumbnailUrl,
         String title,
         String description,
         Long userId,

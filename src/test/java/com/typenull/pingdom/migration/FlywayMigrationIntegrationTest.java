@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("20");
-        assertThat(result.migrationsExecuted).isEqualTo(20);
+        assertThat(result.targetSchemaVersion).isEqualTo("21");
+        assertThat(result.migrationsExecuted).isEqualTo(21);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("20");
-        assertThat(result.migrationsExecuted).isEqualTo(19);
+        assertThat(result.targetSchemaVersion).isEqualTo("21");
+        assertThat(result.migrationsExecuted).isEqualTo(20);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -279,6 +279,26 @@ class FlywayMigrationIntegrationTest {
                         WHERE table_name = 'map_image'
                           AND column_name = 'visibility_status'
                           AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_image'
+                          AND column_name = 'thumbnail_url'
+                          AND character_maximum_length = 500
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_image'
+                          AND column_name = 'thumbnail_s3_key'
+                          AND character_maximum_length = 500
+                          AND is_nullable = 'YES'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

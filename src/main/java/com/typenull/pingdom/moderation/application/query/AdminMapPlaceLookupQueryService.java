@@ -139,6 +139,7 @@ public class AdminMapPlaceLookupQueryService {
         return new AdminMapPlaceImageItem(
                 mapImage.getId(),
                 mapImage.getImageUrl(),
+                mapImage.getThumbnailUrl(),
                 mapImage.getTitle(),
                 mapImage.getDescription(),
                 mapImage.getUserId(),

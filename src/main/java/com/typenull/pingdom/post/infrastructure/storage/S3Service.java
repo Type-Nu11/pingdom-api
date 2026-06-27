@@ -17,6 +17,8 @@ import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.post.infrastructure.storage.image.ImageUploadProcessor;
+import com.typenull.pingdom.post.infrastructure.storage.image.ProcessedImageUpload;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -36,7 +38,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
-import java.io.IOException;
+import java.util.Arrays;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -72,6 +74,7 @@ public class S3Service {
     private final PlaceGrowthService placeGrowthService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
+    private final ImageUploadProcessor imageUploadProcessor;
     private final ExecutorService orphanReportExecutor = Executors.newSingleThreadExecutor();
 
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
@@ -85,17 +88,10 @@ public class S3Service {
                 .map(user -> user.getUsername())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
-        S3ObjectStorage.S3PutResult putResult;
-        try {
-            putResult = s3ObjectStorage.put(request.file(), "map");
-        } catch (IOException exception) {
-            throw new MapException(MapErrorCode.UPLOAD_ERROR);
-        } catch (S3StorageException exception) {
-            throw toMapException(exception);
-        }
+        StoredImageObjects storedImageObjects = uploadProcessedImage(request.file());
 
         try {
-            return savePost(request, userId, username, putResult, placeId);
+            return savePost(request, userId, username, storedImageObjects, placeId);
         } catch (MapException exception) {
             throw exception;
         } catch (Exception e) {
@@ -194,20 +190,14 @@ public class S3Service {
         }
 
         String oldS3Key = mapImage.getS3Key();
+        String oldThumbnailS3Key = mapImage.getThumbnailS3Key();
 
-        S3ObjectStorage.S3PutResult putResult;
-        try {
-            putResult = s3ObjectStorage.put(request.file(), "map");
-        } catch (IOException exception) {
-            throw new MapException(MapErrorCode.UPLOAD_ERROR);
-        } catch (S3StorageException exception) {
-            throw toMapException(exception);
-        }
+        StoredImageObjects storedImageObjects = uploadProcessedImage(request.file());
 
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
 
         PostUpdateResponse response = transactionTemplate.execute(status -> {
-            registerRollbackCleanup(putResult.key());
+            registerRollbackCleanup(storedImageObjects.keys());
 
             MapImage imageToUpdate = mapImageRepository.findWithMapPlaceById(imageId)
                     .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
@@ -215,12 +205,15 @@ public class S3Service {
             imageToUpdate.update(
                     request.title(),
                     request.description(),
-                    putResult.url(),
-                    putResult.key()
+                    storedImageObjects.original().url(),
+                    storedImageObjects.original().key(),
+                    storedImageObjects.thumbnail().url(),
+                    storedImageObjects.thumbnail().key()
             );
 
             mapImageRepository.save(imageToUpdate);
             publishS3Delete(oldS3Key, imageToUpdate.getId(), "MAP_IMAGE_REPLACED");
+            publishS3Delete(oldThumbnailS3Key, imageToUpdate.getId(), "MAP_IMAGE_THUMBNAIL_REPLACED");
 
             return new PostUpdateResponse(imageToUpdate.getId(), "게시글을 수정했습니다.");
         });
@@ -332,23 +325,8 @@ public class S3Service {
         try {
             redisTemplate.delete(List.of(dbSetKey, candidatesKey));
 
-            int page = 0;
-            Slice<String> dbKeySlice;
-            do {
-                dbKeySlice = mapImageRepository.findS3Keys(PageRequest.of(page, SCAN_BATCH_SIZE));
-                List<String> dbKeys = dbKeySlice.getContent()
-                        .stream()
-                        .filter(StringUtils::hasText)
-                        .map(String::trim)
-                        .filter(StringUtils::hasText)
-                        .distinct()
-                        .toList();
-                if (!dbKeys.isEmpty()) {
-                    redisTemplate.opsForSet().add(dbSetKey, dbKeys.toArray(String[]::new));
-                    dbKeyCount += dbKeys.size();
-                }
-                page++;
-            } while (dbKeySlice.hasNext());
+            dbKeyCount += cacheDbS3Keys(dbSetKey, false);
+            dbKeyCount += cacheDbS3Keys(dbSetKey, true);
 
             // S3 객체도 페이지 단위로 읽어 Redis에 후보 key만 남긴다.
             String continuationToken = null;
@@ -387,6 +365,31 @@ public class S3Service {
         } finally {
             redisTemplate.delete(dbSetKey);
         }
+    }
+
+    private long cacheDbS3Keys(String dbSetKey, boolean thumbnail) {
+        long dbKeyCount = 0;
+        int page = 0;
+        Slice<String> dbKeySlice;
+        do {
+            PageRequest pageRequest = PageRequest.of(page, SCAN_BATCH_SIZE);
+            dbKeySlice = thumbnail
+                    ? mapImageRepository.findThumbnailS3Keys(pageRequest)
+                    : mapImageRepository.findS3Keys(pageRequest);
+            List<String> dbKeys = dbKeySlice.getContent()
+                    .stream()
+                    .filter(StringUtils::hasText)
+                    .map(String::trim)
+                    .filter(StringUtils::hasText)
+                    .distinct()
+                    .toList();
+            if (!dbKeys.isEmpty()) {
+                redisTemplate.opsForSet().add(dbSetKey, dbKeys.toArray(String[]::new));
+                dbKeyCount += dbKeys.size();
+            }
+            page++;
+        } while (dbKeySlice.hasNext());
+        return dbKeyCount;
     }
 
     private String resolveReportId(String reportId) {
@@ -463,8 +466,8 @@ public class S3Service {
                         .filter(StringUtils::hasText)
                         .collect(Collectors.toCollection(LinkedHashSet::new));
 
-        List<String> deletedKeys = new java.util.ArrayList<>();
-        List<S3OrphanDeleteFailure> failedKeys = new java.util.ArrayList<>();
+        List<String> deletedKeys = new ArrayList<>();
+        List<S3OrphanDeleteFailure> failedKeys = new ArrayList<>();
 
         for (String key : normalizedKeys) {
             try {
@@ -490,17 +493,19 @@ public class S3Service {
             PostUploadRequest request,
             long userId,
             String username,
-            S3ObjectStorage.S3PutResult putResult,
+            StoredImageObjects storedImageObjects,
             Long placeId
     ) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         return transactionTemplate.execute(status -> {
-            registerRollbackCleanup(putResult.key());
+            registerRollbackCleanup(storedImageObjects.keys());
 
             MapPlace mapPlace = placeGrowthService.getPlaceForUpdate(placeId);
             MapImage mapImage = MapImage.builder()
-                    .imageUrl(putResult.url())
-                    .s3Key(putResult.key())
+                    .imageUrl(storedImageObjects.original().url())
+                    .s3Key(storedImageObjects.original().key())
+                    .thumbnailUrl(storedImageObjects.thumbnail().url())
+                    .thumbnailS3Key(storedImageObjects.thumbnail().key())
                     .title(request.title())
                     .description(request.description())
                     .userId(userId)
@@ -529,12 +534,57 @@ public class S3Service {
                 placeRecommendationSnapshotService.refresh(mapPlace.getId());
             }
             publishS3Delete(s3Key, mapImage.getId(), "MAP_IMAGE_DELETED");
+            publishS3Delete(mapImage.getThumbnailS3Key(), mapImage.getId(), "MAP_IMAGE_THUMBNAIL_DELETED");
             return placeGrowth;
         });
     }
 
-    private void registerRollbackCleanup(String uploadedS3Key) {
+    private StoredImageObjects uploadProcessedImage(org.springframework.web.multipart.MultipartFile file) {
+        ProcessedImageUpload processedImage = imageUploadProcessor.process(file);
+        S3ObjectStorage.S3PutResult original = null;
+        try {
+            original = s3ObjectStorage.put(
+                    processedImage.originalBytes(),
+                    processedImage.originalFilename(),
+                    processedImage.contentType(),
+                    "map"
+            );
+            S3ObjectStorage.S3PutResult thumbnail = s3ObjectStorage.put(
+                    processedImage.thumbnailBytes(),
+                    processedImage.thumbnailFilename(),
+                    processedImage.thumbnailContentType(),
+                    "map/thumbnails"
+            );
+            return new StoredImageObjects(original, thumbnail);
+        } catch (S3StorageException exception) {
+            cleanupUploadedObject(original);
+            throw toMapException(exception);
+        } catch (RuntimeException exception) {
+            cleanupUploadedObject(original);
+            throw exception;
+        }
+    }
+
+    private void cleanupUploadedObject(S3ObjectStorage.S3PutResult putResult) {
+        if (putResult == null || !StringUtils.hasText(putResult.key())) {
+            return;
+        }
+        try {
+            s3ObjectStorage.delete(putResult.key());
+        } catch (RuntimeException exception) {
+            log.warn("이미지 업로드 실패 후 선행 S3 객체 정리에 실패했습니다. key={}", putResult.key(), exception);
+        }
+    }
+
+    private void registerRollbackCleanup(List<String> uploadedS3Keys) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
+            return;
+        }
+
+        List<String> cleanupKeys = uploadedS3Keys.stream()
+                .filter(StringUtils::hasText)
+                .toList();
+        if (cleanupKeys.isEmpty()) {
             return;
         }
 
@@ -544,10 +594,12 @@ public class S3Service {
                 if (status != STATUS_ROLLED_BACK) {
                     return;
                 }
-                try {
-                    s3ObjectStorage.delete(uploadedS3Key);
-                } catch (RuntimeException exception) {
-                    log.warn("게시글 업로드 롤백 후 S3 정리에 실패했습니다. key={}", uploadedS3Key, exception);
+                for (String uploadedS3Key : cleanupKeys) {
+                    try {
+                        s3ObjectStorage.delete(uploadedS3Key);
+                    } catch (RuntimeException exception) {
+                        log.warn("게시글 업로드 롤백 후 S3 정리에 실패했습니다. key={}", uploadedS3Key, exception);
+                    }
                 }
             }
         });
@@ -561,16 +613,28 @@ public class S3Service {
         if (error == S3StorageError.CONNECTION_ERROR) {
             return new MapException(MapErrorCode.S3_CONNECTION_ERROR);
         }
-        return new MapException(MapErrorCode.DELETE_ERROR);
+        return new MapException(MapErrorCode.UPLOAD_ERROR);
     }
 
     private void publishS3Delete(String s3Key, Long mapImageId, String reason) {
+        if (!StringUtils.hasText(s3Key)) {
+            return;
+        }
         s3ObjectDeleteOutboxPublisher.publish(
                 s3Key,
                 "MAP_IMAGE",
                 mapImageId == null ? null : String.valueOf(mapImageId),
                 reason
         );
+    }
+
+    private record StoredImageObjects(
+            S3ObjectStorage.S3PutResult original,
+            S3ObjectStorage.S3PutResult thumbnail
+    ) {
+        private List<String> keys() {
+            return Arrays.asList(original.key(), thumbnail.key());
+        }
     }
 
     public record S3OrphanCandidate(String key, String reason) {

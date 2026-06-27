@@ -30,6 +30,11 @@ public enum MapErrorCode {
     S3_NOT_CONFIGURED(HttpStatus.INTERNAL_SERVER_ERROR,"S3 설정이 누락되었습니다."),
     S3_CONNECTION_ERROR(HttpStatus.INTERNAL_SERVER_ERROR,"S3 서버 연결에 실패했습니다."),
     UPLOAD_ERROR(HttpStatus.INTERNAL_SERVER_ERROR, "업로드 과정에서 오류가 발생하였습니다."),
+    IMAGE_FILE_EMPTY(HttpStatus.BAD_REQUEST, "이미지 파일은 비어 있을 수 없습니다."),
+    IMAGE_FILE_TOO_LARGE(HttpStatus.BAD_REQUEST, "이미지 파일은 10MB 이하여야 합니다."),
+    UNSUPPORTED_IMAGE_TYPE(HttpStatus.BAD_REQUEST, "JPEG 또는 PNG 이미지만 업로드할 수 있습니다."),
+    INVALID_IMAGE_FILE(HttpStatus.BAD_REQUEST, "정상적인 이미지 파일이 아닙니다."),
+    IMAGE_RESOLUTION_TOO_LARGE(HttpStatus.BAD_REQUEST, "이미지 해상도가 너무 큽니다."),
     ALREADY_LIKED(HttpStatus.BAD_REQUEST,"이미 좋아요가 되어있습니다."),
     NOT_LIKED(HttpStatus.BAD_REQUEST,"좋아요가 되어있지 않습니다."),
     ALREADY_POSTED(HttpStatus.BAD_REQUEST,"한 장소엔 하나의 포스트만 가능합니다.");
