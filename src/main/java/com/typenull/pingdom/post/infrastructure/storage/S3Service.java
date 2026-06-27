@@ -31,6 +31,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
+import org.springframework.data.redis.core.RedisCallback;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.PlatformTransactionManager;
@@ -38,6 +39,7 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
+import java.nio.charset.StandardCharsets;
 import java.util.Arrays;
 import java.time.Duration;
 import java.time.LocalDateTime;
@@ -332,17 +334,12 @@ public class S3Service {
             String continuationToken = null;
             do {
                 S3ObjectStorage.S3KeyPage s3KeyPage = s3ObjectStorage.listKeysPage(MAP_IMAGE_S3_PREFIX, continuationToken);
-                List<String> candidateKeys = new ArrayList<>();
-                for (String key : s3KeyPage.keys()) {
-                    if (!StringUtils.hasText(key)) {
-                        continue;
-                    }
-                    s3KeyCount++;
-                    Boolean existsInDb = redisTemplate.opsForSet().isMember(dbSetKey, key);
-                    if (!Boolean.TRUE.equals(existsInDb)) {
-                        candidateKeys.add(key);
-                    }
-                }
+                List<String> pageKeys = s3KeyPage.keys().stream()
+                        .filter(StringUtils::hasText)
+                        .toList();
+                s3KeyCount += pageKeys.size();
+
+                List<String> candidateKeys = collectDeleteCandidateKeys(dbSetKey, pageKeys);
                 if (!candidateKeys.isEmpty()) {
                     redisTemplate.opsForList().rightPushAll(candidatesKey, candidateKeys);
                     deleteCandidateCount += candidateKeys.size();
@@ -365,6 +362,29 @@ public class S3Service {
         } finally {
             redisTemplate.delete(dbSetKey);
         }
+    }
+
+    private List<String> collectDeleteCandidateKeys(String dbSetKey, List<String> pageKeys) {
+        if (pageKeys.isEmpty()) {
+            return List.of();
+        }
+
+        List<Object> isMembers = redisTemplate.executePipelined((RedisCallback<Object>) connection -> {
+            byte[] rawDbSetKey = dbSetKey.getBytes(StandardCharsets.UTF_8);
+            for (String key : pageKeys) {
+                connection.sIsMember(rawDbSetKey, key.getBytes(StandardCharsets.UTF_8));
+            }
+            return null;
+        });
+
+        List<String> candidateKeys = new ArrayList<>();
+        for (int i = 0; i < pageKeys.size(); i++) {
+            Object isMember = isMembers != null && i < isMembers.size() ? isMembers.get(i) : null;
+            if (!Boolean.TRUE.equals(isMember)) {
+                candidateKeys.add(pageKeys.get(i));
+            }
+        }
+        return candidateKeys;
     }
 
     private long cacheDbS3Keys(String dbSetKey, boolean thumbnail) {
