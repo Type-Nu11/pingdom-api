@@ -19,7 +19,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
-                      AND (:category IS NULL OR (m.category IS NOT NULL AND LOWER(TRIM(m.category)) = :category))
+                      AND (:category IS NULL OR m.category = :category)
                     ORDER BY m.id DESC
                     """,
             countQuery = """
@@ -30,7 +30,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
-                      AND (:category IS NULL OR (m.category IS NOT NULL AND LOWER(TRIM(m.category)) = :category))
+                      AND (:category IS NULL OR m.category = :category)
                     """
     )
     Page<MapPlace> searchLatestPlaces(
