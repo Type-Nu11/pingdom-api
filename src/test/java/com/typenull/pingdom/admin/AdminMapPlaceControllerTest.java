@@ -1757,8 +1757,9 @@ class AdminMapPlaceControllerTest {
             int likeConversionCount,
             long sequenceSeed
     ) {
+        List<PlaceRecommendationExposure> exposures = new java.util.ArrayList<>();
         for (int index = 0; index < exposureCount; index++) {
-            placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
+            exposures.add(PlaceRecommendationExposure.builder()
                     .placeId(placeId)
                     .userId(sequenceSeed + index)
                     .requestLatitude(35.1800)
@@ -1768,16 +1769,22 @@ class AdminMapPlaceControllerTest {
                     .createdAt(createdAt.plusSeconds(index))
                     .build());
         }
+        placeRecommendationExposureRepository.saveAll(exposures);
+
+        List<PlaceRecommendationClick> clicks = new java.util.ArrayList<>();
         for (int index = 0; index < clickCount; index++) {
-            placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()
+            clicks.add(PlaceRecommendationClick.builder()
                     .placeId(placeId)
                     .userId(sequenceSeed + 1_000 + index)
                     .recommendationVersion(recommendationVersion)
                     .createdAt(createdAt.plusSeconds(index))
                     .build());
         }
+        placeRecommendationClickRepository.saveAll(clicks);
+
+        List<PlaceRecommendationConversion> conversions = new java.util.ArrayList<>();
         for (int index = 0; index < bookmarkConversionCount; index++) {
-            placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+            conversions.add(PlaceRecommendationConversion.builder()
                     .placeRecommendationClickId(sequenceSeed + 2_000 + index)
                     .placeId(placeId)
                     .userId(sequenceSeed + 3_000 + index)
@@ -1787,7 +1794,7 @@ class AdminMapPlaceControllerTest {
                     .build());
         }
         for (int index = 0; index < likeConversionCount; index++) {
-            placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
+            conversions.add(PlaceRecommendationConversion.builder()
                     .placeRecommendationClickId(sequenceSeed + 4_000 + index)
                     .placeId(placeId)
                     .userId(sequenceSeed + 5_000 + index)
@@ -1796,5 +1803,6 @@ class AdminMapPlaceControllerTest {
                     .createdAt(createdAt.plusSeconds(index))
                     .build());
         }
+        placeRecommendationConversionRepository.saveAll(conversions);
     }
 }

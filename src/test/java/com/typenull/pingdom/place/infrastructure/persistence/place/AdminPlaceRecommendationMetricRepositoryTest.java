@@ -38,7 +38,7 @@ class AdminPlaceRecommendationMetricRepositoryTest {
         Method method = java.util.Arrays.stream(AdminPlaceRecommendationMetricRepository.class.getMethods())
                 .filter(candidate -> candidate.getName().equals(methodName))
                 .findFirst()
-                .orElseThrow();
+                .orElseThrow(() -> new java.util.NoSuchElementException("Method not found: " + methodName));
 
         Query query = method.getAnnotation(Query.class);
         assertThat(query).isNotNull();
