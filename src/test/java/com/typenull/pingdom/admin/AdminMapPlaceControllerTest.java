@@ -10,6 +10,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
+import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -1386,6 +1387,82 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listRecommendationMetricsCombinesDaysVersionSortAndPagination() throws Exception {
+        String accessToken = createAdminAndLogin();
+        LocalDateTime now = LocalDateTime.now();
+
+        MapPlace firstPlace = saveMetricPlace("기간 버전 장소 A", 91L, 35.1840, 128.1110, 3L);
+        MapPlace secondPlace = saveMetricPlace("기간 버전 장소 B", 92L, 35.1841, 128.1111, 3L);
+        MapPlace thirdPlace = saveMetricPlace("기간 버전 장소 C", 93L, 35.1842, 128.1112, 3L);
+
+        seedPeriodMetric(firstPlace.getId(), "place-rec-v3", now.minusHours(2), 12, 5, 2, 1, 9000L);
+        seedPeriodMetric(secondPlace.getId(), "place-rec-v3", now.minusHours(3), 9, 4, 1, 1, 9100L);
+        seedPeriodMetric(thirdPlace.getId(), "place-rec-v3", now.minusHours(4), 6, 2, 0, 1, 9200L);
+
+        seedPeriodMetric(firstPlace.getId(), "place-rec-v3", now.minusDays(5), 20, 10, 3, 2, 9300L);
+        seedPeriodMetric(secondPlace.getId(), "place-rec-v2", now.minusHours(1), 30, 12, 4, 4, 9400L);
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "2")
+                        .param("limit", "1")
+                        .param("sortBy", RecommendationMetricSortBy.CLICK.name())
+                        .param("recommendationVersion", "place-rec-v3")
+                        .param("days", "1")
+                        .param("keyword", "기간 버전 장소"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.limit").value(1))
+                .andExpect(jsonPath("$.totalCount").value(3))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.sortBy").value(RecommendationMetricSortBy.CLICK.name()))
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v3"))
+                .andExpect(jsonPath("$.days").value(1))
+                .andExpect(jsonPath("$.metrics", hasSize(1)))
+                .andExpect(jsonPath("$.metrics[0].name").value("기간 버전 장소 B"))
+                .andExpect(jsonPath("$.metrics[0].exposureCount").value(9))
+                .andExpect(jsonPath("$.metrics[0].clickCount").value(4))
+                .andExpect(jsonPath("$.metrics[0].bookmarkConversionCount").value(1))
+                .andExpect(jsonPath("$.metrics[0].likeConversionCount").value(1));
+    }
+
+    @Test
+    void listRecommendationMetricsPaginatesStableOrderForPeriodClickSort() throws Exception {
+        String accessToken = createAdminAndLogin();
+        LocalDateTime now = LocalDateTime.now();
+
+        for (int index = 0; index < 5; index++) {
+            MapPlace place = saveMetricPlace(
+                    "페이지 장소 " + (index + 1),
+                    100L + index,
+                    35.1850 + (index * 0.001d),
+                    128.1120 + (index * 0.001d),
+                    2L
+            );
+            seedPeriodMetric(place.getId(), "place-rec-v4", now.minusMinutes(index + 1), 10 + index, 10 - index, 0, 0, 10000L + (index * 100));
+        }
+
+        mockMvc.perform(get("/admin/places/recommendation-metrics")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "2")
+                        .param("limit", "2")
+                        .param("sortBy", RecommendationMetricSortBy.CLICK.name())
+                        .param("recommendationVersion", "place-rec-v4")
+                        .param("days", "1")
+                        .param("keyword", "페이지 장소"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.limit").value(2))
+                .andExpect(jsonPath("$.totalCount").value(5))
+                .andExpect(jsonPath("$.totalPages").value(3))
+                .andExpect(jsonPath("$.metrics", hasSize(2)))
+                .andExpect(jsonPath("$.metrics[0].name").value("페이지 장소 3"))
+                .andExpect(jsonPath("$.metrics[0].clickCount").value(8))
+                .andExpect(jsonPath("$.metrics[1].name").value("페이지 장소 4"))
+                .andExpect(jsonPath("$.metrics[1].clickCount").value(7));
+    }
+
+    @Test
     void compareRecommendationMetricsReturnsVersionSummaryAndDelta() throws Exception {
         String accessToken = createAdminAndLogin();
 
@@ -1656,5 +1733,76 @@ class AdminMapPlaceControllerTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private MapPlace saveMetricPlace(String name, Long userId, double latitude, double longitude, Long photoCount) {
+        return mapPlaceRepository.save(MapPlace.builder()
+                .name(name)
+                .address("경상남도 진주시 테스트로 " + userId)
+                .latitude(latitude)
+                .longitude(longitude)
+                .userId(userId)
+                .registrant("metricOwner")
+                .photoCount(photoCount)
+                .build());
+    }
+
+    private void seedPeriodMetric(
+            Long placeId,
+            String recommendationVersion,
+            LocalDateTime createdAt,
+            int exposureCount,
+            int clickCount,
+            int bookmarkConversionCount,
+            int likeConversionCount,
+            long sequenceSeed
+    ) {
+        List<PlaceRecommendationExposure> exposures = new java.util.ArrayList<>();
+        for (int index = 0; index < exposureCount; index++) {
+            exposures.add(PlaceRecommendationExposure.builder()
+                    .placeId(placeId)
+                    .userId(sequenceSeed + index)
+                    .requestLatitude(35.1800)
+                    .requestLongitude(128.1070)
+                    .ranking(1)
+                    .recommendationVersion(recommendationVersion)
+                    .createdAt(createdAt.plusSeconds(index))
+                    .build());
+        }
+        placeRecommendationExposureRepository.saveAll(exposures);
+
+        List<PlaceRecommendationClick> clicks = new java.util.ArrayList<>();
+        for (int index = 0; index < clickCount; index++) {
+            clicks.add(PlaceRecommendationClick.builder()
+                    .placeId(placeId)
+                    .userId(sequenceSeed + 1_000 + index)
+                    .recommendationVersion(recommendationVersion)
+                    .createdAt(createdAt.plusSeconds(index))
+                    .build());
+        }
+        placeRecommendationClickRepository.saveAll(clicks);
+
+        List<PlaceRecommendationConversion> conversions = new java.util.ArrayList<>();
+        for (int index = 0; index < bookmarkConversionCount; index++) {
+            conversions.add(PlaceRecommendationConversion.builder()
+                    .placeRecommendationClickId(sequenceSeed + 2_000 + index)
+                    .placeId(placeId)
+                    .userId(sequenceSeed + 3_000 + index)
+                    .conversionType(PlaceRecommendationConversionType.BOOKMARK)
+                    .recommendationVersion(recommendationVersion)
+                    .createdAt(createdAt.plusSeconds(index))
+                    .build());
+        }
+        for (int index = 0; index < likeConversionCount; index++) {
+            conversions.add(PlaceRecommendationConversion.builder()
+                    .placeRecommendationClickId(sequenceSeed + 4_000 + index)
+                    .placeId(placeId)
+                    .userId(sequenceSeed + 5_000 + index)
+                    .conversionType(PlaceRecommendationConversionType.LIKE)
+                    .recommendationVersion(recommendationVersion)
+                    .createdAt(createdAt.plusSeconds(index))
+                    .build());
+        }
+        placeRecommendationConversionRepository.saveAll(conversions);
     }
 }
