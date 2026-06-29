@@ -60,9 +60,31 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
         }
 
+        String keywordPattern = toLikePattern(condition.keyword());
+        String category = normalizeCategory(condition.category());
+        if (!locationSearch.enabled()) {
+            Page<MapPlace> placePage = placeSearchQueryRepository.searchLatestPlaces(
+                    keywordPattern,
+                    category,
+                    pageable
+            );
+            List<PlaceListItem> places = placePage.getContent()
+                    .stream()
+                    .map(this::toListItem)
+                    .toList();
+
+            return PlaceListResponse.of(
+                    places,
+                    safePage,
+                    safeLimit,
+                    placePage.getTotalElements(),
+                    placePage.getTotalPages()
+            );
+        }
+
         Page<PlaceSearchProjection> placePage = placeSearchQueryRepository.searchPlaces(
-                toLikePattern(condition.keyword()),
-                normalizeCategory(condition.category()),
+                keywordPattern,
+                category,
                 locationSearch.enabled(),
                 locationSearch.latitude(),
                 locationSearch.longitude(),

@@ -12,6 +12,35 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
 
     @Query(
             value = """
+                    SELECT m
+                    FROM MapPlace m
+                    WHERE m.latitude BETWEEN -90.0 AND 90.0
+                      AND m.longitude BETWEEN -180.0 AND 180.0
+                      AND (:keywordPattern IS NULL
+                           OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
+                      AND (:category IS NULL OR m.category = :category)
+                    ORDER BY m.id DESC
+                    """,
+            countQuery = """
+                    SELECT COUNT(m)
+                    FROM MapPlace m
+                    WHERE m.latitude BETWEEN -90.0 AND 90.0
+                      AND m.longitude BETWEEN -180.0 AND 180.0
+                      AND (:keywordPattern IS NULL
+                           OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
+                      AND (:category IS NULL OR m.category = :category)
+                    """
+    )
+    Page<MapPlace> searchLatestPlaces(
+            @Param("keywordPattern") String keywordPattern,
+            @Param("category") String category,
+            Pageable pageable
+    );
+
+    @Query(
+            value = """
                     SELECT
                         mp.map_place_id AS id,
                         mp.place_name AS name,

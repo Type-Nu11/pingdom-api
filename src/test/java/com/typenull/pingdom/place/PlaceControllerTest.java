@@ -156,6 +156,70 @@ class PlaceControllerTest {
     }
 
     @Test
+    void listPlacesSupportsMaximumLimitWithoutKeyword() throws Exception {
+        String accessToken = signupAndLogin("readerLimit100");
+        for (int index = 1; index <= 101; index++) {
+            createMapPlace("목록 장소 " + index, "경상남도 진주시 목록로 " + index);
+        }
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(100))
+                .andExpect(jsonPath("$.totalCount").value(101))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.places.length()").value(100))
+                .andExpect(jsonPath("$.places[0].name").value("목록 장소 101"))
+                .andExpect(jsonPath("$.places[99].name").value("목록 장소 2"));
+    }
+
+    @Test
+    void listPlacesSupportsMaximumLimitWithKeyword() throws Exception {
+        String accessToken = signupAndLogin("readerKeywordLimit100");
+        MapPlace matchingPlace = createMapPlace("테스트 장소", "경상남도 진주시 테스트로 1");
+        createMapPlace("일반 장소", "경상남도 진주시 일반로 1");
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "테스트")
+                        .param("page", "1")
+                        .param("limit", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.limit").value(100))
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()));
+    }
+
+    @Test
+    void listPlacesExcludesPlacesWithInvalidCoordinates() throws Exception {
+        String accessToken = signupAndLogin("readerInvalidCoordinate");
+        MapPlace validPlace = createMapPlace("정상 좌표 장소", "경상남도 진주시 정상로 1");
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("지도 표시 불가 장소")
+                .address("경상남도 진주시 이상로 1")
+                .latitude(91.0)
+                .longitude(128.1078)
+                .userId(1L)
+                .registrant("placeOwner")
+                .photoCount(0L)
+                .build());
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "100"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(validPlace.getId()));
+    }
+
+    @Test
     void listPlacesSearchesByAddressAndCategory() throws Exception {
         String accessToken = signupAndLogin("readerSearch01");
         MapPlace matchingPlace = createMapPlace(
