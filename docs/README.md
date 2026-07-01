@@ -1,5 +1,3 @@
-# 위치 기반 장소 기록 애플리케이션, Pingdom
-
 ![Pingdom Server Repository](https://github.com/user-attachments/assets/b55dadc6-fe93-4989-84ec-77b9ce57b920)
 
 Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기고, <br>
