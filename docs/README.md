@@ -1,10 +1,5 @@
 ![Pingdom Server Repository](https://github.com/user-attachments/assets/b55dadc6-fe93-4989-84ec-77b9ce57b920)
 
-Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기고, <br>
-북마크·좋아요·신고·장소 추천·알림·관리자 운영 기능을 사용할 수 있도록 지원하는 Spring Boot API 서버입니다.
-
-이 저장소는 Pingdom의 인증, 사용자, 장소, 게시글, 상호작용, 추천, 알림, 관리자 운영, 비동기 후속 처리 도메인을 관리합니다.
-
 ## Service
 
 - **인증/계정**: 이메일 회원가입, 로그인, JWT 토큰 재발급, 로그아웃, Google OAuth2/OIDC, 이메일 인증, 회원 탈퇴와 탈퇴 사용자 정리를 처리합니다.
