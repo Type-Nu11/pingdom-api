@@ -6,6 +6,7 @@ import java.util.Collection;
 import java.util.List;
 import java.util.Set;
 
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -60,4 +61,12 @@ public interface MapImageLikeRepository extends JpaRepository<MapImageLike, Long
 
     @Query("SELECT m.mapImageId FROM MapImageLike m WHERE m.userId = :userId AND m.mapImageId IN :mapImageIds")
     Set<Long> findLikedMapImageIdsByUserIdAndMapImageIds(@Param("userId") Long userId, @Param("mapImageIds") Collection<Long> mapImageIds);
+
+    @Query("""
+            SELECT m.mapImageId
+            FROM MapImageLike m
+            WHERE m.userId = :userId
+            ORDER BY m.likeId DESC
+            """)
+    List<Long> findRecentMapImageIdsByUserId(@Param("userId") Long userId, Pageable pageable);
 }

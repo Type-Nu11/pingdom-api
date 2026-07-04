@@ -3,9 +3,12 @@ package com.typenull.pingdom.identity.api;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
 import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
 import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
+import com.typenull.pingdom.identity.api.dto.export.UserDataExportResponse;
 import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import com.typenull.pingdom.identity.application.query.MyPageService;
+import com.typenull.pingdom.identity.application.query.UserDataExportResult;
+import com.typenull.pingdom.identity.application.query.UserDataExportService;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -32,6 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class UsersController {
 
     private final MyPageService myPageService;
+    private final UserDataExportService userDataExportService;
     private final ChangeInfoService changeInfoService;
 
     @GetMapping("/me")
@@ -94,6 +98,73 @@ public class UsersController {
     ) {
         MyPageQueryResult result = myPageService.getMyPageInfo(user.userId());
         return ResponseEntity.ok(MyPageResponse.from(result));
+    }
+
+    @GetMapping("/me/export")
+    @Operation(
+            summary = "내 데이터 내보내기",
+            description = "현재 인증된 사용자의 계정 정보, 전체 북마크, 최근 좋아요한 지도 이미지 ID 최대 50개를 JSON으로 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "내보내기 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = UserDataExportResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "user": {
+                                                "id": 1,
+                                                "username": "pingdom_user",
+                                                "profileImageUrl": "https://cdn.pingdom.com/profiles/user1.png"
+                                              },
+                                              "bookmarks": [
+                                                {
+                                                  "id": 10,
+                                                  "mapImageId": 123
+                                                }
+                                              ],
+                                              "likedMapImageIds": [981, 812, 700]
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청 또는 유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<UserDataExportResponse> exportMyData(
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        UserDataExportResult result = userDataExportService.exportMyData(user.userId());
+        return ResponseEntity.ok(UserDataExportResponse.from(result));
     }
 
     @PostMapping("/change-pw")
