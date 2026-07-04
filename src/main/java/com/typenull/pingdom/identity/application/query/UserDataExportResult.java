@@ -30,7 +30,7 @@ public record UserDataExportResult(
 
     public record ExportBookmark(
             Long id,
-            Long mapImageId
+            Long placeId
     ) {
     }
 }

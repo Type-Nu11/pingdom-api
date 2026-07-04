@@ -122,7 +122,7 @@ public class UsersController {
                                               "bookmarks": [
                                                 {
                                                   "id": 10,
-                                                  "mapImageId": 123
+                                                  "placeId": 123
                                                 }
                                               ],
                                               "likedMapImageIds": [981, 812, 700]

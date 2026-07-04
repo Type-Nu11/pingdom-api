@@ -41,12 +41,12 @@ public record UserDataExportResponse(
     public record ExportBookmarkResponse(
             @Schema(description = "북마크 ID", example = "10")
             Long id,
-            @Schema(description = "북마크 대상 지도 이미지 ID", example = "123")
-            Long mapImageId
+            @Schema(description = "북마크 대상 장소 ID", example = "123")
+            Long placeId
     ) {
 
         private static ExportBookmarkResponse from(UserDataExportResult.ExportBookmark bookmark) {
-            return new ExportBookmarkResponse(bookmark.id(), bookmark.mapImageId());
+            return new ExportBookmarkResponse(bookmark.id(), bookmark.placeId());
         }
     }
 }
