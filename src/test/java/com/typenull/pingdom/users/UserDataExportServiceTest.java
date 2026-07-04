@@ -64,7 +64,7 @@ class UserDataExportServiceTest {
         assertThat(result.user().username()).isEqualTo("pingdom_user");
         assertThat(result.user().profileImageUrl()).isEqualTo("https://cdn.pingdom.com/profiles/user1.png");
         assertThat(result.bookmarks())
-                .extracting(UserDataExportResult.ExportBookmark::id, UserDataExportResult.ExportBookmark::mapImageId)
+                .extracting(UserDataExportResult.ExportBookmark::id, UserDataExportResult.ExportBookmark::placeId)
                 .containsExactly(tuple(10L, 123L));
         assertThat(result.likedMapImageIds()).containsExactly(981L, 812L, 700L);
     }
