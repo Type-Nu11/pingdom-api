@@ -4,7 +4,7 @@ import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
-import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
+import com.typenull.pingdom.privacy.event.PrivacyProcessingBulkEvent;
 import jakarta.persistence.EntityManager;
 import java.sql.Connection;
 import java.sql.SQLException;
@@ -58,11 +58,11 @@ public class WithdrawnUserPurgeService {
         userWithdrawalDataService.detachContentUserReferences(expiredUserIds);
         int deletedOAuthAccountCount = oAuthAccountRepository.deleteAllByUserIds(expiredUserIds);
         userRepository.deleteAllByIdInBatch(expiredUserIds);
-        expiredUserIds.forEach(userId -> eventPublisher.publishEvent(PrivacyProcessingEvent.systemAction(
-                userId,
+        eventPublisher.publishEvent(PrivacyProcessingBulkEvent.systemAction(
+                expiredUserIds,
                 PrivacyProcessingAction.DELETED,
                 "보존기간 만료에 따른 탈퇴 사용자 최종 삭제"
-        )));
+        ));
 
         log.info(
                 "보존기간이 만료된 탈퇴 사용자를 최종 삭제했습니다. userCount={}, deletedOAuthAccountCount={}, cutoff={}",
