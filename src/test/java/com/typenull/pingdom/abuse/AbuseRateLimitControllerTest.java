@@ -325,7 +325,7 @@ class AbuseRateLimitControllerTest {
         String accessToken = accessToken(user);
         MapPlace place = createMapPlace("클릭 제한 장소");
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .with(remoteAddress("198.51.100.60"))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -335,7 +335,7 @@ class AbuseRateLimitControllerTest {
                         ))))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .with(remoteAddress("198.51.100.60"))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)

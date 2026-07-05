@@ -16,8 +16,8 @@ public class SpringdocGroupsConfig {
                 .pathsToMatch(
                         "/users/**",
                         "/map/**",
-                        "/place",
-                        "/place/**",
+                        "/places",
+                        "/places/**",
                         "/firebase/**"
                 )
                 .pathsToExclude("/admin/**")

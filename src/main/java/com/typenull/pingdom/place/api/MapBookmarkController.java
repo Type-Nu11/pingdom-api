@@ -20,14 +20,14 @@ import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
-@RequestMapping("/map")
+@RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
 @Tag(name = "App", description = "앱 전용 API")
 public class MapBookmarkController {
 
     private final MapBookmarkService mapBookmarkService;
 
-    @PostMapping("/bookmarks")
+    @PostMapping
     @Operation(summary = "장소 북마크 추가", description = "placeId를 기반으로 장소를 북마크에 추가합니다.")
     @ApiResponses({
             @ApiResponse(
@@ -82,7 +82,7 @@ public class MapBookmarkController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @DeleteMapping("/bookmarks")
+    @DeleteMapping
     @Operation(summary = "장소 북마크 해제", description = "placeId를 기반으로 장소 북마크를 해제합니다.")
     @ApiResponses({
             @ApiResponse(

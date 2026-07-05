@@ -21,14 +21,14 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/users")
+@RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
 @Tag(name = "App", description = "앱 전용 API")
 public class BookmarkQueryController {
 
     private final PlaceQueryService placeQueryService;
 
-    @GetMapping("/bookmarks")
+    @GetMapping
     @Operation(summary = "장소 북마크 목록 조회", description = "현재 인증된 사용자가 북마크한 장소 목록을 조회합니다.")
     @ApiResponses({
             @ApiResponse(

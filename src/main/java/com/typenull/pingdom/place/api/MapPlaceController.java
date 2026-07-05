@@ -22,14 +22,14 @@ import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
 @RestController
-@RequestMapping("/map")
+@RequestMapping("/places")
 @RequiredArgsConstructor
 @Tag(name = "App", description = "앱 전용 API")
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;
 
-    @PostMapping("/places/coordinates")
+    @PostMapping("/coordinates")
     @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰을 발급합니다. 카카오 장소 ID는 선택값입니다.")
     @ApiResponses({
             @ApiResponse(
@@ -82,7 +82,7 @@ public class MapPlaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @PostMapping("/places/upload")
+    @PostMapping("/upload")
     @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소/이미지와 좌표 토큰으로 장소를 저장합니다. 카카오 장소 ID 없이도 좌표 기반 등록이 가능합니다.")
     @ApiResponses({
             @ApiResponse(
@@ -137,7 +137,7 @@ public class MapPlaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @DeleteMapping("/places/{id}/delete")
+    @DeleteMapping("/{id}")
     @Operation(summary = "장소 삭제", description = "지정한 장소 ID를 삭제합니다. 본인 소유 장소만 삭제 가능합니다.")
     @ApiResponses({
             @ApiResponse(

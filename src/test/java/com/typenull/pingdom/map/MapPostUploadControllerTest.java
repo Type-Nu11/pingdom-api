@@ -422,7 +422,7 @@ class MapPostUploadControllerTest {
             payload.put("kakaoPlaceId", kakaoPlaceId);
         }
 
-        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
