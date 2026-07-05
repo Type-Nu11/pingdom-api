@@ -26,6 +26,7 @@
 
 ## 운영 문서
 
+- [v1 API 경로 정책](api-path-policy.md)
 - [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
