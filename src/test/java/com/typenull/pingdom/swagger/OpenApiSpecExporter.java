@@ -16,7 +16,6 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 public class OpenApiSpecExporter {
 
-    private static final String DEFAULT_PORT = "9090";
     private static final String DEFAULT_OUTPUT_DIR = "build/openapi";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
@@ -29,10 +28,14 @@ public class OpenApiSpecExporter {
         try (ConfigurableApplicationContext context = new SpringApplicationBuilder(PingdomApplication.class)
                 .profiles("openapi-export")
                 .properties(
-                        "server.port=" + options.port(),
+                        "server.port=0",
                         "spring.main.banner-mode=off"
                 )
                 .run(args)) {
+            Integer actualPort = context.getEnvironment().getProperty("local.server.port", Integer.class);
+            if (actualPort == null) {
+                throw new IllegalStateException("OpenAPI export failed because the embedded server port was not assigned.");
+            }
 
             Files.createDirectories(options.outputDirectory());
 
@@ -44,7 +47,7 @@ public class OpenApiSpecExporter {
             );
 
             for (Map.Entry<String, String> spec : specs.entrySet()) {
-                String responseBody = fetchSpec(options.port(), spec.getValue());
+                String responseBody = fetchSpec(actualPort, spec.getValue());
                 Files.writeString(
                         options.outputDirectory().resolve(spec.getKey()),
                         responseBody,
@@ -69,22 +72,18 @@ public class OpenApiSpecExporter {
         return response.body();
     }
 
-    private record ExportOptions(int port, Path outputDirectory) {
+    private record ExportOptions(Path outputDirectory) {
 
         private static ExportOptions from(String[] args) {
-            String portValue = DEFAULT_PORT;
             String outputDirectoryValue = DEFAULT_OUTPUT_DIR;
 
             for (String arg : args) {
-                if (arg.startsWith("--openapi.port=")) {
-                    portValue = arg.substring("--openapi.port=".length());
-                }
                 if (arg.startsWith("--openapi.output-dir=")) {
                     outputDirectoryValue = arg.substring("--openapi.output-dir=".length());
                 }
             }
 
-            return new ExportOptions(Integer.parseInt(portValue), Path.of(outputDirectoryValue));
+            return new ExportOptions(Path.of(outputDirectoryValue));
         }
     }
 }

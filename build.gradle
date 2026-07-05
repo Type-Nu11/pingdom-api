@@ -72,8 +72,7 @@ tasks.register('exportOpenApiSpecs', JavaExec) {
     mainClass = 'com.typenull.pingdom.swagger.OpenApiSpecExporter'
     argumentProviders.add({
         [
-                '--openapi.output-dir=' + layout.buildDirectory.dir('openapi').get().asFile.absolutePath,
-                '--openapi.port=' + providers.gradleProperty('openapiPort').getOrElse('9090')
+                '--openapi.output-dir=' + layout.buildDirectory.dir('openapi').get().asFile.absolutePath
         ]
     } as CommandLineArgumentProvider)
 }
