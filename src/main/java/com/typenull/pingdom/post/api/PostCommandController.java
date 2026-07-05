@@ -1,5 +1,7 @@
 package com.typenull.pingdom.post.api;
 
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
@@ -137,7 +139,7 @@ public class PostCommandController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ) {
-        Long userId = user.userId();
+        Long userId = authenticatedUserId(user);
         return ResponseEntity.ok(s3Service.updateImage(request, userId, imageId));
     }
 
@@ -206,5 +208,12 @@ public class PostCommandController {
         Long userId = user.userId();
         s3Service.deleteImage(imageId, userId);
         return ResponseEntity.ok("게시글을 삭제했습니다.");
+    }
+
+    private Long authenticatedUserId(JwtAuthenticatedUser user) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return user.userId();
     }
 }
