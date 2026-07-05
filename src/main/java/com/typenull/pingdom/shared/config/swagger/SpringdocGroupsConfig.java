@@ -18,6 +18,9 @@ public class SpringdocGroupsConfig {
                         "/map/**",
                         "/places",
                         "/places/**",
+                        "/place",
+                        "/place/**",
+                        "/notifications/**",
                         "/firebase/**"
                 )
                 .pathsToExclude("/admin/**")

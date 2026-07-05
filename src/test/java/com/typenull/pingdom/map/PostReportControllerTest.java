@@ -74,7 +74,7 @@ class PostReportControllerTest {
         String accessToken = signupAndLogin("reporter01");
         MapImage mapImage = createMapImage(101L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -92,6 +92,22 @@ class PostReportControllerTest {
     }
 
     @Test
+    void reportLegacyAliasStillWorks() throws Exception {
+        String accessToken = signupAndLogin("reporter-legacy");
+        MapImage mapImage = createMapImage(106L);
+
+        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "레거시 신고 경로 테스트"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void reportSucceedsWithSameTokenThatCanAccessMyPage() throws Exception {
         String accessToken = signupAndLogin("reporter05");
         MapImage mapImage = createMapImage(105L);
@@ -100,7 +116,7 @@ class PostReportControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -116,7 +132,7 @@ class PostReportControllerTest {
         String accessToken = signupAndLogin("reporter02");
         MapImage mapImage = createMapImage(102L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -126,7 +142,7 @@ class PostReportControllerTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -142,7 +158,7 @@ class PostReportControllerTest {
     void reportFailsWhenPostDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reporter03");
 
-        mockMvc.perform(post("/map/post/{id}/report", 9999L)
+        mockMvc.perform(post("/map/posts/{id}/report", 9999L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -159,7 +175,7 @@ class PostReportControllerTest {
         String accessToken = signupAndLogin("reporter04");
         MapImage mapImage = createMapImage(104L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -201,7 +217,7 @@ class PostReportControllerTest {
                 .build());
         MapImage mapImage = createMapImage(202L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -255,7 +271,7 @@ class PostReportControllerTest {
     }
 
     private void reportPost(String accessToken, Long mapImageId, String reason) throws Exception {
-        mockMvc.perform(post("/map/post/{id}/report", mapImageId)
+        mockMvc.perform(post("/map/posts/{id}/report", mapImageId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
