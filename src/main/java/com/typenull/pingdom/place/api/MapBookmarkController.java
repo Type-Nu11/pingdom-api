@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "App Place", description = "앱용 장소 API")
 public class MapBookmarkController {
 
     private final MapBookmarkService mapBookmarkService;

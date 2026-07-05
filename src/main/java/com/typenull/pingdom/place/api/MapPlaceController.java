@@ -24,7 +24,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/places")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "App Place", description = "앱용 장소 API")
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;

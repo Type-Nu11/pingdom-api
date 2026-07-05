@@ -23,7 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "App Place", description = "앱용 장소 API")
 public class BookmarkQueryController {
 
     private final PlaceQueryService placeQueryService;
