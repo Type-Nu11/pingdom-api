@@ -6,8 +6,11 @@ import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -21,6 +24,7 @@ public class UserDataExportService {
     private final UserRepository userRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Transactional(readOnly = true)
     public UserDataExportResult exportMyData(Long userId) {
@@ -40,6 +44,11 @@ public class UserDataExportService {
                 PageRequest.of(0, LIKE_EXPORT_LIMIT)
         );
 
+        eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
+                userId,
+                PrivacyProcessingAction.EXPORT_REQUESTED,
+                "사용자 데이터 export 요청"
+        ));
         return UserDataExportResult.of(user, bookmarks, likedMapImageIds);
     }
 }
