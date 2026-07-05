@@ -76,7 +76,7 @@ Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 
 권장 예시:
 
-- `POST /admin/report-appeals/{appealId}/approve`
+- `PATCH /admin/report-appeals/{appealId}`
 - `PATCH /admin/places/{placeId}/coordinates`
 - `DELETE /users/me/oauth-accounts/google`
 
@@ -91,6 +91,7 @@ Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 예시:
 
 - `/auth/token/refresh`
+- `/admin/report-appeals/{appealId}/approve`
 - `/admin/reports/{reportId}/accept`
 - `/admin/reports/{reportId}/decline`
 - `/admin/places/recommendation-snapshots/resync`
