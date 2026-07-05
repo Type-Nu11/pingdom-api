@@ -205,7 +205,7 @@ public class PostCommandController {
             @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = user.userId();
+        Long userId = authenticatedUserId(user);
         s3Service.deleteImage(imageId, userId);
         return ResponseEntity.ok("게시글을 삭제했습니다.");
     }
