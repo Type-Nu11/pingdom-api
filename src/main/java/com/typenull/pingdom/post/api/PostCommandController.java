@@ -251,7 +251,7 @@ public class PostCommandController {
     }
 
     private ResponseEntity<PostResponse> uploadPostInternal(PostUploadRequest request, JwtAuthenticatedUser user) {
-        Long userId = (user != null) ? user.userId() : null;
+        Long userId = authenticatedUserId(user);
         return ResponseEntity.ok(s3Service.uploadImage(request, userId));
     }
 

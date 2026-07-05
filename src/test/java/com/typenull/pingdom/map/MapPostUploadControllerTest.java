@@ -240,6 +240,18 @@ class MapPostUploadControllerTest {
     }
 
     @Test
+    void uploadPostFailsWhenUserIsUnauthenticated() throws Exception {
+        MapPlace mapPlace = createMapPlace();
+
+        mockMvc.perform(multipart("/map/posts")
+                        .file(imageFile("unauth-post.jpg"))
+                        .param("title", "인증 없는 업로드")
+                        .param("placeId", mapPlace.getId().toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void uploadPostFailsWhenTitleIsBlank() throws Exception {
         String accessToken = signupAndLogin("writer02");
         MapPlace mapPlace = createMapPlace();
