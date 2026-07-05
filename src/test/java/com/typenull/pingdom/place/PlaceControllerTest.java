@@ -1018,6 +1018,31 @@ class PlaceControllerTest {
     }
 
     @Test
+    void legacyPlaceCoordinateCreateReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/map/places/coordinates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "baseLatitude", 35.1814,
+                                "baseLongitude", 128.1084
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void legacyPlaceUploadReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/map/places/upload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "무인증 레거시 장소",
+                                "address", "경상남도 진주시 테스트로 1",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/legacy-place.jpg",
+                                "coordinateToken", "invalid-token"
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void likeRecordsRecommendationLikeConversion() throws Exception {
         String accessToken = signupAndLogin("reader16");
         MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);
