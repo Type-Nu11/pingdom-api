@@ -272,7 +272,7 @@ class AbuseRateLimitControllerTest {
         MapImage firstImage = createMapImage(100L, null);
         MapImage secondImage = createMapImage(101L, null);
 
-        mockMvc.perform(post("/map/post/{id}/report", firstImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", firstImage.getId())
                         .with(remoteAddress("198.51.100.40"))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -283,7 +283,7 @@ class AbuseRateLimitControllerTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/map/post/{id}/report", secondImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", secondImage.getId())
                         .with(remoteAddress("198.51.100.40"))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
@@ -361,7 +361,7 @@ class AbuseRateLimitControllerTest {
         MapPlace firstPlace = createMapPlace("첫 번째 업로드 장소");
         MapPlace secondPlace = createMapPlace("두 번째 업로드 장소");
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(imageFile("first.jpg"))
                         .with(remoteAddress("198.51.100.70"))
                         .param("title", "첫 번째 업로드")
@@ -369,7 +369,7 @@ class AbuseRateLimitControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(imageFile("second.jpg"))
                         .with(remoteAddress("198.51.100.70"))
                         .param("title", "두 번째 업로드")
