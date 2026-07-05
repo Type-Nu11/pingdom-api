@@ -1006,6 +1006,18 @@ class PlaceControllerTest {
     }
 
     @Test
+    void legacyRecommendationClickReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/place/recommendations/click")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", 1L,
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "legacy-unauthorized-test"
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void likeRecordsRecommendationLikeConversion() throws Exception {
         String accessToken = signupAndLogin("reader16");
         MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);

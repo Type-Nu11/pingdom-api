@@ -103,8 +103,11 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        if (user == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
         placeRecommendationClickService.recordClick(
-                authenticatedUserId(user),
+                user.userId(),
                 request.placeId(),
                 request.recommendationVersion(),
                 request.requestId()
