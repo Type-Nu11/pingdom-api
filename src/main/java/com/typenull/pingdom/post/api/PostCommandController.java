@@ -38,7 +38,7 @@ public class PostCommandController {
 
     private final S3Service s3Service;
 
-    @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @PostMapping(value = "/posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
             summary = "게시글 업로드",
             description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시)를 사용해 게시글을 저장합니다. 기존 장소 선택 없이 업로드하는 경우에는 좌표 토큰과 장소 이름/주소/카테고리를 함께 보내 장소 생성 후 게시글을 저장합니다."
@@ -129,21 +129,49 @@ public class PostCommandController {
             @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        Long userId = (user != null) ? user.userId() : null;
-        return ResponseEntity.ok(s3Service.uploadImage(request, userId));
+        return uploadPostInternal(request, user);
     }
 
-    @PostMapping("/post/{id}/update")
+    @Deprecated
+    @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(
+            summary = "게시글 업로드(구 경로)",
+            description = "기존 게시글 업로드 경로입니다. `/map/posts` 사용을 권장합니다.",
+            deprecated = true
+    )
+    @RateLimited(RateLimitAction.IMAGE_UPLOAD)
+    public ResponseEntity<PostResponse> uploadPostLegacy(
+            @Valid @ModelAttribute PostUploadRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return uploadPostInternal(request, user);
+    }
+
+    @PostMapping("/posts/{id}")
     public ResponseEntity<PostUpdateResponse> updatePost(
             @Valid @ModelAttribute PostUpdateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ) {
-        Long userId = authenticatedUserId(user);
-        return ResponseEntity.ok(s3Service.updateImage(request, userId, imageId));
+        return updatePostInternal(request, user, imageId);
     }
 
-    @DeleteMapping("/post/{id}/delete")
+    @Deprecated
+    @PostMapping("/post/{id}/update")
+    @Operation(
+            summary = "게시글 수정(구 경로)",
+            description = "기존 게시글 수정 경로입니다. `/map/posts/{id}` 사용을 권장합니다.",
+            deprecated = true
+    )
+    public ResponseEntity<PostUpdateResponse> updatePostLegacy(
+            @Valid @ModelAttribute PostUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
+    ) {
+        return updatePostInternal(request, user, imageId);
+    }
+
+    @DeleteMapping("/posts/{id}")
     @Operation(
             summary = "게시글 삭제",
             description = "지정한 게시글 ID의 게시글을 삭제합니다. 본인 소유 게시글만 삭제할 수 있습니다."
@@ -205,6 +233,38 @@ public class PostCommandController {
             @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        return deleteInternal(imageId, user);
+    }
+
+    @Deprecated
+    @DeleteMapping("/post/{id}/delete")
+    @Operation(
+            summary = "게시글 삭제(구 경로)",
+            description = "기존 게시글 삭제 경로입니다. `/map/posts/{id}` 사용을 권장합니다.",
+            deprecated = true
+    )
+    public ResponseEntity<String> deleteLegacy(
+            @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return deleteInternal(imageId, user);
+    }
+
+    private ResponseEntity<PostResponse> uploadPostInternal(PostUploadRequest request, JwtAuthenticatedUser user) {
+        Long userId = (user != null) ? user.userId() : null;
+        return ResponseEntity.ok(s3Service.uploadImage(request, userId));
+    }
+
+    private ResponseEntity<PostUpdateResponse> updatePostInternal(
+            PostUpdateRequest request,
+            JwtAuthenticatedUser user,
+            Long imageId
+    ) {
+        Long userId = authenticatedUserId(user);
+        return ResponseEntity.ok(s3Service.updateImage(request, userId, imageId));
+    }
+
+    private ResponseEntity<String> deleteInternal(Long imageId, JwtAuthenticatedUser user) {
         Long userId = authenticatedUserId(user);
         s3Service.deleteImage(imageId, userId);
         return ResponseEntity.ok("게시글을 삭제했습니다.");
