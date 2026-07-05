@@ -29,9 +29,9 @@ Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 | 분류 | 예시 |
 |---|---|
 | 컬렉션 조회 | `/map/posts`, `/admin/reports`, `/admin/notification-deliveries` |
-| 단건 조회 | `/place/{id}`, `/map/posts/{id}`, `/admin/places/{id}` |
+| 단건 조회 | `/place/{placeId}`, `/map/posts/{postId}`, `/admin/places/{placeId}` |
 | 내 resource | `/users/me`, `/users/me/export`, `/users/me/oauth-accounts/google` |
-| 하위 resource | `/admin/reports/reported-users/{id}`, `/place/recommendations/{requestId}/explanation` |
+| 하위 resource | `/admin/reports/reported-users/{userId}`, `/place/recommendations/{requestId}/explanation` |
 
 ## resource naming 규칙
 
@@ -41,6 +41,7 @@ Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 - 컬렉션 resource는 복수형을 기본값으로 사용한다.
 - 단건 조회만 존재하더라도 resource 자체 의미가 컬렉션이면 복수형을 유지한다.
 - path variable 이름은 resource 의미가 드러나는 `/{userId}`, `/{postId}`, `/{historyId}`를 우선 사용한다.
+- 단일 resource에 대한 기본 CRUD 경로에서 의미가 이미 충분히 명확하면 `/{id}` 사용도 허용한다.
 
 ### 2. 단수형 허용 기준
 
@@ -75,8 +76,8 @@ Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 
 권장 예시:
 
-- `POST /admin/report-appeals/{id}/approve`
-- `PATCH /admin/places/{id}/coordinates`
+- `POST /admin/report-appeals/{appealId}/approve`
+- `PATCH /admin/places/{placeId}/coordinates`
 - `DELETE /users/me/oauth-accounts/google`
 
 ### 2. action path 사용 허용 기준
@@ -90,8 +91,8 @@ Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 예시:
 
 - `/auth/token/refresh`
-- `/admin/reports/{id}/accept`
-- `/admin/reports/{id}/decline`
+- `/admin/reports/{reportId}/accept`
+- `/admin/reports/{reportId}/decline`
 - `/admin/places/recommendation-snapshots/resync`
 
 ### 3. 신규 action path 작성 규칙
