@@ -59,6 +59,21 @@
 | Test | Spring Boot Test, JUnit 5, Testcontainers, H2 |
 | Build & Deploy | Gradle, Docker, Docker Compose, GitHub Actions |
 
+## OpenAPI Export
+
+OpenAPI 계약 JSON은 아래 명령으로 export할 수 있습니다.
+
+```bash
+./gradlew exportOpenApiSpecs
+```
+
+생성 파일은 `build/openapi` 아래에 저장됩니다.
+
+- `openapi.json`
+- `app.json`
+- `common.json`
+- `web.json`
+
 ## Architecture
 
 Pingdom Server는 이벤트 기반 모듈러 모놀리스를 기준으로 도메인 책임을 분리합니다. <br>

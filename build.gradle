@@ -64,3 +64,12 @@ dependencies {
 tasks.named('test') {
     useJUnitPlatform()
 }
+
+tasks.register('exportOpenApiSpecs', JavaExec) {
+    group = 'documentation'
+    description = 'Exports OpenAPI JSON specs to build/openapi.'
+    classpath = sourceSets.test.runtimeClasspath
+    mainClass = 'com.typenull.pingdom.swagger.OpenApiSpecExporter'
+    systemProperty 'openapi.outputDir', layout.buildDirectory.dir('openapi').get().asFile.absolutePath
+    systemProperty 'openapi.port', findProperty('openapiPort') ?: '9090'
+}
