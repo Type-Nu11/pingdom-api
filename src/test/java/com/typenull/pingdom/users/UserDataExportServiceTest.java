@@ -14,14 +14,18 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import java.util.List;
 import java.util.Optional;
+import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
@@ -35,6 +39,9 @@ class UserDataExportServiceTest {
 
     @Mock
     private MapImageLikeRepository mapImageLikeRepository;
+
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
 
     @InjectMocks
     private UserDataExportService userDataExportService;
@@ -67,6 +74,13 @@ class UserDataExportServiceTest {
                 .extracting(UserDataExportResult.ExportBookmark::id, UserDataExportResult.ExportBookmark::placeId)
                 .containsExactly(tuple(10L, 123L));
         assertThat(result.likedMapImageIds()).containsExactly(981L, 812L, 700L);
+
+        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
+        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        assertThat(eventCaptor.getValue())
+                .asInstanceOf(InstanceOfAssertFactories.type(PrivacyProcessingEvent.class))
+                .extracting(PrivacyProcessingEvent::subjectUserId, PrivacyProcessingEvent::actorUserId, PrivacyProcessingEvent::action)
+                .containsExactly(userId, userId, PrivacyProcessingAction.EXPORT_REQUESTED);
     }
 
     @Test
