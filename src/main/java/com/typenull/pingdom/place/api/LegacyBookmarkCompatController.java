@@ -50,7 +50,7 @@ public class LegacyBookmarkCompatController {
             @Valid @RequestBody BookmarkCreateRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        BookmarkCreateResponse response = mapBookmarkService.createBookmark(request, user.userId());
+        BookmarkCreateResponse response = mapBookmarkService.createBookmark(request, authenticatedUserId(user));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
@@ -60,7 +60,14 @@ public class LegacyBookmarkCompatController {
             @RequestParam Long placeId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, user.userId());
+        BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, authenticatedUserId(user));
         return ResponseEntity.ok(response);
+    }
+
+    private Long authenticatedUserId(JwtAuthenticatedUser user) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return user.userId();
     }
 }

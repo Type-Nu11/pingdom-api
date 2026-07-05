@@ -1,5 +1,7 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRequest;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
@@ -102,7 +104,7 @@ public class LegacyPlaceCompatController {
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         placeRecommendationClickService.recordClick(
-                user.userId(),
+                authenticatedUserId(user),
                 request.placeId(),
                 request.recommendationVersion(),
                 request.requestId()
@@ -133,7 +135,7 @@ public class LegacyPlaceCompatController {
                 request.baseLatitude(),
                 request.baseLongitude(),
                 request.kakaoPlaceId(),
-                user.userId()
+                authenticatedUserId(user)
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -151,7 +153,7 @@ public class LegacyPlaceCompatController {
                 request.category(),
                 request.imageUrl(),
                 request.coordinateToken(),
-                user.userId()
+                authenticatedUserId(user)
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -162,7 +164,14 @@ public class LegacyPlaceCompatController {
             @PathVariable("id") Long placeId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        mapPlaceService.deletePlace(placeId, user.userId());
+        mapPlaceService.deletePlace(placeId, authenticatedUserId(user));
         return ResponseEntity.ok("장소를 삭제했습니다.");
+    }
+
+    private Long authenticatedUserId(JwtAuthenticatedUser user) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return user.userId();
     }
 }
