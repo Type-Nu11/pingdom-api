@@ -559,6 +559,7 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "reason", "추천 트래픽 비율 조정",
                                 "policies", List.of(
                                         java.util.Map.of(
                                                 "recommendationVersion", "place-rec-v1",
@@ -610,6 +611,7 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "reason", "추천 트래픽 비율 검증",
                                 "policies", List.of(
                                         java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 60, "enabled", true),
                                         java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 20, "enabled", true)
@@ -627,6 +629,7 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "reason", "추천 트래픽 비율 검증",
                                 "policies", List.of(
                                         java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 100, "enabled", true)
                                 )
@@ -643,6 +646,7 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "reason", "추천 트래픽 비율 검증",
                                 "policies", List.of(
                                         java.util.Map.of("recommendationVersion", "place-rec-v1", "trafficPercentage", 100, "enabled", true),
                                         java.util.Map.of("recommendationVersion", "place-rec-v2", "trafficPercentage", 0, "enabled", false)
@@ -660,6 +664,7 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "reason", "추천 트래픽 비율 검증",
                                 "policies", List.of(
                                         java.util.Map.of(
                                                 "recommendationVersion", "place-rec-v1",
