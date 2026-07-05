@@ -135,12 +135,22 @@ public class AdminPlaceRecommendationMetricCompareQueryService {
                 .map(MapPlace::getId)
                 .toList();
         Map<Long, PlaceRecommendationVersionSnapshot> snapshotsByPlaceId = new HashMap<>();
-        for (PlaceRecommendationVersionSnapshot snapshot :
-                placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
-                        placeIds,
-                        recommendationVersion
-                )) {
-            snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+        for (int fromIndex = 0; fromIndex < placeIds.size();
+                fromIndex += AdminPlaceRecommendationMetricCountCollector.PERIOD_METRIC_PLACE_BATCH_SIZE) {
+            List<Long> batchPlaceIds = placeIds.subList(
+                    fromIndex,
+                    Math.min(
+                            fromIndex + AdminPlaceRecommendationMetricCountCollector.PERIOD_METRIC_PLACE_BATCH_SIZE,
+                            placeIds.size()
+                    )
+            );
+            for (PlaceRecommendationVersionSnapshot snapshot :
+                    placeRecommendationVersionSnapshotRepository.findByPlaceIdInAndRecommendationVersion(
+                            batchPlaceIds,
+                            recommendationVersion
+                    )) {
+                snapshotsByPlaceId.put(snapshot.getPlaceId(), snapshot);
+            }
         }
 
         double globalCtr = metricMapper.calculateGlobalCtr(
