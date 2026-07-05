@@ -70,6 +70,10 @@ tasks.register('exportOpenApiSpecs', JavaExec) {
     description = 'Exports OpenAPI JSON specs to build/openapi.'
     classpath = sourceSets.test.runtimeClasspath
     mainClass = 'com.typenull.pingdom.swagger.OpenApiSpecExporter'
-    systemProperty 'openapi.outputDir', layout.buildDirectory.dir('openapi').get().asFile.absolutePath
-    systemProperty 'openapi.port', findProperty('openapiPort') ?: '9090'
+    argumentProviders.add({
+        [
+                '--openapi.output-dir=' + layout.buildDirectory.dir('openapi').get().asFile.absolutePath,
+                '--openapi.port=' + providers.gradleProperty('openapiPort').getOrElse('9090')
+        ]
+    } as CommandLineArgumentProvider)
 }

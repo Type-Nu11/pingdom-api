@@ -16,23 +16,25 @@ import org.springframework.context.ConfigurableApplicationContext;
 
 public class OpenApiSpecExporter {
 
+    private static final String DEFAULT_PORT = "9090";
+    private static final String DEFAULT_OUTPUT_DIR = "build/openapi";
+
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
             .build();
 
     public static void main(String[] args) throws Exception {
-        int port = Integer.parseInt(System.getProperty("openapi.port", "9090"));
-        Path outputDirectory = Path.of(System.getProperty("openapi.outputDir", "build/openapi"));
+        ExportOptions options = ExportOptions.from(args);
 
         try (ConfigurableApplicationContext context = new SpringApplicationBuilder(PingdomApplication.class)
                 .profiles("openapi-export")
                 .properties(
-                        "server.port=" + port,
+                        "server.port=" + options.port(),
                         "spring.main.banner-mode=off"
                 )
                 .run(args)) {
 
-            Files.createDirectories(outputDirectory);
+            Files.createDirectories(options.outputDirectory());
 
             Map<String, String> specs = Map.of(
                     "openapi.json", "/v3/api-docs",
@@ -42,9 +44,9 @@ public class OpenApiSpecExporter {
             );
 
             for (Map.Entry<String, String> spec : specs.entrySet()) {
-                String responseBody = fetchSpec(port, spec.getValue());
+                String responseBody = fetchSpec(options.port(), spec.getValue());
                 Files.writeString(
-                        outputDirectory.resolve(spec.getKey()),
+                        options.outputDirectory().resolve(spec.getKey()),
                         responseBody,
                         StandardCharsets.UTF_8
                 );
@@ -65,5 +67,24 @@ public class OpenApiSpecExporter {
         }
 
         return response.body();
+    }
+
+    private record ExportOptions(int port, Path outputDirectory) {
+
+        private static ExportOptions from(String[] args) {
+            String portValue = DEFAULT_PORT;
+            String outputDirectoryValue = DEFAULT_OUTPUT_DIR;
+
+            for (String arg : args) {
+                if (arg.startsWith("--openapi.port=")) {
+                    portValue = arg.substring("--openapi.port=".length());
+                }
+                if (arg.startsWith("--openapi.output-dir=")) {
+                    outputDirectoryValue = arg.substring("--openapi.output-dir=".length());
+                }
+            }
+
+            return new ExportOptions(Integer.parseInt(portValue), Path.of(outputDirectoryValue));
+        }
     }
 }
