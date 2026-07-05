@@ -1182,9 +1182,8 @@ class PlaceControllerTest {
         assertEquals(1L, createdSnapshot.getBookmarkCount());
         assertEquals(0L, createdSnapshot.getTotalLikeCount());
 
-        mockMvc.perform(delete("/users/me/bookmarks")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("placeId", mapPlace.getId().toString()))
+        mockMvc.perform(delete("/users/me/bookmarks/{placeId}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.placeId").value(mapPlace.getId()));
 

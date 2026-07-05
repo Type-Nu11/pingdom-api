@@ -50,6 +50,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/users/me",
             "/map/posts",
             "/users/me/bookmarks",
+            "/users/me/bookmarks/**",
             "/firebase/fcm-token",
             "/firebase/fcm-tokens",
             "/notifications/settings"
