@@ -16,6 +16,8 @@ public class SpringdocGroupsConfig {
                 .pathsToMatch(
                         "/users/**",
                         "/map/**",
+                        "/places",
+                        "/places/**",
                         "/place",
                         "/place/**",
                         "/notifications/**",

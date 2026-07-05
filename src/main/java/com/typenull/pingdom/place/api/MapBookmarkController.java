@@ -17,17 +17,22 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/map")
+@RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "App Place", description = "앱용 장소 API")
 public class MapBookmarkController {
 
     private final MapBookmarkService mapBookmarkService;
 
-    @PostMapping("/bookmarks")
+    @PostMapping
     @Operation(summary = "장소 북마크 추가", description = "placeId를 기반으로 장소를 북마크에 추가합니다.")
     @ApiResponses({
             @ApiResponse(
@@ -82,7 +87,7 @@ public class MapBookmarkController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
-    @DeleteMapping("/bookmarks")
+    @DeleteMapping("/{placeId}")
     @Operation(summary = "장소 북마크 해제", description = "placeId를 기반으로 장소 북마크를 해제합니다.")
     @ApiResponses({
             @ApiResponse(
@@ -116,7 +121,7 @@ public class MapBookmarkController {
             )
     })
     public ResponseEntity<BookmarkRemoveResponse> removeBookmark(
-            @RequestParam Long placeId,
+            @PathVariable Long placeId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ){
         BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, user.userId());

@@ -59,7 +59,7 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
                 .get("accessToken")
                 .textValue();
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshedAccessToken)
                         .param("limit", "100")
                         .param("page", "1"))
@@ -67,7 +67,7 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     }
 
     private static Stream<String> protectedGetEndpoints() {
-        return Stream.of("/place", "/map/posts", "/users/me");
+        return Stream.of("/places", "/map/posts", "/users/me");
     }
 
     private String loginAndReadToken(String username, String tokenName) throws Exception {
