@@ -1,0 +1,65 @@
+spring:
+  datasource:
+    url: jdbc:h2:mem:openapi-export;MODE=PostgreSQL;DB_CLOSE_DELAY=-1;DB_CLOSE_ON_EXIT=FALSE
+    driver-class-name: org.h2.Driver
+    username: sa
+    password:
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    open-in-view: false
+  flyway:
+    enabled: false
+  cloud:
+    aws:
+      s3:
+        enabled: false
+  docker:
+    compose:
+      enabled: false
+  security:
+    oauth2:
+      client:
+        registration:
+          google:
+            client-id: test-google-client-id
+            client-secret: test-google-client-secret
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: false
+
+jwt:
+  secret: 01234567890123456789012345678901
+  access-token-expiration-seconds: 3600
+  refresh-token-expiration-seconds: 1209600
+
+postmark:
+  server-token: test-postmark-token
+  from-email: no-reply@pingdom.local
+  verification-base-url: http://localhost:8080/auth/email/verify
+  password-reset-base-url: http://localhost:8080/auth/password-reset/confirm
+
+fcm:
+  enabled: false
+  key-path: src/test/resources/firebase-test-key.json
+
+outbox:
+  enabled: false
+  batch-size: 20
+  worker-concurrency: 2
+  worker-queue-capacity: 20
+  cleanup-batch-size: 100
+  max-attempts: 5
+  base-backoff: PT10S
+  max-backoff: PT10M
+  processing-timeout: PT5M
+  retention: P7D
+
+seed:
+  admin:
+    username: admin
+    email: admin@local
+    password: admin1234!
