@@ -361,6 +361,31 @@ class PlaceControllerTest {
     }
 
     @Test
+    void placeAndBookmarkLegacyPathsRemainSupported() throws Exception {
+        String accessToken = signupAndLogin("legacyPathReader01");
+        User user = userRepository.findByUsername("legacyPathReader01").orElseThrow();
+        MapPlace bookmarkedPlace = createMapPlace("레거시 북마크 장소", "경상남도 진주시 레거시로 1");
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(bookmarkedPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("레거시 북마크 장소"));
+
+        mockMvc.perform(get("/users/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("레거시 북마크 장소"));
+    }
+
+    @Test
     void uploadPlaceStoresImageUrl() throws Exception {
         String accessToken = signupAndLogin("placeUploader01");
         String coordinateToken = createCoordinateToken(accessToken, "27414316", 35.1801, 128.1078);
@@ -981,6 +1006,43 @@ class PlaceControllerTest {
     }
 
     @Test
+    void legacyRecommendationClickReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/place/recommendations/click")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", 1L,
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "legacy-unauthorized-test"
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void legacyPlaceCoordinateCreateReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/map/places/coordinates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "baseLatitude", 35.1814,
+                                "baseLongitude", 128.1084
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void legacyPlaceUploadReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/map/places/upload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "무인증 레거시 장소",
+                                "address", "경상남도 진주시 테스트로 1",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/legacy-place.jpg",
+                                "coordinateToken", "invalid-token"
+                        ))))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
     void likeRecordsRecommendationLikeConversion() throws Exception {
         String accessToken = signupAndLogin("reader16");
         MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);
@@ -1190,6 +1252,56 @@ class PlaceControllerTest {
         PlaceRecommendationSnapshot removedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
                 .orElseThrow();
         assertEquals(0L, removedSnapshot.getBookmarkCount());
+    }
+
+    @Test
+    void legacyBookmarkAndPlaceUploadPathsRemainSupported() throws Exception {
+        String accessToken = signupAndLogin("legacyPathWriter01");
+
+        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "baseLatitude", 35.1814,
+                                "baseLongitude", 128.1084
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String coordinateToken = objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
+                .get("coordinateToken")
+                .asText();
+
+        mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "레거시 업로드 장소",
+                                "address", "경상남도 진주시 레거시업로드로 1",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/legacy-place.jpg",
+                                "coordinateToken", coordinateToken
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("레거시 업로드 장소"));
+
+        MapPlace savedPlace = mapPlaceRepository.findAll().stream()
+                .filter(place -> "레거시 업로드 장소".equals(place.getName()))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(post("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("placeId", savedPlace.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.placeId").value(savedPlace.getId()));
+
+        mockMvc.perform(delete("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("placeId", savedPlace.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(savedPlace.getId()));
     }
 
     @Test

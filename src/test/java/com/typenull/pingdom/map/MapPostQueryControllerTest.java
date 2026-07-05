@@ -176,6 +176,35 @@ class MapPostQueryControllerTest {
     }
 
     @Test
+    void listLikedPostsSupportsLegacyAndNewAliasPaths() throws Exception {
+        String accessToken = signupAndLogin("like-alias-reader");
+        Long userId = userRepository.findByUsername("like-alias-reader").orElseThrow().getId();
+
+        MapPlace mapPlace = createMapPlace("좋아요 alias 장소", "경상남도 진주시 alias로 1");
+        MapImage likedPost = createMapImage(61L, "writer-alias", "좋아요 alias 게시글", mapPlace, 3L);
+        mapImageLikeRepository.save(MapImageLike.builder()
+                .userId(userId)
+                .mapImageId(likedPost.getId())
+                .build());
+
+        mockMvc.perform(get("/map/likes")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(likedPost.getId()));
+
+        mockMvc.perform(get("/map/like")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(likedPost.getId()));
+    }
+
+    @Test
     void getPostReturnsPostDetailWithPlaceInformation() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
