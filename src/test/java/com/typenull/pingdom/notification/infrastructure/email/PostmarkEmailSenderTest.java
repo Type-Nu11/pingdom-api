@@ -5,6 +5,7 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.postmarkapp.postmark.client.ApiClient;
@@ -14,6 +15,7 @@ import com.postmarkapp.postmark.client.exception.PostmarkException;
 import com.typenull.pingdom.identity.application.port.EmailSendException;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 
 class PostmarkEmailSenderTest {
 
@@ -46,6 +48,45 @@ class PostmarkEmailSenderTest {
         EmailSendResult result = sender.sendVerificationEmail("user@example.com", "123456");
 
         assertEquals("postmark-message-id", result.providerMessageId());
+    }
+
+    @Test
+    void sendVerificationEmailUsesConfiguredFromEmail() throws Exception {
+        ApiClient apiClient = mock(ApiClient.class);
+        MessageResponse response = new MessageResponse();
+        response.setMessageId("postmark-message-id");
+        when(apiClient.deliverMessage(any(Message.class))).thenReturn(response);
+
+        PostmarkEmailSender sender = new PostmarkEmailSender(new PostmarkProperties(
+                "test-token",
+                "support@example.com",
+                "https://example.com/verify",
+                "https://example.com/reset"
+        ), apiClient);
+
+        EmailSendResult result = sender.sendVerificationEmail("user@example.com", "123456");
+
+        ArgumentCaptor<Message> messageCaptor = ArgumentCaptor.forClass(Message.class);
+        verify(apiClient).deliverMessage(messageCaptor.capture());
+        assertEquals("postmark-message-id", result.providerMessageId());
+        assertEquals("support@example.com", messageCaptor.getValue().getFrom());
+    }
+
+    @Test
+    void postmarkPropertiesRejectsMissingFromEmailAtConfigurationBoundary() {
+        PostmarkProperties properties = new PostmarkProperties(
+                "test-token",
+                " ",
+                "https://example.com/verify",
+                "https://example.com/reset"
+        );
+
+        PostmarkConfigurationException exception = assertThrows(
+                PostmarkConfigurationException.class,
+                properties::validatedFromEmail
+        );
+
+        assertEquals("postmark.from-email 설정이 필요합니다.", exception.getMessage());
     }
 
     @Test
