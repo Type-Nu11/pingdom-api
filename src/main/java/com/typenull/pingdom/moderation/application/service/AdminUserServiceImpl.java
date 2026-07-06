@@ -4,11 +4,13 @@ import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.repository.CurrentBannedUserCounts;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.ban.BanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
 import com.typenull.pingdom.moderation.api.dto.ban.UnbanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.UnbanResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserCounts;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserItem;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
@@ -120,13 +122,20 @@ public class AdminUserServiceImpl implements AdminUserService {
         List<AdminBannedUserItem> users = userPage.getContent().stream()
                 .map(user -> toItem(user, now))
                 .toList();
+        CurrentBannedUserCounts counts = userRepository.countCurrentlyBannedByType(
+                UserBanType.PERMANENT,
+                UserBanType.TEMPORARY,
+                now,
+                normalizedKeyword
+        );
 
         return AdminBannedUserResponse.of(
                 users,
                 normalizedPage,
                 normalizedLimit,
                 userPage.getTotalElements(),
-                userPage.getTotalPages()
+                userPage.getTotalPages(),
+                toCounts(counts)
         );
     }
 
@@ -227,6 +236,14 @@ public class AdminUserServiceImpl implements AdminUserService {
                 user.getBanType(),
                 user.getBannedAt(),
                 user.getBanExpiresAt()
+        );
+    }
+
+    private AdminBannedUserCounts toCounts(CurrentBannedUserCounts counts) {
+        return new AdminBannedUserCounts(
+                counts.total(),
+                counts.permanent(),
+                counts.temporary()
         );
     }
 
