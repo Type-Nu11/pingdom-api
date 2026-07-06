@@ -29,6 +29,8 @@ class AbuseRateLimitServiceTest {
         clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"), ZoneOffset.UTC);
         AbuseRateLimitProperties properties = new AbuseRateLimitProperties(
                 StorageType.REDIS,
+                new WindowPolicy(2, Duration.ofHours(1)),
+                new WindowPolicy(100, Duration.ofHours(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),
@@ -38,6 +40,8 @@ class AbuseRateLimitServiceTest {
                         new WindowPolicy(5, Duration.ofDays(1)),
                         new WindowPolicy(100, Duration.ofDays(1))
                 ),
+                new WindowPolicy(2, Duration.ofMinutes(10)),
+                new WindowPolicy(100, Duration.ofMinutes(10)),
                 new EmailResendPolicy(
                         Duration.ofMinutes(1),
                         new WindowPolicy(5, Duration.ofDays(1)),
@@ -58,6 +62,16 @@ class AbuseRateLimitServiceTest {
         );
         store = new FakeRateLimitStore(clock);
         abuseRateLimitService = new AbuseRateLimitService(properties, store);
+    }
+
+    @Test
+    void signupLimitUsesNormalizedEmailWindow() {
+        abuseRateLimitService.checkSignup("User@Example.com", "203.0.113.14");
+        abuseRateLimitService.checkSignup("user@example.com", "203.0.113.15");
+
+        assertThrows(RateLimitException.class, () ->
+                abuseRateLimitService.checkSignup(" USER@example.com ", "203.0.113.16")
+        );
     }
 
     @Test
@@ -85,6 +99,16 @@ class AbuseRateLimitServiceTest {
         clock.advance(Duration.ofMinutes(1));
 
         assertDoesNotThrow(() -> abuseRateLimitService.checkEmailResend("user@example.com", "203.0.113.22"));
+    }
+
+    @Test
+    void emailVerifyLimitUsesNormalizedEmailWindow() {
+        abuseRateLimitService.checkEmailVerify("User@Example.com", "203.0.113.23");
+        abuseRateLimitService.checkEmailVerify("user@example.com", "203.0.113.24");
+
+        assertThrows(RateLimitException.class, () ->
+                abuseRateLimitService.checkEmailVerify(" USER@example.com ", "203.0.113.25")
+        );
     }
 
     @Test

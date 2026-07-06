@@ -13,8 +13,10 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
+import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
+import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
@@ -71,9 +73,11 @@ import org.springframework.test.web.servlet.MockMvc;
         "spring.cloud.aws.credentials.secret-key=test-secret-key",
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret",
+        "abuse.rate-limit.signup-email.limit=2",
         "abuse.rate-limit.login-username.limit=2",
         "abuse.rate-limit.token-refresh-token.limit=2",
         "abuse.rate-limit.email-resend.minimum-interval=PT1M",
+        "abuse.rate-limit.email-verify-email.limit=2",
         "abuse.rate-limit.password-reset-request.minimum-interval=PT1M",
         "abuse.rate-limit.report-user.limit=1",
         "abuse.rate-limit.map-image-like-user.limit=1",
@@ -185,6 +189,38 @@ class AbuseRateLimitControllerTest {
     }
 
     @Test
+    void signupReturnsTooManyRequestsWhenEmailLimitExceeded() throws Exception {
+        SignupRequest request = new SignupRequest(
+                "limitedSignupUser",
+                "limited-signup@example.com",
+                "password123",
+                1998,
+                null,
+                "ko",
+                "KR"
+        );
+
+        mockMvc.perform(post("/auth/signup")
+                        .with(remoteAddress("198.51.100.11"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/auth/signup")
+                        .with(remoteAddress("198.51.100.11"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isConflict());
+
+        mockMvc.perform(post("/auth/signup")
+                        .with(remoteAddress("198.51.100.11"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
     void loginReturnsTooManyRequestsWhenUsernameLimitExceeded() throws Exception {
         createUser("limitedLoginUser");
         LoginRequest request = new LoginRequest("limitedLoginUser", "wrongpass");
@@ -240,6 +276,29 @@ class AbuseRateLimitControllerTest {
 
         mockMvc.perform(post("/auth/email/resend")
                         .with(remoteAddress("198.51.100.30"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(request)))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void emailVerifyReturnsTooManyRequestsWhenEmailLimitExceeded() throws Exception {
+        User user = createUser("limitedEmailVerifyUser");
+        user.issueEmailVerification("123456", LocalDateTime.now().plusMinutes(10));
+        userRepository.saveAndFlush(user);
+        EmailVerifyRequest request = new EmailVerifyRequest(user.getEmail(), "000000");
+
+        for (int i = 0; i < 2; i++) {
+            mockMvc.perform(post("/auth/email/verify")
+                            .with(remoteAddress("198.51.100.32"))
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(request)))
+                    .andExpect(status().isBadRequest());
+        }
+
+        mockMvc.perform(post("/auth/email/verify")
+                        .with(remoteAddress("198.51.100.32"))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(request)))
                 .andExpect(status().isTooManyRequests())
