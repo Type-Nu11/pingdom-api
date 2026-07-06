@@ -143,7 +143,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
                         .with(request -> {
                             request.setDispatcherType(DispatcherType.ERROR);
                             request.setAttribute(RequestDispatcher.ERROR_STATUS_CODE, HttpServletResponse.SC_INTERNAL_SERVER_ERROR);
-                            request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, "/place");
+                            request.setAttribute(RequestDispatcher.ERROR_REQUEST_URI, "/places");
                             return request;
                         }))
                 .andExpect(status().isInternalServerError())
@@ -151,7 +151,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     private static Stream<String> protectedGetEndpoints() {
-        return Stream.of("/place", "/map/posts", "/users/me");
+        return Stream.of("/places", "/map/posts", "/users/me");
     }
 
     private void assertProtectedGetSucceeds(String endpoint, String accessToken) throws Exception {

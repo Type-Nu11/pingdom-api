@@ -1,11 +1,4 @@
-# 위치 기반 장소 기록 애플리케이션, Pingdom
-
 ![Pingdom Server Repository](https://github.com/user-attachments/assets/b55dadc6-fe93-4989-84ec-77b9ce57b920)
-
-Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기고, <br>
-북마크·좋아요·신고·장소 추천·알림·관리자 운영 기능을 사용할 수 있도록 지원하는 Spring Boot API 서버입니다.
-
-이 저장소는 Pingdom의 인증, 사용자, 장소, 게시글, 상호작용, 추천, 알림, 관리자 운영, 비동기 후속 처리 도메인을 관리합니다.
 
 ## Service
 
@@ -33,6 +26,7 @@ Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기�
 
 ## 운영 문서
 
+- [v1 API 경로 정책](api-path-policy.md)
 - [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
@@ -65,6 +59,29 @@ Pingdom Server는 사용자가 지도 위에 장소와 사진 기록을 남기�
 | API Docs | SpringDoc OpenAPI |
 | Test | Spring Boot Test, JUnit 5, Testcontainers, H2 |
 | Build & Deploy | Gradle, Docker, Docker Compose, GitHub Actions |
+
+## OpenAPI Contract
+## OpenAPI Export
+
+OpenAPI 계약 JSON은 아래 명령으로 export할 수 있습니다.
+
+```bash
+./gradlew exportOpenApiSpecs
+```
+
+OpenAPI 호환성 검증은 아래 명령으로 실행할 수 있습니다.
+
+```bash
+./gradlew verifyOpenApiContract
+```
+
+기준 스펙은 `src/test/resources/openapi-baseline` 아래에 저장하며, 의도된 API 변경 시 export 결과로 함께 갱신합니다.
+생성 파일은 `build/openapi` 아래에 저장됩니다.
+
+- `openapi.json`
+- `app.json`
+- `common.json`
+- `web.json`
 
 ## Architecture
 

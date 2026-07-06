@@ -41,15 +41,16 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/map/report-appeals",
             "/map/report-appeals/**"
     );
-    // 이슈 #317 임시 진단 로그입니다. 토큰 원문은 남기지 않고, /place 인증 실패 원인이
+    // 이슈 #317 임시 진단 로그입니다. 토큰 원문은 남기지 않고, /places 인증 실패 원인이
     // 헤더 누락, 토큰 파싱 실패, 사용자 상태 차단 중 어디인지 확인한 뒤 제거합니다.
     // 남는 위험은 내부 userId가 로그에 노출되는 점입니다.
     private static final List<String> AUTH_DIAGNOSTIC_PATH_PATTERNS = List.of(
-            "/place",
-            "/place/**",
+            "/places",
+            "/places/**",
             "/users/me",
             "/map/posts",
-            "/map/bookmarks",
+            "/users/me/bookmarks",
+            "/users/me/bookmarks/**",
             "/firebase/fcm-token",
             "/firebase/fcm-tokens",
             "/notifications/settings"

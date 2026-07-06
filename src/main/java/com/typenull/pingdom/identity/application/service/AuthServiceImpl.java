@@ -19,6 +19,8 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.application.service.AuthService;
 import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
 import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
+import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
@@ -35,6 +37,7 @@ import java.util.HexFormat;
 import java.util.UUID;
 import java.util.concurrent.ThreadLocalRandom;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -53,6 +56,7 @@ public class AuthServiceImpl implements AuthService {
     private final PasswordEncoder passwordEncoder;
     private final JwtTokenProvider jwtTokenProvider;
     private final OutboxEventPublisher outboxEventPublisher;
+    private final ApplicationEventPublisher eventPublisher;
     private final UserWithdrawalDataService userWithdrawalDataService;
     private final UserAccessStatusService userAccessStatusService;
     private final Clock clock;
@@ -348,12 +352,22 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
+        eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
+                user.getId(),
+                PrivacyProcessingAction.WITHDRAWAL_REQUESTED,
+                "회원 탈퇴 요청"
+        ));
         user.withdraw(
                 anonymizedUsername(user.getId()),
                 anonymizedEmail(user.getId()),
                 "WITHDRAWN_" + UUID.randomUUID(),
                 now()
         );
+        eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
+                user.getId(),
+                PrivacyProcessingAction.ANONYMIZED,
+                "회원 탈퇴에 따른 개인정보 익명화"
+        ));
         userAccessStatusService.evict(user.getId());
         userWithdrawalDataService.cleanupUserOwnedData(user.getId());
     }

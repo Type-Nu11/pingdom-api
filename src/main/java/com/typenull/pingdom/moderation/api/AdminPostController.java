@@ -1,5 +1,6 @@
 package com.typenull.pingdom.moderation.api;
 
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
@@ -68,6 +69,7 @@ public class AdminPostController {
                                   "reporterUsername": "reporter01",
                                   "reason": "부적절한 게시글입니다.",
                                   "status": "PENDING",
+                                  "createdAt": "2026-05-21T11:50:00",
                                   "processedAt": null
                                 }
                               ]
@@ -91,9 +93,11 @@ public class AdminPostController {
             @Parameter(description = "정렬 기준", example = "latest")
             @RequestParam(defaultValue = "LATEST") SortParam sortParam,
             @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 작성자명, 작성자 ID, 연결 장소명, 설명으로 검색합니다.", example = "용인")
-            @RequestParam(required = false, defaultValue = "") String keyword
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @Parameter(description = "신고 상태 필터. 예: PENDING", example = "PENDING")
+            @RequestParam(required = false) PostReportStatus reportStatus
     ) {
-        return adminPostQueryService.listPosts(page, limit, sortParam, keyword);
+        return adminPostQueryService.listPosts(page, limit, sortParam, keyword, reportStatus);
     }
 
     @GetMapping("/posts/{id}")
@@ -124,6 +128,7 @@ public class AdminPostController {
                               "reporterUsername": "reporter01",
                               "reason": "부적절한 게시글입니다.",
                               "status": "PENDING",
+                              "createdAt": "2026-05-21T11:50:00",
                               "processedAt": null
                             }
                           ]

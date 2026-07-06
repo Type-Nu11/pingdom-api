@@ -74,7 +74,7 @@ class PostReportControllerTest {
         String accessToken = signupAndLogin("reporter01");
         MapImage mapImage = createMapImage(101L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -92,6 +92,22 @@ class PostReportControllerTest {
     }
 
     @Test
+    void reportLegacyAliasStillWorks() throws Exception {
+        String accessToken = signupAndLogin("reporter-legacy");
+        MapImage mapImage = createMapImage(106L);
+
+        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reason": "레거시 신고 경로 테스트"
+                                }
+                                """))
+                .andExpect(status().isCreated());
+    }
+
+    @Test
     void reportSucceedsWithSameTokenThatCanAccessMyPage() throws Exception {
         String accessToken = signupAndLogin("reporter05");
         MapImage mapImage = createMapImage(105L);
@@ -100,7 +116,7 @@ class PostReportControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk());
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -116,7 +132,7 @@ class PostReportControllerTest {
         String accessToken = signupAndLogin("reporter02");
         MapImage mapImage = createMapImage(102L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -126,7 +142,7 @@ class PostReportControllerTest {
                                 """))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -142,7 +158,7 @@ class PostReportControllerTest {
     void reportFailsWhenPostDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reporter03");
 
-        mockMvc.perform(post("/map/post/{id}/report", 9999L)
+        mockMvc.perform(post("/map/posts/{id}/report", 9999L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -159,7 +175,7 @@ class PostReportControllerTest {
         String accessToken = signupAndLogin("reporter04");
         MapImage mapImage = createMapImage(104L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -201,7 +217,7 @@ class PostReportControllerTest {
                 .build());
         MapImage mapImage = createMapImage(202L);
 
-        mockMvc.perform(post("/map/post/{id}/report", mapImage.getId())
+        mockMvc.perform(post("/map/posts/{id}/report", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -211,6 +227,46 @@ class PostReportControllerTest {
                                 """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("REPORTER_RESTRICTED"));
+    }
+
+    @Test
+    void listMyReportsReturnsCurrentUsersReportsInLatestReportOrder() throws Exception {
+        String reporterToken = signupAndLogin("my-report-reader");
+        String otherReporterToken = signupAndLogin("other-report-reader");
+        MapImage olderReportedPost = createMapImage(301L, "먼저 신고한 게시글");
+        MapImage latestReportedPost = createMapImage(302L, "나중에 신고한 게시글");
+        MapImage otherReportedPost = createMapImage(303L, "다른 사용자가 신고한 게시글");
+
+        reportPost(reporterToken, olderReportedPost.getId(), "먼저 신고한 사유");
+        reportPost(otherReporterToken, otherReportedPost.getId(), "다른 사용자 신고 사유");
+        reportPost(reporterToken, latestReportedPost.getId(), "나중에 신고한 사유");
+
+        PostReport olderReport = postReportRepository.findAll().stream()
+                .filter(report -> report.getReportedImageId().equals(olderReportedPost.getId()))
+                .findFirst()
+                .orElseThrow();
+        olderReport.accept(LocalDateTime.now());
+        postReportRepository.saveAndFlush(olderReport);
+
+        mockMvc.perform(get("/map/reports")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + reporterToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.reports.length()").value(2))
+                .andExpect(jsonPath("$.reports[0].postId").value(latestReportedPost.getId()))
+                .andExpect(jsonPath("$.reports[0].title").value("나중에 신고한 게시글"))
+                .andExpect(jsonPath("$.reports[0].reason").value("나중에 신고한 사유"))
+                .andExpect(jsonPath("$.reports[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.reports[1].postId").value(olderReportedPost.getId()))
+                .andExpect(jsonPath("$.reports[1].title").value("먼저 신고한 게시글"))
+                .andExpect(jsonPath("$.reports[1].reason").value("먼저 신고한 사유"))
+                .andExpect(jsonPath("$.reports[1].status").value("ACCEPTED"));
     }
 
     private String signupAndLogin(String username) throws Exception {
@@ -255,7 +311,7 @@ class PostReportControllerTest {
     }
 
     private void reportPost(String accessToken, Long mapImageId, String reason) throws Exception {
-        mockMvc.perform(post("/map/post/{id}/report", mapImageId)
+        mockMvc.perform(post("/map/posts/{id}/report", mapImageId)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -267,13 +323,18 @@ class PostReportControllerTest {
     }
 
     private MapImage createMapImage(Long userId) {
+        return createMapImage(userId, "테스트 제목");
+    }
+
+    private MapImage createMapImage(Long userId, String title) {
         return mapImageRepository.save(
                 MapImage.builder()
-                        .imageUrl("https://example.com/image.jpg")
-                        .s3Key("test-image-key")
-                        .title("테스트 제목")
-                        .description("테스트 설명")
+                        .imageUrl("https://example.com/" + title + ".jpg")
+                        .s3Key("test-image-key-" + title)
+                        .title(title)
+                        .description(title + " 설명")
                         .userId(userId)
+                        .username("writer-" + userId)
                         .build()
         );
     }

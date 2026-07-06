@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.infrastructure.persistence;
 
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import java.time.LocalDateTime;
@@ -124,15 +125,27 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
             SELECT m
             FROM MapImage m
             LEFT JOIN m.mapPlace p
-            WHERE m.title LIKE CONCAT('%', :keyword, '%')
-               OR m.username LIKE CONCAT('%', :keyword, '%')
-               OR m.description LIKE CONCAT('%', :keyword, '%')
-               OR p.name LIKE CONCAT('%', :keyword, '%')
-               OR (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+            WHERE (:reportStatus IS NULL OR EXISTS (
+                       SELECT 1
+                       FROM PostReport pr
+                       WHERE pr.mapImage = m
+                         AND pr.status = :reportStatus
+                  ))
+              AND (
+                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                    OR (:numericKeyword IS NULL AND (
+                               :keyword = ''
+                            OR m.title LIKE CONCAT('%', :keyword, '%')
+                            OR m.username LIKE CONCAT('%', :keyword, '%')
+                            OR m.description LIKE CONCAT('%', :keyword, '%')
+                            OR p.name LIKE CONCAT('%', :keyword, '%')
+                       ))
+                  )
             """)
     Page<MapImage> searchAdminPosts(
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
+            @Param("reportStatus") PostReportStatus reportStatus,
             Pageable pageable
     );
 

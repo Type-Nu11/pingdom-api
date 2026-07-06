@@ -89,11 +89,12 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
     }
 
     private boolean isFallbackDiagnosticPath(String requestUri) {
-        return "/place".equals(requestUri)
-                || requestUri.startsWith("/place/")
+        return "/places".equals(requestUri)
+                || requestUri.startsWith("/places/")
                 || "/users/me".equals(requestUri)
                 || "/map/posts".equals(requestUri)
-                || "/map/bookmarks".equals(requestUri)
+                || "/users/me/bookmarks".equals(requestUri)
+                || requestUri.startsWith("/users/me/bookmarks/")
                 || "/firebase/fcm-token".equals(requestUri)
                 || "/firebase/fcm-tokens".equals(requestUri)
                 || "/notifications/settings".equals(requestUri);

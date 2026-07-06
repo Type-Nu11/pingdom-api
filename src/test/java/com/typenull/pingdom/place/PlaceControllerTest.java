@@ -140,7 +140,7 @@ class PlaceControllerTest {
         createMapPlace("첫 번째 장소", "경상남도 진주시 진양호로 1");
         createMapPlace("두 번째 장소", "경상남도 진주시 남강로 2");
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
@@ -162,7 +162,7 @@ class PlaceControllerTest {
             createMapPlace("목록 장소 " + index, "경상남도 진주시 목록로 " + index);
         }
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "100"))
@@ -183,7 +183,7 @@ class PlaceControllerTest {
         MapPlace matchingPlace = createMapPlace("테스트 장소", "경상남도 진주시 테스트로 1");
         createMapPlace("일반 장소", "경상남도 진주시 일반로 1");
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("keyword", "테스트")
                         .param("page", "1")
@@ -209,7 +209,7 @@ class PlaceControllerTest {
                 .photoCount(0L)
                 .build());
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "100"))
@@ -231,7 +231,7 @@ class PlaceControllerTest {
         );
         createMapPlace("남강 카페", "경상남도 진주시 남강로 10", "카페", 35.1801, 128.1078);
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("keyword", "남강로")
                         .param("category", " 관광 "))
@@ -249,7 +249,7 @@ class PlaceControllerTest {
         createMapPlace("먼저 생성된 먼 장소", "경상남도 진주시 먼로 1", "카페", 35.1840, 128.1110);
         createMapPlace("반경 밖 장소", "경상남도 진주시 바깥로 1", "카페", 35.2500, 128.2000);
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -266,7 +266,7 @@ class PlaceControllerTest {
     void listPlacesRejectsIncompleteDistanceCondition() throws Exception {
         String accessToken = signupAndLogin("readerSearch03");
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801"))
                 .andExpect(status().isBadRequest())
@@ -277,7 +277,7 @@ class PlaceControllerTest {
     void listPlacesRejectsNearestWithoutDistanceCondition() throws Exception {
         String accessToken = signupAndLogin("readerSearch04");
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("sort", "NEAREST"))
                 .andExpect(status().isBadRequest())
@@ -288,7 +288,7 @@ class PlaceControllerTest {
     void listPlacesRejectsNonFiniteDistanceCondition() throws Exception {
         String accessToken = signupAndLogin("readerSearch05");
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "Infinity")
@@ -302,7 +302,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
 
-        mockMvc.perform(get("/place/{id}", mapPlace.getId())
+        mockMvc.perform(get("/places/{id}", mapPlace.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
@@ -329,7 +329,7 @@ class PlaceControllerTest {
                 .placeId(secondBookmarkedPlace.getId())
                 .build());
 
-        mockMvc.perform(get("/users/bookmarks")
+        mockMvc.perform(get("/users/me/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
@@ -349,7 +349,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("bookmarkReader02");
         createMapPlace("일반 장소", "경상남도 진주시 북마크로 4");
 
-        mockMvc.perform(get("/users/bookmarks")
+        mockMvc.perform(get("/users/me/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
@@ -361,11 +361,36 @@ class PlaceControllerTest {
     }
 
     @Test
+    void placeAndBookmarkLegacyPathsRemainSupported() throws Exception {
+        String accessToken = signupAndLogin("legacyPathReader01");
+        User user = userRepository.findByUsername("legacyPathReader01").orElseThrow();
+        MapPlace bookmarkedPlace = createMapPlace("레거시 북마크 장소", "경상남도 진주시 레거시로 1");
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(bookmarkedPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/place")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("레거시 북마크 장소"));
+
+        mockMvc.perform(get("/users/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("레거시 북마크 장소"));
+    }
+
+    @Test
     void uploadPlaceStoresImageUrl() throws Exception {
         String accessToken = signupAndLogin("placeUploader01");
         String coordinateToken = createCoordinateToken(accessToken, "27414316", 35.1801, 128.1078);
 
-        mockMvc.perform(post("/map/places/upload")
+        mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -389,7 +414,7 @@ class PlaceControllerTest {
     void createCoordinatesAllowsMissingKakaoPlaceId() throws Exception {
         String accessToken = signupAndLogin("placeUploaderNoKakao01");
 
-        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
@@ -408,7 +433,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("placeUploaderNoKakao02");
         String coordinateToken = createCoordinateToken(accessToken, null, 35.1812, 128.1082);
 
-        mockMvc.perform(post("/map/places/upload")
+        mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
@@ -436,7 +461,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("placeUploaderCategory01");
         String coordinateToken = createCoordinateToken(accessToken, "27414319", 35.1804, 128.1081);
 
-        mockMvc.perform(post("/map/places/upload")
+        mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
@@ -464,7 +489,7 @@ class PlaceControllerTest {
         );
         createMapPlace("표준 식당", "경상남도 진주시 표준로 11", "식당", 35.1801, 128.1078);
 
-        mockMvc.perform(get("/place")
+        mockMvc.perform(get("/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("category", " coffee "))
                 .andExpect(status().isOk())
@@ -478,7 +503,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("placeUploader02");
         String coordinateToken = createCoordinateToken(accessToken, "27414317", 35.1802, 128.1079);
 
-        mockMvc.perform(post("/map/places/upload")
+        mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -503,7 +528,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("placeUploader03");
         String coordinateToken = createCoordinateToken(accessToken, "27414318", 35.1803, 128.1080);
 
-        mockMvc.perform(post("/map/places/upload")
+        mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -522,7 +547,7 @@ class PlaceControllerTest {
     void getPlaceReturnsNotFoundWhenPlaceDoesNotExist() throws Exception {
         String accessToken = signupAndLogin("reader03");
 
-        mockMvc.perform(get("/place/{id}", 9999L)
+        mockMvc.perform(get("/places/{id}", 9999L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
@@ -562,7 +587,7 @@ class PlaceControllerTest {
         createMapImage(fallbackPlace, 2L, "일반 사진 1");
         createMapImage(fallbackPlace, 1L, "일반 사진 2");
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1802")
                         .param("longitude", "128.1072")
@@ -602,7 +627,7 @@ class PlaceControllerTest {
         createMapImage(similarPlace, 1L, "유사 장소 사진");
         createMapImage(nearbyPlace, 1L, "가까운 장소 사진");
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1802")
                         .param("longitude", "128.1072")
@@ -630,7 +655,7 @@ class PlaceControllerTest {
         createMapImage(personalCandidate, 9L, "개인화 사진 2");
         createMapImage(personalCandidate, 7L, "개인화 사진 3");
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "37.5665")
                         .param("longitude", "126.9780")
@@ -654,7 +679,7 @@ class PlaceControllerTest {
         createMapImage(popularPlace, 6L, "인기 사진 4");
         createMapImage(normalPlace, 0L, "일반 사진 1");
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -683,7 +708,7 @@ class PlaceControllerTest {
                 .updatedAt(recent)
                 .build());
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "37.5665")
                         .param("longitude", "126.9780")
@@ -704,7 +729,7 @@ class PlaceControllerTest {
         createMapImage(firstPlace, 4L, "노출 사진 A");
         createMapImage(secondPlace, 3L, "노출 사진 B");
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -744,7 +769,7 @@ class PlaceControllerTest {
         createMapImage(highExposurePlace, 5L, "고노출 사진");
         createExposureLogs(highExposurePlace.getId(), 30, 35.1801, 128.1078);
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -760,7 +785,7 @@ class PlaceControllerTest {
         MapPlace clickedPlace = createMapPlace("클릭 장소", "경상남도 진주시 클릭로 1", 35.1803, 128.1079, 1L);
         createMapImage(clickedPlace, 2L, "클릭 사진");
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -788,7 +813,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("reader15");
         MapPlace mapPlace = createMapPlace("북마크 전환 장소", "경상남도 진주시 전환로 1", 35.1803, 128.1079, 1L);
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1803")
                         .param("longitude", "128.1079")
@@ -797,7 +822,7 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"));
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -806,7 +831,7 @@ class PlaceControllerTest {
                         ))))
                 .andExpect(status().isCreated());
 
-        mockMvc.perform(post("/map/bookmarks")
+        mockMvc.perform(post("/users/me/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
@@ -835,7 +860,7 @@ class PlaceControllerTest {
         MapPlace freshPlace = createMapPlace("실험 신선 후보", "경상남도 진주시 실험로 1", 35.1803, 128.1079, 1L);
         createMapImage(freshPlace, 5L, "실험 후보 사진");
 
-        MvcResult result = mockMvc.perform(get("/place/recommendations")
+        MvcResult result = mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1803")
                         .param("longitude", "128.1079")
@@ -869,7 +894,7 @@ class PlaceControllerTest {
         MapPlace clickedPlace = createMapPlace("요청 추적 클릭 장소", "경상남도 진주시 추적으로 1", 35.1803, 128.1079, 1L);
         createMapImage(clickedPlace, 1L, "요청 추적 사진");
 
-        MvcResult recommendationResult = mockMvc.perform(get("/place/recommendations")
+        MvcResult recommendationResult = mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1803")
                         .param("longitude", "128.1079")
@@ -883,7 +908,7 @@ class PlaceControllerTest {
                 .get("recommendationRequestId")
                 .asText();
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -946,7 +971,7 @@ class PlaceControllerTest {
                 .finalScore(0.55d)
                 .build());
 
-        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "req-owner-1")
+        mockMvc.perform(get("/places/recommendations/{requestId}/explanation", "req-owner-1")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.requestId").value("req-owner-1"))
@@ -957,7 +982,7 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.items[0].ranking").value(1))
                 .andExpect(jsonPath("$.items[0].finalScore").value(0.95d));
 
-        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "req-owner-1")
+        mockMvc.perform(get("/places/recommendations/{requestId}/explanation", "req-owner-1")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items.length()").value(1))
@@ -968,7 +993,7 @@ class PlaceControllerTest {
     void getRecommendationExplanationReturnsNotFoundWhenMissing() throws Exception {
         String accessToken = signupAndLogin("reader22");
 
-        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "missing-request-id")
+        mockMvc.perform(get("/places/recommendations/{requestId}/explanation", "missing-request-id")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_EXPLANATION_NOT_FOUND"));
@@ -976,8 +1001,62 @@ class PlaceControllerTest {
 
     @Test
     void getRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
-        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "missing-request-id"))
+        mockMvc.perform(get("/places/recommendations/{requestId}/explanation", "missing-request-id"))
                 .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void legacyRecommendationClickReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/place/recommendations/click")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", 1L,
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "legacy-unauthorized-test"
+                        ))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void legacyRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "legacy-unauthorized-test"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void legacyPlaceCoordinateCreateReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/map/places/coordinates")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "baseLatitude", 35.1814,
+                                "baseLongitude", 128.1084
+                        ))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void legacyPlaceUploadReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/map/places/upload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "무인증 레거시 장소",
+                                "address", "경상남도 진주시 테스트로 1",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/legacy-place.jpg",
+                                "coordinateToken", "invalid-token"
+                        ))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void legacyPlaceDeleteReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(delete("/map/places/{id}/delete", 1L))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -986,7 +1065,7 @@ class PlaceControllerTest {
         MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);
         MapImage mapImage = createMapImage(mapPlace, 0L, "좋아요 전환 사진");
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -1015,7 +1094,7 @@ class PlaceControllerTest {
         MapImage firstImage = createMapImage(mapPlace, 0L, "중복 전환 사진 1");
         MapImage secondImage = createMapImage(mapPlace, 0L, "중복 전환 사진 2");
 
-        mockMvc.perform(post("/place/recommendations/click")
+        mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
@@ -1071,7 +1150,7 @@ class PlaceControllerTest {
                 .updatedAt(now)
                 .build());
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -1111,7 +1190,7 @@ class PlaceControllerTest {
                 .updatedAt(now)
                 .build());
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -1154,7 +1233,7 @@ class PlaceControllerTest {
                 .updatedAt(now)
                 .build());
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -1170,7 +1249,7 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("reader08");
         MapPlace mapPlace = createMapPlace("북마크 검증 장소", "경상남도 진주시 칠암동 1");
 
-        mockMvc.perform(post("/map/bookmarks")
+        mockMvc.perform(post("/users/me/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", mapPlace.getId()))))
@@ -1182,15 +1261,64 @@ class PlaceControllerTest {
         assertEquals(1L, createdSnapshot.getBookmarkCount());
         assertEquals(0L, createdSnapshot.getTotalLikeCount());
 
-        mockMvc.perform(delete("/map/bookmarks")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("placeId", mapPlace.getId().toString()))
+        mockMvc.perform(delete("/users/me/bookmarks/{placeId}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.placeId").value(mapPlace.getId()));
 
         PlaceRecommendationSnapshot removedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
                 .orElseThrow();
         assertEquals(0L, removedSnapshot.getBookmarkCount());
+    }
+
+    @Test
+    void legacyBookmarkAndPlaceUploadPathsRemainSupported() throws Exception {
+        String accessToken = signupAndLogin("legacyPathWriter01");
+
+        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "baseLatitude", 35.1814,
+                                "baseLongitude", 128.1084
+                        ))))
+                .andExpect(status().isCreated())
+                .andReturn();
+
+        String coordinateToken = objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
+                .get("coordinateToken")
+                .asText();
+
+        mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "레거시 업로드 장소",
+                                "address", "경상남도 진주시 레거시업로드로 1",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/legacy-place.jpg",
+                                "coordinateToken", coordinateToken
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.name").value("레거시 업로드 장소"));
+
+        MapPlace savedPlace = mapPlaceRepository.findAll().stream()
+                .filter(place -> "레거시 업로드 장소".equals(place.getName()))
+                .findFirst()
+                .orElseThrow();
+
+        mockMvc.perform(post("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("placeId", savedPlace.getId()))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.placeId").value(savedPlace.getId()));
+
+        mockMvc.perform(delete("/map/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("placeId", savedPlace.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(savedPlace.getId()));
     }
 
     @Test
@@ -1243,7 +1371,7 @@ class PlaceControllerTest {
         createMapImage(diversePlace, 12L, "다양성 사진 2");
         createMapImage(diversePlace, 8L, "다양성 사진 3");
 
-        mockMvc.perform(get("/place/recommendations")
+        mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1801")
                         .param("longitude", "128.1078")
@@ -1281,7 +1409,7 @@ class PlaceControllerTest {
             payload.put("kakaoPlaceId", kakaoPlaceId);
         }
 
-        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))

@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("21");
-        assertThat(result.migrationsExecuted).isEqualTo(21);
+        assertThat(result.targetSchemaVersion).isEqualTo("23");
+        assertThat(result.migrationsExecuted).isEqualTo(23);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("21");
-        assertThat(result.migrationsExecuted).isEqualTo(20);
+        assertThat(result.targetSchemaVersion).isEqualTo("23");
+        assertThat(result.migrationsExecuted).isEqualTo(22);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -375,6 +375,15 @@ class FlywayMigrationIntegrationTest {
                     SELECT EXISTS (
                         SELECT 1
                         FROM information_schema.columns
+                        WHERE table_name = 'post_report'
+                          AND column_name = 'created_at'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
                         WHERE table_name = 'users'
                           AND column_name = 'report_count'
                           AND is_nullable = 'NO'
@@ -466,6 +475,39 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'notification_delivery'
                           AND indexname = 'idx_notification_delivery_channel_status_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'privacy_processing_history'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'privacy_processing_history'
+                          AND column_name = 'action'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'privacy_processing_history'
+                          AND column_name = 'created_at'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'privacy_processing_history'
+                          AND indexname = 'idx_privacy_processing_history_action_created'
                     )
                     """)).isTrue();
         }

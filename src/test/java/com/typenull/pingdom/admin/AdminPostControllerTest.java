@@ -119,6 +119,7 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.posts[0].reports[0].reporterUsername").value("reporter02"))
                 .andExpect(jsonPath("$.posts[0].reports[0].reason").value("두 번째 신고"))
                 .andExpect(jsonPath("$.posts[0].reports[0].status").value(PostReportStatus.PENDING.name()))
+                .andExpect(jsonPath("$.posts[0].reports[0].createdAt").exists())
                 .andExpect(jsonPath("$.posts[0].reports[0].processedAt").doesNotExist())
                 .andExpect(jsonPath("$.posts[0].reports[1].reportId").value(olderReport.getId()));
     }
@@ -160,7 +161,33 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.reports[0].reporterUserId").value(reporter.getId()))
                 .andExpect(jsonPath("$.reports[0].reporterUsername").value("reporter03"))
                 .andExpect(jsonPath("$.reports[0].reason").value("상세 신고"))
-                .andExpect(jsonPath("$.reports[0].status").value(PostReportStatus.PENDING.name()));
+                .andExpect(jsonPath("$.reports[0].status").value(PostReportStatus.PENDING.name()))
+                .andExpect(jsonPath("$.reports[0].createdAt").exists());
+    }
+
+    @Test
+    void listPostsFiltersByReportStatus() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("reportStatusOwner");
+
+        MapImage pendingPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/pending-image.jpg");
+        MapImage acceptedPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/accepted-image.jpg");
+        MapImage noReportPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/no-report-image.jpg");
+
+        User reporter = createUser("reportStatusReporter");
+        createPostReport(reporter.getId(), reporter.getUsername(), pendingPost, "대기 신고");
+        PostReport acceptedReport = createPostReport(reporter.getId(), reporter.getUsername(), acceptedPost, "처리 신고");
+        acceptedReport.accept(java.time.LocalDateTime.now());
+        postReportRepository.save(acceptedReport);
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reportStatus", PostReportStatus.PENDING.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(pendingPost.getId()))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(acceptedPost.getId().intValue())))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(noReportPost.getId().intValue())));
     }
 
     @Test
@@ -245,6 +272,37 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.posts.length()").value(1))
                 .andExpect(jsonPath("$.posts[0].id").value(firstPost.getId()))
                 .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(secondPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsDoesNotIncludeTitleMatchesWhenKeywordIsNumeric() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("numericStrictOwner");
+
+        MapImage exactIdPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-exact.jpg")
+                .s3Key("post-exact")
+                .title("정확히 찾는 게시글")
+                .description("정밀 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-title-contains.jpg")
+                .s3Key("post-title-contains")
+                .title(exactIdPost.getId() + "가 포함된 제목")
+                .description("숫자 키워드 포함 제목")
+                .userId(owner.getId() + 999)
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", String.valueOf(exactIdPost.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(exactIdPost.getId()));
     }
 
     @Test

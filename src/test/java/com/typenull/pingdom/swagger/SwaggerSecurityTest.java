@@ -43,7 +43,11 @@ class SwaggerSecurityTest {
     void appGroupDocsContainPlaceQueryApis() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/place']").exists())
-                .andExpect(jsonPath("$.paths['/place/{id}']").exists());
+                .andExpect(jsonPath("$.paths['/places']").exists())
+                .andExpect(jsonPath("$.paths['/places/{id}']").exists())
+                .andExpect(jsonPath("$.paths['/place']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/users/bookmarks']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/map/bookmarks']").exists())
+                .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());
     }
 }

@@ -6,7 +6,7 @@ import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile("dev")
+@Profile({"dev", "openapi-export"})
 public class SpringdocGroupsConfig {
 
     @Bean
@@ -16,8 +16,11 @@ public class SpringdocGroupsConfig {
                 .pathsToMatch(
                         "/users/**",
                         "/map/**",
+                        "/places",
+                        "/places/**",
                         "/place",
                         "/place/**",
+                        "/notifications/**",
                         "/firebase/**"
                 )
                 .pathsToExclude("/admin/**")
