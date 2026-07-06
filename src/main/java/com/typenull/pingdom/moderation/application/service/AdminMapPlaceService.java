@@ -89,12 +89,10 @@ public class AdminMapPlaceService {
 
     @Transactional
     public void deletePlace(long placeId, Long adminUserId) {
-        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
         Map<String, Object> beforeState = placeState(mapPlace);
-        List<Long> linkedPostIds = mapImageRepository.findByMapPlace_Id(placeId).stream()
-                .map(MapImage::getId)
-                .toList();
+        List<Long> linkedPostIds = mapImageRepository.findIdsByMapPlaceId(placeId);
 
         linkedPostIds.forEach(postId -> adminPostService.deletePost(postId, adminUserId));
 

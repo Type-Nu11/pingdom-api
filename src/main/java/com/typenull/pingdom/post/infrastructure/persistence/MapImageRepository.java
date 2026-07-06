@@ -255,6 +255,9 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     List<MapImage> findByMapPlace_Id(Long placeId);
 
+    @Query("SELECT m.id FROM MapImage m WHERE m.mapPlace.id = :placeId")
+    List<Long> findIdsByMapPlaceId(@Param("placeId") Long placeId);
+
     List<MapImage> findByMapPlace_Id(Long placeId, Pageable pageable);
 
     @Query("""

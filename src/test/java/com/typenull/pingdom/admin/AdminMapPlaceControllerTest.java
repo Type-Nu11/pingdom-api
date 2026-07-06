@@ -498,6 +498,9 @@ class AdminMapPlaceControllerTest {
         assertEquals(3L, adminAuditLogRepository.count());
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .anyMatch(log -> log.getAction() == AdminAuditAction.PLACE_DELETED));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
+                .anyMatch(log -> log.getAfterState().contains("\"deletedPostCount\":2")));
     }
 
     @Test
