@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.application.service;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
+import com.typenull.pingdom.moderation.api.dto.report.AdminPostReportBulkActionResponse;
 import com.typenull.pingdom.moderation.api.dto.report.ReportedUsersItem;
 import com.typenull.pingdom.moderation.api.dto.report.ReportedUsersResponse;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -17,6 +18,8 @@ import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.AdminReportService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -33,7 +36,11 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminReportServiceImpl implements AdminReportService {
 
+    private static final String BULK_REPORT_ACCEPTED_REASON = "REPORT_BULK_ACCEPTED";
+    private static final String BULK_REPORT_DECLINED_REASON = "REPORT_BULK_DECLINED";
+
     private final PostReportRepository postReportRepository;
+    private final MapImageRepository mapImageRepository;
     private final UserRepository userRepository;
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
@@ -117,6 +124,99 @@ public class AdminReportServiceImpl implements AdminReportService {
         );
     }
 
+    @Override
+    @Transactional
+    public AdminPostReportBulkActionResponse acceptPostReports(Long postId, Long adminUserId) {
+        MapImage mapImage = getPost(postId);
+        List<PostReport> pendingReports = getPendingReports(postId);
+        if (pendingReports.isEmpty()) {
+            throw new AdminException(AdminErrorCode.PENDING_REPORT_NOT_FOUND);
+        }
+
+        PostReport firstReport = pendingReports.getFirst();
+        User reportedUser = userRepository.findById(firstReport.getReportedUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        boolean beforeBanned = reportedUser.isCurrentlyBanned(now);
+        boolean beforePostHidden = !mapImage.isVisible();
+        Map<Long, Map<String, Object>> beforeStates = reportStates(pendingReports, beforeBanned, beforePostHidden);
+
+        for (PostReport report : pendingReports) {
+            User reporter = userRepository.findById(report.getReporterUserId())
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            report.accept(now);
+            reportPolicyService.recordAccepted(report.getReporterUserId(), report.getReporterUsername());
+            reporter.increaseReportCount();
+        }
+
+        userSanctionCommandService.applyBan(reportedUser, BULK_REPORT_ACCEPTED_REASON, now, null, adminUserId);
+        adminPostService.hidePost(postId, BULK_REPORT_ACCEPTED_REASON, adminUserId);
+
+        boolean afterBanned = reportedUser.isCurrentlyBanned(now);
+        boolean afterPostHidden = !mapImage.isVisible();
+        for (PostReport report : pendingReports) {
+            adminAuditLogService.record(
+                    adminUserId,
+                    AdminAuditAction.REPORT_ACCEPTED,
+                    AdminAuditTargetType.REPORT,
+                    report.getId(),
+                    BULK_REPORT_ACCEPTED_REASON,
+                    beforeStates.get(report.getId()),
+                    reportState(report, afterBanned, afterPostHidden)
+            );
+        }
+
+        return toBulkActionResponse(mapImage, PostReportStatus.ACCEPTED, pendingReports.size(), now);
+    }
+
+    @Override
+    @Transactional
+    public AdminPostReportBulkActionResponse declinePostReports(Long postId, Long adminUserId) {
+        MapImage mapImage = getPost(postId);
+        List<PostReport> pendingReports = getPendingReports(postId);
+        if (pendingReports.isEmpty()) {
+            throw new AdminException(AdminErrorCode.PENDING_REPORT_NOT_FOUND);
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        boolean postHidden = !mapImage.isVisible();
+        Map<Long, Map<String, Object>> beforeStates = new LinkedHashMap<>();
+        Map<Long, Boolean> beforeBannedByReportId = new LinkedHashMap<>();
+
+        for (PostReport report : pendingReports) {
+            boolean beforeBanned = userRepository.findById(report.getReportedUserId())
+                    .map(user -> user.isCurrentlyBanned(now))
+                    .orElse(false);
+            beforeBannedByReportId.put(report.getId(), beforeBanned);
+            beforeStates.put(report.getId(), reportState(report, beforeBanned, postHidden));
+        }
+
+        for (PostReport report : pendingReports) {
+            userRepository.findById(report.getReporterUserId())
+                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            report.decline(now);
+            reportPolicyService.recordDeclined(report.getReporterUserId(), report.getReporterUsername(), now);
+        }
+
+        for (PostReport report : pendingReports) {
+            boolean banned = userRepository.findById(report.getReportedUserId())
+                    .map(user -> user.isCurrentlyBanned(now))
+                    .orElse(beforeBannedByReportId.getOrDefault(report.getId(), false));
+            adminAuditLogService.record(
+                    adminUserId,
+                    AdminAuditAction.REPORT_DECLINED,
+                    AdminAuditTargetType.REPORT,
+                    report.getId(),
+                    BULK_REPORT_DECLINED_REASON,
+                    beforeStates.get(report.getId()),
+                    reportState(report, banned, postHidden)
+            );
+        }
+
+        return toBulkActionResponse(mapImage, PostReportStatus.DECLINED, pendingReports.size(), now);
+    }
+
     @Transactional(readOnly = true)
     public ReportedUsersResponse getReportedUsers(int page, int limit, String keyword) {
         int safePage = Math.max(page, 1);
@@ -169,6 +269,47 @@ public class AdminReportServiceImpl implements AdminReportService {
         }
 
         return postReport;
+    }
+
+    private MapImage getPost(Long postId) {
+        return mapImageRepository.findWithMapPlaceById(postId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
+    }
+
+    private List<PostReport> getPendingReports(Long postId) {
+        return postReportRepository.findAllByReportedImageIdAndStatusOrderByIdAsc(
+                postId,
+                PostReportStatus.PENDING
+        );
+    }
+
+    private Map<Long, Map<String, Object>> reportStates(
+            List<PostReport> reports,
+            boolean reportedUserBanned,
+            boolean postHidden
+    ) {
+        Map<Long, Map<String, Object>> states = new LinkedHashMap<>();
+        for (PostReport report : reports) {
+            states.put(report.getId(), reportState(report, reportedUserBanned, postHidden));
+        }
+        return states;
+    }
+
+    private AdminPostReportBulkActionResponse toBulkActionResponse(
+            MapImage mapImage,
+            PostReportStatus status,
+            int processedReportCount,
+            LocalDateTime processedAt
+    ) {
+        return new AdminPostReportBulkActionResponse(
+                mapImage.getId(),
+                status,
+                processedReportCount,
+                mapImage.getVisibilityStatus(),
+                mapImage.getHiddenAt(),
+                mapImage.getHiddenReason(),
+                processedAt
+        );
     }
 
     private Long parseLongKeyword(String keyword) {
