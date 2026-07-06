@@ -98,6 +98,10 @@ public class GlobalExceptionHandler {
                 return ResponseEntity.status(HttpStatus.CONFLICT)
                         .body(Map.of("message", MapErrorCode.BOOKMARK_ALREADY_EXISTS.getMessage(), "code", MapErrorCode.BOOKMARK_ALREADY_EXISTS.name()));
             }
+            if (normalizedMessage.contains("uk_map_image_user_place")) {
+                return ResponseEntity.status(MapErrorCode.ALREADY_POSTED.getStatus())
+                        .body(Map.of("message", MapErrorCode.ALREADY_POSTED.getMessage(), "code", MapErrorCode.ALREADY_POSTED.name()));
+            }
         }
         return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR)
                 .body(Map.of("message", "데이터 무결성 오류가 발생했습니다."));
