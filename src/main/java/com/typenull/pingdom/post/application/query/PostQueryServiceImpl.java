@@ -1,6 +1,7 @@
 package com.typenull.pingdom.post.application.query;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
+import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
@@ -60,6 +61,57 @@ public class PostQueryServiceImpl implements PostQueryService {
         Set<Long> bookmarkedPlaceIds = (userId != null && !placeIds.isEmpty())
                 ? mapBookmarkRepository.findPlaceIdsByUserIdAndPlaceIds(userId, placeIds)
                 : java.util.Collections.emptySet();
+
+        List<PostListItem> posts = mapImages.stream()
+                .map(mapImage -> toListItem(
+                        mapImage,
+                        likedImageIds.contains(mapImage.getId()),
+                        isBookmarked(mapImage, bookmarkedPlaceIds)
+                ))
+                .toList();
+
+        return PostListResponse.of(
+                posts,
+                safePage,
+                safeLimit,
+                imagePage.getTotalElements(),
+                imagePage.getTotalPages()
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PostListResponse listMyPosts(int page, int limit, Long userId, SortParam sortParam, String keyword) {
+        if (userId == null) {
+            throw new IllegalArgumentException("userId must not be null");
+        }
+
+        int safePage = Math.max(page, MIN_PAGE);
+        int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
+        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        String safeKeyword = keyword == null ? "" : keyword.trim();
+        Long numericKeyword = parseLongKeyword(safeKeyword);
+
+        Page<MapImage> imagePage = mapImageRepository.searchMyPosts(
+                userId,
+                safeKeyword,
+                numericKeyword,
+                PageRequest.of(safePage - MIN_PAGE, safeLimit, toSort(safeSortParam))
+        );
+        List<MapImage> mapImages = imagePage.getContent();
+        List<Long> mapImageIds = mapImages.stream().map(MapImage::getId).toList();
+        Set<Long> likedImageIds = mapImageIds.isEmpty()
+                ? java.util.Collections.emptySet()
+                : mapImageLikeRepository.findLikedMapImageIdsByUserIdAndMapImageIds(userId, mapImageIds);
+        List<Long> placeIds = mapImages.stream()
+                .map(MapImage::getMapPlace)
+                .filter(java.util.Objects::nonNull)
+                .map(MapPlace::getId)
+                .distinct()
+                .toList();
+        Set<Long> bookmarkedPlaceIds = placeIds.isEmpty()
+                ? java.util.Collections.emptySet()
+                : mapBookmarkRepository.findPlaceIdsByUserIdAndPlaceIds(userId, placeIds);
 
         List<PostListItem> posts = mapImages.stream()
                 .map(mapImage -> toListItem(
@@ -187,6 +239,25 @@ public class PostQueryServiceImpl implements PostQueryService {
 
     private Sort latestFirstSort() {
         return Sort.by(Sort.Order.desc("id"));
+    }
+
+    private Sort toSort(SortParam sortParam) {
+        return switch (sortParam) {
+            case OLDEST -> Sort.by(Sort.Order.asc("createdAt"), Sort.Order.asc("id"));
+            case LATEST -> Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+            case MOST_LIKED -> Sort.by(Sort.Order.desc("likeCount"), Sort.Order.desc("createdAt"), Sort.Order.desc("id"));
+        };
+    }
+
+    private Long parseLongKeyword(String keyword) {
+        if (keyword == null || keyword.isBlank()) {
+            return null;
+        }
+        try {
+            return Long.parseLong(keyword);
+        } catch (NumberFormatException exception) {
+            return null;
+        }
     }
 
     private PostListItem toListItem(MapImage mapImage, boolean liked, boolean bookmarked) {
