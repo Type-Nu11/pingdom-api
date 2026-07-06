@@ -22,6 +22,9 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
     @EntityGraph(attributePaths = "mapImage")
     Page<PostReport> findAllBy(Pageable pageable);
 
+    @EntityGraph(attributePaths = {"mapImage", "mapImage.mapPlace"})
+    Page<PostReport> findByReporterUserIdOrderByIdDesc(Long reporterUserId, Pageable pageable);
+
     List<PostReport> findAllByMapImage_IdInOrderByIdDesc(Collection<Long> mapImageIds);
 
     List<PostReport> findAllByMapImage_IdAndStatusIn(Long mapImageId, Collection<com.typenull.pingdom.engagement.domain.PostReportStatus> statuses);

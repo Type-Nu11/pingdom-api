@@ -138,12 +138,41 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                     OR m.description LIKE CONCAT('%', :keyword, '%')
                     OR p.name LIKE CONCAT('%', :keyword, '%')
                     OR (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                    OR (:numericKeyword IS NULL AND (
+                               :keyword = ''
+                            OR m.title LIKE CONCAT('%', :keyword, '%')
+                            OR m.username LIKE CONCAT('%', :keyword, '%')
+                            OR m.description LIKE CONCAT('%', :keyword, '%')
+                            OR p.name LIKE CONCAT('%', :keyword, '%')
+                       ))
                   )
             """)
     Page<MapImage> searchAdminPosts(
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
             @Param("reportStatus") PostReportStatus reportStatus,
+            Pageable pageable
+    );
+
+    @EntityGraph(attributePaths = "mapPlace")
+    @Query("""
+            SELECT m
+            FROM MapImage m
+            LEFT JOIN m.mapPlace p
+            WHERE m.userId = :userId
+              AND (
+                   :keyword = ''
+                   OR lower(m.title) LIKE lower(CONCAT('%', :keyword, '%'))
+                   OR lower(m.description) LIKE lower(CONCAT('%', :keyword, '%'))
+                   OR lower(p.name) LIKE lower(CONCAT('%', :keyword, '%'))
+                   OR (:numericKeyword IS NOT NULL AND m.id = :numericKeyword)
+              )
+            """)
+    Page<MapImage> searchMyPosts(
+            @Param("userId") Long userId,
+            @Param("keyword") String keyword,
+            @Param("numericKeyword") Long numericKeyword,
             Pageable pageable
     );
 
