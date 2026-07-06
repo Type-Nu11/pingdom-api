@@ -77,7 +77,7 @@ import org.springframework.test.web.servlet.MockMvc;
         "abuse.rate-limit.password-reset-request.minimum-interval=PT1M",
         "abuse.rate-limit.report-user.limit=1",
         "abuse.rate-limit.map-image-like-user.limit=1",
-        "abuse.rate-limit.recommendation-click-user.limit=1",
+        "abuse.rate-limit.recommendation-click-user.limit=2",
         "abuse.rate-limit.image-upload-user.limit=1"
 })
 @AutoConfigureMockMvc
@@ -323,14 +323,16 @@ class AbuseRateLimitControllerTest {
     void recommendationClickReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
         User user = createUser("limitedClickUser");
         String accessToken = accessToken(user);
-        MapPlace place = createMapPlace("클릭 제한 장소");
+        MapPlace firstPlace = createMapPlace("첫 번째 클릭 제한 장소");
+        MapPlace secondPlace = createMapPlace("두 번째 클릭 제한 장소");
+        MapPlace thirdPlace = createMapPlace("세 번째 클릭 제한 장소");
 
         mockMvc.perform(post("/places/recommendations/click")
                         .with(remoteAddress("198.51.100.60"))
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "placeId", place.getId(),
+                                "placeId", firstPlace.getId(),
                                 "recommendationVersion", "place-rec-v1"
                         ))))
                 .andExpect(status().isCreated());
@@ -340,8 +342,80 @@ class AbuseRateLimitControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "placeId", place.getId(),
+                                "placeId", secondPlace.getId(),
                                 "recommendationVersion", "place-rec-v1"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/places/recommendations/click")
+                        .with(remoteAddress("198.51.100.60"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "placeId", thirdPlace.getId(),
+                                "recommendationVersion", "place-rec-v1"
+                        ))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void recommendationClickReturnsTooManyRequestsWhenRequestIdIsReused() throws Exception {
+        User user = createUser("reusedClickUser");
+        String accessToken = accessToken(user);
+        MapPlace firstPlace = createMapPlace("첫 번째 추천 클릭 장소");
+        MapPlace secondPlace = createMapPlace("두 번째 추천 클릭 장소");
+
+        mockMvc.perform(post("/places/recommendations/click")
+                        .with(remoteAddress("198.51.100.61"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "placeId", firstPlace.getId(),
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "recommendation-request-1"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/places/recommendations/click")
+                        .with(remoteAddress("198.51.100.61"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "placeId", secondPlace.getId(),
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "recommendation-request-1"
+                        ))))
+                .andExpect(status().isTooManyRequests())
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
+    }
+
+    @Test
+    void legacyRecommendationClickReturnsTooManyRequestsWhenRequestIdIsReused() throws Exception {
+        User user = createUser("legacyClickUser");
+        String accessToken = accessToken(user);
+        MapPlace firstPlace = createMapPlace("레거시 첫 클릭 장소");
+        MapPlace secondPlace = createMapPlace("레거시 두 번째 클릭 장소");
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .with(remoteAddress("198.51.100.62"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "placeId", firstPlace.getId(),
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "legacy-recommendation-request-1"
+                        ))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/place/recommendations/click")
+                        .with(remoteAddress("198.51.100.62"))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "placeId", secondPlace.getId(),
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "legacy-recommendation-request-1"
                         ))))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
