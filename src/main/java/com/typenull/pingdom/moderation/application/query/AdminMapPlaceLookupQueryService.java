@@ -4,6 +4,7 @@ import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailRe
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceImageItem;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceItem;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
+import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
@@ -36,10 +37,10 @@ public class AdminMapPlaceLookupQueryService {
     private final PlaceGrowthService placeGrowthService;
 
     @Transactional(readOnly = true)
-    public AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword) {
+    public AdminMapPlaceResponse listPlaces(int page, int limit, AdminPlaceSortParam sortParam, String keyword) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
-        SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        AdminPlaceSortParam safeSortParam = sortParam == null ? AdminPlaceSortParam.LATEST : sortParam;
         String safeKeyword = keyword == null ? "" : keyword.trim();
         Long numericKeyword = parseLongKeyword(safeKeyword);
 
@@ -110,11 +111,11 @@ public class AdminMapPlaceLookupQueryService {
         };
     }
 
-    private Sort toListSort(SortParam sortParam) {
+    private Sort toListSort(AdminPlaceSortParam sortParam) {
         return switch (sortParam) {
             case OLDEST -> Sort.by(Sort.Order.asc("id"));
             case LATEST -> Sort.by(Sort.Order.desc("id"));
-            case MOST_LIKED -> throw new AdminException(AdminErrorCode.UNSUPPORTED_PLACE_SORT_PARAM);
+            case LEVEL_DESC -> Sort.by(Sort.Order.desc("photoCount"), Sort.Order.desc("id"));
         };
     }
 
