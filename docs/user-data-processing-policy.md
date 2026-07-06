@@ -81,6 +81,9 @@ Authorization: Bearer {accessToken}
 user:
   withdrawal:
     retention: P30D
+    cleanup-enabled: true
+    cleanup-delay: PT24H
+    cleanup-initial-delay: PT1H
 ```
 
 보존 기간이 만료되면 기존 `WithdrawnUserPurgeWorker`가 최종 삭제를 수행한다.
@@ -92,6 +95,7 @@ user:
 | 만료 대상 조회 | `status = WITHDRAWN`, `withdrawnAt <= now - retention` |
 | 콘텐츠 참조 제거 | 게시글/장소의 `userId`를 `null` 처리 |
 | 인증 연계 데이터 삭제 | OAuth 계정 연결 삭제 |
+| 연관 데이터 삭제 | FCM 토큰 및 알림 설정 삭제 |
 | 계정 최종 삭제 | `users` row 삭제 |
 
 ## 개인정보 처리 이력 보관 기준 정리
@@ -130,6 +134,7 @@ privacy:
     cleanup-batch-size: 100
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
+    cleanup-enabled: true
 ```
 
 cleanup worker는 만료 이력이 더 이상 없을 때까지 배치 단위 삭제를 반복한다.
