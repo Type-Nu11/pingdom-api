@@ -9,6 +9,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "abuse.rate-limit")
 public record AbuseRateLimitProperties(
+        StorageType storage,
         @Valid WindowPolicy loginUsername,
         @Valid WindowPolicy loginIp,
         @Valid WindowPolicy tokenRefreshToken,
@@ -32,6 +33,9 @@ public record AbuseRateLimitProperties(
     private static final String DEFAULT_REDIS_KEY_PREFIX = "pingdom:rate-limit:";
 
     public AbuseRateLimitProperties {
+        if (storage == null) {
+            storage = StorageType.REDIS;
+        }
         loginUsername = WindowPolicy.withDefaults(loginUsername, 5, Duration.ofMinutes(1));
         loginIp = WindowPolicy.withDefaults(loginIp, 120, Duration.ofMinutes(1));
         tokenRefreshToken = WindowPolicy.withDefaults(tokenRefreshToken, 10, Duration.ofMinutes(1));
@@ -54,6 +58,10 @@ public record AbuseRateLimitProperties(
         if (failOpen == null) {
             failOpen = true;
         }
+    }
+
+    public enum StorageType {
+        REDIS
     }
 
     public record WindowPolicy(
