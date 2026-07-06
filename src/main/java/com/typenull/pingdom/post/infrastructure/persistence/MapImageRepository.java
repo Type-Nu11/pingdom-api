@@ -132,12 +132,14 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                          AND pr.status = :reportStatus
                   ))
               AND (
-                       :keyword = ''
-                    OR m.title LIKE CONCAT('%', :keyword, '%')
-                    OR m.username LIKE CONCAT('%', :keyword, '%')
-                    OR m.description LIKE CONCAT('%', :keyword, '%')
-                    OR p.name LIKE CONCAT('%', :keyword, '%')
-                    OR (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                    OR (:numericKeyword IS NULL AND (
+                               :keyword = ''
+                            OR m.title LIKE CONCAT('%', :keyword, '%')
+                            OR m.username LIKE CONCAT('%', :keyword, '%')
+                            OR m.description LIKE CONCAT('%', :keyword, '%')
+                            OR p.name LIKE CONCAT('%', :keyword, '%')
+                       ))
                   )
             """)
     Page<MapImage> searchAdminPosts(
