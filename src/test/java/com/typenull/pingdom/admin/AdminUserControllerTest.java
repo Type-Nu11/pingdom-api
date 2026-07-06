@@ -201,6 +201,9 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.users[0].banExpiresAt").value("2026-07-10T09:00:00"))
                 .andExpect(jsonPath("$.users[1].userId").value(temporaryUserLate.getId()))
                 .andExpect(jsonPath("$.totalCount").value(2));
+    }
+
+    @Test
     void listBannedUsersReturnsCountsForCurrentBannedUsersWithKeywordApplied() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now();

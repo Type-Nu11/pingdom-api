@@ -52,8 +52,7 @@ public class AdminUserController {
     @GetMapping("/users/banned")
     @Operation(
             summary = "밴 유저 목록 조회",
-            description = "관리자가 현재 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. keyword는 숫자만 입력하면 userId 정확히 일치로 검색하고, 그 외에는 username 부분 일치로 검색합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
-            description = "관리자가 현재 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. counts는 현재 밴 중인 사용자 기준이며, keyword 검색어가 있으면 검색 결과 기준으로 계산됩니다. 기간 필터는 현재 이 API에서 제공하지 않습니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            description = "관리자가 현재 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. keyword는 숫자만 입력하면 userId 정확히 일치로 검색하고, 그 외에는 username 부분 일치로 검색합니다. counts는 현재 밴 중인 사용자 기준이며, keyword 검색어가 있으면 검색 결과 기준으로 계산됩니다. 기간 필터는 현재 이 API에서 제공하지 않습니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
