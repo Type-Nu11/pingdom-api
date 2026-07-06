@@ -139,6 +139,10 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
             PostReportStatus reportStatus,
             Pageable pageable
     ) {
+        if (keyword.isBlank() && reportStatus == null) {
+            return mapImageRepository.findAllBy(pageable);
+        }
+
         return mapImageRepository.searchAdminPosts(keyword, numericKeyword, reportStatus, pageable);
     }
 }

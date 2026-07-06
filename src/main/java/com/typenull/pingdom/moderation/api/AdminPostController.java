@@ -1,10 +1,12 @@
 package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
+import com.typenull.pingdom.moderation.api.dto.report.AdminPostReportBulkActionResponse;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
+import com.typenull.pingdom.moderation.application.AdminReportService;
 import com.typenull.pingdom.moderation.application.query.AdminPostQueryService;
 import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
@@ -40,6 +42,7 @@ import org.springframework.web.server.ResponseStatusException;
 public class AdminPostController {
 
     private final AdminPostService adminPostService;
+    private final AdminReportService adminReportService;
     private final AdminPostQueryService adminPostQueryService;
     private final S3Service s3Service;
 
@@ -155,6 +158,78 @@ public class AdminPostController {
             @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long id
     ) {
         return adminPostQueryService.getPost(id);
+    }
+
+    @PostMapping("/posts/{postId}/reports/accept")
+    @Operation(
+            summary = "게시글 단위 신고 일괄 수락",
+            description = "관리자가 게시글에 연결된 PENDING 신고를 모두 수락하고 게시글 숨김 및 대상 사용자 제재를 처리합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 신고 일괄 수락 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminPostReportBulkActionResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "postId": 10,
+                                      "status": "ACCEPTED",
+                                      "processedReportCount": 3,
+                                      "visibilityStatus": "AUTO_HIDDEN",
+                                      "hiddenAt": "2026-05-21T10:15:30",
+                                      "hiddenReason": "REPORT_BULK_ACCEPTED",
+                                      "processedAt": "2026-05-21T10:15:30"
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "처리할 PENDING 신고 없음")
+    })
+    public AdminPostReportBulkActionResponse acceptPostReports(
+            @Parameter(description = "신고를 일괄 수락할 게시글 ID", example = "10")
+            @PathVariable Long postId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminReportService.acceptPostReports(postId, adminUserId);
+    }
+
+    @PostMapping("/posts/{postId}/reports/decline")
+    @Operation(
+            summary = "게시글 단위 신고 일괄 거절",
+            description = "관리자가 게시글에 연결된 PENDING 신고를 모두 거절합니다. 게시글 공개 상태와 대상 사용자 제재 상태는 변경하지 않습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "게시글 신고 일괄 거절 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminPostReportBulkActionResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "postId": 10,
+                                      "status": "DECLINED",
+                                      "processedReportCount": 3,
+                                      "visibilityStatus": "ACTIVE",
+                                      "hiddenAt": null,
+                                      "hiddenReason": null,
+                                      "processedAt": "2026-05-21T10:15:30"
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음"),
+            @ApiResponse(responseCode = "409", description = "처리할 PENDING 신고 없음")
+    })
+    public AdminPostReportBulkActionResponse declinePostReports(
+            @Parameter(description = "신고를 일괄 거절할 게시글 ID", example = "10")
+            @PathVariable Long postId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return adminReportService.declinePostReports(postId, adminUserId);
     }
 
     @DeleteMapping("/posts/{id}/delete")
