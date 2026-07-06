@@ -333,7 +333,8 @@ class AbuseRateLimitControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "placeId", firstPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "recommendation-limit-request-1"
                         ))))
                 .andExpect(status().isCreated());
 
@@ -343,7 +344,8 @@ class AbuseRateLimitControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "placeId", secondPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "recommendation-limit-request-2"
                         ))))
                 .andExpect(status().isCreated());
 
@@ -353,7 +355,8 @@ class AbuseRateLimitControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "placeId", thirdPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "recommendation-limit-request-3"
                         ))))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
