@@ -45,26 +45,31 @@ public record PostUploadRequest(
         @Schema(description = "업로드할 게시글 첨부 파일", type = "string", format = "binary")
         MultipartFile file
 ) {
+    @Schema(hidden = true)
     @AssertTrue(message = "장소 ID, 카카오 장소 ID 또는 좌표 기반 장소 정보는 필수입니다.")
     public boolean isValidPlace() {
         return hasExistingPlaceReference() || hasCoordinateBasedPlacePayload();
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "좌표 기반 업로드 시 장소 이름은 필수입니다.")
     public boolean isValidPlaceName() {
         return !requiresCoordinateBasedPlace() || StringUtils.hasText(placeName);
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "좌표 기반 업로드 시 장소 주소는 필수입니다.")
     public boolean isValidAddress() {
         return !requiresCoordinateBasedPlace() || StringUtils.hasText(address);
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "좌표 기반 업로드 시 장소 카테고리는 필수입니다.")
     public boolean isValidCategory() {
         return !requiresCoordinateBasedPlace() || StringUtils.hasText(category);
     }
 
+    @Schema(hidden = true)
     @AssertTrue(message = "좌표 기반 업로드 시 좌표 토큰은 필수입니다.")
     public boolean isValidCoordinateToken() {
         return !requiresCoordinateBasedPlace() || StringUtils.hasText(coordinateToken);

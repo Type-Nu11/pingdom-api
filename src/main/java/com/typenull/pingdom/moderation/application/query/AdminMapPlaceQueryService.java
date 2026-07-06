@@ -6,12 +6,13 @@ import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailRe
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
+import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 
 public interface AdminMapPlaceQueryService {
 
-    AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword);
+    AdminMapPlaceResponse listPlaces(int page, int limit, AdminPlaceSortParam sortParam, String keyword);
 
     AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword);
 
