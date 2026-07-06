@@ -12,6 +12,7 @@ import com.typenull.pingdom.moderation.api.dto.ban.UnbanResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserItem;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserSearchCondition;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryItem;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
@@ -21,6 +22,7 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
+import com.typenull.pingdom.moderation.domain.user.AdminBannedUserSortBy;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import java.time.Clock;
@@ -100,21 +102,26 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
-    public AdminBannedUserResponse listBannedUsers(String keyword, Pageable pageable) {
+    public AdminBannedUserResponse listBannedUsers(AdminBannedUserSearchCondition condition, Pageable pageable) {
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
+        validateBannedUserPeriod(condition.bannedFrom(), condition.bannedTo());
         Pageable normalizedPageable = PageRequest.of(
                 normalizedPage - 1,
                 normalizedLimit,
-                Sort.by(Sort.Order.desc("bannedAt"), Sort.Order.desc("id"))
+                bannedUserSort(condition.sortBy(), condition.sortDirection())
         );
 
         LocalDateTime now = now();
-        String normalizedKeyword = normalizeKeyword(keyword);
+        String normalizedKeyword = normalizeKeyword(condition.keyword());
         Page<User> userPage = userRepository.findAllCurrentlyBanned(
                 UserBanType.TEMPORARY,
                 now,
                 normalizedKeyword,
+                isNumericKeyword(normalizedKeyword),
+                condition.banType(),
+                condition.bannedFrom(),
+                condition.bannedTo(),
                 normalizedPageable
         );
         List<AdminBannedUserItem> users = userPage.getContent().stream()
@@ -276,12 +283,31 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
     }
 
+    private void validateBannedUserPeriod(LocalDateTime from, LocalDateTime to) {
+        validateHistoryPeriod(from, to);
+    }
+
     private String normalizeKeyword(String keyword) {
         if (keyword == null) {
             return null;
         }
         String trimmedKeyword = keyword.trim();
         return trimmedKeyword.isEmpty() ? null : trimmedKeyword;
+    }
+
+    private boolean isNumericKeyword(String keyword) {
+        return keyword != null && keyword.chars().allMatch(Character::isDigit);
+    }
+
+    private Sort bannedUserSort(AdminBannedUserSortBy sortBy, Sort.Direction sortDirection) {
+        AdminBannedUserSortBy safeSortBy = sortBy == null ? AdminBannedUserSortBy.BANNED_AT : sortBy;
+        Sort.Direction safeDirection = sortDirection == null ? Sort.Direction.DESC : sortDirection;
+
+        return switch (safeSortBy) {
+            case EXPIRES_AT -> Sort.by(new Sort.Order(safeDirection, "banExpiresAt"), new Sort.Order(safeDirection, "id"));
+            case USER_ID -> Sort.by(new Sort.Order(safeDirection, "id"));
+            case BANNED_AT -> Sort.by(new Sort.Order(safeDirection, "bannedAt"), new Sort.Order(safeDirection, "id"));
+        };
     }
 
     private LocalDateTime now() {
