@@ -9,5 +9,6 @@ public record AdminPostReportItem(
         String reporterUsername,
         String reason,
         PostReportStatus status,
+        LocalDateTime createdAt,
         LocalDateTime processedAt
 ) {}

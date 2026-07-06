@@ -2,6 +2,7 @@ package com.typenull.pingdom.moderation.application.query;
 
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostReportItem;
@@ -31,7 +32,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword) {
+    public AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword, PostReportStatus reportStatus) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         int targetPage = safePage - 1;
@@ -46,7 +47,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         };
 
         PageRequest pageable = PageRequest.of(targetPage, safeLimit, sort);
-        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, pageable);
+        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, reportStatus, pageable);
 
         Map<Long, List<AdminPostReportItem>> reportsByImageId = getReportsByImageId(mapImagePage.getContent());
 
@@ -116,6 +117,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 postReport.getReporterUsername(),
                 postReport.getReason(),
                 postReport.getStatus(),
+                postReport.getCreatedAt(),
                 postReport.getProcessedAt()
         );
     }
@@ -131,18 +133,12 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         }
     }
 
-    private Page<MapImage> loadAdminPostPage(String keyword, Long numericKeyword, Pageable pageable) {
-        // 1. 전체 조회
-        if (keyword.isBlank()) {
-            return mapImageRepository.findAllBy(pageable);
-        }
-
-        // 2. 숫자인 경우 -> ID 정밀 검색
-        if (numericKeyword != null) {
-            return mapImageRepository.findByIdOrUserId(numericKeyword, pageable);
-        }
-
-        // 3. 텍스트인 경우 -> 게시글/작성자/장소명 포함 검색
-        return mapImageRepository.searchAdminPosts(keyword, null, pageable);
+    private Page<MapImage> loadAdminPostPage(
+            String keyword,
+            Long numericKeyword,
+            PostReportStatus reportStatus,
+            Pageable pageable
+    ) {
+        return mapImageRepository.searchAdminPosts(keyword, numericKeyword, reportStatus, pageable);
     }
 }
