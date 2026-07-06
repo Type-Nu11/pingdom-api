@@ -49,7 +49,8 @@ import software.amazon.awssdk.services.s3.S3Client;
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret",
         "fcm.enabled=false",
-        "fcm.key-path=dummy"
+        "fcm.key-path=dummy",
+        "abuse.rate-limit.login-username.limit=100"
 })
 @AutoConfigureMockMvc
 @Transactional
@@ -114,7 +115,10 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.users[1].userId").value(olderBannedUser.getId()))
                 .andExpect(jsonPath("$.users[1].username").value("bannedUser01"))
                 .andExpect(jsonPath("$.totalCount").value(2))
-                .andExpect(jsonPath("$.hasNext").value(false));
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.counts.total").value(2))
+                .andExpect(jsonPath("$.counts.permanent").value(2))
+                .andExpect(jsonPath("$.counts.temporary").value(0));
     }
 
     @Test
@@ -145,6 +149,42 @@ class AdminUserControllerTest {
     }
 
     @Test
+    void listBannedUsersReturnsCountsForCurrentBannedUsersWithKeywordApplied() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        LocalDateTime now = LocalDateTime.now();
+
+        User permanentMatchedUser = createUser("keywordPermanent");
+        permanentMatchedUser.ban("영구 밴", now.minusDays(3));
+        userRepository.save(permanentMatchedUser);
+
+        User temporaryMatchedUser = createUser("keywordTemporary");
+        temporaryMatchedUser.ban("기간 밴", now.minusDays(2), now.plusDays(3));
+        userRepository.save(temporaryMatchedUser);
+
+        User expiredMatchedUser = createUser("keywordExpired");
+        expiredMatchedUser.ban("만료된 기간 밴", now.minusDays(5), now.minusDays(1));
+        userRepository.save(expiredMatchedUser);
+
+        User permanentUnmatchedUser = createUser("otherPermanent");
+        permanentUnmatchedUser.ban("검색어 미일치 영구 밴", now.minusDays(1));
+        userRepository.save(permanentUnmatchedUser);
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", "keyword")
+                        .param("page", "1")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(1))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.counts.total").value(2))
+                .andExpect(jsonPath("$.counts.permanent").value(1))
+                .andExpect(jsonPath("$.counts.temporary").value(1));
+    }
+
+    @Test
     void listBannedUsersReturnsEmptyListWhenNoBannedUserExists() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         createUser("activeUser02");
@@ -155,7 +195,10 @@ class AdminUserControllerTest {
                         .param("limit", "20"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.users.length()").value(0))
-                .andExpect(jsonPath("$.totalCount").value(0));
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.counts.total").value(0))
+                .andExpect(jsonPath("$.counts.permanent").value(0))
+                .andExpect(jsonPath("$.counts.temporary").value(0));
     }
 
     @Test
