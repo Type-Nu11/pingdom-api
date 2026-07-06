@@ -126,12 +126,15 @@ Flyway SQL은 `FlywayMigrationIntegrationTest`가 PostGIS Testcontainers 환경�
 ## Compose readiness 확인
 
 배포용 `compose.yaml`과 로컬용 `docker-compose-local.yml`은 DB readiness를 healthcheck로 확인한다.
+배포용 `compose.yaml`은 Postgres와 Redis host port를 공개하지 않고 Compose 내부 네트워크에서만 접근한다.
+운영 `.env`에는 Redis 인증에 사용할 `REDIS_PASSWORD`를 반드시 설정한다.
 배포 후 다음 명령으로 상태를 확인한다.
 
 ```bash
 docker compose ps
-docker compose logs postgres app
+docker compose logs postgres redis app
 ```
 
 `postgres`가 unhealthy라면 애플리케이션 재시작보다 DB 로그, `.env`, volume 초기화 상태,
 extension 생성 여부를 먼저 확인한다.
+`redis`가 unhealthy라면 `REDIS_PASSWORD` 누락 여부와 Redis 인증 설정을 먼저 확인한다.
