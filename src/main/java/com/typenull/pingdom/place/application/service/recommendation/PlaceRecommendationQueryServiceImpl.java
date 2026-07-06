@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationItem
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.event.PlaceRecommendationExposureRecordRequestedEvent;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.ArrayList;
@@ -17,6 +18,7 @@ import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -39,13 +41,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
-    private final PlaceRecommendationExposureService placeRecommendationExposureService;
     private final PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private final PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
     private final PlaceRecommendationScoringService placeRecommendationScoringService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
     private final RecommendationMetrics recommendationMetrics;
+    private final ApplicationEventPublisher eventPublisher;
 
     @Override
     @Transactional
@@ -203,7 +205,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
             );
         }
 
-        placeRecommendationExposureService.recordExposures(
+        eventPublisher.publishEvent(new PlaceRecommendationExposureRecordRequestedEvent(
                 userId,
                 latitude,
                 longitude,
@@ -212,7 +214,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         .map(candidate -> candidate.place().getId())
                         .toList(),
                 resolvedPolicy.version()
-        );
+        ));
 
         return recordRecommendationRequest(PlaceRecommendationResponse.of(
                 places,
