@@ -1,10 +1,11 @@
 package com.typenull.pingdom.moderation.application.query;
 
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 
 public interface AdminPostQueryService {
-    AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword);
+    AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword, PostReportStatus reportStatus);
     AdminPostItem getPost(Long postId);
 }
