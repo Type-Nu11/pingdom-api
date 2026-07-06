@@ -51,20 +51,32 @@ public class PostCommandController {
             ),
             @ApiResponse(
                     responseCode = "400",
-                    description = "요청값 검증 실패",
+                    description = "요청값 검증 실패 또는 이미 포스트가 있음",
                     content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "입력값을 확인해주세요.",
-                                              "errors": {
-                                                "placeName": "좌표 기반 업로드 시 장소 이름은 필수입니다.",
-                                                "title": "제목은 필수입니다.",
-                                                "file": "파일은 필수입니다."
-                                              }
-                                            }
-                                            """
-                            )
+                            examples = {
+                                    @ExampleObject(
+                                            name = "validation-failure",
+                                            value = """
+                                                    {
+                                                      "message": "입력값을 확인해주세요.",
+                                                      "errors": {
+                                                        "placeName": "좌표 기반 업로드 시 장소 이름은 필수입니다.",
+                                                        "title": "제목은 필수입니다.",
+                                                        "file": "파일은 필수입니다."
+                                                      }
+                                                    }
+                                                    """
+                                    ),
+                                    @ExampleObject(
+                                            name = "already-posted",
+                                            value = """
+                                                    {
+                                                      "message": "한 장소엔 하나의 포스트만 가능합니다.",
+                                                      "code": "ALREADY_POSTED"
+                                                    }
+                                                    """
+                                    )
+                            }
                     )
             ),
             @ApiResponse(
@@ -90,20 +102,6 @@ public class PostCommandController {
                                             {
                                               "message": "장소를 찾을 수 없습니다.",
                                               "code": "PLACE_NOT_FOUND"
-                                            }
-                                            """
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "이미 포스트가 있음",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "한 장소엔 하나의 포스트만 가능합니다.",
-                                              "code": "ALREADY_POSTED"
                                             }
                                             """
                             )

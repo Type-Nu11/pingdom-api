@@ -33,9 +33,12 @@ public interface UserRepository extends JpaRepository<User, Long> {
             WHERE u.banned = true
               AND (
                     :keyword IS NULL
-                    OR CAST(u.id AS string) = :keyword
-                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR (:numericKeyword = true AND CAST(u.id AS string) = :keyword)
+                    OR (:numericKeyword = false AND LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%')))
                   )
+              AND (:banType IS NULL OR u.banType = :banType)
+              AND (:bannedFrom IS NULL OR u.bannedAt >= :bannedFrom)
+              AND (:bannedTo IS NULL OR u.bannedAt <= :bannedTo)
               AND (
                     u.banType IS NULL
                     OR u.banType <> :temporaryType
@@ -47,6 +50,10 @@ public interface UserRepository extends JpaRepository<User, Long> {
             @Param("temporaryType") UserBanType temporaryType,
             @Param("now") LocalDateTime now,
             @Param("keyword") String keyword,
+            @Param("numericKeyword") boolean numericKeyword,
+            @Param("banType") UserBanType banType,
+            @Param("bannedFrom") LocalDateTime bannedFrom,
+            @Param("bannedTo") LocalDateTime bannedTo,
             Pageable pageable
     );
 

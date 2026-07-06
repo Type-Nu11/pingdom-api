@@ -149,6 +149,61 @@ class AdminUserControllerTest {
     }
 
     @Test
+    void listBannedUsersTreatsNumericKeywordAsExactUserIdOnly() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        User numericNameUser = createUser("user12345");
+        numericNameUser.ban("닉네임 숫자 포함", LocalDateTime.of(2026, 6, 5, 10, 0));
+        userRepository.save(numericNameUser);
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", "12345"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(0));
+    }
+
+    @Test
+    void listBannedUsersFiltersByBanTypePeriodAndSort() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        User permanentUser = createUser("permanentUser");
+        permanentUser.ban("영구 밴", LocalDateTime.of(2026, 6, 2, 9, 0));
+        userRepository.save(permanentUser);
+
+        User temporaryUserEarly = createUser("temporaryUserA");
+        temporaryUserEarly.ban(
+                "기간 밴 A",
+                LocalDateTime.of(2026, 6, 4, 9, 0),
+                LocalDateTime.of(2026, 7, 10, 9, 0)
+        );
+        userRepository.save(temporaryUserEarly);
+
+        User temporaryUserLate = createUser("temporaryUserB");
+        temporaryUserLate.ban(
+                "기간 밴 B",
+                LocalDateTime.of(2026, 6, 6, 9, 0),
+                LocalDateTime.of(2026, 7, 12, 9, 0)
+        );
+        userRepository.save(temporaryUserLate);
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("banType", UserBanType.TEMPORARY.name())
+                        .param("bannedFrom", "2026-06-03T00:00:00")
+                        .param("bannedTo", "2026-06-06T23:59:59")
+                        .param("sortBy", "EXPIRES_AT")
+                        .param("sortDirection", "ASC"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(2))
+                .andExpect(jsonPath("$.users[0].userId").value(temporaryUserEarly.getId()))
+                .andExpect(jsonPath("$.users[0].banType").value(UserBanType.TEMPORARY.name()))
+                .andExpect(jsonPath("$.users[0].banExpiresAt").value("2026-07-10T09:00:00"))
+                .andExpect(jsonPath("$.users[1].userId").value(temporaryUserLate.getId()))
+                .andExpect(jsonPath("$.totalCount").value(2));
+    }
+
+    @Test
     void listBannedUsersReturnsCountsForCurrentBannedUsersWithKeywordApplied() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now();
