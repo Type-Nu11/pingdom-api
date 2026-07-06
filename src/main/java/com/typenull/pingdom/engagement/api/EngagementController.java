@@ -23,7 +23,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.web.bind.annotation.*;
+import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/map")
@@ -34,7 +39,7 @@ public class EngagementController {
     private final PostReportService postReportService;
     private final MapImageLikeService mapImageLikeService;
 
-    @PostMapping("/post/{id}/report")
+    @PostMapping("/posts/{id}/report")
     @Operation(
             summary = "게시글 신고",
             description = "지정한 게시글 ID의 게시글을 신고합니다. 동일 사용자는 같은 게시글을 한 번만 신고할 수 있습니다."
@@ -114,11 +119,23 @@ public class EngagementController {
             @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
-        }
-        postReportService.report(imageId, user.userId(), user.username(), request.reason());
-        return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
+        return reportInternal(imageId, request, user);
+    }
+
+    @Deprecated
+    @PostMapping("/post/{id}/report")
+    @Operation(
+            summary = "게시글 신고(구 경로)",
+            description = "기존 게시글 신고 경로입니다. `/map/posts/{id}/report` 사용을 권장합니다.",
+            deprecated = true
+    )
+    @RateLimited(RateLimitAction.POST_REPORT)
+    public ResponseEntity<String> reportLegacy(
+            @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
+            @Valid @RequestBody PostReportRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return reportInternal(imageId, request, user);
     }
 
     @PostMapping("/like")
@@ -158,6 +175,18 @@ public class EngagementController {
         }
         mapImageLikeService.likeReturn(postId, notificationsId, user.userId());
         return ResponseEntity.ok().body("게시물 반환");
+    }
+
+    private ResponseEntity<String> reportInternal(
+            Long imageId,
+            PostReportRequest request,
+            JwtAuthenticatedUser user
+    ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        postReportService.report(imageId, user.userId(), user.username(), request.reason());
+        return ResponseEntity.status(HttpStatus.CREATED).body("게시글 신고를 등록했습니다.");
     }
 
     private MapImageLikeResponse toResponse(MapImageLikeResult result) {

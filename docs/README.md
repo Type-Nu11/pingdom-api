@@ -26,6 +26,7 @@
 
 ## 운영 문서
 
+- [v1 API 경로 정책](api-path-policy.md)
 - [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
@@ -60,6 +61,7 @@
 | Build & Deploy | Gradle, Docker, Docker Compose, GitHub Actions |
 
 ## OpenAPI Contract
+## OpenAPI Export
 
 OpenAPI 계약 JSON은 아래 명령으로 export할 수 있습니다.
 
@@ -74,6 +76,12 @@ OpenAPI 호환성 검증은 아래 명령으로 실행할 수 있습니다.
 ```
 
 기준 스펙은 `src/test/resources/openapi-baseline` 아래에 저장하며, 의도된 API 변경 시 export 결과로 함께 갱신합니다.
+생성 파일은 `build/openapi` 아래에 저장됩니다.
+
+- `openapi.json`
+- `app.json`
+- `common.json`
+- `web.json`
 
 ## Architecture
 

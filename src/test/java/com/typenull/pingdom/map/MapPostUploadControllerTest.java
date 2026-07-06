@@ -99,7 +99,7 @@ class MapPostUploadControllerTest {
         MapPlace mapPlace = createMapPlace();
         MockMultipartFile file = imageFile("post.jpg");
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "새 게시글 제목")
                         .param("description", "게시글 부가 설명")
@@ -120,6 +120,27 @@ class MapPostUploadControllerTest {
     }
 
     @Test
+    void uploadPostLegacyAliasStillWorks() throws Exception {
+        givenSuccessfulImageUpload(
+                "map/legacy-key.jpg",
+                "https://example.com/legacy-key.jpg",
+                "map/thumbnails/legacy-key-thumbnail.jpg",
+                "https://example.com/legacy-key-thumbnail.jpg"
+        );
+
+        String accessToken = signupAndLogin("writer-legacy-upload");
+        MapPlace mapPlace = createMapPlace();
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(imageFile("legacy-post.jpg"))
+                        .param("title", "레거시 업로드")
+                        .param("placeId", mapPlace.getId().toString())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("게시글을 저장했습니다."));
+    }
+
+    @Test
     void uploadPostStoresPlaceWhenKakaoPlaceIdIsProvided() throws Exception {
         givenSuccessfulImageUpload(
                 "map/test-key-kakao.jpg",
@@ -132,7 +153,7 @@ class MapPostUploadControllerTest {
         MapPlace mapPlace = createMapPlaceWithKakaoPlaceId("27414316");
         MockMultipartFile file = imageFile("post.jpg");
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "카카오 장소 업로드")
                         .param("kakaoPlaceId", "27414316")
@@ -157,7 +178,7 @@ class MapPostUploadControllerTest {
         String coordinateToken = createCoordinateToken(accessToken, null, 35.1804, 128.1081);
         MockMultipartFile file = imageFile("post.jpg");
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "핀 좌표 게시글 업로드")
                         .param("description", "좌표 기반 장소 생성 후 게시글 저장")
@@ -191,7 +212,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "카카오 장소 업로드")
                         .param("kakaoPlaceId", "unknown-place-id")
@@ -210,12 +231,24 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-                mockMvc.perform(multipart("/map/post/create")
+                mockMvc.perform(multipart("/map/posts")
                                 .file(file)
                                 .param("title", "카카오 장소 업로드")
                                 .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                         .andExpect(status().isBadRequest())
                         .andExpect(jsonPath("$.errors.validPlace").value("장소 ID, 카카오 장소 ID 또는 좌표 기반 장소 정보는 필수입니다."));
+    }
+
+    @Test
+    void uploadPostFailsWhenUserIsUnauthenticated() throws Exception {
+        MapPlace mapPlace = createMapPlace();
+
+        mockMvc.perform(multipart("/map/posts")
+                        .file(imageFile("unauth-post.jpg"))
+                        .param("title", "인증 없는 업로드")
+                        .param("placeId", mapPlace.getId().toString()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -229,7 +262,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "   ")
                         .param("placeId", mapPlace.getId().toString())
@@ -249,7 +282,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "a".repeat(101))
                         .param("placeId", mapPlace.getId().toString())
@@ -269,7 +302,7 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "정상 제목")
                         .param("description", "a".repeat(1001))
@@ -293,7 +326,7 @@ class MapPostUploadControllerTest {
                 .userId(userId)
                 .build());
 
-        mockMvc.perform(delete("/map/post/{id}/delete", mapImage.getId())
+        mockMvc.perform(delete("/map/posts/{id}", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
@@ -302,6 +335,23 @@ class MapPostUploadControllerTest {
         assertEquals(0L, mapImageRepository.count());
         assertS3DeleteOutboxEvent(mapImage.getId(), "map/delete-post.jpg", "MAP_IMAGE_DELETED");
         assertS3DeleteOutboxEvent(mapImage.getId(), "map/thumbnails/delete-post-thumbnail.jpg", "MAP_IMAGE_THUMBNAIL_DELETED");
+    }
+
+    @Test
+    void deletePostLegacyAliasStillWorks() throws Exception {
+        String accessToken = signupAndLogin("writer-legacy-delete");
+        Long userId = userRepository.findByUsername("writer-legacy-delete").orElseThrow().getId();
+        MapImage mapImage = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/legacy-delete-post.jpg")
+                .s3Key("map/legacy-delete-post.jpg")
+                .title("레거시 삭제 테스트")
+                .userId(userId)
+                .build());
+
+        mockMvc.perform(delete("/map/post/{id}/delete", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
     }
 
     @Test
@@ -317,7 +367,7 @@ class MapPostUploadControllerTest {
         MapPlace mapPlace = createMapPlace();
         MockMultipartFile file = imageFile("snapshot-post.jpg");
 
-        mockMvc.perform(multipart("/map/post/create")
+        mockMvc.perform(multipart("/map/posts")
                         .file(file)
                         .param("title", "snapshot 검증 게시글")
                         .param("description", "snapshot 생성 확인")
@@ -335,7 +385,7 @@ class MapPostUploadControllerTest {
 
         MapImage saved = mapImageRepository.findAll().get(0);
 
-        mockMvc.perform(delete("/map/post/{id}/delete", saved.getId())
+        mockMvc.perform(delete("/map/posts/{id}", saved.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
@@ -422,7 +472,7 @@ class MapPostUploadControllerTest {
             payload.put("kakaoPlaceId", kakaoPlaceId);
         }
 
-        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
+        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(payload)))
