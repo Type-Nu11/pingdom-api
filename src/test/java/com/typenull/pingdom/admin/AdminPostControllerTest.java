@@ -15,6 +15,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.AdminPostReviewStatus;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
@@ -188,6 +189,96 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.posts[0].id").value(pendingPost.getId()))
                 .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(acceptedPost.getId().intValue())))
                 .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(noReportPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsFiltersByReviewStatusWithPaginationAndCounts() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("reviewStatusOwner");
+        User reporter = createUser("reviewStatusReporter");
+
+        MapImage pendingPost1 = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/pending-review-1.jpg", "처리 대기 1", "대기 신고 게시글");
+        MapImage pendingPost2 = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/pending-review-2.jpg", "처리 대기 2", "대기 신고 게시글");
+        MapImage processedPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/processed-review.jpg", "처리 완료", "처리된 신고 게시글");
+        MapImage normalPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/normal-review.jpg", "신고 없음", "정상 게시글");
+
+        createPostReport(reporter.getId(), reporter.getUsername(), pendingPost1, "대기 신고 1");
+        createPostReport(reporter.getId(), reporter.getUsername(), pendingPost2, "대기 신고 2");
+        PostReport processedReport = createPostReport(reporter.getId(), reporter.getUsername(), processedPost, "처리 신고");
+        processedReport.accept(java.time.LocalDateTime.now());
+        postReportRepository.save(processedReport);
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.PENDING.name())
+                        .param("sortParam", "OLDEST")
+                        .param("page", "1")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(pendingPost1.getId()))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.counts.all").value(4))
+                .andExpect(jsonPath("$.counts.pending").value(2))
+                .andExpect(jsonPath("$.counts.processed").value(1))
+                .andExpect(jsonPath("$.counts.normal").value(1));
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.PROCESSED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(processedPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.NORMAL.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(normalPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPostsAppliesKeywordToReviewStatusCounts() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("reviewKeywordOwner");
+        User reporter = createUser("reviewKeywordReporter");
+
+        MapImage matchingPendingPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/matching-pending.jpg", "검수 키워드 대기", "검색 대상");
+        MapImage otherPendingPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/other-pending.jpg", "다른 대기", "검색 제외");
+        MapImage matchingNormalPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/matching-normal.jpg", "검수 키워드 정상", "검색 대상");
+
+        createPostReport(reporter.getId(), reporter.getUsername(), matchingPendingPost, "대기 신고");
+        createPostReport(reporter.getId(), reporter.getUsername(), otherPendingPost, "다른 신고");
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.PENDING.name())
+                        .param("keyword", "검수 키워드"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(matchingPendingPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.counts.all").value(2))
+                .andExpect(jsonPath("$.counts.pending").value(1))
+                .andExpect(jsonPath("$.counts.processed").value(0))
+                .andExpect(jsonPath("$.counts.normal").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(matchingNormalPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsRejectsReportStatusAndReviewStatusCombination() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reportStatus", PostReportStatus.PENDING.name())
+                        .param("reviewStatus", AdminPostReviewStatus.PENDING.name()))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -408,11 +499,15 @@ class AdminPostControllerTest {
     }
 
     private MapImage createMapImage(Long userId, String username, String imageUrl) {
+        return createMapImage(userId, username, imageUrl, "신고 대상 제목", "신고 대상 설명");
+    }
+
+    private MapImage createMapImage(Long userId, String username, String imageUrl, String title, String description) {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl(imageUrl)
                 .s3Key("test-key-" + userId)
-                .title("신고 대상 제목")
-                .description("신고 대상 설명")
+                .title(title)
+                .description(description)
                 .userId(userId)
                 .username(username)
                 .build());
