@@ -105,20 +105,20 @@ public class AdminUserServiceImpl implements AdminUserService {
     public AdminBannedUserResponse listBannedUsers(AdminBannedUserSearchCondition condition, Pageable pageable) {
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
-        validateBannedUserPeriod(condition.bannedFrom(), condition.bannedTo());
+        validateHistoryPeriod(condition.bannedFrom(), condition.bannedTo());
         Pageable normalizedPageable = PageRequest.of(
                 normalizedPage - 1,
                 normalizedLimit,
-                bannedUserSort(condition.sortBy(), condition.sortDirection())
+                bannedUserSort(condition)
         );
 
         LocalDateTime now = now();
-        String normalizedKeyword = normalizeKeyword(condition.keyword());
+        String normalizedKeyword = condition.normalizedKeyword();
         Page<User> userPage = userRepository.findAllCurrentlyBanned(
                 UserBanType.TEMPORARY,
                 now,
                 normalizedKeyword,
-                isNumericKeyword(normalizedKeyword),
+                condition.isNumericKeyword(),
                 condition.banType(),
                 condition.bannedFrom(),
                 condition.bannedTo(),
@@ -283,30 +283,17 @@ public class AdminUserServiceImpl implements AdminUserService {
         }
     }
 
-    private void validateBannedUserPeriod(LocalDateTime from, LocalDateTime to) {
-        validateHistoryPeriod(from, to);
-    }
-
-    private String normalizeKeyword(String keyword) {
-        if (keyword == null) {
-            return null;
-        }
-        String trimmedKeyword = keyword.trim();
-        return trimmedKeyword.isEmpty() ? null : trimmedKeyword;
-    }
-
-    private boolean isNumericKeyword(String keyword) {
-        return keyword != null && keyword.chars().allMatch(Character::isDigit);
-    }
-
-    private Sort bannedUserSort(AdminBannedUserSortBy sortBy, Sort.Direction sortDirection) {
-        AdminBannedUserSortBy safeSortBy = sortBy == null ? AdminBannedUserSortBy.BANNED_AT : sortBy;
-        Sort.Direction safeDirection = sortDirection == null ? Sort.Direction.DESC : sortDirection;
-
-        return switch (safeSortBy) {
-            case EXPIRES_AT -> Sort.by(new Sort.Order(safeDirection, "banExpiresAt"), new Sort.Order(safeDirection, "id"));
-            case USER_ID -> Sort.by(new Sort.Order(safeDirection, "id"));
-            case BANNED_AT -> Sort.by(new Sort.Order(safeDirection, "bannedAt"), new Sort.Order(safeDirection, "id"));
+    private Sort bannedUserSort(AdminBannedUserSearchCondition condition) {
+        return switch (condition.normalizedSortBy()) {
+            case EXPIRES_AT -> Sort.by(
+                    new Sort.Order(condition.normalizedSortDirection(), "banExpiresAt"),
+                    new Sort.Order(condition.normalizedSortDirection(), "id")
+            );
+            case USER_ID -> Sort.by(new Sort.Order(condition.normalizedSortDirection(), "id"));
+            case BANNED_AT -> Sort.by(
+                    new Sort.Order(condition.normalizedSortDirection(), "bannedAt"),
+                    new Sort.Order(condition.normalizedSortDirection(), "id")
+            );
         };
     }
 
