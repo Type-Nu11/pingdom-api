@@ -275,6 +275,37 @@ class AdminPostControllerTest {
     }
 
     @Test
+    void listPostsDoesNotIncludeTitleMatchesWhenKeywordIsNumeric() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("numericStrictOwner");
+
+        MapImage exactIdPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-exact.jpg")
+                .s3Key("post-exact")
+                .title("정확히 찾는 게시글")
+                .description("정밀 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-title-contains.jpg")
+                .s3Key("post-title-contains")
+                .title(exactIdPost.getId() + "가 포함된 제목")
+                .description("숫자 키워드 포함 제목")
+                .userId(owner.getId() + 999)
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", String.valueOf(exactIdPost.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(exactIdPost.getId()));
+    }
+
+    @Test
     void deletePostRemovesDatabaseRecordAndCreatesS3DeleteOutboxEvent() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("deleteTargetOwner");
