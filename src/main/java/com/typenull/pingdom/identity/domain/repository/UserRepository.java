@@ -58,6 +58,33 @@ public interface UserRepository extends JpaRepository<User, Long> {
     );
 
     @Query("""
+            SELECT new com.typenull.pingdom.identity.domain.repository.CurrentBannedUserCounts(
+                COUNT(u),
+                SUM(CASE WHEN u.banType = :permanentType OR u.banType IS NULL THEN 1 ELSE 0 END),
+                SUM(CASE WHEN u.banType = :temporaryType THEN 1 ELSE 0 END)
+            )
+            FROM User u
+            WHERE u.banned = true
+              AND (
+                    :keyword IS NULL
+                    OR CAST(u.id AS string) = :keyword
+                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+              AND (
+                    u.banType IS NULL
+                    OR u.banType <> :temporaryType
+                    OR u.banExpiresAt IS NULL
+                    OR u.banExpiresAt > :now
+                  )
+            """)
+    CurrentBannedUserCounts countCurrentlyBannedByType(
+            @Param("permanentType") UserBanType permanentType,
+            @Param("temporaryType") UserBanType temporaryType,
+            @Param("now") LocalDateTime now,
+            @Param("keyword") String keyword
+    );
+
+    @Query("""
             SELECT u
             FROM User u
             WHERE u.banned = true
