@@ -7,10 +7,12 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import java.util.List;
 import java.util.Locale;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 @Service
+@Slf4j
 public class AbuseRateLimitService {
 
     private static final String DEFAULT_MESSAGE = "요청 횟수가 너무 많습니다. 잠시 후 다시 시도해주세요.";
@@ -26,39 +28,51 @@ public class AbuseRateLimitService {
     }
 
     public void checkLogin(String username, String clientIp) {
-        store.acquire(
-                DEFAULT_MESSAGE,
-                List.of(
-                        windowRule("login:username:" + fingerprint(normalize(username)), properties.loginUsername()),
-                        windowRule("login:ip:" + normalizeIp(clientIp), properties.loginIp())
-                ),
-                List.of()
+        acquireWithLogging(
+                "login",
+                "username=" + normalize(username) + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("login:username:" + fingerprint(normalize(username)), properties.loginUsername()),
+                                windowRule("login:ip:" + normalizeIp(clientIp), properties.loginIp())
+                        ),
+                        List.of()
+                )
         );
     }
 
     public void checkTokenRefresh(String refreshToken, String clientIp) {
-        store.acquire(
-                DEFAULT_MESSAGE,
-                List.of(
-                        windowRule("token-refresh:token:" + fingerprint(refreshToken), properties.tokenRefreshToken()),
-                        windowRule("token-refresh:ip:" + normalizeIp(clientIp), properties.tokenRefreshIp())
-                ),
-                List.of()
+        acquireWithLogging(
+                "token-refresh",
+                "tokenFingerprint=" + fingerprint(refreshToken) + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("token-refresh:token:" + fingerprint(refreshToken), properties.tokenRefreshToken()),
+                                windowRule("token-refresh:ip:" + normalizeIp(clientIp), properties.tokenRefreshIp())
+                        ),
+                        List.of()
+                )
         );
     }
 
     public void checkEmailResend(String email, String clientIp) {
         String emailFingerprint = fingerprint(normalize(email));
-        store.acquire(
-                EMAIL_MESSAGE,
-                List.of(
-                        windowRule("email-resend:email-daily:" + emailFingerprint, properties.emailResend().emailDaily()),
-                        windowRule("email-resend:ip-daily:" + normalizeIp(clientIp), properties.emailResend().ipDaily())
-                ),
-                List.of(
-                        new RateLimitCooldownRule(
-                                "email-resend:email-cooldown:" + emailFingerprint,
-                                properties.emailResend().minimumInterval()
+        acquireWithLogging(
+                "email-resend",
+                "emailFingerprint=" + emailFingerprint + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        EMAIL_MESSAGE,
+                        List.of(
+                                windowRule("email-resend:email-daily:" + emailFingerprint, properties.emailResend().emailDaily()),
+                                windowRule("email-resend:ip-daily:" + normalizeIp(clientIp), properties.emailResend().ipDaily())
+                        ),
+                        List.of(
+                                new RateLimitCooldownRule(
+                                        "email-resend:email-cooldown:" + emailFingerprint,
+                                        properties.emailResend().minimumInterval()
+                                )
                         )
                 )
         );
@@ -66,86 +80,119 @@ public class AbuseRateLimitService {
 
     public void checkPasswordResetRequest(String email, String clientIp) {
         String emailFingerprint = fingerprint(normalize(email));
-        store.acquire(
-                PASSWORD_RESET_MESSAGE,
-                List.of(
-                        windowRule(
-                                "password-reset-request:email-daily:" + emailFingerprint,
-                                properties.passwordResetRequest().emailDaily()
+        acquireWithLogging(
+                "password-reset-request",
+                "emailFingerprint=" + emailFingerprint + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        PASSWORD_RESET_MESSAGE,
+                        List.of(
+                                windowRule(
+                                        "password-reset-request:email-daily:" + emailFingerprint,
+                                        properties.passwordResetRequest().emailDaily()
+                                ),
+                                windowRule(
+                                        "password-reset-request:ip-daily:" + normalizeIp(clientIp),
+                                        properties.passwordResetRequest().ipDaily()
+                                )
                         ),
-                        windowRule(
-                                "password-reset-request:ip-daily:" + normalizeIp(clientIp),
-                                properties.passwordResetRequest().ipDaily()
-                        )
-                ),
-                List.of(
-                        new RateLimitCooldownRule(
-                                "password-reset-request:email-cooldown:" + emailFingerprint,
-                                properties.passwordResetRequest().minimumInterval()
+                        List.of(
+                                new RateLimitCooldownRule(
+                                        "password-reset-request:email-cooldown:" + emailFingerprint,
+                                        properties.passwordResetRequest().minimumInterval()
+                                )
                         )
                 )
         );
     }
 
     public void checkPasswordResetConfirm(String token, String clientIp) {
-        store.acquire(
-                PASSWORD_RESET_MESSAGE,
-                List.of(
-                        windowRule(
-                                "password-reset-confirm:token:" + fingerprint(token),
-                                properties.passwordResetConfirmToken()
+        acquireWithLogging(
+                "password-reset-confirm",
+                "tokenFingerprint=" + fingerprint(token) + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        PASSWORD_RESET_MESSAGE,
+                        List.of(
+                                windowRule(
+                                        "password-reset-confirm:token:" + fingerprint(token),
+                                        properties.passwordResetConfirmToken()
+                                ),
+                                windowRule(
+                                        "password-reset-confirm:ip:" + normalizeIp(clientIp),
+                                        properties.passwordResetConfirmIp()
+                                )
                         ),
-                        windowRule(
-                                "password-reset-confirm:ip:" + normalizeIp(clientIp),
-                                properties.passwordResetConfirmIp()
-                        )
-                ),
-                List.of()
+                        List.of()
+                )
         );
     }
 
     public void checkPostReport(Long userId, String clientIp) {
-        store.acquire(
-                DEFAULT_MESSAGE,
-                List.of(
-                        windowRule("report:user:" + userId, properties.reportUser()),
-                        windowRule("report:ip:" + normalizeIp(clientIp), properties.reportIp())
-                ),
-                List.of()
+        acquireWithLogging(
+                "post-report",
+                "userId=" + userId + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("report:user:" + userId, properties.reportUser()),
+                                windowRule("report:ip:" + normalizeIp(clientIp), properties.reportIp())
+                        ),
+                        List.of()
+                )
         );
     }
 
     public void checkMapImageLike(Long userId, String clientIp) {
-        store.acquire(
-                DEFAULT_MESSAGE,
-                List.of(
-                        windowRule("map-image-like:user:" + userId, properties.mapImageLikeUser()),
-                        windowRule("map-image-like:ip:" + normalizeIp(clientIp), properties.mapImageLikeIp())
-                ),
-                List.of()
+        acquireWithLogging(
+                "map-image-like",
+                "userId=" + userId + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("map-image-like:user:" + userId, properties.mapImageLikeUser()),
+                                windowRule("map-image-like:ip:" + normalizeIp(clientIp), properties.mapImageLikeIp())
+                        ),
+                        List.of()
+                )
         );
     }
 
     public void checkRecommendationClick(Long userId, String clientIp) {
-        store.acquire(
-                DEFAULT_MESSAGE,
-                List.of(
-                        windowRule("recommendation-click:user:" + userId, properties.recommendationClickUser()),
-                        windowRule("recommendation-click:ip:" + normalizeIp(clientIp), properties.recommendationClickIp())
-                ),
-                List.of()
+        acquireWithLogging(
+                "recommendation-click",
+                "userId=" + userId + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("recommendation-click:user:" + userId, properties.recommendationClickUser()),
+                                windowRule("recommendation-click:ip:" + normalizeIp(clientIp), properties.recommendationClickIp())
+                        ),
+                        List.of()
+                )
         );
     }
 
     public void checkImageUpload(Long userId, String clientIp) {
-        store.acquire(
-                DEFAULT_MESSAGE,
-                List.of(
-                        windowRule("image-upload:user:" + userId, properties.imageUploadUser()),
-                        windowRule("image-upload:ip:" + normalizeIp(clientIp), properties.imageUploadIp())
-                ),
-                List.of()
+        acquireWithLogging(
+                "image-upload",
+                "userId=" + userId + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("image-upload:user:" + userId, properties.imageUploadUser()),
+                                windowRule("image-upload:ip:" + normalizeIp(clientIp), properties.imageUploadIp())
+                        ),
+                        List.of()
+                )
         );
+    }
+
+    private void acquireWithLogging(String action, String subject, Runnable acquireAction) {
+        try {
+            acquireAction.run();
+        } catch (RateLimitException exception) {
+            log.warn("abuse rate limit exceeded. action={}, {}", action, subject);
+            throw exception;
+        }
     }
 
     private RateLimitWindowRule windowRule(String key, WindowPolicy policy) {

@@ -103,6 +103,8 @@ public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceR
             LocalDateTime createdAt
     );
 
+    boolean existsByUserIdAndRequestId(Long userId, String requestId);
+
     @Query("""
             SELECT c.id
             FROM PlaceRecommendationClick c

@@ -18,6 +18,8 @@ import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
+import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
+import com.typenull.pingdom.shared.ratelimit.RateLimited;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
@@ -99,6 +101,7 @@ public class LegacyPlaceCompatController {
 
     @Deprecated
     @PostMapping("/place/recommendations/click")
+    @RateLimited(RateLimitAction.RECOMMENDATION_CLICK)
     public ResponseEntity<PlaceRecommendationClickResponse> recordRecommendationClick(
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
