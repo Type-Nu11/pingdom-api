@@ -160,11 +160,18 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
     }
 
     private AdminPostReviewCounts countAdminPostsByReviewStatus(String keyword, Long numericKeyword) {
+        MapImageRepository.AdminPostReviewCountProjection counts =
+                mapImageRepository.countAdminPostReviewCounts(keyword, numericKeyword);
+
         return new AdminPostReviewCounts(
-                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.ALL.name()),
-                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.PENDING.name()),
-                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.PROCESSED.name()),
-                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.NORMAL.name())
+                countValue(counts.getAllCount()),
+                countValue(counts.getPendingCount()),
+                countValue(counts.getProcessedCount()),
+                countValue(counts.getNormalCount())
         );
+    }
+
+    private long countValue(Long value) {
+        return value == null ? 0L : value;
     }
 }

@@ -28,6 +28,63 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
         LocalDateTime getLatestCreatedAt();
     }
 
+    interface AdminPostReviewCountProjection {
+        Long getAllCount();
+
+        Long getPendingCount();
+
+        Long getProcessedCount();
+
+        Long getNormalCount();
+    }
+
+    String ADMIN_POST_HAS_PENDING_REPORT_CONDITION = """
+            EXISTS (
+                SELECT 1
+                FROM PostReport pendingReport
+                WHERE pendingReport.mapImage = m
+                  AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
+            )
+            """;
+
+    String ADMIN_POST_HAS_ANY_REPORT_CONDITION = """
+            EXISTS (
+                SELECT 1
+                FROM PostReport anyReport
+                WHERE anyReport.mapImage = m
+            )
+            """;
+
+    String ADMIN_POST_REVIEW_STATUS_CONDITION = """
+            (
+                       :reviewStatus = 'ALL'
+                    OR (:reviewStatus = 'PENDING' AND
+            """ + ADMIN_POST_HAS_PENDING_REPORT_CONDITION + """
+                       )
+                    OR (:reviewStatus = 'PROCESSED' AND
+            """ + ADMIN_POST_HAS_ANY_REPORT_CONDITION + """
+                       AND NOT
+            """ + ADMIN_POST_HAS_PENDING_REPORT_CONDITION + """
+                       )
+                    OR (:reviewStatus = 'NORMAL' AND NOT
+            """ + ADMIN_POST_HAS_ANY_REPORT_CONDITION + """
+                       )
+            )
+            """;
+
+    String ADMIN_POST_KEYWORD_CONDITION = """
+            (
+                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                    OR (:numericKeyword IS NULL AND (
+                               :keyword = ''
+                            OR m.title LIKE CONCAT('%', :keyword, '%')
+                            OR m.username LIKE CONCAT('%', :keyword, '%')
+                            OR m.description LIKE CONCAT('%', :keyword, '%')
+                            OR p.name LIKE CONCAT('%', :keyword, '%')
+                       ))
+            )
+            """;
+
     @Modifying
     @Query("""
     UPDATE MapImage m
@@ -131,51 +188,10 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                        WHERE pr.mapImage = m
                          AND pr.status = :reportStatus
                   ))
-              AND (
-                       :reviewStatus = 'ALL'
-                    OR (
-                           :reviewStatus = 'PENDING'
-                       AND EXISTS (
-                               SELECT 1
-                               FROM PostReport pendingReport
-                               WHERE pendingReport.mapImage = m
-                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
-                           )
-                       )
-                    OR (
-                           :reviewStatus = 'PROCESSED'
-                       AND EXISTS (
-                               SELECT 1
-                               FROM PostReport anyReport
-                               WHERE anyReport.mapImage = m
-                           )
-                       AND NOT EXISTS (
-                               SELECT 1
-                               FROM PostReport pendingReport
-                               WHERE pendingReport.mapImage = m
-                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
-                           )
-                       )
-                    OR (
-                           :reviewStatus = 'NORMAL'
-                       AND NOT EXISTS (
-                               SELECT 1
-                               FROM PostReport anyReport
-                               WHERE anyReport.mapImage = m
-                           )
-                       )
-                  )
-              AND (
-                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
-                    OR (:numericKeyword IS NULL AND (
-                               :keyword = ''
-                            OR m.title LIKE CONCAT('%', :keyword, '%')
-                            OR m.username LIKE CONCAT('%', :keyword, '%')
-                            OR m.description LIKE CONCAT('%', :keyword, '%')
-                            OR p.name LIKE CONCAT('%', :keyword, '%')
-                       ))
-                  )
-            """)
+              AND
+            """ + ADMIN_POST_REVIEW_STATUS_CONDITION + """
+              AND
+            """ + ADMIN_POST_KEYWORD_CONDITION)
     Page<MapImage> searchAdminPosts(
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
@@ -185,58 +201,25 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     );
 
     @Query("""
-            SELECT COUNT(m)
+            SELECT COUNT(m) AS allCount,
+                   COALESCE(SUM(CASE WHEN
+            """ + ADMIN_POST_HAS_PENDING_REPORT_CONDITION + """
+                   THEN 1 ELSE 0 END), 0) AS pendingCount,
+                   COALESCE(SUM(CASE WHEN
+            """ + ADMIN_POST_HAS_ANY_REPORT_CONDITION + """
+                   AND NOT
+            """ + ADMIN_POST_HAS_PENDING_REPORT_CONDITION + """
+                   THEN 1 ELSE 0 END), 0) AS processedCount,
+                   COALESCE(SUM(CASE WHEN NOT
+            """ + ADMIN_POST_HAS_ANY_REPORT_CONDITION + """
+                   THEN 1 ELSE 0 END), 0) AS normalCount
             FROM MapImage m
             LEFT JOIN m.mapPlace p
-            WHERE (
-                       :reviewStatus = 'ALL'
-                    OR (
-                           :reviewStatus = 'PENDING'
-                       AND EXISTS (
-                               SELECT 1
-                               FROM PostReport pendingReport
-                               WHERE pendingReport.mapImage = m
-                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
-                           )
-                       )
-                    OR (
-                           :reviewStatus = 'PROCESSED'
-                       AND EXISTS (
-                               SELECT 1
-                               FROM PostReport anyReport
-                               WHERE anyReport.mapImage = m
-                           )
-                       AND NOT EXISTS (
-                               SELECT 1
-                               FROM PostReport pendingReport
-                               WHERE pendingReport.mapImage = m
-                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
-                           )
-                       )
-                    OR (
-                           :reviewStatus = 'NORMAL'
-                       AND NOT EXISTS (
-                               SELECT 1
-                               FROM PostReport anyReport
-                               WHERE anyReport.mapImage = m
-                           )
-                       )
-                  )
-              AND (
-                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
-                    OR (:numericKeyword IS NULL AND (
-                               :keyword = ''
-                            OR m.title LIKE CONCAT('%', :keyword, '%')
-                            OR m.username LIKE CONCAT('%', :keyword, '%')
-                            OR m.description LIKE CONCAT('%', :keyword, '%')
-                            OR p.name LIKE CONCAT('%', :keyword, '%')
-                       ))
-                  )
-            """)
-    long countAdminPostsByReviewStatus(
+            WHERE
+            """ + ADMIN_POST_KEYWORD_CONDITION)
+    AdminPostReviewCountProjection countAdminPostReviewCounts(
             @Param("keyword") String keyword,
-            @Param("numericKeyword") Long numericKeyword,
-            @Param("reviewStatus") String reviewStatus
+            @Param("numericKeyword") Long numericKeyword
     );
 
     @EntityGraph(attributePaths = "mapPlace")
