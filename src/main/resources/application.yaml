@@ -66,7 +66,7 @@ jwt:
 
 postmark:
   server-token: ${POSTMARK_SERVER_TOKEN}
-  from-email: ${MAIL_FROM}
+  from-email: ${POSTMARK_FROM_EMAIL}
   verification-base-url: ${MAIL_VERIFICATION_BASE_URL}
   password-reset-base-url: ${MAIL_PASSWORD_RESET_BASE_URL:http://localhost:8080/auth/password-reset/confirm}
 
@@ -127,6 +127,7 @@ user:
 
 abuse:
   rate-limit:
+    storage: ${ABUSE_RATE_LIMIT_STORAGE:redis}
     redis-key-prefix: ${REDIS_RATE_LIMIT_KEY_PREFIX:pingdom:rate-limit:}
     fail-open: ${REDIS_RATE_LIMIT_FAIL_OPEN:true}
     login-username:

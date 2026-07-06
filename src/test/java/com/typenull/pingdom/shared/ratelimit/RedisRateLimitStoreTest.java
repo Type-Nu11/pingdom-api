@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyList;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.StorageType;
 import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.EmailResendPolicy;
 import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.WindowPolicy;
 import java.time.Duration;
@@ -112,6 +113,7 @@ class RedisRateLimitStoreTest {
 
     private AbuseRateLimitProperties properties(boolean failOpen) {
         return new AbuseRateLimitProperties(
+                StorageType.REDIS,
                 new WindowPolicy(2, Duration.ofMinutes(1)),
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),

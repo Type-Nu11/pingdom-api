@@ -2,6 +2,7 @@ package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.moderation.api.dto.report.AdminPostReportBulkActionResponse;
+import com.typenull.pingdom.moderation.domain.AdminPostReviewStatus;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
@@ -82,11 +83,18 @@ public class AdminPostController {
                           "limit": 20,
                           "totalCount": 123,
                           "totalPages": 7,
-                          "hasNext": true
+                          "hasNext": true,
+                          "counts": {
+                            "all": 123,
+                            "pending": 11,
+                            "processed": 43,
+                            "normal": 69
+                          }
                         }
                         """)
                     )
             ),
+            @ApiResponse(responseCode = "400", description = "reportStatus와 reviewStatus 동시 사용 불가"),
     })
     public AdminPostResponse listPosts(
             @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
@@ -97,10 +105,19 @@ public class AdminPostController {
             @RequestParam(defaultValue = "LATEST") SortParam sortParam,
             @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 작성자명, 작성자 ID, 연결 장소명, 설명으로 검색합니다.", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword,
+            @Parameter(description = "게시글 단위 검수 상태 필터. ALL, PENDING, PROCESSED, NORMAL", example = "PENDING")
+            @RequestParam(defaultValue = "ALL") AdminPostReviewStatus reviewStatus,
             @Parameter(description = "신고 상태 필터. 예: PENDING", example = "PENDING")
             @RequestParam(required = false) PostReportStatus reportStatus
     ) {
-        return adminPostQueryService.listPosts(page, limit, sortParam, keyword, reportStatus);
+        validateExclusiveReportFilters(reportStatus, reviewStatus);
+        return adminPostQueryService.listPosts(page, limit, sortParam, keyword, reviewStatus, reportStatus);
+    }
+
+    private void validateExclusiveReportFilters(PostReportStatus reportStatus, AdminPostReviewStatus reviewStatus) {
+        if (reportStatus != null && reviewStatus != AdminPostReviewStatus.ALL) {
+            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reportStatus와 reviewStatus는 동시에 사용할 수 없습니다.");
+        }
     }
 
     @GetMapping("/posts/{id}")

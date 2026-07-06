@@ -16,7 +16,6 @@ import java.util.Map;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
-import org.springframework.util.StringUtils;
 
 // Postmark 기반 인증 메일 발송 구현 클래스
 @Component
@@ -26,7 +25,6 @@ public class PostmarkEmailSender implements EmailSender {
     private static final String POSTMARK_SERVER_TOKEN_HEADER = "X-Postmark-Server-Token";
     private static final String VERIFICATION_SUBJECT = "Pingdom 이메일 인증";
     private static final String PASSWORD_RESET_SUBJECT = "Pingdom 비밀번호 재설정";
-    private static final String ERROR_POSTMARK_CONFIGURATION_INVALID = "POSTMARK_CONFIGURATION_INVALID";
     private static final String ERROR_POSTMARK_SEND_FAILED = "POSTMARK_SEND_FAILED";
     private static final String ERROR_POSTMARK_IO_ERROR = "POSTMARK_IO_ERROR";
     private static final DateTimeFormatter PASSWORD_RESET_EXPIRATION_FORMATTER =
@@ -52,10 +50,8 @@ public class PostmarkEmailSender implements EmailSender {
     @Override
     // 인증 코드 메일 발송 메서드
     public EmailSendResult sendVerificationEmail(String recipientEmail, String verificationCode) {
-        validateConfiguration();
-
         Message message = new Message();
-        message.setFrom(postmarkProperties.fromEmail());
+        message.setFrom(postmarkProperties.validatedFromEmail());
         message.setTo(recipientEmail);
         message.setSubject(VERIFICATION_SUBJECT);
         message.setTextBody(buildTextBody(recipientEmail, verificationCode));
@@ -71,10 +67,8 @@ public class PostmarkEmailSender implements EmailSender {
 
     @Override
     public EmailSendResult sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
-        validateConfiguration();
-
         Message message = new Message();
-        message.setFrom(postmarkProperties.fromEmail());
+        message.setFrom(postmarkProperties.validatedFromEmail());
         message.setTo(recipientEmail);
         message.setSubject(PASSWORD_RESET_SUBJECT);
         message.setTextBody(buildPasswordResetTextBody(recipientEmail, resetToken, expiresAt));
@@ -86,26 +80,6 @@ public class PostmarkEmailSender implements EmailSender {
         } catch (PostmarkException | IOException exception) {
             throw mapSendException("비밀번호 재설정 메일 발송에 실패했습니다.", exception);
         }
-    }
-
-    // 메일 발송 설정 검증 메서드
-    private void validateConfiguration() {
-        if (!StringUtils.hasText(postmarkProperties.serverToken())) {
-            throw configurationException("POSTMARK_SERVER_TOKEN 설정이 필요합니다.");
-        }
-        if (!StringUtils.hasText(postmarkProperties.fromEmail())) {
-            throw configurationException("MAIL_FROM 설정이 필요합니다.");
-        }
-        if (!StringUtils.hasText(postmarkProperties.verificationBaseUrl())) {
-            throw configurationException("MAIL_VERIFICATION_BASE_URL 설정이 필요합니다.");
-        }
-        if (!StringUtils.hasText(postmarkProperties.passwordResetBaseUrl())) {
-            throw configurationException("MAIL_PASSWORD_RESET_BASE_URL 설정이 필요합니다.");
-        }
-    }
-
-    private EmailSendException configurationException(String message) {
-        return new EmailSendException(message, ERROR_POSTMARK_CONFIGURATION_INVALID, null, false, null);
     }
 
     private EmailSendException mapSendException(String message, Exception exception) {

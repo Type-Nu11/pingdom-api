@@ -11,9 +11,17 @@ public record AdminPostResponse(
         int limit,
         long totalCount,
         long totalPages,
-        boolean hasNext
+        boolean hasNext,
+        AdminPostReviewCounts counts
 ) {
-    public static AdminPostResponse of(List<AdminPostItem> posts, int page, int limit, long totalCount, long totalPages) {
-        return new AdminPostResponse(posts, page, limit, totalCount, totalPages, page < totalPages);
+    public static AdminPostResponse of(
+            List<AdminPostItem> posts,
+            int page,
+            int limit,
+            long totalCount,
+            long totalPages,
+            AdminPostReviewCounts counts
+    ) {
+        return new AdminPostResponse(posts, page, limit, totalCount, totalPages, page < totalPages, counts);
     }
 }
