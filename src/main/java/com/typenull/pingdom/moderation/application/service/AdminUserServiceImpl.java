@@ -33,6 +33,7 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -198,12 +199,8 @@ public class AdminUserServiceImpl implements AdminUserService {
                 Sort.by(Sort.Order.desc("processedAt"), Sort.Order.desc("id"))
         );
 
-        Page<UserSanctionHistory> historyPage = userSanctionHistoryRepository.findByUserIdAndFilters(
-                userId,
-                banType,
-                action,
-                from,
-                to,
+        Page<UserSanctionHistory> historyPage = userSanctionHistoryRepository.findAll(
+                sanctionHistorySpecification(userId, banType, action, from, to),
                 normalizedPageable
         );
         List<AdminUserSanctionHistoryItem> histories = historyPage.getContent().stream()
@@ -244,6 +241,36 @@ public class AdminUserServiceImpl implements AdminUserService {
                 history.getAdminUsername(),
                 history.getProcessedAt()
         );
+    }
+
+    private Specification<UserSanctionHistory> sanctionHistorySpecification(
+            Long userId,
+            UserBanType banType,
+            UserSanctionAction action,
+            LocalDateTime from,
+            LocalDateTime to
+    ) {
+        Specification<UserSanctionHistory> specification = (root, query, criteriaBuilder) ->
+                criteriaBuilder.equal(root.get("targetUserId"), userId);
+
+        if (banType != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("banType"), banType));
+        }
+        if (action != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.equal(root.get("action"), action));
+        }
+        if (from != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.greaterThanOrEqualTo(root.get("processedAt"), from));
+        }
+        if (to != null) {
+            specification = specification.and((root, query, criteriaBuilder) ->
+                    criteriaBuilder.lessThanOrEqualTo(root.get("processedAt"), to));
+        }
+
+        return specification;
     }
 
     private User findUser(Long userId) {
