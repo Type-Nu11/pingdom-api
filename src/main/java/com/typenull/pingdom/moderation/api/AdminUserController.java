@@ -11,6 +11,7 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResp
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -83,6 +84,7 @@ public class AdminUserController {
                     responseCode = "401",
                     description = "인증 실패",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -97,6 +99,7 @@ public class AdminUserController {
                     responseCode = "403",
                     description = "관리자 권한 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -156,6 +159,7 @@ public class AdminUserController {
                     responseCode = "401",
                     description = "인증 실패",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -170,6 +174,7 @@ public class AdminUserController {
                     responseCode = "403",
                     description = "관리자 권한 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -184,6 +189,7 @@ public class AdminUserController {
                     responseCode = "404",
                     description = "밴 유저를 찾을 수 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -253,6 +259,7 @@ public class AdminUserController {
                     responseCode = "401",
                     description = "인증 실패",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -267,6 +274,7 @@ public class AdminUserController {
                     responseCode = "403",
                     description = "관리자 권한 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -281,6 +289,7 @@ public class AdminUserController {
                     responseCode = "404",
                     description = "사용자를 찾을 수 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -316,6 +325,7 @@ public class AdminUserController {
                     responseCode = "401",
                     description = "인증 실패",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -330,6 +340,7 @@ public class AdminUserController {
                     responseCode = "403",
                     description = "관리자 권한 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -344,6 +355,7 @@ public class AdminUserController {
                     responseCode = "404",
                     description = "사용자를 찾을 수 없음",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
@@ -358,6 +370,7 @@ public class AdminUserController {
                     responseCode = "409",
                     description = "제재 중인 사용자가 아님",
                     content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
                             examples = @ExampleObject(
                                     value = """
                                             {
