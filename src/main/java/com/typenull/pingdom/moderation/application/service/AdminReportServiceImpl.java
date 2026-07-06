@@ -141,10 +141,10 @@ public class AdminReportServiceImpl implements AdminReportService {
         boolean beforeBanned = reportedUser.isCurrentlyBanned(now);
         boolean beforePostHidden = !mapImage.isVisible();
         Map<Long, Map<String, Object>> beforeStates = reportStates(pendingReports, beforeBanned, beforePostHidden);
+        Map<Long, User> reportersById = loadReportersById(pendingReports);
 
         for (PostReport report : pendingReports) {
-            User reporter = userRepository.findById(report.getReporterUserId())
-                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            User reporter = getReporter(report, reportersById);
             report.accept(now);
             reportPolicyService.recordAccepted(report.getReporterUserId(), report.getReporterUsername());
             reporter.increaseReportCount();
@@ -181,28 +181,20 @@ public class AdminReportServiceImpl implements AdminReportService {
 
         LocalDateTime now = LocalDateTime.now(clock);
         boolean postHidden = !mapImage.isVisible();
-        Map<Long, Map<String, Object>> beforeStates = new LinkedHashMap<>();
-        Map<Long, Boolean> beforeBannedByReportId = new LinkedHashMap<>();
+        PostReport firstReport = pendingReports.getFirst();
+        User reportedUser = userRepository.findById(firstReport.getReportedUserId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+        boolean beforeBanned = reportedUser.isCurrentlyBanned(now);
+        Map<Long, Map<String, Object>> beforeStates = reportStates(pendingReports, beforeBanned, postHidden);
+        Map<Long, User> reportersById = loadReportersById(pendingReports);
 
         for (PostReport report : pendingReports) {
-            boolean beforeBanned = userRepository.findById(report.getReportedUserId())
-                    .map(user -> user.isCurrentlyBanned(now))
-                    .orElse(false);
-            beforeBannedByReportId.put(report.getId(), beforeBanned);
-            beforeStates.put(report.getId(), reportState(report, beforeBanned, postHidden));
-        }
-
-        for (PostReport report : pendingReports) {
-            userRepository.findById(report.getReporterUserId())
-                    .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
+            getReporter(report, reportersById);
             report.decline(now);
             reportPolicyService.recordDeclined(report.getReporterUserId(), report.getReporterUsername(), now);
         }
 
         for (PostReport report : pendingReports) {
-            boolean banned = userRepository.findById(report.getReportedUserId())
-                    .map(user -> user.isCurrentlyBanned(now))
-                    .orElse(beforeBannedByReportId.getOrDefault(report.getId(), false));
             adminAuditLogService.record(
                     adminUserId,
                     AdminAuditAction.REPORT_DECLINED,
@@ -210,7 +202,7 @@ public class AdminReportServiceImpl implements AdminReportService {
                     report.getId(),
                     BULK_REPORT_DECLINED_REASON,
                     beforeStates.get(report.getId()),
-                    reportState(report, banned, postHidden)
+                    reportState(report, beforeBanned, postHidden)
             );
         }
 
@@ -293,6 +285,31 @@ public class AdminReportServiceImpl implements AdminReportService {
             states.put(report.getId(), reportState(report, reportedUserBanned, postHidden));
         }
         return states;
+    }
+
+    private Map<Long, User> loadReportersById(List<PostReport> reports) {
+        Map<Long, User> reportersById = new LinkedHashMap<>();
+        for (PostReport report : reports) {
+            reportersById.putIfAbsent(report.getReporterUserId(), null);
+        }
+
+        userRepository.findAllById(reportersById.keySet())
+                .forEach(reporter -> reportersById.put(reporter.getId(), reporter));
+
+        reportersById.forEach((reporterUserId, reporter) -> {
+            if (reporter == null) {
+                throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
+            }
+        });
+        return reportersById;
+    }
+
+    private User getReporter(PostReport report, Map<Long, User> reportersById) {
+        User reporter = reportersById.get(report.getReporterUserId());
+        if (reporter == null) {
+            throw new AuthException(AuthErrorCode.USER_NOT_FOUND);
+        }
+        return reporter;
     }
 
     private AdminPostReportBulkActionResponse toBulkActionResponse(

@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("23");
-        assertThat(result.migrationsExecuted).isEqualTo(23);
+        assertThat(result.targetSchemaVersion).isEqualTo("24");
+        assertThat(result.migrationsExecuted).isEqualTo(24);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("23");
-        assertThat(result.migrationsExecuted).isEqualTo(22);
+        assertThat(result.targetSchemaVersion).isEqualTo("24");
+        assertThat(result.migrationsExecuted).isEqualTo(23);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -378,6 +378,14 @@ class FlywayMigrationIntegrationTest {
                         WHERE table_name = 'post_report'
                           AND column_name = 'created_at'
                           AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'post_report'
+                          AND indexname = 'idx_post_report_reported_image_status'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
