@@ -171,7 +171,6 @@ class OpenApiDocumentationValidationTest {
             for (JsonNode item : resolvedSchema.path("allOf")) {
                 validateAgainstSchema(document, item, value, location, mismatches);
             }
-            return;
         }
 
         if (resolvedSchema.has("oneOf")) {
