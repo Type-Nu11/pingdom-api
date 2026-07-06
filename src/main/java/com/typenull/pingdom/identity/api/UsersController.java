@@ -9,6 +9,8 @@ import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import com.typenull.pingdom.identity.application.query.MyPageService;
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.application.query.UserDataExportService;
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -96,7 +98,7 @@ public class UsersController {
     public ResponseEntity<MyPageResponse> getMyPageInfo(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        MyPageQueryResult result = myPageService.getMyPageInfo(user.userId());
+        MyPageQueryResult result = myPageService.getMyPageInfo(authenticatedUserId(user));
         return ResponseEntity.ok(MyPageResponse.from(result));
     }
 
@@ -163,7 +165,7 @@ public class UsersController {
     public ResponseEntity<UserDataExportResponse> exportMyData(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        UserDataExportResult result = userDataExportService.exportMyData(user.userId());
+        UserDataExportResult result = userDataExportService.exportMyData(authenticatedUserId(user));
         return ResponseEntity.ok(UserDataExportResponse.from(result));
     }
 
@@ -255,7 +257,7 @@ public class UsersController {
             @Valid @RequestBody ChangePasswordRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        changeInfoService.changePassword(request, user.userId());
+        changeInfoService.changePassword(request, authenticatedUserId(user));
         return ResponseEntity.ok("비밀번호 변경 완료");
     }
 
@@ -337,7 +339,14 @@ public class UsersController {
             @Valid @RequestBody ChangeUsernameRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        changeInfoService.changeUsername(request, user.userId());
+        changeInfoService.changeUsername(request, authenticatedUserId(user));
         return ResponseEntity.ok("아이디 변경 완료");
+    }
+
+    private Long authenticatedUserId(JwtAuthenticatedUser user) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return user.userId();
     }
 }

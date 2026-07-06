@@ -94,7 +94,7 @@ def verifyOpenApiContractTasks = openApiSpecs.collect { specName ->
         group = 'verification'
         description = "Verifies ${specName} against the committed OpenAPI baseline."
         dependsOn tasks.named('exportOpenApiSpecs')
-        classpath = files(configurations.openapiDiffCli.singleFile)
+        classpath = configurations.openapiDiffCli
         mainClass = 'org.openapitools.openapidiff.cli.Main'
 
         def baselineSpec = openApiBaselineDir.file(specName)

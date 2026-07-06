@@ -1,5 +1,7 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRequest;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
@@ -101,11 +103,9 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
+        Long userId = authenticatedUserId(user);
         placeRecommendationClickService.recordClick(
-                user.userId(),
+                userId,
                 request.placeId(),
                 request.recommendationVersion(),
                 request.requestId()
@@ -120,10 +120,10 @@ public class LegacyPlaceCompatController {
             @PathVariable String requestId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
+        return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(
+                authenticatedUserId(user),
+                requestId
+        ));
     }
 
     @Deprecated
@@ -132,14 +132,11 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
         PlaceCoordinateCreateResponse response = mapPlaceService.createCoordinateToken(
                 request.baseLatitude(),
                 request.baseLongitude(),
                 request.kakaoPlaceId(),
-                user.userId()
+                authenticatedUserId(user)
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -150,9 +147,6 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceUploadRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
         PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
                 request.kakaoPlaceId(),
                 request.name(),
@@ -160,7 +154,7 @@ public class LegacyPlaceCompatController {
                 request.category(),
                 request.imageUrl(),
                 request.coordinateToken(),
-                user.userId()
+                authenticatedUserId(user)
         );
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -171,10 +165,14 @@ public class LegacyPlaceCompatController {
             @PathVariable("id") Long placeId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
-        mapPlaceService.deletePlace(placeId, user.userId());
+        mapPlaceService.deletePlace(placeId, authenticatedUserId(user));
         return ResponseEntity.ok("장소를 삭제했습니다.");
+    }
+
+    private Long authenticatedUserId(JwtAuthenticatedUser user) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return user.userId();
     }
 }
