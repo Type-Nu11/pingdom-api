@@ -29,6 +29,7 @@ import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import jakarta.annotation.PreDestroy;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Slice;
 import org.springframework.data.redis.core.RedisCallback;
@@ -95,6 +96,8 @@ public class S3Service {
         try {
             return savePost(request, userId, username, storedImageObjects, placeId);
         } catch (MapException exception) {
+            throw exception;
+        } catch (DataIntegrityViolationException exception) {
             throw exception;
         } catch (Exception e) {
             throw new MapException(MapErrorCode.UPLOAD_ERROR);
