@@ -18,7 +18,7 @@ public interface AdminUserService {
 
     UnbanResponse unbanUser(Long userId, UnbanRequest request, Long adminUserId);
 
-    AdminBannedUserResponse listBannedUsers(Pageable pageable);
+    AdminBannedUserResponse listBannedUsers(String keyword, Pageable pageable);
 
     AdminBannedUserDetailResponse getBannedUser(Long userId);
 
