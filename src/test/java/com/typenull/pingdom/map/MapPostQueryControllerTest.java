@@ -205,6 +205,61 @@ class MapPostQueryControllerTest {
     }
 
     @Test
+    void listMyPostsReturnsOnlyCurrentUsersPostsInLatestOrder() throws Exception {
+        String accessToken = signupAndLogin("my-post-owner");
+        Long userId = userRepository.findByUsername("my-post-owner").orElseThrow().getId();
+
+        MapPlace firstPlace = createMapPlace("내 첫 장소", "경상남도 진주시 내글로 1");
+        MapPlace secondPlace = createMapPlace("내 두 번째 장소", "경상남도 진주시 내글로 2");
+        MapPlace otherPlace = createMapPlace("다른 사용자 장소", "경상남도 진주시 다른글로 1");
+
+        MapImage olderMyPost = createMapImage(userId, "my-post-owner", "내 이전 게시글", firstPlace, 2L);
+        MapImage latestMyPost = createMapImage(userId, "my-post-owner", "내 최신 게시글", secondPlace, 5L);
+        createMapImage(userId + 100L, "other-writer", "다른 사용자 게시글", otherPlace, 7L);
+
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(userId)
+                .placeId(secondPlace.getId())
+                .build());
+        mapImageLikeRepository.save(MapImageLike.builder()
+                .userId(userId)
+                .mapImageId(olderMyPost.getId())
+                .build());
+
+        mockMvc.perform(get("/map/posts/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.posts.length()").value(2))
+                .andExpect(jsonPath("$.posts[0].id").value(latestMyPost.getId()))
+                .andExpect(jsonPath("$.posts[0].title").value("내 최신 게시글"))
+                .andExpect(jsonPath("$.posts[0].userId").value(userId))
+                .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
+                .andExpect(jsonPath("$.posts[0].likedByMe").value(false))
+                .andExpect(jsonPath("$.posts[1].id").value(olderMyPost.getId()))
+                .andExpect(jsonPath("$.posts[1].userId").value(userId))
+                .andExpect(jsonPath("$.posts[1].bookmarked").value(false))
+                .andExpect(jsonPath("$.posts[1].likedByMe").value(true));
+
+        mockMvc.perform(get("/map/posts/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20")
+                        .param("sortParam", "OLDEST")
+                        .param("keyword", "내"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.posts.length()").value(2))
+                .andExpect(jsonPath("$.posts[0].id").value(olderMyPost.getId()))
+                .andExpect(jsonPath("$.posts[1].id").value(latestMyPost.getId()));
+    }
+
+    @Test
     void getPostReturnsPostDetailWithPlaceInformation() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");

@@ -2,6 +2,7 @@ package com.typenull.pingdom.post.api;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 import com.typenull.pingdom.post.application.query.PostQueryService;
@@ -151,6 +152,49 @@ public class PostQueryController {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
         return postQueryService.listLikedPosts(page, limit, user.userId());
+    }
+
+    @GetMapping("/posts/me")
+    @Operation(
+            summary = "내 게시글 목록 조회",
+            description = "현재 인증된 사용자가 작성한 게시글만 검색 조건과 정렬 기준에 따라 페이지 단위 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "내 게시글 목록 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PostListResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public PostListResponse listMyPosts(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(description = "정렬 기준", example = "LATEST")
+            @RequestParam(defaultValue = "LATEST") SortParam sortParam,
+            @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 작성자명, 연결 장소명, 설명으로 검색합니다.", example = "진주성")
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return postQueryService.listMyPosts(page, limit, user.userId(), sortParam, keyword);
     }
 
     @GetMapping("/posts/{id}")
