@@ -170,7 +170,7 @@ public class EngagementController {
                     )
             )
     })
-    public MyPostReportResponse listMyReports(
+    public ResponseEntity<MyPostReportResponse> listMyReports(
             @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
@@ -180,7 +180,7 @@ public class EngagementController {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
-        return postReportQueryService.listMyReports(user.userId(), page, limit);
+        return ResponseEntity.ok(postReportQueryService.listMyReports(user.userId(), page, limit));
     }
 
     @PostMapping("/like")
