@@ -3,6 +3,7 @@ package com.typenull.pingdom.shared.ratelimit;
 import static org.junit.jupiter.api.Assertions.assertDoesNotThrow;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 
+import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.StorageType;
 import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.EmailResendPolicy;
 import com.typenull.pingdom.shared.ratelimit.AbuseRateLimitProperties.WindowPolicy;
 import java.time.Clock;
@@ -27,6 +28,7 @@ class AbuseRateLimitServiceTest {
     void setUp() {
         clock = new MutableClock(Instant.parse("2026-06-23T00:00:00Z"), ZoneOffset.UTC);
         AbuseRateLimitProperties properties = new AbuseRateLimitProperties(
+                StorageType.REDIS,
                 new WindowPolicy(2, Duration.ofMinutes(1)),
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),

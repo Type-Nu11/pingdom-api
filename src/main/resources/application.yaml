@@ -127,6 +127,7 @@ user:
 
 abuse:
   rate-limit:
+    storage: ${ABUSE_RATE_LIMIT_STORAGE:redis}
     redis-key-prefix: ${REDIS_RATE_LIMIT_KEY_PREFIX:pingdom:rate-limit:}
     fail-open: ${REDIS_RATE_LIMIT_FAIL_OPEN:true}
     login-username:
