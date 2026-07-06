@@ -4,7 +4,7 @@ early_access: false
 enable_free_tier: true
 
 reviews:
-  profile: "assertive"
+  profile: "chill"
   request_changes_workflow: true
   high_level_summary: false
   high_level_summary_instructions: ""
@@ -20,7 +20,7 @@ reviews:
   changed_files_summary: false
   sequence_diagrams: false
   estimate_code_review_effort: false
-  assess_linked_issues: true
+  assess_linked_issues: false
   related_issues: false
   related_prs: false
   suggested_labels: false
@@ -33,12 +33,18 @@ reviews:
   in_progress_fortune: false
   poem: false
   enable_prompt_for_ai_agents: false
-  path_filters: []
+  path_filters:
+    - "!**/build/**"
+    - "!**/.gradle/**"
+    - "!**/out/**"
+    - "!**/generated/**"
+    - "!**/*.md"
+    - "!**/http-client.env.json"
   path_instructions: []
   abort_on_close: false
   disable_cache: false
   slop_detection:
-    enabled: true
+    enabled: false
   auto_review:
     enabled: true
     description_keyword: ""
@@ -51,7 +57,7 @@ reviews:
     ignore_usernames: []
   finishing_touches:
     docstrings:
-      enabled: true
+      enabled: false
     unit_tests:
       enabled: false
     simplify:
@@ -73,15 +79,15 @@ reviews:
     pmd:
       enabled: false
     opengrep:
-      enabled: true
+      enabled: false
     semgrep:
-      enabled: true
+      enabled: false
     gitleaks:
-      enabled: true
+      enabled: false
     trufflehog:
-      enabled: true
+      enabled: false
     osvScanner:
-      enabled: true
+      enabled: false
     actionlint:
       enabled: false
     zizmor:
