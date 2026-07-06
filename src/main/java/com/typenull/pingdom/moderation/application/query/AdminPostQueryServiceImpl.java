@@ -6,7 +6,9 @@ import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostReportItem;
+import com.typenull.pingdom.moderation.api.dto.post.AdminPostReviewCounts;
 import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
+import com.typenull.pingdom.moderation.domain.AdminPostReviewStatus;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.post.domain.MapImage;
@@ -32,11 +34,19 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     @Override
     @Transactional(readOnly = true)
-    public AdminPostResponse listPosts(int page, int limit, SortParam sortParam, String keyword, PostReportStatus reportStatus) {
+    public AdminPostResponse listPosts(
+            int page,
+            int limit,
+            SortParam sortParam,
+            String keyword,
+            AdminPostReviewStatus reviewStatus,
+            PostReportStatus reportStatus
+    ) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         int targetPage = safePage - 1;
         SortParam safeSortParam = sortParam == null ? SortParam.LATEST : sortParam;
+        AdminPostReviewStatus safeReviewStatus = reviewStatus == null ? AdminPostReviewStatus.ALL : reviewStatus;
         String safeKeyword = keyword == null ? "" : keyword.trim();
         Long numericKeyword = parseLongKeyword(safeKeyword);
 
@@ -47,7 +57,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         };
 
         PageRequest pageable = PageRequest.of(targetPage, safeLimit, sort);
-        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, reportStatus, pageable);
+        Page<MapImage> mapImagePage = loadAdminPostPage(safeKeyword, numericKeyword, safeReviewStatus, reportStatus, pageable);
+        AdminPostReviewCounts counts = countAdminPostsByReviewStatus(safeKeyword, numericKeyword);
 
         Map<Long, List<AdminPostReportItem>> reportsByImageId = getReportsByImageId(mapImagePage.getContent());
 
@@ -61,7 +72,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
                 safePage,
                 safeLimit,
                 mapImagePage.getTotalElements(),
-                mapImagePage.getTotalPages()
+                mapImagePage.getTotalPages(),
+                counts
         );
     }
 
@@ -136,13 +148,23 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
     private Page<MapImage> loadAdminPostPage(
             String keyword,
             Long numericKeyword,
+            AdminPostReviewStatus reviewStatus,
             PostReportStatus reportStatus,
             Pageable pageable
     ) {
-        if (keyword.isBlank() && reportStatus == null) {
+        if (keyword.isBlank() && reportStatus == null && reviewStatus == AdminPostReviewStatus.ALL) {
             return mapImageRepository.findAllBy(pageable);
         }
 
-        return mapImageRepository.searchAdminPosts(keyword, numericKeyword, reportStatus, pageable);
+        return mapImageRepository.searchAdminPosts(keyword, numericKeyword, reviewStatus.name(), reportStatus, pageable);
+    }
+
+    private AdminPostReviewCounts countAdminPostsByReviewStatus(String keyword, Long numericKeyword) {
+        return new AdminPostReviewCounts(
+                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.ALL.name()),
+                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.PENDING.name()),
+                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.PROCESSED.name()),
+                mapImageRepository.countAdminPostsByReviewStatus(keyword, numericKeyword, AdminPostReviewStatus.NORMAL.name())
+        );
     }
 }

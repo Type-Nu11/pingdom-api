@@ -132,6 +132,40 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
                          AND pr.status = :reportStatus
                   ))
               AND (
+                       :reviewStatus = 'ALL'
+                    OR (
+                           :reviewStatus = 'PENDING'
+                       AND EXISTS (
+                               SELECT 1
+                               FROM PostReport pendingReport
+                               WHERE pendingReport.mapImage = m
+                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
+                           )
+                       )
+                    OR (
+                           :reviewStatus = 'PROCESSED'
+                       AND EXISTS (
+                               SELECT 1
+                               FROM PostReport anyReport
+                               WHERE anyReport.mapImage = m
+                           )
+                       AND NOT EXISTS (
+                               SELECT 1
+                               FROM PostReport pendingReport
+                               WHERE pendingReport.mapImage = m
+                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
+                           )
+                       )
+                    OR (
+                           :reviewStatus = 'NORMAL'
+                       AND NOT EXISTS (
+                               SELECT 1
+                               FROM PostReport anyReport
+                               WHERE anyReport.mapImage = m
+                           )
+                       )
+                  )
+              AND (
                        (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
                     OR (:numericKeyword IS NULL AND (
                                :keyword = ''
@@ -145,8 +179,64 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
     Page<MapImage> searchAdminPosts(
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
+            @Param("reviewStatus") String reviewStatus,
             @Param("reportStatus") PostReportStatus reportStatus,
             Pageable pageable
+    );
+
+    @Query("""
+            SELECT COUNT(m)
+            FROM MapImage m
+            LEFT JOIN m.mapPlace p
+            WHERE (
+                       :reviewStatus = 'ALL'
+                    OR (
+                           :reviewStatus = 'PENDING'
+                       AND EXISTS (
+                               SELECT 1
+                               FROM PostReport pendingReport
+                               WHERE pendingReport.mapImage = m
+                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
+                           )
+                       )
+                    OR (
+                           :reviewStatus = 'PROCESSED'
+                       AND EXISTS (
+                               SELECT 1
+                               FROM PostReport anyReport
+                               WHERE anyReport.mapImage = m
+                           )
+                       AND NOT EXISTS (
+                               SELECT 1
+                               FROM PostReport pendingReport
+                               WHERE pendingReport.mapImage = m
+                                 AND pendingReport.status = com.typenull.pingdom.engagement.domain.PostReportStatus.PENDING
+                           )
+                       )
+                    OR (
+                           :reviewStatus = 'NORMAL'
+                       AND NOT EXISTS (
+                               SELECT 1
+                               FROM PostReport anyReport
+                               WHERE anyReport.mapImage = m
+                           )
+                       )
+                  )
+              AND (
+                       (:numericKeyword IS NOT NULL AND (m.id = :numericKeyword OR m.userId = :numericKeyword))
+                    OR (:numericKeyword IS NULL AND (
+                               :keyword = ''
+                            OR m.title LIKE CONCAT('%', :keyword, '%')
+                            OR m.username LIKE CONCAT('%', :keyword, '%')
+                            OR m.description LIKE CONCAT('%', :keyword, '%')
+                            OR p.name LIKE CONCAT('%', :keyword, '%')
+                       ))
+                  )
+            """)
+    long countAdminPostsByReviewStatus(
+            @Param("keyword") String keyword,
+            @Param("numericKeyword") Long numericKeyword,
+            @Param("reviewStatus") String reviewStatus
     );
 
     @EntityGraph(attributePaths = "mapPlace")
