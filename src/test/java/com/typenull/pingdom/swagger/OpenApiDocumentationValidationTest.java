@@ -92,6 +92,39 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/users/bookmarks")).isFalse();
     }
 
+    @Test
+    void resolveSchemaFollowsNestedRefsAndUnescapesJsonPointer() throws Exception {
+        JsonNode document = objectMapper.readTree("""
+                {
+                  "components": {
+                    "schemas": {
+                      "Wrapper": {
+                        "$ref": "#/components/schemas/Nested~1Schema"
+                      },
+                      "Nested/Schema": {
+                        "$ref": "#/components/schemas/Actual~0Value"
+                      },
+                      "Actual~Value": {
+                        "type": "object",
+                        "required": ["name"],
+                        "properties": {
+                          "name": {
+                            "type": "string"
+                          }
+                        }
+                      }
+                    }
+                  }
+                }
+                """);
+
+        JsonNode resolved = resolveSchema(document, document.at("/components/schemas/Wrapper"));
+
+        assertThat(resolved.path("type").asText()).isEqualTo("object");
+        assertThat(resolved.path("required")).hasSize(1);
+        assertThat(resolved.path("properties").path("name").path("type").asText()).isEqualTo("string");
+    }
+
     private JsonNode readApiDocs(String apiDocPath) throws Exception {
         String body = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(apiDocPath))
                 .andReturn()
@@ -291,20 +324,25 @@ class OpenApiDocumentationValidationTest {
             return objectMapper.createObjectNode();
         }
 
-        JsonNode ref = schema.get("$ref");
-        if (ref == null || ref.isNull()) {
-            return schema;
+        JsonNode current = schema;
+        while (current.has("$ref")) {
+            String refValue = current.path("$ref").asText();
+            if (!refValue.startsWith("#/")) {
+                break;
+            }
+
+            JsonNode next = document;
+            for (String segment : refValue.substring(2).split("/")) {
+                String unescapedSegment = segment.replace("~1", "/").replace("~0", "~");
+                next = next.path(unescapedSegment);
+            }
+
+            if (next.isMissingNode() || next == current) {
+                break;
+            }
+            current = next;
         }
 
-        String refValue = ref.asText();
-        if (!refValue.startsWith("#/")) {
-            return schema;
-        }
-
-        JsonNode current = document;
-        for (String segment : refValue.substring(2).split("/")) {
-            current = current.path(segment);
-        }
         return current;
     }
 }
