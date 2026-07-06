@@ -187,7 +187,7 @@ public class PostQueryController {
             @RequestParam(defaultValue = "20") int limit,
             @Parameter(description = "정렬 기준", example = "LATEST")
             @RequestParam(defaultValue = "LATEST") SortParam sortParam,
-            @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 작성자명, 연결 장소명, 설명으로 검색합니다.", example = "진주성")
+            @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 연결 장소명, 설명으로 검색합니다.", example = "진주성")
             @RequestParam(required = false, defaultValue = "") String keyword,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {

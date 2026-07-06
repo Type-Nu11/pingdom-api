@@ -145,7 +145,6 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
               AND (
                    :keyword = ''
                    OR lower(m.title) LIKE lower(CONCAT('%', :keyword, '%'))
-                   OR lower(m.username) LIKE lower(CONCAT('%', :keyword, '%'))
                    OR lower(m.description) LIKE lower(CONCAT('%', :keyword, '%'))
                    OR lower(p.name) LIKE lower(CONCAT('%', :keyword, '%'))
                    OR (:numericKeyword IS NOT NULL AND m.id = :numericKeyword)
