@@ -65,8 +65,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("25");
-        assertThat(result.migrationsExecuted).isEqualTo(25);
+        assertThat(result.targetSchemaVersion).isEqualTo("26");
+        assertThat(result.migrationsExecuted).isEqualTo(26);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +78,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("25");
-        assertThat(result.migrationsExecuted).isEqualTo(24);
+        assertThat(result.targetSchemaVersion).isEqualTo("26");
+        assertThat(result.migrationsExecuted).isEqualTo(25);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -525,6 +525,30 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'privacy_processing_history'
                           AND indexname = 'idx_privacy_processing_history_action_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_recommendation_exposure'
+                          AND indexname = 'idx_place_recommendation_exposure_metric_aggregation'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_recommendation_click'
+                          AND indexname = 'idx_place_recommendation_click_metric_aggregation'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_recommendation_conversion'
+                          AND indexname = 'idx_place_recommendation_conversion_metric_aggregation'
                     )
                     """)).isTrue();
         }
