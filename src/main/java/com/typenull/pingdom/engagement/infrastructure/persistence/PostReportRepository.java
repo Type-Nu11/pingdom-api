@@ -29,6 +29,8 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
 
     List<PostReport> findAllByMapImage_IdAndStatusIn(Long mapImageId, Collection<com.typenull.pingdom.engagement.domain.PostReportStatus> statuses);
 
+    List<PostReport> findAllByReportedImageIdAndStatusOrderByIdAsc(Long reportedImageId, PostReportStatus status);
+
     boolean existsByReportedUserIdAndStatusAndIdNot(
             Long reportedUserId,
             com.typenull.pingdom.engagement.domain.PostReportStatus status,
