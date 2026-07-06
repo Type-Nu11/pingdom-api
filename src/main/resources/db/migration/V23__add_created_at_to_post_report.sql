@@ -7,3 +7,6 @@ WHERE created_at IS NULL;
 
 ALTER TABLE post_report
     ALTER COLUMN created_at SET NOT NULL;
+
+CREATE INDEX idx_post_report_map_image_status
+    ON post_report (map_image_id, status);
