@@ -2,7 +2,9 @@ package com.typenull.pingdom.engagement.api;
 
 import com.typenull.pingdom.engagement.api.dto.like.MapImageLikeRequest;
 import com.typenull.pingdom.engagement.api.dto.like.MapImageLikeResponse;
+import com.typenull.pingdom.engagement.api.dto.report.MyPostReportResponse;
 import com.typenull.pingdom.engagement.api.dto.report.PostReportRequest;
+import com.typenull.pingdom.engagement.application.query.PostReportQueryService;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeResult;
 import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
@@ -15,6 +17,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -24,10 +27,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
@@ -37,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class EngagementController {
 
     private final PostReportService postReportService;
+    private final PostReportQueryService postReportQueryService;
     private final MapImageLikeService mapImageLikeService;
 
     @PostMapping("/posts/{id}/report")
@@ -136,6 +142,45 @@ public class EngagementController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
         return reportInternal(imageId, request, user);
+    }
+
+    @GetMapping("/reports")
+    @Operation(
+            summary = "내 신고 내역 조회",
+            description = "현재 인증된 사용자가 신고한 게시글 목록을 최신 신고순으로 페이지 단위 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "내 신고 내역 조회 성공",
+                    content = @Content(schema = @Schema(implementation = MyPostReportResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<MyPostReportResponse> listMyReports(
+            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
+            @RequestParam(defaultValue = "1") int page,
+            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        if (user == null) {
+            throw new AuthException(AuthErrorCode.INVALID_TOKEN);
+        }
+        return ResponseEntity.ok(postReportQueryService.listMyReports(user.userId(), page, limit));
     }
 
     @PostMapping("/like")

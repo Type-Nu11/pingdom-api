@@ -1014,7 +1014,15 @@ class PlaceControllerTest {
                                 "recommendationVersion", "place-rec-v1",
                                 "requestId", "legacy-unauthorized-test"
                         ))))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void legacyRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "legacy-unauthorized-test"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -1025,7 +1033,8 @@ class PlaceControllerTest {
                                 "baseLatitude", 35.1814,
                                 "baseLongitude", 128.1084
                         ))))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -1039,7 +1048,15 @@ class PlaceControllerTest {
                                 "imageUrl", "https://example.com/images/legacy-place.jpg",
                                 "coordinateToken", "invalid-token"
                         ))))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void legacyPlaceDeleteReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(delete("/map/places/{id}/delete", 1L))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
