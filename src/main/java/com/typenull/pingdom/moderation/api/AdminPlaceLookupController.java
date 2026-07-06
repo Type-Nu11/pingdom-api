@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.api;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.application.query.AdminMapPlaceLookupQueryService;
+import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -94,15 +95,15 @@ public class AdminPlaceLookupController {
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
             @Parameter(
-                    description = "장소 정렬 기준. LATEST, OLDEST만 지원합니다.",
+                    description = "장소 정렬 기준. LATEST, OLDEST, LEVEL_DESC만 지원합니다.",
                     example = "LATEST",
-                    schema = @Schema(type = "string", allowableValues = {"LATEST", "OLDEST"})
+                    schema = @Schema(type = "string", allowableValues = {"LATEST", "OLDEST", "LEVEL_DESC"})
             )
-            @RequestParam(defaultValue = "LATEST") SortParam sortParam,
+            @RequestParam(defaultValue = "LATEST") String sortParam,
             @Parameter(description = "장소 검색 키워드. 장소명, 등록자 ID, 주소로 검색합니다.", example = "용인")
             @RequestParam(required = false, defaultValue = "") String keyword
     ) {
-        return adminMapPlaceLookupQueryService.listPlaces(page, limit, sortParam, keyword);
+        return adminMapPlaceLookupQueryService.listPlaces(page, limit, AdminPlaceSortParam.from(sortParam), keyword);
     }
 
     @GetMapping("/{id}")

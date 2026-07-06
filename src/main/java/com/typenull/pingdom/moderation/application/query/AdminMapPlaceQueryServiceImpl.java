@@ -6,6 +6,7 @@ import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailRe
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationMetricsResponse;
+import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import lombok.RequiredArgsConstructor;
@@ -20,7 +21,7 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final AdminPlaceRecommendationMetricQueryService recommendationMetricQueryService;
 
     @Override
-    public AdminMapPlaceResponse listPlaces(int page, int limit, SortParam sortParam, String keyword) {
+    public AdminMapPlaceResponse listPlaces(int page, int limit, AdminPlaceSortParam sortParam, String keyword) {
         return lookupQueryService.listPlaces(page, limit, sortParam, keyword);
     }
 

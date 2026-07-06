@@ -15,6 +15,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -184,6 +185,60 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].category").value(nullValue()))
                 .andExpect(jsonPath("$.places[0].categoryName").value("미분류"));
+    }
+
+    @Test
+    void listPlacesSortsByPlaceLevelDesc() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace firstHighLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("고레벨 장소 A")
+                .address("경상남도 진주시 고레벨로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(21L)
+                .registrant("firstHighRegistrar")
+                .photoCount(10L)
+                .build());
+        MapPlace lowLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("저레벨 장소")
+                .address("경상남도 진주시 저레벨로 1")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(22L)
+                .registrant("lowRegistrar")
+                .photoCount(0L)
+                .build());
+        MapPlace secondHighLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("고레벨 장소 B")
+                .address("경상남도 진주시 고레벨로 2")
+                .latitude(35.1896)
+                .longitude(128.0791)
+                .userId(23L)
+                .registrant("secondHighRegistrar")
+                .photoCount(10L)
+                .build());
+        MapPlace middleLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("중레벨 장소")
+                .address("경상남도 진주시 중레벨로 1")
+                .latitude(35.1897)
+                .longitude(128.0792)
+                .userId(24L)
+                .registrant("middleRegistrar")
+                .photoCount(3L)
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortParam", AdminPlaceSortParam.LEVEL_DESC.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].id").value(secondHighLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[0].placeGrowth.level").value(5))
+                .andExpect(jsonPath("$.places[1].id").value(firstHighLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[1].placeGrowth.level").value(5))
+                .andExpect(jsonPath("$.places[2].id").value(middleLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[2].placeGrowth.level").value(3))
+                .andExpect(jsonPath("$.places[3].id").value(lowLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[3].placeGrowth.level").value(1));
     }
 
     @Test
