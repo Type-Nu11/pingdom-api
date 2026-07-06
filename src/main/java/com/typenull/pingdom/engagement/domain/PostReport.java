@@ -19,6 +19,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import com.typenull.pingdom.post.domain.MapImage;
+import org.hibernate.annotations.CreationTimestamp;
 
 @Entity
 @Getter
@@ -69,6 +70,10 @@ public class PostReport {
 
     @Column(name = "processed_at")
     private LocalDateTime processedAt;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     @Builder.Default
     @Column(name = "report_score")
