@@ -40,7 +40,10 @@ services:
     env_file:
       - .env
     environment:
-      REDIS_HOST: ${REDIS_HOST:-redis}
+      DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pingdom}
+      DB_USERNAME: ${POSTGRES_USER:-pingdom}
+      DB_PASSWORD: ${POSTGRES_PASSWORD:-pingdom}
+      REDIS_HOST: redis
       REDIS_PORT: ${REDIS_PORT:-6379}
     depends_on:
       postgres:
