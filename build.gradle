@@ -88,42 +88,50 @@ tasks.register('exportOpenApiSpecs', JavaExec) {
     } as CommandLineArgumentProvider)
 }
 
+def verifyOpenApiContractTasks = openApiSpecs.collect { specName ->
+    def taskName = "verifyOpenApiContract${specName.replace('.json', '').capitalize()}"
+    tasks.register(taskName, JavaExec) {
+        group = 'verification'
+        description = "Verifies ${specName} against the committed OpenAPI baseline."
+        dependsOn tasks.named('exportOpenApiSpecs')
+        classpath = files(configurations.openapiDiffCli.singleFile)
+        mainClass = 'org.openapitools.openapidiff.cli.Main'
+
+        def baselineSpec = openApiBaselineDir.file(specName)
+        def generatedSpec = openApiOutputDir.map { it.file(specName) }
+        def diffJson = openApiDiffOutputDir.map { it.file(specName.replace('.json', '-diff.json')) }
+        def diffMarkdown = openApiDiffOutputDir.map { it.file(specName.replace('.json', '-diff.md')) }
+
+        inputs.file(baselineSpec)
+        inputs.file(generatedSpec)
+        outputs.file(diffJson)
+        outputs.file(diffMarkdown)
+
+        doFirst {
+            def baselineFile = baselineSpec.asFile
+            def generatedFile = generatedSpec.get().asFile
+            if (!baselineFile.exists()) {
+                throw new GradleException("OpenAPI baseline spec is missing: ${baselineFile}")
+            }
+            if (!generatedFile.exists()) {
+                throw new GradleException("Generated OpenAPI spec is missing: ${generatedFile}")
+            }
+            diffJson.get().asFile.parentFile.mkdirs()
+        }
+
+        args(
+                '--fail-on-incompatible',
+                '--state',
+                '--json', diffJson.get().asFile.absolutePath,
+                '--markdown', diffMarkdown.get().asFile.absolutePath,
+                baselineSpec.asFile.absolutePath,
+                generatedSpec.get().asFile.absolutePath
+        )
+    }
+}
+
 tasks.register('verifyOpenApiContract') {
     group = 'verification'
     description = 'Verifies generated OpenAPI specs against committed baseline specs.'
-    dependsOn tasks.named('exportOpenApiSpecs')
-    inputs.dir(openApiBaselineDir)
-    inputs.dir(openApiOutputDir)
-    outputs.dir(openApiDiffOutputDir)
-
-    doLast {
-        def diffOutputDir = openApiDiffOutputDir.get().asFile
-        diffOutputDir.mkdirs()
-
-        openApiSpecs.each { specName ->
-            def baselineSpec = openApiBaselineDir.file(specName).asFile
-            def generatedSpec = openApiOutputDir.get().file(specName).asFile
-
-            if (!baselineSpec.exists()) {
-                throw new GradleException("OpenAPI baseline spec is missing: ${baselineSpec}")
-            }
-            if (!generatedSpec.exists()) {
-                throw new GradleException("Generated OpenAPI spec is missing: ${generatedSpec}")
-            }
-
-            exec {
-                commandLine = [
-                        'java',
-                        '-jar',
-                        configurations.openapiDiffCli.singleFile.absolutePath,
-                        '--fail-on-incompatible',
-                        '--state',
-                        '--json', new File(diffOutputDir, specName.replace('.json', '-diff.json')).absolutePath,
-                        '--markdown', new File(diffOutputDir, specName.replace('.json', '-diff.md')).absolutePath,
-                        baselineSpec.absolutePath,
-                        generatedSpec.absolutePath
-                ]
-            }
-        }
-    }
+    dependsOn verifyOpenApiContractTasks
 }
