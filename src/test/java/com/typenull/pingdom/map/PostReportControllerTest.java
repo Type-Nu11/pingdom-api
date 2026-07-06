@@ -229,6 +229,46 @@ class PostReportControllerTest {
                 .andExpect(jsonPath("$.code").value("REPORTER_RESTRICTED"));
     }
 
+    @Test
+    void listMyReportsReturnsCurrentUsersReportsInLatestReportOrder() throws Exception {
+        String reporterToken = signupAndLogin("my-report-reader");
+        String otherReporterToken = signupAndLogin("other-report-reader");
+        MapImage olderReportedPost = createMapImage(301L, "먼저 신고한 게시글");
+        MapImage latestReportedPost = createMapImage(302L, "나중에 신고한 게시글");
+        MapImage otherReportedPost = createMapImage(303L, "다른 사용자가 신고한 게시글");
+
+        reportPost(reporterToken, olderReportedPost.getId(), "먼저 신고한 사유");
+        reportPost(otherReporterToken, otherReportedPost.getId(), "다른 사용자 신고 사유");
+        reportPost(reporterToken, latestReportedPost.getId(), "나중에 신고한 사유");
+
+        PostReport olderReport = postReportRepository.findAll().stream()
+                .filter(report -> report.getReportedImageId().equals(olderReportedPost.getId()))
+                .findFirst()
+                .orElseThrow();
+        olderReport.accept(LocalDateTime.now());
+        postReportRepository.saveAndFlush(olderReport);
+
+        mockMvc.perform(get("/map/reports")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + reporterToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.reports.length()").value(2))
+                .andExpect(jsonPath("$.reports[0].postId").value(latestReportedPost.getId()))
+                .andExpect(jsonPath("$.reports[0].title").value("나중에 신고한 게시글"))
+                .andExpect(jsonPath("$.reports[0].reason").value("나중에 신고한 사유"))
+                .andExpect(jsonPath("$.reports[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.reports[1].postId").value(olderReportedPost.getId()))
+                .andExpect(jsonPath("$.reports[1].title").value("먼저 신고한 게시글"))
+                .andExpect(jsonPath("$.reports[1].reason").value("먼저 신고한 사유"))
+                .andExpect(jsonPath("$.reports[1].status").value("ACCEPTED"));
+    }
+
     private String signupAndLogin(String username) throws Exception {
         signup(username);
         return login(username);
@@ -283,13 +323,18 @@ class PostReportControllerTest {
     }
 
     private MapImage createMapImage(Long userId) {
+        return createMapImage(userId, "테스트 제목");
+    }
+
+    private MapImage createMapImage(Long userId, String title) {
         return mapImageRepository.save(
                 MapImage.builder()
-                        .imageUrl("https://example.com/image.jpg")
-                        .s3Key("test-image-key")
-                        .title("테스트 제목")
-                        .description("테스트 설명")
+                        .imageUrl("https://example.com/" + title + ".jpg")
+                        .s3Key("test-image-key-" + title)
+                        .title(title)
+                        .description(title + " 설명")
                         .userId(userId)
+                        .username("writer-" + userId)
                         .build()
         );
     }
