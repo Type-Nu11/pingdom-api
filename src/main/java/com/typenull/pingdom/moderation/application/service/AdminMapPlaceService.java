@@ -16,6 +16,7 @@ import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRe
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateItem;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateResponse;
+import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -71,6 +72,7 @@ public class AdminMapPlaceService {
     private final MapPlaceRepository mapPlaceRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
+    private final AdminPostService adminPostService;
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
@@ -90,6 +92,11 @@ public class AdminMapPlaceService {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
         Map<String, Object> beforeState = placeState(mapPlace);
+        List<Long> linkedPostIds = mapImageRepository.findByMapPlace_Id(placeId).stream()
+                .map(MapImage::getId)
+                .toList();
+
+        linkedPostIds.forEach(postId -> adminPostService.deletePost(postId, adminUserId));
 
         mapPlaceRepository.delete(mapPlace);
         adminAuditLogService.record(
@@ -99,7 +106,7 @@ public class AdminMapPlaceService {
                 placeId,
                 "PLACE_DELETED",
                 beforeState,
-                Map.of("placeId", placeId, "deleted", true)
+                Map.of("placeId", placeId, "deleted", true, "deletedPostCount", linkedPostIds.size())
         );
     }
 
