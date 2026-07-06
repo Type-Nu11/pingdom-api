@@ -1,12 +1,9 @@
 ALTER TABLE post_report
-    ADD COLUMN created_at TIMESTAMP(6);
+    ADD COLUMN created_at TIMESTAMP(6) NOT NULL DEFAULT CURRENT_TIMESTAMP;
 
 UPDATE post_report
-SET created_at = COALESCE(processed_at, CURRENT_TIMESTAMP)
-WHERE created_at IS NULL;
-
-ALTER TABLE post_report
-    ALTER COLUMN created_at SET NOT NULL;
+SET created_at = processed_at
+WHERE processed_at IS NOT NULL;
 
 CREATE INDEX idx_post_report_map_image_status
     ON post_report (map_image_id, status);
