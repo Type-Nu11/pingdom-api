@@ -81,7 +81,7 @@ reviews:
     trufflehog:
       enabled: true
     osvScanner:
-      enabled: false
+      enabled: true
     actionlint:
       enabled: false
     zizmor:
