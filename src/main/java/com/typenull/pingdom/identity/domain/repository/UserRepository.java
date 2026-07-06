@@ -32,6 +32,11 @@ public interface UserRepository extends JpaRepository<User, Long> {
             FROM User u
             WHERE u.banned = true
               AND (
+                    :keyword IS NULL
+                    OR CAST(u.id AS string) = :keyword
+                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+              AND (
                     u.banType IS NULL
                     OR u.banType <> :temporaryType
                     OR u.banExpiresAt IS NULL
@@ -41,6 +46,7 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Page<User> findAllCurrentlyBanned(
             @Param("temporaryType") UserBanType temporaryType,
             @Param("now") LocalDateTime now,
+            @Param("keyword") String keyword,
             Pageable pageable
     );
 

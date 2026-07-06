@@ -5,14 +5,18 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.ratelimit.RateLimitException;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
+@Slf4j
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
 public class PlaceRecommendationClickService {
@@ -26,6 +30,12 @@ public class PlaceRecommendationClickService {
     public void recordClick(Long userId, Long placeId, String recommendationVersion, String requestId) {
         if (!mapPlaceRepository.existsById(placeId)) {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+        }
+        if (StringUtils.hasText(requestId)
+                && userId != null
+                && placeRecommendationClickRepository.existsByUserIdAndRequestId(userId, requestId)) {
+            log.warn("recommendation click requestId reused. userId={}, placeId={}, requestId={}", userId, placeId, requestId);
+            throw new RateLimitException("이미 사용한 추천 요청입니다. 새로 조회한 추천 결과로 다시 시도해주세요.");
         }
 
         placeRecommendationClickRepository.save(PlaceRecommendationClick.builder()

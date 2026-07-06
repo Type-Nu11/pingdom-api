@@ -131,6 +131,18 @@ class AbuseRateLimitServiceTest {
     }
 
     @Test
+    void recommendationClickLimitUsesUserWindow() {
+        abuseRateLimitService.checkRecommendationClick(1L, "203.0.113.60");
+        abuseRateLimitService.checkRecommendationClick(1L, "203.0.113.61");
+
+        assertThrows(RateLimitException.class, () ->
+                abuseRateLimitService.checkRecommendationClick(1L, "203.0.113.62")
+        );
+
+        assertDoesNotThrow(() -> abuseRateLimitService.checkRecommendationClick(2L, "203.0.113.63"));
+    }
+
+    @Test
     void tokenRefreshFingerprintPreservesCaseSensitiveValue() {
         abuseRateLimitService.checkTokenRefresh("Refresh.Token.A", "203.0.113.40");
         String upperTokenKey = store.lastWindowKeys().stream()
