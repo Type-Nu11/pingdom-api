@@ -63,7 +63,10 @@ public class AdminUserController {
                                                 {
                                                   "userId": 7,
                                                   "username": "blockedUser01",
-                                                  "banned": true
+                                                  "banned": true,
+                                                  "banType": "PERMANENT",
+                                                  "bannedAt": "2026-06-07T13:30:00",
+                                                  "banExpiresAt": null
                                                 }
                                               ],
                                               "page": 1,
@@ -109,10 +112,12 @@ public class AdminUserController {
             @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(description = "사용자 ID 또는 닉네임 검색어", example = "blockedUser01")
+            @RequestParam(required = false) String keyword
     ) {
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
-        return adminUserService.listBannedUsers(normalizedPageable);
+        return adminUserService.listBannedUsers(keyword, normalizedPageable);
     }
 
     @GetMapping("/users/banned/{userId}")
@@ -138,6 +143,8 @@ public class AdminUserController {
                                               "role": "USER",
                                               "banned": true,
                                               "bannedAt": "2026-06-07T13:30:00",
+                                              "banType": "PERMANENT",
+                                              "banExpiresAt": null,
                                               "banReason": "반복적인 신고 누적",
                                               "createdAt": "2026-06-01T10:00:00"
                                             }
@@ -304,6 +311,48 @@ public class AdminUserController {
                     responseCode = "200",
                     description = "밴 해제 성공",
                     content = @Content(schema = @Schema(implementation = UnbanResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "관리자 권한 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "관리자 권한이 필요합니다.",
+                                              "code": "ACCESS_DENIED"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
             ),
             @ApiResponse(
                     responseCode = "409",

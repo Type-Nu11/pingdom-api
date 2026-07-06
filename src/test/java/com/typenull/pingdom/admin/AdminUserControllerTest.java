@@ -109,10 +109,39 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.users[0].userId").value(newerBannedUser.getId()))
                 .andExpect(jsonPath("$.users[0].username").value("bannedUser02"))
                 .andExpect(jsonPath("$.users[0].banned").value(true))
+                .andExpect(jsonPath("$.users[0].banType").value(UserBanType.PERMANENT.name()))
+                .andExpect(jsonPath("$.users[0].bannedAt").value("2026-06-06T11:00:00"))
                 .andExpect(jsonPath("$.users[1].userId").value(olderBannedUser.getId()))
                 .andExpect(jsonPath("$.users[1].username").value("bannedUser01"))
                 .andExpect(jsonPath("$.totalCount").value(2))
                 .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listBannedUsersFiltersByKeywordForUserIdAndUsername() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        User idMatchedUser = createUser("alphaBlocked");
+        idMatchedUser.ban("아이디 검색", LocalDateTime.of(2026, 6, 5, 10, 0));
+        userRepository.save(idMatchedUser);
+
+        User usernameMatchedUser = createUser("keywordBlocked");
+        usernameMatchedUser.ban("닉네임 검색", LocalDateTime.of(2026, 6, 6, 11, 0));
+        userRepository.save(usernameMatchedUser);
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", String.valueOf(idMatchedUser.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(1))
+                .andExpect(jsonPath("$.users[0].userId").value(idMatchedUser.getId()));
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", "keyword"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(1))
+                .andExpect(jsonPath("$.users[0].username").value("keywordBlocked"));
     }
 
     @Test
@@ -150,6 +179,8 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.role").value("USER"))
                 .andExpect(jsonPath("$.banned").value(true))
                 .andExpect(jsonPath("$.bannedAt").value("2026-06-07T13:30:00"))
+                .andExpect(jsonPath("$.banType").value(UserBanType.PERMANENT.name()))
+                .andExpect(jsonPath("$.banExpiresAt").isEmpty())
                 .andExpect(jsonPath("$.banReason").value("반복적인 신고 누적"));
     }
 

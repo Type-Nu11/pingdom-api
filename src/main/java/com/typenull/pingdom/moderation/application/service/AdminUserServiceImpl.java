@@ -100,7 +100,7 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
-    public AdminBannedUserResponse listBannedUsers(Pageable pageable) {
+    public AdminBannedUserResponse listBannedUsers(String keyword, Pageable pageable) {
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
         Pageable normalizedPageable = PageRequest.of(
@@ -110,9 +110,11 @@ public class AdminUserServiceImpl implements AdminUserService {
         );
 
         LocalDateTime now = now();
+        String normalizedKeyword = normalizeKeyword(keyword);
         Page<User> userPage = userRepository.findAllCurrentlyBanned(
                 UserBanType.TEMPORARY,
                 now,
+                normalizedKeyword,
                 normalizedPageable
         );
         List<AdminBannedUserItem> users = userPage.getContent().stream()
@@ -272,6 +274,14 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (from != null && to != null && to.isBefore(from)) {
             throw new AdminException(AdminErrorCode.INVALID_SANCTION_FILTER_PERIOD);
         }
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmedKeyword = keyword.trim();
+        return trimmedKeyword.isEmpty() ? null : trimmedKeyword;
     }
 
     private LocalDateTime now() {
