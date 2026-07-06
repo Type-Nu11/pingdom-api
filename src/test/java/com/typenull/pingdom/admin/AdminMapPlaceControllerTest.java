@@ -455,6 +455,55 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void deletePlaceDeletesLinkedPosts() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("삭제 대상 장소")
+                .address("경상남도 진주시 삭제로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(94L)
+                .registrant("deleteOwner")
+                .photoCount(2L)
+                .build());
+
+        MapImage firstPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/delete-first.jpg")
+                .s3Key("map/admin-place-delete-first-" + mapPlace.getId() + ".jpg")
+                .title("삭제 대상 게시글 1")
+                .description("장소와 함께 삭제될 게시글")
+                .userId(201L)
+                .username("postOwner1")
+                .mapPlace(mapPlace)
+                .build());
+        MapImage secondPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/delete-second.jpg")
+                .s3Key("map/admin-place-delete-second-" + mapPlace.getId() + ".jpg")
+                .title("삭제 대상 게시글 2")
+                .description("장소와 함께 삭제될 게시글")
+                .userId(202L)
+                .username("postOwner2")
+                .mapPlace(mapPlace)
+                .build());
+
+        mockMvc.perform(delete("/admin/places/{id}/delete", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        assertFalse(mapPlaceRepository.existsById(mapPlace.getId()));
+        assertFalse(mapImageRepository.existsById(firstPost.getId()));
+        assertFalse(mapImageRepository.existsById(secondPost.getId()));
+        assertEquals(0L, mapImageRepository.countByMapPlace_Id(mapPlace.getId()));
+        assertEquals(3L, adminAuditLogRepository.count());
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.PLACE_DELETED));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
+                .anyMatch(log -> log.getAfterState().contains("\"deletedPostCount\":2")));
+    }
+
+    @Test
     void updatePlaceCoordinatesUpdatesLatitudeLongitudeAndLocation() throws Exception {
         String accessToken = createAdminAndLogin();
 
