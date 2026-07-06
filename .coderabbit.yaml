@@ -83,7 +83,7 @@ reviews:
     semgrep:
       enabled: false
     gitleaks:
-      enabled: false
+      enabled: true
     trufflehog:
       enabled: false
     osvScanner:
