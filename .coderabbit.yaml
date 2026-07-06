@@ -199,29 +199,6 @@ chat:
 
 knowledge_base:
   opt_out: true
-  web_search:
-    enabled: false
-  code_guidelines:
-    enabled: false
-    filePatterns: []
-  learnings:
-    scope: "local"
-    approval_delay: 0
-  issues:
-    scope: "local"
-  jira:
-    usage: "disabled"
-    project_keys: []
-  linear:
-    usage: "disabled"
-    team_keys: []
-  pull_requests:
-    scope: "local"
-  mcp:
-    usage: "disabled"
-    disabled_servers: []
-  automatic_repository_linking: false
-  linked_repositories: []
 
 code_generation:
   docstrings:
