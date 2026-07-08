@@ -100,12 +100,10 @@ def verifyOpenApiContractTasks = openApiSpecs.collect { specName ->
         def baselineSpec = openApiBaselineDir.file(specName)
         def generatedSpec = openApiOutputDir.map { it.file(specName) }
         def diffJson = openApiDiffOutputDir.map { it.file(specName.replace('.json', '-diff.json')) }
-        def diffMarkdown = openApiDiffOutputDir.map { it.file(specName.replace('.json', '-diff.md')) }
 
         inputs.file(baselineSpec)
         inputs.file(generatedSpec)
         outputs.file(diffJson)
-        outputs.file(diffMarkdown)
 
         doFirst {
             def baselineFile = baselineSpec.asFile
@@ -123,7 +121,6 @@ def verifyOpenApiContractTasks = openApiSpecs.collect { specName ->
                 '--fail-on-incompatible',
                 '--state',
                 '--json', diffJson.get().asFile.absolutePath,
-                '--markdown', diffMarkdown.get().asFile.absolutePath,
                 baselineSpec.asFile.absolutePath,
                 generatedSpec.get().asFile.absolutePath
         )
