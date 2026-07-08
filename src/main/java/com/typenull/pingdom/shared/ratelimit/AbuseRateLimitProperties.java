@@ -10,11 +10,15 @@ import org.springframework.validation.annotation.Validated;
 @ConfigurationProperties(prefix = "abuse.rate-limit")
 public record AbuseRateLimitProperties(
         StorageType storage,
+        @Valid WindowPolicy signupEmail,
+        @Valid WindowPolicy signupIp,
         @Valid WindowPolicy loginUsername,
         @Valid WindowPolicy loginIp,
         @Valid WindowPolicy tokenRefreshToken,
         @Valid WindowPolicy tokenRefreshIp,
         @Valid EmailResendPolicy emailResend,
+        @Valid WindowPolicy emailVerifyEmail,
+        @Valid WindowPolicy emailVerifyIp,
         @Valid EmailResendPolicy passwordResetRequest,
         @Valid WindowPolicy passwordResetConfirmToken,
         @Valid WindowPolicy passwordResetConfirmIp,
@@ -36,11 +40,15 @@ public record AbuseRateLimitProperties(
         if (storage == null) {
             storage = StorageType.REDIS;
         }
+        signupEmail = WindowPolicy.withDefaults(signupEmail, 3, Duration.ofHours(1));
+        signupIp = WindowPolicy.withDefaults(signupIp, 30, Duration.ofHours(1));
         loginUsername = WindowPolicy.withDefaults(loginUsername, 5, Duration.ofMinutes(1));
         loginIp = WindowPolicy.withDefaults(loginIp, 120, Duration.ofMinutes(1));
         tokenRefreshToken = WindowPolicy.withDefaults(tokenRefreshToken, 10, Duration.ofMinutes(1));
         tokenRefreshIp = WindowPolicy.withDefaults(tokenRefreshIp, 240, Duration.ofMinutes(1));
         emailResend = EmailResendPolicy.withDefaults(emailResend);
+        emailVerifyEmail = WindowPolicy.withDefaults(emailVerifyEmail, 5, Duration.ofMinutes(10));
+        emailVerifyIp = WindowPolicy.withDefaults(emailVerifyIp, 120, Duration.ofMinutes(10));
         passwordResetRequest = EmailResendPolicy.withDefaults(passwordResetRequest);
         passwordResetConfirmToken = WindowPolicy.withDefaults(passwordResetConfirmToken, 5, Duration.ofMinutes(1));
         passwordResetConfirmIp = WindowPolicy.withDefaults(passwordResetConfirmIp, 120, Duration.ofMinutes(1));

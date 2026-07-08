@@ -152,6 +152,7 @@ public class AuthEmailVerificationController {
                     )
             )
     })
+    @RateLimited(RateLimitAction.EMAIL_VERIFY)
     public ResponseEntity<Void> verifyEmail(@Valid @RequestBody EmailVerifyRequest request) {
         authService.verifyEmail(request);
         return ResponseEntity.ok().build();

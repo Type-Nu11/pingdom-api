@@ -3,6 +3,8 @@ package com.typenull.pingdom.identity.api;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
 import com.typenull.pingdom.identity.application.service.AuthService;
+import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
+import com.typenull.pingdom.shared.ratelimit.RateLimited;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -121,6 +123,7 @@ public class AuthRegistrationController {
                     )
             )
     })
+    @RateLimited(RateLimitAction.SIGNUP)
     public ResponseEntity<UserResponse> signup(@Valid @RequestBody SignupRequest request) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(authService.signup(request));

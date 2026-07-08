@@ -17,6 +17,8 @@ public class AbuseRateLimitService {
 
     private static final String DEFAULT_MESSAGE = "요청 횟수가 너무 많습니다. 잠시 후 다시 시도해주세요.";
     private static final String EMAIL_MESSAGE = "인증 메일 재발송 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+    private static final String SIGNUP_MESSAGE = "회원가입 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
+    private static final String EMAIL_VERIFY_MESSAGE = "이메일 인증 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
     private static final String PASSWORD_RESET_MESSAGE = "비밀번호 재설정 요청이 너무 많습니다. 잠시 후 다시 시도해주세요.";
 
     private final AbuseRateLimitProperties properties;
@@ -25,6 +27,22 @@ public class AbuseRateLimitService {
     public AbuseRateLimitService(AbuseRateLimitProperties properties, RateLimitStore store) {
         this.properties = properties;
         this.store = store;
+    }
+
+    public void checkSignup(String email, String clientIp) {
+        String emailFingerprint = fingerprint(normalize(email));
+        acquireWithLogging(
+                "signup",
+                "emailFingerprint=" + emailFingerprint + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        SIGNUP_MESSAGE,
+                        List.of(
+                                windowRule("signup:email:" + emailFingerprint, properties.signupEmail()),
+                                windowRule("signup:ip:" + normalizeIp(clientIp), properties.signupIp())
+                        ),
+                        List.of()
+                )
+        );
     }
 
     public void checkLogin(String username, String clientIp) {
@@ -74,6 +92,22 @@ public class AbuseRateLimitService {
                                         properties.emailResend().minimumInterval()
                                 )
                         )
+                )
+        );
+    }
+
+    public void checkEmailVerify(String email, String clientIp) {
+        String emailFingerprint = fingerprint(normalize(email));
+        acquireWithLogging(
+                "email-verify",
+                "emailFingerprint=" + emailFingerprint + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        EMAIL_VERIFY_MESSAGE,
+                        List.of(
+                                windowRule("email-verify:email:" + emailFingerprint, properties.emailVerifyEmail()),
+                                windowRule("email-verify:ip:" + normalizeIp(clientIp), properties.emailVerifyIp())
+                        ),
+                        List.of()
                 )
         );
     }

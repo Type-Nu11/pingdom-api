@@ -114,6 +114,8 @@ class RedisRateLimitStoreTest {
     private AbuseRateLimitProperties properties(boolean failOpen) {
         return new AbuseRateLimitProperties(
                 StorageType.REDIS,
+                new WindowPolicy(2, Duration.ofHours(1)),
+                new WindowPolicy(100, Duration.ofHours(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),
@@ -123,6 +125,8 @@ class RedisRateLimitStoreTest {
                         new WindowPolicy(5, Duration.ofDays(1)),
                         new WindowPolicy(100, Duration.ofDays(1))
                 ),
+                new WindowPolicy(2, Duration.ofMinutes(10)),
+                new WindowPolicy(100, Duration.ofMinutes(10)),
                 new EmailResendPolicy(
                         Duration.ofMinutes(1),
                         new WindowPolicy(5, Duration.ofDays(1)),

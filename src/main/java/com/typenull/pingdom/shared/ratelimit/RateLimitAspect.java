@@ -1,9 +1,11 @@
 package com.typenull.pingdom.shared.ratelimit;
 
 import com.typenull.pingdom.identity.api.dto.email.EmailResendRequest;
+import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
+import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -33,6 +35,10 @@ public class RateLimitAspect {
         Object[] args = joinPoint.getArgs();
 
         switch (rateLimited.value()) {
+            case SIGNUP -> {
+                SignupRequest request = requiredArg(args, SignupRequest.class);
+                abuseRateLimitService.checkSignup(request.email(), clientIp);
+            }
             case LOGIN -> {
                 LoginRequest request = requiredArg(args, LoginRequest.class);
                 abuseRateLimitService.checkLogin(request.username(), clientIp);
@@ -44,6 +50,10 @@ public class RateLimitAspect {
             case EMAIL_RESEND -> {
                 EmailResendRequest request = requiredArg(args, EmailResendRequest.class);
                 abuseRateLimitService.checkEmailResend(request.email(), clientIp);
+            }
+            case EMAIL_VERIFY -> {
+                EmailVerifyRequest request = requiredArg(args, EmailVerifyRequest.class);
+                abuseRateLimitService.checkEmailVerify(request.email(), clientIp);
             }
             case PASSWORD_RESET_REQUEST -> {
                 PasswordResetRequest request = requiredArg(args, PasswordResetRequest.class);
