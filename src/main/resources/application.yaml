@@ -12,6 +12,7 @@ spring:
     redis:
       host: ${REDIS_HOST:localhost}
       port: ${REDIS_PORT:6379}
+      password: ${REDIS_PASSWORD:}
       timeout: ${REDIS_TIMEOUT:2s}
   jpa:
     hibernate:
@@ -130,6 +131,12 @@ abuse:
     storage: ${ABUSE_RATE_LIMIT_STORAGE:redis}
     redis-key-prefix: ${REDIS_RATE_LIMIT_KEY_PREFIX:pingdom:rate-limit:}
     fail-open: ${REDIS_RATE_LIMIT_FAIL_OPEN:true}
+    signup-email:
+      limit: 3
+      window: PT1H
+    signup-ip:
+      limit: 30
+      window: PT1H
     login-username:
       limit: 5
       window: PT1M
@@ -150,6 +157,12 @@ abuse:
       ip-daily:
         limit: 100
         window: P1D
+    email-verify-email:
+      limit: 5
+      window: PT10M
+    email-verify-ip:
+      limit: 120
+      window: PT10M
     password-reset-request:
       minimum-interval: PT1M
       email-daily:

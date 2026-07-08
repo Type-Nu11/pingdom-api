@@ -33,6 +33,7 @@ import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -45,6 +46,7 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
@@ -738,9 +740,15 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.recommendedCount").value(2));
 
-        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findAll().stream()
-                .sorted(Comparator.comparing(PlaceRecommendationExposure::getRanking))
-                .toList();
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+
+        List<PlaceRecommendationExposure> exposures = waitForValue(
+                () -> placeRecommendationExposureRepository.findAll().stream()
+                        .sorted(Comparator.comparing(PlaceRecommendationExposure::getRanking))
+                        .toList(),
+                loaded -> loaded.size() == 2
+        );
 
         assertEquals(2, exposures.size());
         assertEquals(1, exposures.get(0).getRanking());
@@ -750,12 +758,17 @@ class PlaceControllerTest {
         assertEquals(35.1801d, exposures.get(0).getRequestLatitude());
         assertEquals(128.1078d, exposures.get(0).getRequestLongitude());
 
-        PlaceRecommendationSnapshot firstSnapshot = placeRecommendationSnapshotRepository.findById(firstPlace.getId())
-                .orElseThrow();
-        PlaceRecommendationSnapshot secondSnapshot = placeRecommendationSnapshotRepository.findById(secondPlace.getId())
-                .orElseThrow();
+        PlaceRecommendationSnapshot firstSnapshot = waitForValue(
+                () -> placeRecommendationSnapshotRepository.findById(firstPlace.getId()).orElseThrow(),
+                snapshot -> snapshot.getExposureCount() == 1L
+        );
+        PlaceRecommendationSnapshot secondSnapshot = waitForValue(
+                () -> placeRecommendationSnapshotRepository.findById(secondPlace.getId()).orElseThrow(),
+                snapshot -> snapshot.getExposureCount() == 1L
+        );
         assertEquals(1L, firstSnapshot.getExposureCount());
         assertEquals(1L, secondSnapshot.getExposureCount());
+        cleanupCommittedRecommendationTestData();
     }
 
     @Test
@@ -813,21 +826,36 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("reader15");
         MapPlace mapPlace = createMapPlace("북마크 전환 장소", "경상남도 진주시 전환로 1", 35.1803, 128.1079, 1L);
 
-        mockMvc.perform(get("/places/recommendations")
+        MvcResult recommendationResult = mockMvc.perform(get("/places/recommendations")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("latitude", "35.1803")
                         .param("longitude", "128.1079")
                         .param("limit", "1")
                         .param("radiusKm", "5.0"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"));
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"))
+                .andExpect(jsonPath("$.recommendationRequestId").isNotEmpty())
+                .andReturn();
+
+        String requestId = objectMapper.readTree(recommendationResult.getResponse().getContentAsString())
+                .get("recommendationRequestId")
+                .asText();
+
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+
+        waitForValue(
+                placeRecommendationExposureRepository::findAll,
+                loaded -> loaded.size() == 1
+        );
 
         mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", requestId
                         ))))
                 .andExpect(status().isCreated());
 
@@ -845,13 +873,17 @@ class PlaceControllerTest {
         assertNotNull(conversions.get(0).getCreatedAt());
         assertNotNull(conversions.get(0).getPlaceRecommendationClickId());
 
-        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findAll();
+        List<PlaceRecommendationExposure> exposures = waitForValue(
+                placeRecommendationExposureRepository::findAll,
+                loaded -> loaded.size() == 1
+        );
         assertEquals(1, exposures.size());
         assertEquals("place-rec-v1", exposures.get(0).getRecommendationVersion());
 
         List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findAll();
         assertEquals(1, clicks.size());
         assertEquals("place-rec-v1", clicks.get(0).getRecommendationVersion());
+        cleanupCommittedRecommendationTestData();
     }
 
     @Test
@@ -872,6 +904,9 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.recommendationRequestId").isNotEmpty())
                 .andReturn();
 
+        TestTransaction.flagForCommit();
+        TestTransaction.end();
+
         String requestId = objectMapper.readTree(result.getResponse().getContentAsString())
                 .get("recommendationRequestId")
                 .asText();
@@ -882,10 +917,14 @@ class PlaceControllerTest {
         assertEquals("place-rec-v2", featureLogs.get(0).getRecommendationVersion());
         assertEquals(requestId, featureLogs.get(0).getRequestId());
 
-        List<PlaceRecommendationExposure> exposures = placeRecommendationExposureRepository.findAll();
+        List<PlaceRecommendationExposure> exposures = waitForValue(
+                placeRecommendationExposureRepository::findAll,
+                loaded -> loaded.size() == 1
+        );
         assertEquals(1, exposures.size());
         assertEquals("place-rec-v2", exposures.get(0).getRecommendationVersion());
         assertEquals(requestId, exposures.get(0).getRequestId());
+        cleanupCommittedRecommendationTestData();
     }
 
     @Test
@@ -1495,6 +1534,38 @@ class PlaceControllerTest {
                     .recommendationVersion("place-rec-v1")
                     .build());
         }
+    }
+
+    private <T> T waitForValue(Supplier<T> supplier, java.util.function.Predicate<T> condition) {
+        long deadline = System.currentTimeMillis() + 3_000L;
+        T value = supplier.get();
+
+        while (!condition.test(value) && System.currentTimeMillis() < deadline) {
+            try {
+                Thread.sleep(50L);
+            } catch (InterruptedException exception) {
+                Thread.currentThread().interrupt();
+                throw new AssertionError("비동기 처리 대기 중 인터럽트가 발생했습니다.", exception);
+            }
+            value = supplier.get();
+        }
+
+        if (!condition.test(value)) {
+            throw new AssertionError("비동기 처리 결과를 제한 시간 안에 확인하지 못했습니다.");
+        }
+        return value;
+    }
+
+    private void cleanupCommittedRecommendationTestData() {
+        placeRecommendationFeatureLogRepository.deleteAll();
+        placeRecommendationConversionRepository.deleteAll();
+        placeRecommendationClickRepository.deleteAll();
+        placeRecommendationExposureRepository.deleteAll();
+        placeRecommendationSnapshotRepository.deleteAll();
+        mapImageLikeRepository.deleteAll();
+        mapBookmarkRepository.deleteAll();
+        mapImageRepository.deleteAll();
+        mapPlaceRepository.deleteAll();
     }
 
 }

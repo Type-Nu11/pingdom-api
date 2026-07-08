@@ -7,6 +7,7 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailRespons
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
 import com.typenull.pingdom.moderation.api.dto.ban.UnbanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.UnbanResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserSearchCondition;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
@@ -18,7 +19,7 @@ public interface AdminUserService {
 
     UnbanResponse unbanUser(Long userId, UnbanRequest request, Long adminUserId);
 
-    AdminBannedUserResponse listBannedUsers(String keyword, Pageable pageable);
+    AdminBannedUserResponse listBannedUsers(AdminBannedUserSearchCondition condition, Pageable pageable);
 
     AdminBannedUserDetailResponse getBannedUser(Long userId);
 

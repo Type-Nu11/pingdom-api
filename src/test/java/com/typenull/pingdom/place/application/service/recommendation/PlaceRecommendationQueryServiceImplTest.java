@@ -1,14 +1,11 @@
 package com.typenull.pingdom.place.application.service.recommendation;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
+import com.typenull.pingdom.place.event.PlaceRecommendationExposureRecordRequestedEvent;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.CandidateMix;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationExposureService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationFeatureLogService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationGraphAffinityService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryServiceImpl;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
@@ -24,6 +21,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.mockito.junit.jupiter.MockitoSettings;
 import org.mockito.quality.Strictness;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
@@ -31,6 +29,9 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
+import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.timeout;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
@@ -79,6 +80,9 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private RecommendationMetrics recommendationMetrics;
 
+    @Mock
+    private ApplicationEventPublisher eventPublisher;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
@@ -116,13 +120,13 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationSimilarityService,
                 placeRecommendationPolicyService,
                 placeRecommendationFeatureLogService,
-                placeRecommendationExposureService,
                 placeRecommendationUserSignalLoader,
                 placeRecommendationCandidateCollector,
                 placeRecommendationAggregateLoader,
                 placeRecommendationScoringService,
                 placeRecommendationPortfolioService,
-                recommendationMetrics
+                recommendationMetrics,
+                eventPublisher
         );
 
         when(mapImageLikeRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
@@ -166,6 +170,47 @@ class PlaceRecommendationQueryServiceImplTest {
         assertThat(personalCandidates)
                 .extracting(MapPlace::getId)
                 .containsExactlyInAnyOrder(validSeed.getId(), expandedCandidate.getId());
+    }
+
+    @Test
+    void recommendPlaces는_노출_로그_기록_이벤트를_발행한다() {
+        Long userId = 7L;
+        MapPlace candidate = createPlace(201L, "candidate", 35.1800d, 128.1070d);
+
+        when(mapBookmarkRepository.findPlaceIdsByUserId(userId)).thenReturn(List.of());
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                any(Pageable.class)
+        )).thenReturn(List.of(candidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(new PlaceRecommendationPolicyService.ResolvedRecommendationPolicy(
+                        "place-rec-v1",
+                        RecommendationStage.STABLE,
+                        false,
+                        4,
+                        0.75d,
+                        new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
+                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d),
+                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d),
+                        "place-rec-v1",
+                        null
+                ));
+
+        placeRecommendationQueryService.recommendPlaces(userId, 35.1800d, 128.1070d, 1, 5.0d, null);
+
+        verify(eventPublisher, timeout(1000)).publishEvent(argThat((Object event) -> {
+            if (!(event instanceof PlaceRecommendationExposureRecordRequestedEvent exposureEvent)) {
+                return false;
+            }
+            return exposureEvent.userId().equals(userId)
+                    && exposureEvent.placeIds().equals(List.of(candidate.getId()))
+                    && exposureEvent.recommendationVersion().equals("place-rec-v1");
+        }));
     }
 
     private MapPlace createPlace(Long id, String name, Double latitude, Double longitude) {

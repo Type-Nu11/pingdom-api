@@ -6,10 +6,12 @@ import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
 import com.typenull.pingdom.moderation.api.dto.ban.UnbanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.UnbanResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserSearchCondition;
 import com.typenull.pingdom.moderation.api.dto.user.AdminBannedUserResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
+import com.typenull.pingdom.moderation.domain.user.AdminBannedUserSortBy;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
@@ -26,6 +28,7 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -49,7 +52,7 @@ public class AdminUserController {
     @GetMapping("/users/banned")
     @Operation(
             summary = "밴 유저 목록 조회",
-            description = "관리자가 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            description = "관리자가 현재 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. keyword는 숫자만 입력하면 userId 정확히 일치로 검색하고, 그 외에는 username 부분 일치로 검색합니다. counts는 현재 밴 중인 사용자 기준이며, keyword 검색어가 있으면 검색 결과 기준으로 계산됩니다. 기간 필터는 현재 이 API에서 제공하지 않습니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -74,7 +77,12 @@ public class AdminUserController {
                                               "limit": 20,
                                               "totalCount": 1,
                                               "totalPages": 1,
-                                              "hasNext": false
+                                              "hasNext": false,
+                                              "counts": {
+                                                "total": 1,
+                                                "permanent": 1,
+                                                "temporary": 0
+                                              }
                                             }
                                             """
                             )
@@ -116,11 +124,24 @@ public class AdminUserController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "사용자 ID 또는 닉네임 검색어", example = "blockedUser01")
-            @RequestParam(required = false) String keyword
+            @Parameter(description = "숫자만 입력하면 userId 정확히 일치, 그 외에는 username 부분 일치 검색", example = "blockedUser01")
+            @RequestParam(required = false) String keyword,
+            @Parameter(description = "밴 유형", example = "PERMANENT")
+            @RequestParam(required = false) UserBanType banType,
+            @Parameter(description = "밴 처리 시작 시각 이상", example = "2026-06-01T00:00:00")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bannedFrom,
+            @Parameter(description = "밴 처리 종료 시각 이하", example = "2026-06-30T23:59:59")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bannedTo,
+            @Parameter(description = "정렬 기준", example = "BANNED_AT")
+            @RequestParam(defaultValue = "BANNED_AT") AdminBannedUserSortBy sortBy,
+            @Parameter(description = "정렬 방향", example = "DESC")
+            @RequestParam(defaultValue = "DESC") Sort.Direction sortDirection
     ) {
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
-        return adminUserService.listBannedUsers(keyword, normalizedPageable);
+        return adminUserService.listBannedUsers(
+                new AdminBannedUserSearchCondition(keyword, banType, bannedFrom, bannedTo, sortBy, sortDirection),
+                normalizedPageable
+        );
     }
 
     @GetMapping("/users/banned/{userId}")

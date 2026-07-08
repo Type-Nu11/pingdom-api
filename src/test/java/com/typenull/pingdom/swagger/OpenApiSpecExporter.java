@@ -17,6 +17,7 @@ import org.springframework.context.ConfigurableApplicationContext;
 public class OpenApiSpecExporter {
 
     private static final String DEFAULT_OUTPUT_DIR = "build/openapi";
+    private static final String STABLE_SERVER_URL = "http://127.0.0.1:64060";
 
     private static final HttpClient HTTP_CLIENT = HttpClient.newBuilder()
             .connectTimeout(Duration.ofSeconds(5))
@@ -47,7 +48,8 @@ public class OpenApiSpecExporter {
             );
 
             for (Map.Entry<String, String> spec : specs.entrySet()) {
-                String responseBody = fetchSpec(actualPort, spec.getValue());
+                String responseBody = fetchSpec(actualPort, spec.getValue())
+                        .replace("http://127.0.0.1:" + actualPort, STABLE_SERVER_URL);
                 Files.writeString(
                         options.outputDirectory().resolve(spec.getKey()),
                         responseBody,
