@@ -64,7 +64,7 @@ public record AbuseRateLimitProperties(
             redisKeyPrefix = DEFAULT_REDIS_KEY_PREFIX;
         }
         if (failOpen == null) {
-            failOpen = true;
+            failOpen = false;
         }
     }
 

@@ -39,6 +39,7 @@ import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import com.typenull.pingdom.shared.ratelimit.RateLimitCooldownRule;
 import com.typenull.pingdom.shared.ratelimit.RateLimitException;
 import com.typenull.pingdom.shared.ratelimit.RateLimitStore;
+import com.typenull.pingdom.shared.ratelimit.RateLimitUnavailableException;
 import com.typenull.pingdom.shared.ratelimit.RateLimitWindowRule;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
@@ -515,6 +516,18 @@ class AbuseRateLimitControllerTest {
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
     }
 
+    @Test
+    void loginReturnsServiceUnavailableWhenRateLimitStoreIsUnavailable() throws Exception {
+        rateLimitStore.simulateUnavailable();
+
+        mockMvc.perform(post("/auth/login")
+                        .with(remoteAddress("198.51.100.80"))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest("unavailableUser", "password123"))))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.code").value("RATE_LIMIT_UNAVAILABLE"));
+    }
+
     private User createUser(String username) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -577,6 +590,7 @@ class AbuseRateLimitControllerTest {
         private final Clock clock;
         private final Map<String, WindowState> windows = new ConcurrentHashMap<>();
         private final Map<String, CooldownState> cooldowns = new ConcurrentHashMap<>();
+        private boolean unavailable;
 
         private TestRateLimitStore(Clock clock) {
             this.clock = clock;
@@ -588,6 +602,9 @@ class AbuseRateLimitControllerTest {
                 Collection<RateLimitWindowRule> windowRules,
                 Collection<RateLimitCooldownRule> cooldownRules
         ) {
+            if (unavailable) {
+                throw new RateLimitUnavailableException(new IllegalStateException("redis unavailable"));
+            }
             Instant now = Instant.now(clock);
             for (RateLimitCooldownRule rule : cooldownRules) {
                 CooldownState state = cooldowns.get(rule.key());
@@ -617,6 +634,11 @@ class AbuseRateLimitControllerTest {
         private void clear() {
             windows.clear();
             cooldowns.clear();
+            unavailable = false;
+        }
+
+        private void simulateUnavailable() {
+            unavailable = true;
         }
 
         private WindowState activeWindowState(RateLimitWindowRule rule, Instant now) {
