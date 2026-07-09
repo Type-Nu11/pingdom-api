@@ -30,6 +30,12 @@
 - [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
+- [리팩터링 적용·복구 Runbook](refactoring-rollout-runbook.md)
+
+## 아키텍처 문서
+
+- [Pingdom 2.0 리팩터링 범위와 성공 지표](architecture/pingdom-2.0-refactoring.md)
+- [목표 아키텍처](architecture/README.md)
 
 ## Features
 
@@ -96,4 +102,5 @@ src/main/java/com/typenull/pingdom
 ├── engagement      # 좋아요, 신고, 사용자 상호작용
 ├── notification    # 이메일, FCM, 알림, Outbox handler
 ├── moderation      # 관리자 조회, 신고 처리, 사용자 제재, 광고 관리
-└── shared          # 보안, 설정, 공통 예외, Outbox, 외부 저장소 지원
+├── privacy         # 개인정보 처리 이력, 사용자 데이터 내보내기, 탈퇴 데이터 정리
+└── shared          # 보안, 설정, 공통 예외, Outbox, 관측성, 외부 저장소 지원

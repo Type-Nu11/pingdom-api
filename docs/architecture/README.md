@@ -1,5 +1,14 @@
 # Pingdom Backend 아키텍처
 
+> 이 문서는 목표 아키텍처를 정의한다. 현재 구현 기준선, 전환 범위, 성공 지표와 운영
+> 절차는 [Pingdom 2.0 리팩터링 범위와 성공 지표](pingdom-2.0-refactoring.md)를 따른다.
+
+## 0. 현재 기준선과 목표 구조
+
+현재 최상위 모듈은 `identity`, `place`, `post`, `engagement`, `notification`, `moderation`,
+`privacy`, `shared`다. 이 문서의 규칙은 목표 구조이며, 현재 구현이 모든 규칙을 이미
+충족한다는 뜻은 아니다. 리팩터링은 현재 동작과 공개 계약을 보존한 채 이 구조로 수렴한다.
+
 ## 1. 문서 목적
 
 이 문서는 Pingdom Backend의 목표 아키텍처를 정의한다.
@@ -85,7 +94,7 @@ Pingdom Backend는 이벤트 기반 모듈러 모놀리스를 기본 구조로 �
 
 ## 5. 모듈 구성
 
-현재 Pingdom Backend는 다음 모듈 구성을 목표로 한다.
+Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 
 | 모듈 | 책임 |
 |---|---|
@@ -95,6 +104,7 @@ Pingdom Backend는 이벤트 기반 모듈러 모놀리스를 기본 구조로 �
 | engagement | 좋아요, 신고, 사용자 상호작용 |
 | moderation | 관리자 조회, 신고 처리, 게시글 제재, 사용자 제재 |
 | notification | 이메일, FCM, 후속 알림 처리 |
+| privacy | 개인정보 처리 이력, 사용자 데이터 내보내기, 탈퇴 데이터 정리 |
 | shared | 보안, 공통 예외, 공통 설정, 공통 기술 지원 |
 
 각 모듈은 다음 규칙을 따라야 한다.
@@ -222,7 +232,8 @@ Pingdom Backend는 이벤트 기반 모듈러 모놀리스를 기본 구조로 �
 
 ## 10. 패키지 구조 예시
 
-다음은 현재 구조 기준 패키지 구조 예시다.
+다음은 목표 구조 기준 패키지 구조 예시다. 실제 패키지와의 차이 및 전환 기준은
+[Pingdom 2.0 리팩터링 범위와 성공 지표](pingdom-2.0-refactoring.md)를 따른다.
 
 ```text
 src/main/java/com/typenull/pingdom
@@ -230,6 +241,9 @@ src/main/java/com/typenull/pingdom
 │  ├─ config
 │  ├─ security
 │  ├─ exception
+│  ├─ observability
+│  ├─ outbox
+│  ├─ ratelimit
 │  └─ support
 ├─ identity
 │  ├─ api
@@ -288,6 +302,12 @@ src/main/java/com/typenull/pingdom
 │  │  └─ service
 │  ├─ domain
 │  │  └─ exception
+│  ├─ infrastructure
+│  └─ event
+├─ privacy
+│  ├─ api
+│  ├─ application
+│  ├─ domain
 │  ├─ infrastructure
 │  └─ event
 └─ notification
