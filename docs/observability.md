@@ -1,5 +1,8 @@
 # 운영 관측성
 
+리팩터링 배포에서 이 문서의 health·metric·alert를 확인하는 순서는
+[리팩터링 적용·복구 Runbook](refactoring-rollout-runbook.md)을 따른다.
+
 ## Health
 
 - Public: `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`

@@ -3,6 +3,9 @@
 DB 스키마 변경은 `src/main/resources/db/migration`의 Flyway migration으로 관리한다.
 Hibernate는 스키마를 변경하지 않고 애플리케이션 시작 시 매핑 일치 여부만 검증한다.
 
+모듈 리팩터링에 migration이 포함되면 [리팩터링 적용·복구
+Runbook](refactoring-rollout-runbook.md)에서 변경 유형을 먼저 분류한 뒤 이 절차를 수행한다.
+
 운영 DB에 migration을 적용하기 전에는 반드시 [DB 백업/복구 절차](database-backup-restore.md)를
 먼저 완료한다.
 
