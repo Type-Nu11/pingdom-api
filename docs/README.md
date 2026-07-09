@@ -35,6 +35,7 @@
 ## 아키텍처 문서
 
 - [Pingdom 2.0 리팩터링 범위와 성공 지표](architecture/pingdom-2.0-refactoring.md)
+- [장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)
 - [목표 아키텍처](architecture/README.md)
 
 ## Features

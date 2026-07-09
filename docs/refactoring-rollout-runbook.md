@@ -10,6 +10,9 @@
 절차](database-backup-restore.md), [운영 관측성](observability.md)을 대체하지 않는다.
 리팩터링 변경에 필요한 진입 순서와 확인 신호를 연결한다.
 
+추천 노출·클릭·행동 전환의 용어와 원천 로그·snapshot 관계는
+[장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)을 따른다.
+
 ## 1. 배포 전 분류
 
 변경 요청마다 아래 유형을 모두 표시한다. 해당하지 않는 항목은 `해당 없음`으로 남긴다.
@@ -21,6 +24,7 @@
 | DB | Entity 매핑, 인덱스, 제약 조건, migration 추가 | 새 Flyway version, 사전 데이터 조건, 백업·복구, migration 통합 테스트 |
 | 비동기·외부 연동 | Outbox handler, 메일·FCM·S3 처리 변경 | 재시도·중복 처리 안전성, 실패 기록, metric·alert, 수동 재처리 방법 |
 | 운영 설정 | Compose, profile, 환경 변수, scheduler 설정 | readiness, 설정 값, 롤백 가능한 이전 값, 배포 문서 |
+| 추천 행동 전환 | 노출·클릭·전환 귀속 또는 snapshot 변경 | 전환 기간·중복 기준, 원천 로그와 snapshot, 지표 분모, 재동기화 가능 범위 |
 
 ## 2. 적용 전 점검
 
@@ -68,6 +72,17 @@
 
 세부 metric과 alert 기준은 [운영 관측성](observability.md)을 따른다.
 
+### 추천 행동 전환
+
+- 추천 응답의 `recommendationRequestId`, 요청의 `X-Request-Id`, 추천 버전, 장소 ID를 함께
+  확인한다.
+- 추천 노출 저장 실패 로그가 있으면 응답 성공 여부와 별개로 원천 노출 로그 누락 가능성을
+  기록한다.
+- 원천 노출·클릭·전환 로그와 snapshot이 다를 때만 관리자
+  `POST /admin/places/recommendation-snapshots/resync`를 사용한다.
+- 이 재동기화는 원천 로그를 기준으로 집계만 복구한다. 실패한 비동기 노출처럼 원천 로그가
+  없는 사실을 다시 만들지 않는다.
+
 ## 4. 장애 대응과 복구
 
 ### API 또는 모듈 리팩터링 실패
@@ -94,6 +109,15 @@
    안전성을 먼저 확인한다.
 4. 재시도가 위험하거나 데이터 정합성에 영향이 있으면 handler를 중지하고 수동 보정 범위를
    결정한다.
+
+### 추천 행동 전환 또는 snapshot 불일치
+
+1. 문제 요청의 `X-Request-Id`, 추천 응답 ID, 추천 버전, 장소 ID와 발생 시각을 보존한다.
+2. 노출·클릭·전환 원천 로그가 모두 있는지와 장소별·추천 버전별 snapshot을 대조한다.
+3. 원천 로그가 존재하고 snapshot만 다르면 관리자 재동기화를 실행한 뒤 결과와
+   `pingdom.recommendation.snapshot_resync` metric을 확인한다.
+4. 원천 로그가 누락됐으면 재동기화로 복구할 수 없으므로 원인과 지표 영향 범위를 기록하고,
+   데이터 보정은 별도 검토로 진행한다.
 
 ## 5. 완료 기록
 
