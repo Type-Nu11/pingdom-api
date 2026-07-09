@@ -4,6 +4,9 @@
 [리팩터링 적용·복구 Runbook](refactoring-rollout-runbook.md)을 따른다.
 추천 노출·클릭·행동 전환의 원천 로그와 snapshot 대조 절차는
 [장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)을 따른다.
+Spring 이벤트와 Outbox의 전달 보장·재처리 기준은
+[Pingdom 2.0 목표 아키텍처와 도메인 이벤트](architecture/pingdom-2.0-domain-events.md)를
+따른다.
 
 ## Health
 
@@ -33,6 +36,10 @@
 | `pingdom.recommendation.snapshot_resync` | `result`, `reason` | Snapshot resync success/failure count |
 | `pingdom.recommendation.snapshot_resync.items` | `item` | Snapshot resync affected item count |
 
+Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인정보 이력과 추천 노출의
+커밋 후 처리 실패는 listener 로그와 원래 요청의 `X-Request-Id`로 추적한다. 동기 신고
+이벤트 실패는 요청 오류와 트랜잭션 결과를 함께 확인한다.
+
 ## Alert Criteria
 
 - Page immediately when `pingdom.outbox.max_attempts_exceeded` increases.
@@ -42,3 +49,5 @@
 - Investigate authentication incidents when `pingdom.auth.failures{code="INVALID_TOKEN"}` spikes above the normal baseline.
 - Investigate recommendation rollout issues when `pingdom.recommendation.requests` traffic unexpectedly shifts by `recommendation_version`.
 - Investigate failed admin maintenance when `pingdom.recommendation.snapshot_resync{result="failure"}` increases.
+- Investigate Spring event listener error logs with the originating request ID; do not treat their
+  absence from Outbox metrics as successful delivery.

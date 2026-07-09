@@ -23,6 +23,7 @@
 | API | Controller, DTO, 인증·인가, 오류 응답 변경 | OpenAPI baseline, v1 경로 하위 호환, 관련 controller 테스트 |
 | DB | Entity 매핑, 인덱스, 제약 조건, migration 추가 | 새 Flyway version, 사전 데이터 조건, 백업·복구, migration 통합 테스트 |
 | 비동기·외부 연동 | Outbox handler, 메일·FCM·S3 처리 변경 | 재시도·중복 처리 안전성, 실패 기록, metric·alert, 수동 재처리 방법 |
+| 도메인 이벤트 | Spring listener, 이벤트 payload, 발행·소비 방식 변경 | 동기·커밋 후·Outbox 선택, 원래 요청 영향, 멱등성, 유실·재처리 기준 |
 | 운영 설정 | Compose, profile, 환경 변수, scheduler 설정 | readiness, 설정 값, 롤백 가능한 이전 값, 배포 문서 |
 | 추천 행동 전환 | 노출·클릭·전환 귀속 또는 snapshot 변경 | 전환 기간·중복 기준, 원천 로그와 snapshot, 지표 분모, 재동기화 가능 범위 |
 
@@ -36,7 +37,9 @@
    사전 조건을 확인하고 Flyway migration 통합 테스트를 실행한다.
 4. Outbox 또는 외부 연동 변경이면 event type, deduplication key, handler, 재시도·최종 실패
    처리, 관측 metric을 대조한다. 외부 호출 실패가 핵심 상태 변경을 되돌리지 않는지 확인한다.
-5. 문서만 변경하는 경우에는 소스 대조, 상대 링크, `git diff --check`만 수행한다. API export,
+5. Spring 이벤트 변경이면 발행자·소비자·트랜잭션 phase·원래 요청 실패 여부·멱등성·재처리
+   가능 여부를 [도메인 이벤트 기준](architecture/pingdom-2.0-domain-events.md)과 대조한다.
+6. 문서만 변경하는 경우에는 소스 대조, 상대 링크, `git diff --check`만 수행한다. API export,
    Testcontainers, 전체 Gradle 테스트는 실행하지 않는다.
 
 ## 3. 배포 직후 점검
@@ -71,6 +74,20 @@
   함께 확인한다.
 
 세부 metric과 alert 기준은 [운영 관측성](observability.md)을 따른다.
+
+### 도메인 이벤트
+
+- 동기 listener 변경은 같은 요청의 성공·rollback 여부를 관련 유스케이스 테스트로 확인한다.
+- 커밋 후 listener 변경은 원래 상태가 성공적으로 확정된 뒤 실행되는지, 실패가 원래 응답을
+  바꾸지 않는지 확인한다.
+- executor 기반 이벤트는 실패가 로그만 남기고 끝나는지, 원천 데이터를 재생성할 수 있는지
+  또는 별도 보정이 필요한지를 기록한다.
+- Outbox로 전달 보장을 높이는 변경은 event type, payload 호환성, 대기 row, handler 멱등성,
+  retry·최종 실패 지표를 함께 확인한다.
+
+현재 이벤트별 전달 보장과 운영 절차는
+[Pingdom 2.0 목표 아키텍처와 도메인 이벤트](architecture/pingdom-2.0-domain-events.md)를
+따른다.
 
 ### 추천 행동 전환
 
@@ -109,6 +126,15 @@
    안전성을 먼저 확인한다.
 4. 재시도가 위험하거나 데이터 정합성에 영향이 있으면 handler를 중지하고 수동 보정 범위를
    결정한다.
+
+### Spring 이벤트 실패
+
+1. 원래 요청의 `X-Request-Id`, aggregate ID, 발생 시각과 listener 오류를 보존한다.
+2. 동기 listener는 원래 트랜잭션의 rollback 여부와 중복 요청 위험을 확인한다.
+3. 커밋 후 또는 executor 이벤트는 원래 상태가 이미 확정됐는지 확인한다. 자동 재시도 보장이
+   없으므로 이벤트 종류별로 원천 데이터 재생성 가능 여부와 보정 영향을 검토한다.
+4. 전달 보장이나 재시도가 필요한 후속 처리라면 즉시 재발행하지 않고 Outbox 전환을 별도
+   이슈로 검토한다.
 
 ### 추천 행동 전환 또는 snapshot 불일치
 
