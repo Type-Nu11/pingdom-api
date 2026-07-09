@@ -70,16 +70,22 @@ public class RedisRateLimitStore implements RateLimitStore {
                     keys(windowRules, cooldownRules),
                     (Object[]) args(windowRules, cooldownRules)
             );
+            if (Long.valueOf(1L).equals(result)) {
+                return;
+            }
             if (Long.valueOf(0L).equals(result)) {
                 throw new RateLimitException(message);
             }
+            throw new IllegalStateException("Redis rate limit 스크립트 결과가 올바르지 않습니다.");
         } catch (RateLimitException exception) {
             throw exception;
         } catch (RuntimeException exception) {
-            if (!properties.failOpen()) {
-                throw exception;
+            if (properties.failOpen()) {
+                log.warn("Redis rate limit 확인에 실패해 요청을 허용합니다.", exception);
+                return;
             }
-            log.warn("Redis rate limit 확인에 실패해 요청을 허용합니다.", exception);
+            log.error("Redis rate limit 확인에 실패해 요청을 차단합니다.", exception);
+            throw new RateLimitUnavailableException(exception);
         }
     }
 

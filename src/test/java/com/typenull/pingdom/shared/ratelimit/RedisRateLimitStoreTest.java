@@ -61,6 +61,19 @@ class RedisRateLimitStoreTest {
     }
 
     @Test
+    void acquireFailsClosedWhenRedisScriptReturnsUnexpectedResult() {
+        RedisRateLimitStore failClosedStore = new RedisRateLimitStore(redisTemplate, properties(false));
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
+                .thenReturn(null);
+
+        assertThrows(RateLimitUnavailableException.class, () -> failClosedStore.acquire(
+                "too many requests",
+                List.of(new RateLimitWindowRule("login:user", 1, Duration.ofMinutes(1))),
+                List.of()
+        ));
+    }
+
+    @Test
     void acquireFailsOpenWhenRedisThrowsException() {
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenThrow(new IllegalStateException("redis unavailable"));
@@ -73,12 +86,27 @@ class RedisRateLimitStoreTest {
     }
 
     @Test
-    void acquirePropagatesRedisExceptionWhenFailOpenIsDisabled() {
+    void acquireReturnsRateLimitUnavailableWhenRedisThrowsExceptionWithFailClosed() {
         RedisRateLimitStore failClosedStore = new RedisRateLimitStore(redisTemplate, properties(false));
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenThrow(new IllegalStateException("redis unavailable"));
 
-        assertThrows(IllegalStateException.class, () -> failClosedStore.acquire(
+        RateLimitUnavailableException exception = assertThrows(RateLimitUnavailableException.class, () -> failClosedStore.acquire(
+                "too many requests",
+                List.of(new RateLimitWindowRule("login:user", 1, Duration.ofMinutes(1))),
+                List.of()
+        ));
+
+        assertEquals("RATE_LIMIT_UNAVAILABLE", exception.getCode());
+    }
+
+    @Test
+    void acquireUsesFailClosedWhenFailOpenIsNotConfigured() {
+        RedisRateLimitStore defaultStore = new RedisRateLimitStore(redisTemplate, properties(null));
+        when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
+                .thenThrow(new IllegalStateException("redis unavailable"));
+
+        assertThrows(RateLimitUnavailableException.class, () -> defaultStore.acquire(
                 "too many requests",
                 List.of(new RateLimitWindowRule("login:user", 1, Duration.ofMinutes(1))),
                 List.of()
@@ -111,7 +139,7 @@ class RedisRateLimitStoreTest {
         );
     }
 
-    private AbuseRateLimitProperties properties(boolean failOpen) {
+    private AbuseRateLimitProperties properties(Boolean failOpen) {
         return new AbuseRateLimitProperties(
                 StorageType.REDIS,
                 new WindowPolicy(2, Duration.ofHours(1)),
