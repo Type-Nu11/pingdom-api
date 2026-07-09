@@ -13,7 +13,7 @@
 ### 1.1 포함 범위
 
 - 도메인 용어, 모듈 책임, 허용된 협력 방식
-- 신고, 이의제기, 게시글 노출, 사용자 탈퇴, Outbox의 상태 전이
+- 신고, 이의제기, 게시글 노출, 사용자 탈퇴, 추천 행동 전환, Outbox의 상태 전이
 - API, Flyway migration, OpenAPI baseline, 운영 관측성의 계약 보존 기준
 - 리팩터링 배포 전·후 확인과 복구 기준
 
@@ -46,6 +46,10 @@ OpenAPI 기준 스펙과 호환성 검증으로, 운영 DB schema는 적용된 F
 `Map`은 현재 장소·게시글·신고 API에서 사용 중인 v1 경로 명칭이다. 새 내부 책임을
 정할 때는 경로 명칭이 아니라 아래 모듈 책임을 기준으로 판단한다. 기존 경로의 하위
 호환 규칙은 [v1 API 경로 정책](../api-path-policy.md)을 따른다.
+
+추천 노출·클릭·행동 전환의 현재 용어와 귀속 조건은
+[장소 추천 행동 전환 도메인 기준](place-recommendation-conversion.md)을 따른다. 이 기준은
+실제 방문을 수집하지 않는 현재 구현을 행동 전환으로 명확히 구분한다.
 
 ## 3. 모듈 책임과 협력 경계
 
@@ -104,6 +108,7 @@ OpenAPI 기준 스펙과 호환성 검증으로, 운영 DB schema는 적용된 F
 | 게시글 노출 | `ACTIVE` | `AUTO_HIDDEN` | `engagement` 신고 정책 또는 관리자 신고 수락이 게시글을 숨긴다. 이미 숨김 상태면 다시 숨기지 않는다. |
 | 게시글 노출 | `AUTO_HIDDEN` | `ACTIVE` | 이의제기 승인 또는 관리자 복구가 수행한다. 이미 노출 상태면 다시 복구하지 않는다. |
 | 신고 이의제기 | `SUBMITTED` | `APPROVED` 또는 `REJECTED` | `moderation`만 접수 상태를 처리한다. 대상 사용자는 수락된 신고 또는 숨김 게시글에만 이의제기를 제출할 수 있다. |
+| 추천 행동 전환 | 최근 추천 클릭 | `BOOKMARK` 또는 `LIKE` 전환 기록 | `place`가 클릭 후 7일 이내의 행동만 귀속한다. 전환은 유형별·사용자별·장소별로 한 번만 기록하며, 실제 방문 상태는 없다. |
 | Outbox | `PENDING` 또는 `RETRY` | `PROCESSING` | worker가 준비된 이벤트를 선점한다. |
 | Outbox | `PROCESSING` | `SUCCEEDED` | handler가 외부 부수효과를 성공적으로 처리한다. |
 | Outbox | `PROCESSING` | `RETRY` 또는 `FAILED` | 실패 횟수와 backoff 정책으로 결정한다. `FAILED` 이벤트는 운영 조치로 `RETRY`로 되돌릴 수 있다. |
@@ -142,6 +147,7 @@ FCM의 `SUCCEEDED`, `FAILED`, `RETRY_SCHEDULED`, `FINAL_FAILED`를 Outbox 상태
 | DB 스키마 | `src/main/resources/db/migration` | 적용된 migration은 수정하지 않고 새 version으로 추가한다. 운영 절차는 [DB migration Runbook](../database-migration.md)을 따른다. |
 | DB 복구 | [DB 백업/복구 절차](../database-backup-restore.md) | schema 또는 데이터 변경 전 백업·복구 가능성을 확인한다. |
 | 비동기·운영 | [운영 관측성](../observability.md) | Outbox 실패·재시도·고착 복구 지표와 요청 추적 ID를 확인한다. |
+| 추천 행동 전환 | [장소 추천 행동 전환 도메인 기준](place-recommendation-conversion.md) | 노출·클릭·행동 전환의 귀속 조건, 원천 로그와 snapshot 차이, 재동기화 가능 범위를 확인한다. |
 
 문서만 수정하는 작업은 OpenAPI export나 Flyway 통합 테스트를 실행하지 않는다. Java,
 OpenAPI baseline, migration, 배포 설정 중 하나가 함께 변경될 때만 변경 유형에 맞는 검증을
@@ -172,6 +178,7 @@ OpenAPI baseline, migration, 배포 설정 중 하나가 함께 변경될 때만
 | 2026-07-10 | #534, #535 | 현재 모듈·상태·예외·계약 기준선과 성공 지표를 최초 문서화 | 완료 |
 | 2026-07-10 | #536 | 목표 아키텍처 문서와 구현 패키지·OpenAPI·Flyway·운영 문서의 연결 기준을 정리 | 완료 |
 | 2026-07-10 | #537 | 리팩터링 적용·점검·복구 Runbook을 추가 | 완료 |
+| 2026-07-10 | #538, #539, #540, #541 | 추천 행동 전환의 용어·귀속 규칙·운영 점검 기준을 문서화 | 완료 |
 
 이 문서 변경은 다음 순서로 검토한다.
 
