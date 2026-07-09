@@ -14,7 +14,7 @@
 
 - [Pingdom 2.0 리팩터링 범위와 성공 지표](pingdom-2.0-refactoring.md)
 - [목표 아키텍처](README.md)
-- [리팩터링 적용·복구 Runbook](../refactoring-rollout-runbook.md)
+- [Pingdom 2.0 출시 전환·적용·복구 Runbook](../refactoring-rollout-runbook.md)
 - [운영 관측성](../observability.md)
 - [장소 추천 행동 전환 도메인 기준](place-recommendation-conversion.md)
 
@@ -139,7 +139,7 @@ Outbox의 `deduplication_key`는 같은 작업 요청의 중복 저장을 막는
    영향 범위와 수동 보정 방식을 결정한다.
 
 Outbox 상태 지표와 alert 기준은 [운영 관측성](../observability.md), 배포·복구의 공통 절차는
-[리팩터링 적용·복구 Runbook](../refactoring-rollout-runbook.md)을 따른다.
+[Pingdom 2.0 출시 전환·적용·복구 Runbook](../refactoring-rollout-runbook.md)을 따른다.
 
 ### 5.2 비내구성 Spring 이벤트
 

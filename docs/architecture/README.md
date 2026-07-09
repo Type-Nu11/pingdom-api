@@ -2,6 +2,7 @@
 
 > 이 문서는 목표 아키텍처를 정의한다. 현재 구현 기준선, 전환 범위, 성공 지표와 운영
 > 절차는 [Pingdom 2.0 리팩터링 범위와 성공 지표](pingdom-2.0-refactoring.md)를 따른다.
+> 단계별 출시 전환·보류·복구 절차는 [Pingdom 2.0 출시 전환·적용·복구 Runbook](../refactoring-rollout-runbook.md)을 따른다.
 
 ## 0. 현재 기준선과 목표 구조
 

@@ -1,7 +1,7 @@
 # 운영 관측성
 
 리팩터링 배포에서 이 문서의 health·metric·alert를 확인하는 순서는
-[리팩터링 적용·복구 Runbook](refactoring-rollout-runbook.md)을 따른다.
+[Pingdom 2.0 출시 전환·적용·복구 Runbook](refactoring-rollout-runbook.md)을 따른다.
 추천 노출·클릭·행동 전환의 원천 로그와 snapshot 대조 절차는
 [장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)을 따른다.
 Spring 이벤트와 Outbox의 전달 보장·재처리 기준은
