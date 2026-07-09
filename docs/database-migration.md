@@ -9,6 +9,11 @@ Runbook](refactoring-rollout-runbook.md)에서 변경 유형을 먼저 분류한
 운영 DB에 migration을 적용하기 전에는 반드시 [DB 백업/복구 절차](database-backup-restore.md)를
 먼저 완료한다.
 
+데이터 backfill 또는 공개 API 변경이 migration과 함께 진행되면 단계 분리, 기존 앱·API
+호환성, rollback 판단은 [데이터 마이그레이션, 호환 API, 롤백 정책](architecture/pingdom-2.0-migration-compatibility-rollback.md)을
+먼저 확인한다. 이 문서는 Flyway 작성·적용 절차의 기준이며, 적용된 migration을 되돌리는
+down migration을 제공하지 않는다.
+
 ## 운영 정책
 
 - 운영 스키마 변경은 Flyway SQL migration으로만 반영한다.
