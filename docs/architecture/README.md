@@ -24,6 +24,7 @@
 관련 운영 설계 문서:
 
 - [Rate Limit 저장소 전략](./rate-limit-storage-strategy.md)
+- [Pingdom 2.0 목표 아키텍처와 도메인 이벤트](./pingdom-2.0-domain-events.md)
 
 ## 2. 채택 아키텍처
 
@@ -194,6 +195,9 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - 이벤트는 이미 확정된 사실만 표현해야 한다.
 - 이벤트 소비자는 동일 이벤트를 중복 처리해도 안전해야 한다.
 - 이벤트 실패는 원인 로그와 재처리 가능성을 함께 고려해야 한다.
+
+현재 Spring 이벤트와 Outbox 작업 요청의 전달 보장, 운영 절차, 신규 이벤트 설계 기준은
+[Pingdom 2.0 목표 아키텍처와 도메인 이벤트](pingdom-2.0-domain-events.md)를 따른다.
 
 예시 이벤트는 다음과 같다.
 
