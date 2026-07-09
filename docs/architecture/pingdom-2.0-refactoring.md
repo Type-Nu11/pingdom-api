@@ -54,6 +54,10 @@ OpenAPI 기준 스펙과 호환성 검증으로, 운영 DB schema는 적용된 F
 Spring 이벤트와 Outbox 작업 요청의 현재 전달 보장, 책임, 장애 대응 기준은
 [Pingdom 2.0 목표 아키텍처와 도메인 이벤트](pingdom-2.0-domain-events.md)를 따른다.
 
+데이터 migration과 공개 API를 함께 변경하는 경우에는 단계별 호환성, 백업·복구와
+deprecation 판단을 [데이터 마이그레이션, 호환 API, 롤백 정책](pingdom-2.0-migration-compatibility-rollback.md)에
+따른다.
+
 ## 3. 모듈 책임과 협력 경계
 
 ### 3.1 현재 기준선
@@ -149,6 +153,7 @@ FCM의 `SUCCEEDED`, `FAILED`, `RETRY_SCHEDULED`, `FINAL_FAILED`를 Outbox 상태
 | API 경로 | [v1 API 경로 정책](../api-path-policy.md) | 기존 v1 경로는 클라이언트 협의 없이 rename·삭제하지 않는다. |
 | DB 스키마 | `src/main/resources/db/migration` | 적용된 migration은 수정하지 않고 새 version으로 추가한다. 운영 절차는 [DB migration Runbook](../database-migration.md)을 따른다. |
 | DB 복구 | [DB 백업/복구 절차](../database-backup-restore.md) | schema 또는 데이터 변경 전 백업·복구 가능성을 확인한다. |
+| 데이터 migration·호환 API | [마이그레이션·호환 API·롤백 기준](pingdom-2.0-migration-compatibility-rollback.md) | `EXPAND`·`BACKFILL`·`SWITCH`·`CONTRACT` 단계, 기존 앱·v1 API 호환, 이전 이미지와 DB 복구의 선택 조건을 확인한다. |
 | 비동기·운영 | [운영 관측성](../observability.md) | Outbox 실패·재시도·고착 복구 지표와 요청 추적 ID를 확인한다. |
 | 도메인 이벤트 | [목표 아키텍처와 도메인 이벤트](pingdom-2.0-domain-events.md) | 전달 보장, 소비자 멱등성, payload·재처리·관측성 계약을 확인한다. |
 | 추천 행동 전환 | [장소 추천 행동 전환 도메인 기준](place-recommendation-conversion.md) | 노출·클릭·행동 전환의 귀속 조건, 원천 로그와 snapshot 차이, 재동기화 가능 범위를 확인한다. |
@@ -184,6 +189,7 @@ OpenAPI baseline, migration, 배포 설정 중 하나가 함께 변경될 때만
 | 2026-07-10 | #537 | 리팩터링 적용·점검·복구 Runbook을 추가 | 완료 |
 | 2026-07-10 | #538, #539, #540, #541 | 추천 행동 전환의 용어·귀속 규칙·운영 점검 기준을 문서화 | 완료 |
 | 2026-07-10 | #542, #543, #544, #545 | 도메인 이벤트·Outbox 책임, 전달 보장, 운영·복구 기준을 문서화 | 완료 |
+| 2026-07-10 | #554, #555, #556, #557 | 데이터 migration, 호환 API, 단계적 배포와 rollback 판단 기준을 문서화 | 완료 |
 
 이 문서 변경은 다음 순서로 검토한다.
 

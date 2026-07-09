@@ -25,6 +25,7 @@
 
 - [Rate Limit 저장소 전략](./rate-limit-storage-strategy.md)
 - [Pingdom 2.0 목표 아키텍처와 도메인 이벤트](./pingdom-2.0-domain-events.md)
+- [데이터 마이그레이션, 호환 API, 롤백 정책](./pingdom-2.0-migration-compatibility-rollback.md)
 
 ## 2. 채택 아키텍처
 
