@@ -24,7 +24,8 @@
 
 - 현재 운영은 단일 애플리케이션 인스턴스를 전제로 한다.
 - 단일 인스턴스 여부는 배포 시 `docker compose ps` 또는 운영 인프라 대시보드에서 앱 인스턴스 수 1개로 확인한다.
-- Redis 장애 시 기본 동작은 `fail-open=true`로 유지한다.
+- Redis 장애 시 기본 동작은 `fail-open=false`이며, rate limit 적용 요청은 `503 Service Unavailable`으로 차단한다.
+- `REDIS_RATE_LIMIT_FAIL_OPEN=true`는 모든 rate limit 적용 요청을 우회하므로, 보안 위험을 인지한 긴급 운영 상황에서만 명시적으로 사용한다.
 - 키 prefix는 `abuse.rate-limit.redis-key-prefix`로 분리해 운영 환경별 충돌을 피한다.
 - 임계값은 `abuse.rate-limit.*` 하위 정책에서 별도로 조정한다.
 

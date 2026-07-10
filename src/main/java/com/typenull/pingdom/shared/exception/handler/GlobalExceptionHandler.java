@@ -8,6 +8,7 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.ratelimit.RateLimitException;
+import com.typenull.pingdom.shared.ratelimit.RateLimitUnavailableException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -56,6 +57,14 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(RateLimitException.class)
     public ResponseEntity<Map<String, String>> handleRateLimitException(RateLimitException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getCode()));
+    }
+
+    @ExceptionHandler(RateLimitUnavailableException.class)
+    public ResponseEntity<Map<String, String>> handleRateLimitUnavailableException(
+            RateLimitUnavailableException exception
+    ) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getCode()));
     }
