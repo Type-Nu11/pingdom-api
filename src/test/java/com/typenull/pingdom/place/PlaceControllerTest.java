@@ -423,23 +423,30 @@ class PlaceControllerTest {
 
     @Test
     void uploadPlaceStoresAndReturnsTouristInformation() throws Exception {
-        String accessToken = signupAndLogin("placeUploaderTourist01");
+        String accessToken = signupAndLogin("placeTourist" + Long.toUnsignedString(System.nanoTime()));
         String coordinateToken = createCoordinateToken(accessToken, "27414320", 35.1805, 128.1082);
 
         mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "kakaoPlaceId", "27414320",
-                                "name", "관광 정보 장소",
-                                "address", "경상남도 진주시 관광로 1",
-                                "category", "관광",
-                                "englishName", "  Jinju Tourist Place  ",
-                                "touristSummary", "  외국인 관광객을 위한 장소 요약입니다.  ",
-                                "touristCategories", List.of("K_POP", "EXHIBITION"),
-                                "coordinateToken", coordinateToken
+                        .content(objectMapper.writeValueAsString(Map.ofEntries(
+                                Map.entry("kakaoPlaceId", "27414320"),
+                                Map.entry("name", "관광 정보 장소"),
+                                Map.entry("address", "경상남도 진주시 관광로 1"),
+                                Map.entry("roadAddress", "경상남도 진주시 관광로 1"),
+                                Map.entry("jibunAddress", "경상남도 진주시 관광동 10"),
+                                Map.entry("postalCode", "52692"),
+                                Map.entry("category", "관광"),
+                                Map.entry("englishName", "  Jinju Tourist Place  "),
+                                Map.entry("touristSummary", "  외국인 관광객을 위한 장소 요약입니다.  "),
+                                Map.entry("touristCategories", List.of("K_POP", "EXHIBITION")),
+                                Map.entry("coordinateToken", coordinateToken)
                         ))))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roadAddress").value("경상남도 진주시 관광로 1"))
+                .andExpect(jsonPath("$.jibunAddress").value("경상남도 진주시 관광동 10"))
+                .andExpect(jsonPath("$.postalCode").value("52692"))
+                .andExpect(jsonPath("$.geocodingSource").value("KAKAO"))
                 .andExpect(jsonPath("$.englishName").value("Jinju Tourist Place"))
                 .andExpect(jsonPath("$.touristSummary").value("외국인 관광객을 위한 장소 요약입니다."))
                 .andExpect(jsonPath("$.touristCategories", containsInAnyOrder("K_POP", "EXHIBITION")));
