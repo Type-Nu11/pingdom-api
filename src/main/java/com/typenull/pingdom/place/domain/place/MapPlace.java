@@ -40,6 +40,20 @@ public class MapPlace {
     @Column(name = "address", length = 255, nullable = false)
     private String address;
 
+    @Column(name = "road_address", length = 255)
+    private String roadAddress;
+
+    @Column(name = "jibun_address", length = 255)
+    private String jibunAddress;
+
+    @Column(name = "postal_code", length = 20)
+    private String postalCode;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "geocoding_source", length = 20, nullable = false)
+    private GeocodingSource geocodingSource = GeocodingSource.LEGACY;
+
     @Column(name = "category", length = 50)
     private String category;
 
@@ -197,6 +211,26 @@ public class MapPlace {
         this.latitude = latitude;
         this.longitude = longitude;
         this.location = location;
+    }
+
+    public void updateGeocoding(
+            String address,
+            String roadAddress,
+            String jibunAddress,
+            String postalCode,
+            Double latitude,
+            Double longitude,
+            Point location,
+            GeocodingSource geocodingSource
+    ) {
+        this.address = address;
+        this.roadAddress = roadAddress;
+        this.jibunAddress = jibunAddress;
+        this.postalCode = postalCode;
+        this.latitude = latitude;
+        this.longitude = longitude;
+        this.location = location;
+        this.geocodingSource = geocodingSource;
     }
 
     public void updateKakaoPlaceId(String kakaoPlaceId) {
