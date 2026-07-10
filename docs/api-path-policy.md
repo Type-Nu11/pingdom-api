@@ -36,6 +36,7 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 | 컬렉션 조회 | `/map/posts`, `/admin/reports`, `/admin/notification-deliveries` |
 | 단건 조회 | `/place/{placeId}`, `/map/posts/{postId}`, `/admin/places/{placeId}` |
 | 내 resource | `/users/me`, `/users/me/export`, `/users/me/oauth-accounts/google` |
+| 개인정보 처리 | `DELETE /users/me`, `GET /admin/privacy-processing-histories` |
 | 하위 resource | `/admin/reports/reported-users/{userId}`, `/place/recommendations/{requestId}/explanation` |
 
 ## resource naming 규칙
