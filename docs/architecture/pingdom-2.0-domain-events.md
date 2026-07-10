@@ -16,6 +16,7 @@
 - [목표 아키텍처](README.md)
 - [Pingdom 2.0 출시 전환·적용·복구 Runbook](../refactoring-rollout-runbook.md)
 - [운영 관측성](../observability.md)
+- [API 오류 코드 및 재시도 정책](../api-error-code-retry-policy.md)
 - [장소 추천 행동 전환 도메인 기준](place-recommendation-conversion.md)
 
 ### 1.1 포함 범위
