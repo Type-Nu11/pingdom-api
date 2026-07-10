@@ -916,6 +916,10 @@ public class AdminMapPlaceService {
                 place.getId(),
                 place.getName(),
                 place.getAddress(),
+                place.getRoadAddress(),
+                place.getJibunAddress(),
+                place.getPostalCode(),
+                place.getGeocodingSource(),
                 place.getCategory(),
                 place.getImageUrl(),
                 place.getKakaoPlaceId(),
@@ -938,13 +942,20 @@ public class AdminMapPlaceService {
         jdbcTemplate.update(
                 """
                 INSERT INTO map_place (
-                    map_place_id, place_name, address, category, image_url, kakao_place_id,
-                    latitude, longitude, user_id, registrant, photo_count, english_name, tourist_summary
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    map_place_id, place_name, address, road_address, jibun_address, postal_code, geocoding_source,
+                    category, image_url, kakao_place_id, latitude, longitude, user_id, registrant,
+                    photo_count, english_name, tourist_summary
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sourceSnapshot.id(),
                 sourceSnapshot.name(),
                 sourceSnapshot.address(),
+                sourceSnapshot.roadAddress(),
+                sourceSnapshot.jibunAddress(),
+                sourceSnapshot.postalCode(),
+                (sourceSnapshot.geocodingSource() == null
+                        ? GeocodingSource.LEGACY
+                        : sourceSnapshot.geocodingSource()).name(),
                 sourceSnapshot.category(),
                 sourceSnapshot.imageUrl(),
                 sourceSnapshot.kakaoPlaceId(),
@@ -1126,6 +1137,10 @@ public class AdminMapPlaceService {
             Long id,
             String name,
             String address,
+            String roadAddress,
+            String jibunAddress,
+            String postalCode,
+            GeocodingSource geocodingSource,
             String category,
             String imageUrl,
             String kakaoPlaceId,
