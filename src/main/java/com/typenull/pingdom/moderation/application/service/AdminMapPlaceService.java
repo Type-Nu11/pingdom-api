@@ -12,6 +12,8 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordi
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficPolicyItem;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateItem;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
@@ -31,6 +33,7 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
@@ -46,10 +49,12 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -305,6 +310,57 @@ public class AdminMapPlaceService {
                 mapPlace.getId(),
                 mapPlace.getKakaoPlaceId(),
                 "장소 Kakao place id를 수정했습니다."
+        );
+    }
+
+    @Transactional
+    public AdminMapPlaceTouristInfoUpdateResponse updatePlaceTouristInfo(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceTouristInfoUpdateRequest request
+    ) {
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+
+        String normalizedEnglishName = trimToNull(request.englishName());
+        String normalizedTouristSummary = trimToNull(request.touristSummary());
+        Set<TouristCategory> normalizedTouristCategories = normalizeTouristCategories(request.touristCategories());
+        Map<String, Object> beforeState = touristInfoState(mapPlace);
+        int beforeTouristCategoryCount = mapPlace.currentTouristCategories().size();
+
+        mapPlace.updateTouristInformation(
+                normalizedEnglishName,
+                normalizedTouristSummary,
+                normalizedTouristCategories
+        );
+
+        Map<String, Object> afterState = touristInfoState(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_TOURIST_INFO_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+
+        log.info(
+                "Admin updated place tourist information. adminUserId={}, placeId={}, englishNameChanged={}, touristSummaryChanged={}, beforeTouristCategoryCount={}, afterTouristCategoryCount={}",
+                adminUserId,
+                placeId,
+                !Objects.equals(beforeState.get("englishName"), normalizedEnglishName),
+                !Objects.equals(beforeState.get("touristSummary"), normalizedTouristSummary),
+                beforeTouristCategoryCount,
+                normalizedTouristCategories.size()
+        );
+
+        return new AdminMapPlaceTouristInfoUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getEnglishName(),
+                mapPlace.getTouristSummary(),
+                mapPlace.currentTouristCategories(),
+                "장소 관광 정보를 수정했습니다."
         );
     }
 
@@ -579,6 +635,9 @@ public class AdminMapPlaceService {
         state.put("name", place.getName());
         state.put("address", place.getAddress());
         state.put("category", place.getCategory());
+        state.put("englishName", place.getEnglishName());
+        state.put("touristSummary", place.getTouristSummary());
+        state.put("touristCategories", normalizeTouristCategories(place.currentTouristCategories()));
         state.put("kakaoPlaceId", place.getKakaoPlaceId());
         state.put("latitude", place.getLatitude());
         state.put("longitude", place.getLongitude());
@@ -634,6 +693,23 @@ public class AdminMapPlaceService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private Set<TouristCategory> normalizeTouristCategories(Set<TouristCategory> touristCategories) {
+        Set<TouristCategory> normalizedCategories = EnumSet.noneOf(TouristCategory.class);
+        if (touristCategories != null) {
+            normalizedCategories.addAll(touristCategories);
+        }
+        return normalizedCategories;
+    }
+
+    private Map<String, Object> touristInfoState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("englishName", place.getEnglishName());
+        state.put("touristSummary", place.getTouristSummary());
+        state.put("touristCategories", normalizeTouristCategories(place.currentTouristCategories()));
+        return state;
     }
 
     private void validateRecommendationTrafficRequest(AdminPlaceRecommendationTrafficUpdateRequest request) {
@@ -766,7 +842,10 @@ public class AdminMapPlaceService {
                 place.getLongitude(),
                 place.getUserId(),
                 place.getRegistrant(),
-                place.currentPhotoCount()
+                place.currentPhotoCount(),
+                place.getEnglishName(),
+                place.getTouristSummary(),
+                normalizeTouristCategories(place.currentTouristCategories())
         );
     }
 
@@ -779,8 +858,8 @@ public class AdminMapPlaceService {
                 """
                 INSERT INTO map_place (
                     map_place_id, place_name, address, category, image_url, kakao_place_id,
-                    latitude, longitude, user_id, registrant, photo_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    latitude, longitude, user_id, registrant, photo_count, english_name, tourist_summary
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sourceSnapshot.id(),
                 sourceSnapshot.name(),
@@ -792,7 +871,9 @@ public class AdminMapPlaceService {
                 sourceSnapshot.longitude(),
                 sourceSnapshot.userId(),
                 sourceSnapshot.registrant(),
-                sourceSnapshot.photoCount()
+                sourceSnapshot.photoCount(),
+                sourceSnapshot.englishName(),
+                sourceSnapshot.touristSummary()
         );
         MapPlace restoredSourcePlace = mapPlaceRepository.findById(sourceSnapshot.id())
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED));
@@ -800,6 +881,11 @@ public class AdminMapPlaceService {
                 sourceSnapshot.latitude(),
                 sourceSnapshot.longitude(),
                 toPoint(sourceSnapshot.latitude(), sourceSnapshot.longitude())
+        );
+        restoredSourcePlace.updateTouristInformation(
+                sourceSnapshot.englishName(),
+                sourceSnapshot.touristSummary(),
+                normalizeTouristCategories(sourceSnapshot.touristCategories())
         );
         return restoredSourcePlace;
     }
@@ -966,7 +1052,10 @@ public class AdminMapPlaceService {
             Double longitude,
             Long userId,
             String registrant,
-            Long photoCount
+            Long photoCount,
+            String englishName,
+            String touristSummary,
+            Set<TouristCategory> touristCategories
     ) {
     }
 
