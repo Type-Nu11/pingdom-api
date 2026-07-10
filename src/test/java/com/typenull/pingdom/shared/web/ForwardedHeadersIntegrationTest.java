@@ -28,7 +28,7 @@ import org.springframework.http.ResponseEntity;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "server.forward-headers-strategy=native",
-                "server.tomcat.remoteip.internal-proxies=127\\\\.0\\\\.0\\\\.1|::1",
+                "server.tomcat.remoteip.internal-proxies=127\\.0\\.0\\.1|::1",
                 "server.tomcat.remoteip.remote-ip-header=X-Forwarded-For",
                 "server.tomcat.remoteip.protocol-header=X-Forwarded-Proto"
         }
