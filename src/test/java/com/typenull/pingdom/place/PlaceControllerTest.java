@@ -9,6 +9,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
@@ -232,14 +233,25 @@ class PlaceControllerTest {
 
     @Test
     void listPlacesSearchesByAddressAndCategory() throws Exception {
-        String accessToken = signupAndLogin("readerSearch01");
+        String accessToken = signupAndLogin("readerSearch" + Long.toUnsignedString(System.nanoTime()));
         MapPlace matchingPlace = createMapPlace(
                 "진주성",
-                "경상남도 진주시 남강로 626",
+                "진주성 대표 주소",
                 "관광",
                 35.1894,
                 128.0789
         );
+        matchingPlace.updateGeocoding(
+                "경상남도 진주시 남강로 626",
+                "경상남도 진주시 남강로 626",
+                "경상남도 진주시 본성동 500-8",
+                "52692",
+                matchingPlace.getLatitude(),
+                matchingPlace.getLongitude(),
+                matchingPlace.getLocation(),
+                GeocodingSource.KAKAO
+        );
+        mapPlaceRepository.save(matchingPlace);
         createMapPlace("남강 카페", "경상남도 진주시 남강로 10", "카페", 35.1801, 128.1078);
 
         mockMvc.perform(get("/places")
@@ -249,6 +261,10 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].roadAddress").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].jibunAddress").value("경상남도 진주시 본성동 500-8"))
+                .andExpect(jsonPath("$.places[0].postalCode").value("52692"))
+                .andExpect(jsonPath("$.places[0].geocodingSource").value("KAKAO"))
                 .andExpect(jsonPath("$.places[0].category").value("관광"))
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
