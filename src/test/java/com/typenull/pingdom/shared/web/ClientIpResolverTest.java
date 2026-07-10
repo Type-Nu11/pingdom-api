@@ -8,7 +8,7 @@ import org.springframework.mock.web.MockHttpServletRequest;
 class ClientIpResolverTest {
 
     @Test
-    void resolveUsesContainerRemoteAddressInsteadOfForwardedHeaders() {
+    void resolveUsesContainerResolvedRemoteAddressInsteadOfRawForwardedHeader() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setRemoteAddr("198.51.100.10");
         request.addHeader("X-Forwarded-For", "203.0.113.250, 198.51.100.10");

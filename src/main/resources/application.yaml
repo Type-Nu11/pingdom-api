@@ -1,8 +1,15 @@
+server:
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      # 직접 연결된 프록시만 forwarded header를 해석한다. 운영 프록시 대역은 정규식으로 명시해야 한다.
+      internal-proxies: '${TRUSTED_PROXY_IPS_REGEX:127\.0\.0\.1|::1}'
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+
 spring:
   application:
     name: Pingdom
-  server:
-    forward-headers-strategy: framework
   datasource:
     url: ${DB_URL:jdbc:postgresql://localhost:5432/pingdom}
     driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
