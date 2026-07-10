@@ -33,6 +33,7 @@ import org.springframework.test.web.servlet.MvcResult;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.fail;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
@@ -48,7 +49,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
-        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
+        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret",
+        "abuse.rate-limit.redis-key-prefix=pingdom:test:map-post-upload:",
+        "abuse.rate-limit.signup-ip.limit=1000",
+        "abuse.rate-limit.login-ip.limit=1000"
 })
 @AutoConfigureMockMvc
 class MapPostUploadControllerTest {
@@ -197,6 +201,8 @@ class MapPostUploadControllerTest {
         assertEquals("핀 좌표 생성 장소", savedPlace.getName());
         assertEquals("경상남도 진주시 핀좌표로 10", savedPlace.getAddress());
         assertEquals("풍경", savedPlace.getCategory());
+        assertNull(savedPlace.getEnglishName());
+        assertNull(savedPlace.getTouristSummary());
         assertEquals(1L, mapImageRepository.count());
         MapImage savedImage = mapImageRepository.findAll().get(0);
         assertEquals(savedPlace.getId(), savedImage.getMapPlace().getId());

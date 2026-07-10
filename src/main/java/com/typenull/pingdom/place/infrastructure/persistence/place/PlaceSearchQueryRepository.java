@@ -1,6 +1,8 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
+import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -18,6 +20,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND m.longitude BETWEEN -180.0 AND 180.0
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.englishName) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR LOWER(TRIM(m.category)) = :category)
                     ORDER BY m.id DESC
@@ -29,6 +32,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND m.longitude BETWEEN -180.0 AND 180.0
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.englishName) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR LOWER(TRIM(m.category)) = :category)
                     """
@@ -44,8 +48,10 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     SELECT
                         mp.map_place_id AS id,
                         mp.place_name AS name,
+                        mp.english_name AS englishName,
                         mp.address AS address,
                         mp.category AS category,
+                        mp.tourist_summary AS touristSummary,
                         mp.latitude AS latitude,
                         mp.longitude AS longitude,
                         CASE
@@ -60,6 +66,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     FROM map_place mp
                     WHERE (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (
@@ -95,6 +102,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     FROM map_place mp
                     WHERE (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (
@@ -138,9 +146,13 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
 
         String getName();
 
+        String getEnglishName();
+
         String getAddress();
 
         String getCategory();
+
+        String getTouristSummary();
 
         Double getLatitude();
 
@@ -153,9 +165,27 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
             SELECT m
             FROM MapPlace m
             WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.englishName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
     List<MapPlace> findAutocompleteCandidates(@Param("keyword") String keyword, Pageable pageable);
+
+    @Query("""
+            SELECT m.id AS placeId, touristCategory AS touristCategory
+            FROM MapPlace m
+            JOIN m.touristCategories touristCategory
+            WHERE m.id IN :placeIds
+            ORDER BY m.id, touristCategory
+            """)
+    List<PlaceTouristCategoryProjection> findTouristCategoriesByPlaceIds(
+            @Param("placeIds") Collection<Long> placeIds
+    );
+
+    interface PlaceTouristCategoryProjection {
+        Long getPlaceId();
+
+        TouristCategory getTouristCategory();
+    }
 
     @Query(
             value = """

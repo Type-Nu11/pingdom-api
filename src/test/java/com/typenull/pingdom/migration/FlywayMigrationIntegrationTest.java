@@ -1,6 +1,7 @@
 package com.typenull.pingdom.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import java.sql.Connection;
 import java.sql.ResultSet;
@@ -65,8 +66,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("27");
-        assertThat(result.migrationsExecuted).isEqualTo(27);
+        assertThat(result.targetSchemaVersion).isEqualTo("29");
+        assertThat(result.migrationsExecuted).isEqualTo(29);
 
         assertPostMigrationSchema();
     }
@@ -78,8 +79,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("27");
-        assertThat(result.migrationsExecuted).isEqualTo(26);
+        assertThat(result.targetSchemaVersion).isEqualTo("29");
+        assertThat(result.migrationsExecuted).isEqualTo(28);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -94,6 +95,96 @@ class FlywayMigrationIntegrationTest {
                     """)).isTrue();
         }
         assertPostMigrationSchema();
+    }
+
+    @Test
+    void preservesExistingPlacesWhenApplyingTouristInformationMigration() throws Exception {
+        Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .locations("classpath:db/migration")
+                .target("27")
+                .load()
+                .migrate();
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        place_name, address, category, latitude, longitude,
+                        user_id, registrant, photo_count
+                    ) VALUES (
+                        '기존 장소', '기존 주소', 'legacy-free-text', 35.1801, 128.1078,
+                        1, 'legacy-user', 0
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo("29");
+        assertThat(result.migrationsExecuted).isEqualTo(2);
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM map_place
+                        WHERE place_name = '기존 장소'
+                          AND category = 'legacy-free-text'
+                          AND english_name IS NULL
+                          AND tourist_summary IS NULL
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM map_place_tourist_category
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM map_place_tourist_guard
+                    )
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void touristGuardPreventsLegacyDeleteForScalarOnlyInformation() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, category, english_name,
+                        latitude, longitude, user_id, registrant, photo_count
+                    ) VALUES (
+                        900001, '롤백 보호 장소', '롤백 보호 주소', 'legacy-free-text', 'Rollback Safe Place',
+                        35.1801, 128.1078, 1, 'rollback-user', 0
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_place_tourist_guard (map_place_id, guard_key)
+                    VALUES (900001, 'ACTIVE')
+                    """);
+
+            assertThatThrownBy(() -> statement.executeUpdate("""
+                    DELETE FROM map_place
+                    WHERE map_place_id = 900001
+                    """))
+                    .isInstanceOf(java.sql.SQLException.class);
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM map_place
+                        WHERE map_place_id = 900001
+                          AND english_name = 'Rollback Safe Place'
+                    )
+                    """)).isTrue();
+        }
     }
 
     private MigrateResult migrate(boolean baselineOnMigrate) {
@@ -557,6 +648,134 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'place_recommendation_conversion'
                           AND indexname = 'idx_place_recommendation_conversion_metric_aggregation'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'english_name'
+                          AND character_maximum_length = 150
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'tourist_summary'
+                          AND character_maximum_length = 500
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place_tourist_category'
+                          AND column_name = 'map_place_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place_tourist_category'
+                          AND column_name = 'tourist_category'
+                          AND character_maximum_length = 30
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_tourist_category'::regclass
+                          AND conname = 'pk_map_place_tourist_category'
+                          AND contype = 'p'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_tourist_category'::regclass
+                          AND conname = 'fk_map_place_tourist_category_place'
+                          AND contype = 'f'
+                          AND confrelid = 'map_place'::regclass
+                          AND confdeltype = 'a'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_tourist_category'::regclass
+                          AND conname = 'ck_map_place_tourist_category_value'
+                          AND contype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place_tourist_guard'
+                          AND column_name = 'map_place_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place_tourist_guard'
+                          AND column_name = 'guard_key'
+                          AND character_maximum_length = 16
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_tourist_guard'::regclass
+                          AND conname = 'pk_map_place_tourist_guard'
+                          AND contype = 'p'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_tourist_guard'::regclass
+                          AND conname = 'fk_map_place_tourist_guard_place'
+                          AND contype = 'f'
+                          AND confrelid = 'map_place'::regclass
+                          AND confdeltype = 'a'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_tourist_guard'::regclass
+                          AND conname = 'ck_map_place_tourist_guard_key'
+                          AND contype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_class c
+                        JOIN pg_index i ON i.indexrelid = c.oid
+                        WHERE c.relname = 'idx_map_place_english_name_trgm'
+                          AND i.indisvalid = true
+                          AND i.indisready = true
                     )
                     """)).isTrue();
         }

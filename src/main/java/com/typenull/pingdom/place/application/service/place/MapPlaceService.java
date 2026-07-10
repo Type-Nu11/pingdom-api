@@ -8,11 +8,14 @@ import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.util.EnumSet;
 import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -59,6 +62,33 @@ public class MapPlaceService {
             String coordinateToken,
             long userId
     ) {
+        return uploadPlaceByToken(
+                kakaoPlaceId,
+                name,
+                address,
+                category,
+                imageUrl,
+                null,
+                null,
+                null,
+                coordinateToken,
+                userId
+        );
+    }
+
+    @Transactional
+    public PlaceCreateResponse uploadPlaceByToken(
+            String kakaoPlaceId,
+            String name,
+            String address,
+            String category,
+            String imageUrl,
+            String englishName,
+            String touristSummary,
+            Set<TouristCategory> touristCategories,
+            String coordinateToken,
+            long userId
+    ) {
         String username = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
                 .getUsername();
@@ -87,6 +117,9 @@ public class MapPlaceService {
         }
 
         Point location = toPoint(entry.latitude(), entry.longitude());
+        String normalizedEnglishName = trimToNull(englishName);
+        String normalizedTouristSummary = trimToNull(touristSummary);
+        Set<TouristCategory> normalizedTouristCategories = normalizeTouristCategories(touristCategories);
         MapPlace mapPlace = MapPlace.builder()
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
@@ -99,13 +132,21 @@ public class MapPlaceService {
                 .userId(userId)
                 .registrant(username)
                 .build();
+        mapPlace.updateTouristInformation(
+                normalizedEnglishName,
+                normalizedTouristSummary,
+                normalizedTouristCategories
+        );
 
         MapPlace saved = mapPlaceRepository.save(mapPlace);
         placeRecommendationSnapshotService.initialize(saved.getId());
         return new PlaceCreateResponse(
                 saved.getId(),
                 saved.getName(),
+                saved.getEnglishName(),
                 saved.getAddress(),
+                saved.getTouristSummary(),
+                saved.currentTouristCategories(),
                 saved.getLatitude(),
                 saved.getLongitude()
         );
@@ -113,6 +154,13 @@ public class MapPlaceService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private Set<TouristCategory> normalizeTouristCategories(Set<TouristCategory> touristCategories) {
+        if (touristCategories == null || touristCategories.isEmpty()) {
+            return EnumSet.noneOf(TouristCategory.class);
+        }
+        return EnumSet.copyOf(touristCategories);
     }
 
     @Transactional

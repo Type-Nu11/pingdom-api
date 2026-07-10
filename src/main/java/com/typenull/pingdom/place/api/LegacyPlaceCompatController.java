@@ -156,6 +156,9 @@ public class LegacyPlaceCompatController {
                 request.address(),
                 request.category(),
                 request.imageUrl(),
+                request.englishName(),
+                request.touristSummary(),
+                request.touristCategories(),
                 request.coordinateToken(),
                 authenticatedUserId(user)
         );

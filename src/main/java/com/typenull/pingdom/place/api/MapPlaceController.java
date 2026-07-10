@@ -131,6 +131,9 @@ public class MapPlaceController {
                 request.address(),
                 request.category(),
                 request.imageUrl(),
+                request.englishName(),
+                request.touristSummary(),
+                request.touristCategories(),
                 request.coordinateToken(),
                 user.userId()
         );
