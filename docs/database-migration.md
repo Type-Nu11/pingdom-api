@@ -14,6 +14,10 @@ Runbook](refactoring-rollout-runbook.md)에서 변경 유형을 먼저 분류한
 먼저 확인한다. 이 문서는 Flyway 작성·적용 절차의 기준이며, 적용된 migration을 되돌리는
 down migration을 제공하지 않는다.
 
+Outbox와 notification delivery의 상태·시도 횟수 column은 각각 V5, V20 migration에서
+도입됐다. 이 모델의 재시도 책임과 API 오류 코드의 경계는
+[API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md)을 따른다.
+
 ## 운영 정책
 
 - 운영 스키마 변경은 Flyway SQL migration으로만 반영한다.

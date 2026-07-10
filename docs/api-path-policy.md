@@ -4,6 +4,8 @@
 
 Pingdom Backend v1 API에서 사용하는 경로 규칙을 문서화한다.
 이 문서는 신규 endpoint 추가, 기존 endpoint 리팩터링, Swagger 검수 시 기준으로 사용한다.
+오류 응답의 코드·본문 형태와 클라이언트 재시도 판단은
+[API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md)을 따른다.
 리팩터링 시 모듈 경계, OpenAPI 호환성, 운영 확인은
 [Pingdom 2.0 리팩터링 범위와 성공 지표](architecture/pingdom-2.0-refactoring.md)를 함께 따른다.
 DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판단은

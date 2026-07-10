@@ -7,6 +7,8 @@
 Spring 이벤트와 Outbox의 전달 보장·재처리 기준은
 [Pingdom 2.0 목표 아키텍처와 도메인 이벤트](architecture/pingdom-2.0-domain-events.md)를
 따른다.
+HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분과 재시도 판단은
+[API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md)을 따른다.
 
 ## Health
 
