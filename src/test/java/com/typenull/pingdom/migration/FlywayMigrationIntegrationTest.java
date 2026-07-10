@@ -66,8 +66,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("29");
-        assertThat(result.migrationsExecuted).isEqualTo(29);
+        assertThat(result.targetSchemaVersion).isEqualTo("31");
+        assertThat(result.migrationsExecuted).isEqualTo(31);
 
         assertPostMigrationSchema();
     }
@@ -79,8 +79,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("29");
-        assertThat(result.migrationsExecuted).isEqualTo(28);
+        assertThat(result.targetSchemaVersion).isEqualTo("31");
+        assertThat(result.migrationsExecuted).isEqualTo(30);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -122,8 +122,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("29");
-        assertThat(result.migrationsExecuted).isEqualTo(2);
+        assertThat(result.targetSchemaVersion).isEqualTo("31");
+        assertThat(result.migrationsExecuted).isEqualTo(4);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -134,6 +134,10 @@ class FlywayMigrationIntegrationTest {
                           AND category = 'legacy-free-text'
                           AND english_name IS NULL
                           AND tourist_summary IS NULL
+                          AND road_address IS NULL
+                          AND jibun_address IS NULL
+                          AND postal_code IS NULL
+                          AND geocoding_source = 'LEGACY'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -330,6 +334,28 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'map_place'
                           AND indexname = 'idx_map_place_address_trgm'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM information_schema.columns
+                    WHERE table_name = 'map_place'
+                      AND column_name IN ('road_address', 'jibun_address', 'postal_code', 'geocoding_source')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place'
+                          AND indexname = 'idx_map_place_road_address_trgm'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place'
+                          AND indexname = 'idx_map_place_jibun_address_trgm'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
