@@ -871,7 +871,7 @@ public class AdminMapPlaceService {
                 sourceSnapshot.longitude(),
                 sourceSnapshot.userId(),
                 sourceSnapshot.registrant(),
-                sourceSnapshot.photoCount(),
+                sourceSnapshot.photoCount() == null ? 0L : sourceSnapshot.photoCount(),
                 sourceSnapshot.englishName(),
                 sourceSnapshot.touristSummary()
         );

@@ -17,6 +17,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
@@ -1293,6 +1294,15 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk());
 
         Long historyId = adminPlaceMergeHistoryRepository.findAll().getFirst().getId();
+        ObjectNode legacySourceSnapshot = (ObjectNode) objectMapper.readTree(
+                adminPlaceMergeHistoryRepository.findById(historyId).orElseThrow().getSourcePlaceSnapshot()
+        );
+        legacySourceSnapshot.remove("photoCount");
+        jdbcTemplate.update(
+                "UPDATE admin_place_merge_history SET source_place_snapshot = ? WHERE id = ?",
+                legacySourceSnapshot.toString(),
+                historyId
+        );
 
         mockMvc.perform(get("/admin/places/merge-histories")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -1311,6 +1321,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.message").value("장소 병합을 복구했습니다."));
 
         assertTrue(mapPlaceRepository.existsById(sourcePlace.getId()));
+        assertEquals(1L, mapPlaceRepository.findById(sourcePlace.getId()).orElseThrow().currentPhotoCount());
         assertEquals(sourcePlace.getId(), mapImageRepository.findById(movedImage.getId()).orElseThrow().getMapPlace().getId());
         assertEquals(sourcePlace.getId(), mapBookmarkRepository.findById(movedBookmark.getId()).orElseThrow().getPlaceId());
         assertEquals(sourcePlace.getId(), placeRecommendationClickRepository.findById(movedClick.getId()).orElseThrow().getPlaceId());
