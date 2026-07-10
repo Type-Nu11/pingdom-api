@@ -12,6 +12,9 @@
 
 추천 노출·클릭·행동 전환의 용어와 원천 로그·snapshot 관계는
 [장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)을 따른다.
+데이터 migration과 공개 API가 함께 바뀌는 배포의 단계·호환성·rollback 판단은
+[데이터 마이그레이션, 호환 API, 롤백 정책](architecture/pingdom-2.0-migration-compatibility-rollback.md)을
+따른다.
 
 ## 1. 단계별 출시 전환 계획
 
@@ -43,6 +46,7 @@
 | 모듈·도메인 | 책임 이동, 상태 전이 변경, Query 분리 | 소유 모듈, 전이 전후 상태, 트랜잭션 경계, 영향받는 호출자 |
 | API | Controller, DTO, 인증·인가, 오류 응답 변경 | OpenAPI baseline, v1 경로 하위 호환, 관련 controller 테스트 |
 | DB | Entity 매핑, 인덱스, 제약 조건, migration 추가 | 새 Flyway version, 사전 데이터 조건, 백업·복구, migration 통합 테스트 |
+| 데이터 migration·호환 API | schema 확장, backfill, 신규·기존 endpoint 병행 | `EXPAND`·`BACKFILL`·`SWITCH`·`CONTRACT` 단계, 이전 앱·클라이언트 호환, rollback 기준 |
 | 비동기·외부 연동 | Outbox handler, 메일·FCM·S3 처리 변경 | 재시도·중복 처리 안전성, 실패 기록, metric·alert, 수동 재처리 방법 |
 | 도메인 이벤트 | Spring listener, 이벤트 payload, 발행·소비 방식 변경 | 동기·커밋 후·Outbox 선택, 원래 요청 영향, 멱등성, 유실·재처리 기준 |
 | 운영 설정 | Compose, profile, 환경 변수, scheduler 설정 | readiness, 설정 값, 롤백 가능한 이전 값, 배포 문서 |
@@ -56,11 +60,14 @@
 3. migration 변경이면 먼저 [DB 백업/복구 절차](database-backup-restore.md)에 따라 백업을
    만들고 읽기 가능성을 확인한다. 이어서 [DB migration 운영 Runbook](database-migration.md)의
    사전 조건을 확인하고 Flyway migration 통합 테스트를 실행한다.
-4. Outbox 또는 외부 연동 변경이면 event type, deduplication key, handler, 재시도·최종 실패
+4. migration과 공개 API가 함께 바뀌면 현재 단계, 이전 앱·클라이언트 호환성, backfill 검증,
+   이전 이미지와 DB 복구의 선택 조건을 [마이그레이션·호환 API·롤백 기준](architecture/pingdom-2.0-migration-compatibility-rollback.md)에
+   맞춰 기록한다. 파괴적 변경은 `CONTRACT` 단계의 별도 배포로 분리한다.
+5. Outbox 또는 외부 연동 변경이면 event type, deduplication key, handler, 재시도·최종 실패
    처리, 관측 metric을 대조한다. 외부 호출 실패가 핵심 상태 변경을 되돌리지 않는지 확인한다.
-5. Spring 이벤트 변경이면 발행자·소비자·트랜잭션 phase·원래 요청 실패 여부·멱등성·재처리
+6. Spring 이벤트 변경이면 발행자·소비자·트랜잭션 phase·원래 요청 실패 여부·멱등성·재처리
    가능 여부를 [도메인 이벤트 기준](architecture/pingdom-2.0-domain-events.md)과 대조한다.
-6. 문서만 변경하는 경우에는 소스 대조, 상대 링크, `git diff --check`만 수행한다. API export,
+7. 문서만 변경하는 경우에는 소스 대조, 상대 링크, `git diff --check`만 수행한다. API export,
    Testcontainers, 전체 Gradle 테스트는 실행하지 않는다.
 
 ## 4. 단계별 적용 중·직후 점검
@@ -84,6 +91,16 @@
 - 애플리케이션 로그에서 Flyway 적용 실패가 없는지 확인한다.
 - `flyway_schema_history`의 version, description, success 값을 확인한다.
 - migration이 데이터 사전 조건을 요구하면 배포 후 데이터와 인덱스 상태를 추가로 확인한다.
+
+### 데이터 migration과 호환 API
+
+- `EXPAND` migration 뒤 이전 앱이 새 schema에서 실행 가능한지 확인한다.
+- 신규 endpoint를 추가한 경우 기존 v1 경로의 인증·오류 응답이 의도 없이 바뀌지 않았는지
+  함께 확인한다.
+- `BACKFILL`은 대상 수·실패 수·완료 판정 쿼리를 기록한다. 처리 결과가 불명확하면 다음
+  `SWITCH` 또는 `CONTRACT` 단계를 진행하지 않는다.
+- 앱 배포 실패 시에는 먼저 이전 이미지로 복귀 가능한지 판단한다. DB 복구는 부분 적용 또는
+  정합성 훼손이 확인된 경우에만 [백업/복구 절차](database-backup-restore.md)로 진행한다.
 
 ### Outbox·외부 연동 변경
 

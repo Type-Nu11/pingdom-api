@@ -3,6 +3,11 @@
 이 문서는 운영 DB migration 또는 배포 전에 PostgreSQL 백업을 만들고, 장애 시 복구하는 절차를
 정리한다. 기준 환경은 EC2에서 `compose.yaml`을 사용하는 Docker Compose 배포이다.
 
+애플리케이션 rollback으로 충분한 경우와 DB 복구가 필요한 경우의 판단은
+[데이터 마이그레이션, 호환 API, 롤백 정책](architecture/pingdom-2.0-migration-compatibility-rollback.md)을
+따른다. 이 문서의 `dropdb`와 복구 명령은 결정된 복구 절차를 실행하는 용도이며, 일반적인
+배포 실패의 기본 대응이 아니다.
+
 ## 원칙
 
 - DB schema 변경이 포함된 배포 전에는 항상 백업을 먼저 만든다.
