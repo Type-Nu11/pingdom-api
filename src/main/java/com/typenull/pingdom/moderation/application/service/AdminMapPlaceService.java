@@ -10,6 +10,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHi
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
@@ -32,6 +34,7 @@ import com.typenull.pingdom.moderation.infrastructure.persistence.AdminRecommend
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
@@ -234,10 +237,15 @@ public class AdminMapPlaceService {
         Double beforeLatitude = mapPlace.getLatitude();
         Double beforeLongitude = mapPlace.getLongitude();
 
-        mapPlace.updateCoordinates(
+        mapPlace.updateGeocoding(
+                mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
                 request.latitude(),
                 request.longitude(),
-                toPoint(request.latitude(), request.longitude())
+                toPoint(request.latitude(), request.longitude()),
+                GeocodingSource.ADMIN
         );
 
         placeRecommendationSnapshotResyncService.resyncAll();
@@ -257,6 +265,63 @@ public class AdminMapPlaceService {
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 "장소 좌표를 수정했습니다."
+        );
+    }
+
+    @Transactional
+    public AdminMapPlaceGeocodingUpdateResponse updatePlaceGeocoding(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceGeocodingUpdateRequest request
+    ) {
+        if (request == null || !StringUtils.hasText(request.address())
+                || request.latitude() == null || request.longitude() == null) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = geocodingState(mapPlace);
+        String normalizedRoadAddress = trimToNull(request.roadAddress());
+        String normalizedJibunAddress = trimToNull(request.jibunAddress());
+        String representativeAddress = normalizedRoadAddress != null
+                ? normalizedRoadAddress
+                : normalizedJibunAddress != null ? normalizedJibunAddress : request.address().trim();
+
+        mapPlace.updateGeocoding(
+                representativeAddress,
+                normalizedRoadAddress,
+                normalizedJibunAddress,
+                trimToNull(request.postalCode()),
+                request.latitude(),
+                request.longitude(),
+                toPoint(request.latitude(), request.longitude()),
+                GeocodingSource.ADMIN
+        );
+        Map<String, Object> afterState = geocodingState(mapPlace);
+
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_GEOCODING_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+        placeRecommendationSnapshotResyncService.resyncAll();
+
+        log.info("Admin updated place geocoding. adminUserId={}, placeId={}", adminUserId, placeId);
+        return new AdminMapPlaceGeocodingUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                "장소 주소와 좌표를 수정했습니다."
         );
     }
 
@@ -634,6 +699,10 @@ public class AdminMapPlaceService {
         state.put("placeId", place.getId());
         state.put("name", place.getName());
         state.put("address", place.getAddress());
+        state.put("roadAddress", place.getRoadAddress());
+        state.put("jibunAddress", place.getJibunAddress());
+        state.put("postalCode", place.getPostalCode());
+        state.put("geocodingSource", place.getGeocodingSource());
         state.put("category", place.getCategory());
         state.put("englishName", place.getEnglishName());
         state.put("touristSummary", place.getTouristSummary());
@@ -644,6 +713,18 @@ public class AdminMapPlaceService {
         state.put("userId", place.getUserId());
         state.put("registrant", place.getRegistrant());
         state.put("photoCount", place.currentPhotoCount());
+        return state;
+    }
+
+    private Map<String, Object> geocodingState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("address", place.getAddress());
+        state.put("roadAddress", place.getRoadAddress());
+        state.put("jibunAddress", place.getJibunAddress());
+        state.put("postalCode", place.getPostalCode());
+        state.put("geocodingSource", place.getGeocodingSource());
+        state.put("latitude", place.getLatitude());
+        state.put("longitude", place.getLongitude());
         return state;
     }
 
