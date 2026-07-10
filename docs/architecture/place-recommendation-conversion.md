@@ -13,7 +13,7 @@
 
 - [장소 추천 알고리즘 설계](../algorithm/place-recommendation.md)
 - [Pingdom 2.0 리팩터링 범위와 성공 지표](pingdom-2.0-refactoring.md)
-- [리팩터링 적용·복구 Runbook](../refactoring-rollout-runbook.md)
+- [Pingdom 2.0 출시 전환·적용·복구 Runbook](../refactoring-rollout-runbook.md)
 
 ## 2. 용어
 
