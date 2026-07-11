@@ -33,6 +33,8 @@ spring:
     baseline-on-migrate: ${FLYWAY_BASELINE_ON_MIGRATE:true}
     baseline-version: 1
     validate-on-migrate: true
+    postgresql:
+      transactional-lock: ${FLYWAY_POSTGRESQL_TRANSACTIONAL_LOCK:false}
   servlet:
     multipart:
       max-file-size: 10MB

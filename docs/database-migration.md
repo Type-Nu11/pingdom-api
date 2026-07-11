@@ -117,11 +117,13 @@ WHERE c.relname = 'idx_map_place_english_name_trgm';
 `V30`은 기존 `address`를 호환용 대표 주소로 유지하면서 `road_address`, `jibun_address`,
 `postal_code`, `geocoding_source`를 추가한다. 기존 주소 문자열은 임의로 파싱하지 않고 신규
 주소 필드는 `NULL`, 출처는 `LEGACY`로 backfill한다. 신규 애플리케이션은 도로명 주소, 지번
-주소, 기존 대표 주소 순서로 대표 주소를 결정한다.
+주소, 기존 대표 주소 순서로 대표 주소를 결정한다. 출처 값과 null 불가 제약은 `NOT VALID`로
+추가한 뒤 검증하고 `NOT NULL`을 설정해 장시간의 강한 table lock을 피한다.
 
 `V31`은 정규화 주소 검색용 trigram index를 `CONCURRENTLY` 생성한다. 실패 시 V29와 동일하게
 invalid index 여부를 확인한 뒤 실패 history를 `repair`하고 재실행한다. 확인 대상 index는
-`idx_map_place_road_address_trgm`, `idx_map_place_jibun_address_trgm`이다.
+`idx_map_place_road_address_trgm`, `idx_map_place_jibun_address_trgm`이다. migration은
+`executeInTransaction=false`로 실행하며 PostgreSQL transactional advisory lock도 비활성화한다.
 
 ## validate 실패 대응
 

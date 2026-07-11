@@ -1,3 +1,4 @@
+-- flyway:executeInTransaction=false
 -- Concurrent creation prevents normalized-address indexes from blocking map_place writes.
 -- Failed concurrent builds can leave invalid indexes, so retries remove them first.
 DROP INDEX CONCURRENTLY IF EXISTS idx_map_place_road_address_trgm;
