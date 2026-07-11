@@ -2,6 +2,8 @@ package com.typenull.pingdom.moderation.api;
 
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
@@ -100,6 +102,20 @@ public class AdminPlaceQualityController {
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminMapPlaceService.updatePlaceCoordinates(adminUserId, placeId, request));
+    }
+
+    @PatchMapping("/{id}/geocoding")
+    @Operation(
+            summary = "관리자 장소 주소·좌표 보정",
+            description = "관리자가 대표 주소, 정규화 주소와 좌표를 함께 보정하며 출처는 ADMIN으로 기록합니다."
+    )
+    public ResponseEntity<AdminMapPlaceGeocodingUpdateResponse> updatePlaceGeocoding(
+            @Parameter(description = "주소와 좌표를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceGeocodingUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updatePlaceGeocoding(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/kakao-place-id")

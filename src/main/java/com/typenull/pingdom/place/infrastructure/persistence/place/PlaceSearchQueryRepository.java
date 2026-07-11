@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import java.util.Collection;
 import java.util.List;
@@ -21,7 +22,9 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.englishName) LIKE :keywordPattern ESCAPE '\\'
-                           OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
+                           OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.roadAddress) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.jibunAddress) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR LOWER(TRIM(m.category)) = :category)
                     ORDER BY m.id DESC
                     """,
@@ -33,7 +36,9 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.englishName) LIKE :keywordPattern ESCAPE '\\'
-                           OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\')
+                           OR LOWER(m.address) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.roadAddress) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(m.jibunAddress) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR LOWER(TRIM(m.category)) = :category)
                     """
     )
@@ -50,6 +55,10 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                         mp.place_name AS name,
                         mp.english_name AS englishName,
                         mp.address AS address,
+                        mp.road_address AS roadAddress,
+                        mp.jibun_address AS jibunAddress,
+                        mp.postal_code AS postalCode,
+                        mp.geocoding_source AS geocodingSource,
                         mp.category AS category,
                         mp.tourist_summary AS touristSummary,
                         mp.latitude AS latitude,
@@ -67,7 +76,9 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     WHERE (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
-                           OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\')
+                           OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(mp.road_address) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (
                           :hasLocation = FALSE
@@ -103,7 +114,9 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     WHERE (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
-                           OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\')
+                           OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(mp.road_address) LIKE :keywordPattern ESCAPE '\\'
+                           OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\')
                       AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (
                           :hasLocation = FALSE
@@ -150,6 +163,14 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
 
         String getAddress();
 
+        String getRoadAddress();
+
+        String getJibunAddress();
+
+        String getPostalCode();
+
+        GeocodingSource getGeocodingSource();
+
         String getCategory();
 
         String getTouristSummary();
@@ -167,6 +188,9 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
             WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.englishName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.roadAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.jibunAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.category) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
     List<MapPlace> findAutocompleteCandidates(@Param("keyword") String keyword, Pageable pageable);
 

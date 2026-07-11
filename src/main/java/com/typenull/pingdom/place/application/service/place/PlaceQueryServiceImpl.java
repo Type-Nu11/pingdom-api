@@ -176,6 +176,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getName(),
                 mapPlace.getEnglishName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 mapPlace.getTouristSummary(),
                 mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
@@ -221,6 +225,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getName(),
                 mapPlace.getEnglishName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 mapPlace.getCategory(),
                 mapPlace.getTouristSummary(),
                 touristCategories,
@@ -240,6 +248,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 projection.getName(),
                 projection.getEnglishName(),
                 projection.getAddress(),
+                projection.getRoadAddress(),
+                projection.getJibunAddress(),
+                projection.getPostalCode(),
+                projection.getGeocodingSource(),
                 projection.getCategory(),
                 projection.getTouristSummary(),
                 touristCategories,
@@ -279,6 +291,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getName(),
                 mapPlace.getEnglishName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 mapPlace.getCategory(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
@@ -348,6 +364,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 ? ""
                 : mapPlace.getEnglishName().toLowerCase(Locale.ROOT);
         String address = mapPlace.getAddress().toLowerCase(Locale.ROOT);
+        String roadAddress = normalizedLowercase(mapPlace.getRoadAddress());
+        String jibunAddress = normalizedLowercase(mapPlace.getJibunAddress());
         String category = mapPlace.getCategory() == null ? "" : mapPlace.getCategory().toLowerCase(Locale.ROOT);
 
         if (name.equals(normalizedKeyword)) {
@@ -368,13 +386,19 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         if (englishName.contains(normalizedKeyword)) {
             return 350;
         }
-        if (address.contains(normalizedKeyword)) {
+        if (address.contains(normalizedKeyword)
+                || roadAddress.contains(normalizedKeyword)
+                || jibunAddress.contains(normalizedKeyword)) {
             return 200;
         }
         if (category.contains(normalizedKeyword)) {
             return 100;
         }
         return 0;
+    }
+
+    private String normalizedLowercase(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
     }
 
     private Map<Long, Set<TouristCategory>> loadTouristCategories(List<Long> placeIds) {

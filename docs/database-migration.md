@@ -114,6 +114,17 @@ JOIN pg_index i ON i.indexrelid = c.oid
 WHERE c.relname = 'idx_map_place_english_name_trgm';
 ```
 
+`V30`은 기존 `address`를 호환용 대표 주소로 유지하면서 `road_address`, `jibun_address`,
+`postal_code`, `geocoding_source`를 추가한다. 기존 주소 문자열은 임의로 파싱하지 않고 신규
+주소 필드는 `NULL`, 출처는 `LEGACY`로 backfill한다. 신규 애플리케이션은 도로명 주소, 지번
+주소, 기존 대표 주소 순서로 대표 주소를 결정한다. 출처 값과 null 불가 제약은 `NOT VALID`로
+추가한 뒤 검증하고 `NOT NULL`을 설정해 장시간의 강한 table lock을 피한다.
+
+`V31`은 정규화 주소 검색용 trigram index를 `CONCURRENTLY` 생성한다. 실패 시 V29와 동일하게
+invalid index 여부를 확인한 뒤 실패 history를 `repair`하고 재실행한다. 확인 대상 index는
+`idx_map_place_road_address_trgm`, `idx_map_place_jibun_address_trgm`이다. migration은
+`executeInTransaction=false`로 실행하며 PostgreSQL transactional advisory lock도 비활성화한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.
@@ -123,7 +134,7 @@ Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 �
 3. 이미 적용된 migration 파일이 수정되었는지 Git 이력과 비교한다.
 4. checksum mismatch라면 운영에 적용된 파일을 원복하고, 필요한 변경은 새 migration으로 작성한다.
 5. failed row가 있고 실제 schema 변경이 없음을 확인한 경우에만 `flyway repair`를 검토한다.
-   단, V29는 위 전용 절차로 invalid index만 남았음을 확인한 경우 repair 후 재실행할 수 있다.
+   단, V29와 V31은 위 전용 절차로 invalid index만 남았음을 확인한 경우 repair 후 재실행할 수 있다.
 6. schema가 일부 변경된 상태라면 수동 보정 대신 백업 복구를 우선 검토한다.
 
 확인 쿼리:

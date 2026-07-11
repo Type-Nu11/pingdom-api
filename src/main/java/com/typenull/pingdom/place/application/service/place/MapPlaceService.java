@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRespon
 import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -44,7 +45,12 @@ public class MapPlaceService {
         double finalLatitude = baseLatitude;
         double finalLongitude = baseLongitude;
         String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
-        String token = placeCoordinateTokenStore.put(userId, normalizedKakaoPlaceId, finalLatitude, finalLongitude);
+        String token = placeCoordinateTokenStore.putUserPin(
+                userId,
+                normalizedKakaoPlaceId,
+                finalLatitude,
+                finalLongitude
+        );
         return new PlaceCoordinateCreateResponse(token, normalizedKakaoPlaceId);
     }
 
@@ -66,6 +72,9 @@ public class MapPlaceService {
                 kakaoPlaceId,
                 name,
                 address,
+                null,
+                null,
+                null,
                 category,
                 imageUrl,
                 null,
@@ -81,6 +90,9 @@ public class MapPlaceService {
             String kakaoPlaceId,
             String name,
             String address,
+            String roadAddress,
+            String jibunAddress,
+            String postalCode,
             String category,
             String imageUrl,
             String englishName,
@@ -103,13 +115,18 @@ public class MapPlaceService {
             throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
         }
 
+        String normalizedRoadAddress = trimToNull(roadAddress);
+        String normalizedJibunAddress = trimToNull(jibunAddress);
+        String normalizedPostalCode = trimToNull(postalCode);
+        String representativeAddress = representativeAddress(address, normalizedRoadAddress, normalizedJibunAddress);
+
         if (normalizedKakaoPlaceId != null) {
             if (mapPlaceRepository.existsByKakaoPlaceId(normalizedKakaoPlaceId)) {
                 throw new MapException(MapErrorCode.PLACE_ALREADY_EXISTS);
             }
         } else if (mapPlaceRepository.existsByNameAndAddressAndLatitudeAndLongitude(
                 name,
-                address,
+                representativeAddress,
                 entry.latitude(),
                 entry.longitude()
         )) {
@@ -120,10 +137,15 @@ public class MapPlaceService {
         String normalizedEnglishName = trimToNull(englishName);
         String normalizedTouristSummary = trimToNull(touristSummary);
         Set<TouristCategory> normalizedTouristCategories = normalizeTouristCategories(touristCategories);
+        GeocodingSource geocodingSource = entry.geocodingSource();
         MapPlace mapPlace = MapPlace.builder()
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
-                .address(address)
+                .address(representativeAddress)
+                .roadAddress(normalizedRoadAddress)
+                .jibunAddress(normalizedJibunAddress)
+                .postalCode(normalizedPostalCode)
+                .geocodingSource(geocodingSource)
                 .category(PlaceCategoryPolicy.normalize(category))
                 .imageUrl(trimToNull(imageUrl))
                 .latitude(entry.latitude())
@@ -145,6 +167,10 @@ public class MapPlaceService {
                 saved.getName(),
                 saved.getEnglishName(),
                 saved.getAddress(),
+                saved.getRoadAddress(),
+                saved.getJibunAddress(),
+                saved.getPostalCode(),
+                saved.getGeocodingSource(),
                 saved.getTouristSummary(),
                 saved.currentTouristCategories(),
                 saved.getLatitude(),
@@ -154,6 +180,16 @@ public class MapPlaceService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private String representativeAddress(String address, String roadAddress, String jibunAddress) {
+        if (roadAddress != null) {
+            return roadAddress;
+        }
+        if (jibunAddress != null) {
+            return jibunAddress;
+        }
+        return StringUtils.hasText(address) ? address.trim() : address;
     }
 
     private Set<TouristCategory> normalizeTouristCategories(Set<TouristCategory> touristCategories) {

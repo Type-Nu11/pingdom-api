@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.api.dto.place;
 
 import com.typenull.pingdom.place.domain.place.TouristCategory;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Set;
 
@@ -14,6 +15,14 @@ public record PlaceCreateResponse(
         String englishName,
         @Schema(description = "주소", example = "서울특별시 ...")
         String address,
+        @Schema(description = "도로명 주소", nullable = true)
+        String roadAddress,
+        @Schema(description = "지번 주소", nullable = true)
+        String jibunAddress,
+        @Schema(description = "우편번호", nullable = true)
+        String postalCode,
+        @Schema(description = "주소 및 좌표 생성 출처")
+        GeocodingSource geocodingSource,
         @Schema(description = "관광객용 장소 요약", nullable = true)
         String touristSummary,
         @Schema(description = "관광 목적 카테고리")

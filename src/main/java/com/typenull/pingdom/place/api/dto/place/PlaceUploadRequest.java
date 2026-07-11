@@ -23,6 +23,18 @@ public record PlaceUploadRequest(
         @Schema(description = "장소 주소", example = "서울특별시 중구 세종대로 110")
         String address,
 
+        @Size(max = 255, message = "도로명 주소는 255자 이하여야 합니다.")
+        @Schema(description = "도로명 주소(선택)", nullable = true)
+        String roadAddress,
+
+        @Size(max = 255, message = "지번 주소는 255자 이하여야 합니다.")
+        @Schema(description = "지번 주소(선택)", nullable = true)
+        String jibunAddress,
+
+        @Size(max = 20, message = "우편번호는 20자 이하여야 합니다.")
+        @Schema(description = "우편번호(선택)", nullable = true)
+        String postalCode,
+
         @NotBlank(message = "카테고리는 필수입니다.")
         @Size(max = 50, message = "카테고리는 50자 이하여야 합니다.")
         @Schema(description = "장소 카테고리", example = "카페")

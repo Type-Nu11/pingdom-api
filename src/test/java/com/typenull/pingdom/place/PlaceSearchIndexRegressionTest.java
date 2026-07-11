@@ -7,6 +7,7 @@ import java.sql.ResultSet;
 import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
+import java.util.Map;
 import org.flywaydb.core.Flyway;
 import org.flywaydb.core.api.output.MigrateResult;
 import org.junit.jupiter.api.BeforeAll;
@@ -42,6 +43,7 @@ class PlaceSearchIndexRegressionTest {
         MigrateResult result = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
+                .configuration(Map.of("flyway.postgresql.transactional.lock", "false"))
                 .baselineOnMigrate(false)
                 .load()
                 .migrate();
@@ -65,6 +67,20 @@ class PlaceSearchIndexRegressionTest {
         assertThat(planLines)
                 .anyMatch(line -> line.contains("idx_map_place_name_trgm")
                         || line.contains("idx_map_place_address_trgm"));
+    }
+
+    @Test
+    void 정규화_주소_검색은_trgm_인덱스를_사용한다() throws Exception {
+        List<String> planLines = explain("""
+                SELECT mp.map_place_id
+                FROM map_place mp
+                WHERE LOWER(mp.road_address) LIKE '%남강로 626%'
+                ORDER BY mp.map_place_id DESC
+                LIMIT 20
+                """);
+
+        assertThat(planLines)
+                .anyMatch(line -> line.contains("idx_map_place_road_address_trgm"));
     }
 
     @Test
@@ -137,6 +153,7 @@ class PlaceSearchIndexRegressionTest {
                     INSERT INTO map_place (
                         place_name,
                         address,
+                        road_address,
                         category,
                         latitude,
                         longitude,
@@ -146,6 +163,7 @@ class PlaceSearchIndexRegressionTest {
                     )
                     SELECT
                         'seed-place-' || gs,
+                        '경상남도 진주시 일반로 ' || gs,
                         '경상남도 진주시 일반로 ' || gs,
                         CASE WHEN gs % 3 = 0 THEN '카페' ELSE '식당' END,
                         35.0000 + ((gs % 1000) * 0.0003),
@@ -163,6 +181,7 @@ class PlaceSearchIndexRegressionTest {
                     INSERT INTO map_place (
                         place_name,
                         address,
+                        road_address,
                         category,
                         latitude,
                         longitude,
@@ -172,6 +191,7 @@ class PlaceSearchIndexRegressionTest {
                     ) VALUES
                     (
                         '진주성',
+                        '경상남도 진주시 남강로 626',
                         '경상남도 진주시 남강로 626',
                         '관광',
                         35.1894,
@@ -183,6 +203,7 @@ class PlaceSearchIndexRegressionTest {
                     (
                         '남강 카페',
                         '경상남도 진주시 남강로 10',
+                        '경상남도 진주시 남강로 10',
                         '카페',
                         35.1801,
                         128.1078,
@@ -192,6 +213,7 @@ class PlaceSearchIndexRegressionTest {
                     ),
                     (
                         '가까운 장소',
+                        '경상남도 진주시 가까운로 1',
                         '경상남도 진주시 가까운로 1',
                         '카페',
                         35.1802,

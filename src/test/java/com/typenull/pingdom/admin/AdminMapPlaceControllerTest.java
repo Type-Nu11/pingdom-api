@@ -33,6 +33,7 @@ import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
@@ -54,6 +55,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -131,8 +134,12 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
@@ -622,9 +629,53 @@ class AdminMapPlaceControllerTest {
         MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
         assertEquals(35.1796, updatedPlace.getLatitude());
         assertEquals(128.1076, updatedPlace.getLongitude());
+        assertEquals(GeocodingSource.ADMIN, updatedPlace.getGeocodingSource());
         assertNotNull(updatedPlace.getLocation());
         assertEquals(128.1076, updatedPlace.getLocation().getX());
         assertEquals(35.1796, updatedPlace.getLocation().getY());
+    }
+
+    @Test
+    void updatePlaceGeocodingUpdatesNormalizedAddressAndWritesAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("주소 보정 장소")
+                .address("기존 주소")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(90L)
+                .registrant("geocodingOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/geocoding", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "address", "경상남도 진주시 남강로 626",
+                                "roadAddress", " 경상남도 진주시 남강로 626 ",
+                                "jibunAddress", "경상남도 진주시 본성동 500-8",
+                                "postalCode", "52692",
+                                "latitude", 35.1894,
+                                "longitude", 128.0789,
+                                "reason", "관리자 주소 검수"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roadAddress").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.jibunAddress").value("경상남도 진주시 본성동 500-8"))
+                .andExpect(jsonPath("$.postalCode").value("52692"))
+                .andExpect(jsonPath("$.geocodingSource").value("ADMIN"));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(GeocodingSource.ADMIN, updatedPlace.getGeocodingSource());
+        assertEquals("경상남도 진주시 남강로 626", updatedPlace.getRoadAddress());
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        assertEquals(
+                AdminAuditAction.PLACE_GEOCODING_UPDATED,
+                adminAuditLogRepository.findAll().getFirst().getAction()
+        );
+        assertEquals("관리자 주소 검수", adminAuditLogRepository.findAll().getFirst().getReason());
+        assertTrue(outboxEventRepository.findAll().stream()
+                .anyMatch(event -> event.getEventType() == OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED));
     }
 
     @Test

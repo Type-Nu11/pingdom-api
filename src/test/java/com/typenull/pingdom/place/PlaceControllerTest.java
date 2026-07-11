@@ -9,6 +9,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
@@ -232,14 +233,25 @@ class PlaceControllerTest {
 
     @Test
     void listPlacesSearchesByAddressAndCategory() throws Exception {
-        String accessToken = signupAndLogin("readerSearch01");
+        String accessToken = signupAndLogin("readerSearch" + Long.toUnsignedString(System.nanoTime()));
         MapPlace matchingPlace = createMapPlace(
                 "진주성",
-                "경상남도 진주시 남강로 626",
+                "진주성 대표 주소",
                 "관광",
                 35.1894,
                 128.0789
         );
+        matchingPlace.updateGeocoding(
+                "경상남도 진주시 남강로 626",
+                "경상남도 진주시 남강로 626",
+                "경상남도 진주시 본성동 500-8",
+                "52692",
+                matchingPlace.getLatitude(),
+                matchingPlace.getLongitude(),
+                matchingPlace.getLocation(),
+                GeocodingSource.KAKAO
+        );
+        mapPlaceRepository.save(matchingPlace);
         createMapPlace("남강 카페", "경상남도 진주시 남강로 10", "카페", 35.1801, 128.1078);
 
         mockMvc.perform(get("/places")
@@ -249,6 +261,10 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].roadAddress").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].jibunAddress").value("경상남도 진주시 본성동 500-8"))
+                .andExpect(jsonPath("$.places[0].postalCode").value("52692"))
+                .andExpect(jsonPath("$.places[0].geocodingSource").value("KAKAO"))
                 .andExpect(jsonPath("$.places[0].category").value("관광"))
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
@@ -423,23 +439,30 @@ class PlaceControllerTest {
 
     @Test
     void uploadPlaceStoresAndReturnsTouristInformation() throws Exception {
-        String accessToken = signupAndLogin("placeUploaderTourist01");
+        String accessToken = signupAndLogin("placeTourist" + Long.toUnsignedString(System.nanoTime()));
         String coordinateToken = createCoordinateToken(accessToken, "27414320", 35.1805, 128.1082);
 
         mockMvc.perform(post("/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "kakaoPlaceId", "27414320",
-                                "name", "관광 정보 장소",
-                                "address", "경상남도 진주시 관광로 1",
-                                "category", "관광",
-                                "englishName", "  Jinju Tourist Place  ",
-                                "touristSummary", "  외국인 관광객을 위한 장소 요약입니다.  ",
-                                "touristCategories", List.of("K_POP", "EXHIBITION"),
-                                "coordinateToken", coordinateToken
+                        .content(objectMapper.writeValueAsString(Map.ofEntries(
+                                Map.entry("kakaoPlaceId", "27414320"),
+                                Map.entry("name", "관광 정보 장소"),
+                                Map.entry("address", "경상남도 진주시 관광로 1"),
+                                Map.entry("roadAddress", "경상남도 진주시 관광로 1"),
+                                Map.entry("jibunAddress", "경상남도 진주시 관광동 10"),
+                                Map.entry("postalCode", "52692"),
+                                Map.entry("category", "관광"),
+                                Map.entry("englishName", "  Jinju Tourist Place  "),
+                                Map.entry("touristSummary", "  외국인 관광객을 위한 장소 요약입니다.  "),
+                                Map.entry("touristCategories", List.of("K_POP", "EXHIBITION")),
+                                Map.entry("coordinateToken", coordinateToken)
                         ))))
                 .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roadAddress").value("경상남도 진주시 관광로 1"))
+                .andExpect(jsonPath("$.jibunAddress").value("경상남도 진주시 관광동 10"))
+                .andExpect(jsonPath("$.postalCode").value("52692"))
+                .andExpect(jsonPath("$.geocodingSource").value("USER_PIN"))
                 .andExpect(jsonPath("$.englishName").value("Jinju Tourist Place"))
                 .andExpect(jsonPath("$.touristSummary").value("외국인 관광객을 위한 장소 요약입니다."))
                 .andExpect(jsonPath("$.touristCategories", containsInAnyOrder("K_POP", "EXHIBITION")));
@@ -527,6 +550,37 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(touristPlace.getId()))
                 .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"));
+    }
+
+    @Test
+    void autocompleteRanksNormalizedJibunAddressAboveCategoryMatch() throws Exception {
+        String accessToken = signupAndLogin("addressRank" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace jibunAddressPlace = createMapPlace(
+                "지번 주소 장소",
+                "대표 주소",
+                "관광",
+                35.1894,
+                128.0789
+        );
+        jibunAddressPlace.updateGeocoding(
+                "대표 주소",
+                null,
+                "경상남도 진주시 본성동 500-8",
+                "52692",
+                jibunAddressPlace.getLatitude(),
+                jibunAddressPlace.getLongitude(),
+                jibunAddressPlace.getLocation(),
+                GeocodingSource.USER_PIN
+        );
+        mapPlaceRepository.save(jibunAddressPlace);
+        createMapPlace("카테고리 후보", "다른 주소", "본성동", 35.1895, 128.0790);
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "본성동"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].id").value(jibunAddressPlace.getId()));
     }
 
     @Test
