@@ -45,9 +45,12 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
+import com.typenull.pingdom.place.outbox.PlaceRecommendationResyncOutboxPayload;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -59,6 +62,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -87,6 +91,7 @@ public class AdminMapPlaceService {
     private final PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
+    private final OutboxEventPublisher outboxEventPublisher;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
@@ -248,7 +253,7 @@ public class AdminMapPlaceService {
                 GeocodingSource.ADMIN
         );
 
-        placeRecommendationSnapshotResyncService.resyncAll();
+        requestRecommendationResync(mapPlace, "ADMIN_COORDINATE_UPDATED");
 
         log.info(
                 "Admin updated place coordinates. adminUserId={}, placeId={}, beforeLatitude={}, beforeLongitude={}, afterLatitude={}, afterLongitude={}",
@@ -309,7 +314,7 @@ public class AdminMapPlaceService {
                 beforeState,
                 afterState
         );
-        placeRecommendationSnapshotResyncService.resyncAll();
+        requestRecommendationResync(mapPlace, "ADMIN_GEOCODING_UPDATED");
 
         log.info("Admin updated place geocoding. adminUserId={}, placeId={}", adminUserId, placeId);
         return new AdminMapPlaceGeocodingUpdateResponse(
@@ -726,6 +731,20 @@ public class AdminMapPlaceService {
         state.put("latitude", place.getLatitude());
         state.put("longitude", place.getLongitude());
         return state;
+    }
+
+    private void requestRecommendationResync(MapPlace place, String reason) {
+        String deduplicationKey = "PLACE_RECOMMENDATION_RESYNC:%d:%s".formatted(
+                place.getId(),
+                UUID.randomUUID()
+        );
+        outboxEventPublisher.publish(
+                deduplicationKey,
+                OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED,
+                new PlaceRecommendationResyncOutboxPayload(place.getId(), reason),
+                "MAP_PLACE",
+                String.valueOf(place.getId())
+        );
     }
 
     private Map<String, Object> placeMergeBeforeState(MapPlace sourcePlace, MapPlace targetPlace) {

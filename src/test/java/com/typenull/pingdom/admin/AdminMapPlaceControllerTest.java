@@ -55,6 +55,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -132,8 +134,12 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
@@ -668,6 +674,8 @@ class AdminMapPlaceControllerTest {
                 adminAuditLogRepository.findAll().getFirst().getAction()
         );
         assertEquals("관리자 주소 검수", adminAuditLogRepository.findAll().getFirst().getReason());
+        assertTrue(outboxEventRepository.findAll().stream()
+                .anyMatch(event -> event.getEventType() == OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED));
     }
 
     @Test
