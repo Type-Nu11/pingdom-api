@@ -462,7 +462,7 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.roadAddress").value("경상남도 진주시 관광로 1"))
                 .andExpect(jsonPath("$.jibunAddress").value("경상남도 진주시 관광동 10"))
                 .andExpect(jsonPath("$.postalCode").value("52692"))
-                .andExpect(jsonPath("$.geocodingSource").value("KAKAO"))
+                .andExpect(jsonPath("$.geocodingSource").value("USER_PIN"))
                 .andExpect(jsonPath("$.englishName").value("Jinju Tourist Place"))
                 .andExpect(jsonPath("$.touristSummary").value("외국인 관광객을 위한 장소 요약입니다."))
                 .andExpect(jsonPath("$.touristCategories", containsInAnyOrder("K_POP", "EXHIBITION")));

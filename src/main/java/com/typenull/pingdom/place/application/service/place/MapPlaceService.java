@@ -45,7 +45,12 @@ public class MapPlaceService {
         double finalLatitude = baseLatitude;
         double finalLongitude = baseLongitude;
         String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
-        String token = placeCoordinateTokenStore.put(userId, normalizedKakaoPlaceId, finalLatitude, finalLongitude);
+        String token = placeCoordinateTokenStore.putUserPin(
+                userId,
+                normalizedKakaoPlaceId,
+                finalLatitude,
+                finalLongitude
+        );
         return new PlaceCoordinateCreateResponse(token, normalizedKakaoPlaceId);
     }
 
@@ -132,9 +137,7 @@ public class MapPlaceService {
         String normalizedEnglishName = trimToNull(englishName);
         String normalizedTouristSummary = trimToNull(touristSummary);
         Set<TouristCategory> normalizedTouristCategories = normalizeTouristCategories(touristCategories);
-        GeocodingSource geocodingSource = normalizedKakaoPlaceId == null
-                ? GeocodingSource.USER_PIN
-                : GeocodingSource.KAKAO;
+        GeocodingSource geocodingSource = entry.geocodingSource();
         MapPlace mapPlace = MapPlace.builder()
                 .kakaoPlaceId(normalizedKakaoPlaceId)
                 .name(name)
