@@ -553,6 +553,37 @@ class PlaceControllerTest {
     }
 
     @Test
+    void autocompleteRanksNormalizedJibunAddressAboveCategoryMatch() throws Exception {
+        String accessToken = signupAndLogin("addressRank" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace jibunAddressPlace = createMapPlace(
+                "지번 주소 장소",
+                "대표 주소",
+                "관광",
+                35.1894,
+                128.0789
+        );
+        jibunAddressPlace.updateGeocoding(
+                "대표 주소",
+                null,
+                "경상남도 진주시 본성동 500-8",
+                "52692",
+                jibunAddressPlace.getLatitude(),
+                jibunAddressPlace.getLongitude(),
+                jibunAddressPlace.getLocation(),
+                GeocodingSource.USER_PIN
+        );
+        mapPlaceRepository.save(jibunAddressPlace);
+        createMapPlace("카테고리 후보", "다른 주소", "본성동", 35.1895, 128.0790);
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "본성동"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].id").value(jibunAddressPlace.getId()));
+    }
+
+    @Test
     void createCoordinatesAllowsMissingKakaoPlaceId() throws Exception {
         String accessToken = signupAndLogin("placeUploaderNoKakao01");
 

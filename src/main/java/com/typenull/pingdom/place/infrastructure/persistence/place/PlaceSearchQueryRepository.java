@@ -190,6 +190,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.roadAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.jibunAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.category) LIKE LOWER(CONCAT('%', :keyword, '%'))
             """)
     List<MapPlace> findAutocompleteCandidates(@Param("keyword") String keyword, Pageable pageable);
 
