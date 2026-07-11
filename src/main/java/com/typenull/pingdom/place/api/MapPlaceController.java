@@ -129,8 +129,14 @@ public class MapPlaceController {
                 request.kakaoPlaceId(),
                 request.name(),
                 request.address(),
+                request.roadAddress(),
+                request.jibunAddress(),
+                request.postalCode(),
                 request.category(),
                 request.imageUrl(),
+                request.englishName(),
+                request.touristSummary(),
+                request.touristCategories(),
                 request.coordinateToken(),
                 user.userId()
         );

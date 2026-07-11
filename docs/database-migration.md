@@ -84,6 +84,47 @@ HAVING COUNT(*) > 1;
 CREATE EXTENSION IF NOT EXISTS pg_trgm;
 ```
 
+`V28`은 관광객 탐색용 영문명과 요약을 nullable column으로 추가하고, 다중 관광 카테고리를
+별도 테이블로 확장한다. 기존 `category`는 자유 문자열 계약을 유지하며 기존 장소를 임의로
+관광 카테고리에 backfill하지 않는다. 따라서 적용 후 기존 행의 신규 column이 `NULL`이고
+`map_place_tourist_category`와 `map_place_tourist_guard`에 자동 생성된 행이 없는지 확인한다.
+신규 앱은 영문명·요약·관광 카테고리 중 하나라도 저장할 때 내부 guard row를 함께 관리한다.
+guard와 관광 카테고리 FK는 `ON DELETE NO ACTION`으로 두므로 구버전 앱 롤백 후 신규 정보를
+모르는 삭제·병합은 데이터를 연쇄 삭제하지 않고 안전하게 실패한다. 신규 앱은 JPA collection
+정리 후 장소를 삭제하므로 정상 삭제·병합·복구 흐름은 유지된다.
+
+`V29`는 영문명 검색용 trigram index를 `CONCURRENTLY` 생성한다. Flyway PostgreSQL parser가
+이 migration을 non-transactional statement로 실행하므로 `map_place` 쓰기를 장시간 차단하지
+않는다. 실패한 concurrent build가 남긴 invalid index는 migration 시작 시 제거해 재실행할 수
+있게 한다.
+
+`V29` 실패는 일반 transactional migration과 다르게 index artifact가 남을 수 있으므로 다음
+순서로 복구한다.
+
+1. `flyway_schema_history`에서 실패 version이 `29`인지 확인한다.
+2. 아래 쿼리로 index 존재 여부와 `indisvalid`, `indisready`를 확인한다.
+3. V29가 영문명 index 외의 데이터를 변경하지 않았음을 확인한 뒤 실패 history를 `repair`한다.
+4. migration을 재실행한다. V29가 기존 valid/invalid index를 concurrent drop한 뒤 다시 생성한다.
+5. `indisvalid = true`, `indisready = true`를 확인한 후 배포를 계속한다.
+
+```sql
+SELECT c.relname, i.indisvalid, i.indisready
+FROM pg_class c
+JOIN pg_index i ON i.indexrelid = c.oid
+WHERE c.relname = 'idx_map_place_english_name_trgm';
+```
+
+`V30`은 기존 `address`를 호환용 대표 주소로 유지하면서 `road_address`, `jibun_address`,
+`postal_code`, `geocoding_source`를 추가한다. 기존 주소 문자열은 임의로 파싱하지 않고 신규
+주소 필드는 `NULL`, 출처는 `LEGACY`로 backfill한다. 신규 애플리케이션은 도로명 주소, 지번
+주소, 기존 대표 주소 순서로 대표 주소를 결정한다. 출처 값과 null 불가 제약은 `NOT VALID`로
+추가한 뒤 검증하고 `NOT NULL`을 설정해 장시간의 강한 table lock을 피한다.
+
+`V31`은 정규화 주소 검색용 trigram index를 `CONCURRENTLY` 생성한다. 실패 시 V29와 동일하게
+invalid index 여부를 확인한 뒤 실패 history를 `repair`하고 재실행한다. 확인 대상 index는
+`idx_map_place_road_address_trgm`, `idx_map_place_jibun_address_trgm`이다. migration은
+`executeInTransaction=false`로 실행하며 PostgreSQL transactional advisory lock도 비활성화한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.
@@ -93,6 +134,7 @@ Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 �
 3. 이미 적용된 migration 파일이 수정되었는지 Git 이력과 비교한다.
 4. checksum mismatch라면 운영에 적용된 파일을 원복하고, 필요한 변경은 새 migration으로 작성한다.
 5. failed row가 있고 실제 schema 변경이 없음을 확인한 경우에만 `flyway repair`를 검토한다.
+   단, V29와 V31은 위 전용 절차로 invalid index만 남았음을 확인한 경우 repair 후 재실행할 수 있다.
 6. schema가 일부 변경된 상태라면 수동 보정 대신 백업 복구를 우선 검토한다.
 
 확인 쿼리:

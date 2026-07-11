@@ -10,8 +10,12 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHi
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficPolicyItem;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateItem;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficUpdateRequest;
@@ -30,7 +34,9 @@ import com.typenull.pingdom.moderation.infrastructure.persistence.AdminRecommend
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
@@ -39,18 +45,24 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
+import com.typenull.pingdom.place.outbox.PlaceRecommendationResyncOutboxPayload;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
+import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -79,6 +91,7 @@ public class AdminMapPlaceService {
     private final PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
+    private final OutboxEventPublisher outboxEventPublisher;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
@@ -229,13 +242,18 @@ public class AdminMapPlaceService {
         Double beforeLatitude = mapPlace.getLatitude();
         Double beforeLongitude = mapPlace.getLongitude();
 
-        mapPlace.updateCoordinates(
+        mapPlace.updateGeocoding(
+                mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
                 request.latitude(),
                 request.longitude(),
-                toPoint(request.latitude(), request.longitude())
+                toPoint(request.latitude(), request.longitude()),
+                GeocodingSource.ADMIN
         );
 
-        placeRecommendationSnapshotResyncService.resyncAll();
+        requestRecommendationResync(mapPlace, "ADMIN_COORDINATE_UPDATED");
 
         log.info(
                 "Admin updated place coordinates. adminUserId={}, placeId={}, beforeLatitude={}, beforeLongitude={}, afterLatitude={}, afterLongitude={}",
@@ -252,6 +270,63 @@ public class AdminMapPlaceService {
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 "장소 좌표를 수정했습니다."
+        );
+    }
+
+    @Transactional
+    public AdminMapPlaceGeocodingUpdateResponse updatePlaceGeocoding(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceGeocodingUpdateRequest request
+    ) {
+        if (request == null || !StringUtils.hasText(request.address())
+                || request.latitude() == null || request.longitude() == null) {
+            throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = geocodingState(mapPlace);
+        String normalizedRoadAddress = trimToNull(request.roadAddress());
+        String normalizedJibunAddress = trimToNull(request.jibunAddress());
+        String representativeAddress = normalizedRoadAddress != null
+                ? normalizedRoadAddress
+                : normalizedJibunAddress != null ? normalizedJibunAddress : request.address().trim();
+
+        mapPlace.updateGeocoding(
+                representativeAddress,
+                normalizedRoadAddress,
+                normalizedJibunAddress,
+                trimToNull(request.postalCode()),
+                request.latitude(),
+                request.longitude(),
+                toPoint(request.latitude(), request.longitude()),
+                GeocodingSource.ADMIN
+        );
+        Map<String, Object> afterState = geocodingState(mapPlace);
+
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_GEOCODING_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+        requestRecommendationResync(mapPlace, "ADMIN_GEOCODING_UPDATED");
+
+        log.info("Admin updated place geocoding. adminUserId={}, placeId={}", adminUserId, placeId);
+        return new AdminMapPlaceGeocodingUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude(),
+                "장소 주소와 좌표를 수정했습니다."
         );
     }
 
@@ -305,6 +380,57 @@ public class AdminMapPlaceService {
                 mapPlace.getId(),
                 mapPlace.getKakaoPlaceId(),
                 "장소 Kakao place id를 수정했습니다."
+        );
+    }
+
+    @Transactional
+    public AdminMapPlaceTouristInfoUpdateResponse updatePlaceTouristInfo(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceTouristInfoUpdateRequest request
+    ) {
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+
+        String normalizedEnglishName = trimToNull(request.englishName());
+        String normalizedTouristSummary = trimToNull(request.touristSummary());
+        Set<TouristCategory> normalizedTouristCategories = normalizeTouristCategories(request.touristCategories());
+        Map<String, Object> beforeState = touristInfoState(mapPlace);
+        int beforeTouristCategoryCount = mapPlace.currentTouristCategories().size();
+
+        mapPlace.updateTouristInformation(
+                normalizedEnglishName,
+                normalizedTouristSummary,
+                normalizedTouristCategories
+        );
+
+        Map<String, Object> afterState = touristInfoState(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_TOURIST_INFO_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+
+        log.info(
+                "Admin updated place tourist information. adminUserId={}, placeId={}, englishNameChanged={}, touristSummaryChanged={}, beforeTouristCategoryCount={}, afterTouristCategoryCount={}",
+                adminUserId,
+                placeId,
+                !Objects.equals(beforeState.get("englishName"), normalizedEnglishName),
+                !Objects.equals(beforeState.get("touristSummary"), normalizedTouristSummary),
+                beforeTouristCategoryCount,
+                normalizedTouristCategories.size()
+        );
+
+        return new AdminMapPlaceTouristInfoUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getEnglishName(),
+                mapPlace.getTouristSummary(),
+                mapPlace.currentTouristCategories(),
+                "장소 관광 정보를 수정했습니다."
         );
     }
 
@@ -578,7 +704,14 @@ public class AdminMapPlaceService {
         state.put("placeId", place.getId());
         state.put("name", place.getName());
         state.put("address", place.getAddress());
+        state.put("roadAddress", place.getRoadAddress());
+        state.put("jibunAddress", place.getJibunAddress());
+        state.put("postalCode", place.getPostalCode());
+        state.put("geocodingSource", place.getGeocodingSource());
         state.put("category", place.getCategory());
+        state.put("englishName", place.getEnglishName());
+        state.put("touristSummary", place.getTouristSummary());
+        state.put("touristCategories", normalizeTouristCategories(place.currentTouristCategories()));
         state.put("kakaoPlaceId", place.getKakaoPlaceId());
         state.put("latitude", place.getLatitude());
         state.put("longitude", place.getLongitude());
@@ -586,6 +719,32 @@ public class AdminMapPlaceService {
         state.put("registrant", place.getRegistrant());
         state.put("photoCount", place.currentPhotoCount());
         return state;
+    }
+
+    private Map<String, Object> geocodingState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("address", place.getAddress());
+        state.put("roadAddress", place.getRoadAddress());
+        state.put("jibunAddress", place.getJibunAddress());
+        state.put("postalCode", place.getPostalCode());
+        state.put("geocodingSource", place.getGeocodingSource());
+        state.put("latitude", place.getLatitude());
+        state.put("longitude", place.getLongitude());
+        return state;
+    }
+
+    private void requestRecommendationResync(MapPlace place, String reason) {
+        String deduplicationKey = "PLACE_RECOMMENDATION_RESYNC:%d:%s".formatted(
+                place.getId(),
+                UUID.randomUUID()
+        );
+        outboxEventPublisher.publish(
+                deduplicationKey,
+                OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED,
+                new PlaceRecommendationResyncOutboxPayload(place.getId(), reason),
+                "MAP_PLACE",
+                String.valueOf(place.getId())
+        );
     }
 
     private Map<String, Object> placeMergeBeforeState(MapPlace sourcePlace, MapPlace targetPlace) {
@@ -634,6 +793,23 @@ public class AdminMapPlaceService {
 
     private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
+    }
+
+    private Set<TouristCategory> normalizeTouristCategories(Set<TouristCategory> touristCategories) {
+        Set<TouristCategory> normalizedCategories = EnumSet.noneOf(TouristCategory.class);
+        if (touristCategories != null) {
+            normalizedCategories.addAll(touristCategories);
+        }
+        return normalizedCategories;
+    }
+
+    private Map<String, Object> touristInfoState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("englishName", place.getEnglishName());
+        state.put("touristSummary", place.getTouristSummary());
+        state.put("touristCategories", normalizeTouristCategories(place.currentTouristCategories()));
+        return state;
     }
 
     private void validateRecommendationTrafficRequest(AdminPlaceRecommendationTrafficUpdateRequest request) {
@@ -759,6 +935,10 @@ public class AdminMapPlaceService {
                 place.getId(),
                 place.getName(),
                 place.getAddress(),
+                place.getRoadAddress(),
+                place.getJibunAddress(),
+                place.getPostalCode(),
+                place.getGeocodingSource(),
                 place.getCategory(),
                 place.getImageUrl(),
                 place.getKakaoPlaceId(),
@@ -766,7 +946,10 @@ public class AdminMapPlaceService {
                 place.getLongitude(),
                 place.getUserId(),
                 place.getRegistrant(),
-                place.currentPhotoCount()
+                place.currentPhotoCount(),
+                place.getEnglishName(),
+                place.getTouristSummary(),
+                normalizeTouristCategories(place.currentTouristCategories())
         );
     }
 
@@ -778,13 +961,20 @@ public class AdminMapPlaceService {
         jdbcTemplate.update(
                 """
                 INSERT INTO map_place (
-                    map_place_id, place_name, address, category, image_url, kakao_place_id,
-                    latitude, longitude, user_id, registrant, photo_count
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    map_place_id, place_name, address, road_address, jibun_address, postal_code, geocoding_source,
+                    category, image_url, kakao_place_id, latitude, longitude, user_id, registrant,
+                    photo_count, english_name, tourist_summary
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sourceSnapshot.id(),
                 sourceSnapshot.name(),
                 sourceSnapshot.address(),
+                sourceSnapshot.roadAddress(),
+                sourceSnapshot.jibunAddress(),
+                sourceSnapshot.postalCode(),
+                (sourceSnapshot.geocodingSource() == null
+                        ? GeocodingSource.LEGACY
+                        : sourceSnapshot.geocodingSource()).name(),
                 sourceSnapshot.category(),
                 sourceSnapshot.imageUrl(),
                 sourceSnapshot.kakaoPlaceId(),
@@ -792,7 +982,9 @@ public class AdminMapPlaceService {
                 sourceSnapshot.longitude(),
                 sourceSnapshot.userId(),
                 sourceSnapshot.registrant(),
-                sourceSnapshot.photoCount()
+                sourceSnapshot.photoCount() == null ? 0L : sourceSnapshot.photoCount(),
+                sourceSnapshot.englishName(),
+                sourceSnapshot.touristSummary()
         );
         MapPlace restoredSourcePlace = mapPlaceRepository.findById(sourceSnapshot.id())
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_MERGE_RESTORE_NOT_ALLOWED));
@@ -800,6 +992,11 @@ public class AdminMapPlaceService {
                 sourceSnapshot.latitude(),
                 sourceSnapshot.longitude(),
                 toPoint(sourceSnapshot.latitude(), sourceSnapshot.longitude())
+        );
+        restoredSourcePlace.updateTouristInformation(
+                sourceSnapshot.englishName(),
+                sourceSnapshot.touristSummary(),
+                normalizeTouristCategories(sourceSnapshot.touristCategories())
         );
         return restoredSourcePlace;
     }
@@ -959,6 +1156,10 @@ public class AdminMapPlaceService {
             Long id,
             String name,
             String address,
+            String roadAddress,
+            String jibunAddress,
+            String postalCode,
+            GeocodingSource geocodingSource,
             String category,
             String imageUrl,
             String kakaoPlaceId,
@@ -966,7 +1167,10 @@ public class AdminMapPlaceService {
             Double longitude,
             Long userId,
             String registrant,
-            Long photoCount
+            Long photoCount,
+            String englishName,
+            String touristSummary,
+            Set<TouristCategory> touristCategories
     ) {
     }
 

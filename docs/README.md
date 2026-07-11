@@ -70,6 +70,10 @@
 | Test | Spring Boot Test, JUnit 5, Testcontainers, H2 |
 | Build & Deploy | Gradle, Docker, Docker Compose, GitHub Actions |
 
+## Reverse Proxy Header
+
+`X-Forwarded-For`와 `X-Forwarded-Proto`는 직접 연결된 프록시가 `TRUSTED_PROXY_IPS_REGEX`에 일치할 때만 해석합니다. 기본값은 loopback 주소뿐이므로, 운영 로드밸런서 또는 리버스 프록시의 IP 대역을 Tomcat 정규식으로 반드시 설정해야 합니다.
+
 ## OpenAPI Contract
 ## OpenAPI Export
 

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.support;
 
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;
@@ -17,9 +18,33 @@ public class PlaceCoordinateTokenStore {
     private final Clock clock = Clock.systemUTC();
     private final Map<String, Entry> store = new ConcurrentHashMap<>();
 
-    public String put(long userId, String kakaoPlaceId, double latitude, double longitude) {
+    public String putUserPin(long userId, String kakaoPlaceId, double latitude, double longitude) {
+        return put(userId, kakaoPlaceId, latitude, longitude, GeocodingSource.USER_PIN);
+    }
+
+    public String putVerifiedKakao(long userId, String kakaoPlaceId, double latitude, double longitude) {
+        if (kakaoPlaceId == null || kakaoPlaceId.isBlank()) {
+            throw new IllegalArgumentException("검증된 Kakao 장소 ID는 필수입니다.");
+        }
+        return put(userId, kakaoPlaceId.trim(), latitude, longitude, GeocodingSource.KAKAO);
+    }
+
+    private String put(
+            long userId,
+            String kakaoPlaceId,
+            double latitude,
+            double longitude,
+            GeocodingSource geocodingSource
+    ) {
         String token = UUID.randomUUID().toString();
-        store.put(token, new Entry(userId, kakaoPlaceId, latitude, longitude, Instant.now(clock).plus(TTL)));
+        store.put(token, new Entry(
+                userId,
+                kakaoPlaceId,
+                latitude,
+                longitude,
+                geocodingSource,
+                Instant.now(clock).plus(TTL)
+        ));
         return token;
     }
 
@@ -64,6 +89,13 @@ public class PlaceCoordinateTokenStore {
         store.entrySet().removeIf(entry -> now.isAfter(entry.getValue().expiresAt()));
     }
 
-    public record Entry(long userId, String kakaoPlaceId, double latitude, double longitude, Instant expiresAt) {
+    public record Entry(
+            long userId,
+            String kakaoPlaceId,
+            double latitude,
+            double longitude,
+            GeocodingSource geocodingSource,
+            Instant expiresAt
+    ) {
     }
 }

@@ -7,13 +7,19 @@ import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -68,9 +74,15 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                     category,
                     pageable
             );
+            Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
+                    placePage.getContent().stream().map(MapPlace::getId).toList()
+            );
             List<PlaceListItem> places = placePage.getContent()
                     .stream()
-                    .map(this::toListItem)
+                    .map(place -> toListItem(
+                            place,
+                            touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                    ))
                     .toList();
 
             return PlaceListResponse.of(
@@ -98,9 +110,15 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 pageable
         );
 
+        Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
+                placePage.getContent().stream().map(PlaceSearchProjection::getId).toList()
+        );
         List<PlaceListItem> places = placePage.getContent()
                 .stream()
-                .map(this::toListItem)
+                .map(place -> toListItem(
+                        place,
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                ))
                 .toList();
 
         return PlaceListResponse.of(
@@ -156,7 +174,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         return new PlaceDetailResponse(
                 mapPlace.getId(),
                 mapPlace.getName(),
+                mapPlace.getEnglishName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
+                mapPlace.getTouristSummary(),
+                mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant()
@@ -175,8 +200,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
 
         Page<MapPlace> placePage = placeSearchQueryRepository.findBookmarkedPlacesByUserId(userId, pageable);
+        Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
+                placePage.getContent().stream().map(MapPlace::getId).toList()
+        );
         List<PlaceListItem> places = placePage.getContent().stream()
-                .map(this::toListItem)
+                .map(place -> toListItem(
+                        place,
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                ))
                 .toList();
 
         return PlaceListResponse.of(
@@ -188,25 +219,42 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
-    private PlaceListItem toListItem(MapPlace mapPlace) {
+    private PlaceListItem toListItem(MapPlace mapPlace, Set<TouristCategory> touristCategories) {
         return new PlaceListItem(
                 mapPlace.getId(),
                 mapPlace.getName(),
+                mapPlace.getEnglishName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 mapPlace.getCategory(),
+                mapPlace.getTouristSummary(),
+                touristCategories,
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 null
         );
     }
 
-    private PlaceListItem toListItem(PlaceSearchProjection projection) {
+    private PlaceListItem toListItem(
+            PlaceSearchProjection projection,
+            Set<TouristCategory> touristCategories
+    ) {
         Double distanceMeters = projection.getDistanceMeters();
         return new PlaceListItem(
                 projection.getId(),
                 projection.getName(),
+                projection.getEnglishName(),
                 projection.getAddress(),
+                projection.getRoadAddress(),
+                projection.getJibunAddress(),
+                projection.getPostalCode(),
+                projection.getGeocodingSource(),
                 projection.getCategory(),
+                projection.getTouristSummary(),
+                touristCategories,
                 projection.getLatitude(),
                 projection.getLongitude(),
                 distanceMeters == null ? null : Math.round(distanceMeters)
@@ -241,7 +289,12 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         return new PlaceAutocompleteItem(
                 mapPlace.getId(),
                 mapPlace.getName(),
+                mapPlace.getEnglishName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 mapPlace.getCategory(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
@@ -307,25 +360,63 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private int autocompleteScore(MapPlace mapPlace, String keyword) {
         String normalizedKeyword = keyword.toLowerCase(Locale.ROOT);
         String name = mapPlace.getName().toLowerCase(Locale.ROOT);
+        String englishName = mapPlace.getEnglishName() == null
+                ? ""
+                : mapPlace.getEnglishName().toLowerCase(Locale.ROOT);
         String address = mapPlace.getAddress().toLowerCase(Locale.ROOT);
+        String roadAddress = normalizedLowercase(mapPlace.getRoadAddress());
+        String jibunAddress = normalizedLowercase(mapPlace.getJibunAddress());
         String category = mapPlace.getCategory() == null ? "" : mapPlace.getCategory().toLowerCase(Locale.ROOT);
 
         if (name.equals(normalizedKeyword)) {
-            return 400;
+            return 600;
+        }
+        if (englishName.equals(normalizedKeyword)) {
+            return 550;
         }
         if (name.startsWith(normalizedKeyword)) {
-            return 300;
+            return 500;
+        }
+        if (englishName.startsWith(normalizedKeyword)) {
+            return 450;
         }
         if (name.contains(normalizedKeyword)) {
+            return 400;
+        }
+        if (englishName.contains(normalizedKeyword)) {
+            return 350;
+        }
+        if (address.contains(normalizedKeyword)
+                || roadAddress.contains(normalizedKeyword)
+                || jibunAddress.contains(normalizedKeyword)) {
             return 200;
         }
-        if (address.contains(normalizedKeyword)) {
+        if (category.contains(normalizedKeyword)) {
             return 100;
         }
-        if (category.contains(normalizedKeyword)) {
-            return 50;
-        }
         return 0;
+    }
+
+    private String normalizedLowercase(String value) {
+        return value == null ? "" : value.toLowerCase(Locale.ROOT);
+    }
+
+    private Map<Long, Set<TouristCategory>> loadTouristCategories(List<Long> placeIds) {
+        if (placeIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Set<TouristCategory>> categoriesByPlaceId = new HashMap<>();
+        for (PlaceTouristCategoryProjection projection
+                : placeSearchQueryRepository.findTouristCategoriesByPlaceIds(placeIds)) {
+            categoriesByPlaceId
+                    .computeIfAbsent(
+                            projection.getPlaceId(),
+                            ignored -> EnumSet.noneOf(TouristCategory.class)
+                    )
+                    .add(projection.getTouristCategory());
+        }
+        return categoriesByPlaceId;
     }
 
     private Double calculateDistanceMeters(Double latitude, Double longitude, MapPlace mapPlace) {

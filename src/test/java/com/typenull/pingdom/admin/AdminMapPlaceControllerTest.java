@@ -1,5 +1,6 @@
 package com.typenull.pingdom.admin;
 
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,12 +10,14 @@ import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertInstanceOf;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
+import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 import static org.hamcrest.Matchers.hasSize;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
@@ -30,6 +33,8 @@ import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
@@ -50,10 +55,13 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -61,6 +69,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
@@ -85,6 +94,9 @@ class AdminMapPlaceControllerTest {
 
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private MapBookmarkRepository mapBookmarkRepository;
@@ -122,8 +134,12 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
@@ -145,8 +161,11 @@ class AdminMapPlaceControllerTest {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
                 .name("진주성")
+                .englishName("Jinju Castle")
                 .address("경상남도 진주시 남강로 626")
                 .category("관광")
+                .touristSummary("남강을 내려다보는 역사 유적")
+                .touristCategories(Set.of(TouristCategory.EXHIBITION, TouristCategory.OTHER))
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(11L)
@@ -155,6 +174,7 @@ class AdminMapPlaceControllerTest {
 
         mockMvc.perform(get("/admin/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "jinju castle")
                         .param("page", "1")
                         .param("limit", "20"))
                 .andExpect(status().isOk())
@@ -162,6 +182,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 남강로 626"))
                 .andExpect(jsonPath("$.places[0].category").value("관광"))
                 .andExpect(jsonPath("$.places[0].categoryName").value("관광"))
+                .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"))
+                .andExpect(jsonPath("$.places[0].touristSummary").value("남강을 내려다보는 역사 유적"))
+                .andExpect(jsonPath("$.places[0].touristCategories", containsInAnyOrder("EXHIBITION", "OTHER")))
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.limit").value(20))
                 .andExpect(jsonPath("$.totalCount").value(1))
@@ -411,8 +434,11 @@ class AdminMapPlaceControllerTest {
 
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("남강")
+                .englishName("Nam River")
                 .address("경상남도 진주시 남강변")
                 .category("풍경")
+                .touristSummary("진주의 대표 강변 산책 장소")
+                .touristCategories(Set.of(TouristCategory.NIGHTLIFE))
                 .latitude(35.1801)
                 .longitude(128.1078)
                 .userId(placeOwner.getId())
@@ -437,6 +463,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.name").value("남강"))
                 .andExpect(jsonPath("$.category").value("풍경"))
                 .andExpect(jsonPath("$.categoryName").value("풍경"))
+                .andExpect(jsonPath("$.englishName").value("Nam River"))
+                .andExpect(jsonPath("$.touristSummary").value("진주의 대표 강변 산책 장소"))
+                .andExpect(jsonPath("$.touristCategories[0]").value("NIGHTLIFE"))
                 .andExpect(jsonPath("$.username").value("placeOwner"))
                 .andExpect(jsonPath("$.sortParam").value(SortParam.LATEST.name()))
                 .andExpect(jsonPath("$.postCount").value(1))
@@ -513,7 +542,7 @@ class AdminMapPlaceControllerTest {
     void deletePlaceDeletesLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
 
-        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+        MapPlace mapPlace = MapPlace.builder()
                 .name("삭제 대상 장소")
                 .address("경상남도 진주시 삭제로 1")
                 .latitude(35.1801)
@@ -521,7 +550,15 @@ class AdminMapPlaceControllerTest {
                 .userId(94L)
                 .registrant("deleteOwner")
                 .photoCount(2L)
-                .build());
+                .build();
+        mapPlace.updateTouristInformation("Delete Target Place", null, Set.of());
+        mapPlace = mapPlaceRepository.saveAndFlush(mapPlace);
+
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_tourist_guard WHERE map_place_id = ?",
+                Integer.class,
+                mapPlace.getId()
+        ));
 
         MapImage firstPost = mapImageRepository.save(MapImage.builder()
                 .imageUrl("https://example.com/delete-first.jpg")
@@ -547,6 +584,11 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isNoContent());
 
         assertFalse(mapPlaceRepository.existsById(mapPlace.getId()));
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_tourist_guard WHERE map_place_id = ?",
+                Integer.class,
+                mapPlace.getId()
+        ));
         assertFalse(mapImageRepository.existsById(firstPost.getId()));
         assertFalse(mapImageRepository.existsById(secondPost.getId()));
         assertEquals(0L, mapImageRepository.countByMapPlace_Id(mapPlace.getId()));
@@ -587,9 +629,53 @@ class AdminMapPlaceControllerTest {
         MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
         assertEquals(35.1796, updatedPlace.getLatitude());
         assertEquals(128.1076, updatedPlace.getLongitude());
+        assertEquals(GeocodingSource.ADMIN, updatedPlace.getGeocodingSource());
         assertNotNull(updatedPlace.getLocation());
         assertEquals(128.1076, updatedPlace.getLocation().getX());
         assertEquals(35.1796, updatedPlace.getLocation().getY());
+    }
+
+    @Test
+    void updatePlaceGeocodingUpdatesNormalizedAddressAndWritesAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("주소 보정 장소")
+                .address("기존 주소")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(90L)
+                .registrant("geocodingOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/geocoding", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "address", "경상남도 진주시 남강로 626",
+                                "roadAddress", " 경상남도 진주시 남강로 626 ",
+                                "jibunAddress", "경상남도 진주시 본성동 500-8",
+                                "postalCode", "52692",
+                                "latitude", 35.1894,
+                                "longitude", 128.0789,
+                                "reason", "관리자 주소 검수"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.roadAddress").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.jibunAddress").value("경상남도 진주시 본성동 500-8"))
+                .andExpect(jsonPath("$.postalCode").value("52692"))
+                .andExpect(jsonPath("$.geocodingSource").value("ADMIN"));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(GeocodingSource.ADMIN, updatedPlace.getGeocodingSource());
+        assertEquals("경상남도 진주시 남강로 626", updatedPlace.getRoadAddress());
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        assertEquals(
+                AdminAuditAction.PLACE_GEOCODING_UPDATED,
+                adminAuditLogRepository.findAll().getFirst().getAction()
+        );
+        assertEquals("관리자 주소 검수", adminAuditLogRepository.findAll().getFirst().getReason());
+        assertTrue(outboxEventRepository.findAll().stream()
+                .anyMatch(event -> event.getEventType() == OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED));
     }
 
     @Test
@@ -653,6 +739,150 @@ class AdminMapPlaceControllerTest {
                         ))))
                 .andExpect(status().isConflict())
                 .andExpect(jsonPath("$.code").value("PLACE_KAKAO_PLACE_ID_CONFLICT"));
+    }
+
+    @Test
+    void updatePlaceTouristInfoNormalizesValuesAndRecordsAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("관광 정보 수정 장소")
+                .englishName("Old tourist name")
+                .address("경상남도 진주시 관광로 1")
+                .touristSummary("기존 관광 요약")
+                .touristCategories(Set.of(TouristCategory.OTHER))
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(95L)
+                .registrant("touristInfoOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/tourist-info", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "englishName", "  Jinju Tourist Spot  ",
+                                "touristSummary", "  관광객이 방문하기 좋은 장소  ",
+                                "touristCategories", List.of("K_POP", "CAFE"),
+                                "reason", "  관광 정보 최신화  "
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.englishName").value("Jinju Tourist Spot"))
+                .andExpect(jsonPath("$.touristSummary").value("관광객이 방문하기 좋은 장소"))
+                .andExpect(jsonPath("$.touristCategories", containsInAnyOrder("K_POP", "CAFE")))
+                .andExpect(jsonPath("$.message").value("장소 관광 정보를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals("Jinju Tourist Spot", updatedPlace.getEnglishName());
+        assertEquals("관광객이 방문하기 좋은 장소", updatedPlace.getTouristSummary());
+
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        var auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.PLACE_TOURIST_INFO_UPDATED, auditLog.getAction());
+        assertEquals(AdminAuditTargetType.PLACE, auditLog.getTargetType());
+        assertEquals(String.valueOf(mapPlace.getId()), auditLog.getTargetId());
+        assertEquals("관광 정보 최신화", auditLog.getReason());
+        assertTrue(auditLog.getBeforeState().contains("\"englishName\":\"Old tourist name\""));
+        assertTrue(auditLog.getBeforeState().contains("\"touristCategories\":[\"OTHER\"]"));
+        assertTrue(auditLog.getAfterState().contains("\"englishName\":\"Jinju Tourist Spot\""));
+        assertTrue(auditLog.getAfterState().contains("\"touristCategories\":[\"K_POP\",\"CAFE\"]"));
+    }
+
+    @Test
+    void updatePlaceTouristInfoClearsOptionalValuesWhenOmitted() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace mapPlace = MapPlace.builder()
+                .name("관광 정보 초기화 장소")
+                .address("경상남도 진주시 관광로 2")
+                .latitude(35.1805)
+                .longitude(128.1082)
+                .userId(96L)
+                .registrant("touristInfoOwner")
+                .build();
+        mapPlace.updateTouristInformation(
+                "Tourist Place",
+                "초기화할 관광 요약",
+                Set.of(TouristCategory.FOOD)
+        );
+        mapPlace = mapPlaceRepository.saveAndFlush(mapPlace);
+
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_tourist_guard WHERE map_place_id = ?",
+                Integer.class,
+                mapPlace.getId()
+        ));
+
+        mockMvc.perform(patch("/admin/places/{id}/tourist-info", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "reason", "잘못 등록된 관광 정보 초기화"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.englishName").value(nullValue()))
+                .andExpect(jsonPath("$.touristSummary").value(nullValue()))
+                .andExpect(jsonPath("$.touristCategories").isEmpty());
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertNull(updatedPlace.getEnglishName());
+        assertNull(updatedPlace.getTouristSummary());
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_tourist_guard WHERE map_place_id = ?",
+                Integer.class,
+                mapPlace.getId()
+        ));
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.touristCategories").isEmpty());
+    }
+
+    @Test
+    void updatePlaceTouristInfoRejectsBlankReason() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("관광 정보 검증 장소")
+                .address("경상남도 진주시 관광로 3")
+                .latitude(35.1806)
+                .longitude(128.1083)
+                .userId(97L)
+                .registrant("touristInfoOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/tourist-info", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "englishName", "Jinju Place",
+                                "reason", "   "
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.reason").value("수정 사유는 필수입니다."));
+    }
+
+    @Test
+    void updatePlaceTouristInfoRejectsNullCategoryElement() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("관광 카테고리 검증 장소")
+                .address("경상남도 진주시 관광로 4")
+                .latitude(35.1807)
+                .longitude(128.1084)
+                .userId(98L)
+                .registrant("touristInfoOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/tourist-info", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "touristCategories", java.util.Collections.singletonList(null),
+                                "reason", "카테고리 검증"
+                        ))))
+                .andExpect(status().isBadRequest());
     }
 
     @Test
@@ -1017,7 +1247,7 @@ class AdminMapPlaceControllerTest {
     void listMergeHistoriesAndRestoreMergeWork() throws Exception {
         String accessToken = createAdminAndLogin();
 
-        MapPlace sourcePlace = mapPlaceRepository.save(MapPlace.builder()
+        MapPlace sourcePlace = MapPlace.builder()
                 .name("복구 병합 장소")
                 .address("대구광역시 달성군 구지면 창리로11길 93")
                 .kakaoPlaceId("restore-source-id")
@@ -1026,7 +1256,13 @@ class AdminMapPlaceControllerTest {
                 .userId(30L)
                 .registrant("sourceOwner")
                 .photoCount(1L)
-                .build());
+                .build();
+        sourcePlace.updateTouristInformation(
+                "Restored Tourist Place",
+                "병합 복구 시 보존할 관광 정보",
+                Set.of(TouristCategory.EXHIBITION, TouristCategory.NIGHTLIFE)
+        );
+        sourcePlace = mapPlaceRepository.save(sourcePlace);
         MapPlace targetPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("복구 병합 장소")
                 .address("대구광역시 달성군 구지면 창리로11길 93")
@@ -1109,6 +1345,15 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk());
 
         Long historyId = adminPlaceMergeHistoryRepository.findAll().getFirst().getId();
+        ObjectNode legacySourceSnapshot = (ObjectNode) objectMapper.readTree(
+                adminPlaceMergeHistoryRepository.findById(historyId).orElseThrow().getSourcePlaceSnapshot()
+        );
+        legacySourceSnapshot.remove("photoCount");
+        jdbcTemplate.update(
+                "UPDATE admin_place_merge_history SET source_place_snapshot = ? WHERE id = ?",
+                legacySourceSnapshot.toString(),
+                historyId
+        );
 
         mockMvc.perform(get("/admin/places/merge-histories")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -1127,6 +1372,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.message").value("장소 병합을 복구했습니다."));
 
         assertTrue(mapPlaceRepository.existsById(sourcePlace.getId()));
+        assertEquals(1L, mapPlaceRepository.findById(sourcePlace.getId()).orElseThrow().currentPhotoCount());
         assertEquals(sourcePlace.getId(), mapImageRepository.findById(movedImage.getId()).orElseThrow().getMapPlace().getId());
         assertEquals(sourcePlace.getId(), mapBookmarkRepository.findById(movedBookmark.getId()).orElseThrow().getPlaceId());
         assertEquals(sourcePlace.getId(), placeRecommendationClickRepository.findById(movedClick.getId()).orElseThrow().getPlaceId());
@@ -1137,6 +1383,16 @@ class AdminMapPlaceControllerTest {
                 .mapToLong(PlaceRecommendationConversionRepository.PlaceConversionCountProjection::getConversionCount)
                 .sum());
         assertTrue(adminPlaceMergeHistoryRepository.findById(historyId).orElseThrow().isRestored());
+
+        mockMvc.perform(get("/admin/places/{id}", sourcePlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.englishName").value("Restored Tourist Place"))
+                .andExpect(jsonPath("$.touristSummary").value("병합 복구 시 보존할 관광 정보"))
+                .andExpect(jsonPath(
+                        "$.touristCategories",
+                        containsInAnyOrder("EXHIBITION", "NIGHTLIFE")
+                ));
     }
 
     @Test

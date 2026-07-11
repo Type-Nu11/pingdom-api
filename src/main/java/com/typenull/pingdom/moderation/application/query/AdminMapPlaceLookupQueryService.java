@@ -10,11 +10,17 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.util.EnumSet;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -50,9 +56,15 @@ public class AdminMapPlaceLookupQueryService {
                 PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
         );
 
+        Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
+                placePage.getContent().stream().map(MapPlace::getId).toList()
+        );
         List<AdminMapPlaceItem> places = placePage.getContent()
                 .stream()
-                .map(this::toItem)
+                .map(place -> toItem(
+                        place,
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                ))
                 .toList();
 
         return AdminMapPlaceResponse.of(
@@ -90,8 +102,15 @@ public class AdminMapPlaceLookupQueryService {
                 mapPlace.getId(),
                 mapPlace.getName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 category,
                 toCategoryName(category),
+                mapPlace.getEnglishName(),
+                mapPlace.getTouristSummary(),
+                mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
@@ -119,15 +138,22 @@ public class AdminMapPlaceLookupQueryService {
         };
     }
 
-    private AdminMapPlaceItem toItem(MapPlace mapPlace) {
+    private AdminMapPlaceItem toItem(MapPlace mapPlace, Set<TouristCategory> touristCategories) {
         String category = toResponseCategory(mapPlace.getCategory());
 
         return new AdminMapPlaceItem(
                 mapPlace.getId(),
                 mapPlace.getName(),
                 mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getJibunAddress(),
+                mapPlace.getPostalCode(),
+                mapPlace.getGeocodingSource(),
                 category,
                 toCategoryName(category),
+                mapPlace.getEnglishName(),
+                mapPlace.getTouristSummary(),
+                touristCategories,
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
@@ -167,5 +193,23 @@ public class AdminMapPlaceLookupQueryService {
         } catch (NumberFormatException exception) {
             return null;
         }
+    }
+
+    private Map<Long, Set<TouristCategory>> loadTouristCategories(List<Long> placeIds) {
+        if (placeIds.isEmpty()) {
+            return Map.of();
+        }
+
+        Map<Long, Set<TouristCategory>> categoriesByPlaceId = new HashMap<>();
+        for (PlaceTouristCategoryProjection projection
+                : adminMapPlaceQueryRepository.findTouristCategoriesByPlaceIds(placeIds)) {
+            categoriesByPlaceId
+                    .computeIfAbsent(
+                            projection.getPlaceId(),
+                            ignored -> EnumSet.noneOf(TouristCategory.class)
+                    )
+                    .add(projection.getTouristCategory());
+        }
+        return categoriesByPlaceId;
     }
 }

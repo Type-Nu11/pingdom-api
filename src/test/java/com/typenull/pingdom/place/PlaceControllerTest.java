@@ -9,7 +9,9 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
@@ -33,6 +35,7 @@ import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Supplier;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -42,6 +45,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.context.TestConfiguration;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Primary;
 import org.springframework.test.web.servlet.MockMvc;
@@ -65,7 +69,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.cloud.aws.s3.bucket=test-bucket",
         "spring.cloud.aws.region.static=ap-northeast-2",
         "spring.cloud.aws.credentials.access-key=test-access-key",
-        "spring.cloud.aws.credentials.secret-key=test-secret-key"
+        "spring.cloud.aws.credentials.secret-key=test-secret-key",
+        "abuse.rate-limit.redis-key-prefix=pingdom:test:place-controller:",
+        "abuse.rate-limit.signup-ip.limit=1000",
+        "abuse.rate-limit.login-ip.limit=1000"
 })
 @AutoConfigureMockMvc
 @Transactional
@@ -94,6 +101,9 @@ class PlaceControllerTest {
 
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
+
+    @Autowired
+    private JdbcTemplate jdbcTemplate;
 
     @Autowired
     private MapBookmarkRepository mapBookmarkRepository;
@@ -223,14 +233,25 @@ class PlaceControllerTest {
 
     @Test
     void listPlacesSearchesByAddressAndCategory() throws Exception {
-        String accessToken = signupAndLogin("readerSearch01");
+        String accessToken = signupAndLogin("readerSearch" + Long.toUnsignedString(System.nanoTime()));
         MapPlace matchingPlace = createMapPlace(
                 "진주성",
-                "경상남도 진주시 남강로 626",
+                "진주성 대표 주소",
                 "관광",
                 35.1894,
                 128.0789
         );
+        matchingPlace.updateGeocoding(
+                "경상남도 진주시 남강로 626",
+                "경상남도 진주시 남강로 626",
+                "경상남도 진주시 본성동 500-8",
+                "52692",
+                matchingPlace.getLatitude(),
+                matchingPlace.getLongitude(),
+                matchingPlace.getLocation(),
+                GeocodingSource.KAKAO
+        );
+        mapPlaceRepository.save(matchingPlace);
         createMapPlace("남강 카페", "경상남도 진주시 남강로 10", "카페", 35.1801, 128.1078);
 
         mockMvc.perform(get("/places")
@@ -240,6 +261,10 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].roadAddress").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].jibunAddress").value("경상남도 진주시 본성동 500-8"))
+                .andExpect(jsonPath("$.places[0].postalCode").value("52692"))
+                .andExpect(jsonPath("$.places[0].geocodingSource").value("KAKAO"))
                 .andExpect(jsonPath("$.places[0].category").value("관광"))
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
@@ -413,6 +438,152 @@ class PlaceControllerTest {
     }
 
     @Test
+    void uploadPlaceStoresAndReturnsTouristInformation() throws Exception {
+        String accessToken = signupAndLogin("placeTourist" + Long.toUnsignedString(System.nanoTime()));
+        String coordinateToken = createCoordinateToken(accessToken, "27414320", 35.1805, 128.1082);
+
+        mockMvc.perform(post("/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.ofEntries(
+                                Map.entry("kakaoPlaceId", "27414320"),
+                                Map.entry("name", "관광 정보 장소"),
+                                Map.entry("address", "경상남도 진주시 관광로 1"),
+                                Map.entry("roadAddress", "경상남도 진주시 관광로 1"),
+                                Map.entry("jibunAddress", "경상남도 진주시 관광동 10"),
+                                Map.entry("postalCode", "52692"),
+                                Map.entry("category", "관광"),
+                                Map.entry("englishName", "  Jinju Tourist Place  "),
+                                Map.entry("touristSummary", "  외국인 관광객을 위한 장소 요약입니다.  "),
+                                Map.entry("touristCategories", List.of("K_POP", "EXHIBITION")),
+                                Map.entry("coordinateToken", coordinateToken)
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.roadAddress").value("경상남도 진주시 관광로 1"))
+                .andExpect(jsonPath("$.jibunAddress").value("경상남도 진주시 관광동 10"))
+                .andExpect(jsonPath("$.postalCode").value("52692"))
+                .andExpect(jsonPath("$.geocodingSource").value("USER_PIN"))
+                .andExpect(jsonPath("$.englishName").value("Jinju Tourist Place"))
+                .andExpect(jsonPath("$.touristSummary").value("외국인 관광객을 위한 장소 요약입니다."))
+                .andExpect(jsonPath("$.touristCategories", containsInAnyOrder("K_POP", "EXHIBITION")));
+
+        MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414320").orElseThrow();
+        assertEquals("Jinju Tourist Place", saved.getEnglishName());
+        assertEquals("외국인 관광객을 위한 장소 요약입니다.", saved.getTouristSummary());
+        assertEquals(
+                Set.of(TouristCategory.K_POP, TouristCategory.EXHIBITION),
+                saved.currentTouristCategories()
+        );
+        mapPlaceRepository.flush();
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_tourist_guard WHERE map_place_id = ?",
+                Integer.class,
+                saved.getId()
+        ));
+    }
+
+    @Test
+    void uploadPlaceRejectsNullTouristCategoryElement() throws Exception {
+        String accessToken = signupAndLogin("placeUploaderTourist02");
+        String coordinateToken = createCoordinateToken(accessToken, "27414321", 35.1806, 128.1083);
+
+        mockMvc.perform(post("/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "kakaoPlaceId": "27414321",
+                                  "name": "잘못된 관광 정보 장소",
+                                  "address": "경상남도 진주시 관광로 2",
+                                  "category": "관광",
+                                  "touristCategories": ["CAFE", null],
+                                  "coordinateToken": "%s"
+                                }
+                                """.formatted(coordinateToken)))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listDetailAndAutocompleteExposeTouristInformationAndSearchEnglishName() throws Exception {
+        String accessToken = signupAndLogin("readerTourist01");
+        MapPlace touristPlace = createTouristMapPlace();
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "jinju castle"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(touristPlace.getId()))
+                .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"))
+                .andExpect(jsonPath("$.places[0].touristSummary").value("진주의 대표 역사 관광지입니다."))
+                .andExpect(jsonPath(
+                        "$.places[0].touristCategories",
+                        containsInAnyOrder("EXHIBITION", "OTHER")
+                ));
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "jinju castle")
+                        .param("latitude", "35.1894")
+                        .param("longitude", "128.0789")
+                        .param("radiusKm", "1.0")
+                        .param("sort", "NEAREST"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"))
+                .andExpect(jsonPath(
+                        "$.places[0].touristCategories",
+                        containsInAnyOrder("EXHIBITION", "OTHER")
+                ));
+
+        mockMvc.perform(get("/places/{id}", touristPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.englishName").value("Jinju Castle"))
+                .andExpect(jsonPath("$.touristSummary").value("진주의 대표 역사 관광지입니다."))
+                .andExpect(jsonPath("$.touristCategories", containsInAnyOrder("EXHIBITION", "OTHER")));
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "Jinju Castle"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(touristPlace.getId()))
+                .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"));
+    }
+
+    @Test
+    void autocompleteRanksNormalizedJibunAddressAboveCategoryMatch() throws Exception {
+        String accessToken = signupAndLogin("addressRank" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace jibunAddressPlace = createMapPlace(
+                "지번 주소 장소",
+                "대표 주소",
+                "관광",
+                35.1894,
+                128.0789
+        );
+        jibunAddressPlace.updateGeocoding(
+                "대표 주소",
+                null,
+                "경상남도 진주시 본성동 500-8",
+                "52692",
+                jibunAddressPlace.getLatitude(),
+                jibunAddressPlace.getLongitude(),
+                jibunAddressPlace.getLocation(),
+                GeocodingSource.USER_PIN
+        );
+        mapPlaceRepository.save(jibunAddressPlace);
+        createMapPlace("카테고리 후보", "다른 주소", "본성동", 35.1895, 128.0790);
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "본성동"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].id").value(jibunAddressPlace.getId()));
+    }
+
+    @Test
     void createCoordinatesAllowsMissingKakaoPlaceId() throws Exception {
         String accessToken = signupAndLogin("placeUploaderNoKakao01");
 
@@ -456,6 +627,15 @@ class PlaceControllerTest {
         assertNull(saved.getKakaoPlaceId());
         assertEquals("풍경", saved.getCategory());
         assertEquals("https://example.com/images/pin-place.jpg", saved.getImageUrl());
+        assertNull(saved.getEnglishName());
+        assertNull(saved.getTouristSummary());
+        assertEquals(Set.of(), saved.currentTouristCategories());
+        mapPlaceRepository.flush();
+        assertEquals(0, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_tourist_guard WHERE map_place_id = ?",
+                Integer.class,
+                saved.getId()
+        ));
     }
 
     @Test
@@ -514,15 +694,24 @@ class PlaceControllerTest {
                                 "address", "경상남도 진주시 이미지로 2",
                                 "category", "식당",
                                 "imageUrl", "   ",
+                                "englishName", "   ",
+                                "touristSummary", "   ",
+                                "touristCategories", List.of(),
                                 "coordinateToken", coordinateToken
                         ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.name").value("이미지 없는 장소"))
-                .andExpect(jsonPath("$.address").value("경상남도 진주시 이미지로 2"));
+                .andExpect(jsonPath("$.address").value("경상남도 진주시 이미지로 2"))
+                .andExpect(jsonPath("$.englishName").isEmpty())
+                .andExpect(jsonPath("$.touristSummary").isEmpty())
+                .andExpect(jsonPath("$.touristCategories.length()").value(0));
 
         MapPlace saved = mapPlaceRepository.findByKakaoPlaceId("27414317").orElseThrow();
         assertEquals("식당", saved.getCategory());
         assertNull(saved.getImageUrl());
+        assertNull(saved.getEnglishName());
+        assertNull(saved.getTouristSummary());
+        assertEquals(Set.of(), saved.currentTouristCategories());
     }
 
     @Test
@@ -1489,6 +1678,22 @@ class PlaceControllerTest {
                 .userId(1L)
                 .registrant("placeOwner")
                 .photoCount(photoCount)
+                .build());
+    }
+
+    private MapPlace createTouristMapPlace() {
+        return mapPlaceRepository.save(MapPlace.builder()
+                .name("진주성")
+                .englishName("Jinju Castle")
+                .address("경상남도 진주시 남강로 626")
+                .category("관광")
+                .touristSummary("진주의 대표 역사 관광지입니다.")
+                .touristCategories(Set.of(TouristCategory.EXHIBITION, TouristCategory.OTHER))
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(1L)
+                .registrant("placeOwner")
+                .photoCount(0L)
                 .build());
     }
 

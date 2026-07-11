@@ -93,6 +93,26 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void touristInformationSchemasDeclareNullableStringFields() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        for (String schemaName : List.of(
+                "PlaceUploadRequest",
+                "PlaceCreateResponse",
+                "PlaceDetailResponse",
+                "PlaceListItem",
+                "AdminMapPlaceTouristInfoUpdateRequest",
+                "AdminMapPlaceTouristInfoUpdateResponse",
+                "AdminMapPlaceDetailResponse",
+                "AdminMapPlaceItem"
+        )) {
+            assertNullableProperty(document, schemaName, "englishName");
+            assertNullableProperty(document, schemaName, "touristSummary");
+        }
+        assertNullableProperty(document, "PlaceAutocompleteItem", "englishName");
+    }
+
+    @Test
     void resolveSchemaFollowsNestedRefsAndUnescapesJsonPointer() throws Exception {
         JsonNode document = objectMapper.readTree("""
                 {
@@ -131,6 +151,21 @@ class OpenApiDocumentationValidationTest {
                 .getResponse()
                 .getContentAsString();
         return objectMapper.readTree(body);
+    }
+
+    private void assertNullableProperty(JsonNode document, String schemaName, String propertyName) {
+        JsonNode property = document.path("components")
+                .path("schemas")
+                .path(schemaName)
+                .path("properties")
+                .path(propertyName);
+
+        assertThat(property.isMissingNode())
+                .as("%s.%s property must exist", schemaName, propertyName)
+                .isFalse();
+        assertThat(property.path("nullable").asBoolean())
+                .as("%s.%s must allow null", schemaName, propertyName)
+                .isTrue();
     }
 
     private void validateContentExamples(
