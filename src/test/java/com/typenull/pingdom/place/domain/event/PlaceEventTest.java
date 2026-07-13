@@ -68,6 +68,16 @@ class PlaceEventTest {
         assertThatIllegalStateException().isThrownBy(() -> event.cancel(CREATED_AT));
     }
 
+    @Test
+    void cancelsPublishedEvent() {
+        PlaceEvent event = createEvent();
+        event.publish(CREATED_AT);
+
+        event.cancel(CREATED_AT);
+
+        assertThat(event.getPublicationStatus()).isEqualTo(PlaceEventPublicationStatus.CANCELLED);
+    }
+
     private PlaceEvent createEvent() {
         return PlaceEvent.create(
                 place(),
