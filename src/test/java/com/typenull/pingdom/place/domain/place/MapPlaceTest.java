@@ -3,6 +3,11 @@ package com.typenull.pingdom.place.domain.place;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -15,6 +20,59 @@ class MapPlaceTest {
         MapPlace mapPlace = MapPlace.builder().build();
 
         assertThat(mapPlace.getGeocodingSource()).isEqualTo(GeocodingSource.LEGACY);
+    }
+
+    @Test
+    void defaultsOperatingStatusToOperatingAndUpdatesConfirmationTime() {
+        MapPlace mapPlace = MapPlace.builder().build();
+        LocalDateTime checkedAt = LocalDateTime.of(2026, 7, 13, 10, 30);
+
+        assertThat(mapPlace.getOperatingStatus()).isEqualTo(PlaceOperatingStatus.OPERATING);
+        assertThat(mapPlace.getOperatingStatusCheckedAt()).isNull();
+        assertThat(mapPlace.isOperating()).isTrue();
+
+        mapPlace.updateOperatingStatus(PlaceOperatingStatus.TEMPORARILY_CLOSED, checkedAt);
+
+        assertThat(mapPlace.getOperatingStatus()).isEqualTo(PlaceOperatingStatus.TEMPORARILY_CLOSED);
+        assertThat(mapPlace.getOperatingStatusCheckedAt()).isEqualTo(checkedAt);
+        assertThat(mapPlace.isOperating()).isFalse();
+
+        assertThatThrownBy(() -> mapPlace.updateOperatingStatus(null, checkedAt))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("operatingStatus must not be null");
+    }
+
+    @Test
+    void replaceOperatingScheduleDefensivelyCopiesRegularHoursAndExceptions() {
+        MapPlace mapPlace = MapPlace.builder().build();
+        Set<PlaceRegularOperatingHour> regularHours = new LinkedHashSet<>(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
+        ));
+        List<PlaceOperatingException> exceptions = new ArrayList<>(List.of(
+                PlaceOperatingException.closed(mapPlace, LocalDate.of(2026, 8, 15)),
+                PlaceOperatingException.customHours(
+                        mapPlace,
+                        LocalDate.of(2026, 8, 16),
+                        Set.of(PlaceOperatingTimeRange.of(LocalTime.of(10, 0), LocalTime.of(16, 0)))
+                )
+        ));
+
+        mapPlace.replaceOperatingSchedule(regularHours, exceptions);
+        regularHours.clear();
+        exceptions.clear();
+
+        assertThat(mapPlace.currentRegularOperatingHours()).containsExactly(
+                PlaceRegularOperatingHour.of(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
+        );
+        assertThat(mapPlace.currentOperatingExceptions()).hasSize(2);
+        assertThat(mapPlace.currentOperatingExceptions().get(0).isClosed()).isTrue();
+        assertThat(mapPlace.currentOperatingExceptions().get(1).currentHours()).containsExactly(
+                PlaceOperatingTimeRange.of(LocalTime.of(10, 0), LocalTime.of(16, 0))
+        );
+        assertThatThrownBy(() -> mapPlace.currentRegularOperatingHours().clear())
+                .isInstanceOf(UnsupportedOperationException.class);
+        assertThatThrownBy(() -> mapPlace.currentOperatingExceptions().clear())
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     @Test

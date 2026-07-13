@@ -2,8 +2,10 @@ package com.typenull.pingdom.moderation.api.dto.place.query;
 
 import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 public record AdminMapPlaceItem(
@@ -17,6 +19,9 @@ public record AdminMapPlaceItem(
         @Schema(nullable = true)
         String postalCode,
         GeocodingSource geocodingSource,
+        PlaceOperatingStatus operatingStatus,
+        @Schema(nullable = true)
+        LocalDateTime operatingStatusCheckedAt,
         String category,
         String categoryName,
         @Schema(nullable = true)

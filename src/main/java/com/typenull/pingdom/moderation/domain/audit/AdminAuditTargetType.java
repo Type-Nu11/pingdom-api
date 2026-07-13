@@ -6,5 +6,6 @@ public enum AdminAuditTargetType {
     APPEAL,
     POST,
     PLACE,
+    PLACE_EVENT,
     AD
 }

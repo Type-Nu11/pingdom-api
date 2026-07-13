@@ -113,6 +113,91 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        assertThat(document.path("paths").has("/admin/places/{id}/operating-schedule")).isTrue();
+        assertThat(document.path("components").path("schemas").path("PlaceDetailResponse")
+                .path("properties").path("regularHours").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceDetailResponse")
+                .path("properties").path("operatingExceptions").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("AdminMapPlaceOperatingScheduleUpdateRequest")
+                .path("properties").path("regularHours").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingExceptionResponse")
+                .path("properties").path("closed").path("type").asText()).isEqualTo("boolean");
+        assertThat(document.path("components").path("schemas").path("AdminMapPlaceOperatingTimeRangeRequest")
+                .path("properties").path("opensAt").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("AdminMapPlaceOperatingTimeRangeRequest")
+                .path("properties").path("opensAt").path("format").asText()).isEqualTo("time");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingTimeRangeResponse")
+                .path("properties").path("opensAt").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingTimeRangeResponse")
+                .path("properties").path("opensAt").path("format").asText()).isEqualTo("time");
+        assertThat(document.at("/paths/~1admin~1places~1{id}~1operating-schedule/patch/responses/400/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(document.at("/paths/~1admin~1places~1{id}~1operating-schedule/patch/responses/404/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+    }
+
+    @Test
+    void periodEventSchemasExposePublicAndAdminContracts() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        assertThat(document.path("paths").has("/events")).isTrue();
+        assertThat(document.path("paths").has("/events/{eventId}")).isTrue();
+        assertThat(document.path("paths").has("/admin/place-events")).isTrue();
+        assertThat(document.path("paths").has("/admin/place-events/{eventId}/publish")).isTrue();
+        assertThat(document.path("components").path("schemas").path("PlaceEventListResponse")
+                .path("properties").path("events").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceEventDetailResponse")
+                .path("properties").path("scheduleStatus").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("AdminPlaceEventRequest")
+                .path("required")).hasSize(6);
+        assertThat(document.at("/paths/~1events~1{eventId}/get/responses/404/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        for (String responsePath : List.of(
+                "/paths/~1admin~1place-events/post/responses/400",
+                "/paths/~1admin~1place-events/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/400",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/409",
+                "/paths/~1admin~1place-events~1{eventId}~1publish/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}~1publish/post/responses/409",
+                "/paths/~1admin~1place-events~1{eventId}~1cancel/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}~1cancel/post/responses/409"
+        )) {
+            assertThat(document.at(responsePath + "/content/*~1*/schema/$ref").asText())
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
+    }
+
+    @Test
+    void periodEventApiGroupsSeparatePublicAndAdminPaths() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/events")).isTrue();
+        assertThat(appDocument.path("paths").has("/admin/place-events")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/place-events")).isTrue();
+    }
+
+    @Test
+    void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        for (String schemaName : List.of("NotificationSettingUpdateRequest", "NotificationSettingResponse")) {
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursStart").path("type").asText()).isEqualTo("string");
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursStart").path("format").asText()).isEqualTo("time");
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursEnd").path("type").asText()).isEqualTo("string");
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursEnd").path("format").asText()).isEqualTo("time");
+        }
+    }
+
+    @Test
     void resolveSchemaFollowsNestedRefsAndUnescapesJsonPointer() throws Exception {
         JsonNode document = objectMapper.readTree("""
                 {

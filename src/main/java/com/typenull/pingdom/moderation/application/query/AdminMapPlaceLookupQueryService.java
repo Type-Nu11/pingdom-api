@@ -8,8 +8,13 @@ import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.place.api.dto.place.PlaceOperatingExceptionResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceOperatingTimeRangeResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceRegularOperatingHourResponse;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingTimeRange;
+import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository.PlaceTouristCategoryProjection;
@@ -17,6 +22,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.EnumSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -106,6 +112,10 @@ public class AdminMapPlaceLookupQueryService {
                 mapPlace.getJibunAddress(),
                 mapPlace.getPostalCode(),
                 mapPlace.getGeocodingSource(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
+                regularHours(mapPlace),
+                operatingExceptions(mapPlace),
                 category,
                 toCategoryName(category),
                 mapPlace.getEnglishName(),
@@ -138,6 +148,36 @@ public class AdminMapPlaceLookupQueryService {
         };
     }
 
+    private List<PlaceRegularOperatingHourResponse> regularHours(MapPlace mapPlace) {
+        return mapPlace.currentRegularOperatingHours().stream()
+                .sorted(Comparator.comparing(PlaceRegularOperatingHour::getDayOfWeek)
+                        .thenComparing(PlaceRegularOperatingHour::getOpensAt)
+                        .thenComparing(PlaceRegularOperatingHour::getClosesAt))
+                .map(hour -> new PlaceRegularOperatingHourResponse(
+                        hour.getDayOfWeek(),
+                        hour.getOpensAt(),
+                        hour.getClosesAt()
+                ))
+                .toList();
+    }
+
+    private List<PlaceOperatingExceptionResponse> operatingExceptions(MapPlace mapPlace) {
+        return mapPlace.currentOperatingExceptions().stream()
+                .map(exception -> new PlaceOperatingExceptionResponse(
+                        exception.getExceptionDate(),
+                        exception.isClosed(),
+                        exception.currentHours().stream()
+                                .sorted(Comparator.comparing(PlaceOperatingTimeRange::getOpensAt)
+                                        .thenComparing(PlaceOperatingTimeRange::getClosesAt))
+                                .map(hour -> new PlaceOperatingTimeRangeResponse(
+                                        hour.getOpensAt(),
+                                        hour.getClosesAt()
+                                ))
+                                .toList()
+                ))
+                .toList();
+    }
+
     private AdminMapPlaceItem toItem(MapPlace mapPlace, Set<TouristCategory> touristCategories) {
         String category = toResponseCategory(mapPlace.getCategory());
 
@@ -149,6 +189,8 @@ public class AdminMapPlaceLookupQueryService {
                 mapPlace.getJibunAddress(),
                 mapPlace.getPostalCode(),
                 mapPlace.getGeocodingSource(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
                 category,
                 toCategoryName(category),
                 mapPlace.getEnglishName(),

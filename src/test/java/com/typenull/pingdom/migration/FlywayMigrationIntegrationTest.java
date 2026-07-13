@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("31");
-        assertThat(result.migrationsExecuted).isEqualTo(31);
+        assertThat(result.targetSchemaVersion).isEqualTo("34");
+        assertThat(result.migrationsExecuted).isEqualTo(34);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("31");
-        assertThat(result.migrationsExecuted).isEqualTo(30);
+        assertThat(result.targetSchemaVersion).isEqualTo("34");
+        assertThat(result.migrationsExecuted).isEqualTo(33);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("31");
-        assertThat(result.migrationsExecuted).isEqualTo(4);
+        assertThat(result.targetSchemaVersion).isEqualTo("34");
+        assertThat(result.migrationsExecuted).isEqualTo(7);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -139,6 +139,8 @@ class FlywayMigrationIntegrationTest {
                           AND jibun_address IS NULL
                           AND postal_code IS NULL
                           AND geocoding_source = 'LEGACY'
+                          AND operating_status = 'OPERATING'
+                          AND operating_status_checked_at IS NULL
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -151,6 +153,24 @@ class FlywayMigrationIntegrationTest {
                     SELECT NOT EXISTS (
                         SELECT 1
                         FROM map_place_tourist_guard
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM map_place_regular_operating_hour
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM map_place_operating_exception
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM place_event
                     )
                     """)).isTrue();
         }
@@ -237,6 +257,96 @@ class FlywayMigrationIntegrationTest {
                         WHERE table_name = 'users'
                           AND column_name = 'status'
                           AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'operating_status'
+                          AND character_maximum_length = 30
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'operating_status_checked_at'
+                          AND data_type = 'timestamp without time zone'
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_operating_status'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_operating_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place_regular_operating_hour'
+                          AND column_name = 'day_of_week'
+                          AND character_maximum_length = 9
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.columns
+                    WHERE table_name = 'map_place_regular_operating_hour'
+                      AND column_name IN ('opens_at', 'closes_at')
+                      AND data_type = 'time without time zone'
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_regular_operating_hour'::regclass
+                          AND conname = 'pk_map_place_regular_operating_hour'
+                          AND contype = 'p'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place_operating_exception'
+                          AND column_name = 'exception_date'
+                          AND data_type = 'date'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_operating_exception'::regclass
+                          AND conname = 'uk_map_place_operating_exception_date'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'map_place_operating_exception_hour'::regclass
+                          AND conname = 'fk_map_place_operating_exception_hour_exception'
+                          AND contype = 'f'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -828,6 +938,61 @@ class FlywayMigrationIntegrationTest {
                         WHERE c.relname = 'idx_map_place_english_name_trgm'
                           AND i.indisvalid = true
                           AND i.indisready = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_event'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 8
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_event'
+                      AND column_name IN (
+                          'map_place_id', 'title', 'event_type', 'start_at',
+                          'end_at', 'publication_status', 'created_at', 'updated_at'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_event'::regclass
+                          AND conname = 'fk_place_event_place'
+                          AND contype = 'f'
+                          AND confrelid = 'map_place'::regclass
+                          AND confdeltype = 'a'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_event'::regclass
+                      AND conname IN (
+                          'ck_place_event_type',
+                          'ck_place_event_publication_status',
+                          'ck_place_event_period'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_event'
+                          AND indexname = 'idx_place_event_place_id'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_event'
+                          AND indexname = 'idx_place_event_public_discovery'
                     )
                     """)).isTrue();
         }

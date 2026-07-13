@@ -125,6 +125,19 @@ invalid index 여부를 확인한 뒤 실패 history를 `repair`하고 재실행
 `idx_map_place_road_address_trgm`, `idx_map_place_jibun_address_trgm`이다. migration은
 `executeInTransaction=false`로 실행하며 PostgreSQL transactional advisory lock도 비활성화한다.
 
+`V32`는 `map_place`에 `operating_status`와 `operating_status_checked_at`을 추가한다. 기존 장소는
+기존 앱의 탐색 가능 상태를 유지하기 위해 `OPERATING`으로 backfill하고, 실제 개별 확인 이력이
+없으므로 확인 시각은 `NULL`로 유지한다. 운영 상태 값과 null 불가 제약은 `NOT VALID`로 추가한 뒤
+검증하고 `NOT NULL`을 설정한다. 새 애플리케이션은 `OPERATING`이 아닌 장소를 앱 장소 조회와 추천
+후보에서 제외한다.
+
+`V33`은 요일별 정규 영업시간, 날짜별 휴무·대체 영업일, 대체 영업 시간대를 별도 테이블로 추가한다.
+기존 장소에는 영업시간을 추정하거나 backfill하지 않으므로 적용 직후에는 세 일정 테이블에 기존 장소의
+행이 없어야 한다. 예외 일정은 한 날짜에 하나만 둘 수 있고, 종일 휴무는 시간대 없이 저장하며 대체
+영업일은 하나 이상의 시간대를 저장한다. 일정 FK는 `ON DELETE NO ACTION`이므로 구버전 앱이 새 일정이
+있는 장소를 삭제·병합하면 일정 유실 대신 안전하게 실패한다. 새 애플리케이션은 JPA cascade로 일정 행을
+정리하고, 병합 복구 시 원래 장소의 일정을 스냅샷에서 복원한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.

@@ -15,10 +15,10 @@ public record NotificationSettingResponse(
         @Schema(description = "quiet hours 적용 여부", example = "false")
         boolean quietHoursEnabled,
 
-        @Schema(description = "quiet hours 시작 시각", example = "22:00:00")
+        @Schema(description = "quiet hours 시작 시각", type = "string", format = "time", example = "22:00:00")
         LocalTime quietHoursStart,
 
-        @Schema(description = "quiet hours 종료 시각", example = "08:00:00")
+        @Schema(description = "quiet hours 종료 시각", type = "string", format = "time", example = "08:00:00")
         LocalTime quietHoursEnd,
 
         @Schema(description = "IANA timezone", example = "Asia/Seoul")

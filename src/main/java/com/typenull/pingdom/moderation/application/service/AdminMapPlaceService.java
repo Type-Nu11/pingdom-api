@@ -14,6 +14,13 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocod
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingExceptionRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingScheduleUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingScheduleUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingTimeRangeRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceRegularOperatingHourRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficPolicyItem;
@@ -31,14 +38,22 @@ import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendation
 import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendationPolicyChangeType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminRecommendationPolicyChangeHistoryRepository;
+import com.typenull.pingdom.place.api.dto.place.PlaceOperatingExceptionResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceOperatingTimeRangeResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceRegularOperatingHourResponse;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingException;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingTimeRange;
+import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
+import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -52,9 +67,13 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.time.Clock;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.HashSet;
 import java.util.LinkedHashMap;
@@ -80,8 +99,10 @@ import org.springframework.util.StringUtils;
 public class AdminMapPlaceService {
 
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
+    private static final long NANOS_PER_DAY = 24L * 60 * 60 * 1_000_000_000;
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final PlaceEventRepository placeEventRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final AdminPostService adminPostService;
@@ -104,6 +125,9 @@ public class AdminMapPlaceService {
     public void deletePlace(long placeId, Long adminUserId) {
         MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        if (placeEventRepository.existsByPlace_Id(placeId)) {
+            throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
+        }
         Map<String, Object> beforeState = placeState(mapPlace);
         List<Long> linkedPostIds = mapImageRepository.findIdsByMapPlaceId(placeId);
 
@@ -435,6 +459,94 @@ public class AdminMapPlaceService {
     }
 
     @Transactional
+    public AdminMapPlaceOperatingStatusUpdateResponse updatePlaceOperatingStatus(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceOperatingStatusUpdateRequest request
+    ) {
+        if (request == null || request.operatingStatus() == null || !StringUtils.hasText(request.reason())) {
+            throw new AdminException(AdminErrorCode.PLACE_OPERATING_STATUS_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = operatingStatusState(mapPlace);
+        LocalDateTime checkedAt = now();
+
+        mapPlace.updateOperatingStatus(request.operatingStatus(), checkedAt);
+
+        Map<String, Object> afterState = operatingStatusState(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_OPERATING_STATUS_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+
+        log.info(
+                "Admin updated place operating status. adminUserId={}, placeId={}, operatingStatus={}, checkedAt={}",
+                adminUserId,
+                placeId,
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt()
+        );
+
+        return new AdminMapPlaceOperatingStatusUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
+                "장소 운영 상태를 수정했습니다."
+        );
+    }
+
+    @Transactional
+    public AdminMapPlaceOperatingScheduleUpdateResponse updatePlaceOperatingSchedule(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceOperatingScheduleUpdateRequest request
+    ) {
+        validateOperatingScheduleRequest(request);
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = operatingScheduleState(mapPlace);
+
+        mapPlace.replaceOperatingSchedule(
+                toRegularOperatingHours(request.regularHours()),
+                toOperatingExceptions(mapPlace, request.exceptions())
+        );
+
+        Map<String, Object> afterState = operatingScheduleState(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_OPERATING_SCHEDULE_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+
+        log.info(
+                "Admin updated place operating schedule. adminUserId={}, placeId={}, regularHourCount={}, exceptionCount={}",
+                adminUserId,
+                placeId,
+                mapPlace.currentRegularOperatingHours().size(),
+                mapPlace.currentOperatingExceptions().size()
+        );
+
+        return new AdminMapPlaceOperatingScheduleUpdateResponse(
+                mapPlace.getId(),
+                regularHours(mapPlace),
+                operatingExceptions(mapPlace),
+                "장소 영업시간 일정을 수정했습니다."
+        );
+    }
+
+    @Transactional
     public AdminMapPlaceMergeResponse mergePlaces(Long adminUserId, AdminMapPlaceMergeRequest request) {
         validateMergeRequest(request);
 
@@ -450,6 +562,9 @@ public class AdminMapPlaceService {
         MapPlace sourcePlace = firstLockedPlace.getId().equals(request.sourcePlaceId()) ? firstLockedPlace : secondLockedPlace;
         MapPlace targetPlace = firstLockedPlace.getId().equals(request.targetPlaceId()) ? firstLockedPlace : secondLockedPlace;
 
+        if (placeEventRepository.existsByPlace_Id(sourcePlace.getId())) {
+            throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
+        }
         if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
@@ -708,6 +823,10 @@ public class AdminMapPlaceService {
         state.put("jibunAddress", place.getJibunAddress());
         state.put("postalCode", place.getPostalCode());
         state.put("geocodingSource", place.getGeocodingSource());
+        state.put("operatingStatus", place.getOperatingStatus());
+        state.put("operatingStatusCheckedAt", place.getOperatingStatusCheckedAt());
+        state.put("regularHours", regularHours(place));
+        state.put("operatingExceptions", operatingExceptions(place));
         state.put("category", place.getCategory());
         state.put("englishName", place.getEnglishName());
         state.put("touristSummary", place.getTouristSummary());
@@ -810,6 +929,230 @@ public class AdminMapPlaceService {
         state.put("touristSummary", place.getTouristSummary());
         state.put("touristCategories", normalizeTouristCategories(place.currentTouristCategories()));
         return state;
+    }
+
+    private Map<String, Object> operatingStatusState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("operatingStatus", place.getOperatingStatus());
+        state.put("operatingStatusCheckedAt", place.getOperatingStatusCheckedAt());
+        return state;
+    }
+
+    private Map<String, Object> operatingScheduleState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("regularHours", regularHours(place));
+        state.put("operatingExceptions", operatingExceptions(place));
+        return state;
+    }
+
+    private void validateOperatingScheduleRequest(AdminMapPlaceOperatingScheduleUpdateRequest request) {
+        if (request == null || !StringUtils.hasText(request.reason())) {
+            throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+        }
+
+        Set<AdminMapPlaceRegularOperatingHourRequest> regularHours = request.regularHours() == null
+                ? Set.of()
+                : request.regularHours();
+        Set<AdminMapPlaceOperatingExceptionRequest> exceptions = request.exceptions() == null
+                ? Set.of()
+                : request.exceptions();
+
+        validateRegularOperatingHours(regularHours);
+        validateOperatingExceptions(exceptions);
+    }
+
+    private void validateRegularOperatingHours(Set<AdminMapPlaceRegularOperatingHourRequest> regularHours) {
+        Map<DayOfWeek, List<TimeSegment>> segmentsByDay = new EnumMap<>(DayOfWeek.class);
+        Set<PlaceRegularOperatingHour> distinctHours = new HashSet<>();
+
+        for (AdminMapPlaceRegularOperatingHourRequest hour : regularHours) {
+            if (hour == null || hour.dayOfWeek() == null) {
+                throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+            }
+            validateTimeRange(hour.opensAt(), hour.closesAt());
+
+            PlaceRegularOperatingHour regularOperatingHour = PlaceRegularOperatingHour.of(
+                    hour.dayOfWeek(),
+                    hour.opensAt(),
+                    hour.closesAt()
+            );
+            if (!distinctHours.add(regularOperatingHour)) {
+                throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+            }
+            addWeeklySegments(segmentsByDay, hour.dayOfWeek(), hour.opensAt(), hour.closesAt());
+        }
+
+        segmentsByDay.values().forEach(this::validateNoOverlap);
+    }
+
+    private void validateOperatingExceptions(Set<AdminMapPlaceOperatingExceptionRequest> exceptions) {
+        Set<LocalDate> dates = new HashSet<>();
+        Map<LocalDate, List<TimeSegment>> segmentsByDate = new LinkedHashMap<>();
+        for (AdminMapPlaceOperatingExceptionRequest exception : exceptions) {
+            if (exception == null || exception.date() == null || !dates.add(exception.date())) {
+                throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+            }
+
+            Set<AdminMapPlaceOperatingTimeRangeRequest> hours = exception.hours() == null
+                    ? Set.of()
+                    : exception.hours();
+            if (exception.closed() && !hours.isEmpty()) {
+                throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+            }
+            if (!exception.closed() && hours.isEmpty()) {
+                throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+            }
+            if (exception.closed()) {
+                segmentsByDate.computeIfAbsent(exception.date(), ignored -> new ArrayList<>())
+                        .add(new TimeSegment(0, NANOS_PER_DAY));
+                continue;
+            }
+
+            Set<PlaceOperatingTimeRange> distinctHours = new HashSet<>();
+            for (AdminMapPlaceOperatingTimeRangeRequest hour : hours) {
+                if (hour == null) {
+                    throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+                }
+                validateTimeRange(hour.opensAt(), hour.closesAt());
+                PlaceOperatingTimeRange timeRange = PlaceOperatingTimeRange.of(hour.opensAt(), hour.closesAt());
+                if (!distinctHours.add(timeRange)) {
+                    throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+                }
+                addExceptionSegments(segmentsByDate, exception.date(), hour.opensAt(), hour.closesAt());
+            }
+        }
+
+        segmentsByDate.values().forEach(this::validateNoOverlap);
+    }
+
+    private void validateTimeRange(LocalTime opensAt, LocalTime closesAt) {
+        if (opensAt == null || closesAt == null || opensAt.equals(closesAt)) {
+            throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+        }
+    }
+
+    private void addWeeklySegments(
+            Map<DayOfWeek, List<TimeSegment>> segmentsByDay,
+            DayOfWeek dayOfWeek,
+            LocalTime opensAt,
+            LocalTime closesAt
+    ) {
+        long startsAt = opensAt.toNanoOfDay();
+        long endsAt = closesAt.toNanoOfDay();
+        if (startsAt < endsAt) {
+            segmentsByDay.computeIfAbsent(dayOfWeek, ignored -> new ArrayList<>())
+                    .add(new TimeSegment(startsAt, endsAt));
+            return;
+        }
+
+        segmentsByDay.computeIfAbsent(dayOfWeek, ignored -> new ArrayList<>())
+                .add(new TimeSegment(startsAt, NANOS_PER_DAY));
+        segmentsByDay.computeIfAbsent(dayOfWeek.plus(1), ignored -> new ArrayList<>())
+                .add(new TimeSegment(0, endsAt));
+    }
+
+    private void addExceptionSegments(
+            Map<LocalDate, List<TimeSegment>> segmentsByDate,
+            LocalDate date,
+            LocalTime opensAt,
+            LocalTime closesAt
+    ) {
+        long startsAt = opensAt.toNanoOfDay();
+        long endsAt = closesAt.toNanoOfDay();
+        if (startsAt < endsAt) {
+            segmentsByDate.computeIfAbsent(date, ignored -> new ArrayList<>())
+                    .add(new TimeSegment(startsAt, endsAt));
+            return;
+        }
+
+        segmentsByDate.computeIfAbsent(date, ignored -> new ArrayList<>())
+                .add(new TimeSegment(startsAt, NANOS_PER_DAY));
+        segmentsByDate.computeIfAbsent(date.plusDays(1), ignored -> new ArrayList<>())
+                .add(new TimeSegment(0, endsAt));
+    }
+
+    private void validateNoOverlap(List<TimeSegment> segments) {
+        List<TimeSegment> orderedSegments = segments.stream()
+                .sorted(Comparator.comparingLong(TimeSegment::startsAt)
+                        .thenComparingLong(TimeSegment::endsAt))
+                .toList();
+        for (int index = 1; index < orderedSegments.size(); index++) {
+            TimeSegment previous = orderedSegments.get(index - 1);
+            TimeSegment current = orderedSegments.get(index);
+            if (current.startsAt() < previous.endsAt()) {
+                throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
+            }
+        }
+    }
+
+    private Set<PlaceRegularOperatingHour> toRegularOperatingHours(
+            Set<AdminMapPlaceRegularOperatingHourRequest> regularHours
+    ) {
+        if (regularHours == null || regularHours.isEmpty()) {
+            return Set.of();
+        }
+        Set<PlaceRegularOperatingHour> results = new HashSet<>();
+        regularHours.forEach(hour -> results.add(PlaceRegularOperatingHour.of(
+                hour.dayOfWeek(),
+                hour.opensAt(),
+                hour.closesAt()
+        )));
+        return results;
+    }
+
+    private List<PlaceOperatingException> toOperatingExceptions(
+            MapPlace mapPlace,
+            Set<AdminMapPlaceOperatingExceptionRequest> exceptions
+    ) {
+        if (exceptions == null || exceptions.isEmpty()) {
+            return List.of();
+        }
+        return exceptions.stream()
+                .sorted(Comparator.comparing(AdminMapPlaceOperatingExceptionRequest::date))
+                .map(exception -> {
+                    if (exception.closed()) {
+                        return PlaceOperatingException.closed(mapPlace, exception.date());
+                    }
+                    Set<PlaceOperatingTimeRange> hours = new HashSet<>();
+                    exception.hours().forEach(hour -> hours.add(PlaceOperatingTimeRange.of(
+                            hour.opensAt(),
+                            hour.closesAt()
+                    )));
+                    return PlaceOperatingException.customHours(mapPlace, exception.date(), hours);
+                })
+                .toList();
+    }
+
+    private List<PlaceRegularOperatingHourResponse> regularHours(MapPlace mapPlace) {
+        return mapPlace.currentRegularOperatingHours().stream()
+                .sorted(Comparator.comparing(PlaceRegularOperatingHour::getDayOfWeek)
+                        .thenComparing(PlaceRegularOperatingHour::getOpensAt)
+                        .thenComparing(PlaceRegularOperatingHour::getClosesAt))
+                .map(hour -> new PlaceRegularOperatingHourResponse(
+                        hour.getDayOfWeek(),
+                        hour.getOpensAt(),
+                        hour.getClosesAt()
+                ))
+                .toList();
+    }
+
+    private List<PlaceOperatingExceptionResponse> operatingExceptions(MapPlace mapPlace) {
+        return mapPlace.currentOperatingExceptions().stream()
+                .map(exception -> new PlaceOperatingExceptionResponse(
+                        exception.getExceptionDate(),
+                        exception.isClosed(),
+                        exception.currentHours().stream()
+                                .sorted(Comparator.comparing(PlaceOperatingTimeRange::getOpensAt)
+                                        .thenComparing(PlaceOperatingTimeRange::getClosesAt))
+                                .map(hour -> new PlaceOperatingTimeRangeResponse(
+                                        hour.getOpensAt(),
+                                        hour.getClosesAt()
+                                ))
+                                .toList()
+                ))
+                .toList();
     }
 
     private void validateRecommendationTrafficRequest(AdminPlaceRecommendationTrafficUpdateRequest request) {
@@ -939,6 +1282,8 @@ public class AdminMapPlaceService {
                 place.getJibunAddress(),
                 place.getPostalCode(),
                 place.getGeocodingSource(),
+                place.getOperatingStatus(),
+                place.getOperatingStatusCheckedAt(),
                 place.getCategory(),
                 place.getImageUrl(),
                 place.getKakaoPlaceId(),
@@ -949,7 +1294,9 @@ public class AdminMapPlaceService {
                 place.currentPhotoCount(),
                 place.getEnglishName(),
                 place.getTouristSummary(),
-                normalizeTouristCategories(place.currentTouristCategories())
+                normalizeTouristCategories(place.currentTouristCategories()),
+                regularOperatingHourSnapshots(place),
+                operatingExceptionSnapshots(place)
         );
     }
 
@@ -962,9 +1309,9 @@ public class AdminMapPlaceService {
                 """
                 INSERT INTO map_place (
                     map_place_id, place_name, address, road_address, jibun_address, postal_code, geocoding_source,
-                    category, image_url, kakao_place_id, latitude, longitude, user_id, registrant,
-                    photo_count, english_name, tourist_summary
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    operating_status, operating_status_checked_at, category, image_url, kakao_place_id,
+                    latitude, longitude, user_id, registrant, photo_count, english_name, tourist_summary
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sourceSnapshot.id(),
                 sourceSnapshot.name(),
@@ -975,6 +1322,10 @@ public class AdminMapPlaceService {
                 (sourceSnapshot.geocodingSource() == null
                         ? GeocodingSource.LEGACY
                         : sourceSnapshot.geocodingSource()).name(),
+                (sourceSnapshot.operatingStatus() == null
+                        ? PlaceOperatingStatus.OPERATING
+                        : sourceSnapshot.operatingStatus()).name(),
+                sourceSnapshot.operatingStatusCheckedAt(),
                 sourceSnapshot.category(),
                 sourceSnapshot.imageUrl(),
                 sourceSnapshot.kakaoPlaceId(),
@@ -998,7 +1349,73 @@ public class AdminMapPlaceService {
                 sourceSnapshot.touristSummary(),
                 normalizeTouristCategories(sourceSnapshot.touristCategories())
         );
+        restoredSourcePlace.replaceOperatingSchedule(
+                regularOperatingHours(sourceSnapshot.regularOperatingHours()),
+                operatingExceptions(restoredSourcePlace, sourceSnapshot.operatingExceptions())
+        );
         return restoredSourcePlace;
+    }
+
+    private List<RegularOperatingHourSnapshot> regularOperatingHourSnapshots(MapPlace place) {
+        return place.currentRegularOperatingHours().stream()
+                .map(hour -> new RegularOperatingHourSnapshot(
+                        hour.getDayOfWeek(),
+                        hour.getOpensAt(),
+                        hour.getClosesAt()
+                ))
+                .toList();
+    }
+
+    private List<OperatingExceptionSnapshot> operatingExceptionSnapshots(MapPlace place) {
+        return place.currentOperatingExceptions().stream()
+                .map(exception -> new OperatingExceptionSnapshot(
+                        exception.getExceptionDate(),
+                        exception.isClosed(),
+                        exception.currentHours().stream()
+                                .map(hour -> new OperatingTimeRangeSnapshot(hour.getOpensAt(), hour.getClosesAt()))
+                                .toList()
+                ))
+                .toList();
+    }
+
+    private Set<PlaceRegularOperatingHour> regularOperatingHours(
+            List<RegularOperatingHourSnapshot> snapshots
+    ) {
+        if (snapshots == null || snapshots.isEmpty()) {
+            return Set.of();
+        }
+        Set<PlaceRegularOperatingHour> hours = new HashSet<>();
+        snapshots.forEach(snapshot -> hours.add(PlaceRegularOperatingHour.of(
+                snapshot.dayOfWeek(),
+                snapshot.opensAt(),
+                snapshot.closesAt()
+        )));
+        return hours;
+    }
+
+    private List<PlaceOperatingException> operatingExceptions(
+            MapPlace mapPlace,
+            List<OperatingExceptionSnapshot> snapshots
+    ) {
+        if (snapshots == null || snapshots.isEmpty()) {
+            return List.of();
+        }
+        return snapshots.stream()
+                .sorted(Comparator.comparing(OperatingExceptionSnapshot::date))
+                .map(snapshot -> {
+                    if (snapshot.closed()) {
+                        return PlaceOperatingException.closed(mapPlace, snapshot.date());
+                    }
+                    Set<PlaceOperatingTimeRange> hours = new HashSet<>();
+                    if (snapshot.hours() != null) {
+                        snapshot.hours().forEach(hour -> hours.add(PlaceOperatingTimeRange.of(
+                                hour.opensAt(),
+                                hour.closesAt()
+                        )));
+                    }
+                    return PlaceOperatingException.customHours(mapPlace, snapshot.date(), hours);
+                })
+                .toList();
     }
 
     private void restoreBookmarks(MapPlace restoredSourcePlace, String movedBookmarkIds, String deletedBookmarks) {
@@ -1160,6 +1577,8 @@ public class AdminMapPlaceService {
             String jibunAddress,
             String postalCode,
             GeocodingSource geocodingSource,
+            PlaceOperatingStatus operatingStatus,
+            LocalDateTime operatingStatusCheckedAt,
             String category,
             String imageUrl,
             String kakaoPlaceId,
@@ -1170,8 +1589,26 @@ public class AdminMapPlaceService {
             Long photoCount,
             String englishName,
             String touristSummary,
-            Set<TouristCategory> touristCategories
+            Set<TouristCategory> touristCategories,
+            List<RegularOperatingHourSnapshot> regularOperatingHours,
+            List<OperatingExceptionSnapshot> operatingExceptions
     ) {
+    }
+
+    private record RegularOperatingHourSnapshot(DayOfWeek dayOfWeek, LocalTime opensAt, LocalTime closesAt) {
+    }
+
+    private record OperatingExceptionSnapshot(
+            LocalDate date,
+            boolean closed,
+            List<OperatingTimeRangeSnapshot> hours
+    ) {
+    }
+
+    private record OperatingTimeRangeSnapshot(LocalTime opensAt, LocalTime closesAt) {
+    }
+
+    private record TimeSegment(long startsAt, long endsAt) {
     }
 
     private record BookmarkSnapshot(Long userId) {

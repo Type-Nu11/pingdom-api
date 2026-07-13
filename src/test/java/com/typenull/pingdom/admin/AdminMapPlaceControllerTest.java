@@ -34,6 +34,9 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingException;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
@@ -57,11 +60,15 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import java.time.LocalDate;
 import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.time.DayOfWeek;
 import java.util.List;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.Map;
 import java.util.Set;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -152,8 +159,20 @@ class AdminMapPlaceControllerTest {
         placeRecommendationTrafficPolicyRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         adminPlaceMergeHistoryRepository.deleteAllInBatch();
+        clearOperatingScheduleRows();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @AfterEach
+    void tearDownOperatingScheduleRows() {
+        clearOperatingScheduleRows();
+    }
+
+    private void clearOperatingScheduleRows() {
+        jdbcTemplate.update("DELETE FROM map_place_operating_exception_hour");
+        jdbcTemplate.update("DELETE FROM map_place_operating_exception");
+        jdbcTemplate.update("DELETE FROM map_place_regular_operating_hour");
     }
 
     @Test
@@ -598,6 +617,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
                 .anyMatch(log -> log.getAfterState().contains("\"deletedPostCount\":2")));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
+                .anyMatch(log -> log.getBeforeState().contains("\"operatingStatus\":\"OPERATING\"")));
     }
 
     @Test
@@ -787,6 +809,200 @@ class AdminMapPlaceControllerTest {
         assertTrue(auditLog.getBeforeState().contains("\"touristCategories\":[\"OTHER\"]"));
         assertTrue(auditLog.getAfterState().contains("\"englishName\":\"Jinju Tourist Spot\""));
         assertTrue(auditLog.getAfterState().contains("\"touristCategories\":[\"K_POP\",\"CAFE\"]"));
+    }
+
+    @Test
+    void updatePlaceOperatingStatusRecordsConfirmationAndAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("운영 상태 확인 장소")
+                .address("경상남도 진주시 운영로 10")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(95L)
+                .registrant("operatingStatusOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-status", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "operatingStatus", "TEMPORARILY_CLOSED",
+                                "reason", "현장 확인 결과 임시 휴업"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.operatingStatus").value("TEMPORARILY_CLOSED"))
+                .andExpect(jsonPath("$.operatingStatusCheckedAt").isNotEmpty())
+                .andExpect(jsonPath("$.message").value("장소 운영 상태를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(PlaceOperatingStatus.TEMPORARILY_CLOSED, updatedPlace.getOperatingStatus());
+        assertNotNull(updatedPlace.getOperatingStatusCheckedAt());
+
+        var auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.PLACE_OPERATING_STATUS_UPDATED, auditLog.getAction());
+        assertEquals("현장 확인 결과 임시 휴업", auditLog.getReason());
+        assertTrue(auditLog.getBeforeState().contains("\"operatingStatus\":\"OPERATING\""));
+        assertTrue(auditLog.getAfterState().contains("\"operatingStatus\":\"TEMPORARILY_CLOSED\""));
+    }
+
+    @Test
+    void updatePlaceOperatingSchedulePersistsExceptionsAndRecordsAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("영업시간 수정 장소")
+                .address("경상남도 진주시 영업로 1")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(95L)
+                .registrant("operatingScheduleOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-schedule", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "regularHours", List.of(
+                                        Map.of("dayOfWeek", "MONDAY", "opensAt", "09:00", "closesAt", "18:00"),
+                                        Map.of("dayOfWeek", "FRIDAY", "opensAt", "20:00", "closesAt", "02:00")
+                                ),
+                                "exceptions", List.of(
+                                        Map.of("date", "2026-08-15", "closed", true, "hours", List.of()),
+                                        Map.of(
+                                                "date", "2026-08-16",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "10:00", "closesAt", "16:00"))
+                                        )
+                                ),
+                                "reason", "광복절 휴무와 주말 영업시간 반영"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.regularHours", hasSize(2)))
+                .andExpect(jsonPath("$.regularHours[0].dayOfWeek").value("MONDAY"))
+                .andExpect(jsonPath("$.exceptions", hasSize(2)))
+                .andExpect(jsonPath("$.exceptions[0].date").value("2026-08-15"))
+                .andExpect(jsonPath("$.exceptions[0].closed").value(true))
+                .andExpect(jsonPath("$.exceptions[1].hours[0].opensAt").value("10:00:00"))
+                .andExpect(jsonPath("$.message").value("장소 영업시간 일정을 수정했습니다."));
+
+        assertEquals(2, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_regular_operating_hour WHERE map_place_id = ?",
+                Integer.class,
+                mapPlace.getId()
+        ));
+        assertEquals(2, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_operating_exception WHERE map_place_id = ?",
+                Integer.class,
+                mapPlace.getId()
+        ));
+        assertEquals(1, jdbcTemplate.queryForObject(
+                "SELECT COUNT(*) FROM map_place_operating_exception_hour",
+                Integer.class
+        ));
+
+        var auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.PLACE_OPERATING_SCHEDULE_UPDATED, auditLog.getAction());
+        assertEquals("광복절 휴무와 주말 영업시간 반영", auditLog.getReason());
+        assertTrue(auditLog.getAfterState().contains("\"dayOfWeek\":\"MONDAY\""));
+        assertTrue(auditLog.getAfterState().contains("\"date\":\"2026-08-15\""));
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regularHours", hasSize(2)))
+                .andExpect(jsonPath("$.operatingExceptions", hasSize(2)));
+    }
+
+    @Test
+    void updatePlaceOperatingScheduleRejectsOverlappingRegularHours() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("영업시간 검증 장소")
+                .address("경상남도 진주시 영업로 2")
+                .latitude(35.1805)
+                .longitude(128.1082)
+                .userId(96L)
+                .registrant("operatingScheduleOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-schedule", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "regularHours", List.of(
+                                        Map.of("dayOfWeek", "MONDAY", "opensAt", "09:00", "closesAt", "18:00"),
+                                        Map.of("dayOfWeek", "MONDAY", "opensAt", "17:00", "closesAt", "21:00")
+                                ),
+                                "reason", "중복 시간대 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
+    }
+
+    @Test
+    void updatePlaceOperatingScheduleRejectsExceptionHoursThatOverlapAcrossDates() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("익일 예외 일정 검증 장소")
+                .address("경상남도 진주시 영업로 3")
+                .latitude(35.1806)
+                .longitude(128.1083)
+                .userId(97L)
+                .registrant("operatingScheduleOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-schedule", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "exceptions", List.of(
+                                        Map.of(
+                                                "date", "2026-08-01",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "22:00", "closesAt", "02:00"))
+                                        ),
+                                        Map.of(
+                                                "date", "2026-08-02",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "01:00", "closesAt", "03:00"))
+                                        )
+                                ),
+                                "reason", "익일 예외 일정 중복 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
+    }
+
+    @Test
+    void updatePlaceOperatingScheduleRejectsClosedExceptionThatConflictsWithPreviousOvernightHours() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("휴무 예외 일정 검증 장소")
+                .address("경상남도 진주시 영업로 4")
+                .latitude(35.1807)
+                .longitude(128.1084)
+                .userId(98L)
+                .registrant("operatingScheduleOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-schedule", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "exceptions", List.of(
+                                        Map.of(
+                                                "date", "2026-08-01",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "22:00", "closesAt", "02:00"))
+                                        ),
+                                        Map.of("date", "2026-08-02", "closed", true, "hours", List.of())
+                                ),
+                                "reason", "익일 휴무 예외 일정 중복 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
     }
 
     @Test
@@ -1262,6 +1478,14 @@ class AdminMapPlaceControllerTest {
                 "병합 복구 시 보존할 관광 정보",
                 Set.of(TouristCategory.EXHIBITION, TouristCategory.NIGHTLIFE)
         );
+        sourcePlace.replaceOperatingSchedule(
+                Set.of(PlaceRegularOperatingHour.of(
+                        DayOfWeek.MONDAY,
+                        LocalTime.of(9, 0),
+                        LocalTime.of(18, 0)
+                )),
+                List.of(PlaceOperatingException.closed(sourcePlace, LocalDate.of(2026, 8, 15)))
+        );
         sourcePlace = mapPlaceRepository.save(sourcePlace);
         MapPlace targetPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("복구 병합 장소")
@@ -1392,7 +1616,10 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath(
                         "$.touristCategories",
                         containsInAnyOrder("EXHIBITION", "NIGHTLIFE")
-                ));
+                ))
+                .andExpect(jsonPath("$.regularHours[0].dayOfWeek").value("MONDAY"))
+                .andExpect(jsonPath("$.operatingExceptions[0].date").value("2026-08-15"))
+                .andExpect(jsonPath("$.operatingExceptions[0].closed").value(true));
     }
 
     @Test
