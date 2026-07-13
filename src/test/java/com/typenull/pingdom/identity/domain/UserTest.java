@@ -32,4 +32,17 @@ class UserTest {
 
         assertThat(user.currentTravelPurposes()).isEmpty();
     }
+
+    @Test
+    void revokingMerchantOwnerRoleAlsoClearsRefreshToken() {
+        User user = User.builder()
+                .role(UserRole.MERCHANT_OWNER)
+                .refreshToken("refresh-token")
+                .build();
+
+        user.revokeMerchantOwnerRole();
+
+        assertThat(user.getRole()).isEqualTo(UserRole.USER);
+        assertThat(user.getRefreshToken()).isNull();
+    }
 }
