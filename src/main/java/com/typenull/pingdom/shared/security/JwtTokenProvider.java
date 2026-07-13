@@ -8,6 +8,7 @@ import io.jsonwebtoken.security.Keys;
 import java.nio.charset.StandardCharsets;
 import java.time.Instant;
 import java.util.Date;
+import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
@@ -148,6 +149,9 @@ public class JwtTokenProvider {
         }
         if (role != null) {
             builder.claim("role", role);
+        }
+        if ("refresh".equals(tokenType)) {
+            builder.id(UUID.randomUUID().toString());
         }
 
         return builder.compact();

@@ -6,10 +6,10 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.RefreshTokenCookieService;
 import com.typenull.pingdom.shared.web.ClientIpResolver;
 import jakarta.servlet.http.HttpServletRequest;
 import org.aspectj.lang.JoinPoint;
@@ -24,9 +24,14 @@ import org.springframework.web.context.request.ServletRequestAttributes;
 public class RateLimitAspect {
 
     private final AbuseRateLimitService abuseRateLimitService;
+    private final RefreshTokenCookieService refreshTokenCookieService;
 
-    public RateLimitAspect(AbuseRateLimitService abuseRateLimitService) {
+    public RateLimitAspect(
+            AbuseRateLimitService abuseRateLimitService,
+            RefreshTokenCookieService refreshTokenCookieService
+    ) {
         this.abuseRateLimitService = abuseRateLimitService;
+        this.refreshTokenCookieService = refreshTokenCookieService;
     }
 
     @Before("@annotation(rateLimited)")
@@ -44,8 +49,7 @@ public class RateLimitAspect {
                 abuseRateLimitService.checkLogin(request.username(), clientIp);
             }
             case TOKEN_REFRESH -> {
-                RefreshTokenRequest request = requiredArg(args, RefreshTokenRequest.class);
-                abuseRateLimitService.checkTokenRefresh(request.refreshToken(), clientIp);
+                abuseRateLimitService.checkTokenRefresh(readRefreshToken(currentRequest()), clientIp);
             }
             case EMAIL_RESEND -> {
                 EmailResendRequest request = requiredArg(args, EmailResendRequest.class);
@@ -75,6 +79,13 @@ public class RateLimitAspect {
             return attributes.getRequest();
         }
         return null;
+    }
+
+    private String readRefreshToken(HttpServletRequest request) {
+        if (request == null) {
+            return "";
+        }
+        return refreshTokenCookieService.read(request).orElse("");
     }
 
     private JwtAuthenticatedUser requiredUser(Object[] args) {
