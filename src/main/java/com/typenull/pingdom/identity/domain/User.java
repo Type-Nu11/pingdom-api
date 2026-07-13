@@ -1,16 +1,23 @@
 package com.typenull.pingdom.identity.domain;
 
+import jakarta.persistence.CollectionTable;
 import jakarta.persistence.Column;
-import jakarta.persistence.EnumType;
-import jakarta.persistence.Enumerated;
+import jakarta.persistence.ElementCollection;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EntityListeners;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.ForeignKey;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
+import jakarta.persistence.JoinColumn;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.Collections;
+import java.util.LinkedHashSet;
 import java.util.Objects;
+import java.util.Set;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -68,6 +75,21 @@ public class User {
 
     @Column(nullable = false, length = 100)
     private String country;
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(
+            name = "user_travel_purpose",
+            joinColumns = @JoinColumn(
+                    name = "user_id",
+                    nullable = false,
+                    foreignKey = @ForeignKey(name = "fk_user_travel_purpose_user")
+            )
+    )
+    @Enumerated(EnumType.STRING)
+    @Column(name = "travel_purpose", nullable = false, length = 30)
+    @Getter(AccessLevel.NONE)
+    private Set<TravelPurpose> travelPurposes = new LinkedHashSet<>();
 
     @CreatedDate
     @Column(name = "created_at", nullable = false, updatable = false)
@@ -231,6 +253,33 @@ public class User {
         this.fcmToken = token;
     }
 
+    public Set<TravelPurpose> currentTravelPurposes() {
+        if (travelPurposes == null || travelPurposes.isEmpty()) {
+            return Set.of();
+        }
+        return Collections.unmodifiableSet(new LinkedHashSet<>(travelPurposes));
+    }
+
+    public void replaceTravelPurposes(Set<TravelPurpose> travelPurposes) {
+        Set<TravelPurpose> nextTravelPurposes = travelPurposes == null
+                ? Set.of()
+                : new LinkedHashSet<>(travelPurposes);
+
+        if (this.travelPurposes == null) {
+            this.travelPurposes = new LinkedHashSet<>();
+        } else {
+            try {
+                this.travelPurposes.clear();
+                this.travelPurposes.addAll(nextTravelPurposes);
+                return;
+            } catch (UnsupportedOperationException ignored) {
+                // Builders may receive an immutable Set; managed Hibernate collections remain mutated in place.
+            }
+            this.travelPurposes = new LinkedHashSet<>();
+        }
+        this.travelPurposes.addAll(nextTravelPurposes);
+    }
+
     public boolean isWithdrawn() {
         return this.status == UserStatus.WITHDRAWN;
     }
@@ -255,6 +304,7 @@ public class User {
         this.emailVerificationExpiresAt = null;
         this.refreshToken = null;
         this.fcmToken = null;
+        replaceTravelPurposes(Set.of());
         releaseBan();
     }
 }

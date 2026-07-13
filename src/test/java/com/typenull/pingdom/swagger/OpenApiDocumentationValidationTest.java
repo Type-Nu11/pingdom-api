@@ -93,6 +93,26 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void travelPurposePreferenceApiIsExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+
+        assertThat(appDocument.path("paths").has("/users/me/travel-purposes")).isTrue();
+        assertThat(appDocument.at("/paths/~1users~1me~1travel-purposes/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/TravelPurposePreferenceResponse");
+        assertThat(appDocument.at("/paths/~1users~1me~1travel-purposes/put/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/TravelPurposePreferenceUpdateRequest");
+        boolean travelPurposesRequired = false;
+        for (JsonNode requiredField : appDocument.path("components").path("schemas")
+                .path("TravelPurposePreferenceUpdateRequest").path("required")) {
+            if ("travelPurposes".equals(requiredField.asText())) {
+                travelPurposesRequired = true;
+                break;
+            }
+        }
+        assertThat(travelPurposesRequired).isTrue();
+    }
+
+    @Test
     void touristInformationSchemasDeclareNullableStringFields() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 

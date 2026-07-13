@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("34");
-        assertThat(result.migrationsExecuted).isEqualTo(34);
+        assertThat(result.targetSchemaVersion).isEqualTo("35");
+        assertThat(result.migrationsExecuted).isEqualTo(35);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("34");
-        assertThat(result.migrationsExecuted).isEqualTo(33);
+        assertThat(result.targetSchemaVersion).isEqualTo("35");
+        assertThat(result.migrationsExecuted).isEqualTo(34);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("34");
-        assertThat(result.migrationsExecuted).isEqualTo(7);
+        assertThat(result.targetSchemaVersion).isEqualTo("35");
+        assertThat(result.migrationsExecuted).isEqualTo(8);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -993,6 +993,55 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'place_event'
                           AND indexname = 'idx_place_event_public_discovery'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'user_travel_purpose'
+                          AND column_name = 'user_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'user_travel_purpose'
+                          AND column_name = 'travel_purpose'
+                          AND character_maximum_length = 30
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_purpose'::regclass
+                          AND conname = 'pk_user_travel_purpose'
+                          AND contype = 'p'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_purpose'::regclass
+                          AND conname = 'fk_user_travel_purpose_user'
+                          AND contype = 'f'
+                          AND confrelid = 'users'::regclass
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_purpose'::regclass
+                          AND conname = 'ck_user_travel_purpose_value'
+                          AND contype = 'c'
                     )
                     """)).isTrue();
         }
