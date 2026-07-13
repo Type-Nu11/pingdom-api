@@ -172,6 +172,16 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void periodEventApiGroupsSeparatePublicAndAdminPaths() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/events")).isTrue();
+        assertThat(appDocument.path("paths").has("/admin/place-events")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/place-events")).isTrue();
+    }
+
+    @Test
     void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
