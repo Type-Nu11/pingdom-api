@@ -2,7 +2,9 @@ package com.typenull.pingdom.place.infrastructure.persistence.place;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;
@@ -19,6 +21,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     FROM MapPlace m
                     WHERE m.latitude BETWEEN -90.0 AND 90.0
                       AND m.longitude BETWEEN -180.0 AND 180.0
+                      AND m.operatingStatus = :operatingStatus
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.englishName) LIKE :keywordPattern ESCAPE '\\'
@@ -33,6 +36,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     FROM MapPlace m
                     WHERE m.latitude BETWEEN -90.0 AND 90.0
                       AND m.longitude BETWEEN -180.0 AND 180.0
+                      AND m.operatingStatus = :operatingStatus
                       AND (:keywordPattern IS NULL
                            OR LOWER(m.name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(m.englishName) LIKE :keywordPattern ESCAPE '\\'
@@ -45,6 +49,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
     Page<MapPlace> searchLatestPlaces(
             @Param("keywordPattern") String keywordPattern,
             @Param("category") String category,
+            @Param("operatingStatus") PlaceOperatingStatus operatingStatus,
             Pageable pageable
     );
 
@@ -59,6 +64,8 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                         mp.jibun_address AS jibunAddress,
                         mp.postal_code AS postalCode,
                         mp.geocoding_source AS geocodingSource,
+                        mp.operating_status AS operatingStatus,
+                        mp.operating_status_checked_at AS operatingStatusCheckedAt,
                         mp.category AS category,
                         mp.tourist_summary AS touristSummary,
                         mp.latitude AS latitude,
@@ -73,7 +80,8 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                             ELSE NULL
                         END AS distanceMeters
                     FROM map_place mp
-                    WHERE (:keywordPattern IS NULL
+                    WHERE mp.operating_status = :operatingStatus
+                      AND (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
@@ -111,7 +119,8 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
             countQuery = """
                     SELECT COUNT(*)
                     FROM map_place mp
-                    WHERE (:keywordPattern IS NULL
+                    WHERE mp.operating_status = :operatingStatus
+                      AND (:keywordPattern IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
@@ -141,6 +150,7 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
     Page<PlaceSearchProjection> searchPlaces(
             @Param("keywordPattern") String keywordPattern,
             @Param("category") String category,
+            @Param("operatingStatus") String operatingStatus,
             @Param("hasLocation") boolean hasLocation,
             @Param("latitude") Double latitude,
             @Param("longitude") Double longitude,
@@ -171,6 +181,10 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
 
         GeocodingSource getGeocodingSource();
 
+        PlaceOperatingStatus getOperatingStatus();
+
+        LocalDateTime getOperatingStatusCheckedAt();
+
         String getCategory();
 
         String getTouristSummary();
@@ -185,14 +199,19 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
     @Query("""
             SELECT m
             FROM MapPlace m
-            WHERE LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+            WHERE m.operatingStatus = :operatingStatus
+              AND (LOWER(m.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.englishName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.roadAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))
                OR LOWER(m.jibunAddress) LIKE LOWER(CONCAT('%', :keyword, '%'))
-               OR LOWER(m.category) LIKE LOWER(CONCAT('%', :keyword, '%'))
+               OR LOWER(m.category) LIKE LOWER(CONCAT('%', :keyword, '%')))
             """)
-    List<MapPlace> findAutocompleteCandidates(@Param("keyword") String keyword, Pageable pageable);
+    List<MapPlace> findAutocompleteCandidates(
+            @Param("keyword") String keyword,
+            @Param("operatingStatus") PlaceOperatingStatus operatingStatus,
+            Pageable pageable
+    );
 
     @Query("""
             SELECT m.id AS placeId, touristCategory AS touristCategory
@@ -217,13 +236,20 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                     FROM MapBookmark b
                     JOIN MapPlace p ON p.id = b.placeId
                     WHERE b.userId = :userId
+                      AND p.operatingStatus = :operatingStatus
                     ORDER BY b.createdAt DESC, b.id DESC
                     """,
             countQuery = """
                     SELECT COUNT(b)
                     FROM MapBookmark b
+                    JOIN MapPlace p ON p.id = b.placeId
                     WHERE b.userId = :userId
+                      AND p.operatingStatus = :operatingStatus
                     """
     )
-    Page<MapPlace> findBookmarkedPlacesByUserId(@Param("userId") Long userId, Pageable pageable);
+    Page<MapPlace> findBookmarkedPlacesByUserId(
+            @Param("userId") Long userId,
+            @Param("operatingStatus") PlaceOperatingStatus operatingStatus,
+            Pageable pageable
+    );
 }

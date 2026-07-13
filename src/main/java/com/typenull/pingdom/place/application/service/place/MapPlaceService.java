@@ -171,6 +171,8 @@ public class MapPlaceService {
                 saved.getJibunAddress(),
                 saved.getPostalCode(),
                 saved.getGeocodingSource(),
+                saved.getOperatingStatus(),
+                saved.getOperatingStatusCheckedAt(),
                 saved.getTouristSummary(),
                 saved.currentTouristCategories(),
                 saved.getLatitude(),

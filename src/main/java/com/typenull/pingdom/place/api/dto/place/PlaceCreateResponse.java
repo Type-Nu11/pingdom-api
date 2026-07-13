@@ -2,7 +2,9 @@ package com.typenull.pingdom.place.api.dto.place;
 
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 @Schema(description = "장소 생성 응답")
@@ -23,6 +25,10 @@ public record PlaceCreateResponse(
         String postalCode,
         @Schema(description = "주소 및 좌표 생성 출처")
         GeocodingSource geocodingSource,
+        @Schema(description = "장소 운영 상태")
+        PlaceOperatingStatus operatingStatus,
+        @Schema(description = "운영 상태 최신 확인 시각", nullable = true)
+        LocalDateTime operatingStatusCheckedAt,
         @Schema(description = "관광객용 장소 요약", nullable = true)
         String touristSummary,
         @Schema(description = "관광 목적 카테고리")
