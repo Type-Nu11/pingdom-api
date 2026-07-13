@@ -1,5 +1,7 @@
 package com.typenull.pingdom.post.infrastructure.storage;
 
+import com.typenull.pingdom.post.infrastructure.storage.image.ImageUploadProcessor;
+
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertThrows;
 import static org.junit.jupiter.api.Assertions.assertTrue;
@@ -15,13 +17,12 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepo
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.post.infrastructure.storage.image.ImageUploadProcessor;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.awt.image.BufferedImage;

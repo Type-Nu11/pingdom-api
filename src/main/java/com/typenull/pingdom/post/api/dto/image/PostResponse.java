@@ -1,6 +1,6 @@
 package com.typenull.pingdom.post.api.dto.image;
 
-import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "게시글 처리 응답")

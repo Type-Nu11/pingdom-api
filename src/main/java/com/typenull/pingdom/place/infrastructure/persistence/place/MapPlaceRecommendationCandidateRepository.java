@@ -1,7 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
-import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;

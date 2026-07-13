@@ -23,7 +23,7 @@ import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenReposit
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
-import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -35,12 +35,12 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
-import com.typenull.pingdom.shared.ratelimit.RateLimitCooldownRule;
-import com.typenull.pingdom.shared.ratelimit.RateLimitException;
-import com.typenull.pingdom.shared.ratelimit.RateLimitStore;
-import com.typenull.pingdom.shared.ratelimit.RateLimitUnavailableException;
-import com.typenull.pingdom.shared.ratelimit.RateLimitWindowRule;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.ratelimit.core.RateLimitCooldownRule;
+import com.typenull.pingdom.shared.ratelimit.exception.RateLimitException;
+import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
+import com.typenull.pingdom.shared.ratelimit.exception.RateLimitUnavailableException;
+import com.typenull.pingdom.shared.ratelimit.core.RateLimitWindowRule;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import jakarta.servlet.http.Cookie;
 import java.awt.image.BufferedImage;

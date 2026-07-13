@@ -1,6 +1,9 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
-import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationVersionSnapshot;
+
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;

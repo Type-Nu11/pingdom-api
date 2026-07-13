@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.domain;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 
+
 public enum AdminPlaceSortParam {
     LATEST,
     OLDEST,

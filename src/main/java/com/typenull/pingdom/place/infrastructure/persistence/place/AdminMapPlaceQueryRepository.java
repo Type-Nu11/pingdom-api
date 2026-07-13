@@ -1,7 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
-import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.place.TouristCategory;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.domain.Page;

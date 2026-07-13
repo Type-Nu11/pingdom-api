@@ -1,13 +1,11 @@
 package com.typenull.pingdom.place;
 
-import com.typenull.pingdom.engagement.domain.MapImageLike;
-import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSimilarityService;
-import com.typenull.pingdom.place.domain.place.MapBookmark;
-import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
+import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
+import com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService;
+import com.typenull.pingdom.place.domain.place.core.MapBookmark;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceSimilaritySnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -16,6 +14,9 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
+
+import com.typenull.pingdom.engagement.domain.MapImageLike;
+import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Duration;

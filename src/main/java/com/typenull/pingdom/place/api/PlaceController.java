@@ -1,20 +1,21 @@
 package com.typenull.pingdom.place.api;
 
-import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationExplanationResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationClickService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationExplanationQueryService;
+
+import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationClickService;
+import com.typenull.pingdom.place.application.service.recommendation.explanation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
-import com.typenull.pingdom.shared.ratelimit.RateLimitAction;
-import com.typenull.pingdom.shared.ratelimit.RateLimited;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationQueryService;
+import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
+import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

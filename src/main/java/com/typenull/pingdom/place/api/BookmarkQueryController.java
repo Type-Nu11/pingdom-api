@@ -1,10 +1,11 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
+
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
-import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

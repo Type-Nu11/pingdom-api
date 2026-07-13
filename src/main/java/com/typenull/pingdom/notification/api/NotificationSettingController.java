@@ -2,8 +2,9 @@ package com.typenull.pingdom.notification.api;
 
 import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingResponse;
 import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpdateRequest;
+
 import com.typenull.pingdom.notification.application.service.NotificationSettingService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
