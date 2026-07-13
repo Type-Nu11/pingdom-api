@@ -1,8 +1,10 @@
 package com.typenull.pingdom.place.domain.place;
 
 import jakarta.persistence.*;
+import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -53,6 +55,14 @@ public class MapPlace {
     @Enumerated(EnumType.STRING)
     @Column(name = "geocoding_source", length = 20, nullable = false)
     private GeocodingSource geocodingSource = GeocodingSource.LEGACY;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "operating_status", length = 30, nullable = false)
+    private PlaceOperatingStatus operatingStatus = PlaceOperatingStatus.OPERATING;
+
+    @Column(name = "operating_status_checked_at")
+    private LocalDateTime operatingStatusCheckedAt;
 
     @Column(name = "category", length = 50)
     private String category;
@@ -235,5 +245,17 @@ public class MapPlace {
 
     public void updateKakaoPlaceId(String kakaoPlaceId) {
         this.kakaoPlaceId = kakaoPlaceId;
+    }
+
+    public boolean isOperating() {
+        return operatingStatus == PlaceOperatingStatus.OPERATING;
+    }
+
+    public void updateOperatingStatus(
+            PlaceOperatingStatus operatingStatus,
+            LocalDateTime operatingStatusCheckedAt
+    ) {
+        this.operatingStatus = Objects.requireNonNull(operatingStatus, "operatingStatus must not be null");
+        this.operatingStatusCheckedAt = operatingStatusCheckedAt;
     }
 }

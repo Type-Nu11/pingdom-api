@@ -2,7 +2,9 @@ package com.typenull.pingdom.place.api.dto.place;
 
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 import java.util.Set;
 
 public record PlaceListItem(
@@ -18,6 +20,9 @@ public record PlaceListItem(
         @Schema(nullable = true)
         String postalCode,
         GeocodingSource geocodingSource,
+        PlaceOperatingStatus operatingStatus,
+        @Schema(nullable = true)
+        LocalDateTime operatingStatusCheckedAt,
         String category,
         @Schema(nullable = true)
         String touristSummary,

@@ -7,8 +7,8 @@
 백업·복구 절차가 각각 다른 계약을 관리하므로, 하나의 변경 요청에서 적용 순서와 책임을
 일관되게 판단하는 것이 목적이다.
 
-이 문서는 2026-07-10 기준 `develop` 구현을 기준선으로 한다. 현재 Flyway migration은
-`V1`부터 `V29`까지이며, 공개 HTTP 호환성은
+이 문서는 2026-07-13 기준 `develop` 구현을 기준선으로 한다. 현재 Flyway migration은
+`V1`부터 `V32`까지이며, 공개 HTTP 호환성은
 `src/test/resources/openapi-baseline`과 `verifyOpenApiContract`로 검증한다. 이후 기준선이
 변경되면 실제 migration·OpenAPI 계약을 먼저 갱신하고 이 문서의 예시를 대조한다.
 

@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("31");
-        assertThat(result.migrationsExecuted).isEqualTo(31);
+        assertThat(result.targetSchemaVersion).isEqualTo("32");
+        assertThat(result.migrationsExecuted).isEqualTo(32);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("31");
-        assertThat(result.migrationsExecuted).isEqualTo(30);
+        assertThat(result.targetSchemaVersion).isEqualTo("32");
+        assertThat(result.migrationsExecuted).isEqualTo(31);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("31");
-        assertThat(result.migrationsExecuted).isEqualTo(4);
+        assertThat(result.targetSchemaVersion).isEqualTo("32");
+        assertThat(result.migrationsExecuted).isEqualTo(5);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -139,6 +139,8 @@ class FlywayMigrationIntegrationTest {
                           AND jibun_address IS NULL
                           AND postal_code IS NULL
                           AND geocoding_source = 'LEGACY'
+                          AND operating_status = 'OPERATING'
+                          AND operating_status_checked_at IS NULL
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -237,6 +239,41 @@ class FlywayMigrationIntegrationTest {
                         WHERE table_name = 'users'
                           AND column_name = 'status'
                           AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'operating_status'
+                          AND character_maximum_length = 30
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'operating_status_checked_at'
+                          AND data_type = 'timestamp without time zone'
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_operating_status'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_operating_status_not_null'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.domain.place;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import java.time.LocalDateTime;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
@@ -15,6 +16,26 @@ class MapPlaceTest {
         MapPlace mapPlace = MapPlace.builder().build();
 
         assertThat(mapPlace.getGeocodingSource()).isEqualTo(GeocodingSource.LEGACY);
+    }
+
+    @Test
+    void defaultsOperatingStatusToOperatingAndUpdatesConfirmationTime() {
+        MapPlace mapPlace = MapPlace.builder().build();
+        LocalDateTime checkedAt = LocalDateTime.of(2026, 7, 13, 10, 30);
+
+        assertThat(mapPlace.getOperatingStatus()).isEqualTo(PlaceOperatingStatus.OPERATING);
+        assertThat(mapPlace.getOperatingStatusCheckedAt()).isNull();
+        assertThat(mapPlace.isOperating()).isTrue();
+
+        mapPlace.updateOperatingStatus(PlaceOperatingStatus.TEMPORARILY_CLOSED, checkedAt);
+
+        assertThat(mapPlace.getOperatingStatus()).isEqualTo(PlaceOperatingStatus.TEMPORARILY_CLOSED);
+        assertThat(mapPlace.getOperatingStatusCheckedAt()).isEqualTo(checkedAt);
+        assertThat(mapPlace.isOperating()).isFalse();
+
+        assertThatThrownBy(() -> mapPlace.updateOperatingStatus(null, checkedAt))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("operatingStatus must not be null");
     }
 
     @Test

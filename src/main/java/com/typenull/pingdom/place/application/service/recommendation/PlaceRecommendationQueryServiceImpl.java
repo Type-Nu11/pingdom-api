@@ -191,6 +191,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         candidate.place().getJibunAddress(),
                         candidate.place().getPostalCode(),
                         candidate.place().getGeocodingSource(),
+                        candidate.place().getOperatingStatus(),
+                        candidate.place().getOperatingStatusCheckedAt(),
                         candidate.place().getLatitude(),
                         candidate.place().getLongitude(),
                         Math.round(candidate.distanceMeters()),
@@ -253,7 +255,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         for (MapPlace seedPlace : mapPlaceRepository.findAllById(missingPlaceIds)) {
-            placeIndex.put(seedPlace.getId(), seedPlace);
+            if (seedPlace.isOperating()) {
+                placeIndex.put(seedPlace.getId(), seedPlace);
+            }
         }
 
         return placeIndex;

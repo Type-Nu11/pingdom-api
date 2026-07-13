@@ -125,6 +125,12 @@ invalid index 여부를 확인한 뒤 실패 history를 `repair`하고 재실행
 `idx_map_place_road_address_trgm`, `idx_map_place_jibun_address_trgm`이다. migration은
 `executeInTransaction=false`로 실행하며 PostgreSQL transactional advisory lock도 비활성화한다.
 
+`V32`는 `map_place`에 `operating_status`와 `operating_status_checked_at`을 추가한다. 기존 장소는
+기존 앱의 탐색 가능 상태를 유지하기 위해 `OPERATING`으로 backfill하고, 실제 개별 확인 이력이
+없으므로 확인 시각은 `NULL`로 유지한다. 운영 상태 값과 null 불가 제약은 `NOT VALID`로 추가한 뒤
+검증하고 `NOT NULL`을 설정한다. 새 애플리케이션은 `OPERATING`이 아닌 장소를 앱 장소 조회와 추천
+후보에서 제외한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.

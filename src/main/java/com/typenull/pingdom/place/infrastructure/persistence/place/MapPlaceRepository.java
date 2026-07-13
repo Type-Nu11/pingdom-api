@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;
@@ -36,6 +37,8 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     int clearUserIdByUserIds(@Param("userIds") Collection<Long> userIds);
 
     boolean existsByKakaoPlaceId(String kakaoPlaceId);
+
+    boolean existsByIdAndOperatingStatus(Long id, PlaceOperatingStatus operatingStatus);
 
     List<MapPlace> findAllByNameAndAddress(String name, String address);
 

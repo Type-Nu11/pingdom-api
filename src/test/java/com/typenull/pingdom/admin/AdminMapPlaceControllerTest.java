@@ -34,6 +34,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
@@ -598,6 +599,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
                 .anyMatch(log -> log.getAfterState().contains("\"deletedPostCount\":2")));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
+                .anyMatch(log -> log.getBeforeState().contains("\"operatingStatus\":\"OPERATING\"")));
     }
 
     @Test
@@ -787,6 +791,42 @@ class AdminMapPlaceControllerTest {
         assertTrue(auditLog.getBeforeState().contains("\"touristCategories\":[\"OTHER\"]"));
         assertTrue(auditLog.getAfterState().contains("\"englishName\":\"Jinju Tourist Spot\""));
         assertTrue(auditLog.getAfterState().contains("\"touristCategories\":[\"K_POP\",\"CAFE\"]"));
+    }
+
+    @Test
+    void updatePlaceOperatingStatusRecordsConfirmationAndAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("운영 상태 확인 장소")
+                .address("경상남도 진주시 운영로 10")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(95L)
+                .registrant("operatingStatusOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-status", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "operatingStatus", "TEMPORARILY_CLOSED",
+                                "reason", "현장 확인 결과 임시 휴업"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.operatingStatus").value("TEMPORARILY_CLOSED"))
+                .andExpect(jsonPath("$.operatingStatusCheckedAt").isNotEmpty())
+                .andExpect(jsonPath("$.message").value("장소 운영 상태를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(PlaceOperatingStatus.TEMPORARILY_CLOSED, updatedPlace.getOperatingStatus());
+        assertNotNull(updatedPlace.getOperatingStatusCheckedAt());
+
+        var auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.PLACE_OPERATING_STATUS_UPDATED, auditLog.getAction());
+        assertEquals("현장 확인 결과 임시 휴업", auditLog.getReason());
+        assertTrue(auditLog.getBeforeState().contains("\"operatingStatus\":\"OPERATING\""));
+        assertTrue(auditLog.getAfterState().contains("\"operatingStatus\":\"TEMPORARILY_CLOSED\""));
     }
 
     @Test

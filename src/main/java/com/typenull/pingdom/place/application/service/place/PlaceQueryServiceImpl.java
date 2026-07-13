@@ -6,6 +6,7 @@ import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -72,6 +73,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             Page<MapPlace> placePage = placeSearchQueryRepository.searchLatestPlaces(
                     keywordPattern,
                     category,
+                    PlaceOperatingStatus.OPERATING,
                     pageable
             );
             Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
@@ -97,6 +99,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Page<PlaceSearchProjection> placePage = placeSearchQueryRepository.searchPlaces(
                 keywordPattern,
                 category,
+                PlaceOperatingStatus.OPERATING.name(),
                 locationSearch.enabled(),
                 locationSearch.latitude(),
                 locationSearch.longitude(),
@@ -149,7 +152,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 Sort.by(Sort.Direction.ASC, "name").and(Sort.by(Sort.Direction.ASC, "id"))
         );
 
-        List<PlaceAutocompleteItem> places = placeSearchQueryRepository.findAutocompleteCandidates(normalizedKeyword, pageable)
+        List<PlaceAutocompleteItem> places = placeSearchQueryRepository.findAutocompleteCandidates(
+                        normalizedKeyword,
+                        PlaceOperatingStatus.OPERATING,
+                        pageable
+                )
                 .stream()
                 .sorted((first, second) -> compareAutocompletePlaces(
                         first,
@@ -170,6 +177,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     public PlaceDetailResponse getPlace(Long placeId) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        if (!mapPlace.isOperating()) {
+            throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+        }
 
         return new PlaceDetailResponse(
                 mapPlace.getId(),
@@ -180,6 +190,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getJibunAddress(),
                 mapPlace.getPostalCode(),
                 mapPlace.getGeocodingSource(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
                 mapPlace.getTouristSummary(),
                 mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
@@ -199,7 +211,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         int safeLimit = Math.max(1, Math.min(limit, 100));
         Pageable pageable = PageRequest.of(safePage - 1, safeLimit);
 
-        Page<MapPlace> placePage = placeSearchQueryRepository.findBookmarkedPlacesByUserId(userId, pageable);
+        Page<MapPlace> placePage = placeSearchQueryRepository.findBookmarkedPlacesByUserId(
+                userId,
+                PlaceOperatingStatus.OPERATING,
+                pageable
+        );
         Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
                 placePage.getContent().stream().map(MapPlace::getId).toList()
         );
@@ -229,6 +245,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getJibunAddress(),
                 mapPlace.getPostalCode(),
                 mapPlace.getGeocodingSource(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
                 mapPlace.getCategory(),
                 mapPlace.getTouristSummary(),
                 touristCategories,
@@ -252,6 +270,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 projection.getJibunAddress(),
                 projection.getPostalCode(),
                 projection.getGeocodingSource(),
+                projection.getOperatingStatus(),
+                projection.getOperatingStatusCheckedAt(),
                 projection.getCategory(),
                 projection.getTouristSummary(),
                 touristCategories,
@@ -295,6 +315,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getJibunAddress(),
                 mapPlace.getPostalCode(),
                 mapPlace.getGeocodingSource(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
                 mapPlace.getCategory(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
