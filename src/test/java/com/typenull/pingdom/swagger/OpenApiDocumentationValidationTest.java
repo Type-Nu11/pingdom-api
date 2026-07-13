@@ -155,6 +155,20 @@ class OpenApiDocumentationValidationTest {
                 .path("required")).hasSize(6);
         assertThat(document.at("/paths/~1events~1{eventId}/get/responses/404/content/*~1*/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        for (String responsePath : List.of(
+                "/paths/~1admin~1place-events/post/responses/400",
+                "/paths/~1admin~1place-events/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/400",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/409",
+                "/paths/~1admin~1place-events~1{eventId}~1publish/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}~1publish/post/responses/409",
+                "/paths/~1admin~1place-events~1{eventId}~1cancel/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}~1cancel/post/responses/409"
+        )) {
+            assertThat(document.at(responsePath + "/content/*~1*/schema/$ref").asText())
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
     }
 
     @Test

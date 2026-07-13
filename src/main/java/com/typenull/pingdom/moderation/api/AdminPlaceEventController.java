@@ -4,6 +4,7 @@ import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventAction
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventResponse;
 import com.typenull.pingdom.moderation.application.service.AdminPlaceEventService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -38,8 +39,8 @@ public class AdminPlaceEventController {
     @Operation(summary = "관리자 기간형 이벤트 등록", description = "장소와 연결된 기간형 이벤트를 초안으로 등록합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "이벤트 초안 등록 성공", content = @Content(schema = @Schema(implementation = AdminPlaceEventResponse.class))),
-            @ApiResponse(responseCode = "400", description = "입력값 또는 기간 검증 실패"),
-            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음")
+            @ApiResponse(responseCode = "400", description = "입력값 또는 기간 검증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<AdminPlaceEventResponse> createEvent(
             @Valid @RequestBody AdminPlaceEventRequest request,
@@ -52,9 +53,9 @@ public class AdminPlaceEventController {
     @Operation(summary = "관리자 기간형 이벤트 수정", description = "초안 상태의 기간형 이벤트 정보와 연결 장소를 수정합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "이벤트 수정 성공", content = @Content(schema = @Schema(implementation = AdminPlaceEventResponse.class))),
-            @ApiResponse(responseCode = "400", description = "입력값 또는 기간 검증 실패"),
-            @ApiResponse(responseCode = "404", description = "이벤트 또는 장소를 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "초안이 아닌 이벤트 수정 시도")
+            @ApiResponse(responseCode = "400", description = "입력값 또는 기간 검증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "이벤트 또는 장소를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "초안이 아닌 이벤트 수정 시도", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<AdminPlaceEventResponse> updateEvent(
             @PathVariable Long eventId,
@@ -68,8 +69,8 @@ public class AdminPlaceEventController {
     @Operation(summary = "관리자 기간형 이벤트 공개", description = "종료되지 않은 초안 이벤트를 앱 탐색에 공개합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "이벤트 공개 성공", content = @Content(schema = @Schema(implementation = AdminPlaceEventResponse.class))),
-            @ApiResponse(responseCode = "404", description = "이벤트를 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "공개할 수 없는 상태 또는 기간")
+            @ApiResponse(responseCode = "404", description = "이벤트를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "공개할 수 없는 상태 또는 기간", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<AdminPlaceEventResponse> publishEvent(
             @PathVariable Long eventId,
@@ -83,8 +84,8 @@ public class AdminPlaceEventController {
     @Operation(summary = "관리자 기간형 이벤트 취소", description = "초안 또는 공개된 기간형 이벤트를 취소하고 앱 탐색에서 제외합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "이벤트 취소 성공", content = @Content(schema = @Schema(implementation = AdminPlaceEventResponse.class))),
-            @ApiResponse(responseCode = "404", description = "이벤트를 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 취소된 이벤트")
+            @ApiResponse(responseCode = "404", description = "이벤트를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 취소된 이벤트", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<AdminPlaceEventResponse> cancelEvent(
             @PathVariable Long eventId,
