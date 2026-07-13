@@ -5,6 +5,8 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
@@ -31,6 +33,8 @@ public class UserDataExportService {
     private final MapImageLikeRepository mapImageLikeRepository;
     private final TravelScheduleRepository travelScheduleRepository;
     private final UserCurrentActivityIntentRepository currentActivityIntentRepository;
+    private final MerchantOwnerProfileRepository merchantOwnerProfileRepository;
+    private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
@@ -57,6 +61,12 @@ public class UserDataExportService {
         var currentActivityIntent = currentActivityIntentRepository.findByUser_Id(userId)
                 .filter(intent -> intent.isActiveAt(now))
                 .orElse(null);
+        var merchantOwnerProfile = merchantOwnerProfileRepository.findById(userId).orElse(null);
+        List<Long> merchantOwnerPlaceIds = merchantOwnerPlaceRepository
+                .findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId)
+                .stream()
+                .map(place -> place.getPlaceId())
+                .toList();
 
         eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
                 userId,
@@ -68,7 +78,9 @@ public class UserDataExportService {
                 bookmarks,
                 likedMapImageIds,
                 travelSchedules,
-                currentActivityIntent
+                currentActivityIntent,
+                merchantOwnerProfile,
+                merchantOwnerPlaceIds
         );
     }
 }
