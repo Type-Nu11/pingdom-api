@@ -138,6 +138,10 @@ invalid index 여부를 확인한 뒤 실패 history를 `repair`하고 재실행
 있는 장소를 삭제·병합하면 일정 유실 대신 안전하게 실패한다. 새 애플리케이션은 JPA cascade로 일정 행을
 정리하고, 병합 복구 시 원래 장소의 일정을 스냅샷에서 복원한다.
 
+`V35`는 사용자별 여행 목적 선호를 `user_travel_purpose` 테이블에 다중 값으로 저장한다. 기존 사용자의
+선호는 비어 있는 상태를 유지하며 backfill하지 않는다. 목적 값은 migration의 check constraint로 제한하고,
+사용자 최종 삭제 시에는 FK cascade로 함께 제거한다. 신규 애플리케이션은 탈퇴 시 선호를 즉시 비운다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.

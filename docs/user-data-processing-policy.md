@@ -111,6 +111,7 @@ Authorization: Bearer {accessToken}
 | 알림 | 삭제 |
 | FCM 토큰 | 삭제 |
 | 알림 설정 | 삭제 |
+| 여행 목적 선호 | 삭제 |
 
 탈퇴 사용자는 기본 30일 동안 보존한다.
 
