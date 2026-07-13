@@ -14,9 +14,9 @@ import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 public interface AuthService {
     public UserResponse signup(SignupRequest request);
 
-    public LoginResponse login(LoginRequest request);
+    public LoginResult login(LoginRequest request);
 
-    public LoginResponse adminLogin(LoginRequest request);
+    public LoginResult adminLogin(LoginRequest request);
 
     // 이메일 인증 메일 재발송 처리 메서드
     public void resendVerificationEmail(EmailResendRequest request);

@@ -105,14 +105,14 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         User user = authenticateUser(request);
         return issueLoginResponse(user);
     }
 
     @Override
     @Transactional
-    public LoginResponse adminLogin(LoginRequest request) {
+    public LoginResult adminLogin(LoginRequest request) {
         User user = userRepository.findByUsername(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
@@ -405,7 +405,7 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
-    private LoginResponse issueLoginResponse(User user) {
+    private LoginResult issueLoginResponse(User user) {
         if (user.isWithdrawn()) {
             throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
         }
@@ -417,16 +417,18 @@ public class AuthServiceImpl implements AuthService {
         // 현재 활성 Refresh Token 저장 호출
         user.issueRefreshToken(refreshToken);
 
-        return new LoginResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getBirthYear(),
-                user.getProfileImageUrl(),
-                user.getLanguage(),
-                user.getCountry(),
-                "로그인에 성공했습니다.",
-                accessToken,
+        return new LoginResult(
+                new LoginResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getBirthYear(),
+                        user.getProfileImageUrl(),
+                        user.getLanguage(),
+                        user.getCountry(),
+                        "로그인에 성공했습니다.",
+                        accessToken
+                ),
                 refreshToken
         );
     }

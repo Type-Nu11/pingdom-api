@@ -22,12 +22,10 @@ public record LoginResponse(
         @Schema(description = "로그인 결과 메시지", example = "로그인에 성공했습니다.")
         String message,
         @Schema(description = "인증에 사용할 Access Token", example = "eyJhbGciOiJIUzI1NiJ9.access.token")
-        String accessToken,
-        @Schema(description = "토큰 재발급에 사용할 Refresh Token", example = "eyJhbGciOiJIUzI1NiJ9.refresh.token")
-        String refreshToken
+        String accessToken
 ) {
     // 토큰 미포함 호출 호환 생성자
     public LoginResponse(Long id, String username, String email, Integer birthYear, String profileImageUrl, String language, String country, String message) {
-        this(id, username, email, birthYear, profileImageUrl, language, country, message, null, null);
+        this(id, username, email, birthYear, profileImageUrl, language, country, message, null);
     }
 }
