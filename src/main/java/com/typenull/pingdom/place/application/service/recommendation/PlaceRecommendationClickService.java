@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation;
 
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -28,7 +29,7 @@ public class PlaceRecommendationClickService {
 
     @Transactional
     public void recordClick(Long userId, Long placeId, String recommendationVersion, String requestId) {
-        if (!mapPlaceRepository.existsById(placeId)) {
+        if (!mapPlaceRepository.existsByIdAndOperatingStatus(placeId, PlaceOperatingStatus.OPERATING)) {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
         if (StringUtils.hasText(requestId)
