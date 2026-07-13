@@ -113,6 +113,22 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void travelScheduleAndCurrentActivityIntentApisAreExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+
+        assertThat(appDocument.path("paths").has("/users/me/travel-schedules")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/travel-schedules/{scheduleId}")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/travel-schedules/{scheduleId}/cancel")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/current-activity-intent")).isTrue();
+        assertThat(appDocument.at("/paths/~1users~1me~1travel-schedules/post/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/TravelScheduleCreateRequest");
+        assertThat(appDocument.at("/paths/~1users~1me~1current-activity-intent/put/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/CurrentActivityIntentUpdateRequest");
+        assertThat(appDocument.at("/paths/~1users~1me~1current-activity-intent/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/CurrentActivityIntentResponse");
+    }
+
+    @Test
     void touristInformationSchemasDeclareNullableStringFields() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
