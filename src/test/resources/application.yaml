@@ -34,6 +34,9 @@ auth:
     same-site: Lax
     domain:
 
+cors:
+  allowed-origins: http://localhost:5173
+
 postmark:
   server-token: test-postmark-token
   from-email: no-reply@pingdom.local

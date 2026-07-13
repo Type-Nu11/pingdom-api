@@ -81,6 +81,9 @@ auth:
     same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
     domain: ${AUTH_REFRESH_COOKIE_DOMAIN:}
 
+cors:
+  allowed-origins: ${CORS_ALLOWED_ORIGINS:http://localhost:5173}
+
 postmark:
   server-token: ${POSTMARK_SERVER_TOKEN}
   from-email: ${POSTMARK_FROM_EMAIL}
