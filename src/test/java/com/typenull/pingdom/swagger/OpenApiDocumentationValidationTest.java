@@ -140,6 +140,22 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void periodEventSchemasExposePublicAndAdminContracts() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        assertThat(document.path("paths").has("/events")).isTrue();
+        assertThat(document.path("paths").has("/events/{eventId}")).isTrue();
+        assertThat(document.path("paths").has("/admin/place-events")).isTrue();
+        assertThat(document.path("paths").has("/admin/place-events/{eventId}/publish")).isTrue();
+        assertThat(document.path("components").path("schemas").path("PlaceEventListResponse")
+                .path("properties").path("events").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceEventDetailResponse")
+                .path("properties").path("scheduleStatus").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("AdminPlaceEventRequest")
+                .path("required")).hasSize(6);
+    }
+
+    @Test
     void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
