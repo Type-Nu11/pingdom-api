@@ -168,6 +168,17 @@ class PlaceEventControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_EVENT_CONNECTED"));
     }
 
+    @Test
+    void capsOversizedEventListPage() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/events")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", String.valueOf(Integer.MAX_VALUE)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(10_000));
+    }
+
     private long createAndPublish(String accessToken, LocalDateTime startAt, LocalDateTime endAt) throws Exception {
         MvcResult createResult = mockMvc.perform(post("/admin/place-events")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)

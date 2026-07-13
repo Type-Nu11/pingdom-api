@@ -23,6 +23,8 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PlaceEventQueryService {
 
+    private static final int MAX_PAGE = 10_000;
+
     private final PlaceEventRepository placeEventRepository;
     private final Clock clock;
 
@@ -38,7 +40,7 @@ public class PlaceEventQueryService {
             throw new MapException(MapErrorCode.PLACE_EVENT_SEARCH_CONDITION_INVALID);
         }
 
-        int safePage = Math.max(page, 1);
+        int safePage = Math.max(1, Math.min(page, MAX_PAGE));
         int safeLimit = Math.max(1, Math.min(limit, 100));
         LocalDateTime now = LocalDateTime.now(clock);
         Page<PlaceEvent> events = placeEventRepository.findDiscoverableEvents(
