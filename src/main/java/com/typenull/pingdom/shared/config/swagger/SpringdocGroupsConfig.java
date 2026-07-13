@@ -18,6 +18,8 @@ public class SpringdocGroupsConfig {
                         "/map/**",
                         "/places",
                         "/places/**",
+                        "/events",
+                        "/events/**",
                         "/place",
                         "/place/**",
                         "/notifications/**",
