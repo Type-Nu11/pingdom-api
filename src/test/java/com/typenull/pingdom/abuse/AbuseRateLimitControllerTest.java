@@ -17,7 +17,6 @@ import com.typenull.pingdom.identity.api.dto.email.EmailVerifyRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenRepository;
@@ -43,6 +42,7 @@ import com.typenull.pingdom.shared.ratelimit.RateLimitUnavailableException;
 import com.typenull.pingdom.shared.ratelimit.RateLimitWindowRule;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import jakarta.servlet.http.Cookie;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.time.Clock;
@@ -244,20 +244,18 @@ class AbuseRateLimitControllerTest {
 
     @Test
     void tokenRefreshReturnsTooManyRequestsWhenTokenLimitExceeded() throws Exception {
-        RefreshTokenRequest request = new RefreshTokenRequest("invalid-refresh-token");
+        Cookie refreshTokenCookie = new Cookie("PINGDOM_REFRESH_TOKEN", "invalid-refresh-token");
 
         for (int i = 0; i < 2; i++) {
             mockMvc.perform(post("/auth/token/refresh")
                             .with(remoteAddress("198.51.100.20"))
-                            .contentType(MediaType.APPLICATION_JSON)
-                            .content(objectMapper.writeValueAsString(request)))
+                            .cookie(refreshTokenCookie))
                     .andExpect(status().isUnauthorized());
         }
 
         mockMvc.perform(post("/auth/token/refresh")
                         .with(remoteAddress("198.51.100.20"))
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(request)))
+                        .cookie(refreshTokenCookie))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
     }
