@@ -408,6 +408,51 @@ class AdminUserControllerTest {
     }
 
     @Test
+    void listUserSanctionHistoriesReturnsEmptyPageWhenUserHasNoHistory() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("noSanctionHistoryUser");
+
+        mockMvc.perform(get("/admin/users/{userId}/sanctions", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.histories.length()").value(0))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(5))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listUserSanctionHistoriesReturnsNotFoundWhenUserDoesNotExist() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/users/{userId}/sanctions", 999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "5"))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
+    }
+
+    @Test
+    void listUserSanctionHistoriesReturnsBadRequestWhenPeriodFilterIsInvalid() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User targetUser = createUser("invalidSanctionPeriodUser");
+
+        mockMvc.perform(get("/admin/users/{userId}/sanctions", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "5")
+                        .param("from", "2026-06-30T00:00:00")
+                        .param("to", "2026-06-01T00:00:00"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_SANCTION_FILTER_PERIOD"));
+    }
+
+    @Test
     void unbanUserReleasesCurrentBanAndStoresHistory() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("releaseTargetUser");

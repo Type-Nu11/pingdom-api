@@ -253,8 +253,89 @@ public class AdminUserController {
     @GetMapping("/users/{userId}/sanctions")
     @Operation(
             summary = "사용자 제재 이력 조회",
-            description = "관리자가 특정 사용자의 제재 변경 이력을 페이지 단위로 조회합니다."
+            description = "관리자가 특정 사용자의 제재 변경 이력을 페이지 단위로 조회합니다. 제재 이력이 없으면 500이 아니라 빈 histories 배열과 페이지 메타데이터를 반환합니다."
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "사용자 제재 이력 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminUserSanctionHistoryResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "histories": [],
+                                              "page": 1,
+                                              "limit": 5,
+                                              "totalCount": 0,
+                                              "totalPages": 0,
+                                              "hasNext": false
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "조회 기간 필터 오류",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "제재 이력 조회 종료 시각은 시작 시각보다 이후여야 합니다.",
+                                              "code": "INVALID_SANCTION_FILTER_PERIOD"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증 실패",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "유효하지 않은 토큰입니다.",
+                                              "code": "INVALID_TOKEN"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "관리자 권한 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "관리자 권한이 필요합니다.",
+                                              "code": "ACCESS_DENIED"
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "사용자를 찾을 수 없습니다.",
+                                              "code": "USER_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
     public AdminUserSanctionHistoryResponse listUserSanctionHistories(
             @Parameter(description = "조회할 사용자 ID", example = "7") @PathVariable Long userId,
             @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
