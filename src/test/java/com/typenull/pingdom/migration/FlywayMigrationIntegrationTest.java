@@ -948,10 +948,13 @@ class FlywayMigrationIntegrationTest {
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 3
+                    SELECT COUNT(*) = 8
                     FROM information_schema.columns
                     WHERE table_name = 'place_event'
-                      AND column_name IN ('event_type', 'publication_status', 'start_at')
+                      AND column_name IN (
+                          'map_place_id', 'title', 'event_type', 'start_at',
+                          'end_at', 'publication_status', 'created_at', 'updated_at'
+                      )
                       AND is_nullable = 'NO'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -966,12 +969,22 @@ class FlywayMigrationIntegrationTest {
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_event'::regclass
+                      AND conname IN (
+                          'ck_place_event_type',
+                          'ck_place_event_publication_status',
+                          'ck_place_event_period'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
-                        FROM pg_constraint
-                        WHERE conrelid = 'place_event'::regclass
-                          AND conname = 'ck_place_event_period'
-                          AND contype = 'c'
+                        FROM pg_indexes
+                        WHERE tablename = 'place_event'
+                          AND indexname = 'idx_place_event_place_id'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
