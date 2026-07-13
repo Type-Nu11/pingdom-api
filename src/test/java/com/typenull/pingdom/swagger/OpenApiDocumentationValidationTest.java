@@ -125,6 +125,18 @@ class OpenApiDocumentationValidationTest {
                 .path("properties").path("regularHours").path("type").asText()).isEqualTo("array");
         assertThat(document.path("components").path("schemas").path("PlaceOperatingExceptionResponse")
                 .path("properties").path("closed").path("type").asText()).isEqualTo("boolean");
+        assertThat(document.path("components").path("schemas").path("AdminMapPlaceOperatingTimeRangeRequest")
+                .path("properties").path("opensAt").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("AdminMapPlaceOperatingTimeRangeRequest")
+                .path("properties").path("opensAt").path("format").asText()).isEqualTo("time");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingTimeRangeResponse")
+                .path("properties").path("opensAt").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingTimeRangeResponse")
+                .path("properties").path("opensAt").path("format").asText()).isEqualTo("time");
+        assertThat(document.at("/paths/~1admin~1places~1{id}~1operating-schedule/patch/responses/400/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(document.at("/paths/~1admin~1places~1{id}~1operating-schedule/patch/responses/404/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
     }
 
     @Test
