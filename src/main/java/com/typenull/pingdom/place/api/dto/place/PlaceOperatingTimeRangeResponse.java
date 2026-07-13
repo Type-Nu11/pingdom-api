@@ -5,9 +5,9 @@ import java.time.LocalTime;
 
 @Schema(description = "하루 중 장소 운영 시간대")
 public record PlaceOperatingTimeRangeResponse(
-        @Schema(example = "09:00:00")
+        @Schema(type = "string", format = "time", example = "09:00:00")
         LocalTime opensAt,
-        @Schema(example = "18:00:00")
+        @Schema(type = "string", format = "time", example = "18:00:00")
         LocalTime closesAt
 ) {
 }

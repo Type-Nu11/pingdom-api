@@ -13,6 +13,7 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperat
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -324,8 +325,16 @@ public class AdminPlaceQualityController {
                     description = "장소 영업시간 일정 수정 성공",
                     content = @Content(schema = @Schema(implementation = AdminMapPlaceOperatingScheduleUpdateResponse.class))
             ),
-            @ApiResponse(responseCode = "400", description = "입력값 검증 실패"),
-            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음")
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "장소를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
     })
     public ResponseEntity<AdminMapPlaceOperatingScheduleUpdateResponse> updatePlaceOperatingSchedule(
             @Parameter(description = "영업시간 일정을 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,

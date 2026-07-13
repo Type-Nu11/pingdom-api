@@ -11,10 +11,10 @@ public record AdminMapPlaceRegularOperatingHourRequest(
         @Schema(example = "MONDAY")
         DayOfWeek dayOfWeek,
         @NotNull(message = "영업 시작 시각은 필수입니다.")
-        @Schema(example = "09:00:00")
+        @Schema(type = "string", format = "time", example = "09:00:00")
         LocalTime opensAt,
         @NotNull(message = "영업 종료 시각은 필수입니다.")
-        @Schema(example = "18:00:00")
+        @Schema(type = "string", format = "time", example = "18:00:00")
         LocalTime closesAt
 ) {
 }

@@ -8,9 +8,9 @@ import java.time.LocalTime;
 public record PlaceRegularOperatingHourResponse(
         @Schema(example = "MONDAY")
         DayOfWeek dayOfWeek,
-        @Schema(example = "09:00:00")
+        @Schema(type = "string", format = "time", example = "09:00:00")
         LocalTime opensAt,
-        @Schema(example = "18:00:00")
+        @Schema(type = "string", format = "time", example = "18:00:00")
         LocalTime closesAt
 ) {
 }
