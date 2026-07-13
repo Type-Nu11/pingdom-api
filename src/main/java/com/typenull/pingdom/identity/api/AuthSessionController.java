@@ -1,6 +1,5 @@
 package com.typenull.pingdom.identity.api;
 
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.identity.application.service.AuthService;
 import com.typenull.pingdom.identity.application.service.TokenRefreshResult;
@@ -19,12 +18,10 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
-import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -95,27 +92,16 @@ public class AuthSessionController {
     @PostMapping("/logout")
     @Operation(
             summary = "로그아웃",
-            description = "Refresh Token을 검증한 뒤 현재 저장된 Refresh Token을 제거합니다."
+            description = "HttpOnly Cookie의 Refresh Token을 검증한 뒤 현재 저장된 Refresh Token을 제거하고 Cookie를 만료 처리합니다."
     )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "204",
-                    description = "로그아웃 성공"
-            ),
-            @ApiResponse(
-                    responseCode = "400",
-                    description = "입력값 검증 실패",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "입력값을 확인해주세요.",
-                                              "errors": {
-                                                "refreshToken": "리프레시 토큰은 필수입니다."
-                                              }
-                                            }
-                                            """
-                            )
+                    description = "로그아웃 성공",
+                    headers = @Header(
+                            name = HttpHeaders.SET_COOKIE,
+                            description = "만료된 HttpOnly Refresh Token Cookie",
+                            schema = @Schema(type = "string")
                     )
             ),
             @ApiResponse(
@@ -147,9 +133,13 @@ public class AuthSessionController {
                     )
             )
     })
-    public ResponseEntity<Void> logout(@Valid @RequestBody RefreshTokenRequest request) {
-        authService.logout(request);
-        return ResponseEntity.noContent().build();
+    public ResponseEntity<Void> logout(HttpServletRequest request, HttpServletResponse response) {
+        try {
+            authService.logout(readRefreshToken(request));
+            return ResponseEntity.noContent().build();
+        } finally {
+            response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieService.expire().toString());
+        }
     }
 
     private String readRefreshToken(HttpServletRequest request) {

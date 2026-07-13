@@ -9,8 +9,6 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -255,8 +253,8 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     // Refresh Token 무효화 기반 로그아웃 메서드
-    public void logout(RefreshTokenRequest request) {
-        Long userId = extractValidRefreshTokenUserId(request.refreshToken());
+    public void logout(String refreshToken) {
+        Long userId = extractValidRefreshTokenUserId(refreshToken);
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
@@ -264,7 +262,7 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        if (!user.matchesRefreshToken(request.refreshToken())) {
+        if (!user.matchesRefreshToken(refreshToken)) {
             return;
         }
 

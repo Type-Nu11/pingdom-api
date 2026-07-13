@@ -8,8 +8,6 @@ import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetConfirmR
 import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 
 public interface AuthService {
     public UserResponse signup(SignupRequest request);
@@ -34,7 +32,7 @@ public interface AuthService {
     public TokenRefreshResult refreshToken(String refreshToken);
 
     // Refresh Token 무효화 기반 로그아웃 처리 메서드
-    public void logout(RefreshTokenRequest request);
+    public void logout(String refreshToken);
 
     // 회원탈퇴 처리 메서드
     public void withdraw(Long userId);
