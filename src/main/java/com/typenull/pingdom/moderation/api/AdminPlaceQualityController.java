@@ -8,9 +8,12 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoP
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingScheduleUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingScheduleUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -309,6 +312,37 @@ public class AdminPlaceQualityController {
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminMapPlaceService.updatePlaceOperatingStatus(adminUserId, placeId, request));
+    }
+
+    @PatchMapping("/{id}/operating-schedule")
+    @Operation(
+            summary = "관리자 장소 영업시간 일정 수정",
+            description = "관리자가 요일별 정규 영업시간과 특정 날짜 휴무·대체 영업시간을 전체 교체합니다. 수동 운영 상태는 변경하지 않습니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 영업시간 일정 수정 성공",
+                    content = @Content(schema = @Schema(implementation = AdminMapPlaceOperatingScheduleUpdateResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "입력값 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "장소를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<AdminMapPlaceOperatingScheduleUpdateResponse> updatePlaceOperatingSchedule(
+            @Parameter(description = "영업시간 일정을 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceOperatingScheduleUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updatePlaceOperatingSchedule(adminUserId, placeId, request));
     }
 
     @DeleteMapping("/{id}/delete")

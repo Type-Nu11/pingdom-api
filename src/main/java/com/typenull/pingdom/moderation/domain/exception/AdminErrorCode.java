@@ -12,6 +12,7 @@ public enum AdminErrorCode {
     PLACE_DUPLICATE_NOT_FOUND(HttpStatus.NOT_FOUND, "중복 후보 장소를 찾을 수 없습니다."),
     PLACE_MERGE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 병합 요청이 올바르지 않습니다."),
     PLACE_OPERATING_STATUS_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 운영 상태 요청이 올바르지 않습니다."),
+    PLACE_OPERATING_SCHEDULE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 영업시간 일정 요청이 올바르지 않습니다."),
     PLACE_MERGE_NOT_ALLOWED(HttpStatus.CONFLICT, "중복 장소로 확인되지 않아 병합할 수 없습니다."),
     PLACE_MERGE_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 병합 이력을 찾을 수 없습니다."),
     PLACE_MERGE_ALREADY_RESTORED(HttpStatus.CONFLICT, "이미 복구된 장소 병합 이력입니다."),

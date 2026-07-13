@@ -1,9 +1,11 @@
 package com.typenull.pingdom.place.domain.place;
 
 import jakarta.persistence.*;
+import java.util.ArrayList;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
@@ -63,6 +65,25 @@ public class MapPlace {
 
     @Column(name = "operating_status_checked_at")
     private LocalDateTime operatingStatusCheckedAt;
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(
+            name = "map_place_regular_operating_hour",
+            joinColumns = @JoinColumn(
+                    name = "map_place_id",
+                    nullable = false,
+                    foreignKey = @ForeignKey(name = "fk_map_place_regular_operating_hour_place")
+            )
+    )
+    @Getter(AccessLevel.NONE)
+    private Set<PlaceRegularOperatingHour> regularOperatingHours = new LinkedHashSet<>();
+
+    @Builder.Default
+    @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
+    @OrderBy("exceptionDate ASC")
+    @Getter(AccessLevel.NONE)
+    private List<PlaceOperatingException> operatingExceptions = new ArrayList<>();
 
     @Column(name = "category", length = 50)
     private String category;
@@ -251,11 +272,65 @@ public class MapPlace {
         return operatingStatus == PlaceOperatingStatus.OPERATING;
     }
 
+    public Set<PlaceRegularOperatingHour> currentRegularOperatingHours() {
+        if (regularOperatingHours == null || regularOperatingHours.isEmpty()) {
+            return Set.of();
+        }
+        return Collections.unmodifiableSet(new LinkedHashSet<>(regularOperatingHours));
+    }
+
+    public List<PlaceOperatingException> currentOperatingExceptions() {
+        if (operatingExceptions == null || operatingExceptions.isEmpty()) {
+            return List.of();
+        }
+        return List.copyOf(operatingExceptions);
+    }
+
+    public void replaceOperatingSchedule(
+            Set<PlaceRegularOperatingHour> regularOperatingHours,
+            List<PlaceOperatingException> operatingExceptions
+    ) {
+        replaceRegularOperatingHours(regularOperatingHours == null ? Set.of() : regularOperatingHours);
+        replaceOperatingExceptions(operatingExceptions == null ? List.of() : operatingExceptions);
+    }
+
     public void updateOperatingStatus(
             PlaceOperatingStatus operatingStatus,
             LocalDateTime operatingStatusCheckedAt
     ) {
         this.operatingStatus = Objects.requireNonNull(operatingStatus, "operatingStatus must not be null");
         this.operatingStatusCheckedAt = operatingStatusCheckedAt;
+    }
+
+    private void replaceRegularOperatingHours(Set<PlaceRegularOperatingHour> nextRegularOperatingHours) {
+        if (this.regularOperatingHours == null) {
+            this.regularOperatingHours = new LinkedHashSet<>();
+        } else {
+            try {
+                this.regularOperatingHours.clear();
+                this.regularOperatingHours.addAll(nextRegularOperatingHours);
+                return;
+            } catch (UnsupportedOperationException ignored) {
+                // Builders may receive an immutable Set; managed Hibernate collections remain mutated in place.
+            }
+            this.regularOperatingHours = new LinkedHashSet<>();
+        }
+        this.regularOperatingHours.addAll(nextRegularOperatingHours);
+    }
+
+    private void replaceOperatingExceptions(List<PlaceOperatingException> nextOperatingExceptions) {
+        if (this.operatingExceptions == null) {
+            this.operatingExceptions = new ArrayList<>();
+        } else {
+            try {
+                this.operatingExceptions.clear();
+                this.operatingExceptions.addAll(nextOperatingExceptions);
+                return;
+            } catch (UnsupportedOperationException ignored) {
+                // Builders may receive an immutable List; managed Hibernate collections remain mutated in place.
+            }
+            this.operatingExceptions = new ArrayList<>();
+        }
+        this.operatingExceptions.addAll(nextOperatingExceptions);
     }
 }

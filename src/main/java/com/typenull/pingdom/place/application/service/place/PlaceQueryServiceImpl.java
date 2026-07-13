@@ -5,9 +5,15 @@ import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceOperatingExceptionResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceOperatingTimeRangeResponse;
+import com.typenull.pingdom.place.api.dto.place.PlaceRegularOperatingHourResponse;
 import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingException;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingTimeRange;
+import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
@@ -16,6 +22,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQu
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.EnumSet;
+import java.util.Comparator;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -192,6 +199,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getGeocodingSource(),
                 mapPlace.getOperatingStatus(),
                 mapPlace.getOperatingStatusCheckedAt(),
+                regularHours(mapPlace),
+                operatingExceptions(mapPlace),
                 mapPlace.getTouristSummary(),
                 mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
@@ -279,6 +288,36 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 projection.getLongitude(),
                 distanceMeters == null ? null : Math.round(distanceMeters)
         );
+    }
+
+    private List<PlaceRegularOperatingHourResponse> regularHours(MapPlace mapPlace) {
+        return mapPlace.currentRegularOperatingHours().stream()
+                .sorted(Comparator.comparing(PlaceRegularOperatingHour::getDayOfWeek)
+                        .thenComparing(PlaceRegularOperatingHour::getOpensAt)
+                        .thenComparing(PlaceRegularOperatingHour::getClosesAt))
+                .map(hour -> new PlaceRegularOperatingHourResponse(
+                        hour.getDayOfWeek(),
+                        hour.getOpensAt(),
+                        hour.getClosesAt()
+                ))
+                .toList();
+    }
+
+    private List<PlaceOperatingExceptionResponse> operatingExceptions(MapPlace mapPlace) {
+        return mapPlace.currentOperatingExceptions().stream()
+                .map(exception -> new PlaceOperatingExceptionResponse(
+                        exception.getExceptionDate(),
+                        exception.isClosed(),
+                        exception.currentHours().stream()
+                                .sorted(Comparator.comparing(PlaceOperatingTimeRange::getOpensAt)
+                                        .thenComparing(PlaceOperatingTimeRange::getClosesAt))
+                                .map(hour -> new PlaceOperatingTimeRangeResponse(
+                                        hour.getOpensAt(),
+                                        hour.getClosesAt()
+                                ))
+                                .toList()
+                ))
+                .toList();
     }
 
     private String toLikePattern(String value) {

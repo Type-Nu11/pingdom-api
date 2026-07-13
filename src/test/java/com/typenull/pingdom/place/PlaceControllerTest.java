@@ -12,6 +12,9 @@ import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
 import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingException;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingTimeRange;
+import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
@@ -32,12 +35,16 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import java.time.LocalDateTime;
+import java.time.DayOfWeek;
+import java.time.LocalDate;
+import java.time.LocalTime;
 import java.util.HashMap;
 import java.util.Comparator;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import java.util.function.Supplier;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -143,8 +150,20 @@ class PlaceControllerTest {
         placeRecommendationExposureRepository.deleteAllInBatch();
         placeRecommendationFeatureLogRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
+        clearOperatingScheduleRows();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @AfterEach
+    void tearDownOperatingScheduleRows() {
+        clearOperatingScheduleRows();
+    }
+
+    private void clearOperatingScheduleRows() {
+        jdbcTemplate.update("DELETE FROM map_place_operating_exception_hour");
+        jdbcTemplate.update("DELETE FROM map_place_operating_exception");
+        jdbcTemplate.update("DELETE FROM map_place_regular_operating_hour");
     }
 
     @Test
@@ -617,6 +636,38 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(touristPlace.getId()))
                 .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"));
+    }
+
+    @Test
+    void placeDetailExposesRegularHoursAndOperatingExceptions() throws Exception {
+        String accessToken = signupAndLogin("readerOperatingSchedule");
+        MapPlace mapPlace = createMapPlace("영업시간 장소", "경상남도 진주시 영업로 3");
+        mapPlace.replaceOperatingSchedule(
+                Set.of(PlaceRegularOperatingHour.of(
+                        DayOfWeek.MONDAY,
+                        LocalTime.of(9, 0),
+                        LocalTime.of(18, 0)
+                )),
+                List.of(
+                        PlaceOperatingException.closed(mapPlace, LocalDate.of(2026, 8, 15)),
+                        PlaceOperatingException.customHours(
+                                mapPlace,
+                                LocalDate.of(2026, 8, 16),
+                                Set.of(PlaceOperatingTimeRange.of(LocalTime.of(10, 0), LocalTime.of(16, 0)))
+                        )
+                )
+        );
+        mapPlace = mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regularHours[0].dayOfWeek").value("MONDAY"))
+                .andExpect(jsonPath("$.regularHours[0].opensAt").value("09:00:00"))
+                .andExpect(jsonPath("$.operatingExceptions.length()").value(2))
+                .andExpect(jsonPath("$.operatingExceptions[0].date").value("2026-08-15"))
+                .andExpect(jsonPath("$.operatingExceptions[0].closed").value(true))
+                .andExpect(jsonPath("$.operatingExceptions[1].hours[0].closesAt").value("16:00:00"));
     }
 
     @Test
