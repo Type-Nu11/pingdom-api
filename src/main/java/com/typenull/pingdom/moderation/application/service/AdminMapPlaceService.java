@@ -14,6 +14,8 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocod
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.AdminPlaceRecommendationTrafficPolicyItem;
@@ -435,6 +437,50 @@ public class AdminMapPlaceService {
     }
 
     @Transactional
+    public AdminMapPlaceOperatingStatusUpdateResponse updatePlaceOperatingStatus(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceOperatingStatusUpdateRequest request
+    ) {
+        if (request == null || request.operatingStatus() == null || !StringUtils.hasText(request.reason())) {
+            throw new AdminException(AdminErrorCode.PLACE_OPERATING_STATUS_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = operatingStatusState(mapPlace);
+        LocalDateTime checkedAt = now();
+
+        mapPlace.updateOperatingStatus(request.operatingStatus(), checkedAt);
+
+        Map<String, Object> afterState = operatingStatusState(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_OPERATING_STATUS_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+
+        log.info(
+                "Admin updated place operating status. adminUserId={}, placeId={}, operatingStatus={}, checkedAt={}",
+                adminUserId,
+                placeId,
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt()
+        );
+
+        return new AdminMapPlaceOperatingStatusUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getOperatingStatus(),
+                mapPlace.getOperatingStatusCheckedAt(),
+                "장소 운영 상태를 수정했습니다."
+        );
+    }
+
+    @Transactional
     public AdminMapPlaceMergeResponse mergePlaces(Long adminUserId, AdminMapPlaceMergeRequest request) {
         validateMergeRequest(request);
 
@@ -809,6 +855,14 @@ public class AdminMapPlaceService {
         state.put("englishName", place.getEnglishName());
         state.put("touristSummary", place.getTouristSummary());
         state.put("touristCategories", normalizeTouristCategories(place.currentTouristCategories()));
+        return state;
+    }
+
+    private Map<String, Object> operatingStatusState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("operatingStatus", place.getOperatingStatus());
+        state.put("operatingStatusCheckedAt", place.getOperatingStatusCheckedAt());
         return state;
     }
 
