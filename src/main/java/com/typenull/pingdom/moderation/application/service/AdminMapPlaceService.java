@@ -38,6 +38,7 @@ import com.typenull.pingdom.place.application.service.recommendation.PlaceRecomm
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
@@ -993,6 +994,8 @@ public class AdminMapPlaceService {
                 place.getJibunAddress(),
                 place.getPostalCode(),
                 place.getGeocodingSource(),
+                place.getOperatingStatus(),
+                place.getOperatingStatusCheckedAt(),
                 place.getCategory(),
                 place.getImageUrl(),
                 place.getKakaoPlaceId(),
@@ -1016,9 +1019,9 @@ public class AdminMapPlaceService {
                 """
                 INSERT INTO map_place (
                     map_place_id, place_name, address, road_address, jibun_address, postal_code, geocoding_source,
-                    category, image_url, kakao_place_id, latitude, longitude, user_id, registrant,
-                    photo_count, english_name, tourist_summary
-                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                    operating_status, operating_status_checked_at, category, image_url, kakao_place_id,
+                    latitude, longitude, user_id, registrant, photo_count, english_name, tourist_summary
+                ) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """,
                 sourceSnapshot.id(),
                 sourceSnapshot.name(),
@@ -1029,6 +1032,10 @@ public class AdminMapPlaceService {
                 (sourceSnapshot.geocodingSource() == null
                         ? GeocodingSource.LEGACY
                         : sourceSnapshot.geocodingSource()).name(),
+                (sourceSnapshot.operatingStatus() == null
+                        ? PlaceOperatingStatus.OPERATING
+                        : sourceSnapshot.operatingStatus()).name(),
+                sourceSnapshot.operatingStatusCheckedAt(),
                 sourceSnapshot.category(),
                 sourceSnapshot.imageUrl(),
                 sourceSnapshot.kakaoPlaceId(),
@@ -1214,6 +1221,8 @@ public class AdminMapPlaceService {
             String jibunAddress,
             String postalCode,
             GeocodingSource geocodingSource,
+            PlaceOperatingStatus operatingStatus,
+            LocalDateTime operatingStatusCheckedAt,
             String category,
             String imageUrl,
             String kakaoPlaceId,
