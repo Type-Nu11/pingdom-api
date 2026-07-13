@@ -145,6 +145,14 @@ user:
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
 
+travel:
+  data-retention:
+    withdrawn-user-retention: P7D
+    cleanup-batch-size: 100
+    cleanup-enabled: true
+    cleanup-delay: PT1H
+    cleanup-initial-delay: PT1H
+
 abuse:
   rate-limit:
     storage: ${ABUSE_RATE_LIMIT_STORAGE:redis}
