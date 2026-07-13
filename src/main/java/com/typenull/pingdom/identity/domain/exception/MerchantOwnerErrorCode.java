@@ -1,0 +1,20 @@
+package com.typenull.pingdom.identity.domain.exception;
+
+import lombok.Getter;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+
+@Getter
+@RequiredArgsConstructor
+public enum MerchantOwnerErrorCode {
+    PROFILE_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant Owner 프로필을 찾을 수 없습니다."),
+    PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 Merchant Owner 프로필이 존재합니다."),
+    INVALID_PROFILE_STATE(HttpStatus.CONFLICT, "현재 Merchant Owner 프로필 상태에서는 요청을 처리할 수 없습니다."),
+    ADMIN_ACCOUNT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "관리자 계정은 Merchant Owner로 신청할 수 없습니다."),
+    PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "연결할 장소를 찾을 수 없습니다."),
+    PLACE_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "이미 다른 Merchant Owner에게 연결된 장소가 있습니다."),
+    ACTIVE_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "활성 Merchant Owner 권한이 필요합니다.");
+
+    private final HttpStatus status;
+    private final String message;
+}
