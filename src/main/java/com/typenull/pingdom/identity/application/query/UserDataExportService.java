@@ -4,10 +4,15 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
+import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
+import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
@@ -24,7 +29,10 @@ public class UserDataExportService {
     private final UserRepository userRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
+    private final TravelScheduleRepository travelScheduleRepository;
+    private final UserCurrentActivityIntentRepository currentActivityIntentRepository;
     private final ApplicationEventPublisher eventPublisher;
+    private final Clock clock;
 
     @Transactional(readOnly = true)
     public UserDataExportResult exportMyData(Long userId) {
@@ -43,12 +51,24 @@ public class UserDataExportService {
                 userId,
                 PageRequest.of(0, LIKE_EXPORT_LIMIT)
         );
+        List<TravelSchedule> travelSchedules = travelScheduleRepository
+                .findAllByUser_IdOrderByStartDateAscIdAsc(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+        var currentActivityIntent = currentActivityIntentRepository.findByUser_Id(userId)
+                .filter(intent -> intent.isActiveAt(now))
+                .orElse(null);
 
         eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
                 userId,
                 PrivacyProcessingAction.EXPORT_REQUESTED,
                 "사용자 데이터 export 요청"
         ));
-        return UserDataExportResult.of(user, bookmarks, likedMapImageIds);
+        return UserDataExportResult.of(
+                user,
+                bookmarks,
+                likedMapImageIds,
+                travelSchedules,
+                currentActivityIntent
+        );
     }
 }
