@@ -942,6 +942,70 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void updatePlaceOperatingScheduleRejectsExceptionHoursThatOverlapAcrossDates() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("익일 예외 일정 검증 장소")
+                .address("경상남도 진주시 영업로 3")
+                .latitude(35.1806)
+                .longitude(128.1083)
+                .userId(97L)
+                .registrant("operatingScheduleOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-schedule", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "exceptions", List.of(
+                                        Map.of(
+                                                "date", "2026-08-01",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "22:00", "closesAt", "02:00"))
+                                        ),
+                                        Map.of(
+                                                "date", "2026-08-02",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "01:00", "closesAt", "03:00"))
+                                        )
+                                ),
+                                "reason", "익일 예외 일정 중복 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
+    }
+
+    @Test
+    void updatePlaceOperatingScheduleRejectsClosedExceptionThatConflictsWithPreviousOvernightHours() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("휴무 예외 일정 검증 장소")
+                .address("경상남도 진주시 영업로 4")
+                .latitude(35.1807)
+                .longitude(128.1084)
+                .userId(98L)
+                .registrant("operatingScheduleOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/operating-schedule", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "exceptions", List.of(
+                                        Map.of(
+                                                "date", "2026-08-01",
+                                                "closed", false,
+                                                "hours", List.of(Map.of("opensAt", "22:00", "closesAt", "02:00"))
+                                        ),
+                                        Map.of("date", "2026-08-02", "closed", true, "hours", List.of())
+                                ),
+                                "reason", "익일 휴무 예외 일정 중복 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
+    }
+
+    @Test
     void updatePlaceTouristInfoClearsOptionalValuesWhenOmitted() throws Exception {
         String accessToken = createAdminAndLogin();
 

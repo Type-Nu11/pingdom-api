@@ -981,6 +981,7 @@ public class AdminMapPlaceService {
 
     private void validateOperatingExceptions(Set<AdminMapPlaceOperatingExceptionRequest> exceptions) {
         Set<LocalDate> dates = new HashSet<>();
+        Map<LocalDate, List<TimeSegment>> segmentsByDate = new LinkedHashMap<>();
         for (AdminMapPlaceOperatingExceptionRequest exception : exceptions) {
             if (exception == null || exception.date() == null || !dates.add(exception.date())) {
                 throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
@@ -995,8 +996,12 @@ public class AdminMapPlaceService {
             if (!exception.closed() && hours.isEmpty()) {
                 throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
             }
+            if (exception.closed()) {
+                segmentsByDate.computeIfAbsent(exception.date(), ignored -> new ArrayList<>())
+                        .add(new TimeSegment(0, NANOS_PER_DAY));
+                continue;
+            }
 
-            List<TimeSegment> segments = new ArrayList<>();
             Set<PlaceOperatingTimeRange> distinctHours = new HashSet<>();
             for (AdminMapPlaceOperatingTimeRangeRequest hour : hours) {
                 if (hour == null) {
@@ -1007,12 +1012,11 @@ public class AdminMapPlaceService {
                 if (!distinctHours.add(timeRange)) {
                     throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
                 }
-                long startsAt = hour.opensAt().toNanoOfDay();
-                long closesAt = hour.closesAt().toNanoOfDay();
-                segments.add(new TimeSegment(startsAt, closesAt > startsAt ? closesAt : closesAt + NANOS_PER_DAY));
+                addExceptionSegments(segmentsByDate, exception.date(), hour.opensAt(), hour.closesAt());
             }
-            validateNoOverlap(segments);
         }
+
+        segmentsByDate.values().forEach(this::validateNoOverlap);
     }
 
     private void validateTimeRange(LocalTime opensAt, LocalTime closesAt) {
@@ -1038,6 +1042,26 @@ public class AdminMapPlaceService {
         segmentsByDay.computeIfAbsent(dayOfWeek, ignored -> new ArrayList<>())
                 .add(new TimeSegment(startsAt, NANOS_PER_DAY));
         segmentsByDay.computeIfAbsent(dayOfWeek.plus(1), ignored -> new ArrayList<>())
+                .add(new TimeSegment(0, endsAt));
+    }
+
+    private void addExceptionSegments(
+            Map<LocalDate, List<TimeSegment>> segmentsByDate,
+            LocalDate date,
+            LocalTime opensAt,
+            LocalTime closesAt
+    ) {
+        long startsAt = opensAt.toNanoOfDay();
+        long endsAt = closesAt.toNanoOfDay();
+        if (startsAt < endsAt) {
+            segmentsByDate.computeIfAbsent(date, ignored -> new ArrayList<>())
+                    .add(new TimeSegment(startsAt, endsAt));
+            return;
+        }
+
+        segmentsByDate.computeIfAbsent(date, ignored -> new ArrayList<>())
+                .add(new TimeSegment(startsAt, NANOS_PER_DAY));
+        segmentsByDate.computeIfAbsent(date.plusDays(1), ignored -> new ArrayList<>())
                 .add(new TimeSegment(0, endsAt));
     }
 
