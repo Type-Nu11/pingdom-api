@@ -140,6 +140,22 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        for (String schemaName : List.of("NotificationSettingUpdateRequest", "NotificationSettingResponse")) {
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursStart").path("type").asText()).isEqualTo("string");
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursStart").path("format").asText()).isEqualTo("time");
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursEnd").path("type").asText()).isEqualTo("string");
+            assertThat(document.path("components").path("schemas").path(schemaName)
+                    .path("properties").path("quietHoursEnd").path("format").asText()).isEqualTo("time");
+        }
+    }
+
+    @Test
     void resolveSchemaFollowsNestedRefsAndUnescapesJsonPointer() throws Exception {
         JsonNode document = objectMapper.readTree("""
                 {
