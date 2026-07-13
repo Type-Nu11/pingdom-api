@@ -153,6 +153,8 @@ class OpenApiDocumentationValidationTest {
                 .path("properties").path("scheduleStatus").path("type").asText()).isEqualTo("string");
         assertThat(document.path("components").path("schemas").path("AdminPlaceEventRequest")
                 .path("required")).hasSize(6);
+        assertThat(document.at("/paths/~1events~1{eventId}/get/responses/404/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
     }
 
     @Test

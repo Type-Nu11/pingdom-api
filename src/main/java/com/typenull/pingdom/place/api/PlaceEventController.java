@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.api.dto.event.PlaceEventDetailResponse;
 import com.typenull.pingdom.place.api.dto.event.PlaceEventListResponse;
 import com.typenull.pingdom.place.application.service.event.PlaceEventQueryService;
 import com.typenull.pingdom.place.domain.event.PlaceEventType;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -48,7 +49,11 @@ public class PlaceEventController {
     @Operation(summary = "공개 기간형 이벤트 상세 조회", description = "종료되지 않은 공개 이벤트의 장소와 기간 정보를 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "공개 이벤트 상세 조회 성공", content = @Content(schema = @Schema(implementation = PlaceEventDetailResponse.class))),
-            @ApiResponse(responseCode = "404", description = "이벤트를 찾을 수 없거나 공개 대상이 아님")
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "이벤트를 찾을 수 없거나 공개 대상이 아님",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
     })
     public ResponseEntity<PlaceEventDetailResponse> getEvent(
             @Parameter(description = "이벤트 ID", example = "1") @PathVariable Long eventId
