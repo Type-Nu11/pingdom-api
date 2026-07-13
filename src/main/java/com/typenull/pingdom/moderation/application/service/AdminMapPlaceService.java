@@ -755,6 +755,8 @@ public class AdminMapPlaceService {
         state.put("jibunAddress", place.getJibunAddress());
         state.put("postalCode", place.getPostalCode());
         state.put("geocodingSource", place.getGeocodingSource());
+        state.put("operatingStatus", place.getOperatingStatus());
+        state.put("operatingStatusCheckedAt", place.getOperatingStatusCheckedAt());
         state.put("category", place.getCategory());
         state.put("englishName", place.getEnglishName());
         state.put("touristSummary", place.getTouristSummary());

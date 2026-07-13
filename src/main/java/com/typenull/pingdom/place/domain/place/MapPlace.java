@@ -4,6 +4,7 @@ import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Collections;
 import java.util.LinkedHashSet;
+import java.util.Objects;
 import java.util.Set;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -254,7 +255,7 @@ public class MapPlace {
             PlaceOperatingStatus operatingStatus,
             LocalDateTime operatingStatusCheckedAt
     ) {
-        this.operatingStatus = operatingStatus;
+        this.operatingStatus = Objects.requireNonNull(operatingStatus, "operatingStatus must not be null");
         this.operatingStatusCheckedAt = operatingStatusCheckedAt;
     }
 }

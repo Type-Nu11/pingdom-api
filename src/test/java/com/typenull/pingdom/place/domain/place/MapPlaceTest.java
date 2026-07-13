@@ -32,6 +32,10 @@ class MapPlaceTest {
         assertThat(mapPlace.getOperatingStatus()).isEqualTo(PlaceOperatingStatus.TEMPORARILY_CLOSED);
         assertThat(mapPlace.getOperatingStatusCheckedAt()).isEqualTo(checkedAt);
         assertThat(mapPlace.isOperating()).isFalse();
+
+        assertThatThrownBy(() -> mapPlace.updateOperatingStatus(null, checkedAt))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("operatingStatus must not be null");
     }
 
     @Test
