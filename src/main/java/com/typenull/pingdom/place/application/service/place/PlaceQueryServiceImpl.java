@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.application.service.place;
 
+import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPublicQueryService;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
@@ -53,6 +54,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSearchQueryRepository placeSearchQueryRepository;
+    private final MerchantOwnerPublicQueryService merchantOwnerPublicQueryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -205,7 +207,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
-                mapPlace.getRegistrant()
+                mapPlace.getRegistrant(),
+                merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
         );
     }
 
