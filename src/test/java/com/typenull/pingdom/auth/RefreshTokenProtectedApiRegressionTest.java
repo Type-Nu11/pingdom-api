@@ -6,7 +6,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
+import jakarta.servlet.http.Cookie;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -19,17 +19,18 @@ import org.springframework.test.web.servlet.MvcResult;
 @AutoConfigureMockMvc
 class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTestSupport {
 
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "PINGDOM_REFRESH_TOKEN";
+
     @Test
     void refreshedAccessTokenCanAccessProtectedApis() throws Exception {
         createUser("refreshMatrixUser");
 
-        String refreshToken = loginAndReadToken("refreshMatrixUser", "refreshToken");
+        String refreshToken = loginAndReadRefreshToken("refreshMatrixUser");
         MvcResult refreshResult = mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken))))
+                        .cookie(new Cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(jsonPath("$.refreshToken").isString())
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
                 .andReturn();
 
         String refreshedAccessToken = objectMapper.readTree(refreshResult.getResponse().getContentAsString())
@@ -47,10 +48,9 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     void refreshedAccessTokenCanAccessPlaceWithPaginationQueryParameters() throws Exception {
         createUser("refreshPlaceQueryUser");
 
-        String refreshToken = loginAndReadToken("refreshPlaceQueryUser", "refreshToken");
+        String refreshToken = loginAndReadRefreshToken("refreshPlaceQueryUser");
         MvcResult refreshResult = mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken))))
+                        .cookie(new Cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
                 .andReturn();
@@ -70,15 +70,14 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
         return Stream.of("/places", "/map/posts", "/users/me");
     }
 
-    private String loginAndReadToken(String username, String tokenName) throws Exception {
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+    private String loginAndReadRefreshToken(String username) throws Exception {
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest(username, "password123"))))
-                .andExpect(status().isOk())
-                .andReturn();
+                .andExpect(status().isOk());
 
-        return objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get(tokenName)
-                .textValue();
+        return userRepository.findByUsername(username)
+                .orElseThrow()
+                .getRefreshToken();
     }
 }
