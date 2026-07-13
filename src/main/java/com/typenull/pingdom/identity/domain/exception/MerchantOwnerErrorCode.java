@@ -11,6 +11,7 @@ public enum MerchantOwnerErrorCode {
     PROFILE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 Merchant Owner 프로필이 존재합니다."),
     INVALID_PROFILE_STATE(HttpStatus.CONFLICT, "현재 Merchant Owner 프로필 상태에서는 요청을 처리할 수 없습니다."),
     ADMIN_ACCOUNT_NOT_ALLOWED(HttpStatus.BAD_REQUEST, "관리자 계정은 Merchant Owner로 신청할 수 없습니다."),
+    USER_ACCOUNT_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "탈퇴하거나 이용이 제한된 사용자는 Merchant Owner로 승인할 수 없습니다."),
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "연결할 장소를 찾을 수 없습니다."),
     PLACE_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "이미 다른 Merchant Owner에게 연결된 장소가 있습니다."),
     ACTIVE_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "활성 Merchant Owner 권한이 필요합니다.");

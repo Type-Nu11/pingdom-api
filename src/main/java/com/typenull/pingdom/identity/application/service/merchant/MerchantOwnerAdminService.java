@@ -82,9 +82,12 @@ public class MerchantOwnerAdminService {
             MerchantOwnerReviewRequest request
     ) {
         User user = requireUserForUpdate(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (user.isWithdrawn() || user.isCurrentlyBanned(now)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE);
+        }
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
-        LocalDateTime now = LocalDateTime.now(clock);
 
         try {
             profile.approve(adminUserId, now);

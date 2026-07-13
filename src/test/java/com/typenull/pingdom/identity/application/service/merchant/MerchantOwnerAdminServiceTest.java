@@ -1,12 +1,18 @@
 package com.typenull.pingdom.identity.application.service.merchant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.UserStatus;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
@@ -41,6 +47,49 @@ class MerchantOwnerAdminServiceTest {
 
     @InjectMocks
     private MerchantOwnerAdminService adminService;
+
+    @Test
+    void withdrawnUserCannotBeApproved() {
+        Long userId = 1L;
+        User withdrawnUser = User.builder()
+                .id(userId)
+                .status(UserStatus.WITHDRAWN)
+                .build();
+        stubCurrentTime();
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(withdrawnUser));
+
+        assertThatThrownBy(() -> adminService.approve(
+                99L,
+                userId,
+                new MerchantOwnerReviewRequest("승인", Set.of())
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE)
+        );
+
+        verify(profileRepository, never()).findByUserIdForUpdate(userId);
+    }
+
+    @Test
+    void currentlyBannedUserCannotBeApproved() {
+        Long userId = 1L;
+        User bannedUser = User.builder()
+                .id(userId)
+                .banned(true)
+                .banType(UserBanType.PERMANENT)
+                .build();
+        stubCurrentTime();
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(bannedUser));
+
+        assertThatThrownBy(() -> adminService.approve(
+                99L,
+                userId,
+                new MerchantOwnerReviewRequest("승인", Set.of())
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE)
+        );
+
+        verify(profileRepository, never()).findByUserIdForUpdate(userId);
+    }
 
     @Test
     void revokeImmediatelyRemovesCurrentRoleRefreshTokenAndPlaceLinks() {
@@ -80,5 +129,10 @@ class MerchantOwnerAdminServiceTest {
         assertThat(owner.getRefreshToken()).isNull();
         verify(ownerPlaceRepository).deleteAllByMerchantOwnerUserId(userId);
         verify(userAccessStatusService).evict(userId);
+    }
+
+    private void stubCurrentTime() {
+        when(clock.instant()).thenReturn(Instant.parse("2026-07-13T03:00:00Z"));
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 }
