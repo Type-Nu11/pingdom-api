@@ -61,7 +61,8 @@ public class AuthLoginController {
                                               "language": "ko",
                                               "country": "KR",
                                               "message": "로그인에 성공했습니다.",
-                                              "accessToken": "eyJhbGciOiJIUzI1NiJ9.access.token"
+                                              "accessToken": "eyJhbGciOiJIUzI1NiJ9.access.token",
+                                              "role": "USER"
                                             }
                                             """
                             )
@@ -133,7 +134,8 @@ public class AuthLoginController {
                                               "language": "ko",
                                               "country": "KR",
                                               "message": "로그인에 성공했습니다.",
-                                              "accessToken": "eyJhbGciOiJIUzI1NiJ9.access.token"
+                                              "accessToken": "eyJhbGciOiJIUzI1NiJ9.access.token",
+                                              "role": "ADMIN"
                                             }
                                             """
                             )

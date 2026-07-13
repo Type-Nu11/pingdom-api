@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api.dto.place.detail;
 
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPublicResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
 
@@ -35,6 +36,8 @@ public record PlaceDetailResponse(
         Set<TouristCategory> touristCategories,
         Double latitude,
         Double longitude,
-        String registrant
+        String registrant,
+        @Schema(nullable = true)
+        MerchantOwnerPublicResponse merchantOwner
 ) {
 }

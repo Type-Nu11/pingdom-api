@@ -2,6 +2,7 @@ package com.typenull.pingdom.shared.exception.handler;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
@@ -46,6 +47,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(UsersException.class)
     public ResponseEntity<Map<String, String>> handleUsersException(UsersException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(MerchantOwnerException.class)
+    public ResponseEntity<Map<String, String>> handleMerchantOwnerException(MerchantOwnerException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }

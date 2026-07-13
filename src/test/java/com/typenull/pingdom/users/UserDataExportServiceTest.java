@@ -12,6 +12,8 @@ import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.application.query.UserDataExportService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
@@ -56,6 +58,12 @@ class UserDataExportServiceTest {
 
     @Mock
     private UserCurrentActivityIntentRepository currentActivityIntentRepository;
+
+    @Mock
+    private MerchantOwnerProfileRepository merchantOwnerProfileRepository;
+
+    @Mock
+    private MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
 
     @Mock
     private ApplicationEventPublisher eventPublisher;

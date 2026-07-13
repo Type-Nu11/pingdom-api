@@ -141,6 +141,19 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void merchantOwnerApisAreSeparatedIntoAppAndWebGroups() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
+        assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
+    }
+
+    @Test
     void touristInformationSchemasDeclareNullableStringFields() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 

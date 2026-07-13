@@ -49,7 +49,8 @@ public class AuthRegistrationController {
                                               "birthYear": 1998,
                                               "profileImageUrl": "https://cdn.pingdom.com/profiles/user1.png",
                                               "language": "ko",
-                                              "country": "KR"
+                                              "country": "KR",
+                                              "role": "USER"
                                             }
                                             """
                             )

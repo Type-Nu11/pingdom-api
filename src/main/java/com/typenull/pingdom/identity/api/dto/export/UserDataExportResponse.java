@@ -2,6 +2,7 @@ package com.typenull.pingdom.identity.api.dto.export;
 
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
@@ -19,7 +20,9 @@ public record UserDataExportResponse(
         @Schema(description = "사용자 여행 일정 목록")
         List<ExportTravelScheduleResponse> travelSchedules,
         @Schema(description = "만료되지 않은 현재 행동 의도. 없으면 null", nullable = true)
-        ExportCurrentActivityIntentResponse currentActivityIntent
+        ExportCurrentActivityIntentResponse currentActivityIntent,
+        @Schema(description = "Merchant Owner 신청 및 프로필. 없으면 null", nullable = true)
+        ExportMerchantOwnerProfileResponse merchantOwnerProfile
 ) {
 
     public static UserDataExportResponse from(UserDataExportResult result) {
@@ -32,7 +35,8 @@ public record UserDataExportResponse(
                 result.travelSchedules().stream()
                         .map(ExportTravelScheduleResponse::from)
                         .toList(),
-                ExportCurrentActivityIntentResponse.from(result.currentActivityIntent())
+                ExportCurrentActivityIntentResponse.from(result.currentActivityIntent()),
+                ExportMerchantOwnerProfileResponse.from(result.merchantOwnerProfile())
         );
     }
 
@@ -99,6 +103,33 @@ public record UserDataExportResponse(
             return new ExportCurrentActivityIntentResponse(
                     currentActivityIntent.intent(),
                     currentActivityIntent.expiresAt()
+            );
+        }
+    }
+
+    public record ExportMerchantOwnerProfileResponse(
+            String businessName,
+            String displayName,
+            @Schema(nullable = true) String description,
+            String contactEmail,
+            String contactPhone,
+            MerchantOwnerStatus status,
+            List<Long> placeIds
+    ) {
+        private static ExportMerchantOwnerProfileResponse from(
+                UserDataExportResult.ExportMerchantOwnerProfile profile
+        ) {
+            if (profile == null) {
+                return null;
+            }
+            return new ExportMerchantOwnerProfileResponse(
+                    profile.businessName(),
+                    profile.displayName(),
+                    profile.description(),
+                    profile.contactEmail(),
+                    profile.contactPhone(),
+                    profile.status(),
+                    profile.placeIds()
             );
         }
     }

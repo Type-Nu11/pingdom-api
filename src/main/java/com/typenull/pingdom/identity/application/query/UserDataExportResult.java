@@ -2,6 +2,8 @@ package com.typenull.pingdom.identity.application.query;
 
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
@@ -14,7 +16,8 @@ public record UserDataExportResult(
         List<ExportBookmark> bookmarks,
         List<Long> likedMapImageIds,
         List<ExportTravelSchedule> travelSchedules,
-        ExportCurrentActivityIntent currentActivityIntent
+        ExportCurrentActivityIntent currentActivityIntent,
+        ExportMerchantOwnerProfile merchantOwnerProfile
 ) {
 
     public static UserDataExportResult of(
@@ -22,7 +25,9 @@ public record UserDataExportResult(
             List<ExportBookmark> bookmarks,
             List<Long> likedMapImageIds,
             List<TravelSchedule> travelSchedules,
-            UserCurrentActivityIntent currentActivityIntent
+            UserCurrentActivityIntent currentActivityIntent,
+            MerchantOwnerProfile merchantOwnerProfile,
+            List<Long> merchantOwnerPlaceIds
     ) {
         return new UserDataExportResult(
                 new ExportUser(user.getId(), user.getUsername(), user.getProfileImageUrl()),
@@ -41,6 +46,17 @@ public record UserDataExportResult(
                         : new ExportCurrentActivityIntent(
                                 currentActivityIntent.getIntent(),
                                 currentActivityIntent.getExpiresAt()
+                        ),
+                merchantOwnerProfile == null
+                        ? null
+                        : new ExportMerchantOwnerProfile(
+                                merchantOwnerProfile.getBusinessName(),
+                                merchantOwnerProfile.getDisplayName(),
+                                merchantOwnerProfile.getDescription(),
+                                merchantOwnerProfile.getContactEmail(),
+                                merchantOwnerProfile.getContactPhone(),
+                                merchantOwnerProfile.getStatus(),
+                                merchantOwnerPlaceIds
                         )
         );
     }
@@ -69,6 +85,17 @@ public record UserDataExportResult(
     public record ExportCurrentActivityIntent(
             CurrentActivityIntent intent,
             LocalDateTime expiresAt
+    ) {
+    }
+
+    public record ExportMerchantOwnerProfile(
+            String businessName,
+            String displayName,
+            String description,
+            String contactEmail,
+            String contactPhone,
+            MerchantOwnerStatus status,
+            List<Long> placeIds
     ) {
     }
 }

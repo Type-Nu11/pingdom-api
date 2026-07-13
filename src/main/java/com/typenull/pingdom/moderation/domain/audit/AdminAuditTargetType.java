@@ -7,5 +7,6 @@ public enum AdminAuditTargetType {
     POST,
     PLACE,
     PLACE_EVENT,
+    MERCHANT_OWNER,
     AD
 }
