@@ -81,13 +81,13 @@ class PlaceRecommendationCandidateCollector {
         List<MapPlace> seedPlaces = mapPlaceRepository.findAllById(signalContext.interactedPlaceIds());
 
         for (MapPlace seedPlace : seedPlaces) {
-            if (hasCoordinates(seedPlace)) {
+            if (isEligibleCandidate(seedPlace)) {
                 personalCandidates.putIfAbsent(seedPlace.getId(), seedPlace);
             }
         }
 
         List<MapPlace> expansionSeeds = seedPlaces.stream()
-                .filter(this::hasCoordinates)
+                .filter(this::isEligibleCandidate)
                 .sorted(Comparator.comparingDouble(
                         (MapPlace place) -> signalContext.seedWeights().getOrDefault(place.getId(), 0.0d)
                 ).reversed())
@@ -138,7 +138,7 @@ class PlaceRecommendationCandidateCollector {
 
         Map<Long, MapPlace> placeById = new HashMap<>();
         for (MapPlace place : mapPlaceRepository.findAllById(placeIds)) {
-            if (hasCoordinates(place)) {
+            if (isEligibleCandidate(place)) {
                 placeById.put(place.getId(), place);
             }
         }
@@ -161,7 +161,7 @@ class PlaceRecommendationCandidateCollector {
     ) {
         int addedCount = 0;
         for (MapPlace candidate : candidates) {
-            if (!hasCoordinates(candidate)) {
+            if (!isEligibleCandidate(candidate)) {
                 continue;
             }
 
@@ -178,7 +178,7 @@ class PlaceRecommendationCandidateCollector {
         }
     }
 
-    private boolean hasCoordinates(MapPlace place) {
+    private boolean isEligibleCandidate(MapPlace place) {
         return place != null
                 && place.isOperating()
                 && place.getLatitude() != null
