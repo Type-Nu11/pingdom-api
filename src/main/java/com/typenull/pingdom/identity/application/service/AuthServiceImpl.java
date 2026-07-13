@@ -9,8 +9,6 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenResponse;
 import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -105,15 +103,15 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
-    public LoginResponse login(LoginRequest request) {
+    public LoginResult login(LoginRequest request) {
         User user = authenticateUser(request);
         return issueLoginResponse(user);
     }
 
     @Override
     @Transactional
-    public LoginResponse adminLogin(LoginRequest request) {
-        User user = userRepository.findByUsername(request.username())
+    public LoginResult adminLogin(LoginRequest request) {
+        User user = userRepository.findByUsernameForUpdate(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
         if (!user.isAdmin()) {
@@ -199,7 +197,8 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.EXPIRED_PASSWORD_RESET_TOKEN);
         }
 
-        User user = resetToken.getUser();
+        User user = userRepository.findByIdForUpdate(resetToken.getUser().getId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         if (user.getEmail() == null || !user.getEmail().equalsIgnoreCase(request.email().trim())) {
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
@@ -219,10 +218,10 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
-    public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+    public TokenRefreshResult refreshToken(String refreshToken) {
         try {
-            Long userId = extractValidRefreshTokenUserId(request.refreshToken());
-            User user = userRepository.findById(userId)
+            Long userId = extractValidRefreshTokenUserId(refreshToken);
+            User user = userRepository.findByIdForUpdate(userId)
                     .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
             if (user.isWithdrawn()) {
@@ -233,19 +232,19 @@ public class AuthServiceImpl implements AuthService {
                 throw new AuthException(AuthErrorCode.USER_BANNED);
             }
 
-            if (!user.matchesRefreshToken(request.refreshToken())) {
+            if (!user.matchesRefreshToken(refreshToken)) {
                 throw new AuthException(AuthErrorCode.INVALID_TOKEN);
             }
 
             // 재발급용 Access Token, Refresh Token 생성 호출
             String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+            String rotatedRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
             // 새 Refresh Token 회전 반영 호출
-            user.issueRefreshToken(refreshToken);
+            user.issueRefreshToken(rotatedRefreshToken);
             authMetrics.recordRefreshTokenSuccess();
 
-            return new RefreshTokenResponse(accessToken, refreshToken);
+            return new TokenRefreshResult(accessToken, rotatedRefreshToken);
         } catch (RuntimeException exception) {
             authMetrics.recordRefreshTokenFailure(refreshTokenFailureReason(exception));
             throw exception;
@@ -255,16 +254,16 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     // Refresh Token 무효화 기반 로그아웃 메서드
-    public void logout(RefreshTokenRequest request) {
-        Long userId = extractValidRefreshTokenUserId(request.refreshToken());
-        User user = userRepository.findById(userId)
+    public void logout(String refreshToken) {
+        Long userId = extractValidRefreshTokenUserId(refreshToken);
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (user.isWithdrawn()) {
             return;
         }
 
-        if (!user.matchesRefreshToken(request.refreshToken())) {
+        if (!user.matchesRefreshToken(refreshToken)) {
             return;
         }
 
@@ -345,7 +344,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // 회원탈퇴 익명화 및 보존 상태 전환 메서드
     public void withdraw(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (user.isWithdrawn()) {
@@ -388,7 +387,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private User authenticateUser(LoginRequest request) {
-        User user = userRepository.findByUsername(request.username())
+        User user = userRepository.findByUsernameForUpdate(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
         if (user.isCurrentlyBanned(now())) {
@@ -405,7 +404,7 @@ public class AuthServiceImpl implements AuthService {
         return user;
     }
 
-    private LoginResponse issueLoginResponse(User user) {
+    private LoginResult issueLoginResponse(User user) {
         if (user.isWithdrawn()) {
             throw new AuthException(AuthErrorCode.USER_WITHDRAWN);
         }
@@ -417,16 +416,18 @@ public class AuthServiceImpl implements AuthService {
         // 현재 활성 Refresh Token 저장 호출
         user.issueRefreshToken(refreshToken);
 
-        return new LoginResponse(
-                user.getId(),
-                user.getUsername(),
-                user.getEmail(),
-                user.getBirthYear(),
-                user.getProfileImageUrl(),
-                user.getLanguage(),
-                user.getCountry(),
-                "로그인에 성공했습니다.",
-                accessToken,
+        return new LoginResult(
+                new LoginResponse(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getEmail(),
+                        user.getBirthYear(),
+                        user.getProfileImageUrl(),
+                        user.getLanguage(),
+                        user.getCountry(),
+                        "로그인에 성공했습니다.",
+                        accessToken
+                ),
                 refreshToken
         );
     }

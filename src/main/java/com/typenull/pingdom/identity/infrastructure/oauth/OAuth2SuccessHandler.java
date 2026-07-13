@@ -3,6 +3,7 @@ package com.typenull.pingdom.identity.infrastructure.oauth;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.RefreshTokenCookieService;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
@@ -26,13 +27,13 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
     private final UserRepository userRepository;
     private final JwtTokenProvider jwtTokenProvider;
+    private final RefreshTokenCookieService refreshTokenCookieService;
     private final OAuth2LinkCookieService oAuth2LinkCookieService;
 
     @Value("${oauth2.redirect-uri:http://localhost:5173/oauth2/redirect}")
     private String redirectUri;
 
     private static final String ACCESS_COOKIE = "OAUTH2_ACCESS_TOKEN";
-    private static final String REFRESH_COOKIE = "OAUTH2_REFRESH_TOKEN";
     private static final int COOKIE_EXPIRE_SECONDS = 60;
 
     @Override
@@ -65,7 +66,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
             return;
         }
 
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new IllegalStateException("User를 찾을 수 없습니다."));
         if (user.isWithdrawn()) {
             response.sendError(HttpServletResponse.SC_FORBIDDEN, "탈퇴 처리된 사용자입니다.");
@@ -88,9 +89,9 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         boolean secureCookie = request.isSecure();
 
-        // access/refresh token을 URL에 노출하지 않고, /auth/oauth2/success 호출로 토큰을 회수할 수 있도록 쿠키로 전달한다.
+        // Access Token은 짧은 수명의 Cookie로 회수하고, Refresh Token은 공통 HttpOnly Cookie로 발급한다.
         addShortLivedCookie(response, ACCESS_COOKIE, accessToken, secureCookie);
-        addShortLivedCookie(response, REFRESH_COOKIE, refreshToken, secureCookie);
+        response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieService.issue(refreshToken).toString());
         oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
         response.sendRedirect(normalizeRedirectUri(redirectUri));
     }

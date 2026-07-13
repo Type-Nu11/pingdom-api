@@ -12,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountDisconnectRequest;
+import com.typenull.pingdom.identity.api.OAuth2TokenController;
 import com.typenull.pingdom.identity.application.command.OAuthAccountCommandService;
 import com.typenull.pingdom.identity.application.command.OAuthUserService;
 import com.typenull.pingdom.identity.domain.AuthProvider;
@@ -34,6 +35,7 @@ import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMock
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.mock.web.MockHttpServletResponse;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
@@ -58,6 +60,9 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
 
     @Autowired
     private OAuth2SuccessHandler oAuth2SuccessHandler;
+
+    @Autowired
+    private OAuth2TokenController oAuth2TokenController;
 
     @Autowired
     private OAuth2LinkTokenService oAuth2LinkTokenService;
@@ -191,20 +196,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new Cookie(OAuth2LinkCookieService.COOKIE_NAME, oAuth2LinkTokenService.generate(user.getId())));
         MockHttpServletResponse response = new MockHttpServletResponse();
-        OAuth2AuthenticationToken authentication = new OAuth2AuthenticationToken(
-                new CustomOAuth2User(
-                        user.getId(),
-                        user.getUsername(),
-                        user.getRole(),
-                        AuthProvider.GOOGLE,
-                        "link-success-sub",
-                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
-                        Map.of("sub", "link-success-sub"),
-                        "sub"
-                ),
-                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
-                "google"
-        );
+        OAuth2AuthenticationToken authentication = googleAuthentication(user, "link-success-sub");
 
         oAuth2SuccessHandler.onAuthenticationSuccess(request, response, authentication);
 
@@ -216,12 +208,67 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         );
     }
 
+    @Test
+    void oauthLoginIssuesPersistentRefreshTokenCookie() throws Exception {
+        User user = createUser("oauthRefreshCookieUser");
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        oAuth2SuccessHandler.onAuthenticationSuccess(
+                new MockHttpServletRequest(),
+                response,
+                googleAuthentication(user, "oauth-refresh-cookie-sub")
+        );
+
+        String refreshCookie = response.getHeaders(HttpHeaders.SET_COOKIE).stream()
+                .filter(header -> header.startsWith("PINGDOM_REFRESH_TOKEN="))
+                .findFirst()
+                .orElseThrow();
+
+        assertTrue(refreshCookie.contains("Path=/auth"));
+        assertTrue(refreshCookie.contains("HttpOnly"));
+        assertTrue(refreshCookie.contains(userRepository.findById(user.getId()).orElseThrow().getRefreshToken()));
+        assertFalse(response.getHeaders(HttpHeaders.SET_COOKIE).stream()
+                .anyMatch(header -> header.startsWith("OAUTH2_REFRESH_TOKEN=")));
+    }
+
+    @Test
+    void oauthTokenExchangeReturnsOnlyAccessToken() {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.setCookies(new Cookie("OAUTH2_ACCESS_TOKEN", "oauth-access-token"));
+        MockHttpServletResponse response = new MockHttpServletResponse();
+
+        ResponseEntity<?> tokenResponse = oAuth2TokenController.oauth2Success(request, response);
+
+        assertEquals(200, tokenResponse.getStatusCode().value());
+        Map<?, ?> body = (Map<?, ?>) tokenResponse.getBody();
+        assertEquals("oauth-access-token", body.get("accessToken"));
+        assertFalse(body.containsKey("refreshToken"));
+        assertTrue(response.getHeader(HttpHeaders.SET_COOKIE).contains("OAUTH2_ACCESS_TOKEN="));
+    }
+
     private void linkAccount(User user, String providerId) {
         oAuthAccountRepository.saveAndFlush(OAuthAccount.builder()
                 .provider(AuthProvider.GOOGLE)
                 .providerId(providerId)
                 .user(user)
                 .build());
+    }
+
+    private OAuth2AuthenticationToken googleAuthentication(User user, String providerId) {
+        return new OAuth2AuthenticationToken(
+                new CustomOAuth2User(
+                        user.getId(),
+                        user.getUsername(),
+                        user.getRole(),
+                        AuthProvider.GOOGLE,
+                        providerId,
+                        List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
+                        Map.of("sub", providerId),
+                        "sub"
+                ),
+                List.of(new SimpleGrantedAuthority("ROLE_" + user.getRole().name())),
+                "google"
+        );
     }
 
     private String accessToken(User user) {
