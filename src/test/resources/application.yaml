@@ -27,6 +27,13 @@ jwt:
   access-token-expiration-seconds: 3600
   refresh-token-expiration-seconds: 1209600
 
+auth:
+  refresh-cookie:
+    name: PINGDOM_REFRESH_TOKEN
+    secure: true
+    same-site: Lax
+    domain:
+
 postmark:
   server-token: test-postmark-token
   from-email: no-reply@pingdom.local

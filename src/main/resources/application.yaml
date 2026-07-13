@@ -74,6 +74,13 @@ jwt:
   access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS}
   refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS}
 
+auth:
+  refresh-cookie:
+    name: ${AUTH_REFRESH_COOKIE_NAME:PINGDOM_REFRESH_TOKEN}
+    secure: ${AUTH_REFRESH_COOKIE_SECURE:true}
+    same-site: ${AUTH_REFRESH_COOKIE_SAME_SITE:Lax}
+    domain: ${AUTH_REFRESH_COOKIE_DOMAIN:}
+
 postmark:
   server-token: ${POSTMARK_SERVER_TOKEN}
   from-email: ${POSTMARK_FROM_EMAIL}
