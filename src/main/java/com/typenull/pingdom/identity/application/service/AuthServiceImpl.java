@@ -111,7 +111,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     public LoginResult adminLogin(LoginRequest request) {
-        User user = userRepository.findByUsername(request.username())
+        User user = userRepository.findByUsernameForUpdate(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
         if (!user.isAdmin()) {
@@ -197,7 +197,8 @@ public class AuthServiceImpl implements AuthService {
             throw new AuthException(AuthErrorCode.EXPIRED_PASSWORD_RESET_TOKEN);
         }
 
-        User user = resetToken.getUser();
+        User user = userRepository.findByIdForUpdate(resetToken.getUser().getId())
+                .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
         if (user.getEmail() == null || !user.getEmail().equalsIgnoreCase(request.email().trim())) {
             throw new AuthException(AuthErrorCode.INVALID_PASSWORD_RESET_TOKEN);
         }
@@ -220,7 +221,7 @@ public class AuthServiceImpl implements AuthService {
     public TokenRefreshResult refreshToken(String refreshToken) {
         try {
             Long userId = extractValidRefreshTokenUserId(refreshToken);
-            User user = userRepository.findById(userId)
+            User user = userRepository.findByIdForUpdate(userId)
                     .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
             if (user.isWithdrawn()) {
@@ -255,7 +256,7 @@ public class AuthServiceImpl implements AuthService {
     // Refresh Token 무효화 기반 로그아웃 메서드
     public void logout(String refreshToken) {
         Long userId = extractValidRefreshTokenUserId(refreshToken);
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (user.isWithdrawn()) {
@@ -343,7 +344,7 @@ public class AuthServiceImpl implements AuthService {
     @Transactional
     // 회원탈퇴 익명화 및 보존 상태 전환 메서드
     public void withdraw(Long userId) {
-        User user = userRepository.findById(userId)
+        User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
         if (user.isWithdrawn()) {
@@ -386,7 +387,7 @@ public class AuthServiceImpl implements AuthService {
     }
 
     private User authenticateUser(LoginRequest request) {
-        User user = userRepository.findByUsername(request.username())
+        User user = userRepository.findByUsernameForUpdate(request.username())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_CREDENTIALS));
 
         if (user.isCurrentlyBanned(now())) {
