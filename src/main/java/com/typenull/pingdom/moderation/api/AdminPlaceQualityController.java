@@ -396,6 +396,11 @@ public class AdminPlaceQualityController {
                                             """
                             )
                     )
+            ),
+            @ApiResponse(
+                    responseCode = "409",
+                    description = "연결된 기간형 이벤트가 있어 장소를 삭제할 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
             )
     })
     public ResponseEntity<Void> forceDeletePlace(

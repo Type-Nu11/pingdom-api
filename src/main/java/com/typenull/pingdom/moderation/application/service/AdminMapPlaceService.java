@@ -53,6 +53,7 @@ import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationConversionType;
+import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -101,6 +102,7 @@ public class AdminMapPlaceService {
     private static final long NANOS_PER_DAY = 24L * 60 * 60 * 1_000_000_000;
 
     private final MapPlaceRepository mapPlaceRepository;
+    private final PlaceEventRepository placeEventRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final AdminPostService adminPostService;
@@ -123,6 +125,9 @@ public class AdminMapPlaceService {
     public void deletePlace(long placeId, Long adminUserId) {
         MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        if (placeEventRepository.existsByPlace_Id(placeId)) {
+            throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
+        }
         Map<String, Object> beforeState = placeState(mapPlace);
         List<Long> linkedPostIds = mapImageRepository.findIdsByMapPlaceId(placeId);
 
@@ -557,6 +562,9 @@ public class AdminMapPlaceService {
         MapPlace sourcePlace = firstLockedPlace.getId().equals(request.sourcePlaceId()) ? firstLockedPlace : secondLockedPlace;
         MapPlace targetPlace = firstLockedPlace.getId().equals(request.targetPlaceId()) ? firstLockedPlace : secondLockedPlace;
 
+        if (placeEventRepository.existsByPlace_Id(sourcePlace.getId())) {
+            throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
+        }
         if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }

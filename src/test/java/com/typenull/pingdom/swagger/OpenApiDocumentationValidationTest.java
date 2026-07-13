@@ -140,6 +140,48 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void periodEventSchemasExposePublicAndAdminContracts() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        assertThat(document.path("paths").has("/events")).isTrue();
+        assertThat(document.path("paths").has("/events/{eventId}")).isTrue();
+        assertThat(document.path("paths").has("/admin/place-events")).isTrue();
+        assertThat(document.path("paths").has("/admin/place-events/{eventId}/publish")).isTrue();
+        assertThat(document.path("components").path("schemas").path("PlaceEventListResponse")
+                .path("properties").path("events").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceEventDetailResponse")
+                .path("properties").path("scheduleStatus").path("type").asText()).isEqualTo("string");
+        assertThat(document.path("components").path("schemas").path("AdminPlaceEventRequest")
+                .path("required")).hasSize(6);
+        assertThat(document.at("/paths/~1events~1{eventId}/get/responses/404/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        for (String responsePath : List.of(
+                "/paths/~1admin~1place-events/post/responses/400",
+                "/paths/~1admin~1place-events/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/400",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}/patch/responses/409",
+                "/paths/~1admin~1place-events~1{eventId}~1publish/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}~1publish/post/responses/409",
+                "/paths/~1admin~1place-events~1{eventId}~1cancel/post/responses/404",
+                "/paths/~1admin~1place-events~1{eventId}~1cancel/post/responses/409"
+        )) {
+            assertThat(document.at(responsePath + "/content/*~1*/schema/$ref").asText())
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
+    }
+
+    @Test
+    void periodEventApiGroupsSeparatePublicAndAdminPaths() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/events")).isTrue();
+        assertThat(appDocument.path("paths").has("/admin/place-events")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/place-events")).isTrue();
+    }
+
+    @Test
     void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
