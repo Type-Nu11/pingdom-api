@@ -219,9 +219,9 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
-    public RefreshTokenResponse refreshToken(RefreshTokenRequest request) {
+    public TokenRefreshResult refreshToken(String refreshToken) {
         try {
-            Long userId = extractValidRefreshTokenUserId(request.refreshToken());
+            Long userId = extractValidRefreshTokenUserId(refreshToken);
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
 
@@ -233,19 +233,19 @@ public class AuthServiceImpl implements AuthService {
                 throw new AuthException(AuthErrorCode.USER_BANNED);
             }
 
-            if (!user.matchesRefreshToken(request.refreshToken())) {
+            if (!user.matchesRefreshToken(refreshToken)) {
                 throw new AuthException(AuthErrorCode.INVALID_TOKEN);
             }
 
             // 재발급용 Access Token, Refresh Token 생성 호출
             String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
-            String refreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
+            String rotatedRefreshToken = jwtTokenProvider.generateRefreshToken(user.getId());
 
             // 새 Refresh Token 회전 반영 호출
-            user.issueRefreshToken(refreshToken);
+            user.issueRefreshToken(rotatedRefreshToken);
             authMetrics.recordRefreshTokenSuccess();
 
-            return new RefreshTokenResponse(accessToken, refreshToken);
+            return new TokenRefreshResult(accessToken, rotatedRefreshToken);
         } catch (RuntimeException exception) {
             authMetrics.recordRefreshTokenFailure(refreshTokenFailureReason(exception));
             throw exception;

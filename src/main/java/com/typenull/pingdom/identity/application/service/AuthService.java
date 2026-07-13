@@ -31,7 +31,7 @@ public interface AuthService {
     public void confirmPasswordReset(PasswordResetConfirmRequest request);
 
     // Refresh Token 재발급 처리 메서드
-    public RefreshTokenResponse refreshToken(RefreshTokenRequest request);
+    public TokenRefreshResult refreshToken(String refreshToken);
 
     // Refresh Token 무효화 기반 로그아웃 처리 메서드
     public void logout(RefreshTokenRequest request);
