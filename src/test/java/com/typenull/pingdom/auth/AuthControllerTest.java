@@ -2,7 +2,9 @@ package com.typenull.pingdom.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.options;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -23,7 +25,6 @@ import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.identity.api.dto.token.RefreshTokenRequest;
 import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
@@ -37,6 +38,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import com.typenull.pingdom.shared.ratelimit.RateLimitStore;
+import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
@@ -62,6 +64,8 @@ import org.springframework.test.web.servlet.MvcResult;
 })
 @AutoConfigureMockMvc
 class AuthControllerTest {
+
+    private static final String REFRESH_TOKEN_COOKIE_NAME = "PINGDOM_REFRESH_TOKEN";
 
     @TestConfiguration
     static class TestEmailSenderConfig {
@@ -169,14 +173,23 @@ class AuthControllerTest {
 
         LoginRequest loginRequest = new LoginRequest("loginuser", "password123");
 
-        mockMvc.perform(post("/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.username").value("loginuser"))
                 .andExpect(jsonPath("$.message").value("로그인에 성공했습니다."))
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(jsonPath("$.refreshToken").isString());
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andReturn();
+
+        String setCookie = loginResult.getResponse().getHeader(HttpHeaders.SET_COOKIE);
+        org.junit.jupiter.api.Assertions.assertNotNull(setCookie);
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("PINGDOM_REFRESH_TOKEN="));
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("Path=/auth"));
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("HttpOnly"));
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("Secure"));
+        org.junit.jupiter.api.Assertions.assertTrue(setCookie.contains("SameSite=Lax"));
     }
 
     @Test
@@ -193,6 +206,16 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.message").value("아이디 또는 비밀번호가 올바르지 않습니다."));
+    }
+
+    @Test
+    void tokenRefreshCorsAllowsConfiguredOriginAndCredentials() throws Exception {
+        mockMvc.perform(options("/auth/token/refresh")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:5173")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5173"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
     }
 
     @Test
@@ -366,14 +389,11 @@ class AuthControllerTest {
                 .contentType(MediaType.APPLICATION_JSON)
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest("resetconfirmuser", "password123"))))
-                .andExpect(status().isOk())
-                .andReturn();
-        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("refreshToken")
-                .textValue();
+                .andExpect(status().isOk());
+        String refreshToken = refreshTokenOf("resetconfirmuser");
 
         outboxEventRepository.deleteAllInBatch();
         requestPasswordReset("resetconfirmuser@example.com");
@@ -395,8 +415,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(new LoginRequest("resetconfirmuser", "password123"))))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new RefreshTokenRequest(refreshToken))))
+                        .cookie(refreshTokenCookie(refreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
         mockMvc.perform(post("/auth/login")
@@ -519,24 +538,23 @@ class AuthControllerTest {
 
         LoginRequest loginRequest = new LoginRequest("refreshuser", "password123");
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
-                .andReturn();
+                .andExpect(status().isOk());
+        String refreshToken = refreshTokenOf("refreshuser");
 
-        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("refreshToken")
-                .textValue();
-
-        RefreshTokenRequest refreshTokenRequest = new RefreshTokenRequest(refreshToken);
-
-        mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshTokenRequest)))
+        MvcResult refreshResult = mockMvc.perform(post("/auth/token/refresh")
+                        .cookie(refreshTokenCookie(refreshToken)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(jsonPath("$.refreshToken").isString());
+                .andExpect(jsonPath("$.refreshToken").doesNotExist())
+                .andReturn();
+
+        org.junit.jupiter.api.Assertions.assertTrue(
+                refreshResult.getResponse().getHeader(HttpHeaders.SET_COOKIE).contains("PINGDOM_REFRESH_TOKEN=")
+        );
+        org.junit.jupiter.api.Assertions.assertNotEquals(refreshToken, refreshTokenOf("refreshuser"));
     }
 
     @Test
@@ -548,34 +566,29 @@ class AuthControllerTest {
 
         LoginRequest loginRequest = new LoginRequest("logoutuser", "password123");
 
-        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+        mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))
-                .andExpect(status().isOk())
+                .andExpect(status().isOk());
+        String refreshToken = refreshTokenOf("logoutuser");
+
+        MvcResult logoutResult = mockMvc.perform(post("/auth/logout")
+                        .cookie(refreshTokenCookie(refreshToken)))
+                .andExpect(status().isNoContent())
                 .andReturn();
-
-        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("refreshToken")
-                .textValue();
-
-        RefreshTokenRequest logoutRequest = new RefreshTokenRequest(refreshToken);
+        org.junit.jupiter.api.Assertions.assertTrue(
+                logoutResult.getResponse().getHeader(HttpHeaders.SET_COOKIE).contains("Max-Age=0")
+        );
 
         mockMvc.perform(post("/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
-                .andExpect(status().isNoContent());
-
-        mockMvc.perform(post("/auth/logout")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                        .cookie(refreshTokenCookie(refreshToken)))
                 .andExpect(status().isNoContent());
 
         User user = userRepository.findByUsername("logoutuser").orElseThrow();
         org.junit.jupiter.api.Assertions.assertNull(user.getRefreshToken());
 
         mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(logoutRequest)))
+                        .cookie(refreshTokenCookie(refreshToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
@@ -597,9 +610,7 @@ class AuthControllerTest {
         String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
-        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("refreshToken")
-                .textValue();
+        String refreshToken = refreshTokenOf("activebanuser");
 
         User user = userRepository.findByUsername("activebanuser").orElseThrow();
         LocalDateTime now = LocalDateTime.now();
@@ -611,10 +622,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
-        RefreshTokenRequest refreshTokenRequest = new RefreshTokenRequest(refreshToken);
         mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshTokenRequest)))
+                        .cookie(refreshTokenCookie(refreshToken)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("USER_BANNED"));
     }
@@ -642,7 +651,7 @@ class AuthControllerTest {
                         .content(objectMapper.writeValueAsString(loginRequest)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.accessToken").isString())
-                .andExpect(jsonPath("$.refreshToken").isString());
+                .andExpect(jsonPath("$.refreshToken").doesNotExist());
     }
 
     @Test
@@ -674,9 +683,7 @@ class AuthControllerTest {
         String accessToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
-        String refreshToken = objectMapper.readTree(loginResult.getResponse().getContentAsString())
-                .get("refreshToken")
-                .textValue();
+        String refreshToken = refreshTokenOf("withdrawuser");
 
         mockMvc.perform(delete("/users/me")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
@@ -698,10 +705,8 @@ class AuthControllerTest {
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
 
-        RefreshTokenRequest refreshTokenRequest = new RefreshTokenRequest(refreshToken);
         mockMvc.perform(post("/auth/token/refresh")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(refreshTokenRequest)))
+                        .cookie(refreshTokenCookie(refreshToken)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("USER_WITHDRAWN"));
     }
@@ -846,6 +851,16 @@ class AuthControllerTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private String refreshTokenOf(String username) {
+        return userRepository.findByUsername(username)
+                .orElseThrow()
+                .getRefreshToken();
+    }
+
+    private Cookie refreshTokenCookie(String refreshToken) {
+        return new Cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken);
     }
 
     private void requestPasswordReset(String email) throws Exception {
