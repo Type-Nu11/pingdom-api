@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.api.dto.place.event;
 
 import com.typenull.pingdom.place.domain.event.PlaceEventPublicationStatus;
+import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
 import com.typenull.pingdom.place.domain.event.PlaceEventType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -16,6 +17,7 @@ public record AdminPlaceEventResponse(
         LocalDateTime startAt,
         LocalDateTime endAt,
         PlaceEventPublicationStatus publicationStatus,
+        PlaceEventScheduleStatus scheduleStatus,
         String message
 ) {
 }

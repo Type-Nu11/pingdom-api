@@ -53,7 +53,7 @@ public class AdminPlaceEventService {
                 null,
                 eventState(event)
         );
-        return toResponse(event, "기간형 이벤트를 초안으로 등록했습니다.");
+        return toResponse(event, now, "기간형 이벤트를 초안으로 등록했습니다.");
     }
 
     @Transactional
@@ -65,6 +65,7 @@ public class AdminPlaceEventService {
         }
         MapPlace place = findPlace(request.placeId());
         Map<String, Object> beforeState = eventState(event);
+        LocalDateTime now = now();
         event.update(
                 place,
                 request.title().trim(),
@@ -72,7 +73,7 @@ public class AdminPlaceEventService {
                 request.eventType(),
                 request.startAt(),
                 request.endAt(),
-                now()
+                now
         );
 
         adminAuditLogService.record(
@@ -84,7 +85,7 @@ public class AdminPlaceEventService {
                 beforeState,
                 eventState(event)
         );
-        return toResponse(event, "기간형 이벤트를 수정했습니다.");
+        return toResponse(event, now, "기간형 이벤트를 수정했습니다.");
     }
 
     @Transactional
@@ -110,7 +111,7 @@ public class AdminPlaceEventService {
                 beforeState,
                 eventState(event)
         );
-        return toResponse(event, "기간형 이벤트를 공개했습니다.");
+        return toResponse(event, now, "기간형 이벤트를 공개했습니다.");
     }
 
     @Transactional
@@ -124,7 +125,8 @@ public class AdminPlaceEventService {
             throw new AdminException(AdminErrorCode.PLACE_EVENT_CANCEL_NOT_ALLOWED);
         }
         Map<String, Object> beforeState = eventState(event);
-        event.cancel(now());
+        LocalDateTime now = now();
+        event.cancel(now);
 
         adminAuditLogService.record(
                 adminUserId,
@@ -135,7 +137,7 @@ public class AdminPlaceEventService {
                 beforeState,
                 eventState(event)
         );
-        return toResponse(event, "기간형 이벤트를 취소했습니다.");
+        return toResponse(event, now, "기간형 이벤트를 취소했습니다.");
     }
 
     private void validatePeriod(AdminPlaceEventRequest request) {
@@ -157,7 +159,7 @@ public class AdminPlaceEventService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_EVENT_NOT_FOUND));
     }
 
-    private AdminPlaceEventResponse toResponse(PlaceEvent event, String message) {
+    private AdminPlaceEventResponse toResponse(PlaceEvent event, LocalDateTime now, String message) {
         return new AdminPlaceEventResponse(
                 event.getId(),
                 event.getPlace().getId(),
@@ -168,6 +170,7 @@ public class AdminPlaceEventService {
                 event.getStartAt(),
                 event.getEndAt(),
                 event.getPublicationStatus(),
+                event.scheduleStatusAt(now),
                 message
         );
     }

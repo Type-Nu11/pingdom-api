@@ -90,6 +90,7 @@ class PlaceEventControllerTest {
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.placeId").value(place.getId()))
                 .andExpect(jsonPath("$.publicationStatus").value("DRAFT"))
+                .andExpect(jsonPath("$.scheduleStatus").value("UPCOMING"))
                 .andReturn();
         long eventId = readEventId(createResult);
 
@@ -103,7 +104,8 @@ class PlaceEventControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"reason\":\"운영 검토 완료\"}"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.publicationStatus").value("PUBLISHED"));
+                .andExpect(jsonPath("$.publicationStatus").value("PUBLISHED"))
+                .andExpect(jsonPath("$.scheduleStatus").value("UPCOMING"));
 
         mockMvc.perform(get("/events")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
