@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.MapBookmark;
 import com.typenull.pingdom.place.domain.place.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.TouristCategory;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
@@ -165,6 +166,72 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places.length()").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("두 번째 장소"))
                 .andExpect(jsonPath("$.places[1].name").value("첫 번째 장소"));
+    }
+
+    @Test
+    void nonOperatingPlacesAreHiddenFromPublicPlaceQueries() throws Exception {
+        String accessToken = signupAndLogin("operatingStatusReader");
+        User user = userRepository.findByUsername("operatingStatusReader").orElseThrow();
+        MapPlace operatingPlace = createMapPlace("운영 중 장소", "경상남도 진주시 운영로 1");
+        MapPlace closedPlace = createMapPlace("임시 휴업 장소", "경상남도 진주시 운영로 2");
+        closedPlace.updateOperatingStatus(
+                PlaceOperatingStatus.TEMPORARILY_CLOSED,
+                LocalDateTime.of(2026, 7, 13, 10, 30)
+        );
+        mapPlaceRepository.saveAndFlush(closedPlace);
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(closedPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(operatingPlace.getId()))
+                .andExpect(jsonPath("$.places[0].operatingStatus").value("OPERATING"));
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("latitude", "35.1801")
+                        .param("longitude", "128.1078")
+                        .param("radiusKm", "5.0"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(operatingPlace.getId()));
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "휴업"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0));
+
+        mockMvc.perform(get("/places/{id}", closedPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/users/me/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0));
+    }
+
+    @Test
+    void recommendationsExcludeNonOperatingPlaces() {
+        MapPlace closedPlace = createMapPlace("추천 제외 장소", "경상남도 진주시 추천로 1", 35.1801, 128.1078, 1L);
+        closedPlace.updateOperatingStatus(
+                PlaceOperatingStatus.PERMANENTLY_CLOSED,
+                LocalDateTime.of(2026, 7, 13, 10, 30)
+        );
+        mapPlaceRepository.saveAndFlush(closedPlace);
+
+        var response = placeController.recommendPlaces(35.1801, 128.1078, 1, 5.0, null, null);
+
+        assertEquals(0, response.getBody().recommendedCount());
     }
 
     @Test
