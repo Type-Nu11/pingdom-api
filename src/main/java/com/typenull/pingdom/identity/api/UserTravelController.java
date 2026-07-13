@@ -86,7 +86,8 @@ public class UserTravelController {
             @ApiResponse(responseCode = "200", description = "변경 성공", content = @Content(schema = @Schema(implementation = TravelScheduleResponse.class))),
             @ApiResponse(responseCode = "400", description = "요청 값 검증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "404", description = "일정을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "취소된 일정", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "409", description = "취소된 일정 또는 동시 수정 충돌", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<TravelScheduleResponse> updateTravelSchedule(
             @PathVariable Long scheduleId,
@@ -107,7 +108,8 @@ public class UserTravelController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "취소 성공", content = @Content(schema = @Schema(implementation = TravelScheduleResponse.class))),
             @ApiResponse(responseCode = "404", description = "일정을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "다른 요청으로 일정이 변경됨", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "409", description = "다른 요청으로 일정이 변경됨", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<TravelScheduleResponse> cancelTravelSchedule(
             @PathVariable Long scheduleId,
