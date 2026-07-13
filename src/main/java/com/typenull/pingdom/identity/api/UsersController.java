@@ -3,14 +3,18 @@ package com.typenull.pingdom.identity.api;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
 import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
 import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
+import com.typenull.pingdom.identity.api.dto.profile.TravelPurposePreferenceResponse;
+import com.typenull.pingdom.identity.api.dto.profile.TravelPurposePreferenceUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.export.UserDataExportResponse;
 import com.typenull.pingdom.identity.application.command.ChangeInfoService;
 import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
 import com.typenull.pingdom.identity.application.query.MyPageService;
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.application.query.UserDataExportService;
+import com.typenull.pingdom.identity.application.service.TravelPurposePreferenceService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -26,6 +30,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -39,6 +44,7 @@ public class UsersController {
     private final MyPageService myPageService;
     private final UserDataExportService userDataExportService;
     private final ChangeInfoService changeInfoService;
+    private final TravelPurposePreferenceService travelPurposePreferenceService;
 
     @GetMapping("/me")
     @Operation(
@@ -100,6 +106,69 @@ public class UsersController {
     ) {
         MyPageQueryResult result = myPageService.getMyPageInfo(authenticatedUserId(user));
         return ResponseEntity.ok(MyPageResponse.from(result));
+    }
+
+    @GetMapping("/me/travel-purposes")
+    @Operation(summary = "여행 목적 선호 조회", description = "현재 인증된 사용자의 여행 목적 선호 목록을 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "조회 성공",
+                    content = @Content(schema = @Schema(implementation = TravelPurposePreferenceResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청 또는 유효하지 않은 토큰",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<TravelPurposePreferenceResponse> getTravelPurposes(
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(new TravelPurposePreferenceResponse(
+                travelPurposePreferenceService.getTravelPurposes(authenticatedUserId(user))
+        ));
+    }
+
+    @PutMapping("/me/travel-purposes")
+    @Operation(summary = "여행 목적 선호 전체 변경", description = "현재 인증된 사용자의 여행 목적 선호를 요청 목록으로 전체 교체합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "변경 성공",
+                    content = @Content(schema = @Schema(implementation = TravelPurposePreferenceResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "요청 값 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청 또는 유효하지 않은 토큰",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "사용자를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<TravelPurposePreferenceResponse> replaceTravelPurposes(
+            @Valid @RequestBody TravelPurposePreferenceUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(new TravelPurposePreferenceResponse(
+                travelPurposePreferenceService.replaceTravelPurposes(
+                        authenticatedUserId(user),
+                        request.travelPurposes()
+                )
+        ));
     }
 
     @GetMapping("/me/export")
