@@ -113,6 +113,21 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        assertThat(document.path("paths").has("/admin/places/{id}/operating-schedule")).isTrue();
+        assertThat(document.path("components").path("schemas").path("PlaceDetailResponse")
+                .path("properties").path("regularHours").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceDetailResponse")
+                .path("properties").path("operatingExceptions").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("AdminMapPlaceOperatingScheduleUpdateRequest")
+                .path("properties").path("regularHours").path("type").asText()).isEqualTo("array");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingExceptionResponse")
+                .path("properties").path("closed").path("type").asText()).isEqualTo("boolean");
+    }
+
+    @Test
     void resolveSchemaFollowsNestedRefsAndUnescapesJsonPointer() throws Exception {
         JsonNode document = objectMapper.readTree("""
                 {
