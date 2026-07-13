@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingW
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -151,6 +152,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 anyDouble(),
                 anyDouble(),
                 anyDouble(),
+                any(PlaceOperatingStatus.class),
                 any(Pageable.class)
         )).thenReturn(List.of(expandedCandidate));
 
@@ -185,6 +187,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 anyDouble(),
                 anyDouble(),
                 anyDouble(),
+                any(PlaceOperatingStatus.class),
                 any(Pageable.class)
         )).thenReturn(List.of(candidate));
         when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
