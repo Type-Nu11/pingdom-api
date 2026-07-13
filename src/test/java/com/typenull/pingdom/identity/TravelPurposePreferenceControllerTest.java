@@ -1,5 +1,10 @@
 package com.typenull.pingdom.identity;
 
+import com.typenull.pingdom.identity.api.dto.profile.TravelPurposePreferenceUpdateRequest;
+import com.typenull.pingdom.identity.domain.TravelPurpose;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -8,11 +13,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.identity.api.dto.profile.TravelPurposePreferenceUpdateRequest;
-import com.typenull.pingdom.identity.domain.TravelPurpose;
-import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import org.junit.jupiter.api.AfterEach;

@@ -1,5 +1,17 @@
 package com.typenull.pingdom.swagger;
 
+import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingScheduleUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingTimeRangeRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateResponse;
+import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
+import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
+import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;

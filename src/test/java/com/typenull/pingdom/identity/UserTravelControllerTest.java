@@ -1,5 +1,18 @@
 package com.typenull.pingdom.identity;
 
+import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.travel.TravelScheduleCreateRequest;
+import com.typenull.pingdom.identity.api.dto.travel.TravelScheduleUpdateRequest;
+import com.typenull.pingdom.identity.application.service.retention.TravelDataRetentionProperties;
+import com.typenull.pingdom.identity.application.service.retention.TravelDataRetentionService;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
+import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
+import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
+import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -10,19 +23,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentUpdateRequest;
-import com.typenull.pingdom.identity.api.dto.travel.TravelScheduleCreateRequest;
-import com.typenull.pingdom.identity.api.dto.travel.TravelScheduleUpdateRequest;
-import com.typenull.pingdom.identity.application.service.TravelDataRetentionProperties;
-import com.typenull.pingdom.identity.application.service.TravelDataRetentionService;
-import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
-import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
-import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
-import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
-import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

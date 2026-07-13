@@ -2,10 +2,11 @@ package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRequest;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceUploadRequest;
+import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
+import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
+
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

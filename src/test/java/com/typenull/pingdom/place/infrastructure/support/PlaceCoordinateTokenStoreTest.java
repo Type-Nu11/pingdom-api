@@ -3,7 +3,7 @@ package com.typenull.pingdom.place.infrastructure.support;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import org.junit.jupiter.api.Test;
 
 class PlaceCoordinateTokenStoreTest {

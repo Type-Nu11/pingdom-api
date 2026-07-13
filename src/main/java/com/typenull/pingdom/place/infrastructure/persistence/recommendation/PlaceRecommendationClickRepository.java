@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.persistence.recommendation;
 
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationClick;
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;

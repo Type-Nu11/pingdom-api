@@ -8,8 +8,8 @@ import com.typenull.pingdom.notification.domain.exception.NotificationsException
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
-import com.typenull.pingdom.shared.ratelimit.RateLimitException;
-import com.typenull.pingdom.shared.ratelimit.RateLimitUnavailableException;
+import com.typenull.pingdom.shared.ratelimit.exception.RateLimitException;
+import com.typenull.pingdom.shared.ratelimit.exception.RateLimitUnavailableException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;

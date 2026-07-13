@@ -4,7 +4,7 @@ import com.typenull.pingdom.engagement.api.dto.report.MyPostReportItem;
 import com.typenull.pingdom.engagement.api.dto.report.MyPostReportResponse;
 import com.typenull.pingdom.engagement.domain.PostReport;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
-import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.post.domain.MapImage;
 import java.util.List;
 import lombok.RequiredArgsConstructor;

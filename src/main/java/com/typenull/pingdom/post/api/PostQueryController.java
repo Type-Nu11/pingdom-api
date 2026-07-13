@@ -1,12 +1,13 @@
 package com.typenull.pingdom.post.api;
 
+import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
+import com.typenull.pingdom.post.api.dto.post.PostListResponse;
+
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.domain.SortParam;
-import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
-import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 import com.typenull.pingdom.post.application.query.PostQueryService;
-import com.typenull.pingdom.shared.security.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;

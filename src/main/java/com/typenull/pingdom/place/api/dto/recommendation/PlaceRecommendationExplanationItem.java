@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.api.dto.recommendation;
 
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationCandidateSource;
+import com.typenull.pingdom.place.domain.recommendation.candidate.PlaceRecommendationCandidateSource;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "추천 설명 항목")

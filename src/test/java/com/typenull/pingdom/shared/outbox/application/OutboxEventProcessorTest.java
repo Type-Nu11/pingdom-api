@@ -1,5 +1,7 @@
 package com.typenull.pingdom.shared.outbox.application;
 
+import com.typenull.pingdom.shared.outbox.application.OutboxEventStateService.OutboxEventSnapshot;
+
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.doThrow;
@@ -9,7 +11,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.shared.observability.OutboxMetrics;
-import com.typenull.pingdom.shared.outbox.application.OutboxEventStateService.OutboxEventSnapshot;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.util.List;

@@ -1,6 +1,7 @@
 package com.typenull.pingdom.privacy.api;
 
 import com.typenull.pingdom.privacy.api.dto.PrivacyProcessingHistoryResponse;
+
 import com.typenull.pingdom.privacy.application.PrivacyProcessingHistoryQueryService;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
 import io.swagger.v3.oas.annotations.Operation;

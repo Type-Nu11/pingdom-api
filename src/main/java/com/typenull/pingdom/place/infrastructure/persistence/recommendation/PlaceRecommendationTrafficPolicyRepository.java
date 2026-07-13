@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.persistence.recommendation;
 
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationTrafficPolicy;
+import com.typenull.pingdom.place.domain.recommendation.policy.PlaceRecommendationTrafficPolicy;
 import jakarta.persistence.LockModeType;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;

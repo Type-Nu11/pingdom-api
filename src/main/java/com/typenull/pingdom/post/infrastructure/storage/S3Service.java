@@ -1,15 +1,18 @@
 package com.typenull.pingdom.post.infrastructure.storage;
 
+import com.typenull.pingdom.post.infrastructure.storage.image.ImageUploadProcessor;
+import com.typenull.pingdom.post.infrastructure.storage.image.ProcessedImageUpload;
+
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
-import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
-import com.typenull.pingdom.place.api.dto.place.PlaceCreateResponse;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
@@ -17,8 +20,6 @@ import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.post.infrastructure.storage.image.ImageUploadProcessor;
-import com.typenull.pingdom.post.infrastructure.storage.image.ProcessedImageUpload;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;

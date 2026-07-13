@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.persistence.recommendation;
 
-import com.typenull.pingdom.place.domain.recommendation.PlaceSimilaritySnapshot;
+import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceSimilaritySnapshot;
 import java.util.Collection;
 import java.util.List;
 import org.springframework.data.jpa.repository.JpaRepository;

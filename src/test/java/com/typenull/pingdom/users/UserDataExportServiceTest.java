@@ -17,7 +17,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
-import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
