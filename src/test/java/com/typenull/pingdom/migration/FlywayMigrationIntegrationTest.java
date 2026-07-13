@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("37");
-        assertThat(result.migrationsExecuted).isEqualTo(37);
+        assertThat(result.targetSchemaVersion).isEqualTo("38");
+        assertThat(result.migrationsExecuted).isEqualTo(38);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("37");
-        assertThat(result.migrationsExecuted).isEqualTo(36);
+        assertThat(result.targetSchemaVersion).isEqualTo("38");
+        assertThat(result.migrationsExecuted).isEqualTo(37);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,10 +123,34 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("37");
-        assertThat(result.migrationsExecuted).isEqualTo(10);
+        assertThat(result.targetSchemaVersion).isEqualTo("38");
+        assertThat(result.migrationsExecuted).isEqualTo(11);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_owner_profile'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_owner_place'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_owner_place'::regclass
+                      AND conname IN (
+                          'fk_merchant_owner_place_place',
+                          'fk_merchant_owner_place_profile'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
