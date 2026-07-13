@@ -4,21 +4,55 @@ import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
 
 import com.typenull.pingdom.identity.domain.User;
+import java.sql.Connection;
+import java.sql.Statement;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.test.context.DynamicPropertyRegistry;
+import org.springframework.test.context.DynamicPropertySource;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.testcontainers.containers.PostgreSQLContainer;
+import org.testcontainers.utility.DockerImageName;
 
-@SpringBootTest
+@SpringBootTest(properties = "spring.docker.compose.enabled=false")
 @AutoConfigureMockMvc
 class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSupport {
+
+    private static final DockerImageName POSTGIS_IMAGE = DockerImageName
+            .parse("postgis/postgis:16-3.4")
+            .asCompatibleSubstituteFor("postgres");
+
+    private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(POSTGIS_IMAGE)
+            .withDatabaseName("pingdom")
+            .withUsername("pingdom")
+            .withPassword("pingdom");
+
+    static {
+        postgres.start();
+        ensureRequiredExtensions();
+    }
+
+    @DynamicPropertySource
+    static void registerPostgresProperties(DynamicPropertyRegistry registry) {
+        registry.add("spring.datasource.url", postgres::getJdbcUrl);
+        registry.add("spring.datasource.username", postgres::getUsername);
+        registry.add("spring.datasource.password", postgres::getPassword);
+        registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
+    }
+
+    @AfterAll
+    static void stopPostgres() {
+        postgres.stop();
+    }
 
     @Autowired
     private PlatformTransactionManager transactionManager;
@@ -58,6 +92,15 @@ class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSuppo
         } finally {
             releaseFirstLock.countDown();
             executor.shutdownNow();
+        }
+    }
+
+    private static void ensureRequiredExtensions() {
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.execute("CREATE EXTENSION IF NOT EXISTS postgis");
+        } catch (Exception exception) {
+            throw new IllegalStateException("PostGIS 테스트 데이터베이스 준비에 실패했습니다.", exception);
         }
     }
 
