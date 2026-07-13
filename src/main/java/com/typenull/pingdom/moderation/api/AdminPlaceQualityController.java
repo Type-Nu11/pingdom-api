@@ -6,6 +6,8 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocod
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceKakaoPlaceIdUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceOperatingStatusUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.application.service.AdminMapPlaceService;
@@ -284,6 +286,29 @@ public class AdminPlaceQualityController {
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminMapPlaceService.updatePlaceTouristInfo(adminUserId, placeId, request));
+    }
+
+    @PatchMapping("/{id}/operating-status")
+    @Operation(
+            summary = "관리자 장소 운영 상태 확인",
+            description = "관리자가 확인한 장소 운영 상태를 기록하고 최신 확인 시각을 서버 시간으로 갱신합니다. 비운영 장소는 앱 장소 조회와 추천에서 숨겨집니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 운영 상태 수정 성공",
+                    content = @Content(schema = @Schema(implementation = AdminMapPlaceOperatingStatusUpdateResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "입력값 검증 실패"),
+            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음")
+    })
+    public ResponseEntity<AdminMapPlaceOperatingStatusUpdateResponse> updatePlaceOperatingStatus(
+            @Parameter(description = "운영 상태를 확인할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceOperatingStatusUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updatePlaceOperatingStatus(adminUserId, placeId, request));
     }
 
     @DeleteMapping("/{id}/delete")
