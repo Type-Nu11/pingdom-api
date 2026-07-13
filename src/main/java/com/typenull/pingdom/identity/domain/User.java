@@ -249,6 +249,24 @@ public class User {
         return this.role == UserRole.ADMIN;
     }
 
+    public boolean isMerchantOwner() {
+        return this.role == UserRole.MERCHANT_OWNER;
+    }
+
+    public void activateMerchantOwnerRole() {
+        if (isAdmin()) {
+            throw new IllegalStateException("관리자 계정에는 Merchant Owner 역할을 부여할 수 없습니다.");
+        }
+        this.role = UserRole.MERCHANT_OWNER;
+    }
+
+    public void revokeMerchantOwnerRole() {
+        if (isMerchantOwner()) {
+            this.role = UserRole.USER;
+        }
+        clearRefreshToken();
+    }
+
     public void updateFcmToken(String token) {
         this.fcmToken = token;
     }
@@ -303,6 +321,7 @@ public class User {
         this.emailVerificationCode = null;
         this.emailVerificationExpiresAt = null;
         this.refreshToken = null;
+        this.role = UserRole.USER;
         this.fcmToken = null;
         replaceTravelPurposes(Set.of());
         releaseBan();
