@@ -16,18 +16,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class OAuth2TokenController {
 
     private static final String ACCESS_COOKIE = "OAUTH2_ACCESS_TOKEN";
-    private static final String REFRESH_COOKIE = "OAUTH2_REFRESH_TOKEN";
 
     @GetMapping("/auth/oauth2/success")
     public ResponseEntity<?> oauth2Success(HttpServletRequest request, HttpServletResponse response) {
         boolean secureCookie = request.isSecure();
         String accessToken = readCookie(request, ACCESS_COOKIE);
-        String refreshToken = readCookie(request, REFRESH_COOKIE);
 
         clearCookie(response, ACCESS_COOKIE, secureCookie);
-        clearCookie(response, REFRESH_COOKIE, secureCookie);
 
-        if (!StringUtils.hasText(accessToken) || !StringUtils.hasText(refreshToken)) {
+        if (!StringUtils.hasText(accessToken)) {
             Map<String, Object> body = new LinkedHashMap<>();
             body.put("code", "OAUTH2_TOKEN_MISSING");
             body.put("message", "OAuth2 로그인 토큰을 찾을 수 없습니다. 다시 로그인 해주세요.");
@@ -38,7 +35,6 @@ public class OAuth2TokenController {
         body.put("message", "OAuth2 로그인에 성공했습니다.");
         body.put("tokenType", "Bearer");
         body.put("accessToken", accessToken);
-        body.put("refreshToken", refreshToken);
         return ResponseEntity.ok(body);
     }
 
