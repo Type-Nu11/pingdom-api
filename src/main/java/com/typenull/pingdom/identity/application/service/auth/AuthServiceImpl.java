@@ -98,7 +98,8 @@ public class AuthServiceImpl implements AuthService {
                 savedUser.getBirthYear(),
                 savedUser.getProfileImageUrl(),
                 savedUser.getLanguage(),
-                savedUser.getCountry()
+                savedUser.getCountry(),
+                savedUser.getRole()
         );
     }
 
@@ -427,7 +428,8 @@ public class AuthServiceImpl implements AuthService {
                         user.getLanguage(),
                         user.getCountry(),
                         "로그인에 성공했습니다.",
-                        accessToken
+                        accessToken,
+                        user.getRole()
                 ),
                 refreshToken
         );

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.dto.login;
 
+import com.typenull.pingdom.identity.domain.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 // 로그인 성공 응답 DTO
@@ -22,10 +23,12 @@ public record LoginResponse(
         @Schema(description = "로그인 결과 메시지", example = "로그인에 성공했습니다.")
         String message,
         @Schema(description = "인증에 사용할 Access Token", example = "eyJhbGciOiJIUzI1NiJ9.access.token")
-        String accessToken
+        String accessToken,
+        @Schema(description = "현재 사용자 역할", example = "MERCHANT_OWNER")
+        UserRole role
 ) {
     // 토큰 미포함 호출 호환 생성자
     public LoginResponse(Long id, String username, String email, Integer birthYear, String profileImageUrl, String language, String country, String message) {
-        this(id, username, email, birthYear, profileImageUrl, language, country, message, null);
+        this(id, username, email, birthYear, profileImageUrl, language, country, message, null, UserRole.USER);
     }
 }

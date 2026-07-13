@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.api.dto.profile;
 
 import com.typenull.pingdom.identity.application.query.MyPageQueryResult;
+import com.typenull.pingdom.identity.domain.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 import lombok.Builder;
 
@@ -20,7 +21,9 @@ public record MyPageResponse(
         @Schema(description = "언어", example = "ko")
         String language,
         @Schema(description = "국가", example = "KR")
-        String country){
+        String country,
+        @Schema(description = "현재 사용자 역할", example = "MERCHANT_OWNER")
+        UserRole role){
 
     public static MyPageResponse from(MyPageQueryResult result) {
         return MyPageResponse.builder()
@@ -31,6 +34,7 @@ public record MyPageResponse(
                 .profileImageUrl(result.profileImageUrl())
                 .language(result.language())
                 .country(result.country())
+                .role(result.role())
                 .build();
     }
 }
