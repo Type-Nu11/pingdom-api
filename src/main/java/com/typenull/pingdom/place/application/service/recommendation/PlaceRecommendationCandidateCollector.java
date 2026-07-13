@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -137,7 +138,7 @@ class PlaceRecommendationCandidateCollector {
 
         Map<Long, MapPlace> placeById = new HashMap<>();
         for (MapPlace place : mapPlaceRepository.findAllById(placeIds)) {
-            if (place.getLatitude() != null && place.getLongitude() != null) {
+            if (hasCoordinates(place)) {
                 placeById.put(place.getId(), place);
             }
         }
@@ -178,7 +179,10 @@ class PlaceRecommendationCandidateCollector {
     }
 
     private boolean hasCoordinates(MapPlace place) {
-        return place != null && place.getLatitude() != null && place.getLongitude() != null;
+        return place != null
+                && place.isOperating()
+                && place.getLatitude() != null
+                && place.getLongitude() != null;
     }
 
     private List<MapPlace> loadNearbyCandidates(
@@ -201,6 +205,7 @@ class PlaceRecommendationCandidateCollector {
                     longitude,
                     minLatitude,
                     maxLatitude,
+                    PlaceOperatingStatus.OPERATING,
                     PageRequest.of(0, limit)
             );
         }
@@ -213,6 +218,7 @@ class PlaceRecommendationCandidateCollector {
                     maxLatitude,
                     minLongitude + 360d,
                     maxLongitude,
+                    PlaceOperatingStatus.OPERATING,
                     PageRequest.of(0, limit)
             );
         }
@@ -225,6 +231,7 @@ class PlaceRecommendationCandidateCollector {
                     maxLatitude,
                     minLongitude,
                     maxLongitude - 360d,
+                    PlaceOperatingStatus.OPERATING,
                     PageRequest.of(0, limit)
             );
         }
@@ -236,6 +243,7 @@ class PlaceRecommendationCandidateCollector {
                 maxLatitude,
                 minLongitude,
                 maxLongitude,
+                PlaceOperatingStatus.OPERATING,
                 PageRequest.of(0, limit)
         );
     }

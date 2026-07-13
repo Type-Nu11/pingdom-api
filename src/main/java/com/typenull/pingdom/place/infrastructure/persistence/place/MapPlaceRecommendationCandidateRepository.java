@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
 import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Query;
@@ -14,6 +15,7 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
             FROM MapPlace m
             WHERE m.latitude IS NOT NULL
               AND m.longitude IS NOT NULL
+              AND m.operatingStatus = :operatingStatus
               AND m.latitude BETWEEN :minLatitude AND :maxLatitude
               AND m.longitude BETWEEN :minLongitude AND :maxLongitude
             ORDER BY ABS(m.latitude - :latitude)
@@ -29,6 +31,7 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
             @Param("maxLatitude") double maxLatitude,
             @Param("minLongitude") double minLongitude,
             @Param("maxLongitude") double maxLongitude,
+            @Param("operatingStatus") PlaceOperatingStatus operatingStatus,
             Pageable pageable
     );
 
@@ -37,6 +40,7 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
             FROM MapPlace m
             WHERE m.latitude IS NOT NULL
               AND m.longitude IS NOT NULL
+              AND m.operatingStatus = :operatingStatus
               AND m.latitude BETWEEN :minLatitude AND :maxLatitude
             ORDER BY ABS(m.latitude - :latitude)
                    + CASE
@@ -49,6 +53,7 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
             @Param("longitude") double longitude,
             @Param("minLatitude") double minLatitude,
             @Param("maxLatitude") double maxLatitude,
+            @Param("operatingStatus") PlaceOperatingStatus operatingStatus,
             Pageable pageable
     );
 
@@ -57,6 +62,7 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
             FROM MapPlace m
             WHERE m.latitude IS NOT NULL
               AND m.longitude IS NOT NULL
+              AND m.operatingStatus = :operatingStatus
               AND m.latitude BETWEEN :minLatitude AND :maxLatitude
               AND (m.longitude >= :westLongitude OR m.longitude <= :eastLongitude)
             ORDER BY ABS(m.latitude - :latitude)
@@ -72,6 +78,7 @@ public interface MapPlaceRecommendationCandidateRepository extends Repository<Ma
             @Param("maxLatitude") double maxLatitude,
             @Param("westLongitude") double westLongitude,
             @Param("eastLongitude") double eastLongitude,
+            @Param("operatingStatus") PlaceOperatingStatus operatingStatus,
             Pageable pageable
     );
 }
