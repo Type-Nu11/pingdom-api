@@ -8,7 +8,6 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.shared.security.UserAccessStatusService;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

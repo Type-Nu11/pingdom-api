@@ -57,6 +57,8 @@ Authorization: Bearer {accessToken}
 | 사용자 기본 정보 | `users` | `id`, `username`, `profileImageUrl` | 본인 데이터 |
 | 북마크 | `map_bookmark` | `id`, `placeId` | 전체 제공 |
 | 좋아요 | `map_image_like` | `mapImageId` | 최신 최대 50개 |
+| 여행 일정 | `user_travel_schedule` | `id`, `startDate`, `endDate`, `state` | 전체 제공 |
+| 현재 행동 의도 | `user_current_activity_intent` | `intent`, `expiresAt` | 만료되지 않은 값만 제공 |
 
 응답 형태:
 
@@ -111,8 +113,14 @@ Authorization: Bearer {accessToken}
 | 알림 | 삭제 |
 | FCM 토큰 | 삭제 |
 | 알림 설정 | 삭제 |
+| 여행 목적 선호 | 삭제 |
+| 여행 일정·현재 행동 의도 | 탈퇴 후 7일 보관 뒤 전용 정리 배치로 삭제 |
 
 탈퇴 사용자는 기본 30일 동안 보존한다.
+
+여행 일정과 현재 행동 의도는 계정 보관 기간과 별도로 탈퇴 후 7일까지만 보관한다. 탈퇴
+사용자는 인증할 수 없으므로 해당 기간에 export를 호출할 수 없고, export는 탈퇴 전 인증된
+상태에서만 제공한다.
 
 ```yaml
 user:
@@ -121,6 +129,13 @@ user:
     cleanup-enabled: true
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
+```
+
+```yaml
+travel:
+  data-retention:
+    withdrawn-user-retention: P7D
+    cleanup-delay: PT1H
 ```
 
 보존 기간이 만료되면 기존 `WithdrawnUserPurgeWorker`가 최종 삭제를 수행한다.

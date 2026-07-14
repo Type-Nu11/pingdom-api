@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.persistence.recommendation;
 
-import com.typenull.pingdom.place.domain.recommendation.PlaceRecommendationVersionSnapshot;
+import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationVersionSnapshot;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.List;

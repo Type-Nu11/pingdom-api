@@ -1,6 +1,7 @@
 package com.typenull.pingdom.shared.outbox.application;
 
 import com.typenull.pingdom.shared.outbox.application.OutboxEventStateService.OutboxEventSnapshot;
+
 import com.typenull.pingdom.shared.observability.OutboxMetrics;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;

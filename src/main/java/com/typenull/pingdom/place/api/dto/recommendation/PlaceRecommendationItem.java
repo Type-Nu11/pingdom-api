@@ -1,8 +1,8 @@
 package com.typenull.pingdom.place.api.dto.recommendation;
 
-import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
-import com.typenull.pingdom.place.domain.place.GeocodingSource;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 

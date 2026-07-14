@@ -1,5 +1,8 @@
 package com.typenull.pingdom.notification;
 
+import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpdateRequest;
+import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,9 +11,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpdateRequest;
-import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;

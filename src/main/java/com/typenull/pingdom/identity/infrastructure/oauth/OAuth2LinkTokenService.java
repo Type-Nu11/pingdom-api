@@ -2,7 +2,7 @@ package com.typenull.pingdom.identity.infrastructure.oauth;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
-import com.typenull.pingdom.shared.security.JwtProperties;
+import com.typenull.pingdom.shared.security.jwt.JwtProperties;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.JwtException;
 import io.jsonwebtoken.Jwts;

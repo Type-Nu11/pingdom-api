@@ -1,6 +1,6 @@
 package com.typenull.pingdom.moderation.application.support;
 
-import com.typenull.pingdom.place.domain.place.MapPlace;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import java.util.ArrayDeque;
 import java.util.ArrayList;
 import java.util.Collection;

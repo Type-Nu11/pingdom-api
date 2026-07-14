@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
-import com.typenull.pingdom.place.domain.place.MapBookmark;
+import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;

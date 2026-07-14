@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.application.query;
 
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserRole;
 
 public record MyPageQueryResult(
         Long id,
@@ -9,7 +10,8 @@ public record MyPageQueryResult(
         Integer birthYear,
         String profileImageUrl,
         String language,
-        String country
+        String country,
+        UserRole role
 ) {
 
     public static MyPageQueryResult from(User user) {
@@ -20,7 +22,8 @@ public record MyPageQueryResult(
                 user.getBirthYear(),
                 user.getProfileImageUrl(),
                 user.getLanguage(),
-                user.getCountry()
+                user.getCountry(),
+                user.getRole()
         );
     }
 }

@@ -1,5 +1,9 @@
 package com.typenull.pingdom.place;
 
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
@@ -17,9 +21,6 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
-import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
-import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.time.LocalDateTime;
 import java.util.concurrent.atomic.AtomicInteger;
 import org.junit.jupiter.api.BeforeEach;

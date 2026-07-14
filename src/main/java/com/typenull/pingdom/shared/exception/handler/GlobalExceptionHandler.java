@@ -2,13 +2,15 @@ package com.typenull.pingdom.shared.exception.handler;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
-import com.typenull.pingdom.shared.ratelimit.RateLimitException;
-import com.typenull.pingdom.shared.ratelimit.RateLimitUnavailableException;
+import com.typenull.pingdom.shared.ratelimit.exception.RateLimitException;
+import com.typenull.pingdom.shared.ratelimit.exception.RateLimitUnavailableException;
 import jakarta.validation.ConstraintViolationException;
 import java.util.LinkedHashMap;
 import java.util.Map;
@@ -39,6 +41,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AuthException.class)
     public ResponseEntity<Map<String, String>> handleAuthException(AuthException exception) {
         authMetrics.recordAuthFailure(exception.getErrorCode(), "controller_advice");
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(UsersException.class)
+    public ResponseEntity<Map<String, String>> handleUsersException(UsersException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(MerchantOwnerException.class)
+    public ResponseEntity<Map<String, String>> handleMerchantOwnerException(MerchantOwnerException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }

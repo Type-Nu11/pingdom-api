@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.event;
 
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationExposureService;
+import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationExposureService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Qualifier;

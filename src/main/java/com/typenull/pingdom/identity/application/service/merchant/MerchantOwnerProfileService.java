@@ -1,0 +1,104 @@
+package com.typenull.pingdom.identity.application.service.merchant;
+
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileResponse;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class MerchantOwnerProfileService {
+
+    private final UserRepository userRepository;
+    private final MerchantOwnerProfileRepository profileRepository;
+    private final MerchantOwnerPlaceRepository placeRepository;
+    private final Clock clock;
+
+    @Transactional
+    public MerchantOwnerProfileResponse apply(Long userId, MerchantOwnerProfileRequest request) {
+        User user = userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
+        if (user.isAdmin()) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.ADMIN_ACCOUNT_NOT_ALLOWED);
+        }
+
+        LocalDateTime now = LocalDateTime.now(clock);
+        MerchantOwnerProfile profile = profileRepository.findByUserIdForUpdate(userId).orElse(null);
+        if (profile == null) {
+            profile = profileRepository.save(MerchantOwnerProfile.pending(
+                    userId,
+                    request.businessName(),
+                    request.displayName(),
+                    request.description(),
+                    request.contactEmail(),
+                    request.contactPhone(),
+                    now
+            ));
+        } else {
+            try {
+                profile.reapply(
+                        request.businessName(),
+                        request.displayName(),
+                        request.description(),
+                        request.contactEmail(),
+                        request.contactPhone(),
+                        now
+                );
+            } catch (IllegalStateException exception) {
+                throw new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_ALREADY_EXISTS);
+            }
+        }
+        return response(profile);
+    }
+
+    @Transactional
+    public MerchantOwnerProfileResponse update(Long userId, MerchantOwnerProfileRequest request) {
+        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
+        try {
+            profile.update(
+                    request.businessName(),
+                    request.displayName(),
+                    request.description(),
+                    request.contactEmail(),
+                    request.contactPhone(),
+                    LocalDateTime.now(clock)
+            );
+        } catch (IllegalStateException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
+        }
+        return response(profile);
+    }
+
+    @Transactional(readOnly = true)
+    public MerchantOwnerProfileResponse get(Long userId) {
+        return response(profileRepository.findById(userId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND)));
+    }
+
+    private MerchantOwnerProfile requireProfileForUpdate(Long userId) {
+        return profileRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private MerchantOwnerProfileResponse response(MerchantOwnerProfile profile) {
+        List<Long> placeIds = placeRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(profile.getUserId())
+                .stream()
+                .map(MerchantOwnerPlace::getPlaceId)
+                .toList();
+        return MerchantOwnerProfileResponse.from(profile, placeIds);
+    }
+}

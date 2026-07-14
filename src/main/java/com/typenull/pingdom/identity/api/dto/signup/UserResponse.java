@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.dto.signup;
 
+import com.typenull.pingdom.identity.domain.UserRole;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "회원가입 성공 응답")
@@ -17,6 +18,8 @@ public record UserResponse(
         @Schema(description = "언어", example = "ko")
         String language,
         @Schema(description = "국가", example = "KR")
-        String country
+        String country,
+        @Schema(description = "생성된 사용자 역할", example = "USER")
+        UserRole role
 ) {
 }

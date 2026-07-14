@@ -15,6 +15,7 @@ public class SpringdocGroupsConfig {
                 .group("app")
                 .pathsToMatch(
                         "/users/**",
+                        "/merchant-owner/**",
                         "/map/**",
                         "/places",
                         "/places/**",

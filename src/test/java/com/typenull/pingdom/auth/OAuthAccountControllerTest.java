@@ -12,7 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountDisconnectRequest;
-import com.typenull.pingdom.identity.api.OAuth2TokenController;
+import com.typenull.pingdom.identity.api.oauth.OAuth2TokenController;
 import com.typenull.pingdom.identity.application.command.OAuthAccountCommandService;
 import com.typenull.pingdom.identity.application.command.OAuthUserService;
 import com.typenull.pingdom.identity.domain.AuthProvider;
@@ -25,7 +25,7 @@ import com.typenull.pingdom.identity.infrastructure.oauth.CustomOAuth2User;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2LinkCookieService;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2LinkTokenService;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2SuccessHandler;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.Map;

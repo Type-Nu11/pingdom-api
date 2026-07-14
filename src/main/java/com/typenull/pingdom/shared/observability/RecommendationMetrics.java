@@ -1,6 +1,9 @@
 package com.typenull.pingdom.shared.observability;
 
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService.SnapshotResyncResult;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService.SnapshotResyncResult;
+
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
+
 import io.micrometer.core.instrument.DistributionSummary;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;

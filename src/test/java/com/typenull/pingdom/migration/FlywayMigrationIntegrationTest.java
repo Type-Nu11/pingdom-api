@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("34");
-        assertThat(result.migrationsExecuted).isEqualTo(34);
+        assertThat(result.targetSchemaVersion).isEqualTo("38");
+        assertThat(result.migrationsExecuted).isEqualTo(38);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("34");
-        assertThat(result.migrationsExecuted).isEqualTo(33);
+        assertThat(result.targetSchemaVersion).isEqualTo("38");
+        assertThat(result.migrationsExecuted).isEqualTo(37);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,10 +123,34 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("34");
-        assertThat(result.migrationsExecuted).isEqualTo(7);
+        assertThat(result.targetSchemaVersion).isEqualTo("38");
+        assertThat(result.migrationsExecuted).isEqualTo(11);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_owner_profile'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_owner_place'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_owner_place'::regclass
+                      AND conname IN (
+                          'fk_merchant_owner_place_place',
+                          'fk_merchant_owner_place_profile'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
@@ -993,6 +1017,150 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'place_event'
                           AND indexname = 'idx_place_event_public_discovery'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'user_travel_purpose'
+                          AND column_name = 'user_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'user_travel_purpose'
+                          AND column_name = 'travel_purpose'
+                          AND character_maximum_length = 30
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_purpose'::regclass
+                          AND conname = 'pk_user_travel_purpose'
+                          AND contype = 'p'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_purpose'::regclass
+                          AND conname = 'fk_user_travel_purpose_user'
+                          AND contype = 'f'
+                          AND confrelid = 'users'::regclass
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_purpose'::regclass
+                          AND conname = 'ck_user_travel_purpose_value'
+                          AND contype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'user_travel_schedule'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM information_schema.columns
+                    WHERE table_name = 'user_travel_schedule'
+                      AND column_name IN (
+                          'user_id', 'start_date', 'end_date', 'state', 'created_at', 'updated_at', 'version'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_travel_schedule'::regclass
+                          AND conname = 'fk_user_travel_schedule_user'
+                          AND contype = 'f'
+                          AND confrelid = 'users'::regclass
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'user_travel_schedule'::regclass
+                      AND conname IN ('ck_user_travel_schedule_period', 'ck_user_travel_schedule_state')
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'user_travel_schedule'
+                          AND indexname = 'idx_user_travel_schedule_user_period'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'user_current_activity_intent'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'user_current_activity_intent'
+                      AND column_name IN (
+                          'user_id', 'activity_intent', 'expires_at', 'created_at', 'updated_at'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_current_activity_intent'::regclass
+                          AND conname = 'uk_user_current_activity_intent_user'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_current_activity_intent'::regclass
+                          AND conname = 'fk_user_current_activity_intent_user'
+                          AND contype = 'f'
+                          AND confrelid = 'users'::regclass
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'user_current_activity_intent'::regclass
+                          AND conname = 'ck_user_current_activity_intent_value'
+                          AND contype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'user_current_activity_intent'
+                          AND indexname = 'idx_user_current_activity_intent_expires_at'
                     )
                     """)).isTrue();
         }

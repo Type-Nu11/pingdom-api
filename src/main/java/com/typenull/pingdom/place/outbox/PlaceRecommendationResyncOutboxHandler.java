@@ -2,7 +2,7 @@ package com.typenull.pingdom.place.outbox;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.place.application.service.recommendation.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventHandler;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;

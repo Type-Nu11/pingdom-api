@@ -1,9 +1,9 @@
 package com.typenull.pingdom.moderation.api.dto.place.query;
 
-import com.typenull.pingdom.place.domain.place.PlaceGrowthSnapshot;
-import com.typenull.pingdom.place.domain.place.GeocodingSource;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
-import com.typenull.pingdom.place.domain.place.TouristCategory;
+import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.Set;

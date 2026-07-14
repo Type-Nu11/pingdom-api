@@ -6,8 +6,8 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.shared.security.JwtProperties;
-import com.typenull.pingdom.shared.security.JwtTokenProvider;
+import com.typenull.pingdom.shared.security.jwt.JwtProperties;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.security.Keys;
 import jakarta.servlet.DispatcherType;

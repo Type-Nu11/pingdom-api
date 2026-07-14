@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.support;
 
-import com.typenull.pingdom.place.domain.place.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.Instant;

@@ -17,7 +17,7 @@ import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.moderation.application.service.UserSanctionCommandService;
+import com.typenull.pingdom.moderation.application.service.user.sanction.UserSanctionCommandService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;

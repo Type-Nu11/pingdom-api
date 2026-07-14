@@ -1,5 +1,17 @@
 package com.typenull.pingdom.swagger;
 
+import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingScheduleUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingTimeRangeRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateResponse;
+import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
+import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
+import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
+
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
@@ -90,6 +102,55 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.at("/paths/~1firebase~1fcm-token/patch/deprecated").asBoolean()).isTrue();
         assertThat(appDocument.path("paths").has("/place")).isFalse();
         assertThat(appDocument.path("paths").has("/users/bookmarks")).isFalse();
+    }
+
+    @Test
+    void travelPurposePreferenceApiIsExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+
+        assertThat(appDocument.path("paths").has("/users/me/travel-purposes")).isTrue();
+        assertThat(appDocument.at("/paths/~1users~1me~1travel-purposes/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/TravelPurposePreferenceResponse");
+        assertThat(appDocument.at("/paths/~1users~1me~1travel-purposes/put/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/TravelPurposePreferenceUpdateRequest");
+        boolean travelPurposesRequired = false;
+        for (JsonNode requiredField : appDocument.path("components").path("schemas")
+                .path("TravelPurposePreferenceUpdateRequest").path("required")) {
+            if ("travelPurposes".equals(requiredField.asText())) {
+                travelPurposesRequired = true;
+                break;
+            }
+        }
+        assertThat(travelPurposesRequired).isTrue();
+    }
+
+    @Test
+    void travelScheduleAndCurrentActivityIntentApisAreExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+
+        assertThat(appDocument.path("paths").has("/users/me/travel-schedules")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/travel-schedules/{scheduleId}")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/travel-schedules/{scheduleId}/cancel")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/current-activity-intent")).isTrue();
+        assertThat(appDocument.at("/paths/~1users~1me~1travel-schedules/post/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/TravelScheduleCreateRequest");
+        assertThat(appDocument.at("/paths/~1users~1me~1current-activity-intent/put/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/CurrentActivityIntentUpdateRequest");
+        assertThat(appDocument.at("/paths/~1users~1me~1current-activity-intent/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/CurrentActivityIntentResponse");
+    }
+
+    @Test
+    void merchantOwnerApisAreSeparatedIntoAppAndWebGroups() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
+        assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
     }
 
     @Test

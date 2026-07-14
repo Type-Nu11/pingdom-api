@@ -1,20 +1,21 @@
 package com.typenull.pingdom.place.application.service.place;
 
-import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteItem;
-import com.typenull.pingdom.place.api.dto.place.PlaceAutocompleteResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceDetailResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceListItem;
-import com.typenull.pingdom.place.api.dto.place.PlaceListResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceOperatingExceptionResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceOperatingTimeRangeResponse;
-import com.typenull.pingdom.place.api.dto.place.PlaceRegularOperatingHourResponse;
-import com.typenull.pingdom.place.domain.place.MapPlace;
-import com.typenull.pingdom.place.domain.place.PlaceCategoryPolicy;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingException;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingStatus;
-import com.typenull.pingdom.place.domain.place.PlaceOperatingTimeRange;
-import com.typenull.pingdom.place.domain.place.PlaceRegularOperatingHour;
-import com.typenull.pingdom.place.domain.place.TouristCategory;
+import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPublicQueryService;
+import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
+import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
+import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
+import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
+import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
@@ -53,6 +54,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSearchQueryRepository placeSearchQueryRepository;
+    private final MerchantOwnerPublicQueryService merchantOwnerPublicQueryService;
 
     @Override
     @Transactional(readOnly = true)
@@ -205,7 +207,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.currentTouristCategories(),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
-                mapPlace.getRegistrant()
+                mapPlace.getRegistrant(),
+                merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
         );
     }
 

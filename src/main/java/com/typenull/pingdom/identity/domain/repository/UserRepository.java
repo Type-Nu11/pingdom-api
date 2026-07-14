@@ -3,6 +3,8 @@ package com.typenull.pingdom.identity.domain.repository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserStatus;
+import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
+import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
 import jakarta.persistence.LockModeType;
 import jakarta.persistence.QueryHint;
 import java.time.LocalDateTime;
@@ -122,6 +124,32 @@ public interface UserRepository extends JpaRepository<User, Long> {
             ORDER BY u.withdrawnAt ASC, u.id ASC
             """)
     List<Long> findExpiredWithdrawnUserIds(
+            @Param("status") UserStatus status,
+            @Param("cutoff") LocalDateTime cutoff,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT u.id
+            FROM User u
+            WHERE u.status = :status
+              AND u.withdrawnAt IS NOT NULL
+              AND u.withdrawnAt <= :cutoff
+              AND (
+                    EXISTS (
+                        SELECT 1
+                        FROM TravelSchedule schedule
+                        WHERE schedule.user.id = u.id
+                    )
+                    OR EXISTS (
+                        SELECT 1
+                        FROM UserCurrentActivityIntent intent
+                        WHERE intent.user.id = u.id
+                    )
+                  )
+            ORDER BY u.withdrawnAt ASC, u.id ASC
+            """)
+    List<Long> findExpiredWithdrawnUserIdsWithTravelData(
             @Param("status") UserStatus status,
             @Param("cutoff") LocalDateTime cutoff,
             Pageable pageable

@@ -1,5 +1,7 @@
 package com.typenull.pingdom.post.infrastructure.persistence;
 
+import com.typenull.pingdom.place.domain.place.core.MapBookmark;
+
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
