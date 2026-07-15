@@ -100,6 +100,33 @@ class MerchantVerificationAdminServiceTest {
         );
     }
 
+    @Test
+    void detailViewRecordsSensitiveInformationAccess() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        MerchantVerification verification = MerchantVerification.pending(
+                userId,
+                "김핑덤",
+                "핑덤 카페",
+                "encrypted-number",
+                LocalDateTime.of(2026, 7, 14, 12, 0)
+        );
+        when(verificationRepository.findById(userId)).thenReturn(Optional.of(verification));
+        when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
+
+        adminService.get(adminUserId, userId);
+
+        verify(auditLogService).record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_VERIFICATION_VIEWED,
+                AdminAuditTargetType.MERCHANT_VERIFICATION,
+                userId,
+                "Merchant 검증 민감정보 상세 조회",
+                Map.of(),
+                Map.of()
+        );
+    }
+
     private MerchantOwnerProfile profile(Long userId) {
         return MerchantOwnerProfile.pending(
                 userId,

@@ -77,9 +77,18 @@ public class MerchantVerificationAdminService {
     }
 
     @Transactional(readOnly = true)
-    public AdminMerchantVerificationResponse get(Long userId) {
+    public AdminMerchantVerificationResponse get(Long adminUserId, Long userId) {
         MerchantVerification verification = verificationRepository.findById(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_NOT_FOUND));
+        auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_VERIFICATION_VIEWED,
+                AdminAuditTargetType.MERCHANT_VERIFICATION,
+                userId,
+                "Merchant 검증 민감정보 상세 조회",
+                Map.of(),
+                Map.of()
+        );
         return response(verification);
     }
 

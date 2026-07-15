@@ -43,8 +43,11 @@ public class AdminMerchantVerificationController {
 
     @GetMapping("/{userId}")
     @Operation(summary = "Merchant 검증 신청 상세 조회")
-    public AdminMerchantVerificationResponse get(@PathVariable Long userId) {
-        return verificationAdminService.get(userId);
+    public AdminMerchantVerificationResponse get(
+            @PathVariable Long userId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+    ) {
+        return verificationAdminService.get(admin.userId(), userId);
     }
 
     @PostMapping("/{userId}/review")
