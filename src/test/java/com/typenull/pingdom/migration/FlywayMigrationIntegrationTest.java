@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("38");
-        assertThat(result.migrationsExecuted).isEqualTo(38);
+        assertThat(result.targetSchemaVersion).isEqualTo("39");
+        assertThat(result.migrationsExecuted).isEqualTo(39);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("38");
-        assertThat(result.migrationsExecuted).isEqualTo(37);
+        assertThat(result.targetSchemaVersion).isEqualTo("39");
+        assertThat(result.migrationsExecuted).isEqualTo(38);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("38");
-        assertThat(result.migrationsExecuted).isEqualTo(11);
+        assertThat(result.targetSchemaVersion).isEqualTo("39");
+        assertThat(result.migrationsExecuted).isEqualTo(12);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1161,6 +1161,54 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'user_current_activity_intent'
                           AND indexname = 'idx_user_current_activity_intent_expires_at'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_verification'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'merchant_verification'
+                          AND column_name = 'business_name'
+                          AND is_nullable = 'NO'
+                          AND character_maximum_length = 100
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'merchant_verification'
+                          AND column_name = 'business_registration_number'
+                          AND is_nullable = 'NO'
+                          AND character_maximum_length = 255
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_verification'::regclass
+                      AND conname IN (
+                          'ck_merchant_verification_identity_status',
+                          'ck_merchant_verification_business_status'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'merchant_verification'::regclass
+                          AND conname = 'fk_merchant_verification_profile'
+                          AND contype = 'f'
+                          AND confrelid = 'merchant_owner_profile'::regclass
+                          AND confdeltype = 'c'
                     )
                     """)).isTrue();
         }
