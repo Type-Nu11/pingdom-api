@@ -4,6 +4,7 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import java.time.Clock;
@@ -36,6 +37,7 @@ public class UserWithdrawalDataService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final MerchantOwnerProfileRepository merchantOwnerProfileRepository;
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+    private final MerchantPlaceClaimRepository merchantPlaceClaimRepository;
     private final MerchantVerificationRepository merchantVerificationRepository;
     private final MerchantVerificationCipher merchantVerificationCipher;
     private final Clock clock;
@@ -56,6 +58,7 @@ public class UserWithdrawalDataService {
         int deletedFcmTokenCount = fcmDeviceTokenRepository.deleteAllByUserId(userId);
         int deletedNotificationSettingCount = notificationSettingRepository.deleteAllByUserId(userId);
         int deletedMerchantOwnerPlaceCount = merchantOwnerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
+        int deletedMerchantPlaceClaimCount = merchantPlaceClaimRepository.deleteAllByMerchantOwnerUserId(userId);
         merchantOwnerProfileRepository.findByUserIdForUpdate(userId)
                 .ifPresent(profile -> profile.anonymize(LocalDateTime.now(clock)));
         merchantVerificationRepository.findByUserIdForUpdate(userId)
@@ -65,7 +68,7 @@ public class UserWithdrawalDataService {
                 ));
 
         log.info(
-                "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}",
+                "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}, deletedMerchantPlaceClaimCount={}",
                 userId,
                 anonymizedPostCount,
                 anonymizedPlaceCount,
@@ -74,7 +77,8 @@ public class UserWithdrawalDataService {
                 deletedNotificationCount,
                 deletedFcmTokenCount,
                 deletedNotificationSettingCount,
-                deletedMerchantOwnerPlaceCount
+                deletedMerchantOwnerPlaceCount,
+                deletedMerchantPlaceClaimCount
         );
     }
 
