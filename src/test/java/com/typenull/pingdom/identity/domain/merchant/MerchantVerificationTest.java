@@ -61,13 +61,15 @@ class MerchantVerificationTest {
     @Test
     void withdrawalAnonymizesStoredIdentityData() {
         MerchantVerification verification = pendingVerification();
+        verification.review(99L, true, true, "확인 완료", NOW.plusMinutes(1));
 
-        verification.anonymize("encrypted-anonymized", NOW.plusMinutes(1));
+        verification.anonymize("encrypted-anonymized", NOW.plusMinutes(2));
 
         assertThat(verification.getLegalName()).isEqualTo("탈퇴 사용자");
         assertThat(verification.getBusinessName()).isEqualTo("탈퇴 사업자");
         assertThat(verification.getEncryptedBusinessRegistrationNumber()).isEqualTo("encrypted-anonymized");
         assertThat(verification.getReviewReason()).isNull();
+        assertThat(verification.getReviewedAt()).isEqualTo(NOW.plusMinutes(1));
     }
 
     @Test

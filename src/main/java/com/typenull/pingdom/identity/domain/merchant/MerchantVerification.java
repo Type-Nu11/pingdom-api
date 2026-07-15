@@ -152,7 +152,6 @@ public class MerchantVerification {
         encryptedBusinessRegistrationNumber = encryptedAnonymizedRegistrationNumber;
         reviewReason = null;
         reviewedBy = null;
-        reviewedAt = now;
         updatedAt = now;
     }
 
