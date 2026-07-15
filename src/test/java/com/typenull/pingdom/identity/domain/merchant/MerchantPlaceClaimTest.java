@@ -19,6 +19,8 @@ class MerchantPlaceClaimTest {
         assertThat(claim.getStatus()).isEqualTo(MerchantPlaceClaimStatus.APPROVED);
         assertThat(claim.getReviewedBy()).isEqualTo(99L);
         assertThat(claim.getReviewReason()).isEqualTo("사업자 정보 확인");
+        assertThatThrownBy(() -> claim.approve(99L, "재승인", NOW.plusMinutes(10)))
+                .isInstanceOf(IllegalStateException.class);
         assertThatThrownBy(() -> claim.reject(99L, "재심사", NOW.plusMinutes(10)))
                 .isInstanceOf(IllegalStateException.class);
     }
