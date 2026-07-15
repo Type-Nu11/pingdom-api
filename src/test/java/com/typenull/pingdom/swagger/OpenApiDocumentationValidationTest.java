@@ -149,6 +149,7 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/users/me/merchant-verification")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/cancel")).isTrue();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-verifications")).isFalse();
