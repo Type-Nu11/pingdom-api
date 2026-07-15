@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("39");
-        assertThat(result.migrationsExecuted).isEqualTo(39);
+        assertThat(result.targetSchemaVersion).isEqualTo("40");
+        assertThat(result.migrationsExecuted).isEqualTo(40);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("39");
-        assertThat(result.migrationsExecuted).isEqualTo(38);
+        assertThat(result.targetSchemaVersion).isEqualTo("40");
+        assertThat(result.migrationsExecuted).isEqualTo(39);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("39");
-        assertThat(result.migrationsExecuted).isEqualTo(12);
+        assertThat(result.targetSchemaVersion).isEqualTo("40");
+        assertThat(result.migrationsExecuted).isEqualTo(13);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -150,6 +150,21 @@ class FlywayMigrationIntegrationTest {
                           'fk_merchant_owner_place_profile'
                       )
                       AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_place_claim'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'merchant_place_claim'
+                          AND indexname = 'uq_merchant_place_claim_pending_place'
+                    )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
@@ -1209,6 +1224,41 @@ class FlywayMigrationIntegrationTest {
                           AND contype = 'f'
                           AND confrelid = 'merchant_owner_profile'::regclass
                           AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'merchant_place_claim'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_place_claim'::regclass
+                      AND conname IN (
+                          'fk_merchant_place_claim_profile',
+                          'fk_merchant_place_claim_place',
+                          'fk_merchant_place_claim_reviewer'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'merchant_place_claim'::regclass
+                          AND conname = 'ck_merchant_place_claim_status'
+                          AND contype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'merchant_place_claim'
+                          AND indexname = 'uq_merchant_place_claim_pending_place'
                     )
                     """)).isTrue();
         }

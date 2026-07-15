@@ -148,14 +148,21 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
         assertThat(appDocument.path("paths").has("/users/me/merchant-verification")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/cancel")).isTrue();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-verifications")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-place-claims")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications/{userId}/review")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-claims")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-claims/{claimId}/review")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
     }
 
     @Test
