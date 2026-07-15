@@ -36,6 +36,10 @@ jwt:
   access-token-expiration-seconds: 3600
   refresh-token-expiration-seconds: 1209600
 
+merchant:
+  verification:
+    encryption-key: MDEyMzQ1Njc4OWFiY2RlZjAxMjM0NTY3ODlhYmNkZWY=
+
 postmark:
   server-token: test-postmark-token
   from-email: no-reply@pingdom.local
