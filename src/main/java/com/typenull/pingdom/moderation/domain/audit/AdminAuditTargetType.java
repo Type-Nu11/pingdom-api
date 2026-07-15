@@ -9,5 +9,6 @@ public enum AdminAuditTargetType {
     PLACE_EVENT,
     MERCHANT_OWNER,
     MERCHANT_VERIFICATION,
+    MERCHANT_PLACE_CLAIM,
     AD
 }
