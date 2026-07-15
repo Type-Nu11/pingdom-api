@@ -76,7 +76,7 @@ public class MerchantVerificationAdminService {
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public AdminMerchantVerificationResponse get(Long adminUserId, Long userId) {
         MerchantVerification verification = verificationRepository.findById(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_NOT_FOUND));
