@@ -76,8 +76,14 @@ class MerchantVerificationAdminServiceTest {
                 eq(AdminAuditTargetType.MERCHANT_VERIFICATION),
                 eq(userId),
                 eq("확인 완료"),
-                any(Map.class),
-                any(Map.class)
+                eq(Map.of(
+                        "identityStatus", MerchantVerificationStatus.PENDING,
+                        "businessStatus", MerchantVerificationStatus.PENDING
+                )),
+                eq(Map.of(
+                        "identityStatus", MerchantVerificationStatus.APPROVED,
+                        "businessStatus", MerchantVerificationStatus.APPROVED
+                ))
         );
     }
 
