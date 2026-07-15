@@ -29,4 +29,22 @@ class MerchantVerificationCipherTest {
         assertThatThrownBy(() -> cipher.decrypt(tampered))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void preservesNullValues() {
+        assertThat(cipher.encrypt(null)).isNull();
+        assertThat(cipher.decrypt(null)).isNull();
+    }
+
+    @Test
+    void rejectsUnsupportedCiphertextVersion() {
+        assertThatThrownBy(() -> cipher.decrypt("v2:payload"))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void rejectsMalformedBase64Payload() {
+        assertThatThrownBy(() -> cipher.decrypt("v1:not-base64!"))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }
