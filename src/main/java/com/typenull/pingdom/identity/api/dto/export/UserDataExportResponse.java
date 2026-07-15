@@ -3,6 +3,7 @@ package com.typenull.pingdom.identity.api.dto.export;
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
@@ -22,7 +23,9 @@ public record UserDataExportResponse(
         @Schema(description = "만료되지 않은 현재 행동 의도. 없으면 null", nullable = true)
         ExportCurrentActivityIntentResponse currentActivityIntent,
         @Schema(description = "Merchant Owner 신청 및 프로필. 없으면 null", nullable = true)
-        ExportMerchantOwnerProfileResponse merchantOwnerProfile
+        ExportMerchantOwnerProfileResponse merchantOwnerProfile,
+        @Schema(description = "Merchant 신원 및 사업자 검증 신청. 없으면 null", nullable = true)
+        ExportMerchantVerificationResponse merchantVerification
 ) {
 
     public static UserDataExportResponse from(UserDataExportResult result) {
@@ -36,7 +39,8 @@ public record UserDataExportResponse(
                         .map(ExportTravelScheduleResponse::from)
                         .toList(),
                 ExportCurrentActivityIntentResponse.from(result.currentActivityIntent()),
-                ExportMerchantOwnerProfileResponse.from(result.merchantOwnerProfile())
+                ExportMerchantOwnerProfileResponse.from(result.merchantOwnerProfile()),
+                ExportMerchantVerificationResponse.from(result.merchantVerification())
         );
     }
 
@@ -130,6 +134,33 @@ public record UserDataExportResponse(
                     profile.contactPhone(),
                     profile.status(),
                     profile.placeIds()
+            );
+        }
+    }
+
+    public record ExportMerchantVerificationResponse(
+            String legalName,
+            String businessName,
+            String businessRegistrationNumber,
+            MerchantVerificationStatus identityStatus,
+            MerchantVerificationStatus businessStatus,
+            @Schema(nullable = true) String reviewReason,
+            @Schema(nullable = true) LocalDateTime reviewedAt
+    ) {
+        private static ExportMerchantVerificationResponse from(
+                UserDataExportResult.ExportMerchantVerification verification
+        ) {
+            if (verification == null) {
+                return null;
+            }
+            return new ExportMerchantVerificationResponse(
+                    verification.legalName(),
+                    verification.businessName(),
+                    verification.businessRegistrationNumber(),
+                    verification.identityStatus(),
+                    verification.businessStatus(),
+                    verification.reviewReason(),
+                    verification.reviewedAt()
             );
         }
     }

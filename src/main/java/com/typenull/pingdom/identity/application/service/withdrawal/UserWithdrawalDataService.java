@@ -4,6 +4,8 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import com.typenull.pingdom.notification.repository.FcmDeviceTokenRepository;
@@ -23,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class UserWithdrawalDataService {
 
+    private static final String ANONYMIZED_BUSINESS_REGISTRATION_NUMBER = "0000000000";
+
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -32,6 +36,8 @@ public class UserWithdrawalDataService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final MerchantOwnerProfileRepository merchantOwnerProfileRepository;
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+    private final MerchantVerificationRepository merchantVerificationRepository;
+    private final MerchantVerificationCipher merchantVerificationCipher;
     private final Clock clock;
 
     @Transactional
@@ -52,6 +58,11 @@ public class UserWithdrawalDataService {
         int deletedMerchantOwnerPlaceCount = merchantOwnerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
         merchantOwnerProfileRepository.findByUserIdForUpdate(userId)
                 .ifPresent(profile -> profile.anonymize(LocalDateTime.now(clock)));
+        merchantVerificationRepository.findByUserIdForUpdate(userId)
+                .ifPresent(verification -> verification.anonymize(
+                        merchantVerificationCipher.encrypt(ANONYMIZED_BUSINESS_REGISTRATION_NUMBER),
+                        LocalDateTime.now(clock)
+                ));
 
         log.info(
                 "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}",

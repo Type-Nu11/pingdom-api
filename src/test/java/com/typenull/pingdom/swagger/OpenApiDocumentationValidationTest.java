@@ -146,11 +146,16 @@ class OpenApiDocumentationValidationTest {
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");
 
         assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/merchant-verification")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-verifications")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-verifications")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-verifications/{userId}/review")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
     }
 
     @Test

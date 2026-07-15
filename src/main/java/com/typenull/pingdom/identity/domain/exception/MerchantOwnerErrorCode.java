@@ -14,7 +14,11 @@ public enum MerchantOwnerErrorCode {
     USER_ACCOUNT_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "탈퇴하거나 이용이 제한된 사용자는 Merchant Owner로 승인할 수 없습니다."),
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "연결할 장소를 찾을 수 없습니다."),
     PLACE_ALREADY_ASSIGNED(HttpStatus.CONFLICT, "이미 다른 Merchant Owner에게 연결된 장소가 있습니다."),
-    ACTIVE_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "활성 Merchant Owner 권한이 필요합니다.");
+    ACTIVE_OWNER_REQUIRED(HttpStatus.FORBIDDEN, "활성 Merchant Owner 권한이 필요합니다."),
+    VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 신원 및 사업자 검증 신청을 찾을 수 없습니다."),
+    VERIFICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 Merchant 검증 신청이 존재합니다."),
+    INVALID_VERIFICATION_STATE(HttpStatus.CONFLICT, "현재 Merchant 검증 상태에서는 요청을 처리할 수 없습니다."),
+    VERIFICATION_REQUIRED(HttpStatus.CONFLICT, "신원 및 사업자 검증이 모두 승인되어야 합니다.");
 
     private final HttpStatus status;
     private final String message;

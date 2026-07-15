@@ -11,11 +11,15 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.application.query.UserDataExportService;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
@@ -66,6 +70,12 @@ class UserDataExportServiceTest {
     private MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
 
     @Mock
+    private MerchantVerificationRepository merchantVerificationRepository;
+
+    @Mock
+    private MerchantVerificationCipher merchantVerificationCipher;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     @Mock
@@ -103,6 +113,20 @@ class UserDataExportServiceTest {
                 CurrentActivityIntent.CAFE,
                 LocalDate.of(2026, 8, 1).atTime(12, 0)
         );
+        MerchantVerification merchantVerification = MerchantVerification.pending(
+                userId,
+                "김핑덤",
+                "핑덤 카페",
+                "encrypted-number",
+                LocalDateTime.of(2026, 7, 15, 12, 0)
+        );
+        merchantVerification.review(
+                99L,
+                true,
+                true,
+                "확인 완료",
+                LocalDateTime.of(2026, 7, 15, 13, 0)
+        );
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(mapBookmarkRepository.findByUserIdOrderByIdAsc(userId)).thenReturn(List.of(bookmark));
@@ -111,6 +135,8 @@ class UserDataExportServiceTest {
         when(travelScheduleRepository.findAllByUser_IdOrderByStartDateAscIdAsc(userId))
                 .thenReturn(List.of(travelSchedule));
         when(currentActivityIntentRepository.findByUser_Id(userId)).thenReturn(Optional.of(activityIntent));
+        when(merchantVerificationRepository.findById(userId)).thenReturn(Optional.of(merchantVerification));
+        when(merchantVerificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
 
         UserDataExportResult result = userDataExportService.exportMyData(userId);
 
@@ -126,6 +152,9 @@ class UserDataExportServiceTest {
         assertThat(result.currentActivityIntent())
                 .extracting(UserDataExportResult.ExportCurrentActivityIntent::intent)
                 .isEqualTo(CurrentActivityIntent.CAFE);
+        assertThat(result.merchantVerification().businessRegistrationNumber()).isEqualTo("1234567890");
+        assertThat(result.merchantVerification().identityStatus())
+                .isEqualTo(MerchantVerificationStatus.APPROVED);
 
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
