@@ -52,6 +52,7 @@ public class MerchantOwnerProfileService {
                     now
             ));
         } else {
+            boolean businessNameChanged = !Objects.equals(profile.getBusinessName(), request.businessName());
             try {
                 profile.reapply(
                         request.businessName(),
@@ -63,6 +64,9 @@ public class MerchantOwnerProfileService {
                 );
             } catch (IllegalStateException exception) {
                 throw new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_ALREADY_EXISTS);
+            }
+            if (businessNameChanged) {
+                invalidateVerificationForBusinessNameChange(userId, profile.getBusinessName(), now);
             }
         }
         return response(profile);
@@ -86,11 +90,7 @@ public class MerchantOwnerProfileService {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
         }
         if (businessNameChanged) {
-            verificationRepository.findByUserIdForUpdate(userId)
-                    .ifPresent(verification -> verification.invalidateForBusinessProfileChange(
-                            profile.getBusinessName(),
-                            now
-                    ));
+            invalidateVerificationForBusinessNameChange(userId, profile.getBusinessName(), now);
         }
         return response(profile);
     }
@@ -104,6 +104,15 @@ public class MerchantOwnerProfileService {
     private MerchantOwnerProfile requireProfileForUpdate(Long userId) {
         return profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private void invalidateVerificationForBusinessNameChange(
+            Long userId,
+            String businessName,
+            LocalDateTime now
+    ) {
+        verificationRepository.findByUserIdForUpdate(userId)
+                .ifPresent(verification -> verification.invalidateForBusinessProfileChange(businessName, now));
     }
 
     private MerchantOwnerProfileResponse response(MerchantOwnerProfile profile) {
