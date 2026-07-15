@@ -1,6 +1,8 @@
 package com.typenull.pingdom.identity.application.service.merchant;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileRequest;
@@ -74,6 +76,34 @@ class MerchantOwnerProfileServiceTest {
         assertThat(verification.getBusinessName()).isEqualTo("새 상호");
         assertThat(verification.getIdentityStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
         assertThat(verification.getBusinessStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
+    }
+
+    @Test
+    void unchangedBusinessNameDoesNotInvalidateVerification() {
+        Long userId = 1L;
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "기존 상호",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                LocalDateTime.of(2026, 7, 14, 12, 0)
+        );
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(placeRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId)).thenReturn(List.of());
+        when(clock.instant()).thenReturn(Instant.parse("2026-07-15T03:00:00Z"));
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+
+        profileService.update(userId, new MerchantOwnerProfileRequest(
+                "기존 상호",
+                "변경된 표시명",
+                null,
+                "owner@example.com",
+                "010-1111-2222"
+        ));
+
+        verify(verificationRepository, never()).findByUserIdForUpdate(userId);
     }
 
     @Test
