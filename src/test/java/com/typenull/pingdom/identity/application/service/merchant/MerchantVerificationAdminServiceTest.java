@@ -125,8 +125,9 @@ class MerchantVerificationAdminServiceTest {
         when(verificationRepository.findById(userId)).thenReturn(Optional.of(verification));
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
 
-        adminService.get(adminUserId, userId);
+        var response = adminService.get(adminUserId, userId);
 
+        assertThat(response.businessRegistrationNumber()).isEqualTo("1234567890");
         verify(auditLogService).record(
                 adminUserId,
                 AdminAuditAction.MERCHANT_VERIFICATION_VIEWED,
