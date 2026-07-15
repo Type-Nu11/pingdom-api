@@ -7,6 +7,7 @@ import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
@@ -37,6 +38,7 @@ public class UserDataExportService {
     private final UserCurrentActivityIntentRepository currentActivityIntentRepository;
     private final MerchantOwnerProfileRepository merchantOwnerProfileRepository;
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+    private final MerchantPlaceClaimRepository merchantPlaceClaimRepository;
     private final MerchantVerificationRepository merchantVerificationRepository;
     private final MerchantVerificationCipher merchantVerificationCipher;
     private final ApplicationEventPublisher eventPublisher;
@@ -71,6 +73,8 @@ public class UserDataExportService {
                 .stream()
                 .map(place -> place.getPlaceId())
                 .toList();
+        var merchantPlaceClaims = merchantPlaceClaimRepository
+                .findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId);
         var merchantVerification = merchantVerificationRepository.findById(userId).orElse(null);
 
         eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
@@ -86,6 +90,7 @@ public class UserDataExportService {
                 currentActivityIntent,
                 merchantOwnerProfile,
                 merchantOwnerPlaceIds,
+                merchantPlaceClaims,
                 merchantVerification,
                 merchantVerification == null
                         ? null
