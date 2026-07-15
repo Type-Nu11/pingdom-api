@@ -4,6 +4,8 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
@@ -17,7 +19,8 @@ public record UserDataExportResult(
         List<Long> likedMapImageIds,
         List<ExportTravelSchedule> travelSchedules,
         ExportCurrentActivityIntent currentActivityIntent,
-        ExportMerchantOwnerProfile merchantOwnerProfile
+        ExportMerchantOwnerProfile merchantOwnerProfile,
+        ExportMerchantVerification merchantVerification
 ) {
 
     public static UserDataExportResult of(
@@ -27,7 +30,9 @@ public record UserDataExportResult(
             List<TravelSchedule> travelSchedules,
             UserCurrentActivityIntent currentActivityIntent,
             MerchantOwnerProfile merchantOwnerProfile,
-            List<Long> merchantOwnerPlaceIds
+            List<Long> merchantOwnerPlaceIds,
+            MerchantVerification merchantVerification,
+            String businessRegistrationNumber
     ) {
         return new UserDataExportResult(
                 new ExportUser(user.getId(), user.getUsername(), user.getProfileImageUrl()),
@@ -57,6 +62,17 @@ public record UserDataExportResult(
                                 merchantOwnerProfile.getContactPhone(),
                                 merchantOwnerProfile.getStatus(),
                                 merchantOwnerPlaceIds
+                        ),
+                merchantVerification == null
+                        ? null
+                        : new ExportMerchantVerification(
+                                merchantVerification.getLegalName(),
+                                merchantVerification.getBusinessName(),
+                                businessRegistrationNumber,
+                                merchantVerification.getIdentityStatus(),
+                                merchantVerification.getBusinessStatus(),
+                                merchantVerification.getReviewReason(),
+                                merchantVerification.getReviewedAt()
                         )
         );
     }
@@ -96,6 +112,17 @@ public record UserDataExportResult(
             String contactPhone,
             MerchantOwnerStatus status,
             List<Long> placeIds
+    ) {
+    }
+
+    public record ExportMerchantVerification(
+            String legalName,
+            String businessName,
+            String businessRegistrationNumber,
+            MerchantVerificationStatus identityStatus,
+            MerchantVerificationStatus businessStatus,
+            String reviewReason,
+            LocalDateTime reviewedAt
     ) {
     }
 }
