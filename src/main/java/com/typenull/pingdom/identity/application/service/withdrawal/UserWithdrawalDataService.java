@@ -25,6 +25,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class UserWithdrawalDataService {
 
+    private static final String ANONYMIZED_BUSINESS_REGISTRATION_NUMBER = "0000000000";
+
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -58,7 +60,7 @@ public class UserWithdrawalDataService {
                 .ifPresent(profile -> profile.anonymize(LocalDateTime.now(clock)));
         merchantVerificationRepository.findByUserIdForUpdate(userId)
                 .ifPresent(verification -> verification.anonymize(
-                        merchantVerificationCipher.encrypt("0000000000"),
+                        merchantVerificationCipher.encrypt(ANONYMIZED_BUSINESS_REGISTRATION_NUMBER),
                         LocalDateTime.now(clock)
                 ));
 
