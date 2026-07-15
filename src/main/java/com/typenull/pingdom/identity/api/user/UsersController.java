@@ -174,7 +174,7 @@ public class UsersController {
     @GetMapping("/me/export")
     @Operation(
             summary = "내 데이터 내보내기",
-            description = "현재 인증된 사용자의 계정 정보, 전체 북마크, 최근 좋아요한 지도 이미지 ID 최대 50개, 여행 일정과 만료되지 않은 현재 행동 의도를 JSON으로 조회합니다."
+            description = "현재 인증된 사용자의 계정 정보, 전체 북마크, 최근 좋아요한 지도 이미지 ID 최대 50개, 여행 일정, Claim 이력과 만료되지 않은 현재 행동 의도를 JSON으로 조회합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -208,7 +208,18 @@ public class UsersController {
                                               "currentActivityIntent": {
                                                 "intent": "CAFE",
                                                 "expiresAt": "2026-08-01T14:00:00"
-                                              }
+                                              },
+                                              "merchantPlaceClaims": [
+                                                {
+                                                  "id": 40,
+                                                  "placeId": 123,
+                                                  "status": "REJECTED",
+                                                  "claimReason": "매장 운영자입니다.",
+                                                  "reviewReason": "사업자 주소 불일치",
+                                                  "reviewedAt": "2026-07-16T10:00:00",
+                                                  "createdAt": "2026-07-15T14:00:00"
+                                                }
+                                              ]
                                             }
                                             """
                             )
