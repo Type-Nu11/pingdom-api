@@ -83,6 +83,8 @@ class MerchantVerificationTest {
         assertThat(verification.getIdentityStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
         assertThat(verification.getBusinessStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
         assertThat(verification.getReviewedBy()).isNull();
+        assertThat(verification.getReviewedAt()).isNull();
+        assertThat(verification.getReviewReason()).isNull();
     }
 
     private MerchantVerification pendingVerification() {
