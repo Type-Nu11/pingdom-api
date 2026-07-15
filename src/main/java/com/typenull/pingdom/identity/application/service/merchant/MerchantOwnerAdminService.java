@@ -12,8 +12,10 @@ import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -42,6 +44,7 @@ public class MerchantOwnerAdminService {
     private final UserRepository userRepository;
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
+    private final MerchantVerificationRepository verificationRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService auditLogService;
     private final UserAccessStatusService userAccessStatusService;
@@ -87,6 +90,7 @@ public class MerchantOwnerAdminService {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE);
         }
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
+        requireApprovedVerificationForUpdate(userId, profile.getBusinessName());
         MerchantOwnerStatus beforeStatus = profile.getStatus();
 
         try {
@@ -225,6 +229,15 @@ public class MerchantOwnerAdminService {
     private MerchantOwnerProfile requireProfileForUpdate(Long userId) {
         return profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
+    }
+
+    private MerchantVerification requireApprovedVerificationForUpdate(Long userId, String businessName) {
+        MerchantVerification verification = verificationRepository.findByUserIdForUpdate(userId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED));
+        if (!verification.isFullyApproved() || !verification.matchesBusinessName(businessName)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED);
+        }
+        return verification;
     }
 
     private User requireUserForUpdate(Long userId) {
