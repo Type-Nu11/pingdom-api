@@ -231,13 +231,12 @@ public class MerchantOwnerAdminService {
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
     }
 
-    private MerchantVerification requireApprovedVerificationForUpdate(Long userId, String businessName) {
+    private void requireApprovedVerificationForUpdate(Long userId, String businessName) {
         MerchantVerification verification = verificationRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED));
         if (!verification.isFullyApproved() || !verification.matchesBusinessName(businessName)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED);
         }
-        return verification;
     }
 
     private User requireUserForUpdate(Long userId) {
