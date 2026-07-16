@@ -167,6 +167,34 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void touristOfferAndCouponApisAreExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        for (String path : List.of(
+                "/offers",
+                "/offers/{offerId}",
+                "/offers/{offerId}/coupons",
+                "/coupons",
+                "/merchant-owner/offers",
+                "/merchant-owner/offers/{offerId}",
+                "/merchant-owner/offers/{offerId}/publish",
+                "/merchant-owner/offers/{offerId}/close",
+                "/merchant-owner/offers/coupons/redeem"
+        )) {
+            assertThat(appDocument.path("paths").has(path)).isTrue();
+            assertThat(webDocument.path("paths").has(path)).isFalse();
+        }
+        assertThat(appDocument.path("components").path("schemas").has("OfferCreateRequest")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("OfferResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("CouponResponse")).isTrue();
+        assertThat(appDocument.at("/paths/~1offers~1{offerId}~1coupons/post/responses/409/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(appDocument.at("/paths/~1merchant-owner~1offers~1coupons~1redeem/post/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/CouponRedeemRequest");
+    }
+
+    @Test
     void touristInformationSchemasDeclareNullableStringFields() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
