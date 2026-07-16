@@ -192,6 +192,27 @@ class OpenApiDocumentationValidationTest {
                 .asText()).isEqualTo("#/components/schemas/ErrorResponse");
         assertThat(appDocument.at("/paths/~1merchant-owner~1offers~1coupons~1redeem/post/requestBody/content/application~1json/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/CouponRedeemRequest");
+        for (String operationPath : List.of(
+                "/paths/~1offers/get",
+                "/paths/~1offers~1{offerId}/get",
+                "/paths/~1offers~1{offerId}~1coupons/post",
+                "/paths/~1coupons/get",
+                "/paths/~1merchant-owner~1offers/get",
+                "/paths/~1merchant-owner~1offers/post",
+                "/paths/~1merchant-owner~1offers~1{offerId}/get",
+                "/paths/~1merchant-owner~1offers~1{offerId}~1publish/post",
+                "/paths/~1merchant-owner~1offers~1{offerId}~1close/post",
+                "/paths/~1merchant-owner~1offers~1coupons~1redeem/post"
+        )) {
+            JsonNode operation = appDocument.at(operationPath);
+            assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
+            assertThat(operation.at("/responses/401/content/*~1*/schema/$ref").asText())
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
+        assertThat(appDocument.at("/paths/~1offers~1{offerId}/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/OfferResponse");
+        assertThat(appDocument.at("/paths/~1merchant-owner~1offers~1{offerId}/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/OfferResponse");
     }
 
     @Test
