@@ -207,7 +207,30 @@ class OfferControllerIntegrationTest {
     }
 
     @Test
-    void withdrawalClosesMerchantOffersAndDeletesTouristCoupons() {
+    void merchantWithdrawalClosesOffersWithoutDeletingTouristCoupons() {
+        WithdrawalFixture fixture = withdrawalFixture();
+
+        userWithdrawalDataService.cleanupUserOwnedData(fixture.merchant().getId());
+
+        org.assertj.core.api.Assertions.assertThat(
+                offerRepository.findById(fixture.offer().getId()).orElseThrow().getStatus()
+        ).isEqualTo(OfferStatus.CLOSED);
+        org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).hasSize(1);
+    }
+
+    @Test
+    void touristWithdrawalDeletesOwnCouponsWithoutClosingMerchantOffer() {
+        WithdrawalFixture fixture = withdrawalFixture();
+
+        userWithdrawalDataService.cleanupUserOwnedData(fixture.tourist().getId());
+
+        org.assertj.core.api.Assertions.assertThat(
+                offerRepository.findById(fixture.offer().getId()).orElseThrow().getStatus()
+        ).isEqualTo(OfferStatus.PUBLISHED);
+        org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).isEmpty();
+    }
+
+    private WithdrawalFixture withdrawalFixture() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("withdrawOfferMerchant", UserRole.MERCHANT_OWNER);
         User tourist = saveUser("withdrawOfferTourist", UserRole.USER);
@@ -241,13 +264,7 @@ class OfferControllerIntegrationTest {
                 now,
                 now.plusDays(1)
         ));
-
-        userWithdrawalDataService.cleanupUserOwnedData(merchant.getId());
-        userWithdrawalDataService.cleanupUserOwnedData(tourist.getId());
-
-        org.assertj.core.api.Assertions.assertThat(offerRepository.findById(offer.getId()).orElseThrow().getStatus())
-                .isEqualTo(OfferStatus.CLOSED);
-        org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).isEmpty();
+        return new WithdrawalFixture(merchant, tourist, offer);
     }
 
     @Test
@@ -319,6 +336,9 @@ class OfferControllerIntegrationTest {
         } catch (OfferException exception) {
             return exception.getErrorCode();
         }
+    }
+
+    private record WithdrawalFixture(User merchant, User tourist, TouristOffer offer) {
     }
 
     private User saveUser(String username, UserRole role) {
