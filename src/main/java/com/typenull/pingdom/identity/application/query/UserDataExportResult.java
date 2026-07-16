@@ -11,6 +11,10 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
+import com.typenull.pingdom.offer.domain.CouponStatus;
+import com.typenull.pingdom.offer.domain.OfferStatus;
+import com.typenull.pingdom.offer.domain.TouristCoupon;
+import com.typenull.pingdom.offer.domain.TouristOffer;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -23,7 +27,9 @@ public record UserDataExportResult(
         ExportCurrentActivityIntent currentActivityIntent,
         ExportMerchantOwnerProfile merchantOwnerProfile,
         List<ExportMerchantPlaceClaim> merchantPlaceClaims,
-        ExportMerchantVerification merchantVerification
+        ExportMerchantVerification merchantVerification,
+        List<ExportTouristOffer> touristOffers,
+        List<ExportTouristCoupon> touristCoupons
 ) {
 
     public static UserDataExportResult of(
@@ -36,6 +42,9 @@ public record UserDataExportResult(
             List<Long> merchantOwnerPlaceIds,
             List<MerchantPlaceClaim> merchantPlaceClaims,
             MerchantVerification merchantVerification,
+            List<TouristOffer> touristOffers,
+            List<TouristCoupon> touristCoupons,
+            LocalDateTime now,
             String businessRegistrationNumber
     ) {
         return new UserDataExportResult(
@@ -88,7 +97,35 @@ public record UserDataExportResult(
                                 merchantVerification.getBusinessStatus(),
                                 merchantVerification.getReviewReason(),
                                 merchantVerification.getReviewedAt()
-                        )
+                        ),
+                touristOffers.stream()
+                        .map(offer -> new ExportTouristOffer(
+                                offer.getId(),
+                                offer.getPlaceId(),
+                                offer.getTitle(),
+                                offer.getDescription(),
+                                offer.getBenefitDescription(),
+                                offer.getStatus(),
+                                offer.getStartsAt(),
+                                offer.getEndsAt(),
+                                offer.getTotalQuantity(),
+                                offer.getIssuedQuantity(),
+                                offer.getCouponValidityDays(),
+                                offer.getCreatedAt(),
+                                offer.getUpdatedAt()
+                        ))
+                        .toList(),
+                touristCoupons.stream()
+                        .map(coupon -> new ExportTouristCoupon(
+                                coupon.getId(),
+                                coupon.getOfferId(),
+                                coupon.getCode(),
+                                coupon.statusAt(now),
+                                coupon.getIssuedAt(),
+                                coupon.getExpiresAt(),
+                                coupon.getRedeemedAt()
+                        ))
+                        .toList()
         );
     }
 
@@ -149,6 +186,34 @@ public record UserDataExportResult(
             MerchantVerificationStatus businessStatus,
             String reviewReason,
             LocalDateTime reviewedAt
+    ) {
+    }
+
+    public record ExportTouristOffer(
+            Long id,
+            Long placeId,
+            String title,
+            String description,
+            String benefitDescription,
+            OfferStatus status,
+            LocalDateTime startsAt,
+            LocalDateTime endsAt,
+            int totalQuantity,
+            int issuedQuantity,
+            int couponValidityDays,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+    }
+
+    public record ExportTouristCoupon(
+            Long id,
+            Long offerId,
+            String code,
+            CouponStatus status,
+            LocalDateTime issuedAt,
+            LocalDateTime expiresAt,
+            LocalDateTime redeemedAt
     ) {
     }
 }

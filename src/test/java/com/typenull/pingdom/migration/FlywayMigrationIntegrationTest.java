@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("40");
-        assertThat(result.migrationsExecuted).isEqualTo(40);
+        assertThat(result.targetSchemaVersion).isEqualTo("41");
+        assertThat(result.migrationsExecuted).isEqualTo(41);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("40");
-        assertThat(result.migrationsExecuted).isEqualTo(39);
+        assertThat(result.targetSchemaVersion).isEqualTo("41");
+        assertThat(result.migrationsExecuted).isEqualTo(40);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("40");
-        assertThat(result.migrationsExecuted).isEqualTo(13);
+        assertThat(result.targetSchemaVersion).isEqualTo("41");
+        assertThat(result.migrationsExecuted).isEqualTo(14);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -246,6 +246,74 @@ class FlywayMigrationIntegrationTest {
                         FROM map_place
                         WHERE map_place_id = 900001
                           AND english_name = 'Rollback Safe Place'
+                    )
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void deletingCouponRedeemerPreservesRedemptionHistory() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES
+                        (910001, 'offer-owner', 'offer-owner@example.com', true, 'password', 1990,
+                         'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'MERCHANT_OWNER', false),
+                        (910002, 'coupon-tourist', 'coupon-tourist@example.com', true, 'password', 1995,
+                         'en', 'US', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'USER', false),
+                        (910003, 'coupon-redeemer', 'coupon-redeemer@example.com', true, 'password', 1991,
+                         'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'MERCHANT_OWNER', false)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (910001, 'Offer 장소', '서울시 중구', 37.5, 127.0, 'offer-owner', 0)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO merchant_owner_profile (
+                        user_id, business_name, display_name, contact_email, contact_phone,
+                        status, created_at, updated_at
+                    ) VALUES (
+                        910001, 'Offer 상점', 'Offer 사장님', 'offer-owner@example.com', '010-0000-0000',
+                        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO tourist_offer (
+                        id, merchant_owner_user_id, place_id, title, description, benefit_description,
+                        status, starts_at, ends_at, total_quantity, issued_quantity,
+                        coupon_validity_days, created_at, updated_at
+                    ) VALUES (
+                        910001, 910001, 910001, 'Offer', '설명', '혜택',
+                        'PUBLISHED', CURRENT_TIMESTAMP - INTERVAL '1 day', CURRENT_TIMESTAMP + INTERVAL '7 days',
+                        10, 1, 3, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO tourist_coupon (
+                        id, offer_id, user_id, code, status, issued_at, expires_at, redeemed_at, redeemed_by
+                    ) VALUES (
+                        910001, 910001, 910002, '3fa85f64-5717-4562-b3fc-2c963f66afa6', 'REDEEMED',
+                        CURRENT_TIMESTAMP - INTERVAL '1 hour', CURRENT_TIMESTAMP + INTERVAL '1 day',
+                        CURRENT_TIMESTAMP, 910003
+                    )
+                    """);
+
+            statement.executeUpdate("DELETE FROM users WHERE id = 910003");
+
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM tourist_coupon
+                        WHERE id = 910001
+                          AND status = 'REDEEMED'
+                          AND redeemed_at IS NOT NULL
+                          AND redeemed_by IS NULL
                     )
                     """)).isTrue();
         }
@@ -492,6 +560,17 @@ class FlywayMigrationIntegrationTest {
                     FROM information_schema.columns
                     WHERE table_name = 'map_place'
                       AND column_name IN ('road_address', 'jibun_address', 'postal_code', 'geocoding_source')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'tourist_coupon'::regclass
+                          AND conname = 'fk_tourist_coupon_redeemer'
+                          AND contype = 'f'
+                          AND confrelid = 'users'::regclass
+                          AND confdeltype = 'n'
+                    )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
@@ -1259,6 +1338,41 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'merchant_place_claim'
                           AND indexname = 'uq_merchant_place_claim_pending_place'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.tables
+                    WHERE table_name IN ('tourist_offer', 'tourist_coupon')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'tourist_coupon'::regclass
+                      AND conname IN (
+                          'uq_tourist_coupon_offer_user',
+                          'uq_tourist_coupon_code'
+                      )
+                      AND contype = 'u'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'tourist_offer'::regclass
+                      AND conname IN (
+                          'ck_tourist_offer_status',
+                          'ck_tourist_offer_period',
+                          'ck_tourist_offer_quantity',
+                          'ck_tourist_offer_coupon_validity_days'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'tourist_offer'
+                          AND indexname = 'idx_tourist_offer_place_public_period'
                     )
                     """)).isTrue();
         }

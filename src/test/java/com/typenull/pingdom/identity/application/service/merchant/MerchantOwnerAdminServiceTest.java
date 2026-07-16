@@ -3,10 +3,12 @@ package com.typenull.pingdom.identity.application.service.merchant;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceUpdateRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
@@ -14,6 +16,7 @@ import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
@@ -21,6 +24,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepos
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
@@ -46,6 +50,7 @@ class MerchantOwnerAdminServiceTest {
     @Mock private MapPlaceRepository mapPlaceRepository;
     @Mock private AdminAuditLogService auditLogService;
     @Mock private UserAccessStatusService userAccessStatusService;
+    @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
 
     @InjectMocks
@@ -131,7 +136,92 @@ class MerchantOwnerAdminServiceTest {
         assertThat(owner.getRole()).isEqualTo(UserRole.USER);
         assertThat(owner.getRefreshToken()).isNull();
         verify(ownerPlaceRepository).deleteAllByMerchantOwnerUserId(userId);
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserId(
+                userId,
+                LocalDateTime.of(2026, 7, 13, 3, 0)
+        );
         verify(userAccessStatusService).evict(userId);
+    }
+
+    @Test
+    void rejectImmediatelyClosesMerchantOffers() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        User owner = User.builder()
+                .id(userId)
+                .role(UserRole.MERCHANT_OWNER)
+                .refreshToken("refresh-token")
+                .build();
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        stubCurrentTime();
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(owner));
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId)).thenReturn(List.of());
+
+        var response = adminService.reject(
+                adminUserId,
+                userId,
+                new MerchantOwnerReviewRequest("서류 미흡", Set.of())
+        );
+
+        assertThat(response.status()).isEqualTo(MerchantOwnerStatus.REJECTED);
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserId(userId, now);
+    }
+
+    @Test
+    void replacingOwnedPlacesClosesOffersForRemovedPlaces() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        profile.approve(adminUserId, now.minusHours(1));
+        MerchantOwnerPlace firstPlace = MerchantOwnerPlace.builder()
+                .placeId(10L)
+                .merchantOwnerUserId(userId)
+                .createdAt(now.minusDays(1))
+                .build();
+        MerchantOwnerPlace secondPlace = MerchantOwnerPlace.builder()
+                .placeId(20L)
+                .merchantOwnerUserId(userId)
+                .createdAt(now.minusDays(1))
+                .build();
+        stubCurrentTime();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId))
+                .thenReturn(List.of(firstPlace, secondPlace))
+                .thenReturn(List.of(secondPlace));
+        when(mapPlaceRepository.findAllByIdInForUpdate(List.of(20L)))
+                .thenReturn(List.of(mock(com.typenull.pingdom.place.domain.place.core.MapPlace.class)));
+        when(ownerPlaceRepository.findAllByPlaceIdIn(List.of(20L))).thenReturn(List.of(secondPlace));
+
+        adminService.replacePlaces(
+                adminUserId,
+                userId,
+                new MerchantOwnerPlaceUpdateRequest(Set.of(20L), "운영 장소 변경")
+        );
+
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserIdAndPlaceIdIn(
+                userId,
+                Set.of(10L),
+                now
+        );
     }
 
     @Test

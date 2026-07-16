@@ -15,6 +15,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -34,6 +35,7 @@ class MerchantOwnerProfileServiceTest {
     @Mock private MerchantOwnerProfileRepository profileRepository;
     @Mock private MerchantOwnerPlaceRepository placeRepository;
     @Mock private MerchantVerificationRepository verificationRepository;
+    @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
 
     @InjectMocks
@@ -76,6 +78,10 @@ class MerchantOwnerProfileServiceTest {
         assertThat(verification.getBusinessName()).isEqualTo("새 상호");
         assertThat(verification.getIdentityStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
         assertThat(verification.getBusinessStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserId(
+                userId,
+                LocalDateTime.of(2026, 7, 15, 3, 0)
+        );
     }
 
     @Test
@@ -104,6 +110,10 @@ class MerchantOwnerProfileServiceTest {
         ));
 
         verify(verificationRepository, never()).findByUserIdForUpdate(userId);
+        verify(touristOfferRepository, never()).closeAllByMerchantOwnerUserId(
+                org.mockito.ArgumentMatchers.anyLong(),
+                org.mockito.ArgumentMatchers.any()
+        );
     }
 
     @Test

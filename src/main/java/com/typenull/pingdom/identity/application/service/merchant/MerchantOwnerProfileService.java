@@ -13,6 +13,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -29,6 +30,7 @@ public class MerchantOwnerProfileService {
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantOwnerPlaceRepository placeRepository;
     private final MerchantVerificationRepository verificationRepository;
+    private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
 
     @Transactional
@@ -91,6 +93,7 @@ public class MerchantOwnerProfileService {
         }
         if (businessNameChanged) {
             invalidateVerificationForBusinessNameChange(userId, profile.getBusinessName(), now);
+            touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
         }
         return response(profile);
     }
