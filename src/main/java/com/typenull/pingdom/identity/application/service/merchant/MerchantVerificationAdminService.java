@@ -15,6 +15,7 @@ import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationC
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -33,6 +34,7 @@ public class MerchantVerificationAdminService {
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantVerificationCipher verificationCipher;
     private final AdminAuditLogService auditLogService;
+    private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -107,6 +109,7 @@ public class MerchantVerificationAdminService {
         }
         MerchantVerificationStatus beforeIdentityStatus = verification.getIdentityStatus();
         MerchantVerificationStatus beforeBusinessStatus = verification.getBusinessStatus();
+        LocalDateTime now = LocalDateTime.now(clock);
 
         // 외부 검증 제공자가 정해지기 전까지 운영을 이어가기 위한 임시 수동 심사다.
         // 현재는 관리자 판단을 신뢰하므로 오판 위험이 남으며, 향후 제공자 결과와 원문 대조 이력으로 교체한다.
@@ -116,10 +119,13 @@ public class MerchantVerificationAdminService {
                     Boolean.TRUE.equals(request.identityApproved()),
                     Boolean.TRUE.equals(request.businessApproved()),
                     request.reason().trim(),
-                    LocalDateTime.now(clock)
+                    now
             );
         } catch (IllegalStateException exception) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_VERIFICATION_STATE);
+        }
+        if (!verification.isFullyApproved()) {
+            touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
         }
 
         auditLogService.record(

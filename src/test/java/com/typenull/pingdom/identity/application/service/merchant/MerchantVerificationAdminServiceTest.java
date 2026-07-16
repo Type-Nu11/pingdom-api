@@ -16,6 +16,7 @@ import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationC
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -39,6 +40,7 @@ class MerchantVerificationAdminServiceTest {
     @Mock private MerchantOwnerProfileRepository profileRepository;
     @Mock private MerchantVerificationCipher verificationCipher;
     @Mock private AdminAuditLogService auditLogService;
+    @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
 
     @InjectMocks
@@ -85,6 +87,34 @@ class MerchantVerificationAdminServiceTest {
                         "businessStatus", MerchantVerificationStatus.APPROVED
                 ))
         );
+    }
+
+    @Test
+    void rejectedReviewClosesMerchantOffers() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 15, 3, 0);
+        MerchantOwnerProfile profile = profile(userId);
+        MerchantVerification verification = MerchantVerification.pending(
+                userId,
+                "김핑덤",
+                "핑덤 카페",
+                "encrypted-number",
+                now.minusDays(1)
+        );
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(verificationRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(verification));
+        when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
+        when(clock.instant()).thenReturn(Instant.parse("2026-07-15T03:00:00Z"));
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+
+        adminService.review(
+                adminUserId,
+                userId,
+                new MerchantVerificationReviewRequest(true, false, "사업자 정보 불일치")
+        );
+
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserId(userId, now);
     }
 
     @Test
