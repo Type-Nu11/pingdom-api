@@ -36,7 +36,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
-import java.util.concurrent.CountDownLatch;
+import java.util.concurrent.CyclicBarrier;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.Future;
@@ -268,10 +268,11 @@ class OfferControllerIntegrationTest {
     }
 
     @Test
-    void concurrentCouponIssueCreatesOnlyOneCouponForSameUserAndOffer() throws Exception {
+    void concurrentCouponIssueDoesNotExceedOfferQuantityForDifferentUsers() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("concurrentOfferMerchant", UserRole.MERCHANT_OWNER);
-        User tourist = saveUser("concurrentOfferTourist", UserRole.USER);
+        User firstTourist = saveUser("firstConcurrentOfferTourist", UserRole.USER);
+        User secondTourist = saveUser("secondConcurrentOfferTourist", UserRole.USER);
         MapPlace place = mapPlaceRepository.saveAndFlush(MapPlace.builder()
                 .name("동시 발급 테스트 장소")
                 .address("서울시 중구")
@@ -282,7 +283,12 @@ class OfferControllerIntegrationTest {
                 .build());
         activateMerchant(merchant, place, now);
         travelScheduleRepository.saveAndFlush(TravelSchedule.create(
-                tourist,
+                firstTourist,
+                LocalDate.now(ZoneOffset.UTC).minusDays(1),
+                LocalDate.now(ZoneOffset.UTC).plusDays(1)
+        ));
+        travelScheduleRepository.saveAndFlush(TravelSchedule.create(
+                secondTourist,
                 LocalDate.now(ZoneOffset.UTC).minusDays(1),
                 LocalDate.now(ZoneOffset.UTC).plusDays(1)
         ));
@@ -294,21 +300,28 @@ class OfferControllerIntegrationTest {
                 "혜택",
                 now.minusHours(1),
                 now.plusDays(3),
-                2,
+                1,
                 1,
                 now.minusDays(1)
         );
         offer.publish(now.minusMinutes(1));
         offerRepository.saveAndFlush(offer);
 
-        CountDownLatch start = new CountDownLatch(1);
+        CyclicBarrier lockRaceBarrier = new CyclicBarrier(2);
         ExecutorService executor = Executors.newFixedThreadPool(2);
         try {
             List<Future<Object>> futures = List.of(
-                    executor.submit(() -> issueAfterStart(start, tourist.getId(), offer.getId())),
-                    executor.submit(() -> issueAfterStart(start, tourist.getId(), offer.getId()))
+                    executor.submit(() -> issueAfterBarrier(
+                            lockRaceBarrier,
+                            firstTourist.getId(),
+                            offer.getId()
+                    )),
+                    executor.submit(() -> issueAfterBarrier(
+                            lockRaceBarrier,
+                            secondTourist.getId(),
+                            offer.getId()
+                    ))
             );
-            start.countDown();
             List<Object> results = List.of(
                     futures.get(0).get(10, TimeUnit.SECONDS),
                     futures.get(1).get(10, TimeUnit.SECONDS)
@@ -318,7 +331,7 @@ class OfferControllerIntegrationTest {
                     .filteredOn(CouponResponse.class::isInstance)
                     .hasSize(1);
             org.assertj.core.api.Assertions.assertThat(results)
-                    .filteredOn(result -> result == OfferErrorCode.COUPON_ALREADY_ISSUED)
+                    .filteredOn(result -> result == OfferErrorCode.OFFER_SOLD_OUT)
                     .hasSize(1);
             org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).hasSize(1);
             org.assertj.core.api.Assertions.assertThat(
@@ -329,8 +342,8 @@ class OfferControllerIntegrationTest {
         }
     }
 
-    private Object issueAfterStart(CountDownLatch start, Long userId, Long offerId) throws InterruptedException {
-        start.await();
+    private Object issueAfterBarrier(CyclicBarrier barrier, Long userId, Long offerId) throws Exception {
+        barrier.await(10, TimeUnit.SECONDS);
         try {
             return touristOfferService.issue(userId, offerId);
         } catch (OfferException exception) {
