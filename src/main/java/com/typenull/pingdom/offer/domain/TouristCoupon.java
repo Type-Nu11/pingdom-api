@@ -83,11 +83,12 @@ public class TouristCoupon {
     }
 
     public void redeem(Long merchantOwnerUserId, LocalDateTime now) {
+        Objects.requireNonNull(merchantOwnerUserId);
         if (status != CouponStatus.ISSUED || !now.isBefore(expiresAt)) {
             throw new IllegalStateException("사용할 수 없는 쿠폰입니다.");
         }
         status = CouponStatus.REDEEMED;
-        redeemedBy = Objects.requireNonNull(merchantOwnerUserId);
+        redeemedBy = merchantOwnerUserId;
         redeemedAt = now;
     }
 

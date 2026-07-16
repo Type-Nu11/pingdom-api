@@ -31,6 +31,18 @@ class TouristCouponTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void nullRedeemerDoesNotMutateCouponState() {
+        TouristCoupon coupon = coupon();
+
+        assertThatThrownBy(() -> coupon.redeem(null, NOW.plusHours(1)))
+                .isInstanceOf(NullPointerException.class);
+
+        assertThat(coupon.getStatus()).isEqualTo(CouponStatus.ISSUED);
+        assertThat(coupon.getRedeemedBy()).isNull();
+        assertThat(coupon.getRedeemedAt()).isNull();
+    }
+
     private TouristCoupon coupon() {
         return TouristCoupon.issue(
                 1L,
