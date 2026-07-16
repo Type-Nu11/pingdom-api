@@ -28,6 +28,12 @@ import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.offer.domain.CouponStatus;
+import com.typenull.pingdom.offer.domain.OfferStatus;
+import com.typenull.pingdom.offer.domain.TouristCoupon;
+import com.typenull.pingdom.offer.domain.TouristOffer;
+import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import java.time.Clock;
@@ -47,6 +53,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class UserDataExportServiceTest {
@@ -77,6 +84,12 @@ class UserDataExportServiceTest {
 
     @Mock
     private MerchantVerificationRepository merchantVerificationRepository;
+
+    @Mock
+    private TouristOfferRepository touristOfferRepository;
+
+    @Mock
+    private TouristCouponRepository touristCouponRepository;
 
     @Mock
     private MerchantVerificationCipher merchantVerificationCipher;
@@ -144,6 +157,28 @@ class UserDataExportServiceTest {
                 .createdAt(LocalDateTime.of(2026, 7, 15, 14, 0))
                 .updatedAt(LocalDateTime.of(2026, 7, 16, 10, 0))
                 .build();
+        TouristOffer touristOffer = TouristOffer.draft(
+                userId,
+                123L,
+                "관광객 Offer",
+                "관광객 전용 설명",
+                "음료 1잔 무료",
+                LocalDateTime.of(2026, 8, 1, 9, 0),
+                LocalDateTime.of(2026, 8, 10, 23, 59),
+                100,
+                3,
+                LocalDateTime.of(2026, 7, 20, 10, 0)
+        );
+        ReflectionTestUtils.setField(touristOffer, "id", 50L);
+        touristOffer.publish(LocalDateTime.of(2026, 7, 20, 11, 0));
+        TouristCoupon touristCoupon = TouristCoupon.issue(
+                50L,
+                userId,
+                "3fa85f64-5717-4562-b3fc-2c963f66afa6",
+                LocalDateTime.of(2026, 7, 31, 10, 0),
+                LocalDateTime.of(2026, 8, 1, 9, 0)
+        );
+        ReflectionTestUtils.setField(touristCoupon, "id", 60L);
 
         when(userRepository.findById(userId)).thenReturn(Optional.of(user));
         when(mapBookmarkRepository.findByUserIdOrderByIdAsc(userId)).thenReturn(List.of(bookmark));
@@ -156,6 +191,10 @@ class UserDataExportServiceTest {
                 .thenReturn(List.of(merchantPlaceClaim));
         when(merchantVerificationRepository.findById(userId)).thenReturn(Optional.of(merchantVerification));
         when(merchantVerificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
+        when(touristOfferRepository.findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId))
+                .thenReturn(List.of(touristOffer));
+        when(touristCouponRepository.findAllByUserIdOrderByIssuedAtDescIdDesc(userId))
+                .thenReturn(List.of(touristCoupon));
 
         UserDataExportResult result = userDataExportService.exportMyData(userId);
 
@@ -181,6 +220,18 @@ class UserDataExportServiceTest {
                         UserDataExportResult.ExportMerchantPlaceClaim::reviewReason
                 )
                 .containsExactly(tuple(40L, MerchantPlaceClaimStatus.REJECTED, "사업자 주소 불일치"));
+        assertThat(result.touristOffers())
+                .extracting(
+                        UserDataExportResult.ExportTouristOffer::id,
+                        UserDataExportResult.ExportTouristOffer::status
+                )
+                .containsExactly(tuple(50L, OfferStatus.PUBLISHED));
+        assertThat(result.touristCoupons())
+                .extracting(
+                        UserDataExportResult.ExportTouristCoupon::id,
+                        UserDataExportResult.ExportTouristCoupon::status
+                )
+                .containsExactly(tuple(60L, CouponStatus.EXPIRED));
 
         ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
         verify(eventPublisher).publishEvent(eventCaptor.capture());
