@@ -1,0 +1,100 @@
+package com.typenull.pingdom.offer.domain;
+
+import jakarta.persistence.Column;
+import jakarta.persistence.Entity;
+import jakarta.persistence.EnumType;
+import jakarta.persistence.Enumerated;
+import jakarta.persistence.GeneratedValue;
+import jakarta.persistence.GenerationType;
+import jakarta.persistence.Id;
+import jakarta.persistence.Table;
+import jakarta.persistence.Version;
+import java.time.LocalDateTime;
+import java.util.Objects;
+import lombok.AccessLevel;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+
+@Entity
+@Getter
+@Table(name = "tourist_coupon")
+@NoArgsConstructor(access = AccessLevel.PROTECTED)
+public class TouristCoupon {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @Column(name = "offer_id", nullable = false)
+    private Long offerId;
+
+    @Column(name = "user_id", nullable = false)
+    private Long userId;
+
+    @Column(nullable = false, unique = true, length = 36)
+    private String code;
+
+    @Enumerated(EnumType.STRING)
+    @Column(nullable = false, length = 20)
+    private CouponStatus status;
+
+    @Column(name = "issued_at", nullable = false, updatable = false)
+    private LocalDateTime issuedAt;
+
+    @Column(name = "expires_at", nullable = false)
+    private LocalDateTime expiresAt;
+
+    @Column(name = "redeemed_at")
+    private LocalDateTime redeemedAt;
+
+    @Column(name = "redeemed_by")
+    private Long redeemedBy;
+
+    @Version
+    @Column(nullable = false)
+    private long version;
+
+    private TouristCoupon(
+            Long offerId,
+            Long userId,
+            String code,
+            LocalDateTime issuedAt,
+            LocalDateTime expiresAt
+    ) {
+        this.offerId = Objects.requireNonNull(offerId);
+        this.userId = Objects.requireNonNull(userId);
+        this.code = Objects.requireNonNull(code);
+        this.issuedAt = Objects.requireNonNull(issuedAt);
+        this.expiresAt = Objects.requireNonNull(expiresAt);
+        if (!expiresAt.isAfter(issuedAt)) {
+            throw new IllegalArgumentException("쿠폰 만료 시각은 발급 시각보다 늦어야 합니다.");
+        }
+        this.status = CouponStatus.ISSUED;
+    }
+
+    public static TouristCoupon issue(
+            Long offerId,
+            Long userId,
+            String code,
+            LocalDateTime issuedAt,
+            LocalDateTime expiresAt
+    ) {
+        return new TouristCoupon(offerId, userId, code, issuedAt, expiresAt);
+    }
+
+    public void redeem(Long merchantOwnerUserId, LocalDateTime now) {
+        if (status != CouponStatus.ISSUED || !now.isBefore(expiresAt)) {
+            throw new IllegalStateException("사용할 수 없는 쿠폰입니다.");
+        }
+        status = CouponStatus.REDEEMED;
+        redeemedBy = Objects.requireNonNull(merchantOwnerUserId);
+        redeemedAt = now;
+    }
+
+    public CouponStatus statusAt(LocalDateTime now) {
+        if (status == CouponStatus.ISSUED && !now.isBefore(expiresAt)) {
+            return CouponStatus.EXPIRED;
+        }
+        return status;
+    }
+}
