@@ -144,6 +144,40 @@ class MerchantOwnerAdminServiceTest {
     }
 
     @Test
+    void rejectImmediatelyClosesMerchantOffers() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        User owner = User.builder()
+                .id(userId)
+                .role(UserRole.MERCHANT_OWNER)
+                .refreshToken("refresh-token")
+                .build();
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        stubCurrentTime();
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(owner));
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId)).thenReturn(List.of());
+
+        var response = adminService.reject(
+                adminUserId,
+                userId,
+                new MerchantOwnerReviewRequest("서류 미흡", Set.of())
+        );
+
+        assertThat(response.status()).isEqualTo(MerchantOwnerStatus.REJECTED);
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserId(userId, now);
+    }
+
+    @Test
     void replacingOwnedPlacesClosesOffersForRemovedPlaces() {
         Long adminUserId = 99L;
         Long userId = 1L;
