@@ -13,6 +13,8 @@ import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationC
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
+import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
@@ -40,6 +42,8 @@ public class UserDataExportService {
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
     private final MerchantPlaceClaimRepository merchantPlaceClaimRepository;
     private final MerchantVerificationRepository merchantVerificationRepository;
+    private final TouristOfferRepository touristOfferRepository;
+    private final TouristCouponRepository touristCouponRepository;
     private final MerchantVerificationCipher merchantVerificationCipher;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
@@ -76,6 +80,9 @@ public class UserDataExportService {
         var merchantPlaceClaims = merchantPlaceClaimRepository
                 .findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId);
         var merchantVerification = merchantVerificationRepository.findById(userId).orElse(null);
+        var touristOffers = touristOfferRepository
+                .findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId);
+        var touristCoupons = touristCouponRepository.findAllByUserIdOrderByIssuedAtDescIdDesc(userId);
 
         eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
                 userId,
@@ -92,6 +99,9 @@ public class UserDataExportService {
                 merchantOwnerPlaceIds,
                 merchantPlaceClaims,
                 merchantVerification,
+                touristOffers,
+                touristCoupons,
+                now,
                 merchantVerification == null
                         ? null
                         : merchantVerificationCipher.decrypt(
