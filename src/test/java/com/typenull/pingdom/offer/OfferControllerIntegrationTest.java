@@ -161,12 +161,42 @@ class OfferControllerIntegrationTest {
 
     @Test
     void userWithoutOngoingTravelScheduleCannotIssueCoupon() throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        User merchant = saveUser("ineligibleTouristMerchant", UserRole.MERCHANT_OWNER);
         User tourist = saveUser("ineligibleTourist", UserRole.USER);
+        MapPlace place = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("자격 검증 테스트 장소")
+                .address("서울시 중구")
+                .latitude(37.5665)
+                .longitude(126.9780)
+                .userId(merchant.getId())
+                .registrant(merchant.getUsername())
+                .build());
+        activateMerchant(merchant, place, now);
+        TouristOffer offer = TouristOffer.draft(
+                merchant.getId(),
+                place.getId(),
+                "자격 검증 Offer",
+                "설명",
+                "혜택",
+                now.minusHours(1),
+                now.plusDays(3),
+                10,
+                1,
+                now.minusDays(1)
+        );
+        offer.publish(now.minusMinutes(1));
+        offerRepository.saveAndFlush(offer);
 
-        mockMvc.perform(post("/offers/{offerId}/coupons", 999L)
+        mockMvc.perform(post("/offers/{offerId}/coupons", offer.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("TOURIST_ELIGIBILITY_REQUIRED"));
+
+        org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).isEmpty();
+        org.assertj.core.api.Assertions.assertThat(
+                offerRepository.findById(offer.getId()).orElseThrow().getIssuedQuantity()
+        ).isZero();
     }
 
     @Test
