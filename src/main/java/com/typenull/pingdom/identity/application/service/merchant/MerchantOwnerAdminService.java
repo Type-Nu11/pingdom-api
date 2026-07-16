@@ -18,6 +18,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepos
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
@@ -48,6 +49,7 @@ public class MerchantOwnerAdminService {
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService auditLogService;
     private final UserAccessStatusService userAccessStatusService;
+    private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -122,12 +124,14 @@ public class MerchantOwnerAdminService {
         User user = requireUserForUpdate(userId);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
+        LocalDateTime now = LocalDateTime.now(clock);
         try {
-            profile.reject(adminUserId, LocalDateTime.now(clock));
+            profile.reject(adminUserId, now);
         } catch (IllegalStateException exception) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
         }
         user.revokeMerchantOwnerRole();
+        touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
         ownerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
         userAccessStatusService.evict(userId);
         recordAudit(
@@ -151,12 +155,14 @@ public class MerchantOwnerAdminService {
         User user = requireUserForUpdate(userId);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
+        LocalDateTime now = LocalDateTime.now(clock);
         try {
-            profile.revoke(adminUserId, LocalDateTime.now(clock));
+            profile.revoke(adminUserId, now);
         } catch (IllegalStateException exception) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
         }
         user.revokeMerchantOwnerRole();
+        touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
         ownerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
         userAccessStatusService.evict(userId);
         recordAudit(
@@ -182,7 +188,13 @@ public class MerchantOwnerAdminService {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
         }
         Set<Long> beforePlaceIds = new LinkedHashSet<>(placeIds(userId));
-        replacePlaces(userId, request.normalizedPlaceIds(), LocalDateTime.now(clock));
+        LocalDateTime now = LocalDateTime.now(clock);
+        Set<Long> removedPlaceIds = new LinkedHashSet<>(beforePlaceIds);
+        removedPlaceIds.removeAll(request.normalizedPlaceIds());
+        if (!removedPlaceIds.isEmpty()) {
+            touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(userId, removedPlaceIds, now);
+        }
+        replacePlaces(userId, request.normalizedPlaceIds(), now);
         recordAudit(
                 adminUserId,
                 AdminAuditAction.MERCHANT_OWNER_PLACES_UPDATED,
