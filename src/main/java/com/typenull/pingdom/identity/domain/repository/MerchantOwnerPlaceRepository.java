@@ -14,6 +14,8 @@ public interface MerchantOwnerPlaceRepository extends JpaRepository<MerchantOwne
 
     List<MerchantOwnerPlace> findAllByPlaceIdIn(Collection<Long> placeIds);
 
+    boolean existsByPlaceIdAndMerchantOwnerUserId(Long placeId, Long merchantOwnerUserId);
+
     @Modifying
     @Query("DELETE FROM MerchantOwnerPlace place WHERE place.merchantOwnerUserId = :userId")
     int deleteAllByMerchantOwnerUserId(@Param("userId") Long userId);
