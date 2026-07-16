@@ -14,8 +14,8 @@ import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
-import java.util.Locale;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -139,9 +139,8 @@ public class TouristOfferService {
     private boolean hasConstraint(Throwable throwable, String constraintName) {
         Throwable current = throwable;
         while (current != null) {
-            if (current.getMessage() != null
-                    && current.getMessage().toLowerCase(Locale.ROOT)
-                    .contains(constraintName.toLowerCase(Locale.ROOT))) {
+            if (current instanceof ConstraintViolationException violation
+                    && constraintName.equalsIgnoreCase(violation.getConstraintName())) {
                 return true;
             }
             current = current.getCause();

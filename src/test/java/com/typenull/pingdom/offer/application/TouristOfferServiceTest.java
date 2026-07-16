@@ -14,17 +14,20 @@ import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
 import com.typenull.pingdom.offer.domain.exception.OfferException;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class TouristOfferServiceTest {
@@ -74,6 +77,30 @@ class TouristOfferServiceTest {
 
         assertThat(offer.getIssuedQuantity()).isZero();
         verify(couponRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void duplicateCouponConstraintViolationIsMappedToDomainError() {
+        TouristOffer offer = publishedOffer(2);
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
+        when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        when(couponRepository.saveAndFlush(any(TouristCoupon.class)))
+                .thenThrow(constraintViolation("uq_tourist_coupon_offer_user"));
+
+        assertThatThrownBy(() -> offerService.issue(2L, 1L))
+                .isInstanceOfSatisfying(OfferException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.COUPON_ALREADY_ISSUED));
+    }
+
+    @Test
+    void unrelatedConstraintViolationIsNotMappedToDuplicateCouponError() {
+        TouristOffer offer = publishedOffer(2);
+        DataIntegrityViolationException violation = constraintViolation("fk_tourist_coupon_offer");
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
+        when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        when(couponRepository.saveAndFlush(any(TouristCoupon.class))).thenThrow(violation);
+
+        assertThatThrownBy(() -> offerService.issue(2L, 1L)).isSameAs(violation);
     }
 
     @Test
@@ -130,6 +157,18 @@ class TouristOfferServiceTest {
                 quantity,
                 7,
                 NOW.minusDays(1)
+        );
+    }
+
+    private DataIntegrityViolationException constraintViolation(String constraintName) {
+        return new DataIntegrityViolationException(
+                "coupon insert failed",
+                new ConstraintViolationException(
+                        "constraint violation",
+                        new SQLException("duplicate key"),
+                        "insert into tourist_coupon",
+                        constraintName
+                )
         );
     }
 }
