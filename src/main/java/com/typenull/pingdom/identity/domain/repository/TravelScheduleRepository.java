@@ -1,6 +1,8 @@
 package com.typenull.pingdom.identity.domain.repository;
 
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
+import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
+import java.time.LocalDate;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -14,6 +16,13 @@ public interface TravelScheduleRepository extends JpaRepository<TravelSchedule, 
     List<TravelSchedule> findAllByUser_IdOrderByStartDateAscIdAsc(Long userId);
 
     Optional<TravelSchedule> findByIdAndUser_Id(Long scheduleId, Long userId);
+
+    boolean existsByUser_IdAndStateAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+            Long userId,
+            TravelScheduleState state,
+            LocalDate startDate,
+            LocalDate endDate
+    );
 
     @Modifying
     @Query("DELETE FROM TravelSchedule schedule WHERE schedule.user.id IN :userIds")
