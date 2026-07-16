@@ -12,7 +12,7 @@ public record CouponResponse(
         CouponStatus status,
         LocalDateTime issuedAt,
         LocalDateTime expiresAt,
-        LocalDateTime redeemedAt
+        @Schema(nullable = true) LocalDateTime redeemedAt
 ) {
     public static CouponResponse from(TouristCoupon coupon, LocalDateTime now) {
         return new CouponResponse(

@@ -213,6 +213,27 @@ class OpenApiDocumentationValidationTest {
                 .asText()).isEqualTo("#/components/schemas/OfferResponse");
         assertThat(appDocument.at("/paths/~1merchant-owner~1offers~1{offerId}/get/responses/200/content/*~1*/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/OfferResponse");
+        assertNullableProperty(appDocument, "CouponResponse", "redeemedAt");
+        assertThat(appDocument.at("/components/schemas/CouponRedeemRequest/properties/code/pattern").asText())
+                .isEqualTo("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$");
+
+        JsonNode createRequestSchema = appDocument.at("/components/schemas/OfferCreateRequest");
+        List<String> requiredFields = new ArrayList<>();
+        createRequestSchema.path("required").forEach(field -> requiredFields.add(field.asText()));
+        assertThat(requiredFields).contains(
+                "placeId",
+                "title",
+                "description",
+                "benefitDescription",
+                "startsAt",
+                "endsAt",
+                "totalQuantity",
+                "couponValidityDays"
+        );
+        for (String property : List.of("title", "description", "benefitDescription")) {
+            assertThat(createRequestSchema.path("properties").path(property).path("minLength").asInt())
+                    .isEqualTo(1);
+        }
     }
 
     @Test
