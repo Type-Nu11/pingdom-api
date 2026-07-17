@@ -123,12 +123,13 @@ public class MerchantPlaceClaimAdminService {
                     .createdAt(now)
                     .build());
         } else {
+            Long previousOwnerUserId = currentOwner.getMerchantOwnerUserId();
+            currentOwner.transferOwnership(claim.getMerchantOwnerUserId());
             touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(
-                    currentOwner.getMerchantOwnerUserId(),
+                    previousOwnerUserId,
                     Set.of(claim.getPlaceId()),
                     now
             );
-            currentOwner.transferOwnership(claim.getMerchantOwnerUserId());
         }
     }
 
