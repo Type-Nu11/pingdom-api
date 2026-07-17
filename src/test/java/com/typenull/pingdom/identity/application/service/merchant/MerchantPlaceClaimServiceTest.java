@@ -105,6 +105,9 @@ class MerchantPlaceClaimServiceTest {
 
         var response = claimService.create(userId, new MerchantPlaceClaimRequest(placeId, "소유권 이전 요청"));
 
+        ArgumentCaptor<MerchantPlaceClaim> claimCaptor = ArgumentCaptor.forClass(MerchantPlaceClaim.class);
+        verify(claimRepository).save(claimCaptor.capture());
+        assertThat(claimCaptor.getValue().getPreviousOwnerUserId()).isEqualTo(previousOwnerUserId);
         assertThat(response.claimType()).isEqualTo(MerchantPlaceClaimType.OWNERSHIP_TRANSFER);
     }
 
