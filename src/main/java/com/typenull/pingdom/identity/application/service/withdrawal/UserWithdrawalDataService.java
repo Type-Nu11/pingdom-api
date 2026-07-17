@@ -4,6 +4,11 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
+import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import com.typenull.pingdom.notification.repository.FcmDeviceTokenRepository;
@@ -23,6 +28,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Slf4j
 public class UserWithdrawalDataService {
 
+    private static final String ANONYMIZED_BUSINESS_REGISTRATION_NUMBER = "0000000000";
+
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -32,10 +39,16 @@ public class UserWithdrawalDataService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final MerchantOwnerProfileRepository merchantOwnerProfileRepository;
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+    private final MerchantPlaceClaimRepository merchantPlaceClaimRepository;
+    private final MerchantVerificationRepository merchantVerificationRepository;
+    private final TouristOfferRepository touristOfferRepository;
+    private final TouristCouponRepository touristCouponRepository;
+    private final MerchantVerificationCipher merchantVerificationCipher;
     private final Clock clock;
 
     @Transactional
     public void cleanupUserOwnedData(Long userId) {
+        LocalDateTime now = LocalDateTime.now(clock);
         int anonymizedPostCount = mapImageRepository.updateUsernameByUserId(
                 userId,
                 User.WITHDRAWN_DISPLAY_NAME
@@ -50,11 +63,19 @@ public class UserWithdrawalDataService {
         int deletedFcmTokenCount = fcmDeviceTokenRepository.deleteAllByUserId(userId);
         int deletedNotificationSettingCount = notificationSettingRepository.deleteAllByUserId(userId);
         int deletedMerchantOwnerPlaceCount = merchantOwnerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
+        int deletedMerchantPlaceClaimCount = merchantPlaceClaimRepository.deleteAllByMerchantOwnerUserId(userId);
+        int closedTouristOfferCount = touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
+        int deletedTouristCouponCount = touristCouponRepository.deleteAllByUserId(userId);
         merchantOwnerProfileRepository.findByUserIdForUpdate(userId)
-                .ifPresent(profile -> profile.anonymize(LocalDateTime.now(clock)));
+                .ifPresent(profile -> profile.anonymize(now));
+        merchantVerificationRepository.findByUserIdForUpdate(userId)
+                .ifPresent(verification -> verification.anonymize(
+                        merchantVerificationCipher.encrypt(ANONYMIZED_BUSINESS_REGISTRATION_NUMBER),
+                        now
+                ));
 
         log.info(
-                "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}",
+                "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}, deletedMerchantPlaceClaimCount={}, closedTouristOfferCount={}, deletedTouristCouponCount={}",
                 userId,
                 anonymizedPostCount,
                 anonymizedPlaceCount,
@@ -63,7 +84,10 @@ public class UserWithdrawalDataService {
                 deletedNotificationCount,
                 deletedFcmTokenCount,
                 deletedNotificationSettingCount,
-                deletedMerchantOwnerPlaceCount
+                deletedMerchantOwnerPlaceCount,
+                deletedMerchantPlaceClaimCount,
+                closedTouristOfferCount,
+                deletedTouristCouponCount
         );
     }
 

@@ -6,7 +6,9 @@ import static org.mockito.Mockito.when;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import java.util.List;
@@ -27,6 +29,9 @@ class MerchantOwnerAuthorizationTest {
     @Mock
     private MerchantOwnerProfileRepository profileRepository;
 
+    @Mock
+    private MerchantVerificationRepository verificationRepository;
+
     @Test
     void staleOwnerJwtIsRejectedAfterRoleRevocation() {
         Long userId = 1L;
@@ -36,7 +41,8 @@ class MerchantOwnerAuthorizationTest {
 
         MerchantOwnerAuthorization authorization = new MerchantOwnerAuthorization(
                 userRepository,
-                profileRepository
+                profileRepository,
+                verificationRepository
         );
 
         assertThat(authorization.isActive(authentication)).isFalse();
@@ -48,13 +54,35 @@ class MerchantOwnerAuthorizationTest {
         User owner = User.builder().id(userId).role(UserRole.MERCHANT_OWNER).build();
         when(userRepository.findById(userId)).thenReturn(Optional.of(owner));
         when(profileRepository.existsByUserIdAndStatus(userId, MerchantOwnerStatus.ACTIVE)).thenReturn(true);
+        when(verificationRepository.existsByUserIdAndIdentityStatusAndBusinessStatus(
+                userId,
+                MerchantVerificationStatus.APPROVED,
+                MerchantVerificationStatus.APPROVED
+        )).thenReturn(true);
 
         MerchantOwnerAuthorization authorization = new MerchantOwnerAuthorization(
                 userRepository,
-                profileRepository
+                profileRepository,
+                verificationRepository
         );
 
         assertThat(authorization.isActive(authentication(userId))).isTrue();
+    }
+
+    @Test
+    void activeOwnerWithoutApprovedVerificationIsRejected() {
+        Long userId = 1L;
+        User owner = User.builder().id(userId).role(UserRole.MERCHANT_OWNER).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(owner));
+        when(profileRepository.existsByUserIdAndStatus(userId, MerchantOwnerStatus.ACTIVE)).thenReturn(true);
+
+        MerchantOwnerAuthorization authorization = new MerchantOwnerAuthorization(
+                userRepository,
+                profileRepository,
+                verificationRepository
+        );
+
+        assertThat(authorization.isActive(authentication(userId))).isFalse();
     }
 
     private UsernamePasswordAuthenticationToken authentication(Long userId) {

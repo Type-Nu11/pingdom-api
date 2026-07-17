@@ -146,11 +146,100 @@ class OpenApiDocumentationValidationTest {
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");
 
         assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/merchant-verification")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/cancel")).isTrue();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-verifications")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-place-claims")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-verifications")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-verifications/{userId}/review")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-claims")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-claims/{claimId}/review")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
+        assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties/claimType/enum"))
+                .isNotEmpty();
+        assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties")
+                .has("previousOwnerUserId")).isFalse();
+        assertThat(webDocument.at("/components/schemas/AdminMerchantPlaceClaimResponse/properties/previousOwnerUserId/nullable")
+                .asBoolean()).isTrue();
+    }
+
+    @Test
+    void touristOfferAndCouponApisAreExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        for (String path : List.of(
+                "/offers",
+                "/offers/{offerId}",
+                "/offers/{offerId}/coupons",
+                "/coupons",
+                "/merchant-owner/offers",
+                "/merchant-owner/offers/{offerId}",
+                "/merchant-owner/offers/{offerId}/publish",
+                "/merchant-owner/offers/{offerId}/close",
+                "/merchant-owner/offers/coupons/redeem"
+        )) {
+            assertThat(appDocument.path("paths").has(path)).isTrue();
+            assertThat(webDocument.path("paths").has(path)).isFalse();
+        }
+        assertThat(appDocument.path("components").path("schemas").has("OfferCreateRequest")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("OfferResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("CouponResponse")).isTrue();
+        assertThat(appDocument.at("/paths/~1offers~1{offerId}~1coupons/post/responses/409/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(appDocument.at("/paths/~1merchant-owner~1offers~1coupons~1redeem/post/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/CouponRedeemRequest");
+        for (String operationPath : List.of(
+                "/paths/~1offers/get",
+                "/paths/~1offers~1{offerId}/get",
+                "/paths/~1offers~1{offerId}~1coupons/post",
+                "/paths/~1coupons/get",
+                "/paths/~1merchant-owner~1offers/get",
+                "/paths/~1merchant-owner~1offers/post",
+                "/paths/~1merchant-owner~1offers~1{offerId}/get",
+                "/paths/~1merchant-owner~1offers~1{offerId}~1publish/post",
+                "/paths/~1merchant-owner~1offers~1{offerId}~1close/post",
+                "/paths/~1merchant-owner~1offers~1coupons~1redeem/post"
+        )) {
+            JsonNode operation = appDocument.at(operationPath);
+            assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
+            assertThat(operation.at("/responses/401/content/*~1*/schema/$ref").asText())
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
+        assertThat(appDocument.at("/paths/~1offers~1{offerId}/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/OfferResponse");
+        assertThat(appDocument.at("/paths/~1merchant-owner~1offers~1{offerId}/get/responses/200/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/OfferResponse");
+        assertNullableProperty(appDocument, "CouponResponse", "redeemedAt");
+        assertThat(appDocument.at("/components/schemas/CouponRedeemRequest/properties/code/pattern").asText())
+                .isEqualTo("^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[1-5][0-9a-fA-F]{3}-[89aAbB][0-9a-fA-F]{3}-[0-9a-fA-F]{12}$");
+
+        JsonNode createRequestSchema = appDocument.at("/components/schemas/OfferCreateRequest");
+        List<String> requiredFields = new ArrayList<>();
+        createRequestSchema.path("required").forEach(field -> requiredFields.add(field.asText()));
+        assertThat(requiredFields).contains(
+                "placeId",
+                "title",
+                "description",
+                "benefitDescription",
+                "startsAt",
+                "endsAt",
+                "totalQuantity",
+                "couponValidityDays"
+        );
+        for (String property : List.of("title", "description", "benefitDescription")) {
+            assertThat(createRequestSchema.path("properties").path(property).path("minLength").asInt())
+                    .isEqualTo(1);
+        }
     }
 
     @Test

@@ -3,7 +3,11 @@ package com.typenull.pingdom.identity.api.dto.export;
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
+import com.typenull.pingdom.offer.domain.CouponStatus;
+import com.typenull.pingdom.offer.domain.OfferStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -22,7 +26,15 @@ public record UserDataExportResponse(
         @Schema(description = "만료되지 않은 현재 행동 의도. 없으면 null", nullable = true)
         ExportCurrentActivityIntentResponse currentActivityIntent,
         @Schema(description = "Merchant Owner 신청 및 프로필. 없으면 null", nullable = true)
-        ExportMerchantOwnerProfileResponse merchantOwnerProfile
+        ExportMerchantOwnerProfileResponse merchantOwnerProfile,
+        @Schema(description = "상점 장소 Claim 요청 이력")
+        List<ExportMerchantPlaceClaimResponse> merchantPlaceClaims,
+        @Schema(description = "Merchant 신원 및 사업자 검증 신청. 없으면 null", nullable = true)
+        ExportMerchantVerificationResponse merchantVerification,
+        @Schema(description = "Merchant Owner가 만든 관광객 전용 Offer 이력")
+        List<ExportTouristOfferResponse> touristOffers,
+        @Schema(description = "사용자가 발급받은 관광객 Coupon 이력")
+        List<ExportTouristCouponResponse> touristCoupons
 ) {
 
     public static UserDataExportResponse from(UserDataExportResult result) {
@@ -36,7 +48,13 @@ public record UserDataExportResponse(
                         .map(ExportTravelScheduleResponse::from)
                         .toList(),
                 ExportCurrentActivityIntentResponse.from(result.currentActivityIntent()),
-                ExportMerchantOwnerProfileResponse.from(result.merchantOwnerProfile())
+                ExportMerchantOwnerProfileResponse.from(result.merchantOwnerProfile()),
+                result.merchantPlaceClaims().stream()
+                        .map(ExportMerchantPlaceClaimResponse::from)
+                        .toList(),
+                ExportMerchantVerificationResponse.from(result.merchantVerification()),
+                result.touristOffers().stream().map(ExportTouristOfferResponse::from).toList(),
+                result.touristCoupons().stream().map(ExportTouristCouponResponse::from).toList()
         );
     }
 
@@ -130,6 +148,113 @@ public record UserDataExportResponse(
                     profile.contactPhone(),
                     profile.status(),
                     profile.placeIds()
+            );
+        }
+    }
+
+    public record ExportMerchantVerificationResponse(
+            String legalName,
+            String businessName,
+            String businessRegistrationNumber,
+            MerchantVerificationStatus identityStatus,
+            MerchantVerificationStatus businessStatus,
+            @Schema(nullable = true) String reviewReason,
+            @Schema(nullable = true) LocalDateTime reviewedAt
+    ) {
+        private static ExportMerchantVerificationResponse from(
+                UserDataExportResult.ExportMerchantVerification verification
+        ) {
+            if (verification == null) {
+                return null;
+            }
+            return new ExportMerchantVerificationResponse(
+                    verification.legalName(),
+                    verification.businessName(),
+                    verification.businessRegistrationNumber(),
+                    verification.identityStatus(),
+                    verification.businessStatus(),
+                    verification.reviewReason(),
+                    verification.reviewedAt()
+            );
+        }
+    }
+
+    public record ExportMerchantPlaceClaimResponse(
+            Long id,
+            Long placeId,
+            MerchantPlaceClaimStatus status,
+            String claimReason,
+            @Schema(nullable = true) String reviewReason,
+            @Schema(nullable = true) LocalDateTime reviewedAt,
+            LocalDateTime createdAt
+    ) {
+        private static ExportMerchantPlaceClaimResponse from(
+                UserDataExportResult.ExportMerchantPlaceClaim claim
+        ) {
+            return new ExportMerchantPlaceClaimResponse(
+                    claim.id(),
+                    claim.placeId(),
+                    claim.status(),
+                    claim.claimReason(),
+                    claim.reviewReason(),
+                    claim.reviewedAt(),
+                    claim.createdAt()
+            );
+        }
+    }
+
+    public record ExportTouristOfferResponse(
+            Long id,
+            Long placeId,
+            String title,
+            String description,
+            String benefitDescription,
+            OfferStatus status,
+            LocalDateTime startsAt,
+            LocalDateTime endsAt,
+            int totalQuantity,
+            int issuedQuantity,
+            int couponValidityDays,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+        private static ExportTouristOfferResponse from(UserDataExportResult.ExportTouristOffer offer) {
+            return new ExportTouristOfferResponse(
+                    offer.id(),
+                    offer.placeId(),
+                    offer.title(),
+                    offer.description(),
+                    offer.benefitDescription(),
+                    offer.status(),
+                    offer.startsAt(),
+                    offer.endsAt(),
+                    offer.totalQuantity(),
+                    offer.issuedQuantity(),
+                    offer.couponValidityDays(),
+                    offer.createdAt(),
+                    offer.updatedAt()
+            );
+        }
+    }
+
+    public record ExportTouristCouponResponse(
+            Long id,
+            Long offerId,
+            String code,
+            CouponStatus status,
+            LocalDateTime issuedAt,
+            LocalDateTime expiresAt,
+            @Schema(nullable = true) LocalDateTime redeemedAt
+    ) {
+        private static ExportTouristCouponResponse from(UserDataExportResult.ExportTouristCoupon coupon) {
+            return new ExportTouristCouponResponse(
+                    coupon.id(),
+                    coupon.offerId(),
+                    coupon.code(),
+                    coupon.status(),
+                    coupon.issuedAt(),
+                    coupon.expiresAt(),
+                    coupon.redeemedAt()
             );
         }
     }

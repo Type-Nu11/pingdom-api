@@ -74,6 +74,10 @@ jwt:
   access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS}
   refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS}
 
+merchant:
+  verification:
+    encryption-key: ${MERCHANT_VERIFICATION_ENCRYPTION_KEY}
+
 auth:
   refresh-cookie:
     name: ${AUTH_REFRESH_COOKIE_NAME:PINGDOM_REFRESH_TOKEN}
