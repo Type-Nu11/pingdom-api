@@ -1313,13 +1313,14 @@ class FlywayMigrationIntegrationTest {
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 3
+                    SELECT COUNT(*) = 4
                     FROM pg_constraint
                     WHERE conrelid = 'merchant_place_claim'::regclass
                       AND conname IN (
                           'fk_merchant_place_claim_profile',
                           'fk_merchant_place_claim_place',
-                          'fk_merchant_place_claim_reviewer'
+                          'fk_merchant_place_claim_reviewer',
+                          'fk_merchant_place_claim_previous_owner'
                       )
                       AND contype = 'f'
                     """)).isTrue();
@@ -1331,6 +1332,26 @@ class FlywayMigrationIntegrationTest {
                           AND conname = 'ck_merchant_place_claim_status'
                           AND contype = 'c'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'merchant_place_claim'
+                          AND column_name = 'claim_type'
+                          AND is_nullable = 'NO'
+                          AND character_maximum_length = 30
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_place_claim'::regclass
+                      AND conname IN (
+                          'ck_merchant_place_claim_type',
+                          'ck_merchant_place_claim_transfer_owner'
+                      )
+                      AND contype = 'c'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
