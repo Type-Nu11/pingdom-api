@@ -18,6 +18,7 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimType;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
@@ -25,6 +26,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.time.Clock;
@@ -32,6 +34,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
@@ -50,6 +53,7 @@ class MerchantPlaceClaimAdminServiceTest {
     @Mock private MerchantOwnerPlaceRepository ownerPlaceRepository;
     @Mock private MapPlaceRepository mapPlaceRepository;
     @Mock private AdminAuditLogService auditLogService;
+    @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
 
     @InjectMocks
@@ -65,7 +69,7 @@ class MerchantPlaceClaimAdminServiceTest {
         when(claimRepository.findById(claimId)).thenReturn(Optional.of(claim));
         when(claimRepository.findByIdForUpdate(claimId)).thenReturn(Optional.of(claim));
         when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
-        when(ownerPlaceRepository.existsById(placeId)).thenReturn(false);
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.empty());
 
         var response = claimAdminService.review(99L, claimId, new MerchantPlaceClaimReviewRequest(true, "사업자 확인 완료"));
 
@@ -84,27 +88,61 @@ class MerchantPlaceClaimAdminServiceTest {
     }
 
     @Test
-    void approvalDoesNotTransferAlreadyAssignedPlace() {
+    void approvalTransfersOwnershipWhenSnapshotMatchesCurrentOwner() {
         Long claimId = 100L;
         Long userId = 1L;
         Long placeId = 10L;
-        MerchantPlaceClaim claim = pendingClaim(claimId, userId, placeId);
+        Long previousOwnerUserId = 2L;
+        MerchantPlaceClaim claim = pendingTransferClaim(claimId, userId, previousOwnerUserId, placeId);
+        MerchantOwnerPlace ownerPlace = MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(previousOwnerUserId)
+                .createdAt(LocalDateTime.of(2026, 7, 1, 12, 0))
+                .build();
         stubEligibleMerchantOwner(userId);
         when(claimRepository.findById(claimId)).thenReturn(Optional.of(claim));
         when(claimRepository.findByIdForUpdate(claimId)).thenReturn(Optional.of(claim));
         when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
-        when(ownerPlaceRepository.existsById(placeId)).thenReturn(true);
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(ownerPlace));
 
-        assertThatThrownBy(() -> claimAdminService.review(
+        claimAdminService.review(
                 99L,
                 claimId,
                 new MerchantPlaceClaimReviewRequest(true, "사업자 확인 완료")
-        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
-                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.PLACE_ALREADY_ASSIGNED)
         );
 
-        assertThat(claim.getStatus()).isEqualTo(MerchantPlaceClaimStatus.PENDING);
+        assertThat(claim.getStatus()).isEqualTo(MerchantPlaceClaimStatus.APPROVED);
+        assertThat(ownerPlace.getMerchantOwnerUserId()).isEqualTo(userId);
+        verify(touristOfferRepository).closeAllByMerchantOwnerUserIdAndPlaceIdIn(
+                previousOwnerUserId,
+                Set.of(placeId),
+                LocalDateTime.of(2026, 7, 15, 3, 0)
+        );
         verify(ownerPlaceRepository, never()).save(any());
+    }
+
+    @Test
+    void approvalRejectsTransferWhenOwnershipChangedAfterRequest() {
+        Long claimId = 100L;
+        Long userId = 1L;
+        Long placeId = 10L;
+        MerchantPlaceClaim claim = pendingTransferClaim(claimId, userId, 2L, placeId);
+        stubEligibleMerchantOwner(userId);
+        when(claimRepository.findById(claimId)).thenReturn(Optional.of(claim));
+        when(claimRepository.findByIdForUpdate(claimId)).thenReturn(Optional.of(claim));
+        when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(3L)
+                .createdAt(LocalDateTime.of(2026, 7, 14, 13, 0))
+                .build()));
+
+        assertThatThrownBy(() -> claimAdminService.review(
+                99L, claimId, new MerchantPlaceClaimReviewRequest(true, "사업자 확인 완료")
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.PLACE_OWNERSHIP_CHANGED));
+
+        assertThat(claim.getStatus()).isEqualTo(MerchantPlaceClaimStatus.PENDING);
     }
 
     private MerchantPlaceClaim pendingClaim(Long claimId, Long userId, Long placeId) {
@@ -112,7 +150,27 @@ class MerchantPlaceClaimAdminServiceTest {
                 .id(claimId)
                 .merchantOwnerUserId(userId)
                 .placeId(placeId)
+                .claimType(MerchantPlaceClaimType.INITIAL)
                 .claimReason("매장 운영자")
+                .status(MerchantPlaceClaimStatus.PENDING)
+                .createdAt(LocalDateTime.of(2026, 7, 14, 12, 0))
+                .updatedAt(LocalDateTime.of(2026, 7, 14, 12, 0))
+                .build();
+    }
+
+    private MerchantPlaceClaim pendingTransferClaim(
+            Long claimId,
+            Long userId,
+            Long previousOwnerUserId,
+            Long placeId
+    ) {
+        return MerchantPlaceClaim.builder()
+                .id(claimId)
+                .merchantOwnerUserId(userId)
+                .placeId(placeId)
+                .claimType(MerchantPlaceClaimType.OWNERSHIP_TRANSFER)
+                .previousOwnerUserId(previousOwnerUserId)
+                .claimReason("소유권 이전 요청")
                 .status(MerchantPlaceClaimStatus.PENDING)
                 .createdAt(LocalDateTime.of(2026, 7, 14, 12, 0))
                 .updatedAt(LocalDateTime.of(2026, 7, 14, 12, 0))
