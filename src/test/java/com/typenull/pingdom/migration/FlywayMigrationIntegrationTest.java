@@ -150,6 +150,18 @@ class FlywayMigrationIntegrationTest {
                           'fk_merchant_owner_place_profile'
                       )
                       AND contype = 'f'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'merchant_place_claim'::regclass
+                          AND conname = 'fk_merchant_place_claim_previous_owner'
+                          AND contype = 'f'
+                          AND confrelid = 'merchant_owner_profile'::regclass
+                          AND convalidated = true
+                    )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
@@ -1331,6 +1343,7 @@ class FlywayMigrationIntegrationTest {
                         WHERE conrelid = 'merchant_place_claim'::regclass
                           AND conname = 'ck_merchant_place_claim_status'
                           AND contype = 'c'
+                          AND convalidated = true
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1352,6 +1365,7 @@ class FlywayMigrationIntegrationTest {
                           'ck_merchant_place_claim_transfer_owner'
                       )
                       AND contype = 'c'
+                      AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
