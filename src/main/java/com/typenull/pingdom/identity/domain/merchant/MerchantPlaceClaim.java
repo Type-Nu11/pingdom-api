@@ -33,6 +33,13 @@ public class MerchantPlaceClaim {
     @Column(name = "place_id", nullable = false)
     private Long placeId;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "claim_type", nullable = false, length = 30)
+    private MerchantPlaceClaimType claimType;
+
+    @Column(name = "previous_owner_user_id")
+    private Long previousOwnerUserId;
+
     @Column(name = "claim_reason", nullable = false, length = 500)
     private String claimReason;
 
@@ -58,12 +65,17 @@ public class MerchantPlaceClaim {
     public static MerchantPlaceClaim pending(
             Long merchantOwnerUserId,
             Long placeId,
+            Long previousOwnerUserId,
             String claimReason,
             LocalDateTime now
     ) {
         return MerchantPlaceClaim.builder()
                 .merchantOwnerUserId(merchantOwnerUserId)
                 .placeId(placeId)
+                .claimType(previousOwnerUserId == null
+                        ? MerchantPlaceClaimType.INITIAL
+                        : MerchantPlaceClaimType.OWNERSHIP_TRANSFER)
+                .previousOwnerUserId(previousOwnerUserId)
                 .claimReason(claimReason)
                 .status(MerchantPlaceClaimStatus.PENDING)
                 .createdAt(now)
@@ -97,6 +109,10 @@ public class MerchantPlaceClaim {
 
     public boolean isPending() {
         return status == MerchantPlaceClaimStatus.PENDING;
+    }
+
+    public boolean isOwnershipTransfer() {
+        return claimType == MerchantPlaceClaimType.OWNERSHIP_TRANSFER;
     }
 
     private void requirePending() {

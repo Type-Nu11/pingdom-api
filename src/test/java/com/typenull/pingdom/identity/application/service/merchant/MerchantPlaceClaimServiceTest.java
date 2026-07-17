@@ -14,6 +14,8 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimType;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
@@ -56,7 +58,7 @@ class MerchantPlaceClaimServiceTest {
         Long placeId = 10L;
         stubEligibleMerchantOwner(userId);
         when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
-        when(ownerPlaceRepository.existsById(placeId)).thenReturn(false);
+        when(ownerPlaceRepository.findById(placeId)).thenReturn(Optional.empty());
         when(claimRepository.existsByPlaceIdAndStatus(placeId, MerchantPlaceClaimStatus.PENDING)).thenReturn(false);
         when(claimRepository.save(any(MerchantPlaceClaim.class))).thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -66,6 +68,7 @@ class MerchantPlaceClaimServiceTest {
         verify(claimRepository).save(claimCaptor.capture());
         assertThat(claimCaptor.getValue().getMerchantOwnerUserId()).isEqualTo(userId);
         assertThat(claimCaptor.getValue().getClaimReason()).isEqualTo("해당 매장을 운영합니다.");
+        assertThat(claimCaptor.getValue().getClaimType()).isEqualTo(MerchantPlaceClaimType.INITIAL);
         assertThat(response.status()).isEqualTo(MerchantPlaceClaimStatus.PENDING);
     }
 
@@ -75,7 +78,6 @@ class MerchantPlaceClaimServiceTest {
         Long placeId = 10L;
         stubEligibleMerchantOwner(userId);
         when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
-        when(ownerPlaceRepository.existsById(placeId)).thenReturn(false);
         when(claimRepository.existsByPlaceIdAndStatus(placeId, MerchantPlaceClaimStatus.PENDING)).thenReturn(true);
 
         assertThatThrownBy(() -> claimService.create(userId, new MerchantPlaceClaimRequest(placeId, "매장 운영자")))
@@ -84,6 +86,26 @@ class MerchantPlaceClaimServiceTest {
                 );
 
         verify(claimRepository, never()).save(any());
+    }
+
+    @Test
+    void assignedPlaceCreatesOwnershipTransferClaimWithOwnerSnapshot() {
+        Long userId = 1L;
+        Long previousOwnerUserId = 2L;
+        Long placeId = 10L;
+        stubEligibleMerchantOwner(userId);
+        when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
+        when(claimRepository.existsByPlaceIdAndStatus(placeId, MerchantPlaceClaimStatus.PENDING)).thenReturn(false);
+        when(ownerPlaceRepository.findById(placeId)).thenReturn(Optional.of(MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(previousOwnerUserId)
+                .createdAt(LocalDateTime.of(2026, 7, 1, 12, 0))
+                .build()));
+        when(claimRepository.save(any(MerchantPlaceClaim.class))).thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = claimService.create(userId, new MerchantPlaceClaimRequest(placeId, "소유권 이전 요청"));
+
+        assertThat(response.claimType()).isEqualTo(MerchantPlaceClaimType.OWNERSHIP_TRANSFER);
     }
 
     private void stubEligibleMerchantOwner(Long userId) {
