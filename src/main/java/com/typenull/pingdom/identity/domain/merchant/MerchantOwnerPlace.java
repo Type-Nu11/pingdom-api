@@ -28,4 +28,8 @@ public class MerchantOwnerPlace {
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
+
+    public void transferOwnership(Long newOwnerUserId) {
+        merchantOwnerUserId = newOwnerUserId;
+    }
 }
