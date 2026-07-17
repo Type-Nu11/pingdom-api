@@ -4,14 +4,14 @@ ALTER TABLE merchant_place_claim
 
 ALTER TABLE merchant_place_claim
     ADD CONSTRAINT fk_merchant_place_claim_previous_owner
-        FOREIGN KEY (previous_owner_user_id) REFERENCES merchant_owner_profile (user_id) ON DELETE SET NULL,
+        FOREIGN KEY (previous_owner_user_id) REFERENCES merchant_owner_profile (user_id) ON DELETE SET NULL NOT VALID,
     ADD CONSTRAINT ck_merchant_place_claim_type
-        CHECK (claim_type IN ('INITIAL', 'OWNERSHIP_TRANSFER')),
+        CHECK (claim_type IN ('INITIAL', 'OWNERSHIP_TRANSFER')) NOT VALID,
     ADD CONSTRAINT ck_merchant_place_claim_transfer_owner
         CHECK (
             claim_type = 'OWNERSHIP_TRANSFER'
             OR previous_owner_user_id IS NULL
-        );
+        ) NOT VALID;
 
 ALTER TABLE merchant_place_claim
     ALTER COLUMN claim_type DROP DEFAULT;
