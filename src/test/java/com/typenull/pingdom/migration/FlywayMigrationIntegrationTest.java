@@ -228,6 +228,60 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void backfillsExistingMerchantPlaceClaimBeforeValidatingOwnershipConstraints() throws Exception {
+        migrateTo("41");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            insertMerchantPlaceClaimFixture(statement, false);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM merchant_place_claim
+                        WHERE id = 920001
+                          AND claim_type = 'INITIAL'
+                          AND previous_owner_user_id IS NULL
+                    )
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void validationMigrationRejectsExistingOwnershipConstraintViolation() throws Exception {
+        migrateTo("42");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            insertMerchantPlaceClaimFixture(statement, true);
+            statement.execute("ALTER TABLE merchant_place_claim DROP CONSTRAINT ck_merchant_place_claim_transfer_owner");
+            statement.executeUpdate("""
+                    UPDATE merchant_place_claim
+                    SET previous_owner_user_id = 920002
+                    WHERE id = 920001
+                    """);
+            statement.execute("""
+                    ALTER TABLE merchant_place_claim
+                    ADD CONSTRAINT ck_merchant_place_claim_transfer_owner
+                    CHECK (
+                        claim_type = 'OWNERSHIP_TRANSFER'
+                        OR previous_owner_user_id IS NULL
+                    ) NOT VALID
+                    """);
+        }
+
+        assertThatThrownBy(() -> migrate(false))
+                .hasRootCauseInstanceOf(java.sql.SQLException.class)
+                .hasStackTraceContaining("ck_merchant_place_claim_transfer_owner");
+    }
+
+    @Test
     void touristGuardPreventsLegacyDeleteForScalarOnlyInformation() throws Exception {
         migrate(false);
 
@@ -341,6 +395,63 @@ class FlywayMigrationIntegrationTest {
                 .load();
 
         return flyway.migrate();
+    }
+
+    private MigrateResult migrateTo(String target) {
+        return Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .locations("classpath:db/migration")
+                .configuration(Map.of("flyway.postgresql.transactional.lock", "false"))
+                .target(target)
+                .load()
+                .migrate();
+    }
+
+    private void insertMerchantPlaceClaimFixture(Statement statement, boolean includePreviousOwner) throws Exception {
+        statement.executeUpdate("""
+                INSERT INTO users (
+                    id, username, email, email_verified, password, birth_year,
+                    language, country, created_at, updated_at, role, banned
+                ) VALUES
+                    (920001, 'claim-owner', 'claim-owner@example.com', true, 'password', 1990,
+                     'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'MERCHANT_OWNER', false),
+                    (920002, 'previous-owner', 'previous-owner@example.com', true, 'password', 1991,
+                     'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'MERCHANT_OWNER', false)
+                """);
+        statement.executeUpdate("""
+                INSERT INTO map_place (
+                    map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                ) VALUES (920001, 'Claim 장소', '서울시 중구', 37.5, 127.0, 'claim-owner', 0)
+                """);
+        statement.executeUpdate("""
+                INSERT INTO merchant_owner_profile (
+                    user_id, business_name, display_name, contact_email, contact_phone,
+                    status, created_at, updated_at
+                ) VALUES
+                    (920001, 'Claim 상점', 'Claim 사장님', 'claim-owner@example.com', '010-0000-0001',
+                     'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP),
+                    (920002, '이전 상점', '이전 사장님', 'previous-owner@example.com', '010-0000-0002',
+                     'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)
+                """);
+        if (includePreviousOwner) {
+            statement.executeUpdate("""
+                    INSERT INTO merchant_place_claim (
+                        id, merchant_owner_user_id, place_id, claim_type, previous_owner_user_id,
+                        claim_reason, status, created_at, updated_at
+                    ) VALUES (
+                        920001, 920001, 920001, 'INITIAL', NULL,
+                        '소유권 확인', 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                    """);
+            return;
+        }
+        statement.executeUpdate("""
+                INSERT INTO merchant_place_claim (
+                    id, merchant_owner_user_id, place_id, claim_reason, status, created_at, updated_at
+                ) VALUES (
+                    920001, 920001, 920001, '소유권 확인', 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                )
+                """);
     }
 
     private void executeBaselineSchemaScript() throws Exception {
