@@ -12,7 +12,9 @@ class MerchantPlaceClaimTest {
 
     @Test
     void pendingClaimCanBeApprovedOnce() {
-        MerchantPlaceClaim claim = MerchantPlaceClaim.pending(1L, 10L, "사업장 운영자입니다.", NOW);
+        MerchantPlaceClaim claim = MerchantPlaceClaim.pending(1L, 10L, null, "사업장 운영자입니다.", NOW);
+
+        assertThat(claim.getClaimType()).isEqualTo(MerchantPlaceClaimType.INITIAL);
 
         claim.approve(99L, "사업자 정보 확인", NOW.plusMinutes(5));
 
@@ -26,8 +28,16 @@ class MerchantPlaceClaimTest {
     }
 
     @Test
+    void assignedPlaceCreatesOwnershipTransferClaim() {
+        MerchantPlaceClaim claim = MerchantPlaceClaim.pending(1L, 10L, 2L, "소유권 이전", NOW);
+
+        assertThat(claim.isOwnershipTransfer()).isTrue();
+        assertThat(claim.getPreviousOwnerUserId()).isEqualTo(2L);
+    }
+
+    @Test
     void pendingClaimCanBeCanceledButNotReviewed() {
-        MerchantPlaceClaim claim = MerchantPlaceClaim.pending(1L, 10L, "사업장 운영자입니다.", NOW);
+        MerchantPlaceClaim claim = MerchantPlaceClaim.pending(1L, 10L, null, "사업장 운영자입니다.", NOW);
 
         claim.cancel(NOW.plusMinutes(1));
 

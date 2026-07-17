@@ -164,6 +164,12 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
+        assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties/claimType/enum"))
+                .isNotEmpty();
+        assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties")
+                .has("previousOwnerUserId")).isFalse();
+        assertThat(webDocument.at("/components/schemas/AdminMerchantPlaceClaimResponse/properties/previousOwnerUserId/nullable")
+                .asBoolean()).isTrue();
     }
 
     @Test

@@ -9,6 +9,7 @@ import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
@@ -46,15 +47,19 @@ public class MerchantPlaceClaimService {
         requireEligibleMerchantOwnerForUpdate(userId, now);
         mapPlaceRepository.findByIdForUpdate(request.placeId())
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_NOT_FOUND));
-        if (ownerPlaceRepository.existsById(request.placeId())) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_ALREADY_ASSIGNED);
-        }
         if (claimRepository.existsByPlaceIdAndStatus(request.placeId(), MerchantPlaceClaimStatus.PENDING)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_CLAIM_ALREADY_PENDING);
+        }
+        Long previousOwnerUserId = ownerPlaceRepository.findById(request.placeId())
+                .map(MerchantOwnerPlace::getMerchantOwnerUserId)
+                .orElse(null);
+        if (userId.equals(previousOwnerUserId)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_ALREADY_ASSIGNED_TO_REQUESTER);
         }
         MerchantPlaceClaim claim = claimRepository.save(MerchantPlaceClaim.pending(
                 userId,
                 request.placeId(),
+                previousOwnerUserId,
                 request.reason().trim(),
                 now
         ));

@@ -23,10 +23,12 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -45,6 +47,7 @@ public class MerchantPlaceClaimAdminService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService auditLogService;
+    private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -109,15 +112,32 @@ public class MerchantPlaceClaimAdminService {
     private void approveClaim(MerchantPlaceClaim claim, Long adminUserId, String reason, LocalDateTime now) {
         mapPlaceRepository.findByIdForUpdate(claim.getPlaceId())
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_NOT_FOUND));
-        if (ownerPlaceRepository.existsById(claim.getPlaceId())) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_ALREADY_ASSIGNED);
-        }
+        MerchantOwnerPlace currentOwner = ownerPlaceRepository.findByPlaceIdForUpdate(claim.getPlaceId())
+                .orElse(null);
+        validateOwnershipSnapshot(claim, currentOwner);
         claim.approve(adminUserId, reason, now);
-        ownerPlaceRepository.save(MerchantOwnerPlace.builder()
-                .placeId(claim.getPlaceId())
-                .merchantOwnerUserId(claim.getMerchantOwnerUserId())
-                .createdAt(now)
-                .build());
+        if (currentOwner == null) {
+            ownerPlaceRepository.save(MerchantOwnerPlace.builder()
+                    .placeId(claim.getPlaceId())
+                    .merchantOwnerUserId(claim.getMerchantOwnerUserId())
+                    .createdAt(now)
+                    .build());
+        } else {
+            Long previousOwnerUserId = currentOwner.getMerchantOwnerUserId();
+            currentOwner.transferOwnership(claim.getMerchantOwnerUserId());
+            touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(
+                    previousOwnerUserId,
+                    Set.of(claim.getPlaceId()),
+                    now
+            );
+        }
+    }
+
+    private void validateOwnershipSnapshot(MerchantPlaceClaim claim, MerchantOwnerPlace currentOwner) {
+        Long currentOwnerUserId = currentOwner == null ? null : currentOwner.getMerchantOwnerUserId();
+        if (!java.util.Objects.equals(claim.getPreviousOwnerUserId(), currentOwnerUserId)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_OWNERSHIP_CHANGED);
+        }
     }
 
     private void requireEligibleMerchantOwnerForUpdate(Long userId, LocalDateTime now) {
@@ -165,6 +185,7 @@ public class MerchantPlaceClaimAdminService {
                 Map.of(
                         "status", claim.getStatus(),
                         "merchantOwnerUserId", claim.getMerchantOwnerUserId(),
+                        "previousOwnerUserId", String.valueOf(claim.getPreviousOwnerUserId()),
                         "placeId", claim.getPlaceId()
                 )
         );
