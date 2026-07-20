@@ -19,6 +19,7 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -71,6 +72,9 @@ class AdminSecurityTest {
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
+
+    @Autowired
+    private Clock clock;
 
     @BeforeEach
     void setUp() {
@@ -186,6 +190,25 @@ class AdminSecurityTest {
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
                 .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
+    }
+
+    @Test
+    void adminAuditScenarioRejectsWithdrawnAdminExistingToken() throws Exception {
+        SecurityRegressionFixture fixture = securityRegressionFixture();
+
+        User withdrawnAdmin = userRepository.findById(fixture.withdrawnAdminId()).orElseThrow();
+        withdrawnAdmin.withdraw(
+                "withdrawn_admin_" + withdrawnAdmin.getId(),
+                "withdrawn_admin_%d@withdrawn.local".formatted(withdrawnAdmin.getId()),
+                "encoded-withdrawn-password",
+                LocalDateTime.now(clock)
+        );
+        userRepository.saveAndFlush(withdrawnAdmin);
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.withdrawnAdminAccessToken()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
