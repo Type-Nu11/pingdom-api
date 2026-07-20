@@ -17,6 +17,8 @@ import org.springframework.stereotype.Repository;
 @Repository
 public interface PostReportRepository extends JpaRepository<PostReport, Long> {
 
+    long countByStatus(PostReportStatus status);
+
     boolean existsByReporterUserIdAndMapImage_Id(Long reporterUserId, Long mapImageId);
 
     @EntityGraph(attributePaths = "mapImage")

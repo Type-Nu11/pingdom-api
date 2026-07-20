@@ -94,6 +94,38 @@ class AdminSecurityTest {
     }
 
     @Test
+    void adminDashboardSummaryRejectsUnauthenticatedUser() throws Exception {
+        mockMvc.perform(get("/admin/dashboard/summary"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void adminDashboardSummaryRejectsNonAdminUser() throws Exception {
+        createUser("dashboardNormalUser", UserRole.USER);
+        String accessToken = loginAndGetAccessToken("dashboardNormalUser");
+
+        mockMvc.perform(get("/admin/dashboard/summary")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void adminDashboardSummaryAllowsAdminUser() throws Exception {
+        createUser("dashboardAdmin", UserRole.ADMIN);
+        String accessToken = loginAndGetAccessToken("dashboardAdmin");
+
+        mockMvc.perform(get("/admin/dashboard/summary")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeCount").value(0))
+                .andExpect(jsonPath("$.postCount").value(0))
+                .andExpect(jsonPath("$.pendingReportCount").value(0))
+                .andExpect(jsonPath("$.bannedUserCount").value(0));
+    }
+
+    @Test
     void adminLoginRejectsNonAdminUser() throws Exception {
         createUser("normalAdminPageUser", UserRole.USER);
         LoginRequest loginRequest = new LoginRequest("normalAdminPageUser", "password123");

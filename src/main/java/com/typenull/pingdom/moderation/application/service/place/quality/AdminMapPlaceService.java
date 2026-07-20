@@ -84,6 +84,7 @@ import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.observability.PlaceDiscoveryMetrics;
 import com.typenull.pingdom.shared.observability.PlaceInformationMetrics;
+import com.typenull.pingdom.verification.infrastructure.LocationCheckInRepository;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -121,6 +122,7 @@ public class AdminMapPlaceService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceEventRepository placeEventRepository;
+    private final LocationCheckInRepository locationCheckInRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final AdminPostService adminPostService;
@@ -148,6 +150,9 @@ public class AdminMapPlaceService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
         if (placeEventRepository.existsByPlace_Id(placeId)) {
             throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
+        }
+        if (locationCheckInRepository.existsByPlaceId(placeId)) {
+            throw new AdminException(AdminErrorCode.PLACE_CHECK_IN_CONNECTED);
         }
         Map<String, Object> beforeState = placeState(mapPlace);
         List<Long> linkedPostIds = mapImageRepository.findIdsByMapPlaceId(placeId);
@@ -756,6 +761,9 @@ public class AdminMapPlaceService {
 
         if (placeEventRepository.existsByPlace_Id(sourcePlace.getId())) {
             throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
+        }
+        if (locationCheckInRepository.existsByPlaceId(sourcePlace.getId())) {
+            throw new AdminException(AdminErrorCode.PLACE_CHECK_IN_CONNECTED);
         }
         if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
