@@ -16,6 +16,11 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapP
 import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.geocoding.AdminMapPlaceGeocodingUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.geocoding.AdminMapPlaceGeocodingUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.information.AdminPlaceInformationEvidenceCreateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.information.AdminPlaceInformationEvidenceItem;
+import com.typenull.pingdom.moderation.api.dto.place.quality.information.AdminPlaceInformationEvidenceResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.information.AdminPlaceInformationEvidenceReviewRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.information.AdminPlaceInformationEvidenceUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.kakao.AdminMapPlaceKakaoPlaceIdUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.kakao.AdminMapPlaceKakaoPlaceIdUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingStatusUpdateRequest;
@@ -51,6 +56,9 @@ import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationEvidence;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
@@ -61,17 +69,21 @@ import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommen
 import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationEvidenceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.place.outbox.PlaceRecommendationResyncOutboxPayload;
+import com.typenull.pingdom.place.outbox.PlaceInformationEvidenceSubmittedOutboxPayload;
+import com.typenull.pingdom.place.outbox.PlaceInformationVerificationUpdatedOutboxPayload;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.observability.PlaceDiscoveryMetrics;
+import com.typenull.pingdom.shared.observability.PlaceInformationMetrics;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -116,6 +128,7 @@ public class AdminMapPlaceService {
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
+    private final PlaceInformationEvidenceRepository placeInformationEvidenceRepository;
     private final PlaceRecommendationPolicyService placeRecommendationPolicyService;
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
     private final OutboxEventPublisher outboxEventPublisher;
@@ -127,6 +140,7 @@ public class AdminMapPlaceService {
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
     private final PlaceDiscoveryMetrics placeDiscoveryMetrics;
+    private final PlaceInformationMetrics placeInformationMetrics;
 
     @Transactional
     public void deletePlace(long placeId, Long adminUserId) {
@@ -550,6 +564,133 @@ public class AdminMapPlaceService {
                 mapPlace.getId(),
                 mapPlace.getDiscoveryStatus(),
                 "장소 탐색 노출 상태를 수정했습니다."
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPlaceInformationEvidenceResponse getPlaceInformationEvidence(Long placeId) {
+        if (!mapPlaceRepository.existsById(placeId)) {
+            throw new AdminException(AdminErrorCode.PLACE_NOT_FOUND);
+        }
+        List<AdminPlaceInformationEvidenceItem> evidences = placeInformationEvidenceRepository
+                .findAllByPlace_IdOrderByUpdatedAtDescIdDesc(placeId)
+                .stream()
+                .map(AdminPlaceInformationEvidenceItem::from)
+                .toList();
+        return new AdminPlaceInformationEvidenceResponse(placeId, evidences);
+    }
+
+    @Transactional
+    public AdminPlaceInformationEvidenceUpdateResponse createPlaceInformationEvidence(
+            Long adminUserId,
+            Long placeId,
+            AdminPlaceInformationEvidenceCreateRequest request
+    ) {
+        if (request == null || request.sourceType() == null || request.evidenceType() == null) {
+            throw new AdminException(AdminErrorCode.PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        LocalDateTime now = LocalDateTime.now(clock);
+        Long submittedByUserId = request.submittedByUserId() == null ? adminUserId : request.submittedByUserId();
+        PlaceInformationEvidence evidence;
+        try {
+            evidence = PlaceInformationEvidence.submit(
+                    mapPlace,
+                    request.sourceType(),
+                    request.evidenceType(),
+                    request.externalReference(),
+                    request.referenceUrl(),
+                    request.description(),
+                    submittedByUserId,
+                    now
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new AdminException(AdminErrorCode.PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST);
+        }
+        if (request.sourceType() == PlaceInformationSourceType.MERCHANT_OWNER) {
+            evidence.markOwnerSubmitted(now);
+        }
+        PlaceInformationEvidence savedEvidence = placeInformationEvidenceRepository.save(evidence);
+        mapPlace.updateInformationVerification(
+                savedEvidence.getSourceType(),
+                savedEvidence.getVerificationStatus(),
+                null,
+                null,
+                now
+        );
+
+        Map<String, Object> afterState = informationEvidenceState(savedEvidence);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_INFORMATION_EVIDENCE_UPDATED,
+                AdminAuditTargetType.PLACE_INFORMATION_EVIDENCE,
+                savedEvidence.getId(),
+                "PLACE_INFORMATION_EVIDENCE_CREATED",
+                Map.of(),
+                afterState
+        );
+        placeInformationMetrics.recordEvidenceSubmitted(savedEvidence.getSourceType());
+        publishEvidenceSubmittedEvent(mapPlace.getId(), savedEvidence);
+
+        return new AdminPlaceInformationEvidenceUpdateResponse(
+                AdminPlaceInformationEvidenceItem.from(savedEvidence),
+                "장소 정보 증빙을 등록했습니다."
+        );
+    }
+
+    @Transactional
+    public AdminPlaceInformationEvidenceUpdateResponse reviewPlaceInformationEvidence(
+            Long adminUserId,
+            Long placeId,
+            Long evidenceId,
+            AdminPlaceInformationEvidenceReviewRequest request
+    ) {
+        if (request == null || request.verificationStatus() == null) {
+            throw new AdminException(AdminErrorCode.PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST);
+        }
+        if (request.verificationStatus() != PlaceInformationVerificationStatus.ADMIN_VERIFIED
+                && request.verificationStatus() != PlaceInformationVerificationStatus.REJECTED) {
+            throw new AdminException(AdminErrorCode.PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        PlaceInformationEvidence evidence = placeInformationEvidenceRepository.findWithLockByIdAndPlace_Id(evidenceId, placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_INFORMATION_EVIDENCE_NOT_FOUND));
+        Map<String, Object> beforeState = informationEvidenceState(evidence);
+        PlaceInformationVerificationStatus beforeStatus = evidence.getVerificationStatus();
+        LocalDateTime now = LocalDateTime.now(clock);
+
+        try {
+            if (request.verificationStatus() == PlaceInformationVerificationStatus.ADMIN_VERIFIED) {
+                evidence.verifyByAdmin(adminUserId, request.reviewReason(), now);
+                mapPlace.updateInformationVerification(evidence.getSourceType(), evidence.getVerificationStatus(), adminUserId, now, now);
+            } else {
+                evidence.reject(adminUserId, request.reviewReason(), now);
+                mapPlace.updateInformationVerification(evidence.getSourceType(), evidence.getVerificationStatus(), null, null, now);
+            }
+        } catch (IllegalArgumentException exception) {
+            throw new AdminException(AdminErrorCode.PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST);
+        }
+
+        Map<String, Object> afterState = informationEvidenceState(evidence);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_INFORMATION_VERIFICATION_UPDATED,
+                AdminAuditTargetType.PLACE_INFORMATION_EVIDENCE,
+                evidence.getId(),
+                request.reviewReason(),
+                beforeState,
+                afterState
+        );
+        placeInformationMetrics.recordVerificationStatusUpdate(beforeStatus, evidence.getVerificationStatus());
+        publishVerificationUpdatedEvent(mapPlace.getId(), evidence, beforeStatus);
+
+        return new AdminPlaceInformationEvidenceUpdateResponse(
+                AdminPlaceInformationEvidenceItem.from(evidence),
+                "장소 정보 증빙 검토 상태를 수정했습니다."
         );
     }
 
@@ -996,6 +1137,63 @@ public class AdminMapPlaceService {
         state.put("placeId", place.getId());
         state.put("discoveryStatus", place.getDiscoveryStatus());
         return state;
+    }
+
+    private Map<String, Object> informationEvidenceState(PlaceInformationEvidence evidence) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("evidenceId", evidence.getId());
+        state.put("placeId", evidence.getPlace().getId());
+        state.put("sourceType", evidence.getSourceType());
+        state.put("evidenceType", evidence.getEvidenceType());
+        state.put("verificationStatus", evidence.getVerificationStatus());
+        state.put("submittedByUserId", evidence.getSubmittedByUserId());
+        state.put("reviewedByAdminUserId", evidence.getReviewedByAdminUserId());
+        state.put("submittedAt", evidence.getSubmittedAt());
+        state.put("reviewedAt", evidence.getReviewedAt());
+        state.put("updatedAt", evidence.getUpdatedAt());
+        return state;
+    }
+
+    private void publishEvidenceSubmittedEvent(Long placeId, PlaceInformationEvidence evidence) {
+        outboxEventPublisher.publish(
+                "place-information-evidence-submitted:" + evidence.getId(),
+                OutboxEventType.PLACE_INFORMATION_EVIDENCE_SUBMITTED,
+                new PlaceInformationEvidenceSubmittedOutboxPayload(
+                        placeId,
+                        evidence.getId(),
+                        evidence.getSourceType(),
+                        evidence.getEvidenceType(),
+                        evidence.getSubmittedByUserId(),
+                        evidence.getSubmittedAt()
+                ),
+                "PLACE",
+                String.valueOf(placeId)
+        );
+    }
+
+    private void publishVerificationUpdatedEvent(
+            Long placeId,
+            PlaceInformationEvidence evidence,
+            PlaceInformationVerificationStatus beforeStatus
+    ) {
+        outboxEventPublisher.publish(
+                "place-information-verification-updated:%d:%s:%s".formatted(
+                        evidence.getId(),
+                        evidence.getVerificationStatus(),
+                        evidence.getUpdatedAt()
+                ),
+                OutboxEventType.PLACE_INFORMATION_VERIFICATION_UPDATED,
+                new PlaceInformationVerificationUpdatedOutboxPayload(
+                        placeId,
+                        evidence.getId(),
+                        beforeStatus,
+                        evidence.getVerificationStatus(),
+                        evidence.getReviewedByAdminUserId(),
+                        evidence.getReviewedAt()
+                ),
+                "PLACE",
+                String.valueOf(placeId)
+        );
     }
 
     private Map<String, Object> operatingScheduleState(MapPlace place) {
