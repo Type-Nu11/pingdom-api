@@ -39,19 +39,19 @@ public class DevAdminSeedConfig {
     @Value("${seed.admin.enabled:true}")
     private boolean adminSeedEnabled;
 
-    @Value("${seed.admin.username}")
+    @Value("${seed.admin.username:admin}")
     private String adminUsername;
 
-    @Value("${seed.admin.email}")
+    @Value("${seed.admin.email:admin@pingdom.local}")
     private String adminEmail;
 
-    @Value("${seed.admin.password}")
+    @Value("${seed.admin.password:admin1234!}")
     private String adminPassword;
 
     @Value("${seed.dev-data.enabled:true}")
     private boolean devDataSeedEnabled;
 
-    @Value("${seed.dev-data.user-password}")
+    @Value("${seed.dev-data.user-password:user1234!}")
     private String devUserPassword;
 
     @Bean
@@ -69,12 +69,8 @@ public class DevAdminSeedConfig {
             }
 
             transactionTemplate.executeWithoutResult(status -> {
-                if (!StringUtils.hasText(adminUsername)
-                        || !StringUtils.hasText(adminEmail)
-                        || !StringUtils.hasText(adminPassword)) {
-                    log.warn("Dev admin seed 스킵: 필수 관리자 정보(username, email, password) 중 일부가 비어있습니다.");
-                    return;
-                }
+                validateAdminConfig();
+
                 if (userRepository.existsByUsername(adminUsername)) {
                     log.info("Dev admin seed 스킵: 이미 존재하는 username 입니다. username={}", adminUsername);
                     return;
@@ -96,7 +92,7 @@ public class DevAdminSeedConfig {
                         .build();
 
                 userRepository.save(admin);
-                log.info("Dev admin user seeded. username={} (password는 seed.admin.* 설정으로 변경 가능합니다)", adminUsername);
+                log.info("Dev admin user seeded. username={}", adminUsername);
             });
         };
     }
@@ -124,88 +120,19 @@ public class DevAdminSeedConfig {
                     return;
                 }
 
-                User tourist01 = seedUser(
-                        userRepository,
-                        passwordEncoder,
-                        "tourist01",
-                        "tourist01@local",
-                        "KR",
-                        UserRole.USER,
-                        Set.of(TravelPurpose.K_POP, TravelPurpose.CAFE)
-                );
-                User tourist02 = seedUser(
-                        userRepository,
-                        passwordEncoder,
-                        "tourist02",
-                        "tourist02@local",
-                        "JP",
-                        UserRole.USER,
-                        Set.of(TravelPurpose.BEAUTY, TravelPurpose.FASHION)
-                );
-                User merchant01 = seedUser(
-                        userRepository,
-                        passwordEncoder,
-                        "merchant01",
-                        "merchant01@local",
-                        "KR",
-                        UserRole.MERCHANT_OWNER,
-                        Set.of(TravelPurpose.FOOD, TravelPurpose.POP_UP)
-                );
+                User tourist01 = seedUser(userRepository, passwordEncoder, "tourist01", "tourist01@local", "KR", UserRole.USER, Set.of(TravelPurpose.K_POP, TravelPurpose.CAFE));
+                User tourist02 = seedUser(userRepository, passwordEncoder, "tourist02", "tourist02@local", "JP", UserRole.USER, Set.of(TravelPurpose.BEAUTY, TravelPurpose.FASHION));
+                User merchant01 = seedUser(userRepository, passwordEncoder, "merchant01", "merchant01@local", "KR", UserRole.MERCHANT_OWNER, Set.of(TravelPurpose.FOOD, TravelPurpose.POP_UP));
 
                 List<MapPlace> places = List.of(
-                        seedPlace(
-                                mapPlaceRepository,
-                                "dev-seed-place-001",
-                                "핑덤 성수 팝업",
-                                "서울 성동구 연무장길 17",
-                                "서울 성동구 연무장길 17",
-                                "서울 성동구 성수동2가 314-5",
-                                "04782",
-                                "팝업스토어",
-                                "Pingdom Seongsu Pop-up",
-                                "성수동 팝업과 전시 테스트에 사용하는 개발용 장소입니다.",
-                                37.544579,
-                                127.055978,
-                                merchant01,
-                                Set.of(TouristCategory.POP_UP, TouristCategory.FASHION)
-                        ),
-                        seedPlace(
-                                mapPlaceRepository,
-                                "dev-seed-place-002",
-                                "핑덤 한남 카페",
-                                "서울 용산구 이태원로54길 58",
-                                "서울 용산구 이태원로54길 58",
-                                "서울 용산구 한남동 683-134",
-                                "04400",
-                                "카페",
-                                "Pingdom Hannam Cafe",
-                                "카페 추천과 북마크 테스트에 사용하는 개발용 장소입니다.",
-                                37.536259,
-                                127.000245,
-                                tourist01,
-                                Set.of(TouristCategory.CAFE, TouristCategory.BEAUTY)
-                        ),
-                        seedPlace(
-                                mapPlaceRepository,
-                                "dev-seed-place-003",
-                                "핑덤 홍대 라이브홀",
-                                "서울 마포구 와우산로21길 19-3",
-                                "서울 마포구 와우산로21길 19-3",
-                                "서울 마포구 서교동 364-22",
-                                "04041",
-                                "공연장",
-                                "Pingdom Hongdae Live Hall",
-                                "K-pop, nightlife 추천 테스트에 사용하는 개발용 장소입니다.",
-                                37.552145,
-                                126.922764,
-                                tourist02,
-                                Set.of(TouristCategory.K_POP, TouristCategory.NIGHTLIFE)
-                        )
+                        seedPlace(mapPlaceRepository, "dev-seed-place-001", "핑덤 성수 팝업", "서울 성동구 연무장길 17", "서울 성동구 연무장길 17", "서울 성동구 성수동2가 314-5", "04782", "팝업스토어", "Pingdom Seongsu Pop-up", "성수동 팝업과 전시 테스트에 사용하는 개발용 장소입니다.", 37.544579, 127.055978, merchant01, Set.of(TouristCategory.POP_UP, TouristCategory.FASHION)),
+                        seedPlace(mapPlaceRepository, "dev-seed-place-002", "핑덤 한남 카페", "서울 용산구 이태원로54길 58", "서울 용산구 이태원로54길 58", "서울 용산구 한남동 683-134", "04400", "카페", "Pingdom Hannam Cafe", "카페 추천과 북마크 테스트에 사용하는 개발용 장소입니다.", 37.536259, 127.000245, tourist01, Set.of(TouristCategory.CAFE, TouristCategory.BEAUTY)),
+                        seedPlace(mapPlaceRepository, "dev-seed-place-003", "핑덤 홍대 라이브홀", "서울 마포구 와우산로21길 19-3", "서울 마포구 와우산로21길 19-3", "서울 마포구 서교동 364-22", "04041", "공연장", "Pingdom Hongdae Live Hall", "K-pop, nightlife 추천 테스트에 사용하는 개발용 장소입니다.", 37.552145, 126.922764, tourist02, Set.of(TouristCategory.K_POP, TouristCategory.NIGHTLIFE))
                 );
 
-                seedImage(mapImageRepository, places.get(0), tourist01, "성수 팝업 방문", 12L);
-                seedImage(mapImageRepository, places.get(1), tourist02, "한남 카페 라떼", 7L);
-                seedImage(mapImageRepository, places.get(2), tourist01, "홍대 라이브 공연", 19L);
+                seedImage(mapImageRepository, mapPlaceRepository, places.get(0), tourist01, "성수 팝업 방문", 12L);
+                seedImage(mapImageRepository, mapPlaceRepository, places.get(1), tourist02, "한남 카페 라떼", 7L);
+                seedImage(mapImageRepository, mapPlaceRepository, places.get(2), tourist01, "홍대 라이브 공연", 19L);
 
                 seedBookmark(mapBookmarkRepository, tourist01, places.get(1));
                 seedBookmark(mapBookmarkRepository, tourist01, places.get(2));
@@ -214,6 +141,12 @@ public class DevAdminSeedConfig {
                 log.info("Dev data seeded. users=[tourist01,tourist02,merchant01], places={}", places.size());
             });
         };
+    }
+
+    private void validateAdminConfig() {
+        if (!StringUtils.hasText(adminUsername) || !StringUtils.hasText(adminEmail) || !StringUtils.hasText(adminPassword)) {
+            throw new IllegalArgumentException("Dev admin seed 필수 설정(username, email, password)이 비어있습니다.");
+        }
     }
 
     private User seedUser(
@@ -256,33 +189,31 @@ public class DevAdminSeedConfig {
             Set<TouristCategory> touristCategories
     ) {
         return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
-                .orElseGet(() -> {
-                    MapPlace place = MapPlace.builder()
-                            .name(name)
-                            .address(address)
-                            .roadAddress(roadAddress)
-                            .jibunAddress(jibunAddress)
-                            .postalCode(postalCode)
-                            .geocodingSource(GeocodingSource.ADMIN)
-                            .operatingStatus(PlaceOperatingStatus.OPERATING)
-                            .category(category)
-                            .englishName(englishName)
-                            .touristSummary(touristSummary)
-                            .touristCategories(touristCategories)
-                            .imageUrl("https://cdn.pingdom.local/dev/" + kakaoPlaceId + ".jpg")
-                            .kakaoPlaceId(kakaoPlaceId)
-                            .latitude(latitude)
-                            .longitude(longitude)
-                            .location(WGS84.createPoint(new Coordinate(longitude, latitude)))
-                            .userId(user.getId())
-                            .registrant(user.getUsername())
-                            .build();
-                    return mapPlaceRepository.save(place);
-                });
+                .orElseGet(() -> mapPlaceRepository.save(MapPlace.builder()
+                        .name(name)
+                        .address(address)
+                        .roadAddress(roadAddress)
+                        .jibunAddress(jibunAddress)
+                        .postalCode(postalCode)
+                        .geocodingSource(GeocodingSource.ADMIN)
+                        .operatingStatus(PlaceOperatingStatus.OPERATING)
+                        .category(category)
+                        .englishName(englishName)
+                        .touristSummary(touristSummary)
+                        .touristCategories(touristCategories)
+                        .imageUrl("https://cdn.pingdom.local/dev/" + kakaoPlaceId + ".jpg")
+                        .kakaoPlaceId(kakaoPlaceId)
+                        .latitude(latitude)
+                        .longitude(longitude)
+                        .location(WGS84.createPoint(new Coordinate(longitude, latitude)))
+                        .userId(user.getId())
+                        .registrant(user.getUsername())
+                        .build()));
     }
 
     private void seedImage(
             MapImageRepository mapImageRepository,
+            MapPlaceRepository mapPlaceRepository,
             MapPlace place,
             User user,
             String title,
@@ -307,6 +238,7 @@ public class DevAdminSeedConfig {
 
         mapImageRepository.save(image);
         place.increasePhotoCount();
+        mapPlaceRepository.save(place);
     }
 
     private void seedBookmark(
@@ -314,13 +246,11 @@ public class DevAdminSeedConfig {
             User user,
             MapPlace place
     ) {
-        if (mapBookmarkRepository.existsByUserIdAndPlaceId(user.getId(), place.getId())) {
-            return;
+        if (!mapBookmarkRepository.existsByUserIdAndPlaceId(user.getId(), place.getId())) {
+            mapBookmarkRepository.save(MapBookmark.builder()
+                    .userId(user.getId())
+                    .placeId(place.getId())
+                    .build());
         }
-
-        mapBookmarkRepository.save(MapBookmark.builder()
-                .userId(user.getId())
-                .placeId(place.getId())
-                .build());
     }
 }
