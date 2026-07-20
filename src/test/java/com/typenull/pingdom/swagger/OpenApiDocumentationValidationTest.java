@@ -263,6 +263,43 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void placeDiscoveryFilterSortContractsAreDocumented() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        JsonNode listPlacesOperation = appDocument.at("/paths/~1places/get");
+        assertThat(listPlacesOperation.isMissingNode()).isFalse();
+        assertThat(parameter(listPlacesOperation, "touristCategory").path("example").asText()).isEqualTo("K_POP");
+        assertThat(parameter(listPlacesOperation, "sort").path("description").asText())
+                .contains("LATEST", "NEAREST", "POPULAR");
+        assertThat(listPlacesOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/PlaceListResponse");
+
+        JsonNode placeListItemProperties = appDocument.at("/components/schemas/PlaceListItem/properties");
+        assertThat(placeListItemProperties.has("touristCategories")).isTrue();
+        assertThat(placeListItemProperties.has("distanceMeters")).isTrue();
+
+        JsonNode clickRequestSchema = appDocument.at("/components/schemas/PlaceRecommendationClickRequest");
+        assertThat(requiredFields(clickRequestSchema))
+                .contains("placeId", "recommendationVersion", "requestId");
+
+        assertThat(appDocument.path("paths").has("/admin/places/{id}/discovery-status")).isFalse();
+        JsonNode discoveryStatusOperation = webDocument.at("/paths/~1admin~1places~1{id}~1discovery-status/patch");
+        assertThat(discoveryStatusOperation.isMissingNode()).isFalse();
+        assertThat(discoveryStatusOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminMapPlaceDiscoveryStatusUpdateRequest");
+        assertThat(discoveryStatusOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminMapPlaceDiscoveryStatusUpdateResponse");
+
+        JsonNode discoveryRequestSchema = webDocument.at("/components/schemas/AdminMapPlaceDiscoveryStatusUpdateRequest");
+        assertThat(requiredFields(discoveryRequestSchema)).contains("discoveryStatus", "reason");
+        assertThat(resolveSchema(webDocument, discoveryRequestSchema.at("/properties/discoveryStatus"))
+                .path("enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("VISIBLE", "HIDDEN");
+    }
+
+    @Test
     void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
@@ -401,6 +438,21 @@ class OpenApiDocumentationValidationTest {
         assertThat(property.path("nullable").asBoolean())
                 .as("%s.%s must allow null", schemaName, propertyName)
                 .isTrue();
+    }
+
+    private JsonNode parameter(JsonNode operation, String parameterName) {
+        for (JsonNode parameter : operation.path("parameters")) {
+            if (parameterName.equals(parameter.path("name").asText())) {
+                return parameter;
+            }
+        }
+        return objectMapper.missingNode();
+    }
+
+    private List<String> requiredFields(JsonNode schema) {
+        List<String> fields = new ArrayList<>();
+        schema.path("required").forEach(field -> fields.add(field.asText()));
+        return fields;
     }
 
     private void validateContentExamples(
