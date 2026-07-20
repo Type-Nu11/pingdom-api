@@ -61,7 +61,10 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import com.typenull.pingdom.verification.domain.LocationCheckIn;
+import com.typenull.pingdom.verification.infrastructure.LocationCheckInRepository;
 import io.micrometer.core.instrument.MeterRegistry;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -103,6 +106,9 @@ class AdminMapPlaceControllerTest {
 
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
+
+    @Autowired
+    private LocationCheckInRepository locationCheckInRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
@@ -164,6 +170,7 @@ class AdminMapPlaceControllerTest {
         placeRecommendationTrafficPolicyRepository.deleteAllInBatch();
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         adminPlaceMergeHistoryRepository.deleteAllInBatch();
+        locationCheckInRepository.deleteAllInBatch();
         clearOperatingScheduleRows();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -625,6 +632,46 @@ class AdminMapPlaceControllerTest {
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
                 .anyMatch(log -> log.getBeforeState().contains("\"operatingStatus\":\"OPERATING\"")));
+    }
+
+    @Test
+    void deletePlaceReturnsConflictWhenLocationCheckInExists() throws Exception {
+        String accessToken = createAdminAndLogin();
+        String touristUsername = "checkInTourist" + ADMIN_SEQUENCE.incrementAndGet();
+        User tourist = userRepository.saveAndFlush(User.builder()
+                .username(touristUsername)
+                .email(touristUsername + "@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+        MapPlace mapPlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("체크인 이력 연결 장소")
+                .address("경상남도 진주시 체크인로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(tourist.getId())
+                .registrant(touristUsername)
+                .build());
+        Instant checkedInAt = Instant.parse("2026-07-20T01:00:00Z");
+        locationCheckInRepository.saveAndFlush(LocationCheckIn.proximityMatched(
+                tourist.getId(),
+                mapPlace.getId(),
+                LocalDate.of(2026, 7, 20),
+                checkedInAt,
+                checkedInAt,
+                10.0
+        ));
+
+        mockMvc.perform(delete("/admin/places/{id}/delete", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PLACE_CHECK_IN_CONNECTED"));
+
+        assertTrue(mapPlaceRepository.existsById(mapPlace.getId()));
+        assertTrue(locationCheckInRepository.existsByPlaceId(mapPlace.getId()));
     }
 
     @Test

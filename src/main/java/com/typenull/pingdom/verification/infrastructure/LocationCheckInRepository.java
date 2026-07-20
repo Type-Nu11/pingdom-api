@@ -7,6 +7,7 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 public interface LocationCheckInRepository extends JpaRepository<LocationCheckIn, Long> {
+    boolean existsByPlaceId(Long placeId);
     boolean existsByTouristUserIdAndPlaceIdAndCheckInDate(Long touristUserId, Long placeId, LocalDate checkInDate);
     Page<LocationCheckIn> findAllByTouristUserId(Long touristUserId, Pageable pageable);
 }
