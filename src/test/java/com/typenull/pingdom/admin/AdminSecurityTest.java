@@ -13,6 +13,7 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.BeforeEach;
@@ -57,6 +58,9 @@ class AdminSecurityTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
@@ -64,6 +68,7 @@ class AdminSecurityTest {
 
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
