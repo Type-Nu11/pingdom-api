@@ -42,11 +42,6 @@ ALTER TABLE reservation
     ADD CONSTRAINT ck_reservation_product_type
         CHECK (product_type IN ('GENERAL', 'TICKET', 'CLASS')) NOT VALID;
 
-ALTER TABLE place_availability VALIDATE CONSTRAINT ck_place_availability_product_type;
-ALTER TABLE reservation VALIDATE CONSTRAINT ck_reservation_product_type;
-ALTER TABLE place_availability ALTER COLUMN product_type SET NOT NULL;
-ALTER TABLE reservation ALTER COLUMN product_type SET NOT NULL;
-
 ALTER TABLE place_availability DROP CONSTRAINT uq_place_availability_owner_slot;
 
 CREATE UNIQUE INDEX uq_place_availability_legacy_slot

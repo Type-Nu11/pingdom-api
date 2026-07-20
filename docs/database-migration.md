@@ -156,6 +156,9 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 유지한다. 신규 티켓·클래스 슬롯은 상품 ID로 구분하므로 같은 장소와 시간대에 동일 유형의 서로 다른
 상품을 등록할 수 있다.
 
+`V48`은 `V47`에서 `NOT VALID`로 추가한 상품 참조와 유형 제약을 별도 transaction에서 검증하고,
+검증 완료 후 `product_type`을 `NOT NULL`로 전환한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.
