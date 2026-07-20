@@ -35,14 +35,12 @@ import org.springframework.util.StringUtils;
 public class DevAdminSeedConfig {
 
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
+
     @Value("${seed.admin.enabled:true}")
     private boolean adminSeedEnabled;
 
     @Value("${seed.admin.username}")
     private String adminUsername;
-
-    @Value("${seed.admin.enabled:true}")
-    private boolean adminSeedEnabled;
 
     @Value("${seed.admin.email}")
     private String adminEmail;
@@ -71,10 +69,6 @@ public class DevAdminSeedConfig {
             }
 
             transactionTemplate.executeWithoutResult(status -> {
-                if (!adminSeedEnabled) {
-                    log.info("Dev admin seed 스킵: seed.admin.enabled=false 설정입니다.");
-                    return;
-                }
                 if (!StringUtils.hasText(adminUsername)
                         || !StringUtils.hasText(adminEmail)
                         || !StringUtils.hasText(adminPassword)) {
