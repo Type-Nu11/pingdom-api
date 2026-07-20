@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(51);
+        assertThat(result.targetSchemaVersion).isEqualTo("52");
+        assertThat(result.migrationsExecuted).isEqualTo(52);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(50);
+        assertThat(result.targetSchemaVersion).isEqualTo("52");
+        assertThat(result.migrationsExecuted).isEqualTo(51);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(24);
+        assertThat(result.targetSchemaVersion).isEqualTo("52");
+        assertThat(result.migrationsExecuted).isEqualTo(25);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1738,6 +1738,132 @@ class FlywayMigrationIntegrationTest {
                               AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
                               AND pg_get_constraintdef(oid) LIKE '%TICKET%'
                               AND pg_get_constraintdef(oid) LIKE '%CLASS%')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.tables
+                    WHERE table_name IN ('trust_score_anomaly', 'trust_score_intervention_rule')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'trust_score_anomaly'
+                      AND (
+                          (column_name IN (
+                              'id', 'reporter_user_id', 'submitted_count', 'accepted_count',
+                              'declined_count', 'false_report_count'
+                          ) AND data_type = 'bigint' AND is_nullable = 'NO')
+                          OR (column_name IN ('baseline_score', 'observed_score')
+                              AND data_type = 'integer' AND is_nullable = 'NO')
+                          OR (column_name IN ('detected_at', 'created_at')
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'NO')
+                          OR (column_name = 'resolved_at'
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'YES')
+                          OR (column_name = 'reporter_username'
+                              AND data_type = 'character varying' AND character_maximum_length = 50
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'anomaly_type'
+                              AND data_type = 'character varying' AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'severity'
+                              AND data_type = 'character varying' AND character_maximum_length = 20
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'resolution_reason'
+                              AND data_type = 'character varying' AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'trust_score_anomaly'::regclass
+                      AND conname IN (
+                          'ck_trust_score_anomaly_type',
+                          'ck_trust_score_anomaly_severity',
+                          'ck_trust_score_anomaly_score_range',
+                          'ck_trust_score_anomaly_counts',
+                          'ck_trust_score_anomaly_resolution'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'trust_score_anomaly'::regclass
+                          AND conname = 'fk_trust_score_anomaly_reporter_policy'
+                          AND contype = 'f'
+                          AND confrelid = 'reporter_moderation_policy'::regclass
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE tablename = 'trust_score_anomaly'
+                      AND indexname IN (
+                          'idx_trust_score_anomaly_reporter_detected',
+                          'idx_trust_score_anomaly_type_severity',
+                          'idx_trust_score_anomaly_unresolved'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'trust_score_intervention_rule'
+                      AND (
+                          (column_name IN ('id', 'min_submitted_count', 'min_false_report_count', 'version')
+                              AND data_type = 'bigint' AND is_nullable = 'NO')
+                          OR (column_name IN ('min_trust_score', 'max_trust_score', 'priority')
+                              AND data_type = 'integer' AND is_nullable = 'NO')
+                          OR (column_name = 'duration_days'
+                              AND data_type = 'integer' AND is_nullable = 'YES')
+                          OR (column_name = 'enabled'
+                              AND data_type = 'boolean' AND is_nullable = 'NO')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'NO')
+                          OR (column_name = 'rule_name'
+                              AND data_type = 'character varying' AND character_maximum_length = 100
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('trigger_type', 'action_type')
+                              AND data_type = 'character varying' AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'reason'
+                              AND data_type = 'character varying' AND character_maximum_length = 500
+                              AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'trust_score_intervention_rule'::regclass
+                      AND conname IN (
+                          'ck_trust_score_intervention_rule_trigger',
+                          'ck_trust_score_intervention_rule_action',
+                          'ck_trust_score_intervention_rule_score_range',
+                          'ck_trust_score_intervention_rule_counts',
+                          'ck_trust_score_intervention_rule_duration',
+                          'ck_trust_score_intervention_rule_priority'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'trust_score_intervention_rule'::regclass
+                          AND conname = 'uq_trust_score_intervention_rule_name'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'trust_score_intervention_rule'
+                      AND indexname IN (
+                          'idx_trust_score_intervention_rule_enabled',
+                          'idx_trust_score_intervention_rule_trigger'
                       )
                     """)).isTrue();
         }
