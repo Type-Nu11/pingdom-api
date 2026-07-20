@@ -2,6 +2,8 @@ package com.typenull.pingdom.moderation.api.place.quality;
 
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.geocoding.AdminMapPlaceGeocodingUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.geocoding.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.kakao.AdminMapPlaceKakaoPlaceIdUpdateRequest;
@@ -312,6 +314,29 @@ public class AdminPlaceQualityController {
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminMapPlaceService.updatePlaceOperatingStatus(adminUserId, placeId, request));
+    }
+
+    @PatchMapping("/{id}/discovery-status")
+    @Operation(
+            summary = "관리자 장소 탐색 노출 상태 수정",
+            description = "관리자가 장소를 공개 탐색, 자동완성, 북마크 목록, 추천 후보에 노출할지 제어합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 탐색 노출 상태 수정 성공",
+                    content = @Content(schema = @Schema(implementation = AdminMapPlaceDiscoveryStatusUpdateResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "입력값 검증 실패"),
+            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음")
+    })
+    public ResponseEntity<AdminMapPlaceDiscoveryStatusUpdateResponse> updatePlaceDiscoveryStatus(
+            @Parameter(description = "탐색 노출 상태를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceDiscoveryStatusUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminMapPlaceService.updatePlaceDiscoveryStatus(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/operating-schedule")

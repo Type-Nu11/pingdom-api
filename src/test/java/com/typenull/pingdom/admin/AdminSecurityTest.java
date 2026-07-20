@@ -1,5 +1,6 @@
 package com.typenull.pingdom.admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,43 +10,41 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
-import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
 
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
 })
 @AutoConfigureMockMvc
+@Transactional
 class AdminSecurityTest {
 
-    @TestConfiguration
-    static class TestRateLimitConfig {
-
-        @Bean
-        @Primary
-        RateLimitStore rateLimitStore() {
-            return (message, windowRules, cooldownRules) -> {
-            };
-        }
-    }
+    @MockBean
+    private RateLimitStore rateLimitStore;
 
     @Autowired
     private MockMvc mockMvc;
@@ -57,13 +56,20 @@ class AdminSecurityTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @Autowired
     private JwtTokenProvider jwtTokenProvider;
 
+    @Autowired
+    private Clock clock;
+
     @BeforeEach
     void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -131,7 +137,7 @@ class AdminSecurityTest {
                 .get("accessToken")
                 .textValue();
 
-        org.junit.jupiter.api.Assertions.assertEquals("ADMIN", jwtTokenProvider.getRoleFromAccessToken(accessToken));
+        assertThat(jwtTokenProvider.getRoleFromAccessToken(accessToken)).isEqualTo("ADMIN");
     }
 
     @Test
@@ -144,8 +150,100 @@ class AdminSecurityTest {
                 .andExpect(status().isOk());
     }
 
-    private void createUser(String username, UserRole role) {
-        userRepository.save(User.builder()
+    @Test
+    void adminAuditScenarioAllowsAdminToReviewSecurityFixture() throws Exception {
+        SecurityRegressionFixture fixture = securityRegressionFixture();
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.adminAccessToken())
+                        .param("from", "2026-07-01T00:00:00")
+                        .param("to", "2026-07-01T23:59:59"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auditLogs.length()").value(2))
+                .andExpect(jsonPath("$.auditLogs[0].action").value(AdminAuditAction.REPORT_ACCEPTED.name()))
+                .andExpect(jsonPath("$.auditLogs[0].targetType").value(AdminAuditTargetType.REPORT.name()))
+                .andExpect(jsonPath("$.auditLogs[0].targetId").value("501"))
+                .andExpect(jsonPath("$.auditLogs[0].requestId").value("security-regression-success"))
+                .andExpect(jsonPath("$.auditLogs[1].action").value(AdminAuditAction.USER_BAN_APPLIED.name()))
+                .andExpect(jsonPath("$.auditLogs[1].targetType").value(AdminAuditTargetType.USER.name()))
+                .andExpect(jsonPath("$.auditLogs[1].targetId").value(String.valueOf(fixture.targetUserId())))
+                .andExpect(jsonPath("$.auditLogs[1].requestId").value("security-regression-boundary"))
+                .andExpect(jsonPath("$.totalCount").value(2));
+    }
+
+    @Test
+    void adminAuditScenarioRejectsMerchantOwnerBoundaryRole() throws Exception {
+        SecurityRegressionFixture fixture = securityRegressionFixture();
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.merchantOwnerAccessToken()))
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
+    }
+
+    @Test
+    void adminAuditScenarioRejectsWithdrawnAdminExistingToken() throws Exception {
+        SecurityRegressionFixture fixture = securityRegressionFixture();
+
+        User withdrawnAdmin = userRepository.findById(fixture.withdrawnAdminId()).orElseThrow();
+        withdrawnAdmin.withdraw(
+                "withdrawn_admin_" + withdrawnAdmin.getId(),
+                "withdrawn_admin_%d@withdrawn.local".formatted(withdrawnAdmin.getId()),
+                "encoded-withdrawn-password",
+                LocalDateTime.now(clock)
+        );
+        userRepository.saveAndFlush(withdrawnAdmin);
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.withdrawnAdminAccessToken()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    private SecurityRegressionFixture securityRegressionFixture() throws Exception {
+        User admin = createUser("securityAuditAdmin", UserRole.ADMIN);
+        User merchantOwner = createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
+        User withdrawnAdmin = createUser("securityAuditWithdrawnAdmin", UserRole.ADMIN);
+        User targetUser = createUser("securityAuditTarget", UserRole.USER);
+
+        adminAuditLogRepository.save(AdminAuditLog.builder()
+                .actorUserId(admin.getId())
+                .actorUsername(admin.getUsername())
+                .action(AdminAuditAction.USER_BAN_APPLIED)
+                .targetType(AdminAuditTargetType.USER)
+                .targetId(String.valueOf(targetUser.getId()))
+                .reason("반복 허위 신고 경계 케이스")
+                .beforeState("{\"banned\":false,\"role\":\"USER\"}")
+                .afterState("{\"banned\":true,\"banType\":\"TEMPORARY\"}")
+                .requestId("security-regression-boundary")
+                .createdAt(LocalDateTime.of(2026, 7, 1, 10, 0))
+                .build());
+        adminAuditLogRepository.save(AdminAuditLog.builder()
+                .actorUserId(admin.getId())
+                .actorUsername(admin.getUsername())
+                .action(AdminAuditAction.REPORT_ACCEPTED)
+                .targetType(AdminAuditTargetType.REPORT)
+                .targetId("501")
+                .reason("명확한 위반 신고 정상 처리")
+                .beforeState("{\"status\":\"PENDING\"}")
+                .afterState("{\"status\":\"ACCEPTED\"}")
+                .requestId("security-regression-success")
+                .createdAt(LocalDateTime.of(2026, 7, 1, 11, 0))
+                .build());
+
+        return new SecurityRegressionFixture(
+                loginAndGetAccessToken(admin.getUsername()),
+                loginAndGetAccessToken(merchantOwner.getUsername()),
+                loginAndGetAccessToken(withdrawnAdmin.getUsername()),
+                withdrawnAdmin.getId(),
+                targetUser.getId()
+        );
+    }
+
+    private User createUser(String username, UserRole role) {
+        return userRepository.saveAndFlush(User.builder()
                 .username(username)
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
@@ -168,5 +266,14 @@ class AdminSecurityTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private record SecurityRegressionFixture(
+            String adminAccessToken,
+            String merchantOwnerAccessToken,
+            String withdrawnAdminAccessToken,
+            Long withdrawnAdminId,
+            Long targetUserId
+    ) {
     }
 }
