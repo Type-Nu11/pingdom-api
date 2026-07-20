@@ -621,6 +621,9 @@ public class AdminMapPlaceService {
         if (placeEventRepository.existsByPlace_Id(sourcePlace.getId())) {
             throw new AdminException(AdminErrorCode.PLACE_EVENT_CONNECTED);
         }
+        if (locationCheckInRepository.existsByPlaceId(sourcePlace.getId())) {
+            throw new AdminException(AdminErrorCode.PLACE_CHECK_IN_CONNECTED);
+        }
         if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }

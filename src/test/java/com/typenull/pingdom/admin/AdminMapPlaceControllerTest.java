@@ -1579,6 +1579,60 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void mergePlacesReturnsConflictWhenSourcePlaceHasLocationCheckIn() throws Exception {
+        String accessToken = createAdminAndLogin();
+        String touristUsername = "mergeCheckInTourist" + ADMIN_SEQUENCE.incrementAndGet();
+        User tourist = userRepository.saveAndFlush(User.builder()
+                .username(touristUsername)
+                .email(touristUsername + "@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+        MapPlace sourcePlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("체크인 병합 장소")
+                .address("대구광역시 달성군 체크인병합로 1")
+                .latitude(35.642738)
+                .longitude(128.391626)
+                .userId(tourist.getId())
+                .registrant(touristUsername)
+                .build());
+        MapPlace targetPlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("체크인 병합 장소")
+                .address("대구광역시 달성군 체크인병합로 1")
+                .latitude(35.642900)
+                .longitude(128.391700)
+                .userId(tourist.getId())
+                .registrant(touristUsername)
+                .build());
+        Instant checkedInAt = Instant.parse("2026-07-20T01:00:00Z");
+        locationCheckInRepository.saveAndFlush(LocationCheckIn.proximityMatched(
+                tourist.getId(),
+                sourcePlace.getId(),
+                LocalDate.of(2026, 7, 20),
+                checkedInAt,
+                checkedInAt,
+                10.0
+        ));
+
+        mockMvc.perform(post("/admin/places/merge")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "sourcePlaceId", sourcePlace.getId(),
+                                "targetPlaceId", targetPlace.getId()
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("PLACE_CHECK_IN_CONNECTED"));
+
+        assertTrue(mapPlaceRepository.existsById(sourcePlace.getId()));
+        assertTrue(mapPlaceRepository.existsById(targetPlace.getId()));
+        assertTrue(locationCheckInRepository.existsByPlaceId(sourcePlace.getId()));
+    }
+
+    @Test
     void listMergeHistoriesAndRestoreMergeWork() throws Exception {
         String accessToken = createAdminAndLogin();
 
