@@ -35,3 +35,4 @@ CREATE INDEX IF NOT EXISTS idx_map_place_public_popular
 
 CREATE INDEX IF NOT EXISTS idx_map_place_tourist_category_filter
     ON map_place_tourist_category (tourist_category, map_place_id);
+
