@@ -155,6 +155,15 @@ class AdminSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    @Test
+    void adminAuditScenarioAllowsAdminToReviewSecurityFixture() throws Exception {
+        SecurityRegressionFixture fixture = securityRegressionFixture();
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.adminAccessToken()))
+                .andExpect(status().isOk());
+    }
+
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
         createUser("securityAuditAdmin", UserRole.ADMIN);
         createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
