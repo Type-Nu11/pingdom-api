@@ -160,7 +160,9 @@ class AdminSecurityTest {
         SecurityRegressionFixture fixture = securityRegressionFixture();
 
         mockMvc.perform(get("/admin/audit-logs")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.adminAccessToken()))
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.adminAccessToken())
+                        .param("from", "2026-07-01T00:00:00")
+                        .param("to", "2026-07-01T23:59:59"))
                 .andExpect(status().isOk());
     }
 
