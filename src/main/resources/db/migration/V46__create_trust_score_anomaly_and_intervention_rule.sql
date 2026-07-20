@@ -38,3 +38,12 @@ CREATE TABLE trust_score_anomaly (
         )
 );
 
+CREATE INDEX idx_trust_score_anomaly_reporter_detected
+    ON trust_score_anomaly (reporter_user_id, detected_at DESC, id DESC);
+
+CREATE INDEX idx_trust_score_anomaly_type_severity
+    ON trust_score_anomaly (anomaly_type, severity, detected_at DESC);
+
+CREATE INDEX idx_trust_score_anomaly_unresolved
+    ON trust_score_anomaly (resolved_at, detected_at DESC);
+
