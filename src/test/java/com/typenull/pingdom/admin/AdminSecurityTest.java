@@ -1,5 +1,6 @@
 package com.typenull.pingdom.admin;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
@@ -9,9 +10,9 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
-import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
@@ -26,9 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -44,16 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class AdminSecurityTest {
 
-    @TestConfiguration
-    static class TestRateLimitConfig {
-
-        @Bean
-        @Primary
-        RateLimitStore rateLimitStore() {
-            return (message, windowRules, cooldownRules) -> {
-            };
-        }
-    }
+    @MockBean
+    private RateLimitStore rateLimitStore;
 
     @Autowired
     private MockMvc mockMvc;
@@ -146,7 +137,7 @@ class AdminSecurityTest {
                 .get("accessToken")
                 .textValue();
 
-        org.junit.jupiter.api.Assertions.assertEquals("ADMIN", jwtTokenProvider.getRoleFromAccessToken(accessToken));
+        assertThat(jwtTokenProvider.getRoleFromAccessToken(accessToken)).isEqualTo("ADMIN");
     }
 
     @Test
