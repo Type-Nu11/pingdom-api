@@ -36,13 +36,17 @@ ALTER TABLE place_availability
         REFERENCES reservable_product (id, product_type) ON DELETE RESTRICT NOT VALID,
     ADD CONSTRAINT ck_place_availability_product_type
         CHECK ((product_id IS NULL AND product_type = 'GENERAL')
-            OR (product_id IS NOT NULL AND product_type IN ('TICKET', 'CLASS'))) NOT VALID;
+            OR (product_id IS NOT NULL AND product_type IN ('TICKET', 'CLASS'))) NOT VALID,
+    ADD CONSTRAINT ck_place_availability_product_type_not_null
+        CHECK (product_type IS NOT NULL) NOT VALID;
 
 ALTER TABLE reservation
     ADD CONSTRAINT fk_reservation_product FOREIGN KEY (product_id, product_type)
         REFERENCES reservable_product (id, product_type) ON DELETE RESTRICT NOT VALID,
     ADD CONSTRAINT ck_reservation_product_type
         CHECK ((product_id IS NULL AND product_type = 'GENERAL')
-            OR (product_id IS NOT NULL AND product_type IN ('TICKET', 'CLASS'))) NOT VALID;
+            OR (product_id IS NOT NULL AND product_type IN ('TICKET', 'CLASS'))) NOT VALID,
+    ADD CONSTRAINT ck_reservation_product_type_not_null
+        CHECK (product_type IS NOT NULL) NOT VALID;
 
 ALTER TABLE place_availability DROP CONSTRAINT uq_place_availability_owner_slot;
