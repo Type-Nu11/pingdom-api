@@ -1,0 +1,68 @@
+spring:
+  datasource:
+    url: ${DB_URL:jdbc:postgresql://localhost:5432/pingdom}
+    driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
+    username: ${DB_USERNAME:pingdom}
+    password: ${DB_PASSWORD:pingdom}
+  docker:
+    compose:
+      enabled: true
+      file: docker-compose-local.yml
+  cloud:
+    aws:
+      s3:
+        bucket: ${AWS_S3_BUCKET:pingdom-local}
+      region:
+        static: ${AWS_REGION:ap-northeast-2}
+
+springdoc:
+  api-docs:
+    enabled: true
+  swagger-ui:
+    enabled: true
+    path: /swagger-ui
+    urls-primary-name: web
+    urls:
+      - name: app
+        url: /v3/api-docs/app
+      - name: common
+        url: /v3/api-docs/common
+      - name: web
+        url: /v3/api-docs/web
+
+jwt:
+  secret: ${JWT_SECRET:01234567890123456789012345678901}
+  access-token-expiration-seconds: ${JWT_ACCESS_TOKEN_EXPIRATION_SECONDS:3600}
+  refresh-token-expiration-seconds: ${JWT_REFRESH_TOKEN_EXPIRATION_SECONDS:1209600}
+
+merchant:
+  verification:
+    encryption-key: ${MERCHANT_VERIFICATION_ENCRYPTION_KEY:01234567890123456789012345678901}
+
+auth:
+  refresh-cookie:
+    secure: ${AUTH_REFRESH_COOKIE_SECURE:false}
+
+postmark:
+  server-token: ${POSTMARK_SERVER_TOKEN:local-postmark-token}
+  from-email: ${POSTMARK_FROM_EMAIL:no-reply@pingdom.local}
+  verification-base-url: ${MAIL_VERIFICATION_BASE_URL:http://localhost:8080/auth/email/verify}
+  password-reset-base-url: ${MAIL_PASSWORD_RESET_BASE_URL:http://localhost:8080/auth/password-reset/confirm}
+
+fcm:
+  enabled: false
+  key-path: ${FCM_KEY_PATH:/app/fcm-key.json}
+
+outbox:
+  initial-delay: PT30S
+  cleanup-initial-delay: PT30S
+
+seed:
+  admin:
+    enabled: ${SEED_ADMIN_ENABLED:true}
+    username: ${SEED_ADMIN_USERNAME:admin}
+    email: ${SEED_ADMIN_EMAIL:admin@local}
+    password: ${SEED_ADMIN_PASSWORD:admin1234!}
+  dev-data:
+    enabled: ${SEED_DEV_DATA_ENABLED:true}
+    user-password: ${SEED_DEV_USER_PASSWORD:pingdom1234!}
