@@ -9,4 +9,10 @@ import org.springframework.stereotype.Repository;
 public interface TrustScoreInterventionRuleRepository extends JpaRepository<TrustScoreInterventionRule, Long> {
 
     List<TrustScoreInterventionRule> findByEnabledTrueOrderByPriorityAscIdAsc();
+
+    List<TrustScoreInterventionRule> findAllByOrderByPriorityAscIdAsc();
+
+    boolean existsByRuleName(String ruleName);
+
+    boolean existsByRuleNameAndIdNot(String ruleName, Long id);
 }

@@ -105,4 +105,28 @@ public class TrustScoreInterventionRule {
     public void enable() {
         this.enabled = true;
     }
+
+    public void update(
+            String ruleName,
+            TrustScoreInterventionTrigger triggerType,
+            TrustScoreInterventionAction actionType,
+            int minTrustScore,
+            int maxTrustScore,
+            long minSubmittedCount,
+            long minFalseReportCount,
+            Integer durationDays,
+            int priority,
+            String reason
+    ) {
+        this.ruleName = ruleName;
+        this.triggerType = triggerType;
+        this.actionType = actionType;
+        this.minTrustScore = minTrustScore;
+        this.maxTrustScore = maxTrustScore;
+        this.minSubmittedCount = minSubmittedCount;
+        this.minFalseReportCount = minFalseReportCount;
+        this.durationDays = durationDays;
+        this.priority = priority;
+        this.reason = reason;
+    }
 }
