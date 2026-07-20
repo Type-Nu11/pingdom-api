@@ -6,6 +6,8 @@ import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingH
 
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
@@ -34,6 +36,12 @@ public record PlaceDetailResponse(
         @Schema(nullable = true)
         String touristSummary,
         Set<TouristCategory> touristCategories,
+        PlaceInformationSourceType primaryInformationSource,
+        PlaceInformationVerificationStatus informationVerificationStatus,
+        @Schema(nullable = true)
+        LocalDateTime informationVerifiedAt,
+        @Schema(nullable = true)
+        LocalDateTime informationEvidenceUpdatedAt,
         Double latitude,
         Double longitude,
         String registrant,

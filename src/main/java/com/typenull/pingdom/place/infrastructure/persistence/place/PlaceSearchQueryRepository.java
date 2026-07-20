@@ -5,6 +5,8 @@ import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import java.time.LocalDateTime;
@@ -33,6 +35,10 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                         mp.operating_status_checked_at AS operatingStatusCheckedAt,
                         mp.category AS category,
                         mp.tourist_summary AS touristSummary,
+                        mp.primary_information_source AS primaryInformationSource,
+                        mp.information_verification_status AS informationVerificationStatus,
+                        mp.information_verified_at AS informationVerifiedAt,
+                        mp.information_evidence_updated_at AS informationEvidenceUpdatedAt,
                         mp.latitude AS latitude,
                         mp.longitude AS longitude,
                         CASE
@@ -174,6 +180,14 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
         String getCategory();
 
         String getTouristSummary();
+
+        PlaceInformationSourceType getPrimaryInformationSource();
+
+        PlaceInformationVerificationStatus getInformationVerificationStatus();
+
+        LocalDateTime getInformationVerifiedAt();
+
+        LocalDateTime getInformationEvidenceUpdatedAt();
 
         Double getLatitude();
 
