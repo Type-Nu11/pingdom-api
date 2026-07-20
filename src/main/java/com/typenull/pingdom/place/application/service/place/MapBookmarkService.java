@@ -6,6 +6,7 @@ import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationConversionService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
@@ -31,9 +32,10 @@ public class MapBookmarkService {
     public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
         Long placeId = request.placeId();
 
-        boolean placeExists = mapPlaceRepository.existsByIdAndOperatingStatus(
+        boolean placeExists = mapPlaceRepository.existsByIdAndOperatingStatusAndDiscoveryStatus(
                 placeId,
-                PlaceOperatingStatus.OPERATING
+                PlaceOperatingStatus.OPERATING,
+                PlaceDiscoveryStatus.VISIBLE
         );
         if (!placeExists) {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);

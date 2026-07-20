@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.application.service.recommendation.snapshot.Pl
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationVersionSnapshotService;
 
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationClick;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
@@ -32,7 +33,11 @@ public class PlaceRecommendationClickService {
 
     @Transactional
     public void recordClick(Long userId, Long placeId, String recommendationVersion, String requestId) {
-        if (!mapPlaceRepository.existsByIdAndOperatingStatus(placeId, PlaceOperatingStatus.OPERATING)) {
+        if (!mapPlaceRepository.existsByIdAndOperatingStatusAndDiscoveryStatus(
+                placeId,
+                PlaceOperatingStatus.OPERATING,
+                PlaceDiscoveryStatus.VISIBLE
+        )) {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
         if (StringUtils.hasText(requestId)
