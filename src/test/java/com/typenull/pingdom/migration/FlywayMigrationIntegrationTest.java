@@ -1600,8 +1600,9 @@ class FlywayMigrationIntegrationTest {
                               AND pg_get_constraintdef(oid) LIKE '%ACTIVE%'
                               AND pg_get_constraintdef(oid) LIKE '%INACTIVE%'
                           WHEN 'ck_place_availability_product_type' THEN
-                              pg_get_constraintdef(oid) LIKE '%product_type%'
-                              AND pg_get_constraintdef(oid) LIKE '%GENERAL%'
+                              pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type =%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
                               AND pg_get_constraintdef(oid) LIKE '%TICKET%'
                               AND pg_get_constraintdef(oid) LIKE '%CLASS%'
                       END
@@ -1623,7 +1624,7 @@ class FlywayMigrationIntegrationTest {
                           OR (conname = 'fk_place_availability_product'
                               AND confrelid = 'reservable_product'::regclass
                               AND pg_get_constraintdef(oid) =
-                                  'FOREIGN KEY (product_id) REFERENCES reservable_product(id) ON DELETE SET NULL')
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type)')
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1688,12 +1689,13 @@ class FlywayMigrationIntegrationTest {
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 4
+                    SELECT COUNT(*) = 5
                     FROM pg_constraint
                     WHERE conrelid = 'reservable_product'::regclass
                       AND conname IN (
                           'fk_reservable_product_merchant_owner',
                           'fk_reservable_product_place',
+                          'uq_reservable_product_id_type',
                           'ck_reservable_product_type',
                           'ck_reservable_product_status'
                       )
@@ -1722,7 +1724,17 @@ class FlywayMigrationIntegrationTest {
                     SELECT COUNT(*) = 2
                     FROM pg_constraint
                     WHERE conrelid = 'reservation'::regclass
-                      AND conname IN ('fk_reservation_product', 'ck_reservation_product_type')
+                      AND (
+                          (conname = 'fk_reservation_product'
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type)')
+                          OR (conname = 'ck_reservation_product_type'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type =%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%TICKET%'
+                              AND pg_get_constraintdef(oid) LIKE '%CLASS%')
+                      )
                     """)).isTrue();
         }
     }

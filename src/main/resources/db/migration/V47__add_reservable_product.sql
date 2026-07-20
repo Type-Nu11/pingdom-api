@@ -12,6 +12,7 @@ CREATE TABLE reservable_product (
         REFERENCES merchant_owner_profile (user_id) ON DELETE CASCADE,
     CONSTRAINT fk_reservable_product_place FOREIGN KEY (place_id)
         REFERENCES map_place (map_place_id) ON DELETE CASCADE,
+    CONSTRAINT uq_reservable_product_id_type UNIQUE (id, product_type),
     CONSTRAINT ck_reservable_product_type CHECK (product_type IN ('TICKET', 'CLASS')),
     CONSTRAINT ck_reservable_product_status CHECK (status IN ('ACTIVE', 'INACTIVE'))
 );
@@ -31,15 +32,17 @@ ALTER TABLE reservation
     ADD COLUMN product_type VARCHAR(20) DEFAULT 'GENERAL';
 
 ALTER TABLE place_availability
-    ADD CONSTRAINT fk_place_availability_product FOREIGN KEY (product_id)
-        REFERENCES reservable_product (id) ON DELETE SET NULL NOT VALID,
+    ADD CONSTRAINT fk_place_availability_product FOREIGN KEY (product_id, product_type)
+        REFERENCES reservable_product (id, product_type) NOT VALID,
     ADD CONSTRAINT ck_place_availability_product_type
-        CHECK (product_type IN ('GENERAL', 'TICKET', 'CLASS')) NOT VALID;
+        CHECK ((product_id IS NULL AND product_type = 'GENERAL')
+            OR (product_id IS NOT NULL AND product_type IN ('TICKET', 'CLASS'))) NOT VALID;
 
 ALTER TABLE reservation
-    ADD CONSTRAINT fk_reservation_product FOREIGN KEY (product_id)
-        REFERENCES reservable_product (id) ON DELETE SET NULL NOT VALID,
+    ADD CONSTRAINT fk_reservation_product FOREIGN KEY (product_id, product_type)
+        REFERENCES reservable_product (id, product_type) NOT VALID,
     ADD CONSTRAINT ck_reservation_product_type
-        CHECK (product_type IN ('GENERAL', 'TICKET', 'CLASS')) NOT VALID;
+        CHECK ((product_id IS NULL AND product_type = 'GENERAL')
+            OR (product_id IS NOT NULL AND product_type IN ('TICKET', 'CLASS'))) NOT VALID;
 
 ALTER TABLE place_availability DROP CONSTRAINT uq_place_availability_owner_slot;
