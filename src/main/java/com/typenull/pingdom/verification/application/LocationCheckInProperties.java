@@ -8,7 +8,7 @@ import org.springframework.validation.annotation.Validated;
 @Validated
 @ConfigurationProperties(prefix = "verification.location-check-in")
 public record LocationCheckInProperties(
-        @DecimalMin(value = "0.0", inclusive = false) Double maxDistanceMeters,
+        @DecimalMin(value = "0.0", inclusive = false) @DecimalMax("1000.0") Double maxDistanceMeters,
         @DecimalMin(value = "0.0", inclusive = false) Double maxAccuracyMeters,
         @NotNull Duration observationTtl,
         @NotNull Duration futureTolerance

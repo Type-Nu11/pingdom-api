@@ -13,7 +13,7 @@ CREATE TABLE location_check_in (
         REFERENCES map_place (map_place_id) ON DELETE RESTRICT,
     CONSTRAINT uq_location_check_in_daily UNIQUE (tourist_user_id, place_id, check_in_date),
     CONSTRAINT ck_location_check_in_status CHECK (status IN ('PROXIMITY_MATCHED')),
-    CONSTRAINT ck_location_check_in_distance CHECK (distance_meters >= 0 AND distance_meters <= 100)
+    CONSTRAINT ck_location_check_in_distance CHECK (distance_meters >= 0 AND distance_meters <= 1000)
 );
 
 CREATE INDEX idx_location_check_in_tourist_recorded
