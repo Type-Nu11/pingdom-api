@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -66,6 +67,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -357,6 +359,92 @@ class PlaceControllerTest {
     }
 
     @Test
+    void listPlacesFiltersByTouristCategory() throws Exception {
+        String accessToken = signupAndLogin("readerTouristCategory" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace kpopPlace = createMapPlace("케이팝 명소", "서울특별시 중구 케이팝로 1", "관광", 37.5665, 126.9780);
+        kpopPlace.updateTouristInformation(
+                "K-pop Spot",
+                "K-pop tourists visit here.",
+                Set.of(TouristCategory.K_POP)
+        );
+        mapPlaceRepository.save(kpopPlace);
+        MapPlace cafePlace = createMapPlace("관광 카페", "서울특별시 중구 카페로 1", "카페", 37.5670, 126.9790);
+        cafePlace.updateTouristInformation(
+                "Tour Cafe",
+                "Cafe for tourists.",
+                Set.of(TouristCategory.CAFE)
+        );
+        mapPlaceRepository.saveAndFlush(cafePlace);
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("touristCategory", " k_pop "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(kpopPlace.getId()))
+                .andExpect(jsonPath("$.places[0].touristCategories[0]").value("K_POP"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesSortsPopularByPhotoCount() throws Exception {
+        String accessToken = signupAndLogin("readerPopularSort" + Long.toUnsignedString(System.nanoTime()));
+        createMapPlace("덜 인기 장소", "경상남도 진주시 인기고요로 1", "카페", 35.1801, 128.1078, 1L);
+        MapPlace popularPlace = createMapPlace(
+                "인기 장소",
+                "경상남도 진주시 인기많음로 1",
+                "카페",
+                35.1802,
+                128.1079,
+                9L
+        );
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sort", "POPULAR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].id").value(popularPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(2));
+    }
+
+    @Test
+    void hiddenDiscoveryPlacesAreExcludedFromPublicPlaceQueries() throws Exception {
+        String username = "readerHiddenDiscovery" + Long.toUnsignedString(System.nanoTime());
+        String accessToken = signupAndLogin(username);
+        User user = userRepository.findByUsername(username).orElseThrow();
+        MapPlace visiblePlace = createMapPlace("탐색 노출 장소", "경상남도 진주시 노출로 1");
+        MapPlace hiddenPlace = createMapPlace("탐색 숨김 장소", "경상남도 진주시 숨김로 1");
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(hiddenPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(visiblePlace.getId()));
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "숨김"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0));
+
+        mockMvc.perform(get("/places/{id}", hiddenPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/users/me/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0));
+    }
+
+    @Test
     void listPlacesFiltersByRadiusAndSortsNearest() throws Exception {
         String accessToken = signupAndLogin("readerSearch02");
         MapPlace nearPlace = createMapPlace("가까운 장소", "경상남도 진주시 가까운로 1", "카페", 35.1802, 128.1079);
@@ -409,6 +497,35 @@ class PlaceControllerTest {
                         .param("radiusKm", "1.0")
                         .param("sort", "NEAREST"))
                 .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void listPlacesRejectsUnsupportedSort() throws Exception {
+        String accessToken = signupAndLogin("readerUnsupportedSort" + Long.toUnsignedString(System.nanoTime()));
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sort", "RATING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SEARCH_SORT"));
+    }
+
+    @Test
+    void listPlacesRejectsUnsupportedTouristCategory() throws Exception {
+        String accessToken = signupAndLogin("readerUnsupportedTouristCategory" + Long.toUnsignedString(System.nanoTime()));
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("touristCategory", "NOT_A_TOURIST_CATEGORY"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
+    }
+
+    @Test
+    void listPlacesReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/places"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -1101,17 +1218,19 @@ class PlaceControllerTest {
     }
 
     @Test
-    void recordRecommendationClickStoresRawLogAndIncreasesSnapshotCount() throws Exception {
+    void recordRecommendationClickStoresLogAndIncreasesSnapshotCount() throws Exception {
         String accessToken = signupAndLogin("reader12");
         MapPlace clickedPlace = createMapPlace("클릭 장소", "경상남도 진주시 클릭로 1", 35.1803, 128.1079, 1L);
         createMapImage(clickedPlace, 2L, "클릭 사진");
+        String requestId = "click-count-request";
 
         mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", clickedPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", requestId
                         ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.placeId").value(clickedPlace.getId()))
@@ -1121,12 +1240,37 @@ class PlaceControllerTest {
         assertEquals(1, clicks.size());
         assertEquals(clickedPlace.getId(), clicks.get(0).getPlaceId());
         assertNotNull(clicks.get(0).getCreatedAt());
-        assertNull(clicks.get(0).getRequestId());
+        assertEquals(requestId, clicks.get(0).getRequestId());
 
         PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(clickedPlace.getId())
                 .orElseThrow();
         assertEquals(1L, snapshot.getClickCount());
         assertEquals(0L, snapshot.getExposureCount());
+    }
+
+    @Test
+    void recordRecommendationClickRejectsHiddenDiscoveryPlace() throws Exception {
+        String accessToken = signupAndLogin("readerHiddenRecommendationClick" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace hiddenPlace = createMapPlace("숨김 추천 클릭 장소", "경상남도 진주시 숨김추천로 1", 35.1803, 128.1079, 1L);
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+
+        mockMvc.perform(post("/places/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", hiddenPlace.getId(),
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "hidden-discovery-click-request"
+                        ))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+
+        long hiddenPlaceClickCount = placeRecommendationClickRepository.findAll().stream()
+                .filter(click -> hiddenPlace.getId().equals(click.getPlaceId()))
+                .count();
+        assertEquals(0L, hiddenPlaceClickCount);
+        assertFalse(placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
     @Test
@@ -1417,7 +1561,8 @@ class PlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "like-conversion-request"
                         ))))
                 .andExpect(status().isCreated());
 
@@ -1446,7 +1591,8 @@ class PlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "like-conversion-once-request"
                         ))))
                 .andExpect(status().isCreated());
 
@@ -1616,6 +1762,29 @@ class PlaceControllerTest {
         PlaceRecommendationSnapshot removedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
                 .orElseThrow();
         assertEquals(0L, removedSnapshot.getBookmarkCount());
+    }
+
+    @Test
+    void createBookmarkRejectsHiddenDiscoveryPlace() throws Exception {
+        String username = "readerHiddenBookmark" + Long.toUnsignedString(System.nanoTime());
+        String accessToken = signupAndLogin(username);
+        User user = userRepository.findByUsername(username).orElseThrow();
+        MapPlace hiddenPlace = createMapPlace("숨김 북마크 장소", "경상남도 진주시 숨김북마크로 1");
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+
+        mockMvc.perform(post("/users/me/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", hiddenPlace.getId()))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+
+        assertFalse(mapBookmarkRepository.existsByUserIdAndPlaceId(
+                user.getId(),
+                hiddenPlace.getId()
+        ));
+        assertFalse(placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
     @Test

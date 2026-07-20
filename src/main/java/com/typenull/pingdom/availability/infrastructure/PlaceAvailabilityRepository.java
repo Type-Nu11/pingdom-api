@@ -35,6 +35,11 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
+              and (availability.productId is null or exists (
+                  select product.id from ReservableProduct product
+                  where product.id = availability.productId
+                    and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
+              ))
               and exists (
                   select profile.userId from MerchantOwnerProfile profile
                   where profile.userId = availability.merchantOwnerUserId
@@ -74,6 +79,11 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
+              and (availability.productId is null or exists (
+                  select product.id from ReservableProduct product
+                  where product.id = availability.productId
+                    and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
+              ))
               and exists (
                   select profile.userId from MerchantOwnerProfile profile
                   where profile.userId = availability.merchantOwnerUserId

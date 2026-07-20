@@ -1,5 +1,6 @@
 package com.typenull.pingdom.reservation.domain;
 
+import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import jakarta.persistence.*;
 import java.time.LocalDateTime;
 import java.util.Objects;
@@ -20,6 +21,13 @@ public class Reservation {
 
     @Column(name = "availability_id", nullable = false)
     private Long availabilityId;
+
+    @Column(name = "product_id")
+    private Long productId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product_type", nullable = false, length = 20)
+    private AvailabilityProductType productType;
 
     @Column(name = "idempotency_key", nullable = false, length = 100)
     private String idempotencyKey;
@@ -48,10 +56,22 @@ public class Reservation {
 
     public static Reservation create(Long touristUserId, Long availabilityId, String idempotencyKey,
             int quantity, LocalDateTime now) {
+        return create(touristUserId, availabilityId, AvailabilityProductType.GENERAL, idempotencyKey, quantity, now);
+    }
+
+    public static Reservation create(Long touristUserId, Long availabilityId, AvailabilityProductType productType,
+            String idempotencyKey, int quantity, LocalDateTime now) {
+        return create(touristUserId, availabilityId, null, productType, idempotencyKey, quantity, now);
+    }
+
+    public static Reservation create(Long touristUserId, Long availabilityId, Long productId,
+            AvailabilityProductType productType, String idempotencyKey, int quantity, LocalDateTime now) {
         if (quantity <= 0) throw new IllegalArgumentException("예약 인원은 1명 이상이어야 합니다.");
         Reservation reservation = new Reservation();
         reservation.touristUserId = Objects.requireNonNull(touristUserId, "touristUserId must not be null");
         reservation.availabilityId = Objects.requireNonNull(availabilityId, "availabilityId must not be null");
+        reservation.productId = productId;
+        reservation.productType = Objects.requireNonNull(productType, "productType must not be null");
         reservation.idempotencyKey = Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
         reservation.quantity = quantity;
         reservation.status = ReservationStatus.PENDING;

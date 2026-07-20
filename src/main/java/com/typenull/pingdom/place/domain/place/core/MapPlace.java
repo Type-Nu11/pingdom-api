@@ -1,7 +1,10 @@
 package com.typenull.pingdom.place.domain.place.core;
 
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
@@ -94,11 +97,36 @@ public class MapPlace {
     @Column(name = "category", length = 50)
     private String category;
 
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discovery_status", length = 20, nullable = false)
+    private PlaceDiscoveryStatus discoveryStatus = PlaceDiscoveryStatus.VISIBLE;
+
     @Column(name = "english_name", length = 150)
     private String englishName;
 
     @Column(name = "tourist_summary", length = 500)
     private String touristSummary;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "primary_information_source", length = 30, nullable = false)
+    private PlaceInformationSourceType primaryInformationSource = PlaceInformationSourceType.LEGACY;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "information_verification_status", length = 30, nullable = false)
+    private PlaceInformationVerificationStatus informationVerificationStatus =
+            PlaceInformationVerificationStatus.UNVERIFIED;
+
+    @Column(name = "information_verified_at")
+    private LocalDateTime informationVerifiedAt;
+
+    @Column(name = "information_verified_by_admin_user_id")
+    private Long informationVerifiedByAdminUserId;
+
+    @Column(name = "information_evidence_updated_at")
+    private LocalDateTime informationEvidenceUpdatedAt;
 
     @Builder.Default
     @ElementCollection
@@ -276,6 +304,35 @@ public class MapPlace {
 
     public boolean isOperating() {
         return operatingStatus == PlaceOperatingStatus.OPERATING;
+    }
+
+    public boolean isVisibleInDiscovery() {
+        return discoveryStatus == PlaceDiscoveryStatus.VISIBLE;
+    }
+
+    public void updateDiscoveryStatus(PlaceDiscoveryStatus discoveryStatus) {
+        this.discoveryStatus = Objects.requireNonNull(discoveryStatus, "discoveryStatus must not be null");
+    }
+
+    public void updateInformationVerification(
+            PlaceInformationSourceType primaryInformationSource,
+            PlaceInformationVerificationStatus informationVerificationStatus,
+            Long verifiedByAdminUserId,
+            LocalDateTime verifiedAt,
+            LocalDateTime evidenceUpdatedAt
+    ) {
+        PlaceInformationVerificationStatus nextStatus = Objects.requireNonNull(
+                informationVerificationStatus,
+                "informationVerificationStatus must not be null"
+        );
+        this.primaryInformationSource = Objects.requireNonNull(
+                primaryInformationSource,
+                "primaryInformationSource must not be null"
+        );
+        this.informationVerificationStatus = nextStatus;
+        this.informationVerifiedByAdminUserId = verifiedByAdminUserId;
+        this.informationVerifiedAt = verifiedAt;
+        this.informationEvidenceUpdatedAt = evidenceUpdatedAt;
     }
 
     public Set<PlaceRegularOperatingHour> currentRegularOperatingHours() {

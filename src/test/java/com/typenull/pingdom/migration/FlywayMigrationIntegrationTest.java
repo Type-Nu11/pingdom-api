@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("45");
-        assertThat(result.migrationsExecuted).isEqualTo(45);
+        assertThat(result.targetSchemaVersion).isEqualTo("55");
+        assertThat(result.migrationsExecuted).isEqualTo(55);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("45");
-        assertThat(result.migrationsExecuted).isEqualTo(44);
+        assertThat(result.targetSchemaVersion).isEqualTo("55");
+        assertThat(result.migrationsExecuted).isEqualTo(54);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("45");
-        assertThat(result.migrationsExecuted).isEqualTo(18);
+        assertThat(result.targetSchemaVersion).isEqualTo("55");
+        assertThat(result.migrationsExecuted).isEqualTo(28);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -191,6 +191,12 @@ class FlywayMigrationIntegrationTest {
                           AND postal_code IS NULL
                           AND geocoding_source = 'LEGACY'
                           AND operating_status = 'OPERATING'
+                          AND discovery_status = 'VISIBLE'
+                          AND primary_information_source = 'LEGACY'
+                          AND information_verification_status = 'UNVERIFIED'
+                          AND information_verified_at IS NULL
+                          AND information_verified_by_admin_user_id IS NULL
+                          AND information_evidence_updated_at IS NULL
                           AND operating_status_checked_at IS NULL
                     )
                     """)).isTrue();
@@ -223,6 +229,49 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM place_event
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 8
+                    FROM information_schema.columns
+                    WHERE table_name = 'location_check_in'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'location_check_in'::regclass
+                      AND conname IN (
+                          'fk_location_check_in_tourist',
+                          'fk_location_check_in_place'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'location_check_in'::regclass
+                          AND conname = 'uq_location_check_in_daily'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'location_check_in'::regclass
+                      AND conname IN (
+                          'ck_location_check_in_status',
+                          'ck_location_check_in_distance'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'location_check_in'
+                      AND indexname IN (
+                          'idx_location_check_in_tourist_recorded',
+                          'idx_location_check_in_place_recorded'
+                      )
                     """)).isTrue();
         }
     }
@@ -469,6 +518,36 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'visitor_verification_report'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'visitor_verification_report'::regclass
+                      AND conname IN (
+                          'ck_visitor_verification_report_type',
+                          'ck_visitor_verification_report_status',
+                          'ck_visitor_verification_report_review'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'visitor_verification_report'
+                          AND index_class.relname = 'uq_visitor_verification_report_active'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
                         FROM pg_extension
                         WHERE extname = 'postgis'
                     )
@@ -522,6 +601,45 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM pg_constraint
                         WHERE conname = 'ck_map_place_operating_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'discovery_status'
+                          AND character_maximum_length = 20
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_discovery_status'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_discovery_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'map_place'
+                      AND indexname IN ('idx_map_place_public_latest', 'idx_map_place_public_popular')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place_tourist_category'
+                          AND indexname = 'idx_map_place_tourist_category_filter'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1522,7 +1640,7 @@ class FlywayMigrationIntegrationTest {
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 11
+                    SELECT COUNT(*) = 12
                     FROM information_schema.columns
                     WHERE table_name = 'place_availability'
                       AND is_nullable = 'NO'
@@ -1533,18 +1651,19 @@ class FlywayMigrationIntegrationTest {
                               AND data_type = 'timestamp without time zone')
                           OR (column_name IN ('total_capacity', 'remaining_capacity')
                               AND data_type = 'integer')
-                          OR (column_name = 'status' AND data_type = 'character varying'
+                          OR (column_name IN ('status', 'product_type') AND data_type = 'character varying'
                               AND character_maximum_length = 20)
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 3
+                    SELECT COUNT(*) = 4
                     FROM pg_constraint
                     WHERE conrelid = 'place_availability'::regclass
                       AND conname IN (
                           'ck_place_availability_period',
                           'ck_place_availability_capacity',
-                          'ck_place_availability_status'
+                          'ck_place_availability_status',
+                          'ck_place_availability_product_type'
                       )
                       AND contype = 'c'
                       AND CASE conname
@@ -1558,10 +1677,16 @@ class FlywayMigrationIntegrationTest {
                               pg_get_constraintdef(oid) LIKE '%status%'
                               AND pg_get_constraintdef(oid) LIKE '%ACTIVE%'
                               AND pg_get_constraintdef(oid) LIKE '%INACTIVE%'
+                          WHEN 'ck_place_availability_product_type' THEN
+                              pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%TICKET%'
+                              AND pg_get_constraintdef(oid) LIKE '%CLASS%'
                       END
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 2
+                    SELECT COUNT(*) = 3
                     FROM pg_constraint
                     WHERE conrelid = 'place_availability'::regclass
                       AND contype = 'f'
@@ -1574,18 +1699,25 @@ class FlywayMigrationIntegrationTest {
                               AND confrelid = 'map_place'::regclass
                               AND pg_get_constraintdef(oid) =
                                   'FOREIGN KEY (place_id) REFERENCES map_place(map_place_id) ON DELETE CASCADE')
+                          OR (conname = 'fk_place_availability_product'
+                              AND confrelid = 'reservable_product'::regclass
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_constraint
-                        WHERE conrelid = 'place_availability'::regclass
-                          AND conname = 'uq_place_availability_owner_slot'
-                          AND contype = 'u'
-                          AND pg_get_constraintdef(oid) =
-                              'UNIQUE (merchant_owner_user_id, place_id, starts_at, ends_at)'
-                    )
+                    SELECT COUNT(*) = 2
+                    FROM pg_index index_catalog
+                    JOIN pg_class index_relation ON index_relation.oid = index_catalog.indexrelid
+                    WHERE index_catalog.indrelid = 'place_availability'::regclass
+                      AND index_catalog.indisunique = true
+                      AND index_catalog.indpred IS NOT NULL
+                      AND (
+                          (index_relation.relname = 'uq_place_availability_legacy_slot'
+                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE '%product_id IS NULL%')
+                          OR (index_relation.relname = 'uq_place_availability_product_slot'
+                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE '%product_id IS NOT NULL%')
+                      )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2
@@ -1601,6 +1733,325 @@ class FlywayMigrationIntegrationTest {
                               AND pg_get_indexdef(index_catalog.indexrelid) LIKE
                                   '%USING btree (merchant_owner_user_id, starts_at, id)%')
                       )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_availability'
+                          AND column_name = 'product_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'YES'
+                    ) AND EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_availability'
+                          AND column_name = 'product_type'
+                          AND column_default = '''GENERAL''::character varying'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM information_schema.columns
+                    WHERE table_name = 'reservable_product'
+                      AND (
+                          (column_name IN ('id', 'merchant_owner_user_id', 'place_id', 'version')
+                              AND data_type = 'bigint' AND is_nullable = 'NO')
+                          OR (column_name IN ('product_type', 'status')
+                              AND data_type = 'character varying' AND character_maximum_length = 20
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'name' AND data_type = 'character varying'
+                              AND character_maximum_length = 100 AND is_nullable = 'NO')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'reservable_product'::regclass
+                      AND (
+                          conname IN (
+                              'fk_reservable_product_merchant_owner',
+                              'uq_reservable_product_id_type',
+                              'ck_reservable_product_type',
+                              'ck_reservable_product_status'
+                          )
+                          OR (conname = 'fk_reservable_product_place'
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (place_id) REFERENCES map_place(map_place_id) ON DELETE RESTRICT')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'reservable_product'
+                      AND indexname IN (
+                          'idx_reservable_product_owner',
+                          'idx_reservable_product_place_status'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.columns
+                    WHERE table_name = 'reservation'
+                      AND (
+                          (column_name = 'product_id' AND data_type = 'bigint' AND is_nullable = 'YES')
+                          OR (column_name = 'product_type' AND data_type = 'character varying'
+                              AND character_maximum_length = 20 AND is_nullable = 'NO'
+                              AND column_default = '''GENERAL''::character varying')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'reservation'::regclass
+                      AND (
+                          (conname = 'fk_reservation_product'
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
+                          OR (conname = 'ck_reservation_product_type'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%TICKET%'
+                              AND pg_get_constraintdef(oid) LIKE '%CLASS%')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.tables
+                    WHERE table_name IN ('trust_score_anomaly', 'trust_score_intervention_rule')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'trust_score_anomaly'
+                      AND (
+                          (column_name IN (
+                              'id', 'reporter_user_id', 'submitted_count', 'accepted_count',
+                              'declined_count', 'false_report_count'
+                          ) AND data_type = 'bigint' AND is_nullable = 'NO')
+                          OR (column_name IN ('baseline_score', 'observed_score')
+                              AND data_type = 'integer' AND is_nullable = 'NO')
+                          OR (column_name IN ('detected_at', 'created_at')
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'NO')
+                          OR (column_name = 'resolved_at'
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'YES')
+                          OR (column_name = 'reporter_username'
+                              AND data_type = 'character varying' AND character_maximum_length = 50
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'anomaly_type'
+                              AND data_type = 'character varying' AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'severity'
+                              AND data_type = 'character varying' AND character_maximum_length = 20
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'resolution_reason'
+                              AND data_type = 'character varying' AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'trust_score_anomaly'::regclass
+                      AND conname IN (
+                          'ck_trust_score_anomaly_type',
+                          'ck_trust_score_anomaly_severity',
+                          'ck_trust_score_anomaly_score_range',
+                          'ck_trust_score_anomaly_counts',
+                          'ck_trust_score_anomaly_resolution'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'trust_score_anomaly'::regclass
+                          AND conname = 'fk_trust_score_anomaly_reporter_policy'
+                          AND contype = 'f'
+                          AND confrelid = 'reporter_moderation_policy'::regclass
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE tablename = 'trust_score_anomaly'
+                      AND indexname IN (
+                          'idx_trust_score_anomaly_reporter_detected',
+                          'idx_trust_score_anomaly_type_severity',
+                          'idx_trust_score_anomaly_unresolved'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'trust_score_intervention_rule'
+                      AND (
+                          (column_name IN ('id', 'min_submitted_count', 'min_false_report_count', 'version')
+                              AND data_type = 'bigint' AND is_nullable = 'NO')
+                          OR (column_name IN ('min_trust_score', 'max_trust_score', 'priority')
+                              AND data_type = 'integer' AND is_nullable = 'NO')
+                          OR (column_name = 'duration_days'
+                              AND data_type = 'integer' AND is_nullable = 'YES')
+                          OR (column_name = 'enabled'
+                              AND data_type = 'boolean' AND is_nullable = 'NO')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'NO')
+                          OR (column_name = 'rule_name'
+                              AND data_type = 'character varying' AND character_maximum_length = 100
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('trigger_type', 'action_type')
+                              AND data_type = 'character varying' AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'reason'
+                              AND data_type = 'character varying' AND character_maximum_length = 500
+                              AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'trust_score_intervention_rule'::regclass
+                      AND conname IN (
+                          'ck_trust_score_intervention_rule_trigger',
+                          'ck_trust_score_intervention_rule_action',
+                          'ck_trust_score_intervention_rule_score_range',
+                          'ck_trust_score_intervention_rule_counts',
+                          'ck_trust_score_intervention_rule_duration',
+                          'ck_trust_score_intervention_rule_priority'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'trust_score_intervention_rule'::regclass
+                          AND conname = 'uq_trust_score_intervention_rule_name'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'trust_score_intervention_rule'
+                      AND indexname IN (
+                          'idx_trust_score_intervention_rule_enabled',
+                          'idx_trust_score_intervention_rule_trigger'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_information_evidence'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'map_place'
+                      AND (
+                          (column_name IN ('primary_information_source', 'information_verification_status')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('information_verified_at', 'information_evidence_updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'information_verified_by_admin_user_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'map_place'::regclass
+                      AND conname IN (
+                          'ck_map_place_primary_information_source',
+                          'ck_map_place_information_verification_status',
+                          'ck_map_place_information_admin_verified_metadata'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_information_evidence'
+                      AND (
+                          (column_name = 'place_information_evidence_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'map_place_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('source_type', 'evidence_type', 'verification_status')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'external_reference'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 100
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'reference_url'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'description'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 1000
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('submitted_by_user_id', 'reviewed_by_admin_user_id')
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'review_reason'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('submitted_at', 'created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'reviewed_at'
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_evidence'::regclass
+                      AND conname IN (
+                          'ck_place_information_evidence_source_type',
+                          'ck_place_information_evidence_type',
+                          'ck_place_information_evidence_status',
+                          'ck_place_information_evidence_payload',
+                          'ck_place_information_evidence_review'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_information_evidence'::regclass
+                          AND conname = 'fk_place_information_evidence_place'
+                          AND contype = 'f'
+                          AND confrelid = 'map_place'::regclass
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'idx_place_information_evidence_place_status',
+                        'idx_place_information_evidence_source',
+                        'idx_map_place_information_verification'
+                    )
                     """)).isTrue();
         }
     }

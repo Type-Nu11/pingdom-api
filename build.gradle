@@ -68,6 +68,10 @@ dependencies {
 
 tasks.named('test') {
     useJUnitPlatform()
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
 }
 
 def openApiOutputDir = layout.buildDirectory.dir('openapi')

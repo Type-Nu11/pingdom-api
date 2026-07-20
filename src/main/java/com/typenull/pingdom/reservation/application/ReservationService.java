@@ -2,6 +2,7 @@ package com.typenull.pingdom.reservation.application;
 
 import com.typenull.pingdom.availability.application.AvailabilityAccessPolicy;
 import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
+import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.User;
@@ -48,11 +49,11 @@ public class ReservationService {
             return ReservationResponse.from(existing);
         }
         LocalDateTime now = LocalDateTime.now(clock);
-        availabilityService.reserve(request.availabilityId(), request.quantity());
+        PlaceAvailability availability = availabilityService.reserve(request.availabilityId(), request.quantity());
         try {
             return ReservationResponse.from(reservationRepository.save(
-                    Reservation.create(userId, request.availabilityId(), request.idempotencyKey(),
-                            request.quantity(), now)));
+                    Reservation.create(userId, request.availabilityId(), availability.getProductId(),
+                            availability.getProductType(), request.idempotencyKey(), request.quantity(), now)));
         } catch (IllegalArgumentException exception) {
             throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
         }

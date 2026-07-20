@@ -150,6 +150,21 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 `V37`은 여행 일정의 `version` 컬럼을 추가한다. 동시 수정·취소 요청이 동일한 이전 상태를
 덮어쓰지 않도록 JPA 낙관적 잠금에 사용한다.
 
+`V47`은 티켓과 클래스 상품을 `reservable_product`로 분리하고 예약 가능 슬롯과 예약 이력에 상품 참조와
+유형 snapshot을 추가한다. 기존 슬롯과 예약은 `product_id = NULL`, `product_type = GENERAL`로 유지한다.
+구버전 애플리케이션의 선행 배포와 롤백을 지원하기 위해 두 `product_type` column의 `GENERAL` default를
+유지한다. 신규 티켓·클래스 슬롯은 상품 ID로 구분하므로 같은 장소와 시간대에 동일 유형의 서로 다른
+상품을 등록할 수 있다.
+
+`V48`은 `V47`에서 `NOT VALID`로 추가한 상품 참조, 유형, non-null 보조 제약을 별도 transaction에서
+검증한다.
+
+`V49`는 기존 예약 가능 슬롯과 예약 이력 table의 상품 조회·중복 방지 index를 `CONCURRENTLY`로 생성한다.
+실패 후 재실행할 수 있도록 동일 이름의 invalid index를 먼저 제거한다.
+
+`V50`은 검증된 non-null 보조 제약을 근거로 table 재검사 없이 `product_type`을 `NOT NULL`로 전환하고,
+`V51`은 역할을 마친 보조 제약을 별도 transaction에서 제거한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.

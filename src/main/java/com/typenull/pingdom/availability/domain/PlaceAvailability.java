@@ -22,6 +22,13 @@ public class PlaceAvailability {
     @Column(name = "place_id", nullable = false)
     private Long placeId;
 
+    @Column(name = "product_id")
+    private Long productId;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "product_type", nullable = false, length = 20)
+    private AvailabilityProductType productType;
+
     @Column(name = "starts_at", nullable = false)
     private LocalDateTime startsAt;
 
@@ -49,11 +56,24 @@ public class PlaceAvailability {
 
     public static PlaceAvailability create(Long ownerId, Long placeId, LocalDateTime startsAt,
             LocalDateTime endsAt, int totalCapacity, LocalDateTime now) {
+        return create(ownerId, placeId, AvailabilityProductType.GENERAL, startsAt, endsAt, totalCapacity, now);
+    }
+
+    public static PlaceAvailability create(Long ownerId, Long placeId, AvailabilityProductType productType,
+            LocalDateTime startsAt, LocalDateTime endsAt, int totalCapacity, LocalDateTime now) {
+        return create(ownerId, placeId, null, productType, startsAt, endsAt, totalCapacity, now);
+    }
+
+    public static PlaceAvailability create(Long ownerId, Long placeId, Long productId,
+            AvailabilityProductType productType, LocalDateTime startsAt, LocalDateTime endsAt,
+            int totalCapacity, LocalDateTime now) {
         validatePeriod(startsAt, endsAt);
         validateCapacity(totalCapacity);
         PlaceAvailability availability = new PlaceAvailability();
         availability.merchantOwnerUserId = Objects.requireNonNull(ownerId, "ownerId must not be null");
         availability.placeId = Objects.requireNonNull(placeId, "placeId must not be null");
+        availability.productId = productId;
+        availability.productType = Objects.requireNonNull(productType, "productType must not be null");
         availability.startsAt = startsAt;
         availability.endsAt = endsAt;
         availability.totalCapacity = totalCapacity;
@@ -65,10 +85,26 @@ public class PlaceAvailability {
     }
 
     public void update(LocalDateTime startsAt, LocalDateTime endsAt, int totalCapacity, LocalDateTime now) {
+        update(productType, startsAt, endsAt, totalCapacity, now);
+    }
+
+    public void update(AvailabilityProductType productType, LocalDateTime startsAt, LocalDateTime endsAt,
+            int totalCapacity, LocalDateTime now) {
+        update(productId, productType, startsAt, endsAt, totalCapacity, now);
+    }
+
+    public void update(Long productId, AvailabilityProductType productType, LocalDateTime startsAt,
+            LocalDateTime endsAt, int totalCapacity, LocalDateTime now) {
         validatePeriod(startsAt, endsAt);
         validateCapacity(totalCapacity);
         int allocated = this.totalCapacity - this.remainingCapacity;
         if (totalCapacity < allocated) throw new IllegalStateException("배정된 인원보다 총 수용 인원을 줄일 수 없습니다.");
+        AvailabilityProductType nextProductType = Objects.requireNonNull(productType, "productType must not be null");
+        if (allocated > 0 && (!Objects.equals(this.productId, productId) || this.productType != nextProductType)) {
+            throw new IllegalStateException("예약이 존재하는 슬롯의 상품은 변경할 수 없습니다.");
+        }
+        this.productId = productId;
+        this.productType = nextProductType;
         this.startsAt = startsAt;
         this.endsAt = endsAt;
         this.totalCapacity = totalCapacity;
