@@ -1,0 +1,6 @@
+ALTER TABLE place_availability VALIDATE CONSTRAINT fk_place_availability_product;
+ALTER TABLE place_availability VALIDATE CONSTRAINT ck_place_availability_product_type;
+ALTER TABLE place_availability VALIDATE CONSTRAINT ck_place_availability_product_type_not_null;
+ALTER TABLE reservation VALIDATE CONSTRAINT fk_reservation_product;
+ALTER TABLE reservation VALIDATE CONSTRAINT ck_reservation_product_type;
+ALTER TABLE reservation VALIDATE CONSTRAINT ck_reservation_product_type_not_null;

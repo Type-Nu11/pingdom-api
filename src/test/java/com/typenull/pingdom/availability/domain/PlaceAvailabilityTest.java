@@ -46,6 +46,25 @@ class PlaceAvailabilityTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void productTypeCanChangeBeforeReservationsExist() {
+        PlaceAvailability availability = slot(10);
+
+        availability.update(AvailabilityProductType.CLASS, now.plusHours(1), now.plusHours(3), 10, now);
+
+        assertThat(availability.getProductType()).isEqualTo(AvailabilityProductType.CLASS);
+    }
+
+    @Test
+    void productTypeCannotChangeAfterCapacityWasAllocated() {
+        PlaceAvailability availability = slot(10);
+        availability.reserve(1, now);
+
+        assertThatThrownBy(() -> availability.update(
+                AvailabilityProductType.TICKET, now.plusHours(1), now.plusHours(3), 10, now))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
     private PlaceAvailability slot(int capacity) {
         return PlaceAvailability.create(1L, 2L, now.plusHours(1), now.plusHours(2), capacity, now);
     }
