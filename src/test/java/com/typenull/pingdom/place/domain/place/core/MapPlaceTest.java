@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.domain.place.core;
 
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -47,6 +48,22 @@ class MapPlaceTest {
         assertThatThrownBy(() -> mapPlace.updateOperatingStatus(null, checkedAt))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("operatingStatus must not be null");
+    }
+
+    @Test
+    void defaultsDiscoveryStatusToVisibleAndUpdatesStatus() {
+        MapPlace mapPlace = MapPlace.builder().build();
+
+        assertThat(mapPlace.getDiscoveryStatus()).isEqualTo(PlaceDiscoveryStatus.VISIBLE);
+        assertThat(mapPlace.isVisibleInDiscovery()).isTrue();
+
+        mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+
+        assertThat(mapPlace.getDiscoveryStatus()).isEqualTo(PlaceDiscoveryStatus.HIDDEN);
+        assertThat(mapPlace.isVisibleInDiscovery()).isFalse();
+        assertThatThrownBy(() -> mapPlace.updateDiscoveryStatus(null))
+                .isInstanceOf(NullPointerException.class)
+                .hasMessage("discoveryStatus must not be null");
     }
 
     @Test

@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.api.PlaceController;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -354,6 +355,92 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].geocodingSource").value("KAKAO"))
                 .andExpect(jsonPath("$.places[0].category").value("관광"))
                 .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesFiltersByTouristCategory() throws Exception {
+        String accessToken = signupAndLogin("readerTouristCategory" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace kpopPlace = createMapPlace("케이팝 명소", "서울특별시 중구 케이팝로 1", "관광", 37.5665, 126.9780);
+        kpopPlace.updateTouristInformation(
+                "K-pop Spot",
+                "K-pop tourists visit here.",
+                Set.of(TouristCategory.K_POP)
+        );
+        mapPlaceRepository.save(kpopPlace);
+        MapPlace cafePlace = createMapPlace("관광 카페", "서울특별시 중구 카페로 1", "카페", 37.5670, 126.9790);
+        cafePlace.updateTouristInformation(
+                "Tour Cafe",
+                "Cafe for tourists.",
+                Set.of(TouristCategory.CAFE)
+        );
+        mapPlaceRepository.saveAndFlush(cafePlace);
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("touristCategory", " k_pop "))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(kpopPlace.getId()))
+                .andExpect(jsonPath("$.places[0].touristCategories[0]").value("K_POP"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesSortsPopularByPhotoCount() throws Exception {
+        String accessToken = signupAndLogin("readerPopularSort" + Long.toUnsignedString(System.nanoTime()));
+        createMapPlace("덜 인기 장소", "경상남도 진주시 인기고요로 1", "카페", 35.1801, 128.1078, 1L);
+        MapPlace popularPlace = createMapPlace(
+                "인기 장소",
+                "경상남도 진주시 인기많음로 1",
+                "카페",
+                35.1802,
+                128.1079,
+                9L
+        );
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sort", "POPULAR"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(2))
+                .andExpect(jsonPath("$.places[0].id").value(popularPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(2));
+    }
+
+    @Test
+    void hiddenDiscoveryPlacesAreExcludedFromPublicPlaceQueries() throws Exception {
+        String username = "readerHiddenDiscovery" + Long.toUnsignedString(System.nanoTime());
+        String accessToken = signupAndLogin(username);
+        User user = userRepository.findByUsername(username).orElseThrow();
+        MapPlace visiblePlace = createMapPlace("탐색 노출 장소", "경상남도 진주시 노출로 1");
+        MapPlace hiddenPlace = createMapPlace("탐색 숨김 장소", "경상남도 진주시 숨김로 1");
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+        mapBookmarkRepository.save(MapBookmark.builder()
+                .userId(user.getId())
+                .placeId(hiddenPlace.getId())
+                .build());
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(visiblePlace.getId()));
+
+        mockMvc.perform(get("/places/autocomplete")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "숨김"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0));
+
+        mockMvc.perform(get("/places/{id}", hiddenPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
+        mockMvc.perform(get("/users/me/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalCount").value(0));
     }
 
     @Test
