@@ -212,13 +212,10 @@ class AdminSecurityTest {
     }
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
-        createUser("securityAuditAdmin", UserRole.ADMIN);
-        createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
-        createUser("securityAuditWithdrawnAdmin", UserRole.ADMIN);
-        createUser("securityAuditTarget", UserRole.USER);
-
-        User admin = userRepository.findByUsername("securityAuditAdmin").orElseThrow();
-        User targetUser = userRepository.findByUsername("securityAuditTarget").orElseThrow();
+        User admin = createUser("securityAuditAdmin", UserRole.ADMIN);
+        User merchantOwner = createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
+        User withdrawnAdmin = createUser("securityAuditWithdrawnAdmin", UserRole.ADMIN);
+        User targetUser = createUser("securityAuditTarget", UserRole.USER);
 
         adminAuditLogRepository.save(AdminAuditLog.builder()
                 .actorUserId(admin.getId())
@@ -245,19 +242,17 @@ class AdminSecurityTest {
                 .createdAt(LocalDateTime.of(2026, 7, 1, 11, 0))
                 .build());
 
-        User withdrawnAdmin = userRepository.findByUsername("securityAuditWithdrawnAdmin").orElseThrow();
-
         return new SecurityRegressionFixture(
                 loginAndGetAccessToken(admin.getUsername()),
-                loginAndGetAccessToken("securityAuditMerchant"),
+                loginAndGetAccessToken(merchantOwner.getUsername()),
                 loginAndGetAccessToken(withdrawnAdmin.getUsername()),
                 withdrawnAdmin.getId(),
                 targetUser.getId()
         );
     }
 
-    private void createUser(String username, UserRole role) {
-        userRepository.save(User.builder()
+    private User createUser(String username, UserRole role) {
+        return userRepository.saveAndFlush(User.builder()
                 .username(username)
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
