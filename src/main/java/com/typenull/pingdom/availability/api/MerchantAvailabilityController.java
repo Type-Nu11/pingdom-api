@@ -5,6 +5,7 @@ import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -26,6 +27,7 @@ public class MerchantAvailabilityController {
 
     @PostMapping
     @Operation(summary = "예약 가능 시간 등록")
+    @ApiResponse(responseCode = "201", description = "예약 가능 시간 등록 성공")
     public ResponseEntity<AvailabilityResponse> create(@Valid @RequestBody AvailabilityUpsertRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(user.userId(), request));
