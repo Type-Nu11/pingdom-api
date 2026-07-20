@@ -6,6 +6,7 @@ import com.typenull.pingdom.product.application.ReservableProductService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
@@ -28,6 +29,7 @@ public class MerchantReservableProductController {
 
     @PostMapping
     @Operation(summary = "예약 상품 등록")
+    @ApiResponse(responseCode = "201", description = "예약 상품 등록 성공")
     public ResponseEntity<ReservableProductResponse> create(
             @Valid @RequestBody ReservableProductCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
