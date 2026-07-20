@@ -1,5 +1,6 @@
 package com.typenull.pingdom.reservation.api.dto;
 
+import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.reservation.domain.Reservation;
 import com.typenull.pingdom.reservation.domain.ReservationStatus;
 import java.time.LocalDateTime;
@@ -8,6 +9,8 @@ public record ReservationResponse(
         Long id,
         Long touristUserId,
         Long availabilityId,
+        Long productId,
+        AvailabilityProductType productType,
         int quantity,
         ReservationStatus status,
         LocalDateTime createdAt,
@@ -17,7 +20,9 @@ public record ReservationResponse(
 ) {
     public static ReservationResponse from(Reservation reservation) {
         return new ReservationResponse(reservation.getId(), reservation.getTouristUserId(),
-                reservation.getAvailabilityId(), reservation.getQuantity(), reservation.getStatus(),
+                reservation.getAvailabilityId(), reservation.getProductId(), reservation.getProductType(),
+                reservation.getQuantity(),
+                reservation.getStatus(),
                 reservation.getCreatedAt(), reservation.getConfirmedAt(), reservation.getCanceledAt(),
                 reservation.getUpdatedAt());
     }

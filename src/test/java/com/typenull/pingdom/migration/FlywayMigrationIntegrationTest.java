@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("46");
-        assertThat(result.migrationsExecuted).isEqualTo(46);
+        assertThat(result.targetSchemaVersion).isEqualTo("51");
+        assertThat(result.migrationsExecuted).isEqualTo(51);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("46");
-        assertThat(result.migrationsExecuted).isEqualTo(45);
+        assertThat(result.targetSchemaVersion).isEqualTo("51");
+        assertThat(result.migrationsExecuted).isEqualTo(50);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("46");
-        assertThat(result.migrationsExecuted).isEqualTo(19);
+        assertThat(result.targetSchemaVersion).isEqualTo("51");
+        assertThat(result.migrationsExecuted).isEqualTo(24);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1560,6 +1560,185 @@ class FlywayMigrationIntegrationTest {
                         WHERE tablename = 'tourist_offer'
                           AND indexname = 'idx_tourist_offer_place_public_period'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 12
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_availability'
+                      AND is_nullable = 'NO'
+                      AND (
+                          (column_name IN ('id', 'merchant_owner_user_id', 'place_id', 'version')
+                              AND data_type = 'bigint')
+                          OR (column_name IN ('starts_at', 'ends_at', 'created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone')
+                          OR (column_name IN ('total_capacity', 'remaining_capacity')
+                              AND data_type = 'integer')
+                          OR (column_name IN ('status', 'product_type') AND data_type = 'character varying'
+                              AND character_maximum_length = 20)
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_availability'::regclass
+                      AND conname IN (
+                          'ck_place_availability_period',
+                          'ck_place_availability_capacity',
+                          'ck_place_availability_status',
+                          'ck_place_availability_product_type'
+                      )
+                      AND contype = 'c'
+                      AND CASE conname
+                          WHEN 'ck_place_availability_period' THEN
+                              pg_get_constraintdef(oid) LIKE '%ends_at > starts_at%'
+                          WHEN 'ck_place_availability_capacity' THEN
+                              pg_get_constraintdef(oid) LIKE '%total_capacity > 0%'
+                              AND pg_get_constraintdef(oid) LIKE '%remaining_capacity >= 0%'
+                              AND pg_get_constraintdef(oid) LIKE '%remaining_capacity <= total_capacity%'
+                          WHEN 'ck_place_availability_status' THEN
+                              pg_get_constraintdef(oid) LIKE '%status%'
+                              AND pg_get_constraintdef(oid) LIKE '%ACTIVE%'
+                              AND pg_get_constraintdef(oid) LIKE '%INACTIVE%'
+                          WHEN 'ck_place_availability_product_type' THEN
+                              pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%TICKET%'
+                              AND pg_get_constraintdef(oid) LIKE '%CLASS%'
+                      END
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_availability'::regclass
+                      AND contype = 'f'
+                      AND (
+                          (conname = 'fk_place_availability_merchant_owner'
+                              AND confrelid = 'merchant_owner_profile'::regclass
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (merchant_owner_user_id) REFERENCES merchant_owner_profile(user_id) ON DELETE CASCADE')
+                          OR (conname = 'fk_place_availability_place'
+                              AND confrelid = 'map_place'::regclass
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (place_id) REFERENCES map_place(map_place_id) ON DELETE CASCADE')
+                          OR (conname = 'fk_place_availability_product'
+                              AND confrelid = 'reservable_product'::regclass
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_index index_catalog
+                    JOIN pg_class index_relation ON index_relation.oid = index_catalog.indexrelid
+                    WHERE index_catalog.indrelid = 'place_availability'::regclass
+                      AND index_catalog.indisunique = true
+                      AND index_catalog.indpred IS NOT NULL
+                      AND (
+                          (index_relation.relname = 'uq_place_availability_legacy_slot'
+                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE '%product_id IS NULL%')
+                          OR (index_relation.relname = 'uq_place_availability_product_slot'
+                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE '%product_id IS NOT NULL%')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_index index_catalog
+                    JOIN pg_class index_relation ON index_relation.oid = index_catalog.indexrelid
+                    WHERE index_catalog.indrelid = 'place_availability'::regclass
+                      AND index_catalog.indpred IS NULL
+                      AND (
+                          (index_relation.relname = 'idx_place_availability_public'
+                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE
+                                  '%USING btree (place_id, status, starts_at, ends_at, id)%')
+                          OR (index_relation.relname = 'idx_place_availability_owner'
+                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE
+                                  '%USING btree (merchant_owner_user_id, starts_at, id)%')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_availability'
+                          AND column_name = 'product_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'YES'
+                    ) AND EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_availability'
+                          AND column_name = 'product_type'
+                          AND column_default = '''GENERAL''::character varying'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM information_schema.columns
+                    WHERE table_name = 'reservable_product'
+                      AND (
+                          (column_name IN ('id', 'merchant_owner_user_id', 'place_id', 'version')
+                              AND data_type = 'bigint' AND is_nullable = 'NO')
+                          OR (column_name IN ('product_type', 'status')
+                              AND data_type = 'character varying' AND character_maximum_length = 20
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'name' AND data_type = 'character varying'
+                              AND character_maximum_length = 100 AND is_nullable = 'NO')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone' AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'reservable_product'::regclass
+                      AND (
+                          conname IN (
+                              'fk_reservable_product_merchant_owner',
+                              'uq_reservable_product_id_type',
+                              'ck_reservable_product_type',
+                              'ck_reservable_product_status'
+                          )
+                          OR (conname = 'fk_reservable_product_place'
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (place_id) REFERENCES map_place(map_place_id) ON DELETE RESTRICT')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'reservable_product'
+                      AND indexname IN (
+                          'idx_reservable_product_owner',
+                          'idx_reservable_product_place_status'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.columns
+                    WHERE table_name = 'reservation'
+                      AND (
+                          (column_name = 'product_id' AND data_type = 'bigint' AND is_nullable = 'YES')
+                          OR (column_name = 'product_type' AND data_type = 'character varying'
+                              AND character_maximum_length = 20 AND is_nullable = 'NO'
+                              AND column_default = '''GENERAL''::character varying')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'reservation'::regclass
+                      AND (
+                          (conname = 'fk_reservation_product'
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
+                          OR (conname = 'ck_reservation_product_type'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
+                              AND pg_get_constraintdef(oid) LIKE '%TICKET%'
+                              AND pg_get_constraintdef(oid) LIKE '%CLASS%')
+                      )
                     """)).isTrue();
         }
     }

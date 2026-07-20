@@ -1,0 +1,2 @@
+ALTER TABLE place_availability DROP CONSTRAINT ck_place_availability_product_type_not_null;
+ALTER TABLE reservation DROP CONSTRAINT ck_reservation_product_type_not_null;
