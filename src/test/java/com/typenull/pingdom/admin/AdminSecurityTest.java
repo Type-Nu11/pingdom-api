@@ -182,7 +182,10 @@ class AdminSecurityTest {
 
         mockMvc.perform(get("/admin/audit-logs")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.merchantOwnerAccessToken()))
-                .andExpect(status().isForbidden());
+                .andExpect(status().isForbidden())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"))
+                .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
     }
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
