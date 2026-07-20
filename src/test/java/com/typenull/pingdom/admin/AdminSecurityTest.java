@@ -163,7 +163,9 @@ class AdminSecurityTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.adminAccessToken())
                         .param("from", "2026-07-01T00:00:00")
                         .param("to", "2026-07-01T23:59:59"))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auditLogs[0].action").value(AdminAuditAction.REPORT_ACCEPTED.name()))
+                .andExpect(jsonPath("$.auditLogs[1].action").value(AdminAuditAction.USER_BAN_APPLIED.name()));
     }
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
