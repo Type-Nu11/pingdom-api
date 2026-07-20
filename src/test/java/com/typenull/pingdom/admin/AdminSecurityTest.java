@@ -176,6 +176,15 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.totalCount").value(2));
     }
 
+    @Test
+    void adminAuditScenarioRejectsMerchantOwnerBoundaryRole() throws Exception {
+        SecurityRegressionFixture fixture = securityRegressionFixture();
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + fixture.merchantOwnerAccessToken()))
+                .andExpect(status().isForbidden());
+    }
+
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
         createUser("securityAuditAdmin", UserRole.ADMIN);
         createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
