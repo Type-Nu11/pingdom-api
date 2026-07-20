@@ -32,13 +32,13 @@ ALTER TABLE reservation
 
 ALTER TABLE place_availability
     ADD CONSTRAINT fk_place_availability_product FOREIGN KEY (product_id)
-        REFERENCES reservable_product (id) ON DELETE SET NULL,
+        REFERENCES reservable_product (id) ON DELETE SET NULL NOT VALID,
     ADD CONSTRAINT ck_place_availability_product_type
         CHECK (product_type IN ('GENERAL', 'TICKET', 'CLASS')) NOT VALID;
 
 ALTER TABLE reservation
     ADD CONSTRAINT fk_reservation_product FOREIGN KEY (product_id)
-        REFERENCES reservable_product (id) ON DELETE SET NULL,
+        REFERENCES reservable_product (id) ON DELETE SET NULL NOT VALID,
     ADD CONSTRAINT ck_reservation_product_type
         CHECK (product_type IN ('GENERAL', 'TICKET', 'CLASS')) NOT VALID;
 
