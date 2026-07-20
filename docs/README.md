@@ -32,6 +32,7 @@
 - [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
+- [로컬 개발 환경](local-development.md)
 - [Pingdom 2.0 출시 전환·적용·복구 Runbook](refactoring-rollout-runbook.md)
 
 ## 아키텍처 문서

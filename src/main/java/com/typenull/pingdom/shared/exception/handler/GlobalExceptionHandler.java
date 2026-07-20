@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.exception.handler;
 
+import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
@@ -60,6 +61,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(OfferException.class)
     public ResponseEntity<Map<String, String>> handleOfferException(OfferException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(AvailabilityException.class)
+    public ResponseEntity<Map<String, String>> handleAvailabilityException(AvailabilityException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }
