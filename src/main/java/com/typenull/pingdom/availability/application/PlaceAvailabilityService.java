@@ -59,8 +59,10 @@ public class PlaceAvailabilityService {
         try {
             ReservableProduct product = requireProduct(request);
             requireProductReference(request, product, availability);
+            boolean preservingExistingProduct = request.productId() == null && availability.getProductId() != null;
             Long productId = request.productId() == null ? availability.getProductId() : product.getId();
-            AvailabilityProductType productType = productType(request, product, availability.getProductType());
+            AvailabilityProductType productType = productType(
+                    request, product, preservingExistingProduct, availability.getProductType());
             availability.update(productId, productType, request.startsAt(), request.endsAt(),
                     request.totalCapacity(), now);
             repository.flush();
@@ -137,11 +139,22 @@ public class PlaceAvailabilityService {
 
     private AvailabilityProductType productType(AvailabilityUpsertRequest request, ReservableProduct product,
             AvailabilityProductType fallback) {
+        return productType(request, product, false, fallback);
+    }
+
+    private AvailabilityProductType productType(AvailabilityUpsertRequest request, ReservableProduct product,
+            boolean preservingExistingProduct, AvailabilityProductType fallback) {
         if (product != null) {
             if (request.productType() != null && request.productType() != product.getProductType()) {
                 throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
             }
             return product.getProductType();
+        }
+        if (preservingExistingProduct) {
+            if (request.productType() != null && request.productType() != fallback) {
+                throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
+            }
+            return fallback;
         }
         return request.productType() == null ? fallback : request.productType();
     }

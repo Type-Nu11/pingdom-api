@@ -15,6 +15,6 @@ public record AvailabilityUpsertRequest(
         @Min(1) int totalCapacity
 ) {
     public AvailabilityUpsertRequest(Long placeId, LocalDateTime startsAt, LocalDateTime endsAt, int totalCapacity) {
-        this(placeId, null, AvailabilityProductType.GENERAL, startsAt, endsAt, totalCapacity);
+        this(placeId, null, null, startsAt, endsAt, totalCapacity);
     }
 }
