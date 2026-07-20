@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRang
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
@@ -78,37 +79,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
         String keywordPattern = toLikePattern(condition.keyword());
         String category = normalizeCategory(condition.category());
-        if (!locationSearch.enabled()) {
-            Page<MapPlace> placePage = placeSearchQueryRepository.searchLatestPlaces(
-                    keywordPattern,
-                    category,
-                    PlaceOperatingStatus.OPERATING,
-                    pageable
-            );
-            Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
-                    placePage.getContent().stream().map(MapPlace::getId).toList()
-            );
-            List<PlaceListItem> places = placePage.getContent()
-                    .stream()
-                    .map(place -> toListItem(
-                            place,
-                            touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
-                    ))
-                    .toList();
-
-            return PlaceListResponse.of(
-                    places,
-                    safePage,
-                    safeLimit,
-                    placePage.getTotalElements(),
-                    placePage.getTotalPages()
-            );
-        }
+        TouristCategory touristCategory = normalizeTouristCategory(condition.touristCategory());
 
         Page<PlaceSearchProjection> placePage = placeSearchQueryRepository.searchPlaces(
                 keywordPattern,
                 category,
+                touristCategory == null ? null : touristCategory.name(),
                 PlaceOperatingStatus.OPERATING.name(),
+                PlaceDiscoveryStatus.VISIBLE.name(),
                 locationSearch.enabled(),
                 locationSearch.latitude(),
                 locationSearch.longitude(),
@@ -162,10 +140,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
 
         List<PlaceAutocompleteItem> places = placeSearchQueryRepository.findAutocompleteCandidates(
-                        normalizedKeyword,
-                        PlaceOperatingStatus.OPERATING,
-                        pageable
-                )
+                normalizedKeyword,
+                PlaceOperatingStatus.OPERATING,
+                PlaceDiscoveryStatus.VISIBLE,
+                pageable
+        )
                 .stream()
                 .sorted((first, second) -> compareAutocompletePlaces(
                         first,
@@ -186,7 +165,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     public PlaceDetailResponse getPlace(Long placeId) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
-        if (!mapPlace.isOperating()) {
+        if (!mapPlace.isOperating() || !mapPlace.isVisibleInDiscovery()) {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
 
@@ -226,6 +205,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Page<MapPlace> placePage = placeSearchQueryRepository.findBookmarkedPlacesByUserId(
                 userId,
                 PlaceOperatingStatus.OPERATING,
+                PlaceDiscoveryStatus.VISIBLE,
                 pageable
         );
         Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
@@ -334,6 +314,19 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private String normalizeCategory(String value) {
         String normalized = PlaceCategoryPolicy.normalize(value);
         return normalized == null ? null : normalized.toLowerCase(Locale.ROOT);
+    }
+
+    private TouristCategory normalizeTouristCategory(String value) {
+        String normalized = trimToNull(value);
+        if (normalized == null) {
+            return null;
+        }
+
+        try {
+            return TouristCategory.valueOf(normalized.toUpperCase(Locale.ROOT));
+        } catch (IllegalArgumentException exception) {
+            throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
+        }
     }
 
     private String trimToNull(String value) {

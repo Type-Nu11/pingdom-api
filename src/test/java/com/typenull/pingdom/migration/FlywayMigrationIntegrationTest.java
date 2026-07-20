@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("43");
-        assertThat(result.migrationsExecuted).isEqualTo(43);
+        assertThat(result.targetSchemaVersion).isEqualTo("44");
+        assertThat(result.migrationsExecuted).isEqualTo(44);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("43");
-        assertThat(result.migrationsExecuted).isEqualTo(42);
+        assertThat(result.targetSchemaVersion).isEqualTo("44");
+        assertThat(result.migrationsExecuted).isEqualTo(43);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("43");
-        assertThat(result.migrationsExecuted).isEqualTo(16);
+        assertThat(result.targetSchemaVersion).isEqualTo("44");
+        assertThat(result.migrationsExecuted).isEqualTo(17);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -191,6 +191,7 @@ class FlywayMigrationIntegrationTest {
                           AND postal_code IS NULL
                           AND geocoding_source = 'LEGACY'
                           AND operating_status = 'OPERATING'
+                          AND discovery_status = 'VISIBLE'
                           AND operating_status_checked_at IS NULL
                     )
                     """)).isTrue();
@@ -522,6 +523,45 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM pg_constraint
                         WHERE conname = 'ck_map_place_operating_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'discovery_status'
+                          AND character_maximum_length = 20
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_discovery_status'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_discovery_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'map_place'
+                      AND indexname IN ('idx_map_place_public_latest', 'idx_map_place_public_popular')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place_tourist_category'
+                          AND indexname = 'idx_map_place_tourist_category_filter'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

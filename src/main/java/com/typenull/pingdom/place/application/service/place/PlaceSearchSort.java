@@ -7,7 +7,8 @@ import org.springframework.util.StringUtils;
 
 public enum PlaceSearchSort {
     LATEST,
-    NEAREST;
+    NEAREST,
+    POPULAR;
 
     public static PlaceSearchSort from(String value) {
         if (!StringUtils.hasText(value)) {
