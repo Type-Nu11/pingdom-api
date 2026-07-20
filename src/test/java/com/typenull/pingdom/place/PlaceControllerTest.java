@@ -1188,17 +1188,19 @@ class PlaceControllerTest {
     }
 
     @Test
-    void recordRecommendationClickStoresRawLogAndIncreasesSnapshotCount() throws Exception {
+    void recordRecommendationClickStoresLogAndIncreasesSnapshotCount() throws Exception {
         String accessToken = signupAndLogin("reader12");
         MapPlace clickedPlace = createMapPlace("클릭 장소", "경상남도 진주시 클릭로 1", 35.1803, 128.1079, 1L);
         createMapImage(clickedPlace, 2L, "클릭 사진");
+        String requestId = "click-count-request";
 
         mockMvc.perform(post("/places/recommendations/click")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", clickedPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", requestId
                         ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.placeId").value(clickedPlace.getId()))
@@ -1208,12 +1210,34 @@ class PlaceControllerTest {
         assertEquals(1, clicks.size());
         assertEquals(clickedPlace.getId(), clicks.get(0).getPlaceId());
         assertNotNull(clicks.get(0).getCreatedAt());
-        assertNull(clicks.get(0).getRequestId());
+        assertEquals(requestId, clicks.get(0).getRequestId());
 
         PlaceRecommendationSnapshot snapshot = placeRecommendationSnapshotRepository.findById(clickedPlace.getId())
                 .orElseThrow();
         assertEquals(1L, snapshot.getClickCount());
         assertEquals(0L, snapshot.getExposureCount());
+    }
+
+    @Test
+    void recordRecommendationClickRejectsHiddenDiscoveryPlace() throws Exception {
+        String accessToken = signupAndLogin("readerHiddenRecommendationClick" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace hiddenPlace = createMapPlace("숨김 추천 클릭 장소", "경상남도 진주시 숨김추천로 1", 35.1803, 128.1079, 1L);
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+
+        mockMvc.perform(post("/places/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of(
+                                "placeId", hiddenPlace.getId(),
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "hidden-discovery-click-request"
+                        ))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+
+        assertEquals(0, placeRecommendationClickRepository.findAll().size());
+        assertEquals(false, placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
     @Test
@@ -1504,7 +1528,8 @@ class PlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "like-conversion-request"
                         ))))
                 .andExpect(status().isCreated());
 
@@ -1533,7 +1558,8 @@ class PlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1"
+                                "recommendationVersion", "place-rec-v1",
+                                "requestId", "like-conversion-once-request"
                         ))))
                 .andExpect(status().isCreated());
 
