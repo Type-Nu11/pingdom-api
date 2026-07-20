@@ -67,6 +67,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertNotNull;
 import static org.junit.jupiter.api.Assertions.assertNull;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
@@ -1236,8 +1237,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
 
-        assertEquals(0, placeRecommendationClickRepository.findAll().size());
-        assertEquals(false, placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
+        long hiddenPlaceClickCount = placeRecommendationClickRepository.findAll().stream()
+                .filter(click -> hiddenPlace.getId().equals(click.getPlaceId()))
+                .count();
+        assertEquals(0L, hiddenPlaceClickCount);
+        assertFalse(placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
     @Test
@@ -1729,6 +1733,29 @@ class PlaceControllerTest {
         PlaceRecommendationSnapshot removedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
                 .orElseThrow();
         assertEquals(0L, removedSnapshot.getBookmarkCount());
+    }
+
+    @Test
+    void createBookmarkRejectsHiddenDiscoveryPlace() throws Exception {
+        String username = "readerHiddenBookmark" + Long.toUnsignedString(System.nanoTime());
+        String accessToken = signupAndLogin(username);
+        User user = userRepository.findByUsername(username).orElseThrow();
+        MapPlace hiddenPlace = createMapPlace("숨김 북마크 장소", "경상남도 진주시 숨김북마크로 1");
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+
+        mockMvc.perform(post("/users/me/bookmarks")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(java.util.Map.of("placeId", hiddenPlace.getId()))))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+
+        assertFalse(mapBookmarkRepository.existsByUserIdAndPlaceId(
+                user.getId(),
+                hiddenPlace.getId()
+        ));
+        assertFalse(placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
     @Test
