@@ -64,4 +64,29 @@ CREATE TABLE trust_score_intervention_rule (
     updated_at TIMESTAMP(6) NOT NULL,
     version BIGINT NOT NULL DEFAULT 0,
     CONSTRAINT uq_trust_score_intervention_rule_name UNIQUE (rule_name),
+    CONSTRAINT ck_trust_score_intervention_rule_trigger
+        CHECK (trigger_type IN ('TRUST_SCORE_RANGE', 'FALSE_REPORT_COUNT', 'ACCEPTANCE_RATE', 'ANOMALY_DETECTED')),
+    CONSTRAINT ck_trust_score_intervention_rule_action
+        CHECK (action_type IN ('WARN', 'REVIEW_REQUIRED', 'TEMPORARY_RESTRICT', 'MANUAL_REVIEW')),
+    CONSTRAINT ck_trust_score_intervention_rule_score_range
+        CHECK (
+            min_trust_score BETWEEN 0 AND 100
+            AND max_trust_score BETWEEN 0 AND 100
+            AND min_trust_score <= max_trust_score
+        ),
+    CONSTRAINT ck_trust_score_intervention_rule_counts
+        CHECK (min_submitted_count >= 0 AND min_false_report_count >= 0),
+    CONSTRAINT ck_trust_score_intervention_rule_duration
+        CHECK (
+            (action_type = 'TEMPORARY_RESTRICT' AND duration_days BETWEEN 1 AND 365)
+            OR (action_type != 'TEMPORARY_RESTRICT' AND duration_days IS NULL)
+        ),
+    CONSTRAINT ck_trust_score_intervention_rule_priority
+        CHECK (priority >= 0)
 );
+
+CREATE INDEX idx_trust_score_intervention_rule_enabled
+    ON trust_score_intervention_rule (enabled, priority, id);
+
+CREATE INDEX idx_trust_score_intervention_rule_trigger
+    ON trust_score_intervention_rule (trigger_type, enabled, priority);
