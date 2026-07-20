@@ -10,6 +10,8 @@ import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.*;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.reservation.api.dto.ReservationCreateRequest;
 import com.typenull.pingdom.reservation.domain.Reservation;
@@ -27,13 +29,14 @@ class ReservationServiceTest {
     private final PlaceAvailabilityRepository availabilityRepository = mock(PlaceAvailabilityRepository.class);
     private final PlaceAvailabilityService availabilityService = mock(PlaceAvailabilityService.class);
     private final AvailabilityAccessPolicy availabilityAccessPolicy = mock(AvailabilityAccessPolicy.class);
+    private final MerchantOwnerPlaceRepository ownerPlaceRepository = mock(MerchantOwnerPlaceRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private ReservationService service;
 
     @BeforeEach
     void setUp() {
         service = new ReservationService(reservationRepository, availabilityRepository, availabilityService,
-                availabilityAccessPolicy, userRepository,
+                availabilityAccessPolicy, ownerPlaceRepository, userRepository,
                 Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC));
         User tourist = User.builder().id(1L).role(UserRole.USER).status(UserStatus.ACTIVE).build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(tourist));
@@ -98,10 +101,32 @@ class ReservationServiceTest {
                 7L, 11L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
         when(reservationRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(reservation));
         when(availabilityRepository.findById(9L)).thenReturn(Optional.of(availability));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(11L)).thenReturn(Optional.of(MerchantOwnerPlace.builder()
+                .placeId(11L).merchantOwnerUserId(8L).createdAt(now).build()));
 
         service.confirm(8L, 3L);
 
-        verify(availabilityAccessPolicy).requireOwnedPlace(eq(8L), eq(11L), any(LocalDateTime.class));
+        verify(ownerPlaceRepository).findByPlaceIdForUpdate(11L);
+        verify(availabilityAccessPolicy).requireActiveMerchantOwner(eq(8L), any(LocalDateTime.class));
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
+    }
+
+    @Test
+    void previousOwnerCannotConfirmAfterOwnershipTransfer() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
+        Reservation reservation = Reservation.create(1L, 9L, "request-1", 2, now);
+        PlaceAvailability availability = PlaceAvailability.create(
+                7L, 11L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
+        when(reservationRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(reservation));
+        when(availabilityRepository.findById(9L)).thenReturn(Optional.of(availability));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(11L)).thenReturn(Optional.of(MerchantOwnerPlace.builder()
+                .placeId(11L).merchantOwnerUserId(8L).createdAt(now).build()));
+
+        assertThatThrownBy(() -> service.confirm(7L, 3L))
+                .isInstanceOfSatisfying(ReservationException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.RESERVATION_FORBIDDEN));
+
+        verifyNoInteractions(availabilityAccessPolicy);
+        assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.PENDING);
     }
 }

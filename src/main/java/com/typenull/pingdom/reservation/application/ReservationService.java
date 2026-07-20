@@ -6,6 +6,8 @@ import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.reservation.api.dto.*;
 import com.typenull.pingdom.reservation.domain.Reservation;
@@ -27,6 +29,7 @@ public class ReservationService {
     private final PlaceAvailabilityRepository availabilityRepository;
     private final PlaceAvailabilityService availabilityService;
     private final AvailabilityAccessPolicy availabilityAccessPolicy;
+    private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
     private final Clock clock;
 
@@ -132,7 +135,12 @@ public class ReservationService {
     private void requireAvailabilityOwner(Long ownerId, Long availabilityId) {
         PlaceAvailability availability = availabilityRepository.findById(availabilityId)
                 .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
-        availabilityAccessPolicy.requireOwnedPlace(ownerId, availability.getPlaceId(), LocalDateTime.now(clock));
+        MerchantOwnerPlace ownerPlace = ownerPlaceRepository.findByPlaceIdForUpdate(availability.getPlaceId())
+                .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_FORBIDDEN));
+        if (!ownerPlace.getMerchantOwnerUserId().equals(ownerId)) {
+            throw new ReservationException(ReservationErrorCode.RESERVATION_FORBIDDEN);
+        }
+        availabilityAccessPolicy.requireActiveMerchantOwner(ownerId, LocalDateTime.now(clock));
     }
 
     private PageRequest pageRequest(int page, int limit) {
