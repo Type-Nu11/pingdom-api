@@ -63,3 +63,6 @@ seed:
     username: ${SEED_ADMIN_USERNAME:admin}
     email: ${SEED_ADMIN_EMAIL:admin@local}
     password: ${SEED_ADMIN_PASSWORD:admin1234!}
+  dev-data:
+    enabled: ${SEED_DEV_DATA_ENABLED:true}
+    user-password: ${SEED_DEV_USER_PASSWORD:pingdom1234!}
