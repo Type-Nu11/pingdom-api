@@ -107,6 +107,32 @@ class PlaceAvailabilityServiceTest {
     }
 
     @Test
+    void updateWithoutProductIdRejectsMismatchedProductType() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
+        PlaceAvailability availability = PlaceAvailability.create(
+                7L, 3L, 31L, AvailabilityProductType.TICKET,
+                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
+        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
+        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
+                3L,
+                null,
+                AvailabilityProductType.CLASS,
+                LocalDateTime.of(2026, 7, 22, 10, 0),
+                LocalDateTime.of(2026, 7, 22, 11, 0),
+                10
+        );
+
+        assertThatThrownBy(() -> service.update(7L, 9L, request))
+                .isInstanceOfSatisfying(AvailabilityException.class, exception ->
+                        org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT));
+
+        org.assertj.core.api.Assertions.assertThat(availability.getProductType())
+                .isEqualTo(AvailabilityProductType.TICKET);
+        verify(repository, never()).flush();
+    }
+
+    @Test
     void reservationIsRejectedWhenCurrentOwnerIsNotReservable() {
         when(repository.findReservableByIdForUpdate(eq(9L), any(LocalDateTime.class)))
                 .thenReturn(java.util.Optional.empty());
