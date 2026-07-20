@@ -13,6 +13,8 @@ public enum AdminErrorCode {
     PLACE_MERGE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 병합 요청이 올바르지 않습니다."),
     PLACE_OPERATING_STATUS_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 운영 상태 요청이 올바르지 않습니다."),
     PLACE_DISCOVERY_STATUS_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 탐색 노출 상태 요청이 올바르지 않습니다."),
+    PLACE_INFORMATION_EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 정보 증빙을 찾을 수 없습니다."),
+    PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 정보 검증 요청이 올바르지 않습니다."),
     PLACE_OPERATING_SCHEDULE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 영업시간 일정 요청이 올바르지 않습니다."),
     PLACE_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
     PLACE_EVENT_INVALID_PERIOD(HttpStatus.BAD_REQUEST, "이벤트 종료 시각은 시작 시각보다 이후여야 합니다."),

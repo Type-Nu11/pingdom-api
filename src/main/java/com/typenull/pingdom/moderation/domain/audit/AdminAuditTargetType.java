@@ -6,6 +6,7 @@ public enum AdminAuditTargetType {
     APPEAL,
     POST,
     PLACE,
+    PLACE_INFORMATION_EVIDENCE,
     PLACE_EVENT,
     TRUST_SCORE_ANOMALY,
     TRUST_SCORE_INTERVENTION_RULE,
