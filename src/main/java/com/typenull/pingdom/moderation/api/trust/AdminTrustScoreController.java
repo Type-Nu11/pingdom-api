@@ -8,7 +8,10 @@ import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreIntervention
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreInterventionRuleRequest;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreInterventionRuleResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreInterventionRuleToggleResponse;
+import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreResponse;
+import com.typenull.pingdom.moderation.application.query.trust.AdminTrustScoreQueryService;
 import com.typenull.pingdom.moderation.application.service.trust.AdminTrustScoreService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -41,6 +44,65 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminTrustScoreController {
 
     private final AdminTrustScoreService adminTrustScoreService;
+    private final AdminTrustScoreQueryService adminTrustScoreQueryService;
+
+    @GetMapping("/reporters/{reporterUserId}")
+    @Operation(
+            summary = "신고자 신뢰 등급과 점수 근거 조회",
+            description = "관리자가 신고자의 신뢰 점수, 등급, 신고 처리 통계 기반 점수 근거를 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "신뢰 등급과 점수 근거 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminTrustScoreResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "reporterUserId": 7,
+                                              "reporterUsername": "pingdom_user",
+                                              "trustScore": 80,
+                                              "trustGrade": "HIGH",
+                                              "restricted": false,
+                                              "restrictedUntil": null,
+                                              "restrictionReason": null,
+                                              "evidence": {
+                                                "submittedCount": 12,
+                                                "acceptedCount": 8,
+                                                "declinedCount": 4,
+                                                "falseReportCount": 3,
+                                                "acceptanceRate": 66.67,
+                                                "baseScore": 100,
+                                                "acceptedScoreBonus": 40,
+                                                "falseReportScorePenalty": 60
+                                              }
+                                            }
+                                            """
+                            )
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "신고자 Trust Score 정책을 찾을 수 없음",
+                    content = @Content(
+                            schema = @Schema(implementation = ErrorResponse.class),
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "신고자 Trust Score 정책을 찾을 수 없습니다.",
+                                              "code": "TRUST_SCORE_REPORTER_POLICY_NOT_FOUND"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public AdminTrustScoreResponse getTrustScore(
+            @Parameter(description = "신고자 사용자 ID", example = "7") @PathVariable Long reporterUserId
+    ) {
+        return adminTrustScoreQueryService.getTrustScore(reporterUserId);
+    }
 
     @GetMapping("/anomalies")
     @Operation(
