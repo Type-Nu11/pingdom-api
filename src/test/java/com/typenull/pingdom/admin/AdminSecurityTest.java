@@ -164,6 +164,7 @@ class AdminSecurityTest {
                         .param("from", "2026-07-01T00:00:00")
                         .param("to", "2026-07-01T23:59:59"))
                 .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auditLogs.length()").value(2))
                 .andExpect(jsonPath("$.auditLogs[0].action").value(AdminAuditAction.REPORT_ACCEPTED.name()))
                 .andExpect(jsonPath("$.auditLogs[0].targetType").value(AdminAuditTargetType.REPORT.name()))
                 .andExpect(jsonPath("$.auditLogs[0].targetId").value("501"))
@@ -171,7 +172,8 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.auditLogs[1].action").value(AdminAuditAction.USER_BAN_APPLIED.name()))
                 .andExpect(jsonPath("$.auditLogs[1].targetType").value(AdminAuditTargetType.USER.name()))
                 .andExpect(jsonPath("$.auditLogs[1].targetId").value(String.valueOf(fixture.targetUserId())))
-                .andExpect(jsonPath("$.auditLogs[1].requestId").value("security-regression-boundary"));
+                .andExpect(jsonPath("$.auditLogs[1].requestId").value("security-regression-boundary"))
+                .andExpect(jsonPath("$.totalCount").value(2));
     }
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
