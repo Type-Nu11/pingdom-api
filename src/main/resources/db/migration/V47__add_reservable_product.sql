@@ -43,15 +43,3 @@ ALTER TABLE reservation
         CHECK (product_type IN ('GENERAL', 'TICKET', 'CLASS')) NOT VALID;
 
 ALTER TABLE place_availability DROP CONSTRAINT uq_place_availability_owner_slot;
-
-CREATE UNIQUE INDEX uq_place_availability_legacy_slot
-    ON place_availability (merchant_owner_user_id, place_id, starts_at, ends_at)
-    WHERE product_id IS NULL;
-
-CREATE UNIQUE INDEX uq_place_availability_product_slot
-    ON place_availability (merchant_owner_user_id, place_id, product_id, starts_at, ends_at)
-    WHERE product_id IS NOT NULL;
-
-CREATE INDEX idx_reservation_product_created
-    ON reservation (product_id, created_at DESC, id DESC)
-    WHERE product_id IS NOT NULL;
