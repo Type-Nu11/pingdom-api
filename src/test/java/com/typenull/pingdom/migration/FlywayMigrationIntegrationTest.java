@@ -236,16 +236,33 @@ class FlywayMigrationIntegrationTest {
                     WHERE table_name = 'location_check_in'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 5
+                    SELECT COUNT(*) = 2
                     FROM pg_constraint
                     WHERE conrelid = 'location_check_in'::regclass
                       AND conname IN (
                           'fk_location_check_in_tourist',
-                          'fk_location_check_in_place',
-                          'uq_location_check_in_daily',
+                          'fk_location_check_in_place'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'location_check_in'::regclass
+                          AND conname = 'uq_location_check_in_daily'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'location_check_in'::regclass
+                      AND conname IN (
                           'ck_location_check_in_status',
                           'ck_location_check_in_distance'
                       )
+                      AND contype = 'c'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2
