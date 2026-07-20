@@ -50,4 +50,14 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/map/bookmarks']").exists())
                 .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());
     }
+
+    @Test
+    void appGroupDocsContainVisitorVerificationReportApis() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/app"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/visitor-verification-reports'].get").exists())
+                .andExpect(jsonPath("$.paths['/visitor-verification-reports'].post").exists())
+                .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports']").doesNotExist());
+    }
 }
