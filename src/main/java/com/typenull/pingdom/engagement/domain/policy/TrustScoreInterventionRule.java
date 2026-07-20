@@ -88,4 +88,21 @@ public class TrustScoreInterventionRule {
     @Column(name = "version", nullable = false)
     private Long version;
 
+    public boolean matches(ReporterModerationPolicy policy) {
+        if (!enabled || policy == null) {
+            return false;
+        }
+        return policy.getTrustScore() >= minTrustScore
+                && policy.getTrustScore() <= maxTrustScore
+                && policy.getSubmittedCount() >= minSubmittedCount
+                && policy.getFalseReportCount() >= minFalseReportCount;
+    }
+
+    public void disable() {
+        this.enabled = false;
+    }
+
+    public void enable() {
+        this.enabled = true;
+    }
 }
