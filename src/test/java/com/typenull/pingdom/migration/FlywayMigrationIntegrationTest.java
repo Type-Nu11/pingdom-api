@@ -1624,7 +1624,7 @@ class FlywayMigrationIntegrationTest {
                           OR (conname = 'fk_place_availability_product'
                               AND confrelid = 'reservable_product'::regclass
                               AND pg_get_constraintdef(oid) =
-                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type)')
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1692,12 +1692,16 @@ class FlywayMigrationIntegrationTest {
                     SELECT COUNT(*) = 5
                     FROM pg_constraint
                     WHERE conrelid = 'reservable_product'::regclass
-                      AND conname IN (
-                          'fk_reservable_product_merchant_owner',
-                          'fk_reservable_product_place',
-                          'uq_reservable_product_id_type',
-                          'ck_reservable_product_type',
-                          'ck_reservable_product_status'
+                      AND (
+                          conname IN (
+                              'fk_reservable_product_merchant_owner',
+                              'uq_reservable_product_id_type',
+                              'ck_reservable_product_type',
+                              'ck_reservable_product_status'
+                          )
+                          OR (conname = 'fk_reservable_product_place'
+                              AND pg_get_constraintdef(oid) =
+                                  'FOREIGN KEY (place_id) REFERENCES map_place(map_place_id) ON DELETE RESTRICT')
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1727,7 +1731,7 @@ class FlywayMigrationIntegrationTest {
                       AND (
                           (conname = 'fk_reservation_product'
                               AND pg_get_constraintdef(oid) =
-                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type)')
+                                  'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
                           OR (conname = 'ck_reservation_product_type'
                               AND pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
                               AND pg_get_constraintdef(oid) LIKE '%product_type =%GENERAL%'
