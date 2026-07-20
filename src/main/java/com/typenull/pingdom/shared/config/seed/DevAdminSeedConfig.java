@@ -1,4 +1,3 @@
-
 package com.typenull.pingdom.shared.config.seed;
 
 import com.typenull.pingdom.identity.domain.User;
@@ -11,14 +10,17 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.util.StringUtils;
 import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
+import org.springframework.util.StringUtils;
 
 @Configuration
-@Profile("dev")
+@Profile({"dev", "local"})
 @Slf4j
 public class DevAdminSeedConfig {
+
+    @Value("${seed.admin.enabled:true}")
+    private boolean adminSeedEnabled;
 
     @Value("${seed.admin.username}")
     private String adminUsername;
@@ -39,6 +41,10 @@ public class DevAdminSeedConfig {
 
         return args -> {
             transactionTemplate.executeWithoutResult(status -> {
+                if (!adminSeedEnabled) {
+                    log.info("Dev admin seed 스킵: seed.admin.enabled=false 설정입니다.");
+                    return;
+                }
                 if (!StringUtils.hasText(adminUsername)
                         || !StringUtils.hasText(adminEmail)
                         || !StringUtils.hasText(adminPassword)) {
