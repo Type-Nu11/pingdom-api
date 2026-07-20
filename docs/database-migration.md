@@ -150,7 +150,7 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 `V37`은 여행 일정의 `version` 컬럼을 추가한다. 동시 수정·취소 요청이 동일한 이전 상태를
 덮어쓰지 않도록 JPA 낙관적 잠금에 사용한다.
 
-`V46`은 티켓과 클래스 상품을 `reservable_product`로 분리하고 예약 가능 슬롯과 예약 이력에 상품 참조와
+`V47`은 티켓과 클래스 상품을 `reservable_product`로 분리하고 예약 가능 슬롯과 예약 이력에 상품 참조와
 유형 snapshot을 추가한다. 기존 슬롯과 예약은 `product_id = NULL`, `product_type = GENERAL`로 유지한다.
 구버전 애플리케이션의 선행 배포와 롤백을 지원하기 위해 두 `product_type` column의 `GENERAL` default를
 유지한다. 신규 티켓·클래스 슬롯은 상품 ID로 구분하므로 같은 장소와 시간대에 동일 유형의 서로 다른
