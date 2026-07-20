@@ -5,10 +5,14 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.availability.api.dto.AvailabilityUpsertRequest;
+import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityErrorCode;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
+import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
+import com.typenull.pingdom.product.domain.ReservableProduct;
+import com.typenull.pingdom.product.domain.ReservableProductStatus;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
@@ -23,11 +27,12 @@ import org.springframework.dao.DataIntegrityViolationException;
 class PlaceAvailabilityServiceTest {
     private final PlaceAvailabilityRepository repository = mock(PlaceAvailabilityRepository.class);
     private final AvailabilityAccessPolicy accessPolicy = mock(AvailabilityAccessPolicy.class);
+    private final ReservableProductRepository productRepository = mock(ReservableProductRepository.class);
     private PlaceAvailabilityService service;
 
     @BeforeEach
     void setUp() {
-        service = new PlaceAvailabilityService(repository, accessPolicy,
+        service = new PlaceAvailabilityService(repository, accessPolicy, productRepository,
                 Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC));
     }
 
@@ -80,6 +85,28 @@ class PlaceAvailabilityServiceTest {
     }
 
     @Test
+    void legacyUpdateWithoutProductTypePreservesCurrentType() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
+        PlaceAvailability availability = PlaceAvailability.create(
+                7L, 3L, AvailabilityProductType.TICKET,
+                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
+        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
+        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
+                3L,
+                null,
+                null,
+                LocalDateTime.of(2026, 7, 22, 10, 0),
+                LocalDateTime.of(2026, 7, 22, 11, 0),
+                10
+        );
+
+        service.update(7L, 9L, request);
+
+        org.assertj.core.api.Assertions.assertThat(availability.getProductType())
+                .isEqualTo(AvailabilityProductType.TICKET);
+    }
+
+    @Test
     void reservationIsRejectedWhenCurrentOwnerIsNotReservable() {
         when(repository.findReservableByIdForUpdate(eq(9L), any(LocalDateTime.class)))
                 .thenReturn(java.util.Optional.empty());
@@ -88,6 +115,39 @@ class PlaceAvailabilityServiceTest {
                 .isInstanceOfSatisfying(AvailabilityException.class, exception ->
                         org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
                                 .isEqualTo(AvailabilityErrorCode.AVAILABILITY_NOT_FOUND));
+    }
+
+    @Test
+    void productSlotRequiresActiveProductOwnedForSamePlace() {
+        ReservableProduct product = mock(ReservableProduct.class);
+        when(product.getId()).thenReturn(31L);
+        when(product.getProductType()).thenReturn(AvailabilityProductType.TICKET);
+        when(productRepository.findByIdAndPlaceIdAndStatus(
+                31L, 3L, ReservableProductStatus.ACTIVE)).thenReturn(java.util.Optional.of(product));
+        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
+                3L, 31L, AvailabilityProductType.TICKET,
+                LocalDateTime.of(2026, 7, 22, 10, 0),
+                LocalDateTime.of(2026, 7, 22, 11, 0), 10);
+        when(repository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
+
+        service.create(7L, request);
+
+        verify(repository).saveAndFlush(argThat(availability ->
+                availability.getProductId().equals(31L)
+                        && availability.getProductType() == AvailabilityProductType.TICKET));
+    }
+
+    @Test
+    void ticketSlotWithoutProductReferenceIsRejected() {
+        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
+                3L, null, AvailabilityProductType.TICKET,
+                LocalDateTime.of(2026, 7, 22, 10, 0),
+                LocalDateTime.of(2026, 7, 22, 11, 0), 10);
+
+        assertThatThrownBy(() -> service.create(7L, request))
+                .isInstanceOf(AvailabilityException.class);
+
+        verify(repository, never()).saveAndFlush(any());
     }
 
     private DataIntegrityViolationException duplicateSlotViolation() {
