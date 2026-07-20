@@ -8,6 +8,7 @@ import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.offer.domain.exception.OfferException;
+import com.typenull.pingdom.reservation.domain.exception.ReservationException;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
@@ -67,6 +68,12 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AvailabilityException.class)
     public ResponseEntity<Map<String, String>> handleAvailabilityException(AvailabilityException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(ReservationException.class)
+    public ResponseEntity<Map<String, String>> handleReservationException(ReservationException exception) {
         return ResponseEntity.status(exception.getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }
