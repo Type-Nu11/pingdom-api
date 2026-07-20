@@ -81,7 +81,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(48);
+        assertThat(result.migrationsExecuted).isEqualTo(50);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -124,7 +124,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(22);
+        assertThat(result.migrationsExecuted).isEqualTo(24);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1601,7 +1601,7 @@ class FlywayMigrationIntegrationTest {
                               AND pg_get_constraintdef(oid) LIKE '%INACTIVE%'
                           WHEN 'ck_place_availability_product_type' THEN
                               pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
-                              AND pg_get_constraintdef(oid) LIKE '%product_type =%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type%GENERAL%'
                               AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
                               AND pg_get_constraintdef(oid) LIKE '%TICKET%'
                               AND pg_get_constraintdef(oid) LIKE '%CLASS%'
@@ -1734,7 +1734,7 @@ class FlywayMigrationIntegrationTest {
                                   'FOREIGN KEY (product_id, product_type) REFERENCES reservable_product(id, product_type) ON DELETE RESTRICT')
                           OR (conname = 'ck_reservation_product_type'
                               AND pg_get_constraintdef(oid) LIKE '%product_id IS NULL%'
-                              AND pg_get_constraintdef(oid) LIKE '%product_type =%GENERAL%'
+                              AND pg_get_constraintdef(oid) LIKE '%product_type%GENERAL%'
                               AND pg_get_constraintdef(oid) LIKE '%product_id IS NOT NULL%'
                               AND pg_get_constraintdef(oid) LIKE '%TICKET%'
                               AND pg_get_constraintdef(oid) LIKE '%CLASS%')
