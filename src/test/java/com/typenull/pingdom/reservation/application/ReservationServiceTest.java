@@ -8,6 +8,7 @@ import static org.mockito.Mockito.*;
 import com.typenull.pingdom.availability.application.AvailabilityAccessPolicy;
 import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
+import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.*;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
@@ -42,6 +43,10 @@ class ReservationServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(tourist));
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(tourist));
         when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
+        when(availabilityService.reserve(anyLong(), anyInt())).thenReturn(PlaceAvailability.create(
+                7L, 11L, AvailabilityProductType.GENERAL,
+                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
     }
 
     @Test
@@ -49,8 +54,24 @@ class ReservationServiceTest {
         var response = service.create(1L, new ReservationCreateRequest(9L, "request-1", 2));
 
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
+        assertThat(response.productType()).isEqualTo(AvailabilityProductType.GENERAL);
         verify(availabilityService).reserve(9L, 2);
         verify(reservationRepository).save(any(Reservation.class));
+    }
+
+    @Test
+    void createSnapshotsTicketProductTypeFromAvailability() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
+        when(availabilityService.reserve(9L, 2)).thenReturn(PlaceAvailability.create(
+                7L, 11L, 31L, AvailabilityProductType.TICKET,
+                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
+
+        var response = service.create(1L, new ReservationCreateRequest(9L, "ticket-request", 2));
+
+        assertThat(response.productType()).isEqualTo(AvailabilityProductType.TICKET);
+        assertThat(response.productId()).isEqualTo(31L);
+        verify(reservationRepository).save(argThat(reservation ->
+                reservation.getProductType() == AvailabilityProductType.TICKET));
     }
 
     @Test
