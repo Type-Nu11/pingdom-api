@@ -27,9 +27,7 @@ import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.boot.test.context.TestConfiguration;
-import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Primary;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.security.crypto.password.PasswordEncoder;
@@ -45,16 +43,8 @@ import org.springframework.transaction.annotation.Transactional;
 @Transactional
 class AdminSecurityTest {
 
-    @TestConfiguration
-    static class TestRateLimitConfig {
-
-        @Bean
-        @Primary
-        RateLimitStore rateLimitStore() {
-            return (message, windowRules, cooldownRules) -> {
-            };
-        }
-    }
+    @MockBean
+    private RateLimitStore rateLimitStore;
 
     @Autowired
     private MockMvc mockMvc;
