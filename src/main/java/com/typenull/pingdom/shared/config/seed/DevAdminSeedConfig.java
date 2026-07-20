@@ -13,6 +13,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRe
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.extern.slf4j.Slf4j;
@@ -200,7 +201,7 @@ public class DevAdminSeedConfig {
                         .category(category)
                         .englishName(englishName)
                         .touristSummary(touristSummary)
-                        .touristCategories(touristCategories)
+                        .touristCategories(new LinkedHashSet<>(touristCategories))
                         .imageUrl("https://cdn.pingdom.local/dev/" + kakaoPlaceId + ".jpg")
                         .kakaoPlaceId(kakaoPlaceId)
                         .latitude(latitude)
