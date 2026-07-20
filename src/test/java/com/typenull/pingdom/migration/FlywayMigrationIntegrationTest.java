@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(51);
+        assertThat(result.targetSchemaVersion).isEqualTo("52");
+        assertThat(result.migrationsExecuted).isEqualTo(52);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(50);
+        assertThat(result.targetSchemaVersion).isEqualTo("52");
+        assertThat(result.migrationsExecuted).isEqualTo(51);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("51");
-        assertThat(result.migrationsExecuted).isEqualTo(24);
+        assertThat(result.targetSchemaVersion).isEqualTo("52");
+        assertThat(result.migrationsExecuted).isEqualTo(25);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -467,6 +467,33 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'visitor_verification_report'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'visitor_verification_report'::regclass
+                      AND conname IN (
+                          'ck_visitor_verification_report_type',
+                          'ck_visitor_verification_report_status',
+                          'ck_visitor_verification_report_review'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'visitor_verification_report'
+                          AND indexname = 'uq_visitor_verification_report_active'
+                          AND indexdef LIKE '%WHERE (status%SUBMITTED%'
+                    )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
