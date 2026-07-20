@@ -71,9 +71,22 @@ public class TrustScoreAnomaly {
     @Column(name = "detected_at", nullable = false)
     private LocalDateTime detectedAt;
 
+    @Column(name = "resolved_at")
+    private LocalDateTime resolvedAt;
+
+    @Column(name = "resolution_reason", length = 500)
+    private String resolutionReason;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    public boolean isResolved() {
+        return resolvedAt != null;
+    }
+
+    public void resolve(LocalDateTime resolvedAt, String resolutionReason) {
+        this.resolvedAt = resolvedAt;
+        this.resolutionReason = resolutionReason;
+    }
 }
