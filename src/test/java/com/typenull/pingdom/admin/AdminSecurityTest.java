@@ -166,8 +166,10 @@ class AdminSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.auditLogs[0].action").value(AdminAuditAction.REPORT_ACCEPTED.name()))
                 .andExpect(jsonPath("$.auditLogs[0].targetType").value(AdminAuditTargetType.REPORT.name()))
+                .andExpect(jsonPath("$.auditLogs[0].targetId").value("501"))
                 .andExpect(jsonPath("$.auditLogs[1].action").value(AdminAuditAction.USER_BAN_APPLIED.name()))
-                .andExpect(jsonPath("$.auditLogs[1].targetType").value(AdminAuditTargetType.USER.name()));
+                .andExpect(jsonPath("$.auditLogs[1].targetType").value(AdminAuditTargetType.USER.name()))
+                .andExpect(jsonPath("$.auditLogs[1].targetId").value(String.valueOf(fixture.targetUserId())));
     }
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
