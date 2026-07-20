@@ -13,9 +13,13 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -151,6 +155,51 @@ class AdminSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    private SecurityRegressionFixture securityRegressionFixture() throws Exception {
+        createUser("securityAuditAdmin", UserRole.ADMIN);
+        createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
+        createUser("securityAuditWithdrawnAdmin", UserRole.ADMIN);
+        createUser("securityAuditTarget", UserRole.USER);
+
+        User admin = userRepository.findByUsername("securityAuditAdmin").orElseThrow();
+        User targetUser = userRepository.findByUsername("securityAuditTarget").orElseThrow();
+
+        adminAuditLogRepository.save(AdminAuditLog.builder()
+                .actorUserId(admin.getId())
+                .actorUsername(admin.getUsername())
+                .action(AdminAuditAction.USER_BAN_APPLIED)
+                .targetType(AdminAuditTargetType.USER)
+                .targetId(String.valueOf(targetUser.getId()))
+                .reason("반복 허위 신고 경계 케이스")
+                .beforeState("{\"banned\":false,\"role\":\"USER\"}")
+                .afterState("{\"banned\":true,\"banType\":\"TEMPORARY\"}")
+                .requestId("security-regression-boundary")
+                .createdAt(LocalDateTime.of(2026, 7, 1, 10, 0))
+                .build());
+        adminAuditLogRepository.save(AdminAuditLog.builder()
+                .actorUserId(admin.getId())
+                .actorUsername(admin.getUsername())
+                .action(AdminAuditAction.REPORT_ACCEPTED)
+                .targetType(AdminAuditTargetType.REPORT)
+                .targetId("501")
+                .reason("명확한 위반 신고 정상 처리")
+                .beforeState("{\"status\":\"PENDING\"}")
+                .afterState("{\"status\":\"ACCEPTED\"}")
+                .requestId("security-regression-success")
+                .createdAt(LocalDateTime.of(2026, 7, 1, 11, 0))
+                .build());
+
+        User withdrawnAdmin = userRepository.findByUsername("securityAuditWithdrawnAdmin").orElseThrow();
+
+        return new SecurityRegressionFixture(
+                loginAndGetAccessToken(admin.getUsername()),
+                loginAndGetAccessToken("securityAuditMerchant"),
+                loginAndGetAccessToken(withdrawnAdmin.getUsername()),
+                withdrawnAdmin.getId(),
+                targetUser.getId()
+        );
+    }
+
     private void createUser(String username, UserRole role) {
         userRepository.save(User.builder()
                 .username(username)
@@ -175,5 +224,14 @@ class AdminSecurityTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private record SecurityRegressionFixture(
+            String adminAccessToken,
+            String merchantOwnerAccessToken,
+            String withdrawnAdminAccessToken,
+            Long withdrawnAdminId,
+            Long targetUserId
+    ) {
     }
 }
