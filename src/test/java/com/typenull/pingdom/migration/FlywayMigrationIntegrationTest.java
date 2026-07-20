@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("43");
-        assertThat(result.migrationsExecuted).isEqualTo(43);
+        assertThat(result.targetSchemaVersion).isEqualTo("44");
+        assertThat(result.migrationsExecuted).isEqualTo(44);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("43");
-        assertThat(result.migrationsExecuted).isEqualTo(42);
+        assertThat(result.targetSchemaVersion).isEqualTo("44");
+        assertThat(result.migrationsExecuted).isEqualTo(43);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("43");
-        assertThat(result.migrationsExecuted).isEqualTo(16);
+        assertThat(result.targetSchemaVersion).isEqualTo("44");
+        assertThat(result.migrationsExecuted).isEqualTo(17);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1520,6 +1520,44 @@ class FlywayMigrationIntegrationTest {
                         WHERE tablename = 'tourist_offer'
                           AND indexname = 'idx_tourist_offer_place_public_period'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_availability'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_availability'::regclass
+                      AND conname IN (
+                          'ck_place_availability_period',
+                          'ck_place_availability_capacity',
+                          'ck_place_availability_status'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_availability'::regclass
+                      AND conname IN (
+                          'fk_place_availability_merchant_owner',
+                          'fk_place_availability_place',
+                          'uq_place_availability_owner_slot'
+                      )
+                      AND contype IN ('f', 'u')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'place_availability'
+                      AND indexname IN (
+                          'idx_place_availability_public',
+                          'idx_place_availability_owner'
+                      )
                     """)).isTrue();
         }
     }
