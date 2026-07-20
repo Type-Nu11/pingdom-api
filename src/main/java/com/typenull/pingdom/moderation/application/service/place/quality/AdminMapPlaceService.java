@@ -12,6 +12,8 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHi
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.geocoding.AdminMapPlaceGeocodingUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.geocoding.AdminMapPlaceGeocodingUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.kakao.AdminMapPlaceKakaoPlaceIdUpdateRequest;
@@ -46,6 +48,7 @@ import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingH
 import com.typenull.pingdom.place.application.service.recommendation.policy.PlaceRecommendationPolicyService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
@@ -68,6 +71,7 @@ import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.observability.PlaceDiscoveryMetrics;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -122,6 +126,7 @@ public class AdminMapPlaceService {
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
+    private final PlaceDiscoveryMetrics placeDiscoveryMetrics;
 
     @Transactional
     public void deletePlace(long placeId, Long adminUserId) {
@@ -505,6 +510,50 @@ public class AdminMapPlaceService {
     }
 
     @Transactional
+    public AdminMapPlaceDiscoveryStatusUpdateResponse updatePlaceDiscoveryStatus(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceDiscoveryStatusUpdateRequest request
+    ) {
+        if (request == null || request.discoveryStatus() == null || !StringUtils.hasText(request.reason())) {
+            throw new AdminException(AdminErrorCode.PLACE_DISCOVERY_STATUS_INVALID_REQUEST);
+        }
+
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        Map<String, Object> beforeState = discoveryStatusState(mapPlace);
+        PlaceDiscoveryStatus beforeStatus = mapPlace.getDiscoveryStatus();
+
+        mapPlace.updateDiscoveryStatus(request.discoveryStatus());
+
+        Map<String, Object> afterState = discoveryStatusState(mapPlace);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_DISCOVERY_STATUS_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+        placeDiscoveryMetrics.recordStatusUpdate(beforeStatus, mapPlace.getDiscoveryStatus());
+
+        log.info(
+                "Admin updated place discovery status. adminUserId={}, placeId={}, beforeStatus={}, afterStatus={}",
+                adminUserId,
+                placeId,
+                beforeStatus,
+                mapPlace.getDiscoveryStatus()
+        );
+
+        return new AdminMapPlaceDiscoveryStatusUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getDiscoveryStatus(),
+                "장소 탐색 노출 상태를 수정했습니다."
+        );
+    }
+
+    @Transactional
     public AdminMapPlaceOperatingScheduleUpdateResponse updatePlaceOperatingSchedule(
             Long adminUserId,
             Long placeId,
@@ -827,6 +876,7 @@ public class AdminMapPlaceService {
         state.put("geocodingSource", place.getGeocodingSource());
         state.put("operatingStatus", place.getOperatingStatus());
         state.put("operatingStatusCheckedAt", place.getOperatingStatusCheckedAt());
+        state.put("discoveryStatus", place.getDiscoveryStatus());
         state.put("regularHours", regularHours(place));
         state.put("operatingExceptions", operatingExceptions(place));
         state.put("category", place.getCategory());
@@ -938,6 +988,13 @@ public class AdminMapPlaceService {
         state.put("placeId", place.getId());
         state.put("operatingStatus", place.getOperatingStatus());
         state.put("operatingStatusCheckedAt", place.getOperatingStatusCheckedAt());
+        return state;
+    }
+
+    private Map<String, Object> discoveryStatusState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("discoveryStatus", place.getDiscoveryStatus());
         return state;
     }
 

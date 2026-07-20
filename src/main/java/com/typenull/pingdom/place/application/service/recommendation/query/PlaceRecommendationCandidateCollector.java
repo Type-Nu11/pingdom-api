@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.recommendation.query;
 
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
@@ -181,6 +182,7 @@ class PlaceRecommendationCandidateCollector {
     private boolean isEligibleCandidate(MapPlace place) {
         return place != null
                 && place.isOperating()
+                && place.isVisibleInDiscovery()
                 && place.getLatitude() != null
                 && place.getLongitude() != null;
     }
@@ -206,6 +208,7 @@ class PlaceRecommendationCandidateCollector {
                     minLatitude,
                     maxLatitude,
                     PlaceOperatingStatus.OPERATING,
+                    PlaceDiscoveryStatus.VISIBLE,
                     PageRequest.of(0, limit)
             );
         }
@@ -219,6 +222,7 @@ class PlaceRecommendationCandidateCollector {
                     minLongitude + 360d,
                     maxLongitude,
                     PlaceOperatingStatus.OPERATING,
+                    PlaceDiscoveryStatus.VISIBLE,
                     PageRequest.of(0, limit)
             );
         }
@@ -232,6 +236,7 @@ class PlaceRecommendationCandidateCollector {
                     minLongitude,
                     maxLongitude - 360d,
                     PlaceOperatingStatus.OPERATING,
+                    PlaceDiscoveryStatus.VISIBLE,
                     PageRequest.of(0, limit)
             );
         }
@@ -244,6 +249,7 @@ class PlaceRecommendationCandidateCollector {
                 minLongitude,
                 maxLongitude,
                 PlaceOperatingStatus.OPERATING,
+                PlaceDiscoveryStatus.VISIBLE,
                 PageRequest.of(0, limit)
         );
     }

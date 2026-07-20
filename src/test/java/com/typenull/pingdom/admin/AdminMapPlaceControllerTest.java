@@ -33,6 +33,7 @@ import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -60,6 +61,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import io.micrometer.core.instrument.MeterRegistry;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -143,6 +145,9 @@ class AdminMapPlaceControllerTest {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @BeforeEach
     void setUp() {
@@ -845,6 +850,73 @@ class AdminMapPlaceControllerTest {
         assertEquals("현장 확인 결과 임시 휴업", auditLog.getReason());
         assertTrue(auditLog.getBeforeState().contains("\"operatingStatus\":\"OPERATING\""));
         assertTrue(auditLog.getAfterState().contains("\"operatingStatus\":\"TEMPORARILY_CLOSED\""));
+    }
+
+    @Test
+    void updatePlaceDiscoveryStatusRequiresAdminAndRecordsAuditLogAndMetrics() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("탐색 노출 검수 장소")
+                .address("경상남도 진주시 탐색로 10")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(96L)
+                .registrant("discoveryStatusOwner")
+                .build());
+        double beforeMetricCount = discoveryStatusUpdateCount(
+                PlaceDiscoveryStatus.VISIBLE,
+                PlaceDiscoveryStatus.HIDDEN
+        );
+
+        mockMvc.perform(patch("/admin/places/{id}/discovery-status", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "discoveryStatus", "HIDDEN",
+                                "reason", "중복 장소 검수 전 임시 숨김"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.discoveryStatus").value("HIDDEN"))
+                .andExpect(jsonPath("$.message").value("장소 탐색 노출 상태를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(PlaceDiscoveryStatus.HIDDEN, updatedPlace.getDiscoveryStatus());
+
+        var auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.PLACE_DISCOVERY_STATUS_UPDATED, auditLog.getAction());
+        assertEquals(AdminAuditTargetType.PLACE, auditLog.getTargetType());
+        assertEquals(String.valueOf(mapPlace.getId()), auditLog.getTargetId());
+        assertEquals("중복 장소 검수 전 임시 숨김", auditLog.getReason());
+        assertTrue(auditLog.getBeforeState().contains("\"discoveryStatus\":\"VISIBLE\""));
+        assertTrue(auditLog.getAfterState().contains("\"discoveryStatus\":\"HIDDEN\""));
+        assertEquals(
+                beforeMetricCount + 1.0d,
+                discoveryStatusUpdateCount(PlaceDiscoveryStatus.VISIBLE, PlaceDiscoveryStatus.HIDDEN),
+                0.0001d
+        );
+    }
+
+    @Test
+    void updatePlaceDiscoveryStatusRejectsNormalUser() throws Exception {
+        String accessToken = createUserAndLogin("normalDiscoveryUser", UserRole.USER);
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("일반 사용자 접근 차단 장소")
+                .address("경상남도 진주시 권한로 10")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(96L)
+                .registrant("discoveryStatusOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/discovery-status", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "discoveryStatus", "HIDDEN",
+                                "reason", "권한 검증"
+                        ))))
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -2305,6 +2377,10 @@ class AdminMapPlaceControllerTest {
 
     private String createAdminAndLogin() throws Exception {
         String username = "adminPlaceTester" + ADMIN_SEQUENCE.incrementAndGet();
+        return createUserAndLogin(username, UserRole.ADMIN);
+    }
+
+    private String createUserAndLogin(String username, UserRole role) throws Exception {
         userRepository.save(User.builder()
                 .username(username)
                 .email(username + "@example.com")
@@ -2312,7 +2388,7 @@ class AdminMapPlaceControllerTest {
                 .birthYear(1998)
                 .language("ko")
                 .country("KR")
-                .role(UserRole.ADMIN)
+                .role(role)
                 .build());
 
         LoginRequest loginRequest = new LoginRequest(username, "password123");
@@ -2325,6 +2401,14 @@ class AdminMapPlaceControllerTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private double discoveryStatusUpdateCount(PlaceDiscoveryStatus fromStatus, PlaceDiscoveryStatus toStatus) {
+        var counter = meterRegistry.find("pingdom.place.discovery_status_updates")
+                .tag("from_status", fromStatus.name())
+                .tag("to_status", toStatus.name())
+                .counter();
+        return counter == null ? 0.0d : counter.count();
     }
 
     private MapPlace saveMetricPlace(String name, Long userId, double latitude, double longitude, Long photoCount) {

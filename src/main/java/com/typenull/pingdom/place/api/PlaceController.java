@@ -89,6 +89,8 @@ public class PlaceController {
             @RequestParam(required = false) String keyword,
             @Parameter(description = "카테고리 필터", example = "카페")
             @RequestParam(required = false) String category,
+            @Parameter(description = "관광 카테고리 필터", example = "K_POP")
+            @RequestParam(required = false) String touristCategory,
             @Parameter(description = "현재 위도. 거리 검색 시 longitude, radiusKm와 함께 전달합니다.", example = "35.1801")
             @DecimalMin(value = "-90.0", message = "위도는 -90.0 이상이어야 합니다.")
             @DecimalMax(value = "90.0", message = "위도는 90.0 이하여야 합니다.")
@@ -101,7 +103,7 @@ public class PlaceController {
             @DecimalMin(value = "0.1", message = "radiusKm는 0.1 이상이어야 합니다.")
             @DecimalMax(value = "20.0", message = "radiusKm는 20.0 이하여야 합니다.")
             @RequestParam(required = false) Double radiusKm,
-            @Parameter(description = "정렬 기준. LATEST 또는 NEAREST", example = "LATEST")
+            @Parameter(description = "정렬 기준. LATEST, NEAREST 또는 POPULAR", example = "LATEST")
             @RequestParam(defaultValue = "LATEST") String sort
     ) {
         return ResponseEntity.ok(placeQueryService.listPlaces(new PlaceSearchCondition(
@@ -109,6 +111,7 @@ public class PlaceController {
                 limit,
                 keyword,
                 category,
+                touristCategory,
                 latitude,
                 longitude,
                 radiusKm,

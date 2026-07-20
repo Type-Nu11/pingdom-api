@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.domain.place.core;
 
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -93,6 +94,11 @@ public class MapPlace {
 
     @Column(name = "category", length = 50)
     private String category;
+
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = "discovery_status", length = 20, nullable = false)
+    private PlaceDiscoveryStatus discoveryStatus = PlaceDiscoveryStatus.VISIBLE;
 
     @Column(name = "english_name", length = 150)
     private String englishName;
@@ -276,6 +282,14 @@ public class MapPlace {
 
     public boolean isOperating() {
         return operatingStatus == PlaceOperatingStatus.OPERATING;
+    }
+
+    public boolean isVisibleInDiscovery() {
+        return discoveryStatus == PlaceDiscoveryStatus.VISIBLE;
+    }
+
+    public void updateDiscoveryStatus(PlaceDiscoveryStatus discoveryStatus) {
+        this.discoveryStatus = Objects.requireNonNull(discoveryStatus, "discoveryStatus must not be null");
     }
 
     public Set<PlaceRegularOperatingHour> currentRegularOperatingHours() {

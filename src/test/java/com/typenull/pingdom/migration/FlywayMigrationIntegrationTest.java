@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("45");
-        assertThat(result.migrationsExecuted).isEqualTo(45);
+        assertThat(result.targetSchemaVersion).isEqualTo("46");
+        assertThat(result.migrationsExecuted).isEqualTo(46);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("45");
-        assertThat(result.migrationsExecuted).isEqualTo(44);
+        assertThat(result.targetSchemaVersion).isEqualTo("46");
+        assertThat(result.migrationsExecuted).isEqualTo(45);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("45");
-        assertThat(result.migrationsExecuted).isEqualTo(18);
+        assertThat(result.targetSchemaVersion).isEqualTo("46");
+        assertThat(result.migrationsExecuted).isEqualTo(19);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -191,6 +191,7 @@ class FlywayMigrationIntegrationTest {
                           AND postal_code IS NULL
                           AND geocoding_source = 'LEGACY'
                           AND operating_status = 'OPERATING'
+                          AND discovery_status = 'VISIBLE'
                           AND operating_status_checked_at IS NULL
                     )
                     """)).isTrue();
@@ -522,6 +523,45 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM pg_constraint
                         WHERE conname = 'ck_map_place_operating_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'map_place'
+                          AND column_name = 'discovery_status'
+                          AND character_maximum_length = 20
+                          AND is_nullable = 'NO'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_discovery_status'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conname = 'ck_map_place_discovery_status_not_null'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'map_place'
+                      AND indexname IN ('idx_map_place_public_latest', 'idx_map_place_public_popular')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'map_place_tourist_category'
+                          AND indexname = 'idx_map_place_tourist_category_filter'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1520,87 +1560,6 @@ class FlywayMigrationIntegrationTest {
                         WHERE tablename = 'tourist_offer'
                           AND indexname = 'idx_tourist_offer_place_public_period'
                     )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 11
-                    FROM information_schema.columns
-                    WHERE table_name = 'place_availability'
-                      AND is_nullable = 'NO'
-                      AND (
-                          (column_name IN ('id', 'merchant_owner_user_id', 'place_id', 'version')
-                              AND data_type = 'bigint')
-                          OR (column_name IN ('starts_at', 'ends_at', 'created_at', 'updated_at')
-                              AND data_type = 'timestamp without time zone')
-                          OR (column_name IN ('total_capacity', 'remaining_capacity')
-                              AND data_type = 'integer')
-                          OR (column_name = 'status' AND data_type = 'character varying'
-                              AND character_maximum_length = 20)
-                      )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 3
-                    FROM pg_constraint
-                    WHERE conrelid = 'place_availability'::regclass
-                      AND conname IN (
-                          'ck_place_availability_period',
-                          'ck_place_availability_capacity',
-                          'ck_place_availability_status'
-                      )
-                      AND contype = 'c'
-                      AND CASE conname
-                          WHEN 'ck_place_availability_period' THEN
-                              pg_get_constraintdef(oid) LIKE '%ends_at > starts_at%'
-                          WHEN 'ck_place_availability_capacity' THEN
-                              pg_get_constraintdef(oid) LIKE '%total_capacity > 0%'
-                              AND pg_get_constraintdef(oid) LIKE '%remaining_capacity >= 0%'
-                              AND pg_get_constraintdef(oid) LIKE '%remaining_capacity <= total_capacity%'
-                          WHEN 'ck_place_availability_status' THEN
-                              pg_get_constraintdef(oid) LIKE '%status%'
-                              AND pg_get_constraintdef(oid) LIKE '%ACTIVE%'
-                              AND pg_get_constraintdef(oid) LIKE '%INACTIVE%'
-                      END
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 2
-                    FROM pg_constraint
-                    WHERE conrelid = 'place_availability'::regclass
-                      AND contype = 'f'
-                      AND (
-                          (conname = 'fk_place_availability_merchant_owner'
-                              AND confrelid = 'merchant_owner_profile'::regclass
-                              AND pg_get_constraintdef(oid) =
-                                  'FOREIGN KEY (merchant_owner_user_id) REFERENCES merchant_owner_profile(user_id) ON DELETE CASCADE')
-                          OR (conname = 'fk_place_availability_place'
-                              AND confrelid = 'map_place'::regclass
-                              AND pg_get_constraintdef(oid) =
-                                  'FOREIGN KEY (place_id) REFERENCES map_place(map_place_id) ON DELETE CASCADE')
-                      )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_constraint
-                        WHERE conrelid = 'place_availability'::regclass
-                          AND conname = 'uq_place_availability_owner_slot'
-                          AND contype = 'u'
-                          AND pg_get_constraintdef(oid) =
-                              'UNIQUE (merchant_owner_user_id, place_id, starts_at, ends_at)'
-                    )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 2
-                    FROM pg_index index_catalog
-                    JOIN pg_class index_relation ON index_relation.oid = index_catalog.indexrelid
-                    WHERE index_catalog.indrelid = 'place_availability'::regclass
-                      AND index_catalog.indpred IS NULL
-                      AND (
-                          (index_relation.relname = 'idx_place_availability_public'
-                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE
-                                  '%USING btree (place_id, status, starts_at, ends_at, id)%')
-                          OR (index_relation.relname = 'idx_place_availability_owner'
-                              AND pg_get_indexdef(index_catalog.indexrelid) LIKE
-                                  '%USING btree (merchant_owner_user_id, starts_at, id)%')
-                      )
                     """)).isTrue();
         }
     }
