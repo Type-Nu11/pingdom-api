@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("54");
-        assertThat(result.migrationsExecuted).isEqualTo(54);
+        assertThat(result.targetSchemaVersion).isEqualTo("55");
+        assertThat(result.migrationsExecuted).isEqualTo(55);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("54");
-        assertThat(result.migrationsExecuted).isEqualTo(53);
+        assertThat(result.targetSchemaVersion).isEqualTo("55");
+        assertThat(result.migrationsExecuted).isEqualTo(54);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("54");
-        assertThat(result.migrationsExecuted).isEqualTo(27);
+        assertThat(result.targetSchemaVersion).isEqualTo("55");
+        assertThat(result.migrationsExecuted).isEqualTo(28);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -229,6 +229,49 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM place_event
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 8
+                    FROM information_schema.columns
+                    WHERE table_name = 'location_check_in'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'location_check_in'::regclass
+                      AND conname IN (
+                          'fk_location_check_in_tourist',
+                          'fk_location_check_in_place'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'location_check_in'::regclass
+                          AND conname = 'uq_location_check_in_daily'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'location_check_in'::regclass
+                      AND conname IN (
+                          'ck_location_check_in_status',
+                          'ck_location_check_in_distance'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'location_check_in'
+                      AND indexname IN (
+                          'idx_location_check_in_tourist_recorded',
+                          'idx_location_check_in_place_recorded'
+                      )
                     """)).isTrue();
         }
     }

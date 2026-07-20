@@ -96,6 +96,21 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void locationCheckInApisAreExposedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+
+        assertThat(appDocument.path("paths").has("/location-check-ins")).isTrue();
+        assertThat(appDocument.at("/paths/~1location-check-ins/post/requestBody/content/application~1json/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/LocationCheckInRequest");
+        assertThat(appDocument.at("/paths/~1location-check-ins/post/responses/201/content/*~1*/schema/$ref")
+                .asText()).isEqualTo("#/components/schemas/LocationCheckInResponse");
+        for (String status : List.of("400", "401", "403", "404", "409", "422")) {
+            assertThat(appDocument.at("/paths/~1location-check-ins/post/responses/" + status
+                    + "/content/*~1*/schema/$ref").asText()).isEqualTo("#/components/schemas/ErrorResponse");
+        }
+    }
+
+    @Test
     void deprecatedEndpointsAreMarkedInApiDocs() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 

@@ -291,3 +291,10 @@ place:
           conversion-weight: 0.10
           freshness-weight: 0.16
           exploration-weight: 0.10
+
+verification:
+  location-check-in:
+    max-distance-meters: 100
+    max-accuracy-meters: 50
+    observation-ttl: PT5M
+    future-tolerance: PT30S

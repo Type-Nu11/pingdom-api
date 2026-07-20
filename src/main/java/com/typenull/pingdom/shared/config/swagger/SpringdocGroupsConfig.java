@@ -30,6 +30,8 @@ public class SpringdocGroupsConfig {
                         "/notifications/**",
                         "/visitor-verification-reports",
                         "/visitor-verification-reports/**",
+                        "/location-check-ins",
+                        "/location-check-ins/**",
                         "/firebase/**"
                 )
                 .pathsToExclude("/admin/**")

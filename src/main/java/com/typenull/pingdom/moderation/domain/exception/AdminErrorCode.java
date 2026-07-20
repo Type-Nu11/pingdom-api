@@ -22,6 +22,7 @@ public enum AdminErrorCode {
     PLACE_EVENT_PUBLISH_NOT_ALLOWED(HttpStatus.CONFLICT, "초안 상태의 종료되지 않은 이벤트만 공개할 수 있습니다."),
     PLACE_EVENT_CANCEL_NOT_ALLOWED(HttpStatus.CONFLICT, "이미 취소된 이벤트입니다."),
     PLACE_EVENT_CONNECTED(HttpStatus.CONFLICT, "연결된 기간형 이벤트가 있어 장소를 삭제하거나 병합할 수 없습니다."),
+    PLACE_CHECK_IN_CONNECTED(HttpStatus.CONFLICT, "연결된 체크인 이력이 있어 장소를 삭제하거나 병합할 수 없습니다."),
     PLACE_MERGE_NOT_ALLOWED(HttpStatus.CONFLICT, "중복 장소로 확인되지 않아 병합할 수 없습니다."),
     PLACE_MERGE_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 병합 이력을 찾을 수 없습니다."),
     PLACE_MERGE_ALREADY_RESTORED(HttpStatus.CONFLICT, "이미 복구된 장소 병합 이력입니다."),
