@@ -5,6 +5,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.availability.api.dto.AvailabilityUpsertRequest;
+import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityErrorCode;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
@@ -59,6 +60,26 @@ class PlaceAvailabilityServiceTest {
     }
 
     @Test
+    void duplicateSlotUpdateIsReportedAsConflict() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
+        PlaceAvailability availability = PlaceAvailability.create(
+                7L, 3L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
+        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
+        doThrow(duplicateSlotViolation()).when(repository).flush();
+        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
+                3L,
+                LocalDateTime.of(2026, 7, 22, 10, 0),
+                LocalDateTime.of(2026, 7, 22, 11, 0),
+                10
+        );
+
+        assertThatThrownBy(() -> service.update(7L, 9L, request))
+                .isInstanceOfSatisfying(AvailabilityException.class, exception ->
+                        org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
+                                .isEqualTo(AvailabilityErrorCode.AVAILABILITY_ALREADY_EXISTS));
+    }
+
+    @Test
     void reservationIsRejectedWhenCurrentOwnerIsNotReservable() {
         when(repository.findReservableByIdForUpdate(eq(9L), any(LocalDateTime.class)))
                 .thenReturn(java.util.Optional.empty());
@@ -67,5 +88,11 @@ class PlaceAvailabilityServiceTest {
                 .isInstanceOfSatisfying(AvailabilityException.class, exception ->
                         org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
                                 .isEqualTo(AvailabilityErrorCode.AVAILABILITY_NOT_FOUND));
+    }
+
+    private DataIntegrityViolationException duplicateSlotViolation() {
+        ConstraintViolationException constraint = new ConstraintViolationException(
+                "duplicate", new SQLException(), "uq_place_availability_owner_slot");
+        return new DataIntegrityViolationException("duplicate", constraint);
     }
 }

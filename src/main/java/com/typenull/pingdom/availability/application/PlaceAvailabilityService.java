@@ -50,7 +50,13 @@ public class PlaceAvailabilityService {
         accessPolicy.requireOwnedPlace(ownerId, request.placeId(), now);
         try {
             availability.update(request.startsAt(), request.endsAt(), request.totalCapacity(), now);
+            repository.flush();
             return AvailabilityResponse.from(availability);
+        } catch (DataIntegrityViolationException exception) {
+            if (hasConstraint(exception, "uq_place_availability_owner_slot")) {
+                throw new AvailabilityException(AvailabilityErrorCode.AVAILABILITY_ALREADY_EXISTS);
+            }
+            throw exception;
         } catch (IllegalArgumentException exception) {
             throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
         } catch (IllegalStateException exception) {
