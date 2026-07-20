@@ -1,15 +1,18 @@
 # 로컬 개발 환경과 dev seed 데이터
-# 로컬 개발 환경
 
-`local` 프로필은 Pingdom 2.0 개발 중 로컬에서 바로 실행할 수 있는 기본 설정을 제공합니다.
+`local`, `dev` 프로필은 Pingdom 2.0 개발 중 로컬에서 바로 실행할 수 있는 기본 설정을 제공합니다.
 
 ## 실행
 
 ```bash
 SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
+# 또는
+SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ```
 
-`dev` 프로필은 `docker-compose-local.yml`의 PostgreSQL, Redis를 자동으로 사용하고 Swagger UI를 `/swagger-ui`에서 활성화한다.
+Spring Docker Compose 연동이 `docker-compose-local.yml`의 PostgreSQL, Redis를 함께 실행합니다.
+별도 `.env`가 없어도 기본 DB/Redis 값으로 실행되며, 필요한 경우 환경 변수로 덮어씁니다.
+Swagger UI는 `/swagger-ui`에서 활성화합니다.
 
 ## seed 설정
 
@@ -18,7 +21,7 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 | `SEED_ADMIN_USERNAME` | `admin` | 관리자 username |
 | `SEED_ADMIN_EMAIL` | `admin@local` | 관리자 email |
 | `SEED_ADMIN_PASSWORD` | `admin1234!` | 관리자 password |
-| `SEED_DEV_DATA_ENABLED` | `true` | 개발용 사용자/장소/게시글 seed 적용 여부 |
+| `SEED_DEV_DATA_ENABLED` | `true` | 개발용 사용자/장소/게시글/북마크 seed 적용 여부 |
 | `SEED_DEV_USER_PASSWORD` | `pingdom1234!` | 개발용 일반 계정 공통 password |
 
 ## seed 인벤토리
@@ -32,11 +35,6 @@ SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 | 장소 | `dev-seed-place-001`, `dev-seed-place-002`, `dev-seed-place-003` |
 
 seed는 중복 실행해도 기존 `username`, `email`, `kakao_place_id`, 사용자-장소 게시글/북마크 조합을 기준으로 재생성하지 않는다.
-SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
-```
-
-Spring Docker Compose 연동이 `docker-compose-local.yml`의 PostgreSQL, Redis를 함께 실행합니다.
-별도 `.env`가 없어도 기본 DB/Redis 값으로 실행되며, 필요한 경우 환경 변수로 덮어씁니다.
 
 ## 기본 계정
 
