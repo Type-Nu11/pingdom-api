@@ -488,10 +488,13 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
-                        FROM pg_indexes
-                        WHERE tablename = 'visitor_verification_report'
-                          AND indexname = 'uq_visitor_verification_report_active'
-                          AND indexdef LIKE '%WHERE (status%SUBMITTED%'
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'visitor_verification_report'
+                          AND index_class.relname = 'uq_visitor_verification_report_active'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
