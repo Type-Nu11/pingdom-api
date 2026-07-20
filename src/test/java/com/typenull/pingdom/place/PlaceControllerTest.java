@@ -500,6 +500,35 @@ class PlaceControllerTest {
     }
 
     @Test
+    void listPlacesRejectsUnsupportedSort() throws Exception {
+        String accessToken = signupAndLogin("readerUnsupportedSort" + Long.toUnsignedString(System.nanoTime()));
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sort", "RATING"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SEARCH_SORT"));
+    }
+
+    @Test
+    void listPlacesRejectsUnsupportedTouristCategory() throws Exception {
+        String accessToken = signupAndLogin("readerUnsupportedTouristCategory" + Long.toUnsignedString(System.nanoTime()));
+
+        mockMvc.perform(get("/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("touristCategory", "NOT_A_TOURIST_CATEGORY"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
+    }
+
+    @Test
+    void listPlacesReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(get("/places"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void getPlaceReturnsPlaceDetailOnly() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");

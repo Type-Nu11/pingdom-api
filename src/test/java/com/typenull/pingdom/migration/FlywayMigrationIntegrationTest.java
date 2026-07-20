@@ -192,6 +192,11 @@ class FlywayMigrationIntegrationTest {
                           AND geocoding_source = 'LEGACY'
                           AND operating_status = 'OPERATING'
                           AND discovery_status = 'VISIBLE'
+                          AND primary_information_source = 'LEGACY'
+                          AND information_verification_status = 'UNVERIFIED'
+                          AND information_verified_at IS NULL
+                          AND information_verified_by_admin_user_id IS NULL
+                          AND information_evidence_updated_at IS NULL
                           AND operating_status_checked_at IS NULL
                     )
                     """)).isTrue();
@@ -1921,6 +1926,115 @@ class FlywayMigrationIntegrationTest {
                           'idx_trust_score_intervention_rule_enabled',
                           'idx_trust_score_intervention_rule_trigger'
                       )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_information_evidence'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'map_place'
+                      AND (
+                          (column_name IN ('primary_information_source', 'information_verification_status')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('information_verified_at', 'information_evidence_updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'information_verified_by_admin_user_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'map_place'::regclass
+                      AND conname IN (
+                          'ck_map_place_primary_information_source',
+                          'ck_map_place_information_verification_status',
+                          'ck_map_place_information_admin_verified_metadata'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_information_evidence'
+                      AND (
+                          (column_name = 'place_information_evidence_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'map_place_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('source_type', 'evidence_type', 'verification_status')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'external_reference'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 100
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'reference_url'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'description'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 1000
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('submitted_by_user_id', 'reviewed_by_admin_user_id')
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'review_reason'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('submitted_at', 'created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'reviewed_at'
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_evidence'::regclass
+                      AND conname IN (
+                          'ck_place_information_evidence_source_type',
+                          'ck_place_information_evidence_type',
+                          'ck_place_information_evidence_status',
+                          'ck_place_information_evidence_payload',
+                          'ck_place_information_evidence_review'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_information_evidence'::regclass
+                          AND conname = 'fk_place_information_evidence_place'
+                          AND contype = 'f'
+                          AND confrelid = 'map_place'::regclass
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'idx_place_information_evidence_place_status',
+                        'idx_place_information_evidence_source',
+                        'idx_map_place_information_verification'
+                    )
                     """)).isTrue();
         }
     }

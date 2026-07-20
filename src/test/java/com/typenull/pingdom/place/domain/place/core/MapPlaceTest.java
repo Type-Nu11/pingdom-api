@@ -3,6 +3,8 @@ package com.typenull.pingdom.place.domain.place.core;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
@@ -64,6 +66,51 @@ class MapPlaceTest {
         assertThatThrownBy(() -> mapPlace.updateDiscoveryStatus(null))
                 .isInstanceOf(NullPointerException.class)
                 .hasMessage("discoveryStatus must not be null");
+    }
+
+    @Test
+    void defaultsInformationVerificationToLegacyUnverifiedAndUpdatesSummary() {
+        MapPlace mapPlace = MapPlace.builder().build();
+        LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 20, 11, 0);
+
+        assertThat(mapPlace.getPrimaryInformationSource()).isEqualTo(PlaceInformationSourceType.LEGACY);
+        assertThat(mapPlace.getInformationVerificationStatus())
+                .isEqualTo(PlaceInformationVerificationStatus.UNVERIFIED);
+        assertThat(mapPlace.getInformationVerifiedAt()).isNull();
+        assertThat(mapPlace.getInformationVerifiedByAdminUserId()).isNull();
+        assertThat(mapPlace.getInformationEvidenceUpdatedAt()).isNull();
+
+        mapPlace.updateInformationVerification(
+                PlaceInformationSourceType.ADMIN,
+                PlaceInformationVerificationStatus.ADMIN_VERIFIED,
+                99L,
+                verifiedAt,
+                verifiedAt
+        );
+
+        assertThat(mapPlace.getPrimaryInformationSource()).isEqualTo(PlaceInformationSourceType.ADMIN);
+        assertThat(mapPlace.getInformationVerificationStatus())
+                .isEqualTo(PlaceInformationVerificationStatus.ADMIN_VERIFIED);
+        assertThat(mapPlace.getInformationVerifiedByAdminUserId()).isEqualTo(99L);
+        assertThat(mapPlace.getInformationVerifiedAt()).isEqualTo(verifiedAt);
+        assertThat(mapPlace.getInformationEvidenceUpdatedAt()).isEqualTo(verifiedAt);
+
+        assertThatThrownBy(() -> mapPlace.updateInformationVerification(
+                null,
+                PlaceInformationVerificationStatus.UNVERIFIED,
+                null,
+                null,
+                null
+        )).isInstanceOf(NullPointerException.class)
+                .hasMessage("primaryInformationSource must not be null");
+        assertThatThrownBy(() -> mapPlace.updateInformationVerification(
+                PlaceInformationSourceType.LEGACY,
+                null,
+                null,
+                null,
+                null
+        )).isInstanceOf(NullPointerException.class)
+                .hasMessage("informationVerificationStatus must not be null");
     }
 
     @Test
