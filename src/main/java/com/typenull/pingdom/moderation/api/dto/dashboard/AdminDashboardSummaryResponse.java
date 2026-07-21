@@ -11,6 +11,8 @@ public record AdminDashboardSummaryResponse(
         @Schema(description = "처리 대기 신고 수", example = "5")
         long pendingReportCount,
         @Schema(description = "현재 밴 사용자 수", example = "6")
-        long bannedUserCount
+        long bannedUserCount,
+        @Schema(description = "추가 운영 지표")
+        AdminDashboardOperationalMetricsResponse operationalMetrics
 ) {
 }

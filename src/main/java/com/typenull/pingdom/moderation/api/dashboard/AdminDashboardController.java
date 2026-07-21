@@ -30,7 +30,7 @@ public class AdminDashboardController {
     @GetMapping("/summary")
     @Operation(
             summary = "관리자 대시보드 요약 조회",
-            description = "전체 장소, 게시글, 처리 대기 신고, 현재 밴 사용자 수를 조회합니다. 각 항목은 개별 집계 시점의 운영 현황을 나타냅니다."
+            description = "전체 장소, 게시글, 처리 대기 신고, 현재 밴 사용자 수와 최근 운영 변화 지표를 조회합니다. 오늘은 서버 기준 00시부터 현재까지, 최근 7일은 오늘을 포함한 7일 전 00시부터 현재까지 집계합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -43,7 +43,28 @@ public class AdminDashboardController {
                                       "placeCount": 44,
                                       "postCount": 58,
                                       "pendingReportCount": 5,
-                                      "bannedUserCount": 6
+                                      "bannedUserCount": 6,
+                                      "operationalMetrics": {
+                                        "today": {
+                                          "period": "TODAY",
+                                          "startedAt": "2026-07-21T00:00:00",
+                                          "endedAt": "2026-07-21T15:30:00",
+                                          "placeRegistrationCount": 3,
+                                          "postRegistrationCount": 7
+                                        },
+                                        "last7Days": {
+                                          "period": "LAST_7_DAYS",
+                                          "startedAt": "2026-07-15T00:00:00",
+                                          "endedAt": "2026-07-21T15:30:00",
+                                          "placeRegistrationCount": 12,
+                                          "postRegistrationCount": 31
+                                        },
+                                        "duplicatePlaceGroupCount": 2,
+                                        "expiringBannedUserCount": 4,
+                                        "missingLocationPlaceCount": 1,
+                                        "expiringBanUntil": "2026-07-28T15:30:00",
+                                        "collectedAt": "2026-07-21T15:30:00"
+                                      }
                                     }
                                     """)
                     )

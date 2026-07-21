@@ -255,6 +255,8 @@ public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 
     long countByMapPlace_IdAndVisibilityStatus(Long placeId, MapImageVisibilityStatus visibilityStatus);
 
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(LocalDateTime from, LocalDateTime to);
+
     List<MapImage> findByMapPlace_Id(Long placeId);
 
     @Query("SELECT m.id FROM MapImage m WHERE m.mapPlace.id = :placeId")
