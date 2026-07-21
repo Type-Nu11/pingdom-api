@@ -53,3 +53,11 @@ Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인�
 - Investigate failed admin maintenance when `pingdom.recommendation.snapshot_resync{result="failure"}` increases.
 - Investigate Spring event listener error logs with the originating request ID; do not treat their
   absence from Outbox metrics as successful delivery.
+
+## Failure Investigation Links
+
+- HTTP API 실패는 상태 코드, 응답 본문의 `code`, `X-Request-Id`를 함께 보존하고
+  [API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md)의 클라이언트 재시도 기준과 대조한다.
+- Outbox 실패는 event ID, event type, attempt count, 마지막 오류, 위 metric을 함께 확인한다.
+- 알림 발송 실패는 관리자 `GET /admin/notification-deliveries` 조회 결과의 channel, status,
+  notification type, provider error code를 Outbox 상태와 분리해 확인한다.
