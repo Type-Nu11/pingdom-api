@@ -113,6 +113,24 @@ class AdminSecurityTest {
     }
 
     @Test
+    void adminDashboardRecentActivitiesRejectsUnauthenticatedUser() throws Exception {
+        mockMvc.perform(get("/admin/dashboard/recent-activities"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void adminDashboardPendingItemsRejectsNonAdminUser() throws Exception {
+        createUser("dashboardPendingNormalUser", UserRole.USER);
+        String accessToken = loginAndGetAccessToken("dashboardPendingNormalUser");
+
+        mockMvc.perform(get("/admin/dashboard/pending-items")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
     void adminTrustScoreRejectsUnauthenticatedUser() throws Exception {
         mockMvc.perform(get("/admin/trust-score/reporters/{reporterUserId}", 7L))
                 .andExpect(status().isUnauthorized())
