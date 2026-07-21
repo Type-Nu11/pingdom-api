@@ -41,16 +41,3 @@ ALTER TABLE visitor_verification_report
             AND wait_time_minutes IS NULL
             AND language_code IS NULL AND coupon_usage_status IS NULL AND crowd_level IS NULL)
     ) NOT VALID;
-
-ALTER TABLE visitor_verification_report
-    VALIDATE CONSTRAINT ck_visitor_verification_report_type;
-ALTER TABLE visitor_verification_report
-    VALIDATE CONSTRAINT ck_visitor_verification_report_wait_time;
-ALTER TABLE visitor_verification_report
-    VALIDATE CONSTRAINT ck_visitor_verification_report_language_code;
-ALTER TABLE visitor_verification_report
-    VALIDATE CONSTRAINT ck_visitor_verification_report_coupon_usage;
-ALTER TABLE visitor_verification_report
-    VALIDATE CONSTRAINT ck_visitor_verification_report_crowd_level;
-ALTER TABLE visitor_verification_report
-    VALIDATE CONSTRAINT ck_visitor_verification_report_structured_value;

@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("58");
-        assertThat(result.migrationsExecuted).isEqualTo(58);
+        assertThat(result.targetSchemaVersion).isEqualTo("59");
+        assertThat(result.migrationsExecuted).isEqualTo(59);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("58");
-        assertThat(result.migrationsExecuted).isEqualTo(57);
+        assertThat(result.targetSchemaVersion).isEqualTo("59");
+        assertThat(result.migrationsExecuted).isEqualTo(58);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("58");
-        assertThat(result.migrationsExecuted).isEqualTo(31);
+        assertThat(result.targetSchemaVersion).isEqualTo("59");
+        assertThat(result.migrationsExecuted).isEqualTo(32);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("58");
-        assertThat(result.migrationsExecuted).isEqualTo(3);
+        assertThat(result.targetSchemaVersion).isEqualTo("59");
+        assertThat(result.migrationsExecuted).isEqualTo(4);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
