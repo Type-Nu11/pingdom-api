@@ -2,6 +2,7 @@ package com.typenull.pingdom.verification.api;
 
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.verification.api.dto.*;
+import com.typenull.pingdom.verification.application.VisitorVerificationReportCorrectionService;
 import com.typenull.pingdom.verification.application.VisitorVerificationReportService;
 import io.swagger.v3.oas.annotations.*;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -24,6 +25,7 @@ import org.springframework.web.bind.annotation.*;
 @org.springframework.validation.annotation.Validated
 public class VisitorVerificationReportController {
     private final VisitorVerificationReportService service;
+    private final VisitorVerificationReportCorrectionService correctionService;
 
     @PostMapping
     @Operation(summary = "방문자 검증 제보 생성")
@@ -47,5 +49,26 @@ public class VisitorVerificationReportController {
     public MyVisitorVerificationReportResponse getMine(@PathVariable Long reportId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
         return service.getMine(user.userId(), reportId);
+    }
+
+    @PostMapping("/{reportId}/corrections")
+    @Operation(summary = "방문자 검증 제보 정정 제출")
+    @ApiResponse(responseCode = "201", description = "제보 정정 제출 성공")
+    public ResponseEntity<MyVisitorVerificationReportCorrectionResponse> submitCorrection(
+            @PathVariable Long reportId,
+            @Valid @RequestBody VisitorVerificationReportCorrectionRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(correctionService.submit(user.userId(), reportId, request));
+    }
+
+    @GetMapping("/{reportId}/corrections")
+    @Operation(summary = "내 방문자 검증 제보 정정 이력 조회")
+    public MyVisitorVerificationReportCorrectionPageResponse listCorrections(
+            @PathVariable Long reportId,
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return correctionService.listMine(user.userId(), reportId, page, limit);
     }
 }
