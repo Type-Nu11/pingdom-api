@@ -1,11 +1,13 @@
 package com.typenull.pingdom.moderation.application.query.dashboard;
 
-import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.repository.CurrentBannedUserCounts;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardMetricWindowResponse;
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardOperationalMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItem;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentActivitiesResponse;
@@ -14,10 +16,12 @@ import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentPos
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentReportItem;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentUserSanctionItem;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
+import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -39,14 +43,17 @@ public class AdminDashboardQueryService {
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;
+    private final MapPlaceDuplicateQueryRepository mapPlaceDuplicateQueryRepository;
+    private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final Clock clock;
 
     @Transactional(readOnly = true)
     public AdminDashboardSummaryResponse getSummary() {
+        LocalDateTime now = LocalDateTime.now(clock);
         CurrentBannedUserCounts bannedUserCounts = userRepository.countCurrentlyBannedByType(
                 UserBanType.PERMANENT,
                 UserBanType.TEMPORARY,
-                LocalDateTime.now(clock),
+                now,
                 null
         );
 
@@ -54,8 +61,50 @@ public class AdminDashboardQueryService {
                 mapPlaceRepository.count(),
                 mapImageRepository.count(),
                 postReportRepository.countByStatus(PostReportStatus.PENDING),
-                bannedUserCounts.total()
+                bannedUserCounts.total(),
+                getOperationalMetrics(now)
         );
+    }
+
+    private AdminDashboardOperationalMetricsResponse getOperationalMetrics(LocalDateTime now) {
+        LocalDateTime todayStartedAt = now.toLocalDate().atStartOfDay();
+        LocalDateTime last7DaysStartedAt = todayStartedAt.minusDays(6);
+        LocalDateTime expiringBanUntil = now.plusDays(7);
+
+        return new AdminDashboardOperationalMetricsResponse(
+                metricWindow("TODAY", todayStartedAt, now),
+                metricWindow("LAST_7_DAYS", last7DaysStartedAt, now),
+                countDuplicatePlaceGroups(),
+                userRepository.countTemporaryBansExpiringUntil(
+                        UserBanType.TEMPORARY,
+                        now,
+                        expiringBanUntil
+                ),
+                mapPlaceRepository.countMissingLocation(),
+                expiringBanUntil,
+                now
+        );
+    }
+
+    private AdminDashboardMetricWindowResponse metricWindow(
+            String period,
+            LocalDateTime startedAt,
+            LocalDateTime endedAt
+    ) {
+        return new AdminDashboardMetricWindowResponse(
+                period,
+                startedAt,
+                endedAt,
+                mapPlaceRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(startedAt, endedAt),
+                mapImageRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(startedAt, endedAt)
+        );
+    }
+
+    private long countDuplicatePlaceGroups() {
+        return adminPlaceDuplicateResolver
+                .analyze(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces())
+                .groups()
+                .size();
     }
 
     @Transactional(readOnly = true)
