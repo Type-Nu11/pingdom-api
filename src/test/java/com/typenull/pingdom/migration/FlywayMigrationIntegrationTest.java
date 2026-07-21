@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("60");
-        assertThat(result.migrationsExecuted).isEqualTo(60);
+        assertThat(result.targetSchemaVersion).isEqualTo("61");
+        assertThat(result.migrationsExecuted).isEqualTo(61);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("60");
-        assertThat(result.migrationsExecuted).isEqualTo(59);
+        assertThat(result.targetSchemaVersion).isEqualTo("61");
+        assertThat(result.migrationsExecuted).isEqualTo(60);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("60");
-        assertThat(result.migrationsExecuted).isEqualTo(33);
+        assertThat(result.targetSchemaVersion).isEqualTo("61");
+        assertThat(result.migrationsExecuted).isEqualTo(34);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("60");
-        assertThat(result.migrationsExecuted).isEqualTo(5);
+        assertThat(result.targetSchemaVersion).isEqualTo("61");
+        assertThat(result.migrationsExecuted).isEqualTo(6);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1593,6 +1593,87 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'user_current_activity_intent'
                           AND indexname = 'idx_user_current_activity_intent_expires_at'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM information_schema.columns
+                    WHERE table_name = 'merchant_owner_profile'
+                      AND (
+                          (column_name = 'onboarding_status'
+                              AND is_nullable = 'NO'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 20
+                              AND column_default = '''NOT_STARTED''::character varying')
+                          OR (column_name = 'onboarding_completion_rate'
+                              AND is_nullable = 'NO'
+                              AND data_type = 'integer'
+                              AND column_default = '0')
+                          OR (column_name = 'onboarding_completed_at'
+                              AND is_nullable = 'YES'
+                              AND data_type = 'timestamp without time zone')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_owner_profile'::regclass
+                      AND conname IN (
+                          'ck_merchant_owner_profile_onboarding_status',
+                          'ck_merchant_owner_profile_onboarding_completion_rate',
+                          'ck_merchant_owner_profile_onboarding_completed_at'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'merchant_owner_profile'
+                          AND indexname = 'idx_merchant_owner_profile_onboarding'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'merchant_owner_place'
+                      AND (
+                          (column_name = 'operational_quality_status'
+                              AND is_nullable = 'NO'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 20
+                              AND column_default = '''UNMEASURED''::character varying')
+                          OR (column_name IN (
+                                  'reservation_response_rate',
+                                  'reservation_cancellation_rate',
+                                  'no_show_rate'
+                              )
+                              AND is_nullable = 'NO'
+                              AND data_type = 'integer'
+                              AND column_default = '0')
+                          OR (column_name = 'quality_evaluated_at'
+                              AND is_nullable = 'YES'
+                              AND data_type = 'timestamp without time zone')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_owner_place'::regclass
+                      AND conname IN (
+                          'ck_merchant_owner_place_operational_quality_status',
+                          'ck_merchant_owner_place_reservation_response_rate',
+                          'ck_merchant_owner_place_reservation_cancellation_rate',
+                          'ck_merchant_owner_place_no_show_rate'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'merchant_owner_place'
+                          AND indexname = 'idx_merchant_owner_place_quality'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
