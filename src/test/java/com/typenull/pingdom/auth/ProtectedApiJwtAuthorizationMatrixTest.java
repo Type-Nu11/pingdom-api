@@ -151,7 +151,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     private static Stream<String> protectedGetEndpoints() {
-        return Stream.of("/places", "/map/posts", "/users/me");
+        return Stream.of("/places", "/places/information-reports", "/map/posts", "/users/me");
     }
 
     private void assertProtectedGetSucceeds(String endpoint, String accessToken) throws Exception {
