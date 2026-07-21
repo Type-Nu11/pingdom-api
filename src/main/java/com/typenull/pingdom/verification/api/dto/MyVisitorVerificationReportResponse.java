@@ -9,6 +9,10 @@ public record MyVisitorVerificationReportResponse(
         VisitorVerificationReportType reportType,
         String description,
         String evidenceUrl,
+        Integer waitTimeMinutes,
+        String languageCode,
+        CouponUsageStatus couponUsageStatus,
+        CrowdLevel crowdLevel,
         VisitorVerificationReportStatus status,
         String rejectionReason,
         LocalDateTime createdAt,
@@ -20,7 +24,8 @@ public record MyVisitorVerificationReportResponse(
                 ? report.getReviewNote()
                 : null;
         return new MyVisitorVerificationReportResponse(report.getId(), report.getPlaceId(), report.getReportType(),
-                report.getDescription(), report.getEvidenceUrl(), report.getStatus(), rejectionReason,
+                report.getDescription(), report.getEvidenceUrl(), report.getWaitTimeMinutes(), report.getLanguageCode(),
+                report.getCouponUsageStatus(), report.getCrowdLevel(), report.getStatus(), rejectionReason,
                 report.getCreatedAt(), report.getReviewedAt(), report.getUpdatedAt());
     }
 }

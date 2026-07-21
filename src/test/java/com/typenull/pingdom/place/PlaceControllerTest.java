@@ -10,6 +10,7 @@ import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
+import com.typenull.pingdom.place.domain.place.media.PlaceMedia;
 import com.typenull.pingdom.place.domain.recommendation.candidate.PlaceRecommendationCandidateSource;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversion;
@@ -19,6 +20,7 @@ import com.typenull.pingdom.place.domain.recommendation.feature.PlaceRecommendat
 import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceMediaRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
@@ -123,6 +125,9 @@ class PlaceControllerTest {
     private MapImageRepository mapImageRepository;
 
     @Autowired
+    private PlaceMediaRepository placeMediaRepository;
+
+    @Autowired
     private MapImageLikeRepository mapImageLikeRepository;
 
     @Autowired
@@ -147,6 +152,7 @@ class PlaceControllerTest {
     void setUp() {
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
+        placeMediaRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         placeRecommendationConversionRepository.deleteAllInBatch();
         placeRecommendationClickRepository.deleteAllInBatch();
@@ -978,6 +984,162 @@ class PlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void createExplorationMediaReturnsCreatedMediaContract() throws Exception {
+        String accessToken = signupAndLogin("placeMediaOwner01");
+        Long ownerId = userRepository.findByUsername("placeMediaOwner01").orElseThrow().getId();
+        MapPlace place = createMapPlace("탐색 미디어 장소", "경상남도 진주시 미디어로 1", ownerId);
+
+        mockMvc.perform(post("/places/{id}/media/exploration", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "imageUrl", "https://cdn.pingdom.test/exploration.jpg",
+                                "s3Key", "places/exploration.jpg",
+                                "thumbnailUrl", "https://cdn.pingdom.test/exploration-thumb.jpg",
+                                "thumbnailS3Key", "places/exploration-thumb.jpg"
+                        ))))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.placeId").value(place.getId()))
+                .andExpect(jsonPath("$.purpose").value("EXPLORATION"))
+                .andExpect(jsonPath("$.imageUrl").value("https://cdn.pingdom.test/exploration.jpg"))
+                .andExpect(jsonPath("$.sourceMapImageId").isEmpty())
+                .andExpect(jsonPath("$.displayOrder").value(0));
+    }
+
+    @Test
+    void placeMediaEndpointsSeparateExplorationAndVerificationMedia() throws Exception {
+        String accessToken = signupAndLogin("placeMediaOwner02");
+        Long ownerId = userRepository.findByUsername("placeMediaOwner02").orElseThrow().getId();
+        MapPlace place = createMapPlace("미디어 분리 장소", "경상남도 진주시 분리로 1", ownerId);
+        PlaceMedia explorationMedia = placeMediaRepository.save(PlaceMedia.exploration(
+                place,
+                "https://cdn.pingdom.test/exploration.jpg",
+                "places/exploration.jpg",
+                null,
+                null,
+                1,
+                LocalDateTime.of(2026, 7, 21, 10, 0)
+        ));
+        MapImage mapImage = createMapImage(place, 0L, "검증용 사진");
+        PlaceMedia verificationMedia = placeMediaRepository.save(PlaceMedia.verification(
+                place,
+                "https://cdn.pingdom.test/verification.jpg",
+                "places/verification.jpg",
+                "https://cdn.pingdom.test/verification-thumb.jpg",
+                "places/verification-thumb.jpg",
+                mapImage.getId(),
+                LocalDateTime.of(2026, 7, 21, 10, 5)
+        ));
+
+        mockMvc.perform(get("/places/{id}/media/exploration", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(place.getId()))
+                .andExpect(jsonPath("$.media.length()").value(1))
+                .andExpect(jsonPath("$.media[0].id").value(explorationMedia.getId()))
+                .andExpect(jsonPath("$.media[0].purpose").value("EXPLORATION"))
+                .andExpect(jsonPath("$.media[0].sourceMapImageId").isEmpty());
+
+        mockMvc.perform(get("/places/{id}/media/verification", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(place.getId()))
+                .andExpect(jsonPath("$.media.length()").value(1))
+                .andExpect(jsonPath("$.media[0].id").value(verificationMedia.getId()))
+                .andExpect(jsonPath("$.media[0].purpose").value("VERIFICATION"))
+                .andExpect(jsonPath("$.media[0].sourceMapImageId").value(mapImage.getId()));
+    }
+
+    @Test
+    void createExplorationMediaRejectsBlankImageUrl() throws Exception {
+        String accessToken = signupAndLogin("placeMediaOwner03");
+        Long ownerId = userRepository.findByUsername("placeMediaOwner03").orElseThrow().getId();
+        MapPlace place = createMapPlace("미디어 검증 장소", "경상남도 진주시 검증로 1", ownerId);
+
+        mockMvc.perform(post("/places/{id}/media/exploration", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of("imageUrl", "   "))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.imageUrl").value("imageUrl은 필수입니다."));
+    }
+
+    @Test
+    void getExplorationMediaRejectsHiddenDiscoveryPlace() throws Exception {
+        String accessToken = signupAndLogin("placeMediaReader01");
+        Long ownerId = userRepository.findByUsername("placeMediaReader01").orElseThrow().getId();
+        MapPlace hiddenPlace = createMapPlace("숨김 미디어 장소", "경상남도 진주시 숨김미디어로 1", ownerId);
+        hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(hiddenPlace);
+        placeMediaRepository.save(PlaceMedia.exploration(
+                hiddenPlace,
+                "https://cdn.pingdom.test/hidden.jpg",
+                null,
+                null,
+                null,
+                0,
+                LocalDateTime.of(2026, 7, 21, 11, 0)
+        ));
+
+        mockMvc.perform(get("/places/{id}/media/exploration", hiddenPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void getVerificationMediaRequiresPlaceOwner() throws Exception {
+        String ownerToken = signupAndLogin("placeMediaOwner04");
+        String otherToken = signupAndLogin("placeMediaOther04");
+        Long ownerId = userRepository.findByUsername("placeMediaOwner04").orElseThrow().getId();
+        MapPlace place = createMapPlace("검증 권한 장소", "경상남도 진주시 권한로 1", ownerId);
+
+        mockMvc.perform(get("/places/{id}/media/verification", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + otherToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("OTHERS_PLACE_MEDIA_NOT_MANAGED"));
+
+        mockMvc.perform(get("/places/{id}/media/verification", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + ownerToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.media.length()").value(0));
+    }
+
+    @Test
+    void deleteExplorationMediaDoesNotDeleteVerificationMedia() throws Exception {
+        String accessToken = signupAndLogin("placeMediaOwner05");
+        Long ownerId = userRepository.findByUsername("placeMediaOwner05").orElseThrow().getId();
+        MapPlace place = createMapPlace("미디어 삭제 장소", "경상남도 진주시 삭제로 1", ownerId);
+        PlaceMedia explorationMedia = placeMediaRepository.save(PlaceMedia.exploration(
+                place,
+                "https://cdn.pingdom.test/delete-exploration.jpg",
+                null,
+                null,
+                null,
+                0,
+                LocalDateTime.of(2026, 7, 21, 12, 0)
+        ));
+        MapImage mapImage = createMapImage(place, 0L, "삭제 검증 사진");
+        PlaceMedia verificationMedia = placeMediaRepository.save(PlaceMedia.verification(
+                place,
+                "https://cdn.pingdom.test/delete-verification.jpg",
+                "places/delete-verification.jpg",
+                null,
+                null,
+                mapImage.getId(),
+                LocalDateTime.of(2026, 7, 21, 12, 5)
+        ));
+
+        mockMvc.perform(delete("/places/{id}/media/exploration/{mediaId}", place.getId(), explorationMedia.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$").value("장소 탐색용 미디어를 삭제했습니다."));
+
+        assertFalse(placeMediaRepository.existsById(explorationMedia.getId()));
+        assertNotNull(placeMediaRepository.findById(verificationMedia.getId()).orElseThrow());
     }
 
     @Test
@@ -1947,6 +2109,18 @@ class PlaceControllerTest {
 
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
         return createMapPlace(name, address, null, latitude, longitude, photoCount);
+    }
+
+    private MapPlace createMapPlace(String name, String address, Long userId) {
+        return mapPlaceRepository.save(MapPlace.builder()
+                .name(name)
+                .address(address)
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(userId)
+                .registrant("placeOwner")
+                .photoCount(0L)
+                .build());
     }
 
     private MapPlace createMapPlace(

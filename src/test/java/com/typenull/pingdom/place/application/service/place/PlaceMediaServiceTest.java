@@ -9,7 +9,9 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
+import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaResponse;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.media.PlaceMedia;
 import com.typenull.pingdom.place.domain.place.media.PlaceMediaPurpose;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -18,6 +20,7 @@ import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -111,6 +114,56 @@ class PlaceMediaServiceTest {
         placeMediaService.recordVerificationMedia(mapImage);
 
         verify(placeMediaRepository, never()).save(any());
+    }
+
+    @Test
+    void getExplorationMediaReturnsOnlyExplorationMediaForVisiblePlace() {
+        MapPlace place = place(1L, 7L);
+        PlaceMedia exploration = PlaceMedia.exploration(
+                place,
+                "https://cdn.pingdom.test/exploration.jpg",
+                null,
+                null,
+                null,
+                0,
+                LocalDateTime.of(2026, 7, 21, 10, 0)
+        );
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
+        when(placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
+                1L,
+                PlaceMediaPurpose.EXPLORATION
+        )).thenReturn(List.of(exploration));
+
+        PlaceMediaResponse response = placeMediaService.getExplorationMedia(1L);
+
+        assertThat(response.placeId()).isEqualTo(1L);
+        assertThat(response.media()).hasSize(1);
+        assertThat(response.media().get(0).purpose()).isEqualTo(PlaceMediaPurpose.EXPLORATION);
+    }
+
+    @Test
+    void getExplorationMediaRejectsHiddenDiscoveryPlace() {
+        MapPlace place = place(1L, 7L);
+        place.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
+
+        assertThatThrownBy(() -> placeMediaService.getExplorationMedia(1L))
+                .isInstanceOfSatisfying(MapException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_NOT_FOUND));
+    }
+
+    @Test
+    void deleteExplorationMediaRejectsVerificationMediaId() {
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(placeMediaRepository.findByIdAndPlace_IdAndPurpose(
+                10L,
+                1L,
+                PlaceMediaPurpose.EXPLORATION
+        )).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> placeMediaService.deleteExplorationMedia(1L, 10L, 7L))
+                .isInstanceOfSatisfying(MapException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
     }
 
     private PlaceMedia existingVerification() {
