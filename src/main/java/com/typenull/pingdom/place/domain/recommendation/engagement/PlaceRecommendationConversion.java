@@ -41,6 +41,9 @@ public class PlaceRecommendationConversion {
     @Column(name = "place_recommendation_click_id", nullable = false)
     private Long placeRecommendationClickId;
 
+    @Column(name = "place_recommendation_feature_log_id")
+    private Long placeRecommendationFeatureLogId;
+
     @Column(name = "place_id", nullable = false)
     private Long placeId;
 
