@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("64");
-        assertThat(result.migrationsExecuted).isEqualTo(64);
+        assertThat(result.targetSchemaVersion).isEqualTo("65");
+        assertThat(result.migrationsExecuted).isEqualTo(65);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("64");
-        assertThat(result.migrationsExecuted).isEqualTo(63);
+        assertThat(result.targetSchemaVersion).isEqualTo("65");
+        assertThat(result.migrationsExecuted).isEqualTo(64);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("64");
-        assertThat(result.migrationsExecuted).isEqualTo(37);
+        assertThat(result.targetSchemaVersion).isEqualTo("65");
+        assertThat(result.migrationsExecuted).isEqualTo(38);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("64");
-        assertThat(result.migrationsExecuted).isEqualTo(9);
+        assertThat(result.targetSchemaVersion).isEqualTo("65");
+        assertThat(result.migrationsExecuted).isEqualTo(10);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -771,6 +771,42 @@ class FlywayMigrationIntegrationTest {
                         SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'scout_field_report'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_information_reverification_request'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 8
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_reverification_request'::regclass
+                      AND conname IN (
+                          'fk_place_information_reverification_place',
+                          'fk_place_information_reverification_evidence',
+                          'ck_place_information_reverification_status',
+                          'ck_place_information_reverification_reason',
+                          'ck_place_information_reverification_due',
+                          'ck_place_information_reverification_reminder',
+                          'ck_place_information_reverification_response',
+                          'ck_place_information_reverification_terminal'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'place_information_reverification_request'
+                          AND index_class.relname = 'uq_place_information_reverification_active'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%REQUESTED%'
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%RESPONDED%'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
