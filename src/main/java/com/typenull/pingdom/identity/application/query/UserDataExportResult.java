@@ -1,13 +1,14 @@
 package com.typenull.pingdom.identity.application.query;
 
 import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOnboardingStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
+import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
@@ -74,6 +75,9 @@ public record UserDataExportResult(
                                 merchantOwnerProfile.getContactEmail(),
                                 merchantOwnerProfile.getContactPhone(),
                                 merchantOwnerProfile.getStatus(),
+                                merchantOwnerProfile.getOnboardingStatus(),
+                                merchantOwnerProfile.getOnboardingCompletionRate(),
+                                merchantOwnerProfile.getOnboardingCompletedAt(),
                                 merchantOwnerPlaceIds
                         ),
                 merchantPlaceClaims.stream()
@@ -163,6 +167,9 @@ public record UserDataExportResult(
             String contactEmail,
             String contactPhone,
             MerchantOwnerStatus status,
+            MerchantOnboardingStatus onboardingStatus,
+            Integer onboardingCompletionRate,
+            LocalDateTime onboardingCompletedAt,
             List<Long> placeIds
     ) {
     }
