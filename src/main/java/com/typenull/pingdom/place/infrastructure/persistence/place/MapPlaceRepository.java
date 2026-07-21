@@ -4,6 +4,7 @@ import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import jakarta.persistence.LockModeType;
+import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
 import java.util.Optional;
@@ -62,6 +63,15 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             Double latitude,
             Double longitude
     );
+
+    long countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(LocalDateTime from, LocalDateTime to);
+
+    @Query("""
+            SELECT COUNT(m)
+            FROM MapPlace m
+            WHERE m.location IS NULL
+            """)
+    long countMissingLocation();
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MapPlace m WHERE m.id = :placeId")
