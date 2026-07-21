@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.merchant;
 
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOnboardingUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceQualityUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfilePageResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileResponse;
@@ -11,6 +14,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -46,6 +50,12 @@ public class AdminMerchantOwnerController {
     @Operation(summary = "Merchant Owner 신청 상세 조회")
     public MerchantOwnerProfileResponse get(@PathVariable Long userId) {
         return adminService.get(userId);
+    }
+
+    @GetMapping("/{userId}/places")
+    @Operation(summary = "Merchant Owner 연결 장소 및 운영 품질 조회")
+    public List<MerchantOwnerPlaceResponse> listPlaces(@PathVariable Long userId) {
+        return adminService.listPlaces(userId);
     }
 
     @PostMapping("/{userId}/approve")
@@ -86,5 +96,26 @@ public class AdminMerchantOwnerController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
     ) {
         return adminService.replacePlaces(admin.userId(), userId, request);
+    }
+
+    @PutMapping("/{userId}/onboarding")
+    @Operation(summary = "Merchant Owner 온보딩 완료도 변경")
+    public MerchantOwnerProfileResponse updateOnboarding(
+            @PathVariable Long userId,
+            @Valid @RequestBody MerchantOnboardingUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+    ) {
+        return adminService.updateOnboarding(admin.userId(), userId, request);
+    }
+
+    @PutMapping("/{userId}/places/{placeId}/quality")
+    @Operation(summary = "Merchant Owner 장소 운영 품질 지표 변경")
+    public MerchantOwnerPlaceResponse updateOperationalQuality(
+            @PathVariable Long userId,
+            @PathVariable Long placeId,
+            @Valid @RequestBody MerchantOwnerPlaceQualityUpdateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+    ) {
+        return adminService.updateOperationalQuality(admin.userId(), userId, placeId, request);
     }
 }
