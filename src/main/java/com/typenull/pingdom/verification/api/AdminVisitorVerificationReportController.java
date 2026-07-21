@@ -1,5 +1,6 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.verification.api.dto.*;
 import com.typenull.pingdom.verification.application.VisitorVerificationReportCorrectionService;
@@ -7,6 +8,10 @@ import com.typenull.pingdom.verification.application.VisitorVerificationReportSe
 import com.typenull.pingdom.verification.domain.VisitorVerificationReportCorrectionStatus;
 import com.typenull.pingdom.verification.domain.VisitorVerificationReportStatus;
 import io.swagger.v3.oas.annotations.*;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
@@ -55,6 +60,19 @@ public class AdminVisitorVerificationReportController {
 
     @PostMapping("/corrections/{correctionId}/review")
     @Operation(summary = "방문자 검증 제보 정정 심사")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "제보 정정 심사 성공"),
+            @ApiResponse(responseCode = "400", description = "심사 요청 값 검증 실패",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "활성 관리자 계정이 아님",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "제보 정정을 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 심사된 정정 또는 활성 제보 충돌",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public VisitorVerificationReportCorrectionResponse reviewCorrection(
             @PathVariable Long correctionId,
             @Valid @RequestBody VisitorVerificationReportCorrectionReviewRequest request,
