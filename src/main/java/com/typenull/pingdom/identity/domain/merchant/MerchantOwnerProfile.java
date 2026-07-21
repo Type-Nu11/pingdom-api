@@ -44,6 +44,18 @@ public class MerchantOwnerProfile {
     @Column(nullable = false, length = 20)
     private MerchantOwnerStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "onboarding_status", nullable = false, length = 20)
+    @Builder.Default
+    private MerchantOnboardingStatus onboardingStatus = MerchantOnboardingStatus.NOT_STARTED;
+
+    @Column(name = "onboarding_completion_rate", nullable = false)
+    @Builder.Default
+    private Integer onboardingCompletionRate = 0;
+
+    @Column(name = "onboarding_completed_at")
+    private LocalDateTime onboardingCompletedAt;
+
     @Column(name = "reviewed_by")
     private Long reviewedBy;
 
@@ -73,6 +85,8 @@ public class MerchantOwnerProfile {
                 .contactEmail(contactEmail)
                 .contactPhone(contactPhone)
                 .status(MerchantOwnerStatus.PENDING)
+                .onboardingStatus(MerchantOnboardingStatus.NOT_STARTED)
+                .onboardingCompletionRate(0)
                 .createdAt(now)
                 .updatedAt(now)
                 .build();
@@ -151,8 +165,32 @@ public class MerchantOwnerProfile {
         description = null;
         contactEmail = "withdrawn@withdrawn.local";
         contactPhone = "WITHDRAWN";
+        onboardingStatus = MerchantOnboardingStatus.NOT_STARTED;
+        onboardingCompletionRate = 0;
+        onboardingCompletedAt = null;
         reviewedBy = null;
         reviewedAt = now;
+        updatedAt = now;
+    }
+
+    public void updateOnboarding(
+            MerchantOnboardingStatus status,
+            int completionRate,
+            LocalDateTime completedAt,
+            LocalDateTime now
+    ) {
+        if (completionRate < 0 || completionRate > 100) {
+            throw new IllegalArgumentException("온보딩 완료율은 0 이상 100 이하여야 합니다.");
+        }
+        if (status == MerchantOnboardingStatus.COMPLETED && completedAt == null) {
+            throw new IllegalArgumentException("온보딩 완료 상태에는 완료 시각이 필요합니다.");
+        }
+        if (status != MerchantOnboardingStatus.COMPLETED && completedAt != null) {
+            throw new IllegalArgumentException("온보딩 완료 전에는 완료 시각을 기록할 수 없습니다.");
+        }
+        onboardingStatus = status;
+        onboardingCompletionRate = completionRate;
+        onboardingCompletedAt = completedAt;
         updatedAt = now;
     }
 
