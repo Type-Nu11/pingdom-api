@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.infrastructure.persistence.recommendation;
 
 import com.typenull.pingdom.place.domain.recommendation.feature.PlaceRecommendationFeatureLog;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -12,6 +13,13 @@ public interface PlaceRecommendationFeatureLogRepository extends JpaRepository<P
     List<PlaceRecommendationFeatureLog> findByRequestIdOrderByRankingAsc(String requestId);
 
     List<PlaceRecommendationFeatureLog> findByRequestIdAndUserIdOrderByRankingAsc(String requestId, Long userId);
+
+    Optional<PlaceRecommendationFeatureLog> findFirstByRequestIdAndUserIdAndPlaceIdAndRecommendationVersionOrderByIdAsc(
+            String requestId,
+            Long userId,
+            Long placeId,
+            String recommendationVersion
+    );
 
     @Query("""
             SELECT l.id
