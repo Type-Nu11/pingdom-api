@@ -58,6 +58,20 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports'].get").exists())
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports'].post").exists())
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}/corrections'].get").exists())
+                .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}/corrections'].post").exists())
                 .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports']").doesNotExist());
+    }
+
+    @Test
+    void webGroupDocsContainVisitorVerificationCorrectionApis() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/web"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports'].get").exists())
+                .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports/corrections'].get").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/visitor-verification-reports/corrections/{correctionId}/review'].post"
+                ).exists())
+                .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}/corrections']").doesNotExist());
     }
 }

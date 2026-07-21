@@ -7,6 +7,8 @@ import static org.mockito.Mockito.*;
 import com.typenull.pingdom.identity.domain.*;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.shared.observability.VisitorVerificationReportMetrics;
 import com.typenull.pingdom.verification.api.dto.*;
 import com.typenull.pingdom.verification.domain.*;
 import com.typenull.pingdom.verification.domain.exception.*;
@@ -23,12 +25,20 @@ class VisitorVerificationReportServiceTest {
     private final VisitorVerificationReportRepository reportRepository = mock(VisitorVerificationReportRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
+    private final AdminAuditLogService adminAuditLogService = mock(AdminAuditLogService.class);
+    private final VisitorVerificationReportMetrics metrics = mock(VisitorVerificationReportMetrics.class);
     private VisitorVerificationReportService service;
 
     @BeforeEach
     void setUp() {
-        service = new VisitorVerificationReportService(reportRepository, userRepository, placeRepository,
-                Clock.fixed(Instant.parse("2026-07-20T06:00:00Z"), ZoneOffset.UTC));
+        service = new VisitorVerificationReportService(
+                reportRepository,
+                userRepository,
+                placeRepository,
+                Clock.fixed(Instant.parse("2026-07-20T06:00:00Z"), ZoneOffset.UTC),
+                adminAuditLogService,
+                metrics
+        );
         when(userRepository.findById(1L)).thenReturn(Optional.of(
                 User.builder().id(1L).role(UserRole.USER).status(UserStatus.ACTIVE).build()));
         when(userRepository.findById(9L)).thenReturn(Optional.of(
