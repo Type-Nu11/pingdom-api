@@ -3,6 +3,9 @@ package com.typenull.pingdom.place.api;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
+import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
+import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationExplanationResponse;
@@ -12,6 +15,7 @@ import com.typenull.pingdom.place.application.service.recommendation.feedback.Pl
 import com.typenull.pingdom.place.application.service.recommendation.explanation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
+import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -35,6 +39,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -53,6 +58,7 @@ public class PlaceController {
     private final PlaceRecommendationQueryService placeRecommendationQueryService;
     private final PlaceRecommendationClickService placeRecommendationClickService;
     private final PlaceRecommendationExplanationQueryService placeRecommendationExplanationQueryService;
+    private final PlaceMediaService placeMediaService;
 
     @GetMapping
     @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
@@ -383,5 +389,82 @@ public class PlaceController {
             @PathVariable("id") Long placeId
     ) {
         return ResponseEntity.ok(placeQueryService.getPlace(placeId));
+    }
+
+    @PostMapping("/{id}/media/exploration")
+    @Operation(summary = "장소 탐색용 미디어 등록", description = "장소 소유자가 탐색 화면에 노출할 미디어를 등록합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "201",
+                    description = "탐색용 미디어 등록 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceMediaItem.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "본인 소유가 아닌 장소 미디어 관리 시도",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "자신의 장소 미디어만 관리할 수 있습니다.",
+                                              "code": "OTHERS_PLACE_MEDIA_NOT_MANAGED"
+                                            }
+                                            """
+                            )
+                    )
+            )
+    })
+    public ResponseEntity<PlaceMediaItem> createExplorationMedia(
+            @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody PlaceMediaCreateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(placeMediaService.createExplorationMedia(placeId, user.userId(), request));
+    }
+
+    @GetMapping("/{id}/media/exploration")
+    @Operation(summary = "장소 탐색용 미디어 조회", description = "탐색 화면에 노출할 장소 미디어만 조회합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "탐색용 미디어 조회 성공",
+            content = @Content(schema = @Schema(implementation = PlaceMediaResponse.class))
+    )
+    public ResponseEntity<PlaceMediaResponse> getExplorationMedia(
+            @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId
+    ) {
+        return ResponseEntity.ok(placeMediaService.getExplorationMedia(placeId));
+    }
+
+    @GetMapping("/{id}/media/verification")
+    @Operation(summary = "장소 검증용 미디어 조회", description = "장소 소유자가 검증 출처로 기록된 미디어를 조회합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "검증용 미디어 조회 성공",
+            content = @Content(schema = @Schema(implementation = PlaceMediaResponse.class))
+    )
+    public ResponseEntity<PlaceMediaResponse> getVerificationMedia(
+            @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(placeMediaService.getVerificationMedia(placeId, user.userId()));
+    }
+
+    @DeleteMapping("/{id}/media/exploration/{mediaId}")
+    @Operation(summary = "장소 탐색용 미디어 삭제", description = "장소 소유자가 탐색용 미디어를 삭제합니다.")
+    @ApiResponse(
+            responseCode = "200",
+            description = "탐색용 미디어 삭제 성공",
+            content = @Content(
+                    examples = @ExampleObject(value = "\"장소 탐색용 미디어를 삭제했습니다.\"")
+            )
+    )
+    public ResponseEntity<String> deleteExplorationMedia(
+            @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Parameter(description = "장소 미디어 ID", example = "10") @PathVariable Long mediaId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+    ) {
+        placeMediaService.deleteExplorationMedia(placeId, mediaId, user.userId());
+        return ResponseEntity.ok("장소 탐색용 미디어를 삭제했습니다.");
     }
 }

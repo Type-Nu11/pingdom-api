@@ -12,6 +12,7 @@ import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
@@ -76,6 +77,7 @@ public class S3Service {
     private final MapPlaceService mapPlaceService;
     private final PlatformTransactionManager transactionManager;
     private final PlaceGrowthService placeGrowthService;
+    private final PlaceMediaService placeMediaService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final ImageUploadProcessor imageUploadProcessor;
@@ -539,6 +541,7 @@ public class S3Service {
                     .build();
 
             MapImage saved = mapImageRepository.save(mapImage);
+            placeMediaService.recordVerificationMedia(saved);
             PlaceGrowthSnapshot placeGrowth = placeGrowthService.increasePhotoCount(mapPlace);
             placeRecommendationSnapshotService.refresh(mapPlace.getId());
             return new PostResponse(saved.getId(), saved.getId(), mapPlace.getId(), "게시글을 저장했습니다.", placeGrowth);
