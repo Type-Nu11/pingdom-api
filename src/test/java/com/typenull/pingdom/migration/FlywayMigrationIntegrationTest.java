@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("63");
-        assertThat(result.migrationsExecuted).isEqualTo(63);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(64);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("63");
-        assertThat(result.migrationsExecuted).isEqualTo(62);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(63);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("63");
-        assertThat(result.migrationsExecuted).isEqualTo(36);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(37);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("63");
-        assertThat(result.migrationsExecuted).isEqualTo(8);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(9);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -764,6 +764,61 @@ class FlywayMigrationIntegrationTest {
                         'idx_place_operating_notice_place_status_period',
                         'idx_place_operating_notice_expiration',
                         'idx_place_operating_notice_creator_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'scout_field_report'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_field_report'::regclass
+                      AND conname IN (
+                          'ck_scout_field_report_type',
+                          'ck_scout_field_report_status',
+                          'ck_scout_field_report_description',
+                          'ck_scout_field_report_review'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_field_report'::regclass
+                      AND conname IN (
+                          'fk_scout_field_report_scout',
+                          'fk_scout_field_report_place',
+                          'fk_scout_field_report_reviewer'
+                      )
+                      AND contype = 'f'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_field_report'::regclass
+                      AND conname IN (
+                          'fk_scout_field_report_scout',
+                          'fk_scout_field_report_reviewer'
+                      )
+                      AND contype = 'f'
+                      AND confdeltype = 'n'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'scout_field_report'
+                          AND index_class.relname = 'uq_scout_field_report_active'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
