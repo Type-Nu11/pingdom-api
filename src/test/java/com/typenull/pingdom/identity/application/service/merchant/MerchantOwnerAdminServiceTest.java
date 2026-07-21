@@ -371,6 +371,51 @@ class MerchantOwnerAdminServiceTest {
     }
 
     @Test
+    void updateOnboardingRejectsCompletedAtBeforeCompletion() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        stubCurrentTime();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+
+        assertThatThrownBy(() -> adminService.updateOnboarding(
+                adminUserId,
+                userId,
+                new MerchantOnboardingUpdateRequest(
+                        MerchantOnboardingStatus.IN_PROGRESS,
+                        50,
+                        now,
+                        "완료 전 완료 시각 입력"
+                )
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.INVALID_ONBOARDING_METRIC)
+        );
+
+        assertThat(profile.getOnboardingStatus()).isEqualTo(MerchantOnboardingStatus.NOT_STARTED);
+        assertThat(profile.getOnboardingCompletionRate()).isZero();
+        assertThat(profile.getOnboardingCompletedAt()).isNull();
+        verify(auditLogService, never()).record(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        );
+        verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
+    }
+
+    @Test
     void updateOperationalQualityRequiresOwnedActivePlace() {
         Long adminUserId = 99L;
         Long userId = 1L;
@@ -415,6 +460,153 @@ class MerchantOwnerAdminServiceTest {
         assertThat(response.noShowRate()).isEqualTo(1);
         assertThat(response.qualityEvaluatedAt()).isEqualTo(now);
         verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
+    }
+
+    @Test
+    void updateOperationalQualityAcceptsBoundaryRates() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        Long placeId = 10L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        profile.approve(adminUserId, now.minusHours(1));
+        MerchantOwnerPlace ownerPlace = MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(userId)
+                .createdAt(now.minusDays(1))
+                .build();
+        LocalDateTime evaluatedAt = LocalDateTime.of(2026, 7, 12, 18, 30);
+        stubCurrentTime();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(ownerPlace));
+
+        var response = adminService.updateOperationalQuality(
+                adminUserId,
+                userId,
+                placeId,
+                new MerchantOwnerPlaceQualityUpdateRequest(
+                        MerchantOperationalQualityStatus.AT_RISK,
+                        0,
+                        100,
+                        0,
+                        evaluatedAt,
+                        "경계값 검증"
+                )
+        );
+
+        assertThat(response.operationalQualityStatus()).isEqualTo(MerchantOperationalQualityStatus.AT_RISK);
+        assertThat(response.reservationResponseRate()).isZero();
+        assertThat(response.reservationCancellationRate()).isEqualTo(100);
+        assertThat(response.noShowRate()).isZero();
+        assertThat(response.qualityEvaluatedAt()).isEqualTo(evaluatedAt);
+    }
+
+    @Test
+    void updateOperationalQualityRejectsUnownedPlace() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        Long placeId = 10L;
+        Long anotherUserId = 2L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        profile.approve(adminUserId, now.minusHours(1));
+        MerchantOwnerPlace ownerPlace = MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(anotherUserId)
+                .createdAt(now.minusDays(1))
+                .build();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(ownerPlace));
+
+        assertThatThrownBy(() -> adminService.updateOperationalQuality(
+                adminUserId,
+                userId,
+                placeId,
+                new MerchantOwnerPlaceQualityUpdateRequest(
+                        MerchantOperationalQualityStatus.HEALTHY,
+                        95,
+                        2,
+                        1,
+                        null,
+                        "다른 Merchant 장소 수정 시도"
+                )
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.OWNER_PLACE_NOT_FOUND)
+        );
+
+        verify(auditLogService, never()).record(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.any()
+        );
+        verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
+    }
+
+    @Test
+    void updateOperationalQualityRejectsOutOfRangeRateWithMetricErrorCode() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        Long placeId = 10L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        profile.approve(adminUserId, now.minusHours(1));
+        MerchantOwnerPlace ownerPlace = MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(userId)
+                .createdAt(now.minusDays(1))
+                .build();
+        stubCurrentTime();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(ownerPlace));
+
+        assertThatThrownBy(() -> adminService.updateOperationalQuality(
+                adminUserId,
+                userId,
+                placeId,
+                new MerchantOwnerPlaceQualityUpdateRequest(
+                        MerchantOperationalQualityStatus.HEALTHY,
+                        101,
+                        2,
+                        1,
+                        null,
+                        "범위 초과"
+                )
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.INVALID_OPERATIONAL_QUALITY_METRIC)
+        );
+
+        assertThat(ownerPlace.getOperationalQualityStatus()).isEqualTo(MerchantOperationalQualityStatus.UNMEASURED);
+        assertThat(ownerPlace.getReservationResponseRate()).isZero();
+        assertThat(ownerPlace.getQualityEvaluatedAt()).isNull();
+        verify(eventPublisher, never()).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
     }
 
     private void stubCurrentTime() {
