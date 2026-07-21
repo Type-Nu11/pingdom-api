@@ -1,0 +1,12 @@
+ALTER TABLE visitor_verification_report
+    VALIDATE CONSTRAINT ck_visitor_verification_report_type;
+ALTER TABLE visitor_verification_report
+    VALIDATE CONSTRAINT ck_visitor_verification_report_wait_time;
+ALTER TABLE visitor_verification_report
+    VALIDATE CONSTRAINT ck_visitor_verification_report_language_code;
+ALTER TABLE visitor_verification_report
+    VALIDATE CONSTRAINT ck_visitor_verification_report_coupon_usage;
+ALTER TABLE visitor_verification_report
+    VALIDATE CONSTRAINT ck_visitor_verification_report_crowd_level;
+ALTER TABLE visitor_verification_report
+    VALIDATE CONSTRAINT ck_visitor_verification_report_structured_value;

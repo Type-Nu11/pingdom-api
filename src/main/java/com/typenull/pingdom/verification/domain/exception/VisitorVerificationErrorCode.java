@@ -24,6 +24,7 @@ public enum VisitorVerificationErrorCode {
     VISIT_EVIDENCE_FILE_INVALID(HttpStatus.BAD_REQUEST, "JPEG 또는 PNG 형식의 올바른 증빙 이미지만 등록할 수 있습니다."),
     VISIT_EVIDENCE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "증빙 저장소를 사용할 수 없습니다."),
     ACTIVE_REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "같은 장소와 유형의 처리 중인 제보가 이미 있습니다."),
+    INVALID_REPORT_DETAILS(HttpStatus.BAD_REQUEST, "제보 유형과 구조화 정보가 일치하지 않습니다."),
     INVALID_REPORT_STATE(HttpStatus.CONFLICT, "현재 제보 상태에서는 요청을 처리할 수 없습니다."),
     INVALID_REVIEW(HttpStatus.BAD_REQUEST, "심사 요청이 올바르지 않습니다.");
 
