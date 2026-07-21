@@ -161,6 +161,33 @@ public final class PingdomPerformanceLoadFixtures {
                         List.of("limit 상한", "totalPages", "hasNext")
                 ),
                 new PerformanceLoadScenario(
+                        "place-discovery-hidden-place-exclusion",
+                        PerformanceLoadScenarioType.BOUNDARY,
+                        "GET /places?discoveryStatus=HIDDEN",
+                        1,
+                        200,
+                        null,
+                        List.of("hidden 장소 제외", "공개 장소만 반환", "totalElements")
+                ),
+                new PerformanceLoadScenario(
+                        "place-recommendation-normal-ranking",
+                        PerformanceLoadScenarioType.NORMAL,
+                        "GET /places/recommendations?latitude=37.5445&longitude=127.0557",
+                        NORMAL_PLACE_SEARCH_REQUESTS,
+                        200,
+                        null,
+                        List.of("추천 장소 수", "추천 점수 내림차순", "노출 이벤트 기록")
+                ),
+                new PerformanceLoadScenario(
+                        "place-recommendation-invalid-coordinate",
+                        PerformanceLoadScenarioType.BOUNDARY,
+                        "GET /places/recommendations?latitude=91&longitude=127.0557",
+                        1,
+                        400,
+                        "INVALID_INPUT_VALUE",
+                        List.of("위도 범위 검증", "ErrorResponse", "추천 조회 미실행")
+                ),
+                new PerformanceLoadScenario(
                         "report-dispute-forbidden",
                         PerformanceLoadScenarioType.FAILURE,
                         "POST /places/information-reports/{reportId}/disputes",

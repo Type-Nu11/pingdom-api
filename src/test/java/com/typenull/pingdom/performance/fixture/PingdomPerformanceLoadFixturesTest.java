@@ -4,6 +4,8 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationReportStatus;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.util.HashSet;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
+import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import org.junit.jupiter.api.Test;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -74,5 +76,24 @@ class PingdomPerformanceLoadFixturesTest {
         assertThat(fixture.reports().stream().map(FixtureReport::id).toList())
                 .as("신고 fixture ID 중복은 상태 전이 실패 원인 분석을 어렵게 한다")
                 .hasSameSizeAs(new HashSet<>(fixture.reports().stream().map(FixtureReport::id).toList()));
+    }
+
+    @Test
+    void discoveryAndRecommendationFixtureCoversVisibleHiddenAndOperatingBoundaryPlaces() {
+        PingdomPerformanceLoadFixture fixture = PingdomPerformanceLoadFixtures.realisticPlaceDiscoveryFixture();
+
+        assertThat(fixture.places())
+                .as("Discovery fixture는 공개 장소와 운영 경계 상태를 함께 가져야 한다")
+                .anySatisfy(place -> assertThat(place.discoveryStatus()).isEqualTo(PlaceDiscoveryStatus.VISIBLE))
+                .anySatisfy(place -> assertThat(place.operatingStatus()).isEqualTo(PlaceOperatingStatus.TEMPORARILY_CLOSED));
+        assertThat(fixture.places())
+                .as("Recommendation fixture는 서로 다른 위치와 추천 정렬 기준을 가져야 한다")
+                .extracting(FixturePlace::expectedDefaultSort)
+                .doesNotHaveDuplicates();
+        assertThat(fixture.scenarios())
+                .filteredOn(scenario -> scenario.endpoint().contains("/places/recommendations"))
+                .as("Discovery와 Recommendation 계약 테스트 fixture에 추천 정상·경계 시나리오가 있어야 한다")
+                .hasSize(2)
+                .allSatisfy(scenario -> assertThat(scenario.assertions()).isNotEmpty());
     }
 }

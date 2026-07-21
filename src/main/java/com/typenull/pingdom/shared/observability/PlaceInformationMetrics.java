@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerif
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationDisputeStatus;
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationReportStatus;
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationReportTargetType;
+import com.typenull.pingdom.place.domain.place.information.reverification.PlaceInformationReverificationStatus;
 import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
@@ -72,6 +73,24 @@ public class PlaceInformationMetrics {
                         "from_status", tagValue(fromStatus),
                         "to_status", tagValue(toStatus)
                 )
+        ).increment();
+    }
+
+    public void recordReverificationRequested() {
+        meterRegistry.counter("pingdom.place.information_reverification_requested").increment();
+    }
+
+    public void recordReverificationReminder() {
+        meterRegistry.counter("pingdom.place.information_reverification_reminders").increment();
+    }
+
+    public void recordReverificationStatusUpdate(
+            PlaceInformationReverificationStatus fromStatus,
+            PlaceInformationReverificationStatus toStatus
+    ) {
+        meterRegistry.counter(
+                "pingdom.place.information_reverification_status_updates",
+                Tags.of("from_status", tagValue(fromStatus), "to_status", tagValue(toStatus))
         ).increment();
     }
 

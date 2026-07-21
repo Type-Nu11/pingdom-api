@@ -55,6 +55,22 @@ public class FcmService {
         return sendNotification(ownerId, NotificationType.NEW_LIKE, outboxEventId, liker.getUsername());
     }
 
+    @Transactional
+    public NotificationResponse sendPlaceInformationReverificationNotification(
+            Long userId, NotificationType type, String placeName, String outboxEventId
+    ) {
+        User user = userRepository.findById(userId).orElse(null);
+        if (user == null || user.isWithdrawn()) {
+            log.warn("장소 정보 재확인 알림 수신자를 찾지 못해 전송을 생략합니다. userId={}", userId);
+            return null;
+        }
+        if (type != NotificationType.PLACE_INFORMATION_REVERIFICATION_REQUESTED
+                && type != NotificationType.PLACE_INFORMATION_REVERIFICATION_REMINDER) {
+            throw new IllegalArgumentException("지원하지 않는 장소 정보 재확인 알림 유형입니다.");
+        }
+        return sendNotification(userId, type, outboxEventId, placeName);
+    }
+
     private NotificationResponse sendNotification(Long userId, NotificationType type, String outboxEventId, String... args) {
         if (!notificationDeliveryPolicy.canReceive(userId, type)) {
             log.debug("사용자 알림 설정에 의해 발송을 생략합니다. userId={}, type={}", userId, type);

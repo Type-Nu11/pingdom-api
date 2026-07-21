@@ -37,6 +37,9 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 | `pingdom.recommendation.result_count` | `recommendation_version` | Recommended item count distribution |
 | `pingdom.recommendation.snapshot_resync` | `result`, `reason` | Snapshot resync success/failure count |
 | `pingdom.recommendation.snapshot_resync.items` | `item` | Snapshot resync affected item count |
+| `pingdom.place.information_reverification_requested` | none | 장소 정보 재확인 요청 생성 수 |
+| `pingdom.place.information_reverification_reminders` | none | 장소 정보 재확인 리마인드 발행 수 |
+| `pingdom.place.information_reverification_status_updates` | `from_status`, `to_status` | 장소 정보 재확인 상태 전이 수 |
 
 Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인정보 이력과 추천 노출의
 커밋 후 처리 실패는 listener 로그와 원래 요청의 `X-Request-Id`로 추적한다. 동기 신고

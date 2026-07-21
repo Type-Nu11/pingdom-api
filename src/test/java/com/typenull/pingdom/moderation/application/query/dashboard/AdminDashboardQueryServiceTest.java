@@ -10,6 +10,7 @@ import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.repository.CurrentBannedUserCounts;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
+import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Clock;
@@ -38,6 +39,8 @@ class AdminDashboardQueryServiceTest {
     private PostReportRepository postReportRepository;
     @Mock
     private UserRepository userRepository;
+    @Mock
+    private UserSanctionHistoryRepository userSanctionHistoryRepository;
 
     private AdminDashboardQueryService service;
 
@@ -48,6 +51,7 @@ class AdminDashboardQueryServiceTest {
                 mapImageRepository,
                 postReportRepository,
                 userRepository,
+                userSanctionHistoryRepository,
                 FIXED_CLOCK
         );
     }
