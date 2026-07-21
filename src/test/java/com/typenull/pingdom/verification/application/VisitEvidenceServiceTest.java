@@ -23,7 +23,7 @@ class VisitEvidenceServiceTest {
 
     @BeforeEach
     void setUp() {
-        VisitEvidenceProperties properties = new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 100, 10);
+        VisitEvidenceProperties properties = new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 10, 10);
         service = new VisitEvidenceService(persistenceService, new VisitEvidenceFileValidator(properties), properties,
                 objectStorage, Clock.fixed(NOW, ZoneOffset.UTC));
         when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))

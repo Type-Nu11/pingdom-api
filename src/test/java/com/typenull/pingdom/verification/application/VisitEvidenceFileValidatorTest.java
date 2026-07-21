@@ -12,7 +12,7 @@ import org.springframework.mock.web.MockMultipartFile;
 
 class VisitEvidenceFileValidatorTest {
     private final VisitEvidenceFileValidator validator = new VisitEvidenceFileValidator(
-            new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 100, 10));
+            new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 10, 10));
 
     @Test
     void acceptsPngMatchingDeclaredContentType() throws Exception {
@@ -35,7 +35,7 @@ class VisitEvidenceFileValidatorTest {
     @Test
     void rejectsFileExceedingConfiguredLimit() {
         VisitEvidenceFileValidator smallLimitValidator = new VisitEvidenceFileValidator(
-                new VisitEvidenceProperties(Duration.ofDays(30), 10L, 100, 10));
+                new VisitEvidenceProperties(Duration.ofDays(30), 10L, 10, 10));
         assertThatThrownBy(() -> smallLimitValidator.validate(
                 new MockMultipartFile("file", "visit.png", "image/png", new byte[11])))
                 .isInstanceOf(VisitorVerificationException.class)

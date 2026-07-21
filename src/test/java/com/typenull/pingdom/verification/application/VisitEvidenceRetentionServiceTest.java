@@ -18,7 +18,7 @@ class VisitEvidenceRetentionServiceTest {
     private final VisitEvidenceRepository repository = mock(VisitEvidenceRepository.class);
     private final S3ObjectDeleteOutboxPublisher publisher = mock(S3ObjectDeleteOutboxPublisher.class);
     private final VisitEvidenceRetentionService service = new VisitEvidenceRetentionService(repository,
-            new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 25, 10), publisher,
+            new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 10, 10), publisher,
             Clock.fixed(NOW, ZoneOffset.UTC));
 
     @Test
