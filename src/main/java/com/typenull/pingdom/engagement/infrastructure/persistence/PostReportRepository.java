@@ -25,6 +25,22 @@ public interface PostReportRepository extends JpaRepository<PostReport, Long> {
     Page<PostReport> findAllBy(Pageable pageable);
 
     @EntityGraph(attributePaths = {"mapImage", "mapImage.mapPlace"})
+    @Query("""
+            SELECT pr
+            FROM PostReport pr
+            WHERE pr.status = :status
+            """)
+    List<PostReport> findRecentByStatus(@Param("status") PostReportStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"mapImage", "mapImage.mapPlace"})
+    @Query("""
+            SELECT pr
+            FROM PostReport pr
+            WHERE pr.status <> :status
+            """)
+    List<PostReport> findRecentByStatusNot(@Param("status") PostReportStatus status, Pageable pageable);
+
+    @EntityGraph(attributePaths = {"mapImage", "mapImage.mapPlace"})
     Page<PostReport> findByReporterUserIdOrderByIdDesc(Long reporterUserId, Pageable pageable);
 
     List<PostReport> findAllByMapImage_IdInOrderByIdDesc(Collection<Long> mapImageIds);
