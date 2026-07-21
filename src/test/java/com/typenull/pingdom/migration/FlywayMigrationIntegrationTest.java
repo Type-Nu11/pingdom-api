@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("57");
-        assertThat(result.migrationsExecuted).isEqualTo(57);
+        assertThat(result.targetSchemaVersion).isEqualTo("58");
+        assertThat(result.migrationsExecuted).isEqualTo(58);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("57");
-        assertThat(result.migrationsExecuted).isEqualTo(56);
+        assertThat(result.targetSchemaVersion).isEqualTo("58");
+        assertThat(result.migrationsExecuted).isEqualTo(57);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -615,13 +615,18 @@ class FlywayMigrationIntegrationTest {
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 3
+                    SELECT COUNT(*) = 8
                     FROM pg_constraint
                     WHERE conrelid = 'visitor_verification_report'::regclass
                       AND conname IN (
                           'ck_visitor_verification_report_type',
                           'ck_visitor_verification_report_status',
-                          'ck_visitor_verification_report_review'
+                          'ck_visitor_verification_report_review',
+                          'ck_visitor_verification_report_wait_time',
+                          'ck_visitor_verification_report_language_code',
+                          'ck_visitor_verification_report_coupon_usage',
+                          'ck_visitor_verification_report_crowd_level',
+                          'ck_visitor_verification_report_structured_value'
                       )
                       AND convalidated = true
                     """)).isTrue();
