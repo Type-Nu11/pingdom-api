@@ -9,6 +9,9 @@ import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeResponse;
+import com.typenull.pingdom.place.application.service.place.operating.PlaceCurrentOperatingState;
+import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingHoursEvaluator;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
@@ -16,8 +19,10 @@ import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
+import com.typenull.pingdom.place.domain.place.operating.notice.PlaceOperatingNoticeStatus;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceOperatingNoticeRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
@@ -25,6 +30,7 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.EnumSet;
 import java.util.Comparator;
+import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Locale;
@@ -56,6 +62,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSearchQueryRepository placeSearchQueryRepository;
     private final MerchantOwnerPublicQueryService merchantOwnerPublicQueryService;
+    private final PlaceOperatingNoticeRepository placeOperatingNoticeRepository;
+    private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
 
     @Override
     @Transactional(readOnly = true)
@@ -169,6 +177,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
 
+        PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
+
         return new PlaceDetailResponse(
                 mapPlace.getId(),
                 mapPlace.getName(),
@@ -180,8 +190,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getGeocodingSource(),
                 mapPlace.getOperatingStatus(),
                 mapPlace.getOperatingStatusCheckedAt(),
+                operatingState.currentlyOperating(),
+                operatingState.checkedAt(),
                 regularHours(mapPlace),
                 operatingExceptions(mapPlace),
+                activeOperatingNotices(mapPlace, operatingState.checkedAt()),
                 mapPlace.getTouristSummary(),
                 mapPlace.currentTouristCategories(),
                 mapPlace.getPrimaryInformationSource(),
@@ -312,6 +325,17 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                                 ))
                                 .toList()
                 ))
+                .toList();
+    }
+
+    private List<PlaceOperatingNoticeResponse> activeOperatingNotices(MapPlace mapPlace, LocalDateTime checkedAt) {
+        return placeOperatingNoticeRepository.findAllByPlace_IdAndStatusInOrderByStartsAtAscIdAsc(
+                        mapPlace.getId(),
+                        Set.of(PlaceOperatingNoticeStatus.ACTIVE)
+                )
+                .stream()
+                .filter(notice -> notice.isVisibleAt(checkedAt))
+                .map(notice -> PlaceOperatingNoticeResponse.from(notice, checkedAt))
                 .toList();
     }
 

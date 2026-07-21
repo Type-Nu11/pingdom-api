@@ -6,6 +6,7 @@ import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationExplanationResponse;
@@ -16,6 +17,7 @@ import com.typenull.pingdom.place.application.service.recommendation.explanation
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
 import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
+import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingNoticeService;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -59,6 +61,7 @@ public class PlaceController {
     private final PlaceRecommendationClickService placeRecommendationClickService;
     private final PlaceRecommendationExplanationQueryService placeRecommendationExplanationQueryService;
     private final PlaceMediaService placeMediaService;
+    private final PlaceOperatingNoticeService placeOperatingNoticeService;
 
     @GetMapping
     @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
@@ -176,6 +179,14 @@ public class PlaceController {
             @RequestParam(required = false) Double longitude
     ) {
         return ResponseEntity.ok(placeQueryService.autocompletePlaces(keyword, limit, latitude, longitude));
+    }
+
+    @GetMapping("/{placeId}/operating-notices")
+    @Operation(summary = "장소 활성 운영 상태 공지 조회", description = "현재 영업시간 기준 운영 여부와 활성 운영 상태 공지를 조회합니다.")
+    public ResponseEntity<PlaceOperatingNoticeListResponse> listOperatingNotices(
+            @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId
+    ) {
+        return ResponseEntity.ok(placeOperatingNoticeService.listActive(placeId));
     }
 
     @GetMapping("/recommendations")

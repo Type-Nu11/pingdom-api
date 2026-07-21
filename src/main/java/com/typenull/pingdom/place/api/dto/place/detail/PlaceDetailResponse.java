@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.api.dto.place.detail;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPublicResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
+import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeResponse;
 
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
@@ -31,8 +32,11 @@ public record PlaceDetailResponse(
         PlaceOperatingStatus operatingStatus,
         @Schema(nullable = true)
         LocalDateTime operatingStatusCheckedAt,
+        boolean currentlyOperating,
+        LocalDateTime currentlyOperatingCheckedAt,
         List<PlaceRegularOperatingHourResponse> regularHours,
         List<PlaceOperatingExceptionResponse> operatingExceptions,
+        List<PlaceOperatingNoticeResponse> activeOperatingNotices,
         @Schema(nullable = true)
         String touristSummary,
         Set<TouristCategory> touristCategories,
