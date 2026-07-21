@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -125,6 +126,42 @@ class AdminSecurityTest {
 
         mockMvc.perform(get("/admin/trust-score/reporters/{reporterUserId}", 7L)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
+    void adminMerchantOnboardingMetricRejectsUnauthenticatedUser() throws Exception {
+        mockMvc.perform(put("/admin/merchant-owners/{userId}/onboarding", 7L)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "COMPLETED",
+                                  "completionRate": 100,
+                                  "reason": "온보딩 완료"
+                                }
+                                """))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void adminMerchantQualityMetricRejectsNonAdminUser() throws Exception {
+        createUser("merchantMetricNormalUser", UserRole.USER);
+        String accessToken = loginAndGetAccessToken("merchantMetricNormalUser");
+
+        mockMvc.perform(put("/admin/merchant-owners/{userId}/places/{placeId}/quality", 7L, 10L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "status": "HEALTHY",
+                                  "reservationResponseRate": 95,
+                                  "reservationCancellationRate": 2,
+                                  "noShowRate": 1,
+                                  "reason": "운영 품질 확인"
+                                }
+                                """))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
