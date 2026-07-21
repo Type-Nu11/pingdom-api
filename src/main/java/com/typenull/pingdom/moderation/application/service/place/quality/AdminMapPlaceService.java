@@ -85,6 +85,7 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.observability.PlaceDiscoveryMetrics;
 import com.typenull.pingdom.shared.observability.PlaceInformationMetrics;
 import com.typenull.pingdom.verification.infrastructure.LocationCheckInRepository;
+import com.typenull.pingdom.verification.infrastructure.ScoutFieldReportRepository;
 import java.time.Clock;
 import java.time.DayOfWeek;
 import java.time.LocalDate;
@@ -123,6 +124,7 @@ public class AdminMapPlaceService {
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceEventRepository placeEventRepository;
     private final LocationCheckInRepository locationCheckInRepository;
+    private final ScoutFieldReportRepository scoutFieldReportRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageRepository mapImageRepository;
     private final AdminPostService adminPostService;
@@ -153,6 +155,9 @@ public class AdminMapPlaceService {
         }
         if (locationCheckInRepository.existsByPlaceId(placeId)) {
             throw new AdminException(AdminErrorCode.PLACE_CHECK_IN_CONNECTED);
+        }
+        if (scoutFieldReportRepository.existsByPlaceId(placeId)) {
+            throw new AdminException(AdminErrorCode.PLACE_SCOUT_FIELD_REPORT_CONNECTED);
         }
         Map<String, Object> beforeState = placeState(mapPlace);
         List<Long> linkedPostIds = mapImageRepository.findIdsByMapPlaceId(placeId);
@@ -764,6 +769,9 @@ public class AdminMapPlaceService {
         }
         if (locationCheckInRepository.existsByPlaceId(sourcePlace.getId())) {
             throw new AdminException(AdminErrorCode.PLACE_CHECK_IN_CONNECTED);
+        }
+        if (scoutFieldReportRepository.existsByPlaceId(sourcePlace.getId())) {
+            throw new AdminException(AdminErrorCode.PLACE_SCOUT_FIELD_REPORT_CONNECTED);
         }
         if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
