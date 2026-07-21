@@ -35,6 +35,8 @@ import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
@@ -55,6 +57,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationEvidenceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationVersionSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceSimilaritySnapshotRepository;
@@ -147,6 +150,9 @@ class AdminMapPlaceControllerTest {
     private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
+    private PlaceInformationEvidenceRepository placeInformationEvidenceRepository;
+
+    @Autowired
     private AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
 
     @Autowired
@@ -171,6 +177,7 @@ class AdminMapPlaceControllerTest {
         placeRecommendationSnapshotRepository.deleteAllInBatch();
         adminPlaceMergeHistoryRepository.deleteAllInBatch();
         locationCheckInRepository.deleteAllInBatch();
+        placeInformationEvidenceRepository.deleteAllInBatch();
         clearOperatingScheduleRows();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -964,6 +971,196 @@ class AdminMapPlaceControllerTest {
                                 "reason", "권한 검증"
                         ))))
                 .andExpect(status().isForbidden());
+    }
+
+    @Test
+    void managePlaceInformationEvidenceCreatesListsReviewsAndRecordsSideEffects() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("정보 출처 검증 장소")
+                .address("경상남도 진주시 증빙로 1")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(97L)
+                .registrant("informationEvidenceOwner")
+                .build());
+        double beforeSubmitMetricCount = informationEvidenceSubmittedCount(PlaceInformationSourceType.ADMIN);
+        double beforeReviewMetricCount = informationVerificationStatusUpdateCount(
+                PlaceInformationVerificationStatus.UNVERIFIED,
+                PlaceInformationVerificationStatus.ADMIN_VERIFIED
+        );
+
+        MvcResult createResult = mockMvc.perform(post("/admin/places/{id}/information-evidence", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "sourceType", "ADMIN",
+                                "evidenceType", "DOCUMENT",
+                                "referenceUrl", "https://example.com/evidence/place-97",
+                                "description", "관리자 현장 확인 자료"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evidence.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.evidence.sourceType").value("ADMIN"))
+                .andExpect(jsonPath("$.evidence.evidenceType").value("DOCUMENT"))
+                .andExpect(jsonPath("$.evidence.verificationStatus").value("UNVERIFIED"))
+                .andExpect(jsonPath("$.message").value("장소 정보 증빙을 등록했습니다."))
+                .andReturn();
+
+        long evidenceId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("evidence")
+                .path("evidenceId")
+                .asLong();
+        MapPlace submittedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(PlaceInformationSourceType.ADMIN, submittedPlace.getPrimaryInformationSource());
+        assertEquals(PlaceInformationVerificationStatus.UNVERIFIED, submittedPlace.getInformationVerificationStatus());
+        assertNotNull(submittedPlace.getInformationEvidenceUpdatedAt());
+        assertEquals(
+                beforeSubmitMetricCount + 1.0d,
+                informationEvidenceSubmittedCount(PlaceInformationSourceType.ADMIN),
+                0.0001d
+        );
+        assertTrue(outboxEventRepository.findAll().stream()
+                .anyMatch(event -> event.getEventType() == OutboxEventType.PLACE_INFORMATION_EVIDENCE_SUBMITTED));
+
+        mockMvc.perform(get("/admin/places/{id}/information-evidence", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.evidences", hasSize(1)))
+                .andExpect(jsonPath("$.evidences[0].evidenceId").value(evidenceId))
+                .andExpect(jsonPath("$.evidences[0].verificationStatus").value("UNVERIFIED"));
+
+        mockMvc.perform(patch("/admin/places/{id}/information-evidence/{evidenceId}/review", mapPlace.getId(), evidenceId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "verificationStatus", "ADMIN_VERIFIED",
+                                "reviewReason", "관리자 검수 완료"
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.evidence.evidenceId").value(evidenceId))
+                .andExpect(jsonPath("$.evidence.verificationStatus").value("ADMIN_VERIFIED"))
+                .andExpect(jsonPath("$.evidence.reviewReason").value("관리자 검수 완료"))
+                .andExpect(jsonPath("$.message").value("장소 정보 증빙 검토 상태를 수정했습니다."));
+
+        MapPlace reviewedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals(PlaceInformationVerificationStatus.ADMIN_VERIFIED, reviewedPlace.getInformationVerificationStatus());
+        assertNotNull(reviewedPlace.getInformationVerifiedAt());
+        assertNotNull(reviewedPlace.getInformationEvidenceUpdatedAt());
+        assertEquals(
+                beforeReviewMetricCount + 1.0d,
+                informationVerificationStatusUpdateCount(
+                        PlaceInformationVerificationStatus.UNVERIFIED,
+                        PlaceInformationVerificationStatus.ADMIN_VERIFIED
+                ),
+                0.0001d
+        );
+        assertTrue(outboxEventRepository.findAll().stream()
+                .anyMatch(event -> event.getEventType() == OutboxEventType.PLACE_INFORMATION_VERIFICATION_UPDATED));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.PLACE_INFORMATION_EVIDENCE_UPDATED
+                        && log.getTargetType() == AdminAuditTargetType.PLACE_INFORMATION_EVIDENCE
+                        && log.getTargetId().equals(String.valueOf(evidenceId))));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .anyMatch(log -> log.getAction() == AdminAuditAction.PLACE_INFORMATION_VERIFICATION_UPDATED
+                        && log.getReason().equals("관리자 검수 완료")));
+    }
+
+    @Test
+    void createPlaceInformationEvidenceRejectsEmptyPayload() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("빈 증빙 거부 장소")
+                .address("경상남도 진주시 증빙로 2")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(98L)
+                .registrant("emptyEvidenceOwner")
+                .build());
+
+        mockMvc.perform(post("/admin/places/{id}/information-evidence", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "sourceType", "ADMIN",
+                                "evidenceType", "DOCUMENT"
+                        ))))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void reviewPlaceInformationEvidenceRejectsInvalidStatusAndMissingEvidence() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("검토 실패 장소")
+                .address("경상남도 진주시 증빙로 3")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(99L)
+                .registrant("invalidReviewOwner")
+                .build());
+
+        MvcResult createResult = mockMvc.perform(post("/admin/places/{id}/information-evidence", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "sourceType", "USER_REPORT",
+                                "evidenceType", "PHOTO",
+                                "referenceUrl", "https://example.com/evidence/photo"
+                        ))))
+                .andExpect(status().isOk())
+                .andReturn();
+        long evidenceId = objectMapper.readTree(createResult.getResponse().getContentAsString())
+                .path("evidence")
+                .path("evidenceId")
+                .asLong();
+
+        mockMvc.perform(patch("/admin/places/{id}/information-evidence/{evidenceId}/review", mapPlace.getId(), evidenceId)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "verificationStatus", "SOURCE_CONFIRMED",
+                                "reviewReason", "관리자 검토 API에서는 허용하지 않는 상태"
+                        ))))
+                .andExpect(status().isBadRequest());
+
+        mockMvc.perform(patch("/admin/places/{id}/information-evidence/{evidenceId}/review", mapPlace.getId(), 999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "verificationStatus", "ADMIN_VERIFIED",
+                                "reviewReason", "없는 증빙"
+                        ))))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
+    void placeInformationEvidenceApiRequiresAdminAndExistingPlace() throws Exception {
+        String userToken = createUserAndLogin("normalInformationEvidenceUser", UserRole.USER);
+        String adminToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("증빙 권한 장소")
+                .address("경상남도 진주시 증빙로 4")
+                .latitude(35.1804)
+                .longitude(128.1081)
+                .userId(100L)
+                .registrant("evidencePermissionOwner")
+                .build());
+
+        mockMvc.perform(post("/admin/places/{id}/information-evidence", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + userToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "sourceType", "ADMIN",
+                                "evidenceType", "ADMIN_REVIEW",
+                                "description", "권한 테스트"
+                        ))))
+                .andExpect(status().isForbidden());
+
+        mockMvc.perform(get("/admin/places/{id}/information-evidence", 999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminToken))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2506,6 +2703,24 @@ class AdminMapPlaceControllerTest {
 
     private double discoveryStatusUpdateCount(PlaceDiscoveryStatus fromStatus, PlaceDiscoveryStatus toStatus) {
         var counter = meterRegistry.find("pingdom.place.discovery_status_updates")
+                .tag("from_status", fromStatus.name())
+                .tag("to_status", toStatus.name())
+                .counter();
+        return counter == null ? 0.0d : counter.count();
+    }
+
+    private double informationEvidenceSubmittedCount(PlaceInformationSourceType sourceType) {
+        var counter = meterRegistry.find("pingdom.place.information_evidence_submitted")
+                .tag("source_type", sourceType.name())
+                .counter();
+        return counter == null ? 0.0d : counter.count();
+    }
+
+    private double informationVerificationStatusUpdateCount(
+            PlaceInformationVerificationStatus fromStatus,
+            PlaceInformationVerificationStatus toStatus
+    ) {
+        var counter = meterRegistry.find("pingdom.place.information_verification_status_updates")
                 .tag("from_status", fromStatus.name())
                 .tag("to_status", toStatus.name())
                 .counter();
