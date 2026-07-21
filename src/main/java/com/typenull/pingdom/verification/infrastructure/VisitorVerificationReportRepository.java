@@ -12,6 +12,14 @@ public interface VisitorVerificationReportRepository extends JpaRepository<Visit
     boolean existsByReporterUserIdAndPlaceIdAndReportTypeAndStatus(Long reporterUserId, Long placeId,
             VisitorVerificationReportType reportType, VisitorVerificationReportStatus status);
 
+    boolean existsByReporterUserIdAndPlaceIdAndReportTypeAndStatusAndIdNot(
+            Long reporterUserId,
+            Long placeId,
+            VisitorVerificationReportType reportType,
+            VisitorVerificationReportStatus status,
+            Long excludedId
+    );
+
     Page<VisitorVerificationReport> findAllByReporterUserId(Long reporterUserId, Pageable pageable);
 
     Page<VisitorVerificationReport> findAllByStatus(VisitorVerificationReportStatus status, Pageable pageable);

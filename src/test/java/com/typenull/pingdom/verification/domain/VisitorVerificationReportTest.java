@@ -134,4 +134,92 @@ class VisitorVerificationReportTest {
                 null, null, CouponUsageStatus.AVAILABLE, null, now))
                 .isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void reviewedReportCanReceiveCorrectionWithoutOverwritingUntilAcceptance() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.OPERATING_HOURS, "기존 영업시간", null, now);
+        report.review(9L, VisitorVerificationReportStatus.REJECTED, "최신 증빙 필요", now.plusMinutes(10));
+
+        VisitorVerificationReportCorrection correction = VisitorVerificationReportCorrection.submit(
+                report, 1L, "수정된 영업시간", "https://example.com/evidence", null,
+                null, null, null, now.plusMinutes(20));
+
+        assertThat(report.getDescription()).isEqualTo("기존 영업시간");
+        assertThat(correction.getDescription()).isEqualTo("수정된 영업시간");
+        assertThat(correction.getStatus()).isEqualTo(VisitorVerificationReportCorrectionStatus.SUBMITTED);
+    }
+
+    @Test
+    void acceptingCorrectionResubmitsOriginalReportForNormalReviewFlow() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.WAIT_TIME, "기존 대기", null,
+                60, null, null, null, now);
+        report.review(9L, VisitorVerificationReportStatus.ACCEPTED, null, now.plusMinutes(10));
+        VisitorVerificationReportCorrection correction = VisitorVerificationReportCorrection.submit(
+                report, 1L, "수정된 대기", null, 20,
+                null, null, null, now.plusMinutes(20));
+
+        correction.review(9L, VisitorVerificationReportCorrectionStatus.ACCEPTED, null, now.plusMinutes(30));
+        report.applyCorrection(
+                correction.getDescription(), correction.getEvidenceUrl(), correction.getWaitTimeMinutes(),
+                correction.getLanguageCode(), correction.getCouponUsageStatus(), correction.getCrowdLevel(),
+                now.plusMinutes(30));
+
+        assertThat(correction.getStatus()).isEqualTo(VisitorVerificationReportCorrectionStatus.ACCEPTED);
+        assertThat(report.getStatus()).isEqualTo(VisitorVerificationReportStatus.SUBMITTED);
+        assertThat(report.getDescription()).isEqualTo("수정된 대기");
+        assertThat(report.getWaitTimeMinutes()).isEqualTo(20);
+        assertThat(report.getReviewerAdminUserId()).isNull();
+    }
+
+    @Test
+    void correctionCannotBeSubmittedForPendingReport() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.OTHER, "확인이 필요합니다.", null, now);
+
+        assertThatThrownBy(() -> VisitorVerificationReportCorrection.submit(
+                report, 1L, "정정 내용", null, null, null, null, null, now.plusMinutes(10)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void rejectedCorrectionRequiresReviewNote() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.OTHER, "기존 내용", null, now);
+        report.review(9L, VisitorVerificationReportStatus.ACCEPTED, null, now.plusMinutes(10));
+        VisitorVerificationReportCorrection correction = VisitorVerificationReportCorrection.submit(
+                report, 1L, "정정 내용", null, null, null, null, null, now.plusMinutes(20));
+
+        assertThatThrownBy(() -> correction.review(
+                9L, VisitorVerificationReportCorrectionStatus.REJECTED, " ", now.plusMinutes(30)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void reviewedCorrectionCannotBeReviewedAgain() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.OTHER, "기존 내용", null, now);
+        report.review(9L, VisitorVerificationReportStatus.ACCEPTED, null, now.plusMinutes(10));
+        VisitorVerificationReportCorrection correction = VisitorVerificationReportCorrection.submit(
+                report, 1L, "정정 내용", null, null, null, null, null, now.plusMinutes(20));
+        correction.review(9L, VisitorVerificationReportCorrectionStatus.ACCEPTED, null, now.plusMinutes(30));
+
+        assertThatThrownBy(() -> correction.review(
+                9L, VisitorVerificationReportCorrectionStatus.ACCEPTED, null, now.plusMinutes(40)))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void submittedIsNotAValidCorrectionReviewDecision() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.OTHER, "기존 내용", null, now);
+        report.review(9L, VisitorVerificationReportStatus.ACCEPTED, null, now.plusMinutes(10));
+        VisitorVerificationReportCorrection correction = VisitorVerificationReportCorrection.submit(
+                report, 1L, "정정 내용", null, null, null, null, null, now.plusMinutes(20));
+
+        assertThatThrownBy(() -> correction.review(
+                9L, VisitorVerificationReportCorrectionStatus.SUBMITTED, null, now.plusMinutes(30)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

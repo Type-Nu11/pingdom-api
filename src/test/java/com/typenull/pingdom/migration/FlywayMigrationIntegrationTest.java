@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("61");
-        assertThat(result.migrationsExecuted).isEqualTo(61);
+        assertThat(result.targetSchemaVersion).isEqualTo("62");
+        assertThat(result.migrationsExecuted).isEqualTo(62);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("61");
-        assertThat(result.migrationsExecuted).isEqualTo(60);
+        assertThat(result.targetSchemaVersion).isEqualTo("62");
+        assertThat(result.migrationsExecuted).isEqualTo(61);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("61");
-        assertThat(result.migrationsExecuted).isEqualTo(34);
+        assertThat(result.targetSchemaVersion).isEqualTo("62");
+        assertThat(result.migrationsExecuted).isEqualTo(35);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("61");
-        assertThat(result.migrationsExecuted).isEqualTo(6);
+        assertThat(result.targetSchemaVersion).isEqualTo("62");
+        assertThat(result.migrationsExecuted).isEqualTo(7);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -638,6 +638,43 @@ class FlywayMigrationIntegrationTest {
                         JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
                         WHERE table_class.relname = 'visitor_verification_report'
                           AND index_class.relname = 'uq_visitor_verification_report_active'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'visitor_verification_report_correction'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM pg_constraint
+                    WHERE conrelid = 'visitor_verification_report_correction'::regclass
+                      AND conname IN (
+                          'ck_visitor_verification_report_correction_type',
+                          'ck_visitor_verification_report_correction_status',
+                          'ck_visitor_verification_report_correction_description',
+                          'ck_visitor_verification_report_correction_wait_time',
+                          'ck_visitor_verification_report_correction_language',
+                          'ck_visitor_verification_report_correction_coupon',
+                          'ck_visitor_verification_report_correction_crowd',
+                          'ck_visitor_verification_report_correction_structured_value',
+                          'ck_visitor_verification_report_correction_review'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'visitor_verification_report_correction'
+                          AND index_class.relname = 'uq_visitor_verification_report_correction_active'
                           AND index_metadata.indisunique = true
                           AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
                     )

@@ -87,14 +87,26 @@ public class VisitorVerificationReport {
         report.languageCode = normalize(languageCode);
         report.couponUsageStatus = couponUsageStatus;
         report.crowdLevel = crowdLevel;
-        report.validateStructuredValue();
+        validateStructuredValue(
+                reportType,
+                waitTimeMinutes,
+                report.languageCode,
+                couponUsageStatus,
+                crowdLevel
+        );
         report.status = VisitorVerificationReportStatus.SUBMITTED;
         report.createdAt = Objects.requireNonNull(now);
         report.updatedAt = now;
         return report;
     }
 
-    private void validateStructuredValue() {
+    static void validateStructuredValue(
+            VisitorVerificationReportType reportType,
+            Integer waitTimeMinutes,
+            String languageCode,
+            CouponUsageStatus couponUsageStatus,
+            CrowdLevel crowdLevel
+    ) {
         int providedValueCount = (waitTimeMinutes == null ? 0 : 1)
                 + (languageCode == null ? 0 : 1)
                 + (couponUsageStatus == null ? 0 : 1)
@@ -131,6 +143,49 @@ public class VisitorVerificationReport {
         }
     }
 
+    public boolean canBeCorrected() {
+        return status == VisitorVerificationReportStatus.ACCEPTED
+                || status == VisitorVerificationReportStatus.REJECTED;
+    }
+
+    public void applyCorrection(
+            String description,
+            String evidenceUrl,
+            Integer waitTimeMinutes,
+            String languageCode,
+            CouponUsageStatus couponUsageStatus,
+            CrowdLevel crowdLevel,
+            LocalDateTime now
+    ) {
+        if (!canBeCorrected()) {
+            throw new IllegalStateException("승인 또는 거절된 제보만 정정할 수 있습니다.");
+        }
+
+        String normalizedDescription = requireText(description, "description");
+        String normalizedEvidenceUrl = normalize(evidenceUrl);
+        String normalizedLanguageCode = normalize(languageCode);
+        validateStructuredValue(
+                reportType,
+                waitTimeMinutes,
+                normalizedLanguageCode,
+                couponUsageStatus,
+                crowdLevel
+        );
+
+        this.description = normalizedDescription;
+        this.evidenceUrl = normalizedEvidenceUrl;
+        this.waitTimeMinutes = waitTimeMinutes;
+        this.languageCode = normalizedLanguageCode;
+        this.couponUsageStatus = couponUsageStatus;
+        this.crowdLevel = crowdLevel;
+
+        status = VisitorVerificationReportStatus.SUBMITTED;
+        reviewerAdminUserId = null;
+        reviewNote = null;
+        reviewedAt = null;
+        updatedAt = Objects.requireNonNull(now);
+    }
+
     public void review(Long adminUserId, VisitorVerificationReportStatus decision, String reviewNote,
             LocalDateTime now) {
         if (status != VisitorVerificationReportStatus.SUBMITTED) {
@@ -150,13 +205,13 @@ public class VisitorVerificationReport {
         updatedAt = now;
     }
 
-    private static String requireText(String value, String name) {
+    static String requireText(String value, String name) {
         String normalized = normalize(value);
         if (normalized == null) throw new IllegalArgumentException(name + " must not be blank");
         return normalized;
     }
 
-    private static String normalize(String value) {
+    static String normalize(String value) {
         if (value == null) return null;
         String trimmed = value.trim();
         return trimmed.isEmpty() ? null : trimmed;
