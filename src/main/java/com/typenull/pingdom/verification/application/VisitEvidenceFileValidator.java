@@ -7,8 +7,11 @@ import java.io.ByteArrayOutputStream;
 import java.awt.Color;
 import java.awt.Graphics2D;
 import java.awt.image.BufferedImage;
+import java.util.Iterator;
 import java.util.Locale;
 import javax.imageio.ImageIO;
+import javax.imageio.ImageReader;
+import javax.imageio.stream.ImageInputStream;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
@@ -53,12 +56,30 @@ public class VisitEvidenceFileValidator {
 
     private byte[] decodeAndReencode(byte[] bytes, ImageType type) throws IOException {
         ImageIO.setUseCache(false);
-        BufferedImage decoded = ImageIO.read(new ByteArrayInputStream(bytes));
-        if (decoded == null) {
-            throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
+        BufferedImage decoded;
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            if (input == null) {
+                throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
+            }
+            Iterator<ImageReader> readers = ImageIO.getImageReaders(input);
+            if (!readers.hasNext()) {
+                throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
+            }
+            ImageReader reader = readers.next();
+            try {
+                reader.setInput(input, true, true);
+                int width = reader.getWidth(0);
+                int height = reader.getHeight(0);
+                long pixels = (long) width * height;
+                if (width > MAX_WIDTH || height > MAX_HEIGHT || pixels > MAX_PIXEL_COUNT) {
+                    throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
+                }
+                decoded = reader.read(0);
+            } finally {
+                reader.dispose();
+            }
         }
-        long pixels = (long) decoded.getWidth() * decoded.getHeight();
-        if (decoded.getWidth() > MAX_WIDTH || decoded.getHeight() > MAX_HEIGHT || pixels > MAX_PIXEL_COUNT) {
+        if (decoded == null) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
         }
         BufferedImage normalized = decoded;

@@ -51,6 +51,18 @@ class VisitEvidenceFileValidatorTest {
                 VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
     }
 
+    @Test
+    void rejectsOversizedResolutionBeforeDecodingImageBody() throws Exception {
+        byte[] png = image("png");
+        png[16] = 0;
+        png[17] = 0;
+        png[18] = 0x1f;
+        png[19] = 0x41;
+
+        assertError(new MockMultipartFile("file", "visit.png", "image/png", png),
+                VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_INVALID);
+    }
+
     private byte[] image(String format) throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), format, output);
