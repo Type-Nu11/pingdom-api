@@ -15,6 +15,7 @@ import com.typenull.pingdom.shared.observability.VisitorVerificationReportMetric
 import com.typenull.pingdom.verification.api.dto.MyVisitorVerificationReportCorrectionResponse;
 import com.typenull.pingdom.verification.api.dto.VisitorVerificationReportCorrectionRequest;
 import com.typenull.pingdom.verification.api.dto.VisitorVerificationReportCorrectionReviewRequest;
+import com.typenull.pingdom.verification.api.dto.VisitorVerificationReportCorrectionReviewRequest.Decision;
 import com.typenull.pingdom.verification.domain.VisitorVerificationReport;
 import com.typenull.pingdom.verification.domain.VisitorVerificationReportCorrection;
 import com.typenull.pingdom.verification.domain.VisitorVerificationReportCorrectionStatus;
@@ -122,7 +123,7 @@ class VisitorVerificationReportCorrectionServiceTest {
                 9L,
                 8L,
                 new VisitorVerificationReportCorrectionReviewRequest(
-                        VisitorVerificationReportCorrectionStatus.ACCEPTED, null));
+                        Decision.ACCEPTED, null));
 
         assertThat(response.status()).isEqualTo(VisitorVerificationReportCorrectionStatus.ACCEPTED);
         assertThat(response.reportStatus()).isEqualTo(VisitorVerificationReportStatus.SUBMITTED);
@@ -145,7 +146,7 @@ class VisitorVerificationReportCorrectionServiceTest {
                 9L,
                 8L,
                 new VisitorVerificationReportCorrectionReviewRequest(
-                        VisitorVerificationReportCorrectionStatus.REJECTED, "변경 근거 부족"));
+                        Decision.REJECTED, "변경 근거 부족"));
 
         assertThat(response.status()).isEqualTo(VisitorVerificationReportCorrectionStatus.REJECTED);
         assertThat(response.reportStatus()).isEqualTo(VisitorVerificationReportStatus.REJECTED);
@@ -168,7 +169,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         assertThatThrownBy(() -> service.review(
                 9L, 8L,
                 new VisitorVerificationReportCorrectionReviewRequest(
-                        VisitorVerificationReportCorrectionStatus.ACCEPTED, null)))
+                        Decision.ACCEPTED, null)))
                 .isInstanceOf(VisitorVerificationException.class)
                 .extracting(exception -> ((VisitorVerificationException) exception).getErrorCode())
                 .isEqualTo(VisitorVerificationErrorCode.ACTIVE_REPORT_ALREADY_EXISTS);
@@ -193,7 +194,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         assertThatThrownBy(() -> service.review(
                 9L, 8L,
                 new VisitorVerificationReportCorrectionReviewRequest(
-                        VisitorVerificationReportCorrectionStatus.ACCEPTED, null)))
+                        Decision.ACCEPTED, null)))
                 .isInstanceOf(VisitorVerificationException.class)
                 .extracting(exception -> ((VisitorVerificationException) exception).getErrorCode())
                 .isEqualTo(VisitorVerificationErrorCode.ACTIVE_REPORT_ALREADY_EXISTS);
@@ -226,7 +227,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         assertThatThrownBy(() -> service.review(
                 9L, 8L,
                 new VisitorVerificationReportCorrectionReviewRequest(
-                        VisitorVerificationReportCorrectionStatus.REJECTED, "근거 부족")))
+                        Decision.REJECTED, "근거 부족")))
                 .isInstanceOf(IllegalStateException.class)
                 .hasMessage("audit unavailable");
     }

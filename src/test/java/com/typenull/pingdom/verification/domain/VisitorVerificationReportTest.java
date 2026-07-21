@@ -209,4 +209,17 @@ class VisitorVerificationReportTest {
                 9L, VisitorVerificationReportCorrectionStatus.ACCEPTED, null, now.plusMinutes(40)))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void submittedIsNotAValidCorrectionReviewDecision() {
+        VisitorVerificationReport report = VisitorVerificationReport.submit(
+                1L, 2L, VisitorVerificationReportType.OTHER, "기존 내용", null, now);
+        report.review(9L, VisitorVerificationReportStatus.ACCEPTED, null, now.plusMinutes(10));
+        VisitorVerificationReportCorrection correction = VisitorVerificationReportCorrection.submit(
+                report, 1L, "정정 내용", null, null, null, null, null, now.plusMinutes(20));
+
+        assertThatThrownBy(() -> correction.review(
+                9L, VisitorVerificationReportCorrectionStatus.SUBMITTED, null, now.plusMinutes(30)))
+                .isInstanceOf(IllegalArgumentException.class);
+    }
 }

@@ -169,7 +169,7 @@ public class VisitorVerificationReportCorrectionService {
         Map<String, Object> beforeState = correctionState(correction, report);
         LocalDateTime now = LocalDateTime.now(clock);
         try {
-            correction.review(adminUserId, request.decision(), request.reviewNote(), now);
+            correction.review(adminUserId, request.decision().toStatus(), request.reviewNote(), now);
             if (correction.getStatus() == VisitorVerificationReportCorrectionStatus.ACCEPTED) {
                 if (hasOtherActiveReport(report)) {
                     throw new VisitorVerificationException(
