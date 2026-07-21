@@ -10,6 +10,10 @@ public record VisitorVerificationReportResponse(
         VisitorVerificationReportType reportType,
         String description,
         String evidenceUrl,
+        Integer waitTimeMinutes,
+        String languageCode,
+        CouponUsageStatus couponUsageStatus,
+        CrowdLevel crowdLevel,
         VisitorVerificationReportStatus status,
         Long reviewerAdminUserId,
         String reviewNote,
@@ -19,7 +23,8 @@ public record VisitorVerificationReportResponse(
 ) {
     public static VisitorVerificationReportResponse from(VisitorVerificationReport report) {
         return new VisitorVerificationReportResponse(report.getId(), report.getReporterUserId(), report.getPlaceId(),
-                report.getReportType(), report.getDescription(), report.getEvidenceUrl(), report.getStatus(),
+                report.getReportType(), report.getDescription(), report.getEvidenceUrl(), report.getWaitTimeMinutes(),
+                report.getLanguageCode(), report.getCouponUsageStatus(), report.getCrowdLevel(), report.getStatus(),
                 report.getReviewerAdminUserId(), report.getReviewNote(), report.getCreatedAt(), report.getReviewedAt(),
                 report.getUpdatedAt());
     }

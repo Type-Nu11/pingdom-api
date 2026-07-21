@@ -5,5 +5,9 @@ public enum VisitorVerificationReportType {
     OPERATING_HOURS,
     LOCATION,
     CLOSED_PLACE,
+    WAIT_TIME,
+    LANGUAGE_SUPPORT,
+    COUPON_USAGE,
+    CROWD_LEVEL,
     OTHER
 }
