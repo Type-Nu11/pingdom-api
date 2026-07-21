@@ -277,6 +277,70 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void backfillsExistingPlaceImagesIntoSeparatedPlaceMedia() throws Exception {
+        migrateTo("55");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, image_url,
+                        latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        930001, '미디어 장소', '경상남도 진주시 미디어로 1',
+                        'https://example.com/place-explore.jpg',
+                        35.1801, 128.1078, 'media-user', 1
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_image (
+                        map_image_id, image_url, s3_key, thumbnail_url, thumbnail_s3_key,
+                        title, description, user_id, username, created_time, like_count,
+                        visibility_status, map_place_id
+                    ) VALUES (
+                        930001, 'https://example.com/verify.jpg', 'map/verify.jpg',
+                        'https://example.com/verify-thumb.jpg', 'map/thumb/verify.jpg',
+                        '검증 사진', '장소 검증용 사진', 930001, 'media-user',
+                        TIMESTAMP '2026-07-21 10:00:00', 0, 'ACTIVE', 930001
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo("56");
+        assertThat(result.migrationsExecuted).isEqualTo(1);
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM place_media
+                        WHERE map_place_id = 930001
+                          AND purpose = 'EXPLORATION'
+                          AND image_url = 'https://example.com/place-explore.jpg'
+                          AND source_map_image_id IS NULL
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM place_media
+                        WHERE map_place_id = 930001
+                          AND purpose = 'VERIFICATION'
+                          AND image_url = 'https://example.com/verify.jpg'
+                          AND s3_key = 'map/verify.jpg'
+                          AND thumbnail_url = 'https://example.com/verify-thumb.jpg'
+                          AND thumbnail_s3_key = 'map/thumb/verify.jpg'
+                          AND source_map_image_id = 930001
+                          AND created_at = TIMESTAMP '2026-07-21 10:00:00'
+                    )
+                    """)).isTrue();
+        }
+    }
+
+    @Test
     void backfillsExistingMerchantPlaceClaimBeforeValidatingOwnershipConstraints() throws Exception {
         migrateTo("41");
 
@@ -2070,6 +2134,75 @@ class FlywayMigrationIntegrationTest {
                         'idx_place_information_evidence_place_status',
                         'idx_place_information_evidence_source',
                         'idx_map_place_information_verification'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 11
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_media'
+                      AND (
+                          (column_name = 'place_media_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'map_place_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'purpose'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 20
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('image_url', 's3_key', 'thumbnail_url', 'thumbnail_s3_key')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500)
+                          OR (column_name = 'source_map_image_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'display_order'
+                              AND data_type = 'integer'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_media'::regclass
+                      AND conname IN (
+                          'ck_place_media_purpose',
+                          'ck_place_media_image_url',
+                          'ck_place_media_source',
+                          'ck_place_media_display_order'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_media'::regclass
+                      AND conname IN (
+                          'fk_place_media_place',
+                          'fk_place_media_source_map_image'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_media'::regclass
+                          AND conname = 'fk_place_media_source_map_image'
+                          AND confdeltype = 'c'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'uq_place_media_source_map_image',
+                        'uq_place_media_primary_exploration',
+                        'idx_place_media_place_purpose_order'
                     )
                     """)).isTrue();
         }
