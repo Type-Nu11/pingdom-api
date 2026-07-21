@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.application.service.merchant;
 
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOnboardingUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceQualityUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfilePageResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileResponse;
@@ -9,6 +12,8 @@ import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOnboardingStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOperationalQualityStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
@@ -17,10 +22,12 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.event.MerchantOnboardingUpdatedEvent;
+import com.typenull.pingdom.identity.event.MerchantOperationalQualityUpdatedEvent;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
-import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
@@ -32,6 +39,7 @@ import java.util.List;
 import java.util.Map;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -50,6 +58,7 @@ public class MerchantOwnerAdminService {
     private final AdminAuditLogService auditLogService;
     private final UserAccessStatusService userAccessStatusService;
     private final TouristOfferRepository touristOfferRepository;
+    private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -78,6 +87,14 @@ public class MerchantOwnerAdminService {
     @Transactional(readOnly = true)
     public MerchantOwnerProfileResponse get(Long userId) {
         return response(requireProfile(userId));
+    }
+
+    @Transactional(readOnly = true)
+    public List<MerchantOwnerPlaceResponse> listPlaces(Long userId) {
+        requireProfile(userId);
+        return ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId).stream()
+                .map(MerchantOwnerPlaceResponse::from)
+                .toList();
     }
 
     @Transactional
@@ -207,6 +224,106 @@ public class MerchantOwnerAdminService {
         return response(profile);
     }
 
+    @Transactional
+    public MerchantOwnerProfileResponse updateOnboarding(
+            Long adminUserId,
+            Long userId,
+            MerchantOnboardingUpdateRequest request
+    ) {
+        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
+        MerchantOnboardingStatus beforeStatus = profile.getOnboardingStatus();
+        Integer beforeCompletionRate = profile.getOnboardingCompletionRate();
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime completedAt = request.status() == MerchantOnboardingStatus.COMPLETED
+                ? request.completedAt() == null ? now : request.completedAt()
+                : request.completedAt();
+
+        try {
+            profile.updateOnboarding(request.status(), request.completionRate(), completedAt, now);
+        } catch (IllegalArgumentException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_ONBOARDING_METRIC);
+        }
+        auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_ONBOARDING_UPDATED,
+                AdminAuditTargetType.MERCHANT_OWNER,
+                userId,
+                request.reason(),
+                Map.of("status", beforeStatus, "completionRate", beforeCompletionRate),
+                nullableMap(
+                        "status", profile.getOnboardingStatus(),
+                        "completionRate", profile.getOnboardingCompletionRate(),
+                        "completedAt", profile.getOnboardingCompletedAt()
+                )
+        );
+        eventPublisher.publishEvent(new MerchantOnboardingUpdatedEvent(
+                userId,
+                beforeStatus,
+                profile.getOnboardingStatus(),
+                beforeCompletionRate,
+                profile.getOnboardingCompletionRate(),
+                now
+        ));
+        return response(profile);
+    }
+
+    @Transactional
+    public MerchantOwnerPlaceResponse updateOperationalQuality(
+            Long adminUserId,
+            Long userId,
+            Long placeId,
+            MerchantOwnerPlaceQualityUpdateRequest request
+    ) {
+        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
+        if (profile.getStatus() != MerchantOwnerStatus.ACTIVE) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
+        }
+        MerchantOwnerPlace ownerPlace = ownerPlaceRepository.findByPlaceIdForUpdate(placeId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.OWNER_PLACE_NOT_FOUND));
+        if (!ownerPlace.getMerchantOwnerUserId().equals(userId)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.OWNER_PLACE_NOT_FOUND);
+        }
+
+        MerchantOperationalQualityStatus beforeStatus = ownerPlace.getOperationalQualityStatus();
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime evaluatedAt = request.evaluatedAt() == null ? now : request.evaluatedAt();
+        try {
+            ownerPlace.updateOperationalQuality(
+                    request.status(),
+                    request.reservationResponseRate(),
+                    request.reservationCancellationRate(),
+                    request.noShowRate(),
+                    evaluatedAt
+            );
+        } catch (IllegalArgumentException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_OPERATIONAL_QUALITY_METRIC);
+        }
+        auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_OPERATIONAL_QUALITY_UPDATED,
+                AdminAuditTargetType.MERCHANT_OWNER,
+                userId,
+                request.reason(),
+                Map.of("placeId", placeId, "status", beforeStatus),
+                Map.of(
+                        "placeId", placeId,
+                        "status", ownerPlace.getOperationalQualityStatus(),
+                        "reservationResponseRate", ownerPlace.getReservationResponseRate(),
+                        "reservationCancellationRate", ownerPlace.getReservationCancellationRate(),
+                        "noShowRate", ownerPlace.getNoShowRate(),
+                        "qualityEvaluatedAt", ownerPlace.getQualityEvaluatedAt()
+                )
+        );
+        eventPublisher.publishEvent(new MerchantOperationalQualityUpdatedEvent(
+                userId,
+                placeId,
+                beforeStatus,
+                ownerPlace.getOperationalQualityStatus(),
+                now
+        ));
+        return MerchantOwnerPlaceResponse.from(ownerPlace);
+    }
+
     private void replacePlaces(Long userId, Set<Long> requestedPlaceIds, LocalDateTime now) {
         List<Long> placeIds = requestedPlaceIds.stream().sorted().toList();
         if (!placeIds.isEmpty()) {
@@ -284,5 +401,13 @@ public class MerchantOwnerAdminService {
                 Map.of("status", beforeStatus),
                 Map.of("status", afterStatus, "places", places)
         );
+    }
+
+    private Map<String, Object> nullableMap(Object... keyValues) {
+        Map<String, Object> result = new java.util.LinkedHashMap<>();
+        for (int i = 0; i < keyValues.length; i += 2) {
+            result.put((String) keyValues[i], keyValues[i + 1]);
+        }
+        return result;
     }
 }
