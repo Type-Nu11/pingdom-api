@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.domain.place.operating.notice.PlaceOperatingNo
 import java.time.LocalDateTime;
 import java.util.Collection;
 import java.util.List;
+import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -14,9 +15,32 @@ import jakarta.persistence.LockModeType;
 
 public interface PlaceOperatingNoticeRepository extends JpaRepository<PlaceOperatingNotice, Long> {
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT notice
+            FROM PlaceOperatingNotice notice
+            JOIN FETCH notice.place
+            WHERE notice.id = :id
+            """)
+    Optional<PlaceOperatingNotice> findWithLockById(@Param("id") Long id);
+
     List<PlaceOperatingNotice> findAllByPlace_IdAndStatusInOrderByStartsAtAscIdAsc(
             Long placeId,
             Collection<PlaceOperatingNoticeStatus> statuses
+    );
+
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT notice
+            FROM PlaceOperatingNotice notice
+            WHERE notice.status = :status
+              AND notice.startsAt <= :now
+              AND notice.expiresAt > :now
+            ORDER BY notice.startsAt ASC, notice.id ASC
+            """)
+    List<PlaceOperatingNotice> findActivatableNoticesForUpdate(
+            @Param("status") PlaceOperatingNoticeStatus status,
+            @Param("now") LocalDateTime now
     );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
