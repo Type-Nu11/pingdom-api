@@ -5,6 +5,8 @@ import com.typenull.pingdom.place.domain.place.information.report.PlaceInformati
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationReportTargetType;
 import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 
@@ -15,6 +17,10 @@ public interface PlaceInformationReportRepository extends JpaRepository<PlaceInf
     List<PlaceInformationReport> findAllByPlace_IdOrderByCreatedAtDescIdDesc(Long placeId);
 
     List<PlaceInformationReport> findAllByReporterUserIdOrderByCreatedAtDescIdDesc(Long reporterUserId);
+
+    Page<PlaceInformationReport> findAllByReporterUserId(Long reporterUserId, Pageable pageable);
+
+    Page<PlaceInformationReport> findAllByStatus(PlaceInformationReportStatus status, Pageable pageable);
 
     boolean existsByReporterUserIdAndPlace_IdAndTargetTypeAndStatus(
             Long reporterUserId,
