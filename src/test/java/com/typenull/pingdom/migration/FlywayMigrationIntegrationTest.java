@@ -601,6 +601,15 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'visit_evidence'::regclass
+                          AND conname = 'fk_visit_evidence_check_in'
+                          AND confdeltype = 'r'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'visitor_verification_report'
                     )

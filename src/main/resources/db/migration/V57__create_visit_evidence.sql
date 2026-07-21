@@ -9,7 +9,7 @@ CREATE TABLE visit_evidence (
     created_at TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     expires_at TIMESTAMP(6) WITH TIME ZONE NOT NULL,
     CONSTRAINT fk_visit_evidence_check_in FOREIGN KEY (location_check_in_id)
-        REFERENCES location_check_in (id) ON DELETE CASCADE,
+        REFERENCES location_check_in (id) ON DELETE RESTRICT,
     CONSTRAINT fk_visit_evidence_tourist FOREIGN KEY (tourist_user_id)
         REFERENCES users (id) ON DELETE RESTRICT,
     CONSTRAINT uq_visit_evidence_check_in UNIQUE (location_check_in_id),
