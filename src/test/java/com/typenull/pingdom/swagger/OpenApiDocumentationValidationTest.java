@@ -384,6 +384,60 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void placeInformationReportDisputeContractsAreSeparatedIntoAppAndWebGroups() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        for (String path : List.of(
+                "/places/{placeId}/information-reports",
+                "/places/information-reports",
+                "/places/information-reports/{reportId}",
+                "/places/information-reports/{reportId}/disputes"
+        )) {
+            assertThat(appDocument.path("paths").has(path))
+                    .as("%s must be exposed in app OpenAPI group", path)
+                    .isTrue();
+            assertThat(webDocument.path("paths").has(path))
+                    .as("%s must not leak into web OpenAPI group", path)
+                    .isFalse();
+        }
+
+        for (String path : List.of(
+                "/admin/place-information-reports",
+                "/admin/place-information-reports/{reportId}",
+                "/admin/place-information-reports/{reportId}/review",
+                "/admin/place-information-reports/{reportId}/disputes/{disputeId}/review"
+        )) {
+            assertThat(webDocument.path("paths").has(path))
+                    .as("%s must be exposed in web OpenAPI group", path)
+                    .isTrue();
+            assertThat(appDocument.path("paths").has(path))
+                    .as("%s must not leak into app OpenAPI group", path)
+                    .isFalse();
+        }
+
+        JsonNode createRequestSchema = appDocument.at("/components/schemas/PlaceInformationReportCreateRequest");
+        assertThat(requiredFields(createRequestSchema))
+                .as("신고 생성 요청은 대상/사유를 계약상 필수로 노출해야 한다")
+                .contains("targetType", "reasonType");
+        assertThat(resolveSchema(appDocument, createRequestSchema.at("/properties/targetType")).path("enum"))
+                .extracting(JsonNode::asText)
+                .contains("OPERATING_STATUS", "TOURIST_INFORMATION", "SOURCE_EVIDENCE");
+        assertThat(resolveSchema(appDocument, createRequestSchema.at("/properties/reasonType")).path("enum"))
+                .extracting(JsonNode::asText)
+                .contains("INCORRECT", "OUTDATED", "MISSING");
+
+        assertThat(appDocument.at("/components/schemas/PlaceInformationReportResponse/properties/status/enum"))
+                .extracting(JsonNode::asText)
+                .as("신고 응답은 반박/해결 상태까지 계약에 포함해야 한다")
+                .contains("SUBMITTED", "UNDER_REVIEW", "ACCEPTED", "DISPUTED", "RESOLVED");
+        assertThat(appDocument.at("/components/schemas/PlaceInformationDisputeResponse/properties/status/enum"))
+                .extracting(JsonNode::asText)
+                .as("반박 응답은 제출/승인/거절 상태를 계약에 포함해야 한다")
+                .contains("SUBMITTED", "ACCEPTED", "REJECTED");
+    }
+
+    @Test
     void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 

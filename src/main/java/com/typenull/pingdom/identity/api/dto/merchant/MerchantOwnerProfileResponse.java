@@ -2,6 +2,7 @@ package com.typenull.pingdom.identity.api.dto.merchant;
 
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOnboardingStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -15,6 +16,9 @@ public record MerchantOwnerProfileResponse(
         String contactEmail,
         String contactPhone,
         MerchantOwnerStatus status,
+        MerchantOnboardingStatus onboardingStatus,
+        Integer onboardingCompletionRate,
+        @Schema(nullable = true) LocalDateTime onboardingCompletedAt,
         @Schema(nullable = true) Long reviewedBy,
         @Schema(nullable = true) LocalDateTime reviewedAt,
         LocalDateTime createdAt,
@@ -30,6 +34,9 @@ public record MerchantOwnerProfileResponse(
                 profile.getContactEmail(),
                 profile.getContactPhone(),
                 profile.getStatus(),
+                profile.getOnboardingStatus(),
+                profile.getOnboardingCompletionRate(),
+                profile.getOnboardingCompletedAt(),
                 profile.getReviewedBy(),
                 profile.getReviewedAt(),
                 profile.getCreatedAt(),
