@@ -68,10 +68,23 @@ class SwaggerSecurityTest {
         mockMvc.perform(get("/v3/api-docs/web"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports'].get").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/visitor-verification-reports'].get.security[0].bearerAuth"
+                ).isArray())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/visitor-verification-reports/{reportId}/review'].post.security[0].bearerAuth"
+                ).isArray())
                 .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports/corrections'].get").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/visitor-verification-reports/corrections'].get.security[0].bearerAuth"
+                ).isArray())
                 .andExpect(jsonPath(
                         "$.paths['/admin/visitor-verification-reports/corrections/{correctionId}/review'].post"
                 ).exists())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/visitor-verification-reports/corrections/{correctionId}/review']"
+                                + ".post.security[0].bearerAuth"
+                ).isArray())
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}/corrections']").doesNotExist());
     }
 }
