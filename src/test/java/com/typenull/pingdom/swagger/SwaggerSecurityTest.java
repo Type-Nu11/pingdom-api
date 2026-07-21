@@ -64,6 +64,16 @@ class SwaggerSecurityTest {
     }
 
     @Test
+    void appGroupDocsContainScoutFieldReportApis() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/app"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/scout-field-reports'].get").exists())
+                .andExpect(jsonPath("$.paths['/scout-field-reports'].post").exists())
+                .andExpect(jsonPath("$.paths['/scout-field-reports/{reportId}'].get").exists())
+                .andExpect(jsonPath("$.paths['/admin/scout-field-reports']").doesNotExist());
+    }
+
+    @Test
     void webGroupDocsContainVisitorVerificationCorrectionApis() throws Exception {
         mockMvc.perform(get("/v3/api-docs/web"))
                 .andExpect(status().isOk())
@@ -86,5 +96,20 @@ class SwaggerSecurityTest {
                                 + ".post.security[0].bearerAuth"
                 ).isArray())
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}/corrections']").doesNotExist());
+    }
+
+    @Test
+    void webGroupDocsContainScoutFieldReportReviewApis() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/web"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/admin/scout-field-reports'].get").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/scout-field-reports'].get.security[0].bearerAuth"
+                ).isArray())
+                .andExpect(jsonPath("$.paths['/admin/scout-field-reports/{reportId}/review'].post").exists())
+                .andExpect(jsonPath(
+                        "$.paths['/admin/scout-field-reports/{reportId}/review'].post.security[0].bearerAuth"
+                ).isArray())
+                .andExpect(jsonPath("$.paths['/scout-field-reports']").doesNotExist());
     }
 }
