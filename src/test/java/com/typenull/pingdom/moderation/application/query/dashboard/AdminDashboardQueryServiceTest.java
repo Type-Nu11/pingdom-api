@@ -10,7 +10,9 @@ import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.repository.CurrentBannedUserCounts;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
+import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateResolver;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Clock;
@@ -41,6 +43,8 @@ class AdminDashboardQueryServiceTest {
     private UserRepository userRepository;
     @Mock
     private UserSanctionHistoryRepository userSanctionHistoryRepository;
+    @Mock
+    private MapPlaceDuplicateQueryRepository mapPlaceDuplicateQueryRepository;
 
     private AdminDashboardQueryService service;
 
@@ -52,6 +56,8 @@ class AdminDashboardQueryServiceTest {
                 postReportRepository,
                 userRepository,
                 userSanctionHistoryRepository,
+                mapPlaceDuplicateQueryRepository,
+                new AdminPlaceDuplicateResolver(),
                 FIXED_CLOCK
         );
     }
@@ -67,6 +73,28 @@ class AdminDashboardQueryServiceTest {
                 LocalDateTime.of(2026, 7, 20, 12, 0),
                 null
         )).thenReturn(new CurrentBannedUserCounts(6L, 4L, 2L));
+        when(mapPlaceRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(
+                LocalDateTime.of(2026, 7, 20, 0, 0),
+                LocalDateTime.of(2026, 7, 20, 12, 0)
+        )).thenReturn(3L);
+        when(mapImageRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(
+                LocalDateTime.of(2026, 7, 20, 0, 0),
+                LocalDateTime.of(2026, 7, 20, 12, 0)
+        )).thenReturn(7L);
+        when(mapPlaceRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(
+                LocalDateTime.of(2026, 7, 14, 0, 0),
+                LocalDateTime.of(2026, 7, 20, 12, 0)
+        )).thenReturn(12L);
+        when(mapImageRepository.countByCreatedAtGreaterThanEqualAndCreatedAtLessThanEqual(
+                LocalDateTime.of(2026, 7, 14, 0, 0),
+                LocalDateTime.of(2026, 7, 20, 12, 0)
+        )).thenReturn(31L);
+        when(userRepository.countTemporaryBansExpiringUntil(
+                UserBanType.TEMPORARY,
+                LocalDateTime.of(2026, 7, 20, 12, 0),
+                LocalDateTime.of(2026, 7, 27, 12, 0)
+        )).thenReturn(4L);
+        when(mapPlaceRepository.countMissingLocation()).thenReturn(1L);
 
         AdminDashboardSummaryResponse response = service.getSummary();
 
@@ -74,6 +102,15 @@ class AdminDashboardQueryServiceTest {
         assertEquals(58L, response.postCount());
         assertEquals(5L, response.pendingReportCount());
         assertEquals(6L, response.bannedUserCount());
+        assertEquals(3L, response.operationalMetrics().today().placeRegistrationCount());
+        assertEquals(7L, response.operationalMetrics().today().postRegistrationCount());
+        assertEquals(12L, response.operationalMetrics().last7Days().placeRegistrationCount());
+        assertEquals(31L, response.operationalMetrics().last7Days().postRegistrationCount());
+        assertEquals(0L, response.operationalMetrics().duplicatePlaceGroupCount());
+        assertEquals(4L, response.operationalMetrics().expiringBannedUserCount());
+        assertEquals(1L, response.operationalMetrics().missingLocationPlaceCount());
+        assertEquals(LocalDateTime.of(2026, 7, 27, 12, 0), response.operationalMetrics().expiringBanUntil());
+        assertEquals(LocalDateTime.of(2026, 7, 20, 12, 0), response.operationalMetrics().collectedAt());
     }
 
     @Test
@@ -91,6 +128,13 @@ class AdminDashboardQueryServiceTest {
         assertEquals(0L, response.postCount());
         assertEquals(0L, response.pendingReportCount());
         assertEquals(0L, response.bannedUserCount());
+        assertEquals(0L, response.operationalMetrics().today().placeRegistrationCount());
+        assertEquals(0L, response.operationalMetrics().today().postRegistrationCount());
+        assertEquals(0L, response.operationalMetrics().last7Days().placeRegistrationCount());
+        assertEquals(0L, response.operationalMetrics().last7Days().postRegistrationCount());
+        assertEquals(0L, response.operationalMetrics().duplicatePlaceGroupCount());
+        assertEquals(0L, response.operationalMetrics().expiringBannedUserCount());
+        assertEquals(0L, response.operationalMetrics().missingLocationPlaceCount());
         verify(postReportRepository).countByStatus(PostReportStatus.PENDING);
     }
 }

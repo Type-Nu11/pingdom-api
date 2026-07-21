@@ -5,12 +5,15 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardMetricWindowResponse;
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardOperationalMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItem;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentActivitiesResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentPlaceItem;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
 import com.typenull.pingdom.moderation.application.query.dashboard.AdminDashboardQueryService;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -38,14 +41,27 @@ class AdminDashboardControllerTest {
     @Test
     void getSummaryReturnsDashboardCounts() throws Exception {
         when(adminDashboardQueryService.getSummary())
-                .thenReturn(new AdminDashboardSummaryResponse(44L, 58L, 5L, 6L));
+                .thenReturn(new AdminDashboardSummaryResponse(
+                        44L,
+                        58L,
+                        5L,
+                        6L,
+                        operationalMetrics()
+                ));
 
         mockMvc.perform(get("/admin/dashboard/summary"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.placeCount").value(44))
                 .andExpect(jsonPath("$.postCount").value(58))
                 .andExpect(jsonPath("$.pendingReportCount").value(5))
-                .andExpect(jsonPath("$.bannedUserCount").value(6));
+                .andExpect(jsonPath("$.bannedUserCount").value(6))
+                .andExpect(jsonPath("$.operationalMetrics.today.placeRegistrationCount").value(3))
+                .andExpect(jsonPath("$.operationalMetrics.today.postRegistrationCount").value(7))
+                .andExpect(jsonPath("$.operationalMetrics.last7Days.placeRegistrationCount").value(12))
+                .andExpect(jsonPath("$.operationalMetrics.last7Days.postRegistrationCount").value(31))
+                .andExpect(jsonPath("$.operationalMetrics.duplicatePlaceGroupCount").value(2))
+                .andExpect(jsonPath("$.operationalMetrics.expiringBannedUserCount").value(4))
+                .andExpect(jsonPath("$.operationalMetrics.missingLocationPlaceCount").value(1));
     }
 
     @Test
@@ -76,7 +92,7 @@ class AdminDashboardControllerTest {
                                 30L,
                                 "야경이 좋은 장소",
                                 "PENDING",
-                                java.time.LocalDateTime.of(2026, 7, 21, 15, 40)
+                        java.time.LocalDateTime.of(2026, 7, 21, 15, 40)
                         ))
                 ));
 
@@ -86,5 +102,30 @@ class AdminDashboardControllerTest {
                 .andExpect(jsonPath("$.items[0].targetId").value(30))
                 .andExpect(jsonPath("$.items[0].title").value("야경이 좋은 장소"))
                 .andExpect(jsonPath("$.items[0].status").value("PENDING"));
+    }
+
+    private AdminDashboardOperationalMetricsResponse operationalMetrics() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 21, 15, 30);
+        return new AdminDashboardOperationalMetricsResponse(
+                new AdminDashboardMetricWindowResponse(
+                        "TODAY",
+                        LocalDateTime.of(2026, 7, 21, 0, 0),
+                        now,
+                        3L,
+                        7L
+                ),
+                new AdminDashboardMetricWindowResponse(
+                        "LAST_7_DAYS",
+                        LocalDateTime.of(2026, 7, 15, 0, 0),
+                        now,
+                        12L,
+                        31L
+                ),
+                2L,
+                4L,
+                1L,
+                LocalDateTime.of(2026, 7, 28, 15, 30),
+                now
+        );
     }
 }
