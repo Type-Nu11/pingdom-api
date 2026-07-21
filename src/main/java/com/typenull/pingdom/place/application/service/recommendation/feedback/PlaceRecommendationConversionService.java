@@ -1,8 +1,8 @@
 package com.typenull.pingdom.place.application.service.recommendation.feedback;
 
+import com.typenull.pingdom.place.application.service.recommendation.feature.PlaceRecommendationFeatureLogService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationVersionSnapshotService;
-
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationClick;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversion;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
@@ -22,6 +22,7 @@ public class PlaceRecommendationConversionService {
 
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
+    private final PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
@@ -53,8 +54,16 @@ public class PlaceRecommendationConversionService {
             return;
         }
 
+        Long featureLogId = placeRecommendationFeatureLogService.findFeatureLogId(
+                recentClick.getRequestId(),
+                userId,
+                placeId,
+                recentClick.getRecommendationVersion()
+        );
+
         placeRecommendationConversionRepository.save(PlaceRecommendationConversion.builder()
                 .placeRecommendationClickId(recentClick.getId())
+                .placeRecommendationFeatureLogId(featureLogId)
                 .placeId(placeId)
                 .userId(userId)
                 .conversionType(conversionType)

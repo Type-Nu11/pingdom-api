@@ -1487,6 +1487,34 @@ class FlywayMigrationIntegrationTest {
                     SELECT EXISTS (
                         SELECT 1
                         FROM information_schema.columns
+                        WHERE table_name = 'place_recommendation_conversion'
+                          AND column_name = 'place_recommendation_feature_log_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_recommendation_conversion'::regclass
+                          AND conname = 'fk_recommendation_conversion_feature_log'
+                          AND contype = 'f'
+                          AND confdeltype = 'n'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'idx_recommendation_feature_log_attribution',
+                        'idx_recommendation_conversion_feature_log'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
                         WHERE table_name = 'map_place'
                           AND column_name = 'english_name'
                           AND character_maximum_length = 150

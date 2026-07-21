@@ -7,6 +7,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -49,5 +50,21 @@ public class PlaceRecommendationFeatureLogService {
                 .toList();
 
         placeRecommendationFeatureLogRepository.saveAll(logs);
+    }
+
+    public Long findFeatureLogId(String requestId, Long userId, Long placeId, String recommendationVersion) {
+        if (!StringUtils.hasText(requestId)) {
+            return null;
+        }
+
+        return placeRecommendationFeatureLogRepository
+                .findFirstByRequestIdAndUserIdAndPlaceIdAndRecommendationVersionOrderByIdAsc(
+                        requestId,
+                        userId,
+                        placeId,
+                        recommendationVersion
+                )
+                .map(PlaceRecommendationFeatureLog::getId)
+                .orElse(null);
     }
 }
