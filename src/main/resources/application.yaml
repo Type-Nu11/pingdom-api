@@ -146,6 +146,7 @@ user:
   withdrawal:
     retention: P30D
     cleanup-batch-size: 100
+    max-cleanup-batches: 10
     cleanup-delay: PT24H
     cleanup-initial-delay: PT1H
 
@@ -298,3 +299,10 @@ verification:
     max-accuracy-meters: 50
     observation-ttl: PT5M
     future-tolerance: PT30S
+  visit-evidence:
+    retention: P30D
+    max-file-size-bytes: 10485760
+    cleanup-batch-size: 100
+    cleanup-enabled: true
+    cleanup-delay: PT24H
+    cleanup-initial-delay: PT1H
