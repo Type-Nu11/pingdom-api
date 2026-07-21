@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("57");
-        assertThat(result.migrationsExecuted).isEqualTo(57);
+        assertThat(result.targetSchemaVersion).isEqualTo("58");
+        assertThat(result.migrationsExecuted).isEqualTo(58);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("57");
-        assertThat(result.migrationsExecuted).isEqualTo(56);
+        assertThat(result.targetSchemaVersion).isEqualTo("58");
+        assertThat(result.migrationsExecuted).isEqualTo(57);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("57");
-        assertThat(result.migrationsExecuted).isEqualTo(30);
+        assertThat(result.targetSchemaVersion).isEqualTo("58");
+        assertThat(result.migrationsExecuted).isEqualTo(31);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("57");
-        assertThat(result.migrationsExecuted).isEqualTo(2);
+        assertThat(result.targetSchemaVersion).isEqualTo("58");
+        assertThat(result.migrationsExecuted).isEqualTo(3);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -2143,6 +2143,146 @@ class FlywayMigrationIntegrationTest {
                         'idx_place_information_evidence_place_status',
                         'idx_place_information_evidence_source',
                         'idx_map_place_information_verification'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 16
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_information_report'
+                      AND (
+                          (column_name = 'place_information_report_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('map_place_id', 'reporter_user_id')
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'place_information_evidence_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('target_type', 'reason_type', 'status')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'description'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 1000
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'evidence_url'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'reviewed_by_admin_user_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'review_reason'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('reviewed_at', 'resolved_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'version'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_report'::regclass
+                      AND conname IN (
+                          'ck_place_information_report_target',
+                          'ck_place_information_report_reason',
+                          'ck_place_information_report_status',
+                          'ck_place_information_report_description',
+                          'ck_place_information_report_review_metadata',
+                          'ck_place_information_report_resolved_metadata'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_report'::regclass
+                      AND conname IN (
+                          'fk_place_information_report_place',
+                          'fk_place_information_report_evidence'
+                      )
+                      AND contype = 'f'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'uq_place_information_report_active',
+                        'idx_place_information_report_place_status',
+                        'idx_place_information_report_reporter_created',
+                        'idx_place_information_report_status_created',
+                        'idx_place_information_report_evidence'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 12
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_information_report_dispute'
+                      AND (
+                          (column_name = 'place_information_report_dispute_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('place_information_report_id', 'disputed_by_user_id')
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'description'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 1000
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'evidence_url'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'status'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'reviewed_by_admin_user_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'review_reason'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'reviewed_at'
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'version'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_report_dispute'::regclass
+                      AND conname IN (
+                          'ck_place_information_report_dispute_status',
+                          'ck_place_information_report_dispute_description',
+                          'ck_place_information_report_dispute_review'
+                      )
+                      AND contype = 'c'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'idx_place_information_report_dispute_report_status',
+                        'idx_place_information_report_dispute_user_created',
+                        'place_information_report_dispute_pkey'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
