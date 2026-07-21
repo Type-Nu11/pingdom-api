@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("56");
-        assertThat(result.migrationsExecuted).isEqualTo(56);
+        assertThat(result.targetSchemaVersion).isEqualTo("57");
+        assertThat(result.migrationsExecuted).isEqualTo(57);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("56");
-        assertThat(result.migrationsExecuted).isEqualTo(55);
+        assertThat(result.targetSchemaVersion).isEqualTo("57");
+        assertThat(result.migrationsExecuted).isEqualTo(56);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("56");
-        assertThat(result.migrationsExecuted).isEqualTo(29);
+        assertThat(result.targetSchemaVersion).isEqualTo("57");
+        assertThat(result.migrationsExecuted).isEqualTo(30);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("56");
-        assertThat(result.migrationsExecuted).isEqualTo(1);
+        assertThat(result.targetSchemaVersion).isEqualTo("57");
+        assertThat(result.migrationsExecuted).isEqualTo(2);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -579,6 +579,34 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'visit_evidence'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'visit_evidence'::regclass
+                      AND conname IN (
+                          'fk_visit_evidence_check_in',
+                          'fk_visit_evidence_tourist',
+                          'uq_visit_evidence_check_in',
+                          'ck_visit_evidence_expiration'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'visit_evidence'::regclass
+                          AND conname = 'fk_visit_evidence_check_in'
+                          AND confdeltype = 'r'
+                    )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
