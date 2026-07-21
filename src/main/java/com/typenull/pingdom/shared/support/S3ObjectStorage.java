@@ -17,6 +17,7 @@ import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
+import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -112,6 +113,23 @@ public class S3ObjectStorage {
         } catch (S3Exception exception) {
             log.error("S3 삭제 실패: {}", exception.awsErrorDetails() == null ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
             throw new S3StorageException(S3StorageError.S3_ERROR, "S3 deleteObject failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
+    public byte[] getBytes(String key) {
+        if (!StringUtils.hasText(key)) {
+            throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
+        }
+        try {
+            return s3Client().getObjectAsBytes(GetObjectRequest.builder().bucket(bucket).key(key.trim()).build())
+                    .asByteArray();
+        } catch (S3Exception exception) {
+            log.error("S3 조회 실패: {}", exception.awsErrorDetails() == null
+                    ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 getObject failed.", exception);
         } catch (SdkException exception) {
             log.error("S3 연결 실패: {}", exception.getMessage());
             throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);

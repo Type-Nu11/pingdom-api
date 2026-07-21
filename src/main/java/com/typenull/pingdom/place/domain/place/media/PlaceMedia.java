@@ -18,6 +18,8 @@ import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
+import org.hibernate.annotations.OnDelete;
+import org.hibernate.annotations.OnDeleteAction;
 import org.springframework.util.StringUtils;
 
 @Entity
@@ -37,6 +39,7 @@ public class PlaceMedia {
             nullable = false,
             foreignKey = @ForeignKey(name = "fk_place_media_place")
     )
+    @OnDelete(action = OnDeleteAction.CASCADE)
     private MapPlace place;
 
     @Enumerated(EnumType.STRING)
