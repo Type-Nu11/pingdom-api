@@ -26,7 +26,13 @@ public enum VisitorVerificationErrorCode {
     ACTIVE_REPORT_ALREADY_EXISTS(HttpStatus.CONFLICT, "같은 장소와 유형의 처리 중인 제보가 이미 있습니다."),
     INVALID_REPORT_DETAILS(HttpStatus.BAD_REQUEST, "제보 유형과 구조화 정보가 일치하지 않습니다."),
     INVALID_REPORT_STATE(HttpStatus.CONFLICT, "현재 제보 상태에서는 요청을 처리할 수 없습니다."),
-    INVALID_REVIEW(HttpStatus.BAD_REQUEST, "심사 요청이 올바르지 않습니다.");
+    INVALID_REVIEW(HttpStatus.BAD_REQUEST, "심사 요청이 올바르지 않습니다."),
+    CORRECTION_NOT_FOUND(HttpStatus.NOT_FOUND, "방문자 검증 제보 정정을 찾을 수 없습니다."),
+    CORRECTION_FORBIDDEN(HttpStatus.FORBIDDEN, "이 제보 정정을 조회할 권한이 없습니다."),
+    CORRECTION_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 제보 상태에서는 정정을 제출할 수 없습니다."),
+    ACTIVE_CORRECTION_ALREADY_EXISTS(HttpStatus.CONFLICT, "처리 중인 제보 정정이 이미 있습니다."),
+    INVALID_CORRECTION_DETAILS(HttpStatus.BAD_REQUEST, "제보 정정 내용이 올바르지 않습니다."),
+    INVALID_CORRECTION_REVIEW(HttpStatus.BAD_REQUEST, "제보 정정 심사 요청이 올바르지 않습니다.");
 
     private final HttpStatus status;
     private final String message;
