@@ -6,6 +6,7 @@ import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
@@ -16,12 +17,18 @@ public interface VisitorVerificationReportCorrectionRepository
 
     boolean existsByReport_IdAndStatus(Long reportId, VisitorVerificationReportCorrectionStatus status);
 
+    @Override
+    @EntityGraph(attributePaths = "report")
+    Page<VisitorVerificationReportCorrection> findAll(Pageable pageable);
+
+    @EntityGraph(attributePaths = "report")
     Page<VisitorVerificationReportCorrection> findAllByReport_IdAndRequesterUserId(
             Long reportId,
             Long requesterUserId,
             Pageable pageable
     );
 
+    @EntityGraph(attributePaths = "report")
     Page<VisitorVerificationReportCorrection> findAllByStatus(
             VisitorVerificationReportCorrectionStatus status,
             Pageable pageable
