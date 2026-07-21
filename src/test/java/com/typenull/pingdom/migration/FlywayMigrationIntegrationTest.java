@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("65");
-        assertThat(result.migrationsExecuted).isEqualTo(65);
+        assertThat(result.targetSchemaVersion).isEqualTo("66");
+        assertThat(result.migrationsExecuted).isEqualTo(66);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("65");
-        assertThat(result.migrationsExecuted).isEqualTo(64);
+        assertThat(result.targetSchemaVersion).isEqualTo("66");
+        assertThat(result.migrationsExecuted).isEqualTo(65);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("65");
-        assertThat(result.migrationsExecuted).isEqualTo(38);
+        assertThat(result.targetSchemaVersion).isEqualTo("66");
+        assertThat(result.migrationsExecuted).isEqualTo(39);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("65");
-        assertThat(result.migrationsExecuted).isEqualTo(10);
+        assertThat(result.targetSchemaVersion).isEqualTo("66");
+        assertThat(result.migrationsExecuted).isEqualTo(11);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1481,6 +1481,34 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'place_recommendation_conversion'
                           AND indexname = 'idx_place_recommendation_conversion_metric_aggregation'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'place_recommendation_conversion'
+                          AND column_name = 'place_recommendation_feature_log_id'
+                          AND data_type = 'bigint'
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_recommendation_conversion'::regclass
+                          AND conname = 'fk_recommendation_conversion_feature_log'
+                          AND contype = 'f'
+                          AND confdeltype = 'n'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'idx_recommendation_feature_log_attribution',
+                        'idx_recommendation_conversion_feature_log'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
