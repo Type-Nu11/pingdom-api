@@ -167,10 +167,14 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/cancel")).isTrue();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-owners/{userId}/onboarding")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-owners/{userId}/places/{placeId}/quality")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-verifications")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-place-claims")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/onboarding")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/places/{placeId}/quality")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications/{userId}/review")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-place-claims")).isTrue();
@@ -178,6 +182,9 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("MerchantOnboardingUpdateRequest")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceQualityUpdateRequest")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceResponse")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
         assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties/claimType/enum"))
                 .isNotEmpty();
@@ -185,6 +192,46 @@ class OpenApiDocumentationValidationTest {
                 .has("previousOwnerUserId")).isFalse();
         assertThat(webDocument.at("/components/schemas/AdminMerchantPlaceClaimResponse/properties/previousOwnerUserId/nullable")
                 .asBoolean()).isTrue();
+
+        JsonNode onboardingOperation = webDocument.at("/paths/~1admin~1merchant-owners~1{userId}~1onboarding/put");
+        assertThat(onboardingOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantOnboardingUpdateRequest");
+        assertThat(onboardingOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantOwnerProfileResponse");
+
+        JsonNode qualityOperation = webDocument.at("/paths/~1admin~1merchant-owners~1{userId}~1places~1{placeId}~1quality/put");
+        assertThat(qualityOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantOwnerPlaceQualityUpdateRequest");
+        assertThat(qualityOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantOwnerPlaceResponse");
+
+        JsonNode onboardingRequestSchema = webDocument.at("/components/schemas/MerchantOnboardingUpdateRequest");
+        List<String> onboardingRequiredFields = new ArrayList<>();
+        onboardingRequestSchema.path("required").forEach(field -> onboardingRequiredFields.add(field.asText()));
+        assertThat(onboardingRequiredFields).contains("status", "completionRate");
+        assertThat(onboardingRequestSchema.at("/properties/completionRate/minimum").asInt()).isZero();
+        assertThat(onboardingRequestSchema.at("/properties/completionRate/maximum").asInt()).isEqualTo(100);
+        assertThat(onboardingRequestSchema.at("/properties/reason/maxLength").asInt()).isEqualTo(500);
+
+        JsonNode qualityRequestSchema = webDocument.at("/components/schemas/MerchantOwnerPlaceQualityUpdateRequest");
+        List<String> qualityRequiredFields = new ArrayList<>();
+        qualityRequestSchema.path("required").forEach(field -> qualityRequiredFields.add(field.asText()));
+        assertThat(qualityRequiredFields).contains(
+                "status",
+                "reservationResponseRate",
+                "reservationCancellationRate",
+                "noShowRate"
+        );
+        for (String metricField : List.of(
+                "reservationResponseRate",
+                "reservationCancellationRate",
+                "noShowRate"
+        )) {
+            assertThat(qualityRequestSchema.at("/properties/" + metricField + "/minimum").asInt()).isZero();
+            assertThat(qualityRequestSchema.at("/properties/" + metricField + "/maximum").asInt()).isEqualTo(100);
+        }
+        assertThat(qualityRequestSchema.at("/properties/reason/maxLength").asInt()).isEqualTo(500);
+        assertNullableProperty(webDocument, "MerchantOwnerPlaceResponse", "qualityEvaluatedAt");
     }
 
     @Test
