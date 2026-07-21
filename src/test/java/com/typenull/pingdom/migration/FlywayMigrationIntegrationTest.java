@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("62");
-        assertThat(result.migrationsExecuted).isEqualTo(62);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(64);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("62");
-        assertThat(result.migrationsExecuted).isEqualTo(61);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(63);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("62");
-        assertThat(result.migrationsExecuted).isEqualTo(35);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(37);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("62");
-        assertThat(result.migrationsExecuted).isEqualTo(7);
+        assertThat(result.targetSchemaVersion).isEqualTo("64");
+        assertThat(result.migrationsExecuted).isEqualTo(9);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -675,6 +675,148 @@ class FlywayMigrationIntegrationTest {
                         JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
                         WHERE table_class.relname = 'visitor_verification_report_correction'
                           AND index_class.relname = 'uq_visitor_verification_report_correction_active'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 16
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_operating_notice'
+                      AND (
+                          (column_name = 'place_operating_notice_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('map_place_id', 'created_by_user_id')
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'updated_by_user_id'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'notice_type'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 30
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('severity', 'status')
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 20
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'message'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'NO')
+                          OR (column_name = 'cancel_reason'
+                              AND data_type = 'character varying'
+                              AND character_maximum_length = 500
+                              AND is_nullable = 'YES')
+                          OR (column_name IN ('starts_at', 'expires_at', 'created_at', 'updated_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'NO')
+                          OR (column_name IN ('expired_at', 'canceled_at')
+                              AND data_type = 'timestamp without time zone'
+                              AND is_nullable = 'YES')
+                          OR (column_name = 'version'
+                              AND data_type = 'bigint'
+                              AND is_nullable = 'NO')
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_operating_notice'::regclass
+                      AND conname IN (
+                          'fk_place_operating_notice_place',
+                          'ck_place_operating_notice_type',
+                          'ck_place_operating_notice_severity',
+                          'ck_place_operating_notice_status',
+                          'ck_place_operating_notice_message',
+                          'ck_place_operating_notice_period'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'place_operating_notice'::regclass
+                          AND conname = 'ck_place_operating_notice_lifecycle'
+                          AND contype = 'c'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'place_operating_notice'
+                          AND index_class.relname = 'uq_place_operating_notice_active_type'
+                          AND index_metadata.indisunique = true
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SCHEDULED%'
+                          AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%ACTIVE%'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE indexname IN (
+                        'idx_place_operating_notice_place_status_period',
+                        'idx_place_operating_notice_expiration',
+                        'idx_place_operating_notice_creator_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'scout_field_report'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_field_report'::regclass
+                      AND conname IN (
+                          'ck_scout_field_report_type',
+                          'ck_scout_field_report_status',
+                          'ck_scout_field_report_description',
+                          'ck_scout_field_report_review'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_field_report'::regclass
+                      AND conname IN (
+                          'fk_scout_field_report_scout',
+                          'fk_scout_field_report_place',
+                          'fk_scout_field_report_reviewer'
+                      )
+                      AND contype = 'f'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_field_report'::regclass
+                      AND conname IN (
+                          'fk_scout_field_report_scout',
+                          'fk_scout_field_report_reviewer'
+                      )
+                      AND contype = 'f'
+                      AND confdeltype = 'n'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_metadata
+                        JOIN pg_class index_class ON index_class.oid = index_metadata.indexrelid
+                        JOIN pg_class table_class ON table_class.oid = index_metadata.indrelid
+                        WHERE table_class.relname = 'scout_field_report'
+                          AND index_class.relname = 'uq_scout_field_report_active'
                           AND index_metadata.indisunique = true
                           AND pg_get_expr(index_metadata.indpred, index_metadata.indrelid) LIKE '%SUBMITTED%'
                     )

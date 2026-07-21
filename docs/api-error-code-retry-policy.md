@@ -2,7 +2,7 @@
 
 ## 목적과 적용 범위
 
-이 문서는 Pingdom Backend가 2026-07-10 기준으로 실제 반환하거나 기록하는 오류 코드와
+이 문서는 Pingdom Backend가 2026-07-21 기준으로 실제 반환하거나 기록하는 오류 코드와
 재시도 동작을 구분해 설명한다. 클라이언트, 운영자, 외부 연동 handler가 오류를 같은
 의미로 해석하고, 구현보다 강한 전달 보장이나 재시도 약속을 문서로 선언하지 않는 것이
 목적이다.
@@ -60,30 +60,57 @@ API의 단일 오류 schema를 보장하지 않는다.
 | 인증·계정 <code>AuthErrorCode</code> | 404 | <code>OAUTH_ACCOUNT_NOT_LINKED</code>, <code>USER_NOT_FOUND</code> |
 | JWT Security handler | 401 | <code>INVALID_TOKEN</code>, <code>EXPIRED_TOKEN</code> |
 | JWT Security handler | 403 | <code>ACCESS_DENIED</code> |
-| 사용자 <code>UsersErrorCode</code> | 선언상 400·404·409 | <code>PASSWORD_MISMATCH</code>, <code>USER_NOT_FOUND</code>, <code>USERNAME_ALREADY_EXISTS</code> |
+| 사용자 <code>UsersErrorCode</code> | 400 | <code>PASSWORD_MISMATCH</code>, <code>INVALID_TRAVEL_SCHEDULE_PERIOD</code> |
+| 사용자 <code>UsersErrorCode</code> | 404 | <code>USER_NOT_FOUND</code>, <code>TRAVEL_SCHEDULE_NOT_FOUND</code> |
+| 사용자 <code>UsersErrorCode</code> | 409 | <code>USERNAME_ALREADY_EXISTS</code>, <code>TRAVEL_SCHEDULE_NOT_EDITABLE</code>, <code>TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION</code> |
+| Merchant Owner <code>MerchantOwnerErrorCode</code> | 400 | <code>ADMIN_ACCOUNT_NOT_ALLOWED</code>, <code>INVALID_ONBOARDING_METRIC</code>, <code>INVALID_OPERATIONAL_QUALITY_METRIC</code> |
+| Merchant Owner <code>MerchantOwnerErrorCode</code> | 403 | <code>USER_ACCOUNT_NOT_ELIGIBLE</code>, <code>ACTIVE_OWNER_REQUIRED</code>, <code>PLACE_CLAIMANT_NOT_ELIGIBLE</code> |
+| Merchant Owner <code>MerchantOwnerErrorCode</code> | 404 | <code>PROFILE_NOT_FOUND</code>, <code>PLACE_NOT_FOUND</code>, <code>OWNER_PLACE_NOT_FOUND</code>, <code>VERIFICATION_NOT_FOUND</code>, <code>PLACE_CLAIM_NOT_FOUND</code> |
+| Merchant Owner <code>MerchantOwnerErrorCode</code> | 409 | <code>PROFILE_ALREADY_EXISTS</code>, <code>INVALID_PROFILE_STATE</code>, <code>PLACE_ALREADY_ASSIGNED</code>, <code>PLACE_ALREADY_ASSIGNED_TO_REQUESTER</code>, <code>PLACE_OWNERSHIP_CHANGED</code>, <code>VERIFICATION_ALREADY_EXISTS</code>, <code>INVALID_VERIFICATION_STATE</code>, <code>VERIFICATION_REQUIRED</code>, <code>PLACE_CLAIM_ALREADY_PENDING</code>, <code>INVALID_PLACE_CLAIM_STATE</code> |
 | 지도·게시글 <code>MapErrorCode</code> | 400 | <code>PLACE_ID_REQUIRED</code>, <code>PLACE_SEARCH_CONDITION_INVALID</code>, <code>UNSUPPORTED_PLACE_SEARCH_SORT</code>, <code>IMAGE_FILE_EMPTY</code>, <code>IMAGE_FILE_TOO_LARGE</code>, <code>UNSUPPORTED_IMAGE_TYPE</code>, <code>INVALID_IMAGE_FILE</code>, <code>IMAGE_RESOLUTION_TOO_LARGE</code>, <code>ALREADY_LIKED</code>, <code>NOT_LIKED</code>, <code>ALREADY_POSTED</code> |
 | 지도·게시글 <code>MapErrorCode</code> | 401 | <code>PLACE_COORDINATE_TOKEN_INVALID</code> |
-| 지도·게시글 <code>MapErrorCode</code> | 403 | <code>REPORTER_RESTRICTED</code>, <code>REPORT_APPEAL_NOT_ALLOWED</code>, <code>OTHERS_NOT_DELETED</code>, <code>OTHERS_NOT_UPDATE</code>, <code>OTHERS_PLACE_NOT_DELETED</code> |
-| 지도·게시글 <code>MapErrorCode</code> | 404 | <code>IMAGE_NOT_FOUND</code>, <code>REPORT_NOT_FOUND</code>, <code>PLACE_NOT_FOUND</code>, <code>RECOMMENDATION_EXPLANATION_NOT_FOUND</code>, <code>BOOKMARK_NOT_FOUND</code> |
-| 지도·게시글 <code>MapErrorCode</code> | 409 | <code>ALREADY_REPORTED_IMAGE</code>, <code>REPORT_APPEAL_ALREADY_EXISTS</code>, <code>PLACE_ALREADY_EXISTS</code>, <code>FAVORITE_ALREADY_EXISTS</code>, <code>BOOKMARK_ALREADY_EXISTS</code> |
+| 지도·게시글 <code>MapErrorCode</code> | 403 | <code>REPORTER_RESTRICTED</code>, <code>REPORT_APPEAL_NOT_ALLOWED</code>, <code>OTHERS_NOT_DELETED</code>, <code>OTHERS_NOT_UPDATE</code>, <code>OTHERS_PLACE_NOT_DELETED</code>, <code>OTHERS_PLACE_MEDIA_NOT_MANAGED</code>, <code>PLACE_INFORMATION_REPORT_FORBIDDEN</code>, <code>PLACE_INFORMATION_DISPUTE_FORBIDDEN</code> |
+| 지도·게시글 <code>MapErrorCode</code> | 404 | <code>IMAGE_NOT_FOUND</code>, <code>REPORT_NOT_FOUND</code>, <code>PLACE_NOT_FOUND</code>, <code>PLACE_MEDIA_NOT_FOUND</code>, <code>PLACE_EVENT_NOT_FOUND</code>, <code>PLACE_INFORMATION_REPORT_NOT_FOUND</code>, <code>PLACE_INFORMATION_DISPUTE_NOT_FOUND</code>, <code>RECOMMENDATION_EXPLANATION_NOT_FOUND</code>, <code>BOOKMARK_NOT_FOUND</code> |
+| 지도·게시글 <code>MapErrorCode</code> | 409 | <code>ALREADY_REPORTED_IMAGE</code>, <code>REPORT_APPEAL_ALREADY_EXISTS</code>, <code>PLACE_ALREADY_EXISTS</code>, <code>PLACE_INFORMATION_REPORT_ALREADY_SUBMITTED</code>, <code>FAVORITE_ALREADY_EXISTS</code>, <code>BOOKMARK_ALREADY_EXISTS</code> |
 | 지도·게시글 <code>MapErrorCode</code> | 500 | <code>DELETE_ERROR</code>, <code>S3_NOT_CONFIGURED</code>, <code>S3_CONNECTION_ERROR</code>, <code>UPLOAD_ERROR</code> |
 | 알림 <code>NotificationsErrorCode</code> | 400 | <code>CANNOT_SEND_NOTIFICATION_TO_SELF</code>, <code>INVALID_FCM_TOKEN</code>, <code>INVALID_NOTIFICATION_TIMEZONE</code>, <code>INVALID_QUIET_HOURS</code> |
 | 알림 <code>NotificationsErrorCode</code> | 404 | <code>FCM_TOKEN_NOT_FOUND</code>, <code>NOTIFICATION_NOT_FOUND</code> |
 | 알림 <code>NotificationsErrorCode</code> | 500 | <code>NOTIFICATION_SEND_FAILED</code> |
-| 관리자 <code>AdminErrorCode</code> | 400 | <code>PLACE_MERGE_INVALID_REQUEST</code>, <code>RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST</code>, <code>RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID</code>, <code>RECOMMENDATION_METRIC_QUERY_TOO_LARGE</code>, <code>AD_INVALID_PERIOD</code>, <code>UNSUPPORTED_PLACE_SORT_PARAM</code>, <code>INVALID_SANCTION_PERIOD</code>, <code>INVALID_SANCTION_FILTER_PERIOD</code>, <code>INVALID_AUDIT_LOG_FILTER_PERIOD</code>, <code>INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD</code> |
-| 관리자 <code>AdminErrorCode</code> | 404 | <code>POST_NOT_FOUND</code>, <code>PLACE_NOT_FOUND</code>, <code>PLACE_DUPLICATE_NOT_FOUND</code>, <code>PLACE_MERGE_HISTORY_NOT_FOUND</code>, <code>RECOMMENDATION_EXPLANATION_NOT_FOUND</code>, <code>RECOMMENDATION_TRAFFIC_POLICY_VERSION_NOT_FOUND</code>, <code>AD_NOT_FOUND</code>, <code>REPORT_NOT_FOUND</code>, <code>APPEAL_NOT_FOUND</code> |
-| 관리자 <code>AdminErrorCode</code> | 409 | <code>PLACE_MERGE_NOT_ALLOWED</code>, <code>PLACE_MERGE_ALREADY_RESTORED</code>, <code>PLACE_MERGE_RESTORE_NOT_ALLOWED</code>, <code>PLACE_KAKAO_PLACE_ID_CONFLICT</code>, <code>REPORT_ALREADY_PROCESSED</code>, <code>APPEAL_ALREADY_PROCESSED</code>, <code>USER_NOT_BANNED</code>, <code>PENDING_REPORT_NOT_FOUND</code> |
+| Offer <code>OfferErrorCode</code> | 400 | <code>INVALID_OFFER_PERIOD</code>, <code>INVALID_OFFER_INPUT</code> |
+| Offer <code>OfferErrorCode</code> | 403 | <code>PLACE_NOT_OWNED</code>, <code>TOURIST_ELIGIBILITY_REQUIRED</code> |
+| Offer <code>OfferErrorCode</code> | 404 | <code>OFFER_NOT_FOUND</code>, <code>COUPON_NOT_FOUND</code> |
+| Offer <code>OfferErrorCode</code> | 409 | <code>INVALID_OFFER_STATE</code>, <code>OFFER_NOT_AVAILABLE</code>, <code>OFFER_SOLD_OUT</code>, <code>COUPON_ALREADY_ISSUED</code>, <code>COUPON_NOT_REDEEMABLE</code> |
+| 예약 가능 시간 <code>AvailabilityErrorCode</code> | 400 | <code>INVALID_AVAILABILITY_INPUT</code> |
+| 예약 가능 시간 <code>AvailabilityErrorCode</code> | 403 | <code>PLACE_NOT_OWNED</code> |
+| 예약 가능 시간 <code>AvailabilityErrorCode</code> | 404 | <code>AVAILABILITY_NOT_FOUND</code> |
+| 예약 가능 시간 <code>AvailabilityErrorCode</code> | 409 | <code>AVAILABILITY_ALREADY_EXISTS</code>, <code>INVALID_AVAILABILITY_STATE</code>, <code>AVAILABILITY_CAPACITY_EXCEEDED</code> |
+| 예약 <code>ReservationErrorCode</code> | 400 | <code>INVALID_RESERVATION_INPUT</code> |
+| 예약 <code>ReservationErrorCode</code> | 403 | <code>RESERVATION_FORBIDDEN</code>, <code>TOURIST_ACCOUNT_REQUIRED</code> |
+| 예약 <code>ReservationErrorCode</code> | 404 | <code>RESERVATION_NOT_FOUND</code> |
+| 예약 <code>ReservationErrorCode</code> | 409 | <code>INVALID_RESERVATION_STATE</code>, <code>IDEMPOTENCY_KEY_REUSED</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 400 | <code>LOCATION_OBSERVATION_EXPIRED</code>, <code>LOCATION_TOO_INACCURATE</code>, <code>VISIT_EVIDENCE_FILE_EMPTY</code>, <code>VISIT_EVIDENCE_FILE_INVALID</code>, <code>INVALID_REPORT_DETAILS</code>, <code>INVALID_REVIEW</code>, <code>INVALID_CORRECTION_DETAILS</code>, <code>INVALID_CORRECTION_REVIEW</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 403 | <code>REPORT_FORBIDDEN</code>, <code>ADMIN_ACCOUNT_REQUIRED</code>, <code>TOURIST_ACCOUNT_REQUIRED</code>, <code>CORRECTION_FORBIDDEN</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 404 | <code>REPORT_NOT_FOUND</code>, <code>PLACE_NOT_FOUND</code>, <code>CHECK_IN_NOT_FOUND</code>, <code>VISIT_EVIDENCE_NOT_FOUND</code>, <code>CORRECTION_NOT_FOUND</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 409 | <code>DAILY_CHECK_IN_ALREADY_EXISTS</code>, <code>VISIT_EVIDENCE_ALREADY_EXISTS</code>, <code>ACTIVE_REPORT_ALREADY_EXISTS</code>, <code>INVALID_REPORT_STATE</code>, <code>CORRECTION_NOT_ALLOWED</code>, <code>ACTIVE_CORRECTION_ALREADY_EXISTS</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 413 | <code>VISIT_EVIDENCE_FILE_TOO_LARGE</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 422 | <code>OUTSIDE_CHECK_IN_RADIUS</code> |
+| 방문자 검증 <code>VisitorVerificationErrorCode</code> | 503 | <code>VISIT_EVIDENCE_STORAGE_UNAVAILABLE</code> |
+| 관리자 <code>AdminErrorCode</code> | 400 | <code>PLACE_MERGE_INVALID_REQUEST</code>, <code>PLACE_OPERATING_STATUS_INVALID_REQUEST</code>, <code>PLACE_DISCOVERY_STATUS_INVALID_REQUEST</code>, <code>PLACE_INFORMATION_VERIFICATION_INVALID_REQUEST</code>, <code>PLACE_INFORMATION_REPORT_INVALID_REQUEST</code>, <code>PLACE_INFORMATION_DISPUTE_INVALID_REQUEST</code>, <code>PLACE_OPERATING_SCHEDULE_INVALID_REQUEST</code>, <code>PLACE_EVENT_INVALID_PERIOD</code>, <code>RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST</code>, <code>RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID</code>, <code>RECOMMENDATION_METRIC_QUERY_TOO_LARGE</code>, <code>TRUST_SCORE_INTERVENTION_RULE_INVALID_REQUEST</code>, <code>AD_INVALID_PERIOD</code>, <code>UNSUPPORTED_PLACE_SORT_PARAM</code>, <code>INVALID_SANCTION_PERIOD</code>, <code>INVALID_SANCTION_FILTER_PERIOD</code>, <code>INVALID_AUDIT_LOG_FILTER_PERIOD</code>, <code>INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD</code> |
+| 관리자 <code>AdminErrorCode</code> | 404 | <code>POST_NOT_FOUND</code>, <code>PLACE_NOT_FOUND</code>, <code>PLACE_DUPLICATE_NOT_FOUND</code>, <code>PLACE_INFORMATION_EVIDENCE_NOT_FOUND</code>, <code>PLACE_INFORMATION_REPORT_NOT_FOUND</code>, <code>PLACE_INFORMATION_DISPUTE_NOT_FOUND</code>, <code>PLACE_EVENT_NOT_FOUND</code>, <code>PLACE_MERGE_HISTORY_NOT_FOUND</code>, <code>RECOMMENDATION_EXPLANATION_NOT_FOUND</code>, <code>RECOMMENDATION_TRAFFIC_POLICY_VERSION_NOT_FOUND</code>, <code>TRUST_SCORE_ANOMALY_NOT_FOUND</code>, <code>TRUST_SCORE_REPORTER_POLICY_NOT_FOUND</code>, <code>TRUST_SCORE_INTERVENTION_RULE_NOT_FOUND</code>, <code>AD_NOT_FOUND</code>, <code>REPORT_NOT_FOUND</code>, <code>APPEAL_NOT_FOUND</code> |
+| 관리자 <code>AdminErrorCode</code> | 409 | <code>PLACE_INFORMATION_REPORT_ALREADY_SUBMITTED</code>, <code>PLACE_EVENT_UPDATE_NOT_ALLOWED</code>, <code>PLACE_EVENT_PUBLISH_NOT_ALLOWED</code>, <code>PLACE_EVENT_CANCEL_NOT_ALLOWED</code>, <code>PLACE_EVENT_CONNECTED</code>, <code>PLACE_CHECK_IN_CONNECTED</code>, <code>PLACE_MERGE_NOT_ALLOWED</code>, <code>PLACE_MERGE_ALREADY_RESTORED</code>, <code>PLACE_MERGE_RESTORE_NOT_ALLOWED</code>, <code>PLACE_KAKAO_PLACE_ID_CONFLICT</code>, <code>TRUST_SCORE_INTERVENTION_RULE_DUPLICATED</code>, <code>REPORT_ALREADY_PROCESSED</code>, <code>APPEAL_ALREADY_PROCESSED</code>, <code>USER_NOT_BANNED</code>, <code>PENDING_REPORT_NOT_FOUND</code> |
 | 관리자 <code>AdminErrorCode</code> | 500 | <code>AUDIT_LOG_WRITE_FAILED</code>, <code>RECOMMENDATION_POLICY_HISTORY_WRITE_FAILED</code>, <code>POST_DELETE_FAILED</code>, <code>S3_NOT_CONFIGURED</code>, <code>S3_CONNECTION_ERROR</code>, <code>S3_REPORT_FAILED</code> |
 | 요청 제한 | 429 | <code>RATE_LIMIT_EXCEEDED</code> |
 | 요청 제한 저장소 장애 | 503 | <code>RATE_LIMIT_UNAVAILABLE</code> |
 
-<code>UsersException</code>은 현재 전용 Controller Advice handler가 없다. 따라서
-<code>UsersErrorCode</code>은 선언된 도메인 코드이지만, 공통 JSON 응답으로 항상 노출되는
-공개 API 계약으로 취급하지 않는다. 전체 오류 응답 표준화는 Controller Advice와 OpenAPI
-baseline에 영향을 주므로 별도 구현 이슈에서 결정한다.
+위 enum 기반 예외는 <code>GlobalExceptionHandler</code>의 전용 handler를 통해
+<code>{"message":"...","code":"..."}</code> 형태로 반환된다. 새 도메인 예외를 추가할 때는
+enum, exception, Controller Advice handler, OpenAPI 오류 문서가 함께 갱신됐는지 확인한다.
+전체 오류 응답 표준화는 Controller Advice와 OpenAPI baseline에 영향을 주므로 별도 구현
+이슈에서 결정한다.
 
-DataIntegrityViolation 중 사용자명 중복, OAuth 계정 연결 중복, 지도 북마크 중복, 장소별
-게시글 중복은 409과 대응 코드로 변환된다. 그 외의 무결성 오류는 500과 메시지만 반환한다.
+DataIntegrityViolation 중 사용자명 중복, OAuth 계정 연결 중복, 지도 북마크 중복은 409와
+대응 코드로 변환된다. 장소별 게시글 중복은 <code>ALREADY_POSTED</code>의 선언 상태인
+400과 대응 코드로 변환된다. 그 외의 무결성 오류는 500과 메시지만 반환한다.
 
 ## HTTP 클라이언트 재시도 기준
 
@@ -93,11 +120,11 @@ DataIntegrityViolation 중 사용자명 중복, OAuth 계정 연결 중복, 지�
 
 | 응답 | 기본 처리 | 재시도 판단 |
 | --- | --- | --- |
-| 400, 404, 409 또는 validation 오류 | 요청 값·현재 리소스 상태를 수정한다. | 자동 재시도하지 않는다. |
+| 400, 404, 409, 413, 422 또는 validation 오류 | 요청 값·현재 리소스 상태를 수정한다. | 자동 재시도하지 않는다. |
 | 401 <code>INVALID_TOKEN</code>, <code>EXPIRED_TOKEN</code> | 인증 정보를 갱신하거나 로그인 흐름을 수행한다. | 인증 복구 후에도 원래 요청이 조회 또는 멱등한 요청일 때만 다시 보낸다. |
 | 403 | 권한·사용자 상태를 확인한다. | 자동 재시도하지 않는다. |
 | 429 <code>RATE_LIMIT_EXCEEDED</code> | 요청 빈도를 낮춘다. | 현재 <code>Retry-After</code> 헤더가 없으므로 서버가 대기 시간을 약속하지 않는다. 조회 또는 멱등한 요청에 한해 제품별 제한된 backoff를 적용할 수 있다. |
-| 503 <code>RATE_LIMIT_UNAVAILABLE</code> | 제한 저장소·의존성 장애로 본다. | 조회 또는 멱등한 요청에 한해 횟수가 제한된 backoff 재시도를 검토한다. 상태 변경 요청은 중복 효과를 먼저 검토한다. |
+| 503 <code>RATE_LIMIT_UNAVAILABLE</code> 또는 저장소 일시 장애 | 제한 저장소·외부 저장소·의존성 장애로 본다. | 조회 또는 멱등한 요청에 한해 횟수가 제한된 backoff 재시도를 검토한다. 상태 변경 요청은 중복 효과를 먼저 검토한다. |
 | 500 | 서버·외부 의존성 오류로 분류하고 요청 ID와 오류 코드를 보존한다. | 일반적인 자동 재시도 계약이 아니다. 같은 상태 변경 요청을 즉시 반복하지 않는다. |
 
 ## Outbox 및 notification delivery 재시도
@@ -149,6 +176,17 @@ notification delivery의 <code>retryable</code>, <code>attempt_count</code>,
 | Flyway | <code>V5__create_outbox_event.sql</code>이 Outbox 상태·시도 횟수·다음 시각을, <code>V20__create_notification_delivery.sql</code>이 delivery 결과를 저장한다. | 스키마·migration을 변경하지 않는다. enum·column·보관 정책 변경은 새 migration과 기존 대기 row 호환성을 별도 검토한다. |
 | 운영 | Outbox metric과 handler 로그, notification delivery 조회가 실패 분석의 근거다. | 배포 전 문서 링크와 구현 대조만 수행한다. 코드·설정 변경이 없으므로 별도 배포 절차는 없다. |
 
+## 구현 대조 결과
+
+| 점검 항목 | 대조 위치 | 결과 |
+| --- | --- | --- |
+| enum 기반 도메인 예외 응답 | <code>GlobalExceptionHandler</code>, 각 <code>*ErrorCode</code> enum | 전용 handler가 있는 도메인은 <code>message</code>, <code>code</code>를 반환한다. |
+| Validation, ConstraintViolation, ResponseStatusException | <code>GlobalExceptionHandler</code> | 일부 실패 응답에는 <code>code</code>가 없으므로 클라이언트는 상태 코드와 본문 형태를 함께 처리해야 한다. |
+| 요청 제한 오류 | <code>RateLimitException</code>, <code>RateLimitUnavailableException</code> | 429와 503은 코드가 있지만 현재 <code>Retry-After</code> 헤더 계약은 없다. |
+| Outbox 재시도 설정 | <code>application.yaml</code>, <code>OutboxEvent</code>, <code>OutboxEventWorker</code> | 5초 선점 주기, 최대 5회, 10초 기반 backoff, 10분 최대 backoff, 5분 stale recovery 기준을 따른다. |
+| notification delivery 기록 | <code>NotificationDeliveryRecorder</code>, <code>NotificationDeliveryRecordWriter</code>, <code>AdminNotificationDeliveryController</code> | delivery의 <code>retryable</code>과 상태는 운영 관찰용이며 Outbox 상태 전이를 직접 제어하지 않는다. |
+| DB migration 영향 | <code>V5__create_outbox_event.sql</code>, <code>V20__create_notification_delivery.sql</code> | 이번 문서 정비는 schema 변경이 아니므로 Flyway 파일과 OpenAPI baseline을 갱신하지 않는다. |
+
 ## 운영 확인과 장애 대응
 
 1. HTTP 오류는 상태 코드, <code>code</code>이 있으면 해당 코드, <code>X-Request-Id</code>를
@@ -167,3 +205,4 @@ notification delivery의 <code>retryable</code>, <code>attempt_count</code>,
 | 일자 | 이슈 | 내용 | 상태 |
 | --- | --- | --- | --- |
 | 2026-07-10 | #839, #840, #841 | HTTP 오류 코드, Outbox·delivery 재시도 책임, API·Flyway·운영 연결 기준을 문서화 | 완료 |
+| 2026-07-21 | #841 | 구현 대조 결과, 누락된 도메인 오류 코드, 관련 운영 문서 링크 기준을 갱신 | 완료 |

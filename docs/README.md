@@ -28,11 +28,10 @@
 
 - [로컬 개발 환경과 dev seed 데이터](local-development.md)
 - [v1 API 경로 정책](api-path-policy.md)
-- [API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md)
+- [API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md): HTTP 오류 응답, Outbox 재시도, notification delivery 기록의 책임 경계를 정리합니다.
 - [운영 관측성](observability.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
 - [DB 백업/복구 절차](database-backup-restore.md)
-- [로컬 개발 환경](local-development.md)
 - [Pingdom 2.0 출시 전환·적용·복구 Runbook](refactoring-rollout-runbook.md)
 
 ## 아키텍처 문서

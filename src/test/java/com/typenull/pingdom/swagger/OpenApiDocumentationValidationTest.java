@@ -111,6 +111,34 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void scoutFieldReportApisAreSeparatedIntoAppAndWebGroups() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/scout-field-reports")).isTrue();
+        assertThat(appDocument.path("paths").has("/scout-field-reports/{reportId}")).isTrue();
+        assertThat(appDocument.path("paths").has("/admin/scout-field-reports")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/scout-field-reports")).isTrue();
+        assertThat(webDocument.path("paths").has("/scout-field-reports")).isFalse();
+
+        assertThat(appDocument.at(
+                "/paths/~1scout-field-reports/post/requestBody/content/application~1json/schema/$ref"
+        ).asText()).isEqualTo("#/components/schemas/ScoutFieldReportCreateRequest");
+        assertThat(appDocument.at(
+                "/paths/~1scout-field-reports/post/responses/201/content/*~1*/schema/$ref"
+        ).asText()).isEqualTo("#/components/schemas/MyScoutFieldReportResponse");
+        assertThat(webDocument.at(
+                "/paths/~1admin~1scout-field-reports~1{reportId}~1review/post/requestBody/content/application~1json/schema/$ref"
+        ).asText()).isEqualTo("#/components/schemas/ScoutFieldReportReviewRequest");
+        assertThat(resolveSchema(
+                appDocument,
+                appDocument.at("/components/schemas/ScoutFieldReportCreateRequest/properties/reportType")
+        ).path("enum"))
+                .extracting(JsonNode::asText)
+                .contains("PLACE_INFORMATION", "SAFETY", "OTHER");
+    }
+
+    @Test
     void deprecatedEndpointsAreMarkedInApiDocs() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
