@@ -73,7 +73,12 @@ public class NotificationSetting {
         return switch (type) {
             case NEW_HOTPLACE -> newHotplaceEnabled;
             case NEW_LIKE -> newLikeEnabled;
-            case PLACE_INFORMATION_REVERIFICATION_REQUESTED, PLACE_INFORMATION_REVERIFICATION_REMINDER -> true;
+            case PLACE_INFORMATION_REVERIFICATION_REQUESTED,
+                 PLACE_INFORMATION_REVERIFICATION_REMINDER,
+                 ADMIN_REPORT_RECEIVED,
+                 ADMIN_REPORT_PROCESSED,
+                 ADMIN_DUPLICATE_PLACE_DETECTED,
+                 ADMIN_USER_SANCTION -> true;
         };
     }
 
