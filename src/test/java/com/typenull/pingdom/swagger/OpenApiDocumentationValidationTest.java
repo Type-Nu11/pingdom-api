@@ -96,6 +96,49 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void discoveryAndRecommendationContractsExposeFiltersBoundsAndFailureResponses() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode discovery = appDocument.at("/paths/~1places/get");
+        JsonNode recommendation = appDocument.at("/paths/~1places~1recommendations/get");
+
+        assertThat(discovery.path("responses").path("200").path("content").path("*/*")
+                .path("schema").path("$ref").asText())
+                .as("Discovery 정상 응답은 장소 목록 계약을 사용해야 한다")
+                .isEqualTo("#/components/schemas/PlaceListResponse");
+        assertThat(discovery.path("parameters").toString())
+                .as("Discovery 계약은 페이지·키워드·카테고리·위치 필터를 포함해야 한다")
+                .contains("page", "limit", "keyword", "category", "touristCategory", "latitude", "longitude", "radiusKm");
+        assertThat(discovery.at("/parameters/1/schema/minimum").asInt())
+                .as("Discovery limit 하한은 1이어야 한다")
+                .isEqualTo(1);
+        assertThat(discovery.at("/parameters/1/schema/maximum").asInt())
+                .as("Discovery limit 상한은 100이어야 한다")
+                .isEqualTo(100);
+
+        assertThat(recommendation.path("responses").path("200").path("content").path("*/*")
+                .path("schema").path("$ref").asText())
+                .as("Recommendation 정상 응답은 추천 목록 계약을 사용해야 한다")
+                .isEqualTo("#/components/schemas/PlaceRecommendationResponse");
+        assertThat(recommendation.path("responses").path("400").path("content").path("*/*")
+                .path("example").path("message").asText())
+                .as("잘못된 좌표 실패 원인을 응답 예시로 식별할 수 있어야 한다")
+                .contains("-90.0");
+        assertThat(recommendation.path("responses").path("401").path("content").path("*/*")
+                .path("example").path("code").asText())
+                .as("추천 인증 실패는 오류 코드를 포함해야 한다")
+                .isEqualTo("INVALID_TOKEN");
+        assertThat(recommendation.path("parameters").toString())
+                .as("Recommendation 계약은 좌표·limit·반경·버전 조건을 포함해야 한다")
+                .contains("latitude", "longitude", "limit", "radiusKm", "recommendationVersion");
+        assertThat(recommendation.at("/parameters/2/schema/minimum").asInt())
+                .as("Recommendation limit 하한은 1이어야 한다")
+                .isEqualTo(1);
+        assertThat(recommendation.at("/parameters/2/schema/maximum").asInt())
+                .as("Recommendation limit 상한은 20이어야 한다")
+                .isEqualTo(20);
+    }
+
+    @Test
     void locationCheckInApisAreExposedInAppGroup() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
