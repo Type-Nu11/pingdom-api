@@ -7,14 +7,18 @@ import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOnboardingUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceQualityUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOnboardingStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOperationalQualityStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
@@ -39,6 +43,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.context.ApplicationEventPublisher;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantOwnerAdminServiceTest {
@@ -51,6 +56,7 @@ class MerchantOwnerAdminServiceTest {
     @Mock private AdminAuditLogService auditLogService;
     @Mock private UserAccessStatusService userAccessStatusService;
     @Mock private TouristOfferRepository touristOfferRepository;
+    @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Clock clock;
 
     @InjectMocks
@@ -332,6 +338,83 @@ class MerchantOwnerAdminServiceTest {
         )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
                 assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.VERIFICATION_REQUIRED)
         );
+    }
+
+    @Test
+    void updateOnboardingCompletesProfileWithCurrentTimeWhenCompletedAtIsEmpty() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        stubCurrentTime();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId)).thenReturn(List.of());
+
+        var response = adminService.updateOnboarding(
+                adminUserId,
+                userId,
+                new MerchantOnboardingUpdateRequest(MerchantOnboardingStatus.COMPLETED, 100, null, "초기 온보딩 완료")
+        );
+
+        assertThat(response.onboardingStatus()).isEqualTo(MerchantOnboardingStatus.COMPLETED);
+        assertThat(response.onboardingCompletionRate()).isEqualTo(100);
+        assertThat(response.onboardingCompletedAt()).isEqualTo(now);
+        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
+    }
+
+    @Test
+    void updateOperationalQualityRequiresOwnedActivePlace() {
+        Long adminUserId = 99L;
+        Long userId = 1L;
+        Long placeId = 10L;
+        LocalDateTime now = LocalDateTime.of(2026, 7, 13, 3, 0);
+        MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
+                userId,
+                "핑덤 카페",
+                "핑덤 사장님",
+                null,
+                "owner@example.com",
+                "010-1111-2222",
+                now.minusDays(1)
+        );
+        profile.approve(adminUserId, now.minusHours(1));
+        MerchantOwnerPlace ownerPlace = MerchantOwnerPlace.builder()
+                .placeId(placeId)
+                .merchantOwnerUserId(userId)
+                .createdAt(now.minusDays(1))
+                .build();
+        stubCurrentTime();
+        when(profileRepository.findByUserIdForUpdate(userId)).thenReturn(Optional.of(profile));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(ownerPlace));
+
+        var response = adminService.updateOperationalQuality(
+                adminUserId,
+                userId,
+                placeId,
+                new MerchantOwnerPlaceQualityUpdateRequest(
+                        MerchantOperationalQualityStatus.HEALTHY,
+                        95,
+                        2,
+                        1,
+                        null,
+                        "운영 품질 업데이트"
+                )
+        );
+
+        assertThat(response.operationalQualityStatus()).isEqualTo(MerchantOperationalQualityStatus.HEALTHY);
+        assertThat(response.reservationResponseRate()).isEqualTo(95);
+        assertThat(response.reservationCancellationRate()).isEqualTo(2);
+        assertThat(response.noShowRate()).isEqualTo(1);
+        assertThat(response.qualityEvaluatedAt()).isEqualTo(now);
+        verify(eventPublisher).publishEvent(org.mockito.ArgumentMatchers.any(Object.class));
     }
 
     private void stubCurrentTime() {
