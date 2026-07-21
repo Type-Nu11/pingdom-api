@@ -36,7 +36,11 @@ public class VisitorVerificationReportService {
         try {
             return MyVisitorVerificationReportResponse.from(reportRepository.saveAndFlush(
                     VisitorVerificationReport.submit(userId, request.placeId(), request.reportType(),
-                            request.description(), request.evidenceUrl(), LocalDateTime.now(clock))));
+                            request.description(), request.evidenceUrl(), request.waitTimeMinutes(),
+                            request.languageCode(), request.couponUsageStatus(), request.crowdLevel(),
+                            LocalDateTime.now(clock))));
+        } catch (IllegalArgumentException exception) {
+            throw new VisitorVerificationException(VisitorVerificationErrorCode.INVALID_REPORT_DETAILS);
         } catch (DataIntegrityViolationException exception) {
             if (hasConstraint(exception, "uq_visitor_verification_report_active")) {
                 throw new VisitorVerificationException(VisitorVerificationErrorCode.ACTIVE_REPORT_ALREADY_EXISTS);
