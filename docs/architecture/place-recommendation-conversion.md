@@ -135,7 +135,7 @@ totalConversionRate = (bookmarkConversionCount + likeConversionCount) / exposure
 
 ## 9. 호환성과 rollback 지점
 
-- `V66`은 `place_recommendation_conversion`에 nullable 참조만 추가한다. 기존 row와 기존 API
+- `V67`은 `place_recommendation_conversion`에 nullable 참조만 추가한다. 기존 row와 기존 API
   요청·응답은 그대로 유지한다.
 - 피처 로그를 찾지 못해도 전환 원천 로그와 snapshot 갱신은 계속 수행한다. feature logging
   설정과 비동기 노출 저장 여부가 행동 전환의 성공 조건으로 확장되지 않는다.
