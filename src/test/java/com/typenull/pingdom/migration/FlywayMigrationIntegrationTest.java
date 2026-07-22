@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("67");
-        assertThat(result.migrationsExecuted).isEqualTo(67);
+        assertThat(result.targetSchemaVersion).isEqualTo("68");
+        assertThat(result.migrationsExecuted).isEqualTo(68);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("67");
-        assertThat(result.migrationsExecuted).isEqualTo(66);
+        assertThat(result.targetSchemaVersion).isEqualTo("68");
+        assertThat(result.migrationsExecuted).isEqualTo(67);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("67");
-        assertThat(result.migrationsExecuted).isEqualTo(40);
+        assertThat(result.targetSchemaVersion).isEqualTo("68");
+        assertThat(result.migrationsExecuted).isEqualTo(41);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -309,8 +309,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("67");
-        assertThat(result.migrationsExecuted).isEqualTo(12);
+        assertThat(result.targetSchemaVersion).isEqualTo("68");
+        assertThat(result.migrationsExecuted).isEqualTo(13);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1292,6 +1292,37 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'admin_place_merge_history'
                           AND indexname = 'idx_admin_place_merge_history_created'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_duplicate_candidate'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_duplicate_candidate'::regclass
+                      AND conname IN (
+                          'ck_place_duplicate_candidate_pair',
+                          'ck_place_duplicate_candidate_match_reason',
+                          'ck_place_duplicate_candidate_confidence',
+                          'ck_place_duplicate_candidate_distance',
+                          'ck_place_duplicate_candidate_status',
+                          'ck_place_duplicate_candidate_review',
+                          'ck_place_duplicate_candidate_merge'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_duplicate_candidate'
+                          AND indexname = 'uq_place_duplicate_candidate_pair'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
