@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api.dto.recommendation;
 
+import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
@@ -18,7 +19,9 @@ public record PlaceRecommendationResponse(
         @Schema(description = "실제 적용 반경(km)", example = "10.0")
         double appliedRadiusKm,
         @Schema(description = "추천 결과 수", example = "4")
-        int recommendedCount
+        int recommendedCount,
+        @Schema(description = "추천에 적용된 현재 행동 의도", nullable = true, example = "CAFE")
+        CurrentActivityIntent appliedActivityIntent
 ) {
     public static PlaceRecommendationResponse of(
             List<PlaceRecommendationItem> places,
@@ -26,7 +29,8 @@ public record PlaceRecommendationResponse(
             String recommendationRequestId,
             int limit,
             double requestedRadiusKm,
-            double appliedRadiusKm
+            double appliedRadiusKm,
+            CurrentActivityIntent appliedActivityIntent
     ) {
         return new PlaceRecommendationResponse(
                 places,
@@ -35,7 +39,8 @@ public record PlaceRecommendationResponse(
                 limit,
                 requestedRadiusKm,
                 appliedRadiusKm,
-                places.size()
+                places.size(),
+                appliedActivityIntent
         );
     }
 }
