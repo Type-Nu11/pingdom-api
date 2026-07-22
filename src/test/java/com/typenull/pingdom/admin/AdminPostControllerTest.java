@@ -43,6 +43,7 @@ import software.amazon.awssdk.services.s3.S3Client;
 
 @SpringBootTest(properties = {
         "spring.cloud.aws.s3.bucket=test-bucket",
+        "spring.cloud.aws.s3.public-base-url=https://cdn.pingdom.test",
         "spring.cloud.aws.region.static=ap-northeast-2",
         "spring.cloud.aws.credentials.access-key=test-access-key",
         "spring.cloud.aws.credentials.secret-key=test-secret-key",
@@ -144,7 +145,16 @@ class AdminPostControllerTest {
     void getPostReturnsDetailWithReports() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("postOwner03");
-        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-3.jpg");
+        MapImage mapImage = createMapImage(
+                owner.getId(),
+                owner.getUsername(),
+                "https://cdn.pingdom.local/map/image-3.jpg",
+                "신고 대상 제목",
+                "신고 대상 설명",
+                "map/image-3.jpg",
+                "https://cdn.pingdom.local/map/thumbnails/image-3.jpg",
+                "map/thumbnails/image-3.jpg"
+        );
 
         User reporter = createUser("reporter03");
         PostReport report = createPostReport(reporter.getId(), reporter.getUsername(), mapImage, "상세 신고");
@@ -154,7 +164,8 @@ class AdminPostControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapImage.getId()))
                 .andExpect(jsonPath("$.name").value("신고 대상 제목"))
-                .andExpect(jsonPath("$.imageUrl").value("https://example.com/image-3.jpg"))
+                .andExpect(jsonPath("$.imageUrl").value("https://cdn.pingdom.test/map/image-3.jpg"))
+                .andExpect(jsonPath("$.thumbnailUrl").value("https://cdn.pingdom.test/map/thumbnails/image-3.jpg"))
                 .andExpect(jsonPath("$.userId").value(owner.getId()))
                 .andExpect(jsonPath("$.username").value(owner.getUsername()))
                 .andExpect(jsonPath("$.reports.length()").value(1))
@@ -189,6 +200,31 @@ class AdminPostControllerTest {
                 .andExpect(jsonPath("$.posts[0].id").value(pendingPost.getId()))
                 .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(acceptedPost.getId().intValue())))
                 .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(noReportPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsReturnsConfiguredCdnUrlFromS3Key() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("cdnUrlOwner");
+        MapImage mapImage = createMapImage(
+                owner.getId(),
+                owner.getUsername(),
+                "https://cdn.pingdom.local/map/admin-list.jpg",
+                "CDN 변환 게시글",
+                "환경별 CDN URL 테스트",
+                "map/admin-list.jpg",
+                "https://cdn.pingdom.local/map/thumbnails/admin-list.jpg",
+                "map/thumbnails/admin-list.jpg"
+        );
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.posts[0].imageUrl").value("https://cdn.pingdom.test/map/admin-list.jpg"))
+                .andExpect(jsonPath("$.posts[0].thumbnailUrl").value("https://cdn.pingdom.test/map/thumbnails/admin-list.jpg"));
     }
 
     @Test
@@ -503,9 +539,24 @@ class AdminPostControllerTest {
     }
 
     private MapImage createMapImage(Long userId, String username, String imageUrl, String title, String description) {
+        return createMapImage(userId, username, imageUrl, title, description, "test-key-" + userId, null, null);
+    }
+
+    private MapImage createMapImage(
+            Long userId,
+            String username,
+            String imageUrl,
+            String title,
+            String description,
+            String s3Key,
+            String thumbnailUrl,
+            String thumbnailS3Key
+    ) {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl(imageUrl)
-                .s3Key("test-key-" + userId)
+                .s3Key(s3Key)
+                .thumbnailUrl(thumbnailUrl)
+                .thumbnailS3Key(thumbnailS3Key)
                 .title(title)
                 .description(description)
                 .userId(userId)

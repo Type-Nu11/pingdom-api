@@ -13,6 +13,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.support.S3ObjectUrlResolver;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
 
     private final MapImageRepository mapImageRepository;
     private final PostReportRepository postReportRepository;
+    private final S3ObjectUrlResolver s3ObjectUrlResolver;
 
     @Override
     @Transactional(readOnly = true)
@@ -107,8 +109,8 @@ public class AdminPostQueryServiceImpl implements AdminPostQueryService {
         return new AdminPostItem(
                 mapImage.getId(),
                 mapImage.getTitle(),
-                mapImage.getImageUrl(),
-                mapImage.getThumbnailUrl(),
+                s3ObjectUrlResolver.resolve(mapImage.getImageUrl(), mapImage.getS3Key()),
+                s3ObjectUrlResolver.resolve(mapImage.getThumbnailUrl(), mapImage.getThumbnailS3Key()),
                 mapImage.getUserId(),
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
