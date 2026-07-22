@@ -96,6 +96,40 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void adminDashboardRecentActivitiesAndPendingItemsAreDocumentedInWebGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/admin/dashboard/recent-activities")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/dashboard/pending-items")).isFalse();
+        assertThat(webDocument.path("paths").has("/admin/dashboard/recent-activities")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/dashboard/pending-items")).isTrue();
+
+        JsonNode recentActivities = webDocument.at("/paths/~1admin~1dashboard~1recent-activities/get");
+        JsonNode pendingItems = webDocument.at("/paths/~1admin~1dashboard~1pending-items/get");
+
+        assertThat(recentActivities.path("operationId").asText()).isEqualTo("getRecentActivities");
+        assertThat(recentActivities.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminDashboardRecentActivitiesResponse");
+        assertThat(recentActivities.path("responses").has("401")).isTrue();
+        assertThat(recentActivities.path("responses").has("403")).isTrue();
+        assertLimitParameter(recentActivities.path("parameters").path(0));
+
+        assertThat(pendingItems.path("operationId").asText()).isEqualTo("getPendingItems");
+        assertThat(pendingItems.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminDashboardPendingItemsResponse");
+        assertThat(pendingItems.path("responses").has("401")).isTrue();
+        assertThat(pendingItems.path("responses").has("403")).isTrue();
+        assertLimitParameter(pendingItems.path("parameters").path(0));
+
+        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentPlaceItem")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentPostItem")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentReportItem")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentUserSanctionItem")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardPendingItem")).isTrue();
+    }
+
+    @Test
     void discoveryAndRecommendationContractsExposeFiltersBoundsAndFailureResponses() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode discovery = appDocument.at("/paths/~1places/get");
@@ -826,6 +860,15 @@ class OpenApiDocumentationValidationTest {
                     mismatches
             );
         }
+    }
+
+    private void assertLimitParameter(JsonNode parameter) {
+        assertThat(parameter.path("name").asText()).isEqualTo("limit");
+        assertThat(parameter.path("in").asText()).isEqualTo("query");
+        assertThat(parameter.path("required").asBoolean()).isFalse();
+        assertThat(parameter.path("schema").path("default").asInt()).isEqualTo(10);
+        assertThat(parameter.path("schema").path("minimum").asInt()).isEqualTo(1);
+        assertThat(parameter.path("schema").path("maximum").asInt()).isEqualTo(50);
     }
 
     private JsonNode resolveSchema(JsonNode document, JsonNode schema) {

@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentAct
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
 import com.typenull.pingdom.moderation.application.query.dashboard.AdminDashboardQueryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -138,6 +139,11 @@ public class AdminDashboardController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminDashboardRecentActivitiesResponse getRecentActivities(
+            @Parameter(
+                    description = "조회할 최대 개수. 1~50 범위로 보정됩니다.",
+                    example = "10",
+                    schema = @Schema(defaultValue = "10", minimum = "1", maximum = "50")
+            )
             @RequestParam(defaultValue = "10") int limit
     ) {
         return adminDashboardQueryService.getRecentActivities(limit);
@@ -173,6 +179,11 @@ public class AdminDashboardController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminDashboardPendingItemsResponse getPendingItems(
+            @Parameter(
+                    description = "조회할 최대 개수. 1~50 범위로 보정됩니다.",
+                    example = "10",
+                    schema = @Schema(defaultValue = "10", minimum = "1", maximum = "50")
+            )
             @RequestParam(defaultValue = "10") int limit
     ) {
         return adminDashboardQueryService.getPendingItems(limit);
