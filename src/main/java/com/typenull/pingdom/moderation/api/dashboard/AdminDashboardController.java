@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentAct
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
 import com.typenull.pingdom.moderation.application.query.dashboard.AdminDashboardQueryService;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -30,7 +31,7 @@ public class AdminDashboardController {
     @GetMapping("/summary")
     @Operation(
             summary = "관리자 대시보드 요약 조회",
-            description = "전체 장소, 게시글, 처리 대기 신고, 현재 밴 사용자 수를 조회합니다. 각 항목은 개별 집계 시점의 운영 현황을 나타냅니다."
+            description = "전체 장소, 게시글, 처리 대기 신고, 현재 밴 사용자 수와 운영 지표를 조회합니다. 등록 변화 지표는 서버 기준 오늘 00시부터 현재까지와 오늘을 포함한 최근 7일을 제공합니다. 중복 장소는 이름·주소 기준 후보 그룹 수, 밴 만료 예정 사용자는 현재 시각부터 7일 이내의 임시 밴 사용자 수, 위치 정보 누락 장소는 location이 없는 장소 수를 의미합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -43,7 +44,28 @@ public class AdminDashboardController {
                                       "placeCount": 44,
                                       "postCount": 58,
                                       "pendingReportCount": 5,
-                                      "bannedUserCount": 6
+                                      "bannedUserCount": 6,
+                                      "operationalMetrics": {
+                                        "today": {
+                                          "period": "TODAY",
+                                          "startedAt": "2026-07-21T00:00:00",
+                                          "endedAt": "2026-07-21T15:30:00",
+                                          "placeRegistrationCount": 3,
+                                          "postRegistrationCount": 7
+                                        },
+                                        "last7Days": {
+                                          "period": "LAST_7_DAYS",
+                                          "startedAt": "2026-07-15T00:00:00",
+                                          "endedAt": "2026-07-21T15:30:00",
+                                          "placeRegistrationCount": 12,
+                                          "postRegistrationCount": 31
+                                        },
+                                        "duplicatePlaceGroupCount": 2,
+                                        "expiringBannedUserCount": 4,
+                                        "missingLocationPlaceCount": 1,
+                                        "expiringBanUntil": "2026-07-28T15:30:00",
+                                        "collectedAt": "2026-07-21T15:30:00"
+                                      }
                                     }
                                     """)
                     )
@@ -117,6 +139,11 @@ public class AdminDashboardController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminDashboardRecentActivitiesResponse getRecentActivities(
+            @Parameter(
+                    description = "조회할 최대 개수. 1~50 범위로 보정됩니다.",
+                    example = "10",
+                    schema = @Schema(defaultValue = "10", minimum = "1", maximum = "50")
+            )
             @RequestParam(defaultValue = "10") int limit
     ) {
         return adminDashboardQueryService.getRecentActivities(limit);
@@ -152,6 +179,11 @@ public class AdminDashboardController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminDashboardPendingItemsResponse getPendingItems(
+            @Parameter(
+                    description = "조회할 최대 개수. 1~50 범위로 보정됩니다.",
+                    example = "10",
+                    schema = @Schema(defaultValue = "10", minimum = "1", maximum = "50")
+            )
             @RequestParam(defaultValue = "10") int limit
     ) {
         return adminDashboardQueryService.getPendingItems(limit);

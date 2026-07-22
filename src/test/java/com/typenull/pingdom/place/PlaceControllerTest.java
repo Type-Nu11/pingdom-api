@@ -1445,9 +1445,10 @@ class PlaceControllerTest {
                         .param("latitude", "35.1803")
                         .param("longitude", "128.1079")
                         .param("limit", "1")
-                        .param("radiusKm", "5.0"))
+                        .param("radiusKm", "5.0")
+                        .param("recommendationVersion", "place-rec-v2"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v1"))
+                .andExpect(jsonPath("$.recommendationVersion").value("place-rec-v2"))
                 .andExpect(jsonPath("$.recommendationRequestId").isNotEmpty())
                 .andReturn();
 
@@ -1468,7 +1469,7 @@ class PlaceControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1",
+                                "recommendationVersion", "place-rec-v2",
                                 "requestId", requestId
                         ))))
                 .andExpect(status().isCreated());
@@ -1483,20 +1484,27 @@ class PlaceControllerTest {
         assertEquals(1, conversions.size());
         assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
         assertEquals(PlaceRecommendationConversionType.BOOKMARK, conversions.get(0).getConversionType());
-        assertEquals("place-rec-v1", conversions.get(0).getRecommendationVersion());
+        assertEquals("place-rec-v2", conversions.get(0).getRecommendationVersion());
         assertNotNull(conversions.get(0).getCreatedAt());
         assertNotNull(conversions.get(0).getPlaceRecommendationClickId());
+        List<PlaceRecommendationFeatureLog> attributedFeatureLogs = placeRecommendationFeatureLogRepository
+                .findByRequestIdAndUserIdOrderByRankingAsc(requestId, conversions.get(0).getUserId());
+        assertEquals(1, attributedFeatureLogs.size());
+        assertEquals(
+                attributedFeatureLogs.get(0).getId(),
+                conversions.get(0).getPlaceRecommendationFeatureLogId()
+        );
 
         List<PlaceRecommendationExposure> exposures = waitForValue(
                 placeRecommendationExposureRepository::findAll,
                 loaded -> loaded.size() == 1
         );
         assertEquals(1, exposures.size());
-        assertEquals("place-rec-v1", exposures.get(0).getRecommendationVersion());
+        assertEquals("place-rec-v2", exposures.get(0).getRecommendationVersion());
 
         List<PlaceRecommendationClick> clicks = placeRecommendationClickRepository.findAll();
         assertEquals(1, clicks.size());
-        assertEquals("place-rec-v1", clicks.get(0).getRecommendationVersion());
+        assertEquals("place-rec-v2", clicks.get(0).getRecommendationVersion());
         cleanupCommittedRecommendationTestData();
     }
 

@@ -26,6 +26,7 @@
 | 전환 귀속 | 행동 전환을 가장 최근의 같은 사용자·장소 클릭과 추천 버전에 연결하는 처리 | 클릭 후 7일 이내일 때만 수행한다. |
 | 실제 방문 | 사용자가 장소에 물리적으로 방문했다는 사실 | 현재 수집·검증·저장하지 않는다. 행동 전환과 동의어로 사용하지 않는다. |
 | 추천 snapshot | 원천 로그와 장소 집계를 장소별·추천 버전별로 조회용 집계에 반영한 값 | 원천 로그가 기준이며, 필요 시 관리자 재동기화로 다시 계산한다. |
+| 관광객 전환 모델 | 추천 당시의 피처 로그와 이후 행동 전환 원천 로그를 연결한 학습·분석 기준 | 실제 방문 모델이 아니며 현재 전환 유형은 `BOOKMARK`, `LIKE`다. |
 
 문서와 운영 화면에서는 `장소 방문 전환` 대신 `추천 행동 전환`을 사용한다. 과거 코드와
 테이블의 `conversion` 명칭은 호환성을 위해 유지하되, 실제 방문 측정으로 해석하지 않는다.
@@ -74,6 +75,10 @@
    않고 오류 로그만 남긴다. 실패한 노출 원천 로그는 snapshot 재동기화로 새로 만들 수 없다.
 5. 장소가 없으면 클릭을 기록하지 않는다. 북마크 또는 좋아요 자체의 기존 유효성 검사는 각
    행동 유스케이스가 먼저 수행한다.
+6. 행동 전환을 기록할 때 클릭의 `requestId`, 사용자, 장소, 추천 버전이 모두 일치하는 추천 피처 로그가
+   있으면 전환 row의 `place_recommendation_feature_log_id`로 연결한다. feature logging이
+   비활성화됐거나 기존 데이터여서 피처 로그가 없으면 `NULL`로 기록하며 행동 전환 자체는
+   정상 처리한다.
 
 이 규칙 때문에 현재 전환 지표는 노출-클릭-행동의 완전한 세션 퍼널이나 실제 방문 지표가
 아니다. 추천 후 행동을 운영상 비교하기 위한 귀속 지표로만 사용한다.
@@ -109,7 +114,7 @@ totalConversionRate = (bookmarkConversionCount + likeConversionCount) / exposure
 | --- | --- | --- |
 | App API | `GET /places/recommendations`, `POST /places/recommendations/click`와 v1 호환 경로 | 요청·응답·경로 변경 없음 |
 | 관리자 API | 추천 성과 조회와 `POST /admin/places/recommendation-snapshots/resync` | 요청·응답 변경 없음 |
-| DB schema | 추천 노출·클릭·전환 원천 테이블과 snapshot, 기존 Flyway migration | migration 추가·수정 없음 |
+| DB schema | 추천 노출·클릭·전환 원천 테이블과 snapshot | 신규 전환 row에 nullable feature log 참조를 저장하며 기존 row는 변경하지 않음 |
 | OpenAPI baseline | `src/test/resources/openapi-baseline` | 기준 스펙 갱신 없음 |
 
 향후 실제 방문 신호를 도입하거나 클릭 기준 전환율로 지표를 변경할 경우에는 API·데이터
@@ -127,3 +132,17 @@ totalConversionRate = (bookmarkConversionCount + likeConversionCount) / exposure
 4. 원천 노출 로그 자체가 누락된 경우 재동기화는 누락을 복원하지 않는다. 원인과 영향 범위를
    기록하고, 동일 요청을 임의로 재생성하지 않는다.
 5. 재동기화 후 성공·실패 metric과 로그를 확인하고, 남은 차이는 별도 이슈로 추적한다.
+
+## 9. 호환성과 rollback 지점
+
+- `V67`은 `place_recommendation_conversion`에 nullable 참조만 추가한다. 기존 row와 기존 API
+  요청·응답은 그대로 유지한다.
+- 피처 로그를 찾지 못해도 전환 원천 로그와 snapshot 갱신은 계속 수행한다. feature logging
+  설정과 비동기 노출 저장 여부가 행동 전환의 성공 조건으로 확장되지 않는다.
+- 애플리케이션 rollback 시 이전 버전은 신규 컬럼을 읽거나 쓰지 않으므로 schema를 즉시
+  되돌릴 필요가 없다. 컬럼과 제약 삭제는 데이터 보존 여부를 검토한 별도 contract migration으로
+  처리한다.
+- 연결 정합성은 `place_recommendation_feature_log_id` FK가 보장한다. 장소 병합은 양쪽 원천
+  row의 `place_id`를 함께 재할당하므로 기존 연결 식별자는 유지된다.
+- feature log 보존 기간이 끝나 삭제되면 FK의 `ON DELETE SET NULL`에 따라 전환 원천 row는
+  유지하고 학습·분석 연결만 제거한다.

@@ -101,6 +101,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     );
 
     @Query("""
+            SELECT COUNT(u)
+            FROM User u
+            WHERE u.banned = true
+              AND u.banType = :temporaryType
+              AND u.banExpiresAt IS NOT NULL
+              AND u.banExpiresAt > :now
+              AND u.banExpiresAt <= :expiresUntil
+            """)
+    long countTemporaryBansExpiringUntil(
+            @Param("temporaryType") UserBanType temporaryType,
+            @Param("now") LocalDateTime now,
+            @Param("expiresUntil") LocalDateTime expiresUntil
+    );
+
+    @Query("""
             SELECT u
             FROM User u
             WHERE u.banned = true

@@ -23,6 +23,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.ColumnDefault;
+import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
@@ -185,6 +186,10 @@ public class MapPlace {
     @ColumnDefault("0")
     @Column(name = "photo_count", nullable = false)
     private Long photoCount = 0L;
+
+    @CreationTimestamp
+    @Column(name = "created_at", nullable = false, updatable = false)
+    private LocalDateTime createdAt;
 
     public long currentPhotoCount() {
         return photoCount == null ? 0L : photoCount;
