@@ -170,6 +170,13 @@ class OpenApiDocumentationValidationTest {
         assertThat(recommendation.at("/parameters/2/schema/maximum").asInt())
                 .as("Recommendation limit 상한은 20이어야 한다")
                 .isEqualTo(20);
+        JsonNode recommendationItem = appDocument.at("/components/schemas/PlaceRecommendationItem/properties");
+        assertThat(recommendationItem.has("currentlyOperating"))
+                .as("추천 항목은 현재 영업 여부를 제공해야 한다")
+                .isTrue();
+        assertThat(recommendationItem.has("currentlyOperatingCheckedAt"))
+                .as("추천 항목은 현재 영업 여부 판정 시각을 제공해야 한다")
+                .isTrue();
     }
 
     @Test
