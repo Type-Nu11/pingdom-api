@@ -26,6 +26,10 @@ public record PlaceRecommendationItem(
         PlaceOperatingStatus operatingStatus,
         @Schema(description = "운영 상태 최신 확인 시각", nullable = true)
         LocalDateTime operatingStatusCheckedAt,
+        @Schema(description = "현재 영업 여부. 영업시간 미등록 시 null", nullable = true)
+        Boolean currentlyOperating,
+        @Schema(description = "현재 영업 여부 판정 시각", nullable = true)
+        LocalDateTime currentlyOperatingCheckedAt,
         @Schema(description = "장소 위도", example = "35.1894")
         Double latitude,
         @Schema(description = "장소 경도", example = "128.0789")

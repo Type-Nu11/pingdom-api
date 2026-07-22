@@ -49,7 +49,13 @@ record CandidatePlace(
 ) {
 }
 
-record PlaceDistance(MapPlace place, Set<CandidateSource> sources, double distanceMeters) {
+record PlaceDistance(
+        MapPlace place,
+        Set<CandidateSource> sources,
+        double distanceMeters,
+        Boolean currentlyOperating,
+        LocalDateTime currentlyOperatingCheckedAt
+) {
 }
 
 record CandidateSelection(java.util.List<PlaceDistance> candidates, double appliedRadiusKm) {
