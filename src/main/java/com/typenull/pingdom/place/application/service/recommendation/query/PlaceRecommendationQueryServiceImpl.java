@@ -50,6 +50,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
     private final PlaceRecommendationScoringService placeRecommendationScoringService;
+    private final CurrentActivityIntentRankingService currentActivityIntentRankingService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
     private final RecommendationMetrics recommendationMetrics;
     private final ApplicationEventPublisher eventPublisher;
@@ -93,7 +94,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     recommendationRequestId,
                     safeLimit,
                     safeRadiusKm,
-                    safeRadiusKm
+                    safeRadiusKm,
+                    null
             ));
         }
 
@@ -125,7 +127,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     recommendationRequestId,
                     safeLimit,
                     safeRadiusKm,
-                    selection.appliedRadiusKm()
+                    selection.appliedRadiusKm(),
+                    null
             ));
         }
 
@@ -175,10 +178,12 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 intermediateCandidates,
                 resolvedPolicy.weights(hasPersonalSignals)
         );
+        CurrentActivityIntentRankingService.IntentRankingResult intentRankingResult =
+                currentActivityIntentRankingService.apply(userId, scoredCandidates);
         List<ScoredCandidate> portfolioCandidates = placeRecommendationPortfolioService.buildCandidatePortfolio(
                 safeLimit,
                 resolvedPolicy,
-                scoredCandidates
+                intentRankingResult.candidates()
         );
         List<ScoredCandidate> rerankedCandidates = placeRecommendationPortfolioService.rerankWithMmr(
                 portfolioCandidates,
@@ -233,7 +238,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 recommendationRequestId,
                 safeLimit,
                 safeRadiusKm,
-                appliedRadiusKm
+                appliedRadiusKm,
+                intentRankingResult.intent()
         ));
     }
 

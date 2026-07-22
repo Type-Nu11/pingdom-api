@@ -20,6 +20,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRe
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.List;
@@ -90,6 +91,9 @@ class PlaceRecommendationQueryServiceImplTest {
     private RecommendationMetrics recommendationMetrics;
 
     @Mock
+    private UserCurrentActivityIntentRepository userCurrentActivityIntentRepository;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
@@ -118,6 +122,12 @@ class PlaceRecommendationQueryServiceImplTest {
         PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
                 placeRecommendationSimilarityService
         );
+        CurrentActivityIntentRankingService currentActivityIntentRankingService =
+                new CurrentActivityIntentRankingService(
+                        userCurrentActivityIntentRepository,
+                        mapPlaceRecommendationCandidateRepository,
+                        java.time.Clock.systemUTC()
+                );
         PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
                 placeRecommendationSimilarityService
         );
@@ -133,6 +143,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationCandidateCollector,
                 placeRecommendationAggregateLoader,
                 placeRecommendationScoringService,
+                currentActivityIntentRankingService,
                 placeRecommendationPortfolioService,
                 recommendationMetrics,
                 eventPublisher
