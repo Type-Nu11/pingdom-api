@@ -154,7 +154,9 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
         long preparedStatementCount = statistics().getPrepareStatementCount();
 
         assertThat(candidatePool).isNotEmpty();
-        assertThat(preparedStatementCount).isLessThanOrEqualTo(4L);
+        assertThat(preparedStatementCount)
+                .as("운영시간을 일괄 조회하므로 후보 수와 무관하게 쿼리 수가 일정해야 한다")
+                .isLessThanOrEqualTo(6L);
     }
 
     private MapPlace createPlace(String name, double latitude, double longitude) {

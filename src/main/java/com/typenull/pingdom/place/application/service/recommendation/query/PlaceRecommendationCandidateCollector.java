@@ -4,6 +4,8 @@ import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.recommendation.snapshot.PlaceRecommendationSnapshot;
+import com.typenull.pingdom.place.application.service.place.operating.PlaceCurrentOperatingState;
+import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingHoursEvaluator;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
@@ -41,6 +43,7 @@ class PlaceRecommendationCandidateCollector {
     private final MapPlaceRepository mapPlaceRepository;
     private final MapPlaceRecommendationCandidateRepository mapPlaceRecommendationCandidateRepository;
     private final PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+    private final PlaceOperatingHoursEvaluator placeOperatingHoursEvaluator;
 
     List<CandidatePlace> loadCandidatePool(double latitude, double longitude, UserSignalContext signalContext) {
         LinkedHashMap<Long, CandidatePlaceAccumulator> mergedCandidates = new LinkedHashMap<>();
@@ -64,9 +67,39 @@ class PlaceRecommendationCandidateCollector {
                 TREND_CANDIDATE_LIMIT
         );
 
+        initializeOperatingSchedules(mergedCandidates.keySet());
+
         return mergedCandidates.values().stream()
-                .map(accumulator -> new CandidatePlace(accumulator.place(), Set.copyOf(accumulator.sources())))
+                .map(this::toCandidatePlace)
                 .toList();
+    }
+
+    private CandidatePlace toCandidatePlace(CandidatePlaceAccumulator accumulator) {
+        MapPlace place = accumulator.place();
+        if (!hasOperatingSchedule(place)) {
+            return new CandidatePlace(place, Set.copyOf(accumulator.sources()), null, null);
+        }
+
+        PlaceCurrentOperatingState state = placeOperatingHoursEvaluator.evaluate(place);
+        return new CandidatePlace(
+                place,
+                Set.copyOf(accumulator.sources()),
+                state.currentlyOperating(),
+                state.checkedAt()
+        );
+    }
+
+    private void initializeOperatingSchedules(Set<Long> placeIds) {
+        if (placeIds.isEmpty()) {
+            return;
+        }
+        mapPlaceRepository.findAllWithRegularOperatingHoursByIdIn(placeIds);
+        mapPlaceRepository.findAllWithOperatingExceptionsByIdIn(placeIds);
+    }
+
+    private boolean hasOperatingSchedule(MapPlace place) {
+        return !place.currentRegularOperatingHours().isEmpty()
+                || !place.currentOperatingExceptions().isEmpty();
     }
 
     private List<MapPlace> loadGeoCandidates(double latitude, double longitude, double maxRadiusKm) {
