@@ -9,6 +9,11 @@ import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -36,6 +41,50 @@ public class AdminNotificationController {
             summary = "관리자 알림 목록 조회",
             description = "관리자가 사용자, 알림 유형, 읽음 상태, 기간 조건으로 인앱 알림을 페이지 단위로 조회합니다."
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "관리자 알림 목록 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminNotificationResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "notifications": [
+                                        {
+                                          "notificationId": 1,
+                                          "userId": 10,
+                                          "type": "ADMIN_REPORT_RECEIVED",
+                                          "title": "신고 접수 알림",
+                                          "body": "새로운 신고가 접수되었습니다.",
+                                          "token": "report:30",
+                                          "read": false,
+                                          "createdAt": "2026-07-21T15:30:00"
+                                        }
+                                      ],
+                                      "page": 1,
+                                      "limit": 20,
+                                      "totalCount": 1,
+                                      "totalPages": 1,
+                                      "hasNext": false
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "조회 기간 오류",
+                    content = @Content(
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "message": "알림 조회 종료 시각은 시작 시각보다 이후여야 합니다.",
+                                      "code": "INVALID_NOTIFICATION_FILTER_PERIOD"
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
+    })
     public AdminNotificationResponse listNotifications(
             @Parameter(description = "수신 사용자 ID", example = "10")
             @RequestParam(required = false) Long userId,
@@ -62,6 +111,22 @@ public class AdminNotificationController {
             summary = "관리자 미확인 알림 개수 조회",
             description = "관리자가 아직 읽음 처리하지 않은 인앱 알림 개수를 조회합니다."
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "미확인 알림 개수 조회 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminNotificationUnreadCountResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "unreadCount": 3
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
+    })
     public AdminNotificationUnreadCountResponse countUnread() {
         return adminNotificationQueryService.countUnread();
     }
@@ -71,6 +136,36 @@ public class AdminNotificationController {
             summary = "관리자 알림 읽음 처리",
             description = "관리자가 운영 확인이 필요한 인앱 알림을 읽음 상태로 변경합니다."
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "알림 읽음 처리 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminNotificationReadResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "notificationId": 1,
+                                      "read": true,
+                                      "message": "알림을 읽음 처리했습니다."
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "알림을 찾을 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "message": "알림을 찾을 수 없습니다.",
+                                      "code": "NOTIFICATION_NOT_FOUND"
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
+    })
     public AdminNotificationReadResponse markAsRead(
             @Parameter(description = "알림 ID", example = "1")
             @PathVariable Long notificationId,
@@ -84,6 +179,23 @@ public class AdminNotificationController {
             summary = "관리자 전체 알림 읽음 처리",
             description = "관리자가 모든 미확인 인앱 알림을 읽음 상태로 변경합니다."
     )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "전체 알림 읽음 처리 성공",
+                    content = @Content(
+                            schema = @Schema(implementation = AdminNotificationReadAllResponse.class),
+                            examples = @ExampleObject(value = """
+                                    {
+                                      "updatedCount": 3,
+                                      "message": "전체 알림을 읽음 처리했습니다."
+                                    }
+                                    """)
+                    )
+            ),
+            @ApiResponse(responseCode = "401", description = "인증 실패"),
+            @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
+    })
     public AdminNotificationReadAllResponse markAllAsRead(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {

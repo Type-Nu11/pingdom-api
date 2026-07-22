@@ -12,7 +12,7 @@ public record AdminDashboardSummaryResponse(
         long pendingReportCount,
         @Schema(description = "현재 밴 사용자 수", example = "6")
         long bannedUserCount,
-        @Schema(description = "추가 운영 지표")
+        @Schema(description = "추가 운영 지표. 데이터가 없는 경우 각 수치형 지표는 0으로 응답합니다.")
         AdminDashboardOperationalMetricsResponse operationalMetrics
 ) {
 }
