@@ -5,7 +5,7 @@ import java.time.LocalDateTime;
 
 @Schema(description = "관리자 대시보드 기간별 운영 변화 지표")
 public record AdminDashboardMetricWindowResponse(
-        @Schema(description = "집계 기간 코드", example = "TODAY")
+        @Schema(description = "집계 기간 코드", allowableValues = {"TODAY", "LAST_7_DAYS"}, example = "TODAY")
         String period,
         @Schema(description = "집계 시작 시각", example = "2026-07-21T00:00:00")
         LocalDateTime startedAt,

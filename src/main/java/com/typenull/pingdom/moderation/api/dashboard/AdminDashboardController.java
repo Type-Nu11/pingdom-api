@@ -30,7 +30,7 @@ public class AdminDashboardController {
     @GetMapping("/summary")
     @Operation(
             summary = "관리자 대시보드 요약 조회",
-            description = "전체 장소, 게시글, 처리 대기 신고, 현재 밴 사용자 수와 최근 운영 변화 지표를 조회합니다. 오늘은 서버 기준 00시부터 현재까지, 최근 7일은 오늘을 포함한 7일 전 00시부터 현재까지 집계합니다."
+            description = "전체 장소, 게시글, 처리 대기 신고, 현재 밴 사용자 수와 운영 지표를 조회합니다. 등록 변화 지표는 서버 기준 오늘 00시부터 현재까지와 오늘을 포함한 최근 7일을 제공합니다. 중복 장소는 이름·주소 기준 후보 그룹 수, 밴 만료 예정 사용자는 현재 시각부터 7일 이내의 임시 밴 사용자 수, 위치 정보 누락 장소는 location이 없는 장소 수를 의미합니다."
     )
     @ApiResponses({
             @ApiResponse(
