@@ -476,10 +476,20 @@ class PlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(visiblePlace.getId()))
+                .andExpect(jsonPath("$.name").value("서울 K-컬처 스튜디오"))
                 .andExpect(jsonPath("$.englishName").value("Seoul K-Culture Studio"))
                 .andExpect(jsonPath("$.imageUrl").value("https://cdn.pingdom.test/studio.jpg"))
+                .andExpect(jsonPath("$.address").value("서울특별시 중구 문화로 1"))
+                .andExpect(jsonPath("$.touristSummary").value(
+                        "A verified K-culture experience for international visitors."))
+                .andExpect(jsonPath("$.touristCategories").value(containsInAnyOrder("EXHIBITION")))
+                .andExpect(jsonPath("$.latitude").value(37.5665))
+                .andExpect(jsonPath("$.longitude").value(126.9780))
+                .andExpect(jsonPath("$.operatingStatus").value("OPERATING"))
                 .andExpect(jsonPath("$.currentlyOperating").value(false))
-                .andExpect(jsonPath("$.touristCategories[0]").value("EXHIBITION"));
+                .andExpect(jsonPath("$.currentlyOperatingCheckedAt").isNotEmpty())
+                .andExpect(jsonPath("$.primaryInformationSource").value("LEGACY"))
+                .andExpect(jsonPath("$.informationVerificationStatus").value("UNVERIFIED"));
 
         visiblePlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
         mapPlaceRepository.saveAndFlush(visiblePlace);
@@ -497,6 +507,28 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.operatingStatus").value("TEMPORARILY_CLOSED"))
                 .andExpect(jsonPath("$.currentlyOperating").value(false));
+
+        visiblePlace.updateOperatingStatus(PlaceOperatingStatus.PERMANENTLY_CLOSED, LocalDateTime.now());
+        mapPlaceRepository.saveAndFlush(visiblePlace);
+
+        mockMvc.perform(get("/places/{placeId}/card", visiblePlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
+    void touristPlaceCardRequiresAuthenticationAndReturnsNotFoundForUnknownPlace() throws Exception {
+        mockMvc.perform(get("/places/{placeId}/card", 999_999_999L))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+
+        String accessToken = signupAndLogin("touristPlaceCardFailure" + Long.toUnsignedString(System.nanoTime()));
+
+        mockMvc.perform(get("/places/{placeId}/card", 999_999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
     @Test
