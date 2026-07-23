@@ -4,6 +4,7 @@ import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerP
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
@@ -205,6 +206,40 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant(),
                 merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public TouristPlaceCardResponse getTouristPlaceCard(Long placeId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        if (!mapPlace.isVisibleInDiscovery() || mapPlace.getOperatingStatus() == PlaceOperatingStatus.PERMANENTLY_CLOSED) {
+            // 숨김·영구 폐업 장소는 탐색 대상이 아니지만, 임시 휴업은 방문 판단을 위해 카드에 표시한다.
+            throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+        }
+
+        PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
+        return new TouristPlaceCardResponse(
+                mapPlace.getId(),
+                mapPlace.getName(),
+                mapPlace.getEnglishName(),
+                mapPlace.getImageUrl(),
+                mapPlace.getAddress(),
+                mapPlace.getRoadAddress(),
+                mapPlace.getGeocodingSource(),
+                mapPlace.getOperatingStatus(),
+                operatingState.currentlyOperating(),
+                operatingState.checkedAt(),
+                mapPlace.getCategory(),
+                mapPlace.getTouristSummary(),
+                mapPlace.currentTouristCategories(),
+                mapPlace.getPrimaryInformationSource(),
+                mapPlace.getInformationVerificationStatus(),
+                mapPlace.getInformationVerifiedAt(),
+                mapPlace.getInformationEvidenceUpdatedAt(),
+                mapPlace.getLatitude(),
+                mapPlace.getLongitude()
         );
     }
 
