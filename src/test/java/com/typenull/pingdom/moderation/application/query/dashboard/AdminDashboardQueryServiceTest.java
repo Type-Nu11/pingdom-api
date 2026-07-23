@@ -5,6 +5,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
+import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemType;
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemsResponse;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.repository.CurrentBannedUserCounts;
@@ -18,6 +21,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
+import java.util.List;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -136,5 +140,32 @@ class AdminDashboardQueryServiceTest {
         assertEquals(0L, response.operationalMetrics().expiringBannedUserCount());
         assertEquals(0L, response.operationalMetrics().missingLocationPlaceCount());
         verify(postReportRepository).countByStatus(PostReportStatus.PENDING);
+    }
+
+    @Test
+    void pendingReportSeparatesReportIdFromReportedPostId() {
+        PostReport report = PostReport.builder()
+                .id(30L)
+                .reportedImageId(22L)
+                .reportedUserId(7L)
+                .reporterUserId(8L)
+                .reporterUsername("tourist")
+                .reportedImageUrl("https://cdn.pingdom.test/post.jpg")
+                .reason("잘못된 장소 정보")
+                .status(PostReportStatus.PENDING)
+                .createdAt(LocalDateTime.of(2026, 7, 21, 15, 40))
+                .build();
+        when(postReportRepository.findRecentByStatus(
+                org.mockito.ArgumentMatchers.eq(PostReportStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(List.of(report));
+
+        AdminDashboardPendingItemsResponse response = service.getPendingItems(10);
+
+        assertEquals(1, response.items().size());
+        assertEquals(AdminDashboardPendingItemType.POST_REPORT, response.items().get(0).type());
+        assertEquals(30L, response.items().get(0).targetId());
+        assertEquals(30L, response.items().get(0).reportId());
+        assertEquals(22L, response.items().get(0).postId());
     }
 }

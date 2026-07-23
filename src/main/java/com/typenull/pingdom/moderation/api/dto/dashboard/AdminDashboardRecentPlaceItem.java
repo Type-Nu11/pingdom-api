@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.api.dto.dashboard;
 
 import io.swagger.v3.oas.annotations.media.Schema;
+import java.time.LocalDateTime;
 
 @Schema(description = "관리자 대시보드 최근 장소 등록 항목")
 public record AdminDashboardRecentPlaceItem(
@@ -13,6 +14,8 @@ public record AdminDashboardRecentPlaceItem(
         @Schema(description = "등록 사용자 ID", example = "3")
         Long userId,
         @Schema(description = "등록자명", example = "pingdom_user")
-        String registrant
+        String registrant,
+        @Schema(description = "장소 등록일", example = "2026-07-21T15:30:00")
+        LocalDateTime createdAt
 ) {
 }
