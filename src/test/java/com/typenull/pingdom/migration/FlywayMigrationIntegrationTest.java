@@ -1326,6 +1326,37 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_duplicate_candidate'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_duplicate_candidate'::regclass
+                      AND conname IN (
+                          'ck_place_duplicate_candidate_pair',
+                          'ck_place_duplicate_candidate_match_reason',
+                          'ck_place_duplicate_candidate_confidence',
+                          'ck_place_duplicate_candidate_distance',
+                          'ck_place_duplicate_candidate_status',
+                          'ck_place_duplicate_candidate_review',
+                          'ck_place_duplicate_candidate_merge'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_duplicate_candidate'
+                          AND indexname = 'uq_place_duplicate_candidate_pair'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
                         FROM information_schema.columns
                         WHERE table_name = 'post_report'
                           AND column_name = 'report_score'

@@ -11,6 +11,8 @@ public enum AdminErrorCode {
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."),
     PLACE_DUPLICATE_NOT_FOUND(HttpStatus.NOT_FOUND, "중복 후보 장소를 찾을 수 없습니다."),
     PLACE_MERGE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 병합 요청이 올바르지 않습니다."),
+    PLACE_DUPLICATE_CANDIDATE_NOT_FOUND(HttpStatus.NOT_FOUND, "중복 장소 후보를 찾을 수 없습니다."),
+    PLACE_DUPLICATE_DECISION_ALREADY_COMPLETED(HttpStatus.CONFLICT, "이미 판정이 완료된 중복 장소 후보입니다."),
     PLACE_OPERATING_STATUS_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 운영 상태 요청이 올바르지 않습니다."),
     PLACE_DISCOVERY_STATUS_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 탐색 노출 상태 요청이 올바르지 않습니다."),
     PLACE_INFORMATION_EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 정보 증빙을 찾을 수 없습니다."),
