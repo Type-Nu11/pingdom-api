@@ -136,6 +136,46 @@ public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long
             @Param("now") LocalDateTime now
     );
 
+    @Query("""
+            SELECT DISTINCT offer.placeId
+            FROM TouristOffer offer
+            WHERE offer.placeId IN :placeIds
+              AND offer.status = com.typenull.pingdom.offer.domain.OfferStatus.PUBLISHED
+              AND offer.startsAt <= :now
+              AND offer.endsAt > :now
+              AND offer.issuedQuantity < offer.totalQuantity
+              AND EXISTS (
+                  SELECT ownerPlace.placeId FROM MerchantOwnerPlace ownerPlace
+                  WHERE ownerPlace.placeId = offer.placeId
+                    AND ownerPlace.merchantOwnerUserId = offer.merchantOwnerUserId
+              )
+              AND EXISTS (
+                  SELECT profile.userId FROM MerchantOwnerProfile profile
+                  WHERE profile.userId = offer.merchantOwnerUserId
+                    AND profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
+              )
+              AND EXISTS (
+                  SELECT verification.userId FROM MerchantVerification verification
+                  WHERE verification.userId = offer.merchantOwnerUserId
+                    AND verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+                    AND verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+              )
+              AND EXISTS (
+                  SELECT ownerUser.id FROM User ownerUser
+                  WHERE ownerUser.id = offer.merchantOwnerUserId
+                    AND ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
+                    AND ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
+                    AND (ownerUser.banned = false OR (
+                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
+                        AND ownerUser.banExpiresAt <= :now
+                    ))
+              )
+            """)
+    List<Long> findPlaceIdsWithAvailableOffers(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("now") LocalDateTime now
+    );
+
     @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE TouristOffer offer
