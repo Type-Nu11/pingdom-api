@@ -67,8 +67,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("68");
-        assertThat(result.migrationsExecuted).isEqualTo(68);
+        assertThat(result.targetSchemaVersion).isEqualTo("69");
+        assertThat(result.migrationsExecuted).isEqualTo(69);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +80,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("68");
-        assertThat(result.migrationsExecuted).isEqualTo(67);
+        assertThat(result.targetSchemaVersion).isEqualTo("69");
+        assertThat(result.migrationsExecuted).isEqualTo(68);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +123,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("68");
-        assertThat(result.migrationsExecuted).isEqualTo(41);
+        assertThat(result.targetSchemaVersion).isEqualTo("69");
+        assertThat(result.migrationsExecuted).isEqualTo(42);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -320,8 +320,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("68");
-        assertThat(result.migrationsExecuted).isEqualTo(13);
+        assertThat(result.targetSchemaVersion).isEqualTo("69");
+        assertThat(result.migrationsExecuted).isEqualTo(14);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
