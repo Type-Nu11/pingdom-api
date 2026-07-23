@@ -39,6 +39,14 @@ public record PlaceRecommendationProperties(
             @DecimalMax(value = "1.0", message = "mmrRelevanceWeight는 1 이하여야 합니다.")
             double mmrRelevanceWeight,
 
+            @DecimalMin(value = "0.0", message = "interestMatchBoost는 0 이상이어야 합니다.")
+            @DecimalMax(value = "1.0", message = "interestMatchBoost는 1 이하여야 합니다.")
+            double interestMatchBoost,
+
+            @DecimalMin(value = "0.0", message = "intentMatchBoost는 0 이상이어야 합니다.")
+            @DecimalMax(value = "1.0", message = "intentMatchBoost는 1 이하여야 합니다.")
+            double intentMatchBoost,
+
             @Valid
             @NotNull(message = "mix는 필수입니다.")
             CandidateMix mix,
