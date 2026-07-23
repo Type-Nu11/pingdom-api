@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
@@ -179,6 +180,24 @@ public class PlaceController {
             @RequestParam(required = false) Double longitude
     ) {
         return ResponseEntity.ok(placeQueryService.autocompletePlaces(keyword, limit, latitude, longitude));
+    }
+
+    @GetMapping("/{placeId}/card")
+    @Operation(summary = "관광객용 장소 카드 조회", description = "관광객의 장소 탐색과 방문 결정을 위한 요약 정보를 조회합니다.")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 카드 조회 성공",
+                    content = @Content(schema = @Schema(implementation = TouristPlaceCardResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "공개 중인 장소를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<TouristPlaceCardResponse> getTouristPlaceCard(@PathVariable Long placeId) {
+        return ResponseEntity.ok(placeQueryService.getTouristPlaceCard(placeId));
     }
 
     @GetMapping("/{placeId}/operating-notices")
