@@ -31,6 +31,8 @@ public record PlaceRecommendationExplanationItem(
         double freshnessScore,
         @Schema(description = "검증 제보자 신뢰도 기반 score", example = "0.82")
         double trustScore,
+        @Schema(description = "K-컬처 관심사와 현재 여행 맥락 기반 score", example = "0.25")
+        double contextScore,
         @Schema(description = "최종 score", example = "0.74")
         double finalScore
 ) {
