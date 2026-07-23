@@ -144,6 +144,7 @@ class CurrentActivityIntentRankingServiceTest {
                 0d,
                 0d,
                 0d,
+                PlaceRecommendationTrustScoreLoader.NEUTRAL_TRUST_SCORE,
                 PersonalSignalType.NONE,
                 score,
                 PlaceRecommendationCandidateSource.FALLBACK

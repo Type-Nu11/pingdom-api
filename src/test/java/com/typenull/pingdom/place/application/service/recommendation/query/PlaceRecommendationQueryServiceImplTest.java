@@ -22,6 +22,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRe
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationTrustScoreRepository;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
@@ -73,6 +74,9 @@ class PlaceRecommendationQueryServiceImplTest {
 
     @Mock
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
+
+    @Mock
+    private PlaceRecommendationTrustScoreRepository placeRecommendationTrustScoreRepository;
 
     @Mock
     private PlaceRecommendationClickService placeRecommendationClickService;
@@ -134,6 +138,8 @@ class PlaceRecommendationQueryServiceImplTest {
         PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
                 placeRecommendationSimilarityService
         );
+        PlaceRecommendationTrustScoreLoader placeRecommendationTrustScoreLoader =
+                new PlaceRecommendationTrustScoreLoader(placeRecommendationTrustScoreRepository);
         CurrentActivityIntentRankingService currentActivityIntentRankingService =
                 new CurrentActivityIntentRankingService(
                         userCurrentActivityIntentRepository,
@@ -154,6 +160,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationUserSignalLoader,
                 placeRecommendationCandidateCollector,
                 placeRecommendationAggregateLoader,
+                placeRecommendationTrustScoreLoader,
                 placeRecommendationScoringService,
                 currentActivityIntentRankingService,
                 placeRecommendationPortfolioService,
@@ -165,6 +172,7 @@ class PlaceRecommendationQueryServiceImplTest {
         when(mapImageRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
         when(placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(any(), any()))
                 .thenReturn(Page.empty());
+        when(placeRecommendationTrustScoreRepository.findTrustScoresByPlaceIds(any())).thenReturn(List.of());
     }
 
     @Test
@@ -231,8 +239,8 @@ class PlaceRecommendationQueryServiceImplTest {
                         4,
                         0.75d,
                         new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
-                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d),
-                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d),
+                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
+                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d),
                         "place-rec-v1",
                         null
                 ));
@@ -338,8 +346,8 @@ class PlaceRecommendationQueryServiceImplTest {
                 4,
                 0.75d,
                 new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
-                new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d),
-                new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d),
+                new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
+                new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d),
                 "place-rec-v1",
                 null
         );
