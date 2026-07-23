@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.api.dashboard;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentActivitiesResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardSummaryResponse;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.moderation.application.query.dashboard.AdminDashboardQueryService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -96,7 +97,8 @@ public class AdminDashboardController {
                                           "name": "핑덤 카페",
                                           "address": "서울특별시 중구 세종대로 110",
                                           "userId": 3,
-                                          "registrant": "pingdom_user"
+                                          "registrant": "pingdom_user",
+                                          "createdAt": "2026-07-21T15:30:00"
                                         }
                                       ],
                                       "posts": [
@@ -135,14 +137,14 @@ public class AdminDashboardController {
                                     """)
                     )
             ),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
+            @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "관리자 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public AdminDashboardRecentActivitiesResponse getRecentActivities(
             @Parameter(
                     description = "조회할 최대 개수. 1~50 범위로 보정됩니다.",
                     example = "10",
-                    schema = @Schema(defaultValue = "10", minimum = "1", maximum = "50")
+                    schema = @Schema(type = "integer", defaultValue = "10", minimum = "1", maximum = "50")
             )
             @RequestParam(defaultValue = "10") int limit
     ) {
@@ -152,7 +154,7 @@ public class AdminDashboardController {
     @GetMapping("/pending-items")
     @Operation(
             summary = "관리자 대시보드 처리 필요 항목 조회",
-            description = "우선 처리해야 하는 PENDING 신고 목록을 조회합니다. 각 항목은 유형, 대상 ID, 제목, 상태, 생성일을 제공합니다. limit 값은 내부적으로 1~50 범위로 보정됩니다."
+            description = "우선 처리해야 하는 PENDING 신고 목록을 조회합니다. POST_REPORT의 targetId와 reportId는 신고 ID이며, postId는 신고 대상 게시글 ID입니다. type은 현재 POST_REPORT만 허용합니다. limit 값은 내부적으로 1~50 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -166,6 +168,8 @@ public class AdminDashboardController {
                                         {
                                           "type": "POST_REPORT",
                                           "targetId": 30,
+                                          "reportId": 30,
+                                          "postId": 22,
                                           "title": "야경이 좋은 장소",
                                           "status": "PENDING",
                                           "createdAt": "2026-07-21T15:40:00"
@@ -175,14 +179,14 @@ public class AdminDashboardController {
                                     """)
                     )
             ),
-            @ApiResponse(responseCode = "401", description = "인증 실패"),
-            @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
+            @ApiResponse(responseCode = "401", description = "인증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "관리자 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public AdminDashboardPendingItemsResponse getPendingItems(
             @Parameter(
                     description = "조회할 최대 개수. 1~50 범위로 보정됩니다.",
                     example = "10",
-                    schema = @Schema(defaultValue = "10", minimum = "1", maximum = "50")
+                    schema = @Schema(type = "integer", defaultValue = "10", minimum = "1", maximum = "50")
             )
             @RequestParam(defaultValue = "10") int limit
     ) {

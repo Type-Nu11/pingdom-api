@@ -68,7 +68,14 @@ class AdminDashboardControllerTest {
     void getRecentActivitiesReturnsDashboardActivities() throws Exception {
         when(adminDashboardQueryService.getRecentActivities(5))
                 .thenReturn(new AdminDashboardRecentActivitiesResponse(
-                        List.of(new AdminDashboardRecentPlaceItem(10L, "핑덤 카페", "서울특별시 중구 세종대로 110", 3L, "pingdom_user")),
+                        List.of(new AdminDashboardRecentPlaceItem(
+                                10L,
+                                "핑덤 카페",
+                                "서울특별시 중구 세종대로 110",
+                                3L,
+                                "pingdom_user",
+                                LocalDateTime.of(2026, 7, 21, 15, 30)
+                        )),
                         List.of(),
                         List.of(),
                         List.of()
@@ -78,6 +85,12 @@ class AdminDashboardControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].placeId").value(10))
                 .andExpect(jsonPath("$.places[0].name").value("핑덤 카페"))
+                .andExpect(jsonPath("$.places[0].createdAt").isArray())
+                .andExpect(jsonPath("$.places[0].createdAt[0]").value(2026))
+                .andExpect(jsonPath("$.places[0].createdAt[1]").value(7))
+                .andExpect(jsonPath("$.places[0].createdAt[2]").value(21))
+                .andExpect(jsonPath("$.places[0].createdAt[3]").value(15))
+                .andExpect(jsonPath("$.places[0].createdAt[4]").value(30))
                 .andExpect(jsonPath("$.posts.length()").value(0))
                 .andExpect(jsonPath("$.reports.length()").value(0))
                 .andExpect(jsonPath("$.userSanctions.length()").value(0));
@@ -88,8 +101,10 @@ class AdminDashboardControllerTest {
         when(adminDashboardQueryService.getPendingItems(5))
                 .thenReturn(new AdminDashboardPendingItemsResponse(
                         List.of(new AdminDashboardPendingItem(
-                                "POST_REPORT",
+                                com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemType.POST_REPORT,
                                 30L,
+                                30L,
+                                22L,
                                 "야경이 좋은 장소",
                                 "PENDING",
                         java.time.LocalDateTime.of(2026, 7, 21, 15, 40)
@@ -100,8 +115,21 @@ class AdminDashboardControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.items[0].type").value("POST_REPORT"))
                 .andExpect(jsonPath("$.items[0].targetId").value(30))
+                .andExpect(jsonPath("$.items[0].reportId").value(30))
+                .andExpect(jsonPath("$.items[0].postId").value(22))
                 .andExpect(jsonPath("$.items[0].title").value("야경이 좋은 장소"))
                 .andExpect(jsonPath("$.items[0].status").value("PENDING"));
+    }
+
+    @Test
+    void getPendingItemsReturnsEmptyArrayWhenNothingNeedsProcessing() throws Exception {
+        when(adminDashboardQueryService.getPendingItems(5))
+                .thenReturn(new AdminDashboardPendingItemsResponse(List.of()));
+
+        mockMvc.perform(get("/admin/dashboard/pending-items").param("limit", "5"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.items").isArray())
+                .andExpect(jsonPath("$.items.length()").value(0));
     }
 
     private AdminDashboardOperationalMetricsResponse operationalMetrics() {

@@ -113,6 +113,10 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("#/components/schemas/AdminDashboardRecentActivitiesResponse");
         assertThat(recentActivities.path("responses").has("401")).isTrue();
         assertThat(recentActivities.path("responses").has("403")).isTrue();
+        assertThat(recentActivities.at("/responses/401/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(recentActivities.at("/responses/403/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
         assertLimitParameter(recentActivities.path("parameters").path(0));
 
         assertThat(pendingItems.path("operationId").asText()).isEqualTo("getPendingItems");
@@ -120,13 +124,26 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("#/components/schemas/AdminDashboardPendingItemsResponse");
         assertThat(pendingItems.path("responses").has("401")).isTrue();
         assertThat(pendingItems.path("responses").has("403")).isTrue();
+        assertThat(pendingItems.at("/responses/403/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(pendingItems.at("/responses/401/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
         assertLimitParameter(pendingItems.path("parameters").path(0));
 
-        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentPlaceItem")).isTrue();
+        JsonNode schemas = webDocument.path("components").path("schemas");
+        assertThat(schemas.has("AdminDashboardRecentPlaceItem")).isTrue();
+        assertThat(schemas.at("/AdminDashboardRecentPlaceItem/properties/createdAt").path("format").asText())
+                .isEqualTo("date-time");
         assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentPostItem")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentReportItem")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentUserSanctionItem")).isTrue();
-        assertThat(webDocument.path("components").path("schemas").has("AdminDashboardPendingItem")).isTrue();
+        assertThat(schemas.has("AdminDashboardPendingItem")).isTrue();
+        assertThat(schemas.at("/AdminDashboardPendingItem/properties/type/enum").toString())
+                .contains("POST_REPORT");
+        assertThat(schemas.at("/AdminDashboardPendingItem/properties/reportId").path("type").asText())
+                .isEqualTo("integer");
+        assertThat(schemas.at("/AdminDashboardPendingItem/properties/postId").path("nullable").asBoolean())
+                .isTrue();
     }
 
     @Test
@@ -873,6 +890,7 @@ class OpenApiDocumentationValidationTest {
         assertThat(parameter.path("name").asText()).isEqualTo("limit");
         assertThat(parameter.path("in").asText()).isEqualTo("query");
         assertThat(parameter.path("required").asBoolean()).isFalse();
+        assertThat(parameter.path("schema").path("type").asText()).isEqualTo("integer");
         assertThat(parameter.path("schema").path("default").asInt()).isEqualTo(10);
         assertThat(parameter.path("schema").path("minimum").asInt()).isEqualTo(1);
         assertThat(parameter.path("schema").path("maximum").asInt()).isEqualTo(50);
