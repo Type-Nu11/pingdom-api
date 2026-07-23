@@ -6,8 +6,14 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMerg
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeHistoryResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceMergeRestoreResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateCandidateListResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateCandidateResponse;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateDecisionRequest;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateMergeRequest;
 import com.typenull.pingdom.moderation.application.query.place.management.AdminMapPlaceQueryService;
+import com.typenull.pingdom.moderation.application.service.place.duplicate.AdminPlaceDuplicateService;
 import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -21,7 +27,9 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.Valid;
 
 @RestController
 @RequestMapping("/admin/places")
@@ -32,6 +40,51 @@ public class AdminPlaceDuplicateController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
     private final AdminMapPlaceService adminMapPlaceService;
+    private final AdminPlaceDuplicateService adminPlaceDuplicateService;
+
+    @GetMapping("/duplicate-candidates")
+    @Operation(summary = "관리자 중복 장소 후보 조회")
+    public AdminPlaceDuplicateCandidateListResponse listDuplicateCandidates(
+            @RequestParam(defaultValue = "PENDING") PlaceDuplicateDecisionStatus status
+    ) {
+        return adminPlaceDuplicateService.list(status);
+    }
+
+    @GetMapping("/duplicate-candidates/{candidateId}")
+    @Operation(summary = "관리자 중복 장소 후보 상세 조회")
+    public AdminPlaceDuplicateCandidateResponse getDuplicateCandidate(@PathVariable Long candidateId) {
+        return adminPlaceDuplicateService.get(candidateId);
+    }
+
+    @PostMapping("/duplicate-candidates/{candidateId}/confirm")
+    @Operation(summary = "관리자 중복 장소 후보 확정")
+    public AdminPlaceDuplicateCandidateResponse confirmDuplicateCandidate(
+            @PathVariable Long candidateId,
+            @Valid @RequestBody AdminPlaceDuplicateDecisionRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        return adminPlaceDuplicateService.confirm(adminUser.userId(), candidateId, request.reviewNote());
+    }
+
+    @PostMapping("/duplicate-candidates/{candidateId}/reject")
+    @Operation(summary = "관리자 중복 장소 후보 거절")
+    public AdminPlaceDuplicateCandidateResponse rejectDuplicateCandidate(
+            @PathVariable Long candidateId,
+            @Valid @RequestBody AdminPlaceDuplicateDecisionRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        return adminPlaceDuplicateService.reject(adminUser.userId(), candidateId, request.reviewNote());
+    }
+
+    @PostMapping("/duplicate-candidates/{candidateId}/merge")
+    @Operation(summary = "관리자 확정 중복 장소 병합")
+    public AdminMapPlaceMergeResponse mergeDuplicateCandidate(
+            @PathVariable Long candidateId,
+            @Valid @RequestBody AdminPlaceDuplicateMergeRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        return adminPlaceDuplicateService.merge(adminUser.userId(), candidateId, request.targetPlaceId());
+    }
 
     @GetMapping("/duplicates")
     @Operation(
