@@ -80,4 +80,21 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MapPlace m WHERE m.id IN :placeIds ORDER BY m.id ASC")
     List<MapPlace> findAllByIdInForUpdate(@Param("placeIds") List<Long> placeIds);
+
+    @Query("""
+            SELECT DISTINCT m
+            FROM MapPlace m
+            LEFT JOIN FETCH m.regularOperatingHours
+            WHERE m.id IN :placeIds
+            """)
+    List<MapPlace> findAllWithRegularOperatingHoursByIdIn(@Param("placeIds") Collection<Long> placeIds);
+
+    @Query("""
+            SELECT DISTINCT m
+            FROM MapPlace m
+            LEFT JOIN FETCH m.operatingExceptions exception
+            LEFT JOIN FETCH exception.hours
+            WHERE m.id IN :placeIds
+            """)
+    List<MapPlace> findAllWithOperatingExceptionsByIdIn(@Param("placeIds") Collection<Long> placeIds);
 }

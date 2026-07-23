@@ -41,10 +41,21 @@ enum CandidateSource {
     TREND
 }
 
-record CandidatePlace(MapPlace place, Set<CandidateSource> sources) {
+record CandidatePlace(
+        MapPlace place,
+        Set<CandidateSource> sources,
+        Boolean currentlyOperating,
+        LocalDateTime currentlyOperatingCheckedAt
+) {
 }
 
-record PlaceDistance(MapPlace place, Set<CandidateSource> sources, double distanceMeters) {
+record PlaceDistance(
+        MapPlace place,
+        Set<CandidateSource> sources,
+        double distanceMeters,
+        Boolean currentlyOperating,
+        LocalDateTime currentlyOperatingCheckedAt
+) {
 }
 
 record CandidateSelection(java.util.List<PlaceDistance> candidates, double appliedRadiusKm) {
