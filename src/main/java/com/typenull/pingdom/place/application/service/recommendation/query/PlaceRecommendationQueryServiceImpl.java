@@ -50,6 +50,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
     private final PlaceRecommendationTrustScoreLoader placeRecommendationTrustScoreLoader;
     private final PlaceRecommendationScoringService placeRecommendationScoringService;
+    private final KCultureInterestRankingService kCultureInterestRankingService;
     private final CurrentActivityIntentRankingService currentActivityIntentRankingService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
     private final RecommendationMetrics recommendationMetrics;
@@ -95,6 +96,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     safeLimit,
                     safeRadiusKm,
                     safeRadiusKm,
+                    Set.of(),
                     null
             ));
         }
@@ -139,6 +141,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     safeLimit,
                     safeRadiusKm,
                     selection.appliedRadiusKm(),
+                    Set.of(),
                     null
             ));
         }
@@ -191,8 +194,19 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 intermediateCandidates,
                 resolvedPolicy.weights(hasPersonalSignals)
         );
+        KCultureInterestRankingService.InterestRankingResult interestRankingResult =
+                kCultureInterestRankingService.apply(
+                        userId,
+                        scoredCandidates,
+                        resolvedPolicy.interestMatchBoost()
+                );
         CurrentActivityIntentRankingService.IntentRankingResult intentRankingResult =
-                currentActivityIntentRankingService.apply(userId, scoredCandidates);
+                currentActivityIntentRankingService.apply(
+                        userId,
+                        interestRankingResult.candidates(),
+                        resolvedPolicy.intentMatchBoost(),
+                        interestRankingResult.categoriesByPlaceId()
+                );
         List<ScoredCandidate> rerankedCandidates = selectOperationallyPrioritizedCandidates(
                 intentRankingResult.candidates(),
                 safeLimit,
@@ -250,6 +264,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 safeLimit,
                 safeRadiusKm,
                 appliedRadiusKm,
+                interestRankingResult.interests(),
                 intentRankingResult.intent()
         ));
     }
@@ -419,6 +434,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private String buildReason(ScoredCandidate candidate, boolean hasPersonalSignals) {
+        if (candidate.contextScore() > 0d) {
+            return "회원님의 K-컬처 관심사와 현재 여행 맥락에 맞는 장소입니다.";
+        }
+
         if (hasPersonalSignals
                 && candidate.personalScore() >= 0.25d
                 && candidate.dominantSignalType() != PersonalSignalType.NONE) {

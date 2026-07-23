@@ -198,6 +198,8 @@ class PlaceRecommendationPolicyServiceTest {
                         false,
                         4,
                         0.75d,
+                        0.10d,
+                        0.15d,
                         null,
                         createWeights(),
                         null
@@ -221,6 +223,8 @@ class PlaceRecommendationPolicyServiceTest {
                 stage == RecommendationStage.EXPERIMENTAL,
                 4,
                 0.75d,
+                0.10d,
+                0.15d,
                 new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
                 createWeights(),
                 createWeights()

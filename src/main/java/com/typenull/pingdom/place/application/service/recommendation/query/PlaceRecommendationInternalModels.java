@@ -109,6 +109,7 @@ record ScoredCandidate(
         double explorationScore,
         double freshnessScore,
         double trustScore,
+        double contextScore,
         PersonalSignalType dominantSignalType,
         double finalScore,
         PlaceRecommendationCandidateSource candidateSource
@@ -125,6 +126,7 @@ record ScoredCandidate(
                 explorationScore,
                 freshnessScore,
                 trustScore,
+                contextScore,
                 dominantSignalType,
                 finalScore,
                 candidateSource

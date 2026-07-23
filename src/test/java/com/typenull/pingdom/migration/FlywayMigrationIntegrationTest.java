@@ -22,6 +22,8 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
+    private static final String LATEST_MIGRATION_VERSION = "70";
+
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
             .asCompatibleSubstituteFor("postgres");
@@ -67,8 +69,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("69");
-        assertThat(result.migrationsExecuted).isEqualTo(69);
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        assertThat(result.migrationsExecuted).isEqualTo(70);
 
         assertPostMigrationSchema();
     }
@@ -80,8 +82,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("69");
-        assertThat(result.migrationsExecuted).isEqualTo(68);
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        assertThat(result.migrationsExecuted).isEqualTo(69);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -123,8 +125,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("69");
-        assertThat(result.migrationsExecuted).isEqualTo(42);
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        assertThat(result.migrationsExecuted).isEqualTo(43);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -320,8 +322,8 @@ class FlywayMigrationIntegrationTest {
         MigrateResult result = migrate(false);
 
         assertThat(result.success).isTrue();
-        assertThat(result.targetSchemaVersion).isEqualTo("69");
-        assertThat(result.migrationsExecuted).isEqualTo(14);
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        assertThat(result.migrationsExecuted).isEqualTo(15);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """

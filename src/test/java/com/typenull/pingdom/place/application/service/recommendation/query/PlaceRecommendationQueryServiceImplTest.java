@@ -24,6 +24,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationTrustScoreRepository;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.List;
@@ -106,6 +107,9 @@ class PlaceRecommendationQueryServiceImplTest {
     private UserCurrentActivityIntentRepository userCurrentActivityIntentRepository;
 
     @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
@@ -146,6 +150,10 @@ class PlaceRecommendationQueryServiceImplTest {
                         mapPlaceRecommendationCandidateRepository,
                         java.time.Clock.systemUTC()
                 );
+        KCultureInterestRankingService kCultureInterestRankingService = new KCultureInterestRankingService(
+                userRepository,
+                mapPlaceRecommendationCandidateRepository
+        );
         PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
                 placeRecommendationSimilarityService
         );
@@ -162,6 +170,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationAggregateLoader,
                 placeRecommendationTrustScoreLoader,
                 placeRecommendationScoringService,
+                kCultureInterestRankingService,
                 currentActivityIntentRankingService,
                 placeRecommendationPortfolioService,
                 recommendationMetrics,
@@ -238,6 +247,8 @@ class PlaceRecommendationQueryServiceImplTest {
                         false,
                         4,
                         0.75d,
+                        0.10d,
+                        0.15d,
                         new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
                         new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
                         new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d),
@@ -345,6 +356,8 @@ class PlaceRecommendationQueryServiceImplTest {
                 featureLoggingEnabled,
                 4,
                 0.75d,
+                0.10d,
+                0.15d,
                 new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
                 new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
                 new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d),

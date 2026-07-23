@@ -82,6 +82,9 @@ public class PlaceRecommendationFeatureLog {
     @Column(name = "trust_score", nullable = false)
     private double trustScore;
 
+    @Column(name = "context_score", nullable = false)
+    private double contextScore;
+
     @Column(name = "final_score", nullable = false)
     private double finalScore;
 
