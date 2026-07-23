@@ -19,7 +19,6 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 class CurrentActivityIntentRankingService {
 
-    private static final double INTENT_MATCH_BOOST = 0.15d;
     private static final Map<CurrentActivityIntent, Set<TouristCategory>> MATCHING_CATEGORIES = Map.of(
             CurrentActivityIntent.EAT, Set.of(TouristCategory.FOOD),
             CurrentActivityIntent.CAFE, Set.of(TouristCategory.CAFE),
@@ -40,9 +39,21 @@ class CurrentActivityIntentRankingService {
     private final MapPlaceRecommendationCandidateRepository candidateRepository;
     private final Clock clock;
 
-    IntentRankingResult apply(Long userId, List<ScoredCandidate> candidates) {
+    IntentRankingResult apply(Long userId, List<ScoredCandidate> candidates, double intentMatchBoost) {
+        return apply(userId, candidates, intentMatchBoost, null);
+    }
+
+    IntentRankingResult apply(
+            Long userId,
+            List<ScoredCandidate> candidates,
+            double intentMatchBoost,
+            Map<Long, Set<TouristCategory>> preloadedCategoriesByPlaceId
+    ) {
+        if (candidates.isEmpty() || intentMatchBoost <= 0d) {
+            return new IntentRankingResult(null, candidates);
+        }
         CurrentActivityIntent intent = resolveActiveIntent(userId);
-        if (intent == null || candidates.isEmpty()) {
+        if (intent == null) {
             return new IntentRankingResult(intent, candidates);
         }
         Set<TouristCategory> matchingCategories = MATCHING_CATEGORIES.get(intent);
@@ -50,10 +61,12 @@ class CurrentActivityIntentRankingService {
             return new IntentRankingResult(null, candidates);
         }
 
-        Map<Long, Set<TouristCategory>> categoriesByPlaceId = loadCategories(candidates);
+        Map<Long, Set<TouristCategory>> categoriesByPlaceId = preloadedCategoriesByPlaceId == null
+                ? loadCategories(candidates)
+                : preloadedCategoriesByPlaceId;
 
         List<ScoredCandidate> rankedCandidates = candidates.stream()
-                .map(candidate -> applyBoost(candidate, matchingCategories, categoriesByPlaceId))
+                .map(candidate -> applyBoost(candidate, matchingCategories, categoriesByPlaceId, intentMatchBoost))
                 .sorted(Comparator.comparingDouble(ScoredCandidate::finalScore).reversed())
                 .toList();
         return new IntentRankingResult(intent, rankedCandidates);
@@ -73,7 +86,8 @@ class CurrentActivityIntentRankingService {
     private ScoredCandidate applyBoost(
             ScoredCandidate candidate,
             Set<TouristCategory> matchingCategories,
-            Map<Long, Set<TouristCategory>> categoriesByPlaceId
+            Map<Long, Set<TouristCategory>> categoriesByPlaceId,
+            double intentMatchBoost
     ) {
         boolean matches = categoriesByPlaceId.getOrDefault(candidate.place().getId(), Set.of())
                 .stream()
@@ -92,8 +106,9 @@ class CurrentActivityIntentRankingService {
                 candidate.explorationScore(),
                 candidate.freshnessScore(),
                 candidate.trustScore(),
+                candidate.contextScore() + intentMatchBoost,
                 candidate.dominantSignalType(),
-                candidate.finalScore() + INTENT_MATCH_BOOST,
+                candidate.finalScore() + intentMatchBoost,
                 candidate.candidateSource()
         );
     }

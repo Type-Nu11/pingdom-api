@@ -54,11 +54,12 @@ class CurrentActivityIntentRankingServiceTest {
         when(candidateRepository.findTouristCategoriesByPlaceIds(List.of(food.getId(), cafe.getId())))
                 .thenReturn(List.of(row(food.getId(), TouristCategory.FOOD), row(cafe.getId(), TouristCategory.CAFE)));
 
-        var result = service.apply(userId, List.of(candidate(food, 0.60d), candidate(cafe, 0.50d)));
+        var result = service.apply(userId, List.of(candidate(food, 0.60d), candidate(cafe, 0.50d)), 0.15d);
 
         assertThat(result.intent()).isEqualTo(CurrentActivityIntent.CAFE);
         assertThat(result.candidates()).extracting(candidate -> candidate.place().getId())
                 .containsExactly(cafe.getId(), food.getId());
+        assertThat(result.candidates().getFirst().contextScore()).isEqualTo(0.15d);
     }
 
     @Test
@@ -73,7 +74,7 @@ class CurrentActivityIntentRankingServiceTest {
         when(currentActivityIntentRepository.findByUser_Id(userId)).thenReturn(Optional.of(intent));
         MapPlace place = place(1L, TouristCategory.CAFE);
 
-        var result = service().apply(userId, List.of(candidate(place, 0.50d)));
+        var result = service().apply(userId, List.of(candidate(place, 0.50d)), 0.15d);
 
         assertThat(result.intent()).isNull();
         assertThat(result.candidates()).extracting(ScoredCandidate::finalScore).containsExactly(0.50d);
@@ -93,7 +94,7 @@ class CurrentActivityIntentRankingServiceTest {
 
         MapPlace food = place(1L, TouristCategory.FOOD);
         MapPlace cafe = place(2L, TouristCategory.CAFE);
-        var result = service().apply(userId, List.of(candidate(food, 0.60d), candidate(cafe, 0.50d)));
+        var result = service().apply(userId, List.of(candidate(food, 0.60d), candidate(cafe, 0.50d)), 0.15d);
 
         assertThat(result.intent()).isNull();
         assertThat(result.candidates()).extracting(candidate -> candidate.place().getId())
@@ -145,6 +146,7 @@ class CurrentActivityIntentRankingServiceTest {
                 0d,
                 0d,
                 PlaceRecommendationTrustScoreLoader.NEUTRAL_TRUST_SCORE,
+                0d,
                 PersonalSignalType.NONE,
                 score,
                 PlaceRecommendationCandidateSource.FALLBACK
