@@ -93,6 +93,7 @@ record IntermediateCandidate(
         double rawConversionScore,
         double rawExplorationScore,
         double freshnessScore,
+        double trustScore,
         PersonalSignalType dominantSignalType
 ) {
 }
@@ -107,6 +108,7 @@ record ScoredCandidate(
         double conversionScore,
         double explorationScore,
         double freshnessScore,
+        double trustScore,
         PersonalSignalType dominantSignalType,
         double finalScore,
         PlaceRecommendationCandidateSource candidateSource
@@ -122,6 +124,7 @@ record ScoredCandidate(
                 conversionScore,
                 explorationScore,
                 freshnessScore,
+                trustScore,
                 dominantSignalType,
                 finalScore,
                 candidateSource

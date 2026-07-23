@@ -228,6 +228,6 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     private RankingWeights createWeights() {
-        return new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d);
+        return new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d);
     }
 }

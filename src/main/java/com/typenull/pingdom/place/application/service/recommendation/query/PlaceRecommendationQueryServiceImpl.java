@@ -48,6 +48,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private final PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
     private final PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader;
+    private final PlaceRecommendationTrustScoreLoader placeRecommendationTrustScoreLoader;
     private final PlaceRecommendationScoringService placeRecommendationScoringService;
     private final CurrentActivityIntentRankingService currentActivityIntentRankingService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
@@ -143,6 +144,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         }
 
         Map<Long, PlaceAggregate> aggregateMap = placeRecommendationAggregateLoader.loadAggregates(selection.candidates());
+        Map<Long, Double> trustScores = placeRecommendationTrustScoreLoader.load(selection.candidates());
         long totalClickCount = placeRecommendationAggregateLoader.resolveTotalClickCount();
         long totalExposureCount = placeRecommendationAggregateLoader.resolveTotalExposureCount();
         final long resolvedTotalExposureCount = totalExposureCount;
@@ -177,6 +179,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 aggregateMap,
                 signalContext,
                 graphAffinityScores,
+                trustScores,
                 resolvedTotalExposureCount,
                 maxSeedWeight,
                 appliedRadiusKm,
