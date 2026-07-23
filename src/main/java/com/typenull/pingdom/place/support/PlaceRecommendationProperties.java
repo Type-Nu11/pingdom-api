@@ -92,8 +92,22 @@ public record PlaceRecommendationProperties(
             double freshnessWeight,
 
             @DecimalMin(value = "0.0", message = "explorationWeight는 0 이상이어야 합니다.")
-            double explorationWeight
+            double explorationWeight,
+
+            @DecimalMin(value = "0.0", message = "trustWeight는 0 이상이어야 합니다.")
+            double trustWeight
     ) {
+        private static final double WEIGHT_SUM_TOLERANCE = 0.0001d;
+
+        public RankingWeights {
+            if (trustWeight > 0d) {
+                double sum = geoWeight + personalWeight + qualityWeight + engagementWeight
+                        + conversionWeight + freshnessWeight + explorationWeight + trustWeight;
+                if (Math.abs(sum - 1d) > WEIGHT_SUM_TOLERANCE) {
+                    throw new IllegalArgumentException("Trust-aware ranking weights must sum to 1.0");
+                }
+            }
+        }
     }
 
     public enum RecommendationStage {
