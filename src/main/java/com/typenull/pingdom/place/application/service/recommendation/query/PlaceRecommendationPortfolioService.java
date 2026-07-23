@@ -155,6 +155,8 @@ class PlaceRecommendationPortfolioService {
                     candidate.freshnessScore(),
                     candidate.trustScore(),
                     candidate.contextScore(),
+                    candidate.benefitScore(),
+                    candidate.availabilityScore(),
                     candidate.finalScore()
             ));
         }

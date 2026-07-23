@@ -16,6 +16,8 @@ public record PlaceRecommendationFeatureRecord(
         double freshnessScore,
         double trustScore,
         double contextScore,
+        double benefitScore,
+        double availabilityScore,
         double finalScore
 ) {
 }
