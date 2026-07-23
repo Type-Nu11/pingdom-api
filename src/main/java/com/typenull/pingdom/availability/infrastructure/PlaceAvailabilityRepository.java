@@ -5,6 +5,7 @@ import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Collection;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
@@ -65,6 +66,49 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
             """)
     List<PlaceAvailability> findPublicByPlaceId(@Param("placeId") Long placeId,
             @Param("status") AvailabilityStatus status, @Param("now") LocalDateTime now);
+
+    @Query("""
+            select distinct availability.placeId from PlaceAvailability availability
+            where availability.placeId in :placeIds
+              and availability.status = com.typenull.pingdom.availability.domain.AvailabilityStatus.ACTIVE
+              and availability.endsAt > :now
+              and availability.remainingCapacity > 0
+              and exists (
+                  select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
+                  where ownerPlace.placeId = availability.placeId
+                    and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
+              )
+              and (availability.productId is null or exists (
+                  select product.id from ReservableProduct product
+                  where product.id = availability.productId
+                    and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
+              ))
+              and exists (
+                  select profile.userId from MerchantOwnerProfile profile
+                  where profile.userId = availability.merchantOwnerUserId
+                    and profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
+              )
+              and exists (
+                  select verification.userId from MerchantVerification verification
+                  where verification.userId = availability.merchantOwnerUserId
+                    and verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+                    and verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+              )
+              and exists (
+                  select ownerUser.id from User ownerUser
+                  where ownerUser.id = availability.merchantOwnerUserId
+                    and ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
+                    and ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
+                    and (ownerUser.banned = false or (
+                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
+                        and ownerUser.banExpiresAt <= :now
+                    ))
+              )
+            """)
+    List<Long> findPlaceIdsWithReservableAvailability(
+            @Param("placeIds") Collection<Long> placeIds,
+            @Param("now") LocalDateTime now
+    );
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select availability from PlaceAvailability availability where availability.id = :id")
