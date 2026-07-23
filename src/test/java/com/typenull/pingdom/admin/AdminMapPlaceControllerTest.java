@@ -399,6 +399,8 @@ class AdminMapPlaceControllerTest {
                 .conversionScore(0.5d)
                 .explorationScore(0.4d)
                 .freshnessScore(0.3d)
+                .benefitScore(0.05d)
+                .availabilityScore(0.04d)
                 .finalScore(0.95d)
                 .build());
 
@@ -413,7 +415,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.items[0].recommendationVersion").value("place-rec-v2"))
                 .andExpect(jsonPath("$.items[0].recommendationStage").value("EXPERIMENTAL"))
                 .andExpect(jsonPath("$.items[0].source").value("PERSONAL"))
-                .andExpect(jsonPath("$.items[0].ranking").value(1));
+                .andExpect(jsonPath("$.items[0].ranking").value(1))
+                .andExpect(jsonPath("$.items[0].benefitScore").value(0.05d))
+                .andExpect(jsonPath("$.items[0].availabilityScore").value(0.04d));
     }
 
     @Test
