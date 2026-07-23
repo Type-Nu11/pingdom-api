@@ -9,6 +9,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardMetricWindowResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardOperationalMetricsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItem;
+import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemType;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentActivitiesResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentPlaceItem;
@@ -171,7 +172,8 @@ public class AdminDashboardQueryService {
                 place.getName(),
                 place.getAddress(),
                 place.getUserId(),
-                place.getRegistrant()
+                place.getRegistrant(),
+                place.getCreatedAt()
         );
     }
 
@@ -213,8 +215,10 @@ public class AdminDashboardQueryService {
 
     private AdminDashboardPendingItem toPendingItem(PostReport report) {
         return new AdminDashboardPendingItem(
-                "POST_REPORT",
+                AdminDashboardPendingItemType.POST_REPORT,
                 report.getId(),
+                report.getId(),
+                report.getReportedImageId(),
                 reportTitle(report),
                 report.getStatus().name(),
                 report.getCreatedAt()
