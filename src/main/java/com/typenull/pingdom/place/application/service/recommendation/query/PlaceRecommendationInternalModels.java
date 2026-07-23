@@ -41,10 +41,21 @@ enum CandidateSource {
     TREND
 }
 
-record CandidatePlace(MapPlace place, Set<CandidateSource> sources) {
+record CandidatePlace(
+        MapPlace place,
+        Set<CandidateSource> sources,
+        Boolean currentlyOperating,
+        LocalDateTime currentlyOperatingCheckedAt
+) {
 }
 
-record PlaceDistance(MapPlace place, Set<CandidateSource> sources, double distanceMeters) {
+record PlaceDistance(
+        MapPlace place,
+        Set<CandidateSource> sources,
+        double distanceMeters,
+        Boolean currentlyOperating,
+        LocalDateTime currentlyOperatingCheckedAt
+) {
 }
 
 record CandidateSelection(java.util.List<PlaceDistance> candidates, double appliedRadiusKm) {
@@ -82,6 +93,7 @@ record IntermediateCandidate(
         double rawConversionScore,
         double rawExplorationScore,
         double freshnessScore,
+        double trustScore,
         PersonalSignalType dominantSignalType
 ) {
 }
@@ -96,6 +108,8 @@ record ScoredCandidate(
         double conversionScore,
         double explorationScore,
         double freshnessScore,
+        double trustScore,
+        double contextScore,
         PersonalSignalType dominantSignalType,
         double finalScore,
         PlaceRecommendationCandidateSource candidateSource
@@ -111,6 +125,8 @@ record ScoredCandidate(
                 conversionScore,
                 explorationScore,
                 freshnessScore,
+                trustScore,
+                contextScore,
                 dominantSignalType,
                 finalScore,
                 candidateSource

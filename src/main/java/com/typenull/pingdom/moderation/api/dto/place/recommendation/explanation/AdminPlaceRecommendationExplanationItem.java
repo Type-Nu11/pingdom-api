@@ -37,6 +37,10 @@ public record AdminPlaceRecommendationExplanationItem(
         double explorationScore,
         @Schema(description = "freshness score", example = "0.19")
         double freshnessScore,
+        @Schema(description = "검증 제보자 신뢰도 기반 score", example = "0.82")
+        double trustScore,
+        @Schema(description = "K-컬처 관심사와 현재 여행 맥락 기반 score", example = "0.25")
+        double contextScore,
         @Schema(description = "최종 score", example = "0.74")
         double finalScore,
         @Schema(description = "로그 생성 시각", example = "2026-06-25T16:00:00")

@@ -245,6 +245,8 @@ place:
         feature-logging-enabled: false
         portfolio-size-multiplier: 4
         mmr-relevance-weight: 0.75
+        interest-match-boost: 0.10
+        intent-match-boost: 0.15
         mix:
           personal-ratio: 0.35
           popular-ratio: 0.25
@@ -258,6 +260,7 @@ place:
           conversion-weight: 0.07
           freshness-weight: 0.08
           exploration-weight: 0.06
+          trust-weight: 0.00
         anonymous-weights:
           geo-weight: 0.48
           personal-weight: 0.00
@@ -266,33 +269,38 @@ place:
           conversion-weight: 0.08
           freshness-weight: 0.12
           exploration-weight: 0.09
+          trust-weight: 0.00
       - version: place-rec-v2
         stage: EXPERIMENTAL
         traffic-percentage: 0
         feature-logging-enabled: true
         portfolio-size-multiplier: 5
         mmr-relevance-weight: 0.70
+        interest-match-boost: 0.00
+        intent-match-boost: 0.00
         mix:
           personal-ratio: 0.40
           popular-ratio: 0.20
           fresh-ratio: 0.25
           geo-ratio: 0.15
         personalized-weights:
-          geo-weight: 0.28
-          personal-weight: 0.32
-          quality-weight: 0.11
-          engagement-weight: 0.08
-          conversion-weight: 0.09
-          freshness-weight: 0.06
+          geo-weight: 0.25
+          personal-weight: 0.29
+          quality-weight: 0.10
+          engagement-weight: 0.07
+          conversion-weight: 0.08
+          freshness-weight: 0.05
           exploration-weight: 0.06
+          trust-weight: 0.10
         anonymous-weights:
-          geo-weight: 0.40
+          geo-weight: 0.36
           personal-weight: 0.00
-          quality-weight: 0.14
-          engagement-weight: 0.10
-          conversion-weight: 0.10
-          freshness-weight: 0.16
-          exploration-weight: 0.10
+          quality-weight: 0.13
+          engagement-weight: 0.09
+          conversion-weight: 0.09
+          freshness-weight: 0.14
+          exploration-weight: 0.09
+          trust-weight: 0.10
 
 verification:
   location-check-in:

@@ -43,9 +43,12 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.place.AdminPlaceMergeHistory;
+import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateCandidate;
+import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
 import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendationPolicyChangeHistory;
 import com.typenull.pingdom.moderation.domain.recommendation.AdminRecommendationPolicyChangeType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
+import com.typenull.pingdom.moderation.infrastructure.persistence.PlaceDuplicateCandidateRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminRecommendationPolicyChangeHistoryRepository;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
@@ -139,6 +142,7 @@ public class AdminMapPlaceService {
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
+    private final PlaceDuplicateCandidateRepository placeDuplicateCandidateRepository;
     private final AdminRecommendationPolicyChangeHistoryRepository adminRecommendationPolicyChangeHistoryRepository;
     private final ObjectMapper objectMapper;
     private final JdbcTemplate jdbcTemplate;
@@ -752,6 +756,16 @@ public class AdminMapPlaceService {
     public AdminMapPlaceMergeResponse mergePlaces(Long adminUserId, AdminMapPlaceMergeRequest request) {
         validateMergeRequest(request);
 
+        PlaceDuplicateCandidate duplicateCandidate = null;
+        if (request.candidateId() != null) {
+            duplicateCandidate = placeDuplicateCandidateRepository.findByIdForUpdate(request.candidateId())
+                    .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_CANDIDATE_NOT_FOUND));
+            if (duplicateCandidate.getStatus() != PlaceDuplicateDecisionStatus.CONFIRMED
+                    || !candidateMatchesRequest(duplicateCandidate, request)) {
+                throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
+            }
+        }
+
         List<Long> orderedIds = List.of(request.sourcePlaceId(), request.targetPlaceId()).stream()
                 .sorted(Comparator.naturalOrder())
                 .toList();
@@ -773,7 +787,7 @@ public class AdminMapPlaceService {
         if (scoutFieldReportRepository.existsByPlaceId(sourcePlace.getId())) {
             throw new AdminException(AdminErrorCode.PLACE_SCOUT_FIELD_REPORT_CONNECTED);
         }
-        if (!adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
+        if (duplicateCandidate == null && !adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
         Map<String, Object> beforeState = placeMergeBeforeState(sourcePlace, targetPlace);
@@ -793,7 +807,12 @@ public class AdminMapPlaceService {
 
         targetPlace.replacePhotoCount(countActiveImages(targetPlace.getId()));
         mapPlaceRepository.delete(sourcePlace);
-        adminPlaceMergeHistoryRepository.save(mergeExecutionContext.toHistory(adminUserId));
+        AdminPlaceMergeHistory mergeHistory = adminPlaceMergeHistoryRepository.save(
+                mergeExecutionContext.toHistory(adminUserId)
+        );
+        if (duplicateCandidate != null) {
+            duplicateCandidate.markMerged(mergeHistory.getId(), now());
+        }
         placeRecommendationSnapshotResyncService.resyncMergedPlace(sourcePlace.getId(), targetPlace.getId());
         adminAuditLogService.record(
                 adminUserId,
@@ -917,6 +936,14 @@ public class AdminMapPlaceService {
         if (request.sourcePlaceId().equals(request.targetPlaceId())) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
         }
+    }
+
+    private boolean candidateMatchesRequest(
+            PlaceDuplicateCandidate candidate,
+            AdminMapPlaceMergeRequest request
+    ) {
+        return Set.of(candidate.getLeftPlaceId(), candidate.getRightPlaceId())
+                .equals(Set.of(request.sourcePlaceId(), request.targetPlaceId()));
     }
 
     private long reassignImages(MapPlace sourcePlace, MapPlace targetPlace, MergeExecutionContext mergeExecutionContext) {

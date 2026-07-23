@@ -13,16 +13,27 @@ import com.typenull.pingdom.place.support.PlaceRecommendationProperties.Candidat
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RankingWeights;
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingHoursEvaluator;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRecommendationCandidateRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationSnapshotRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationTrustScoreRepository;
+import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.List;
+import java.time.Clock;
+import java.time.DayOfWeek;
+import java.time.Instant;
+import java.time.LocalTime;
+import java.time.ZoneOffset;
+import java.util.Set;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -66,6 +77,9 @@ class PlaceRecommendationQueryServiceImplTest {
     private PlaceRecommendationSnapshotRepository placeRecommendationSnapshotRepository;
 
     @Mock
+    private PlaceRecommendationTrustScoreRepository placeRecommendationTrustScoreRepository;
+
+    @Mock
     private PlaceRecommendationClickService placeRecommendationClickService;
 
     @Mock
@@ -90,6 +104,12 @@ class PlaceRecommendationQueryServiceImplTest {
     private RecommendationMetrics recommendationMetrics;
 
     @Mock
+    private UserCurrentActivityIntentRepository userCurrentActivityIntentRepository;
+
+    @Mock
+    private UserRepository userRepository;
+
+    @Mock
     private ApplicationEventPublisher eventPublisher;
 
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
@@ -106,7 +126,11 @@ class PlaceRecommendationQueryServiceImplTest {
         placeRecommendationCandidateCollector = new PlaceRecommendationCandidateCollector(
                 mapPlaceRepository,
                 mapPlaceRecommendationCandidateRepository,
-                placeRecommendationSnapshotRepository
+                placeRecommendationSnapshotRepository,
+                new PlaceOperatingHoursEvaluator(Clock.fixed(
+                        Instant.parse("2026-07-21T12:00:00Z"),
+                        ZoneOffset.UTC
+                ))
         );
         PlaceRecommendationAggregateLoader placeRecommendationAggregateLoader = new PlaceRecommendationAggregateLoader(
                 mapBookmarkRepository,
@@ -117,6 +141,18 @@ class PlaceRecommendationQueryServiceImplTest {
         );
         PlaceRecommendationScoringService placeRecommendationScoringService = new PlaceRecommendationScoringService(
                 placeRecommendationSimilarityService
+        );
+        PlaceRecommendationTrustScoreLoader placeRecommendationTrustScoreLoader =
+                new PlaceRecommendationTrustScoreLoader(placeRecommendationTrustScoreRepository);
+        CurrentActivityIntentRankingService currentActivityIntentRankingService =
+                new CurrentActivityIntentRankingService(
+                        userCurrentActivityIntentRepository,
+                        mapPlaceRecommendationCandidateRepository,
+                        java.time.Clock.systemUTC()
+                );
+        KCultureInterestRankingService kCultureInterestRankingService = new KCultureInterestRankingService(
+                userRepository,
+                mapPlaceRecommendationCandidateRepository
         );
         PlaceRecommendationPortfolioService placeRecommendationPortfolioService = new PlaceRecommendationPortfolioService(
                 placeRecommendationSimilarityService
@@ -132,7 +168,10 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationUserSignalLoader,
                 placeRecommendationCandidateCollector,
                 placeRecommendationAggregateLoader,
+                placeRecommendationTrustScoreLoader,
                 placeRecommendationScoringService,
+                kCultureInterestRankingService,
+                currentActivityIntentRankingService,
                 placeRecommendationPortfolioService,
                 recommendationMetrics,
                 eventPublisher
@@ -142,6 +181,7 @@ class PlaceRecommendationQueryServiceImplTest {
         when(mapImageRepository.findPlaceIdsByUserId(anyLong())).thenReturn(List.of());
         when(placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(any(), any()))
                 .thenReturn(Page.empty());
+        when(placeRecommendationTrustScoreRepository.findTrustScoresByPlaceIds(any())).thenReturn(List.of());
     }
 
     @Test
@@ -207,9 +247,11 @@ class PlaceRecommendationQueryServiceImplTest {
                         false,
                         4,
                         0.75d,
+                        0.10d,
+                        0.15d,
                         new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
-                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d),
-                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d),
+                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
+                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d),
                         "place-rec-v1",
                         null
                 ));
@@ -224,6 +266,104 @@ class PlaceRecommendationQueryServiceImplTest {
                     && exposureEvent.placeIds().equals(List.of(candidate.getId()))
                     && exposureEvent.recommendationVersion().equals("place-rec-v1");
         }));
+    }
+
+    @Test
+    void recommendPlaces는_현재_영업중인_후보를_영업외_후보보다_우선한다() {
+        MapPlace closedCandidate = createPlace(301L, "closed", 35.1800d, 128.1070d);
+        closedCandidate.replaceOperatingSchedule(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))
+        ), List.of());
+        MapPlace openCandidate = createPlace(302L, "open", 35.1810d, 128.1080d);
+        openCandidate.replaceOperatingSchedule(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(11, 0), LocalTime.of(14, 0))
+        ), List.of());
+
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                anyDouble(),
+                any(PlaceOperatingStatus.class),
+                any(PlaceDiscoveryStatus.class),
+                any(Pageable.class)
+        )).thenReturn(List.of(closedCandidate, openCandidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(true));
+
+        var response = placeRecommendationQueryService.recommendPlaces(
+                null,
+                35.1800d,
+                128.1070d,
+                2,
+                5.0d,
+                null
+        );
+
+        assertThat(response.places())
+                .extracting(place -> place.id())
+                .containsExactly(openCandidate.getId(), closedCandidate.getId());
+        assertThat(response.places())
+                .extracting(place -> place.currentlyOperating())
+                .containsExactly(true, false);
+        verify(placeRecommendationFeatureLogService).recordShownCandidates(
+                any(),
+                any(),
+                any(),
+                any(),
+                argThat(records -> records.stream().map(record -> record.placeId()).toList()
+                        .equals(List.of(openCandidate.getId(), closedCandidate.getId())))
+        );
+        verify(eventPublisher).publishEvent(argThat((Object event) ->
+                event instanceof PlaceRecommendationExposureRecordRequestedEvent exposureEvent
+                        && exposureEvent.placeIds().equals(List.of(openCandidate.getId(), closedCandidate.getId()))
+        ));
+    }
+
+    @Test
+    void recommendPlaces는_limit이_부족해도_영업중_후보를_먼저_선택한다() {
+        MapPlace closedCandidate = createPlace(401L, "high-score-closed", 35.1800d, 128.1070d);
+        closedCandidate.replaceOperatingSchedule(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))
+        ), List.of());
+        MapPlace openCandidate = createPlace(402L, "open", 35.1900d, 128.1170d);
+        openCandidate.replaceOperatingSchedule(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(11, 0), LocalTime.of(14, 0))
+        ), List.of());
+
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                any(PlaceOperatingStatus.class), any(PlaceDiscoveryStatus.class), any(Pageable.class)
+        )).thenReturn(List.of(closedCandidate, openCandidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(false));
+
+        var response = placeRecommendationQueryService.recommendPlaces(
+                null, 35.1800d, 128.1070d, 1, 5.0d, null
+        );
+
+        assertThat(response.places())
+                .extracting(place -> place.id())
+                .containsExactly(openCandidate.getId());
+    }
+
+    private PlaceRecommendationPolicyService.ResolvedRecommendationPolicy stablePolicy(boolean featureLoggingEnabled) {
+        return new PlaceRecommendationPolicyService.ResolvedRecommendationPolicy(
+                "place-rec-v1",
+                RecommendationStage.STABLE,
+                featureLoggingEnabled,
+                4,
+                0.75d,
+                0.10d,
+                0.15d,
+                new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
+                new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
+                new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d),
+                "place-rec-v1",
+                null
+        );
     }
 
     private MapPlace createPlace(Long id, String name, Double latitude, Double longitude) {

@@ -39,6 +39,14 @@ public record PlaceRecommendationProperties(
             @DecimalMax(value = "1.0", message = "mmrRelevanceWeight는 1 이하여야 합니다.")
             double mmrRelevanceWeight,
 
+            @DecimalMin(value = "0.0", message = "interestMatchBoost는 0 이상이어야 합니다.")
+            @DecimalMax(value = "1.0", message = "interestMatchBoost는 1 이하여야 합니다.")
+            double interestMatchBoost,
+
+            @DecimalMin(value = "0.0", message = "intentMatchBoost는 0 이상이어야 합니다.")
+            @DecimalMax(value = "1.0", message = "intentMatchBoost는 1 이하여야 합니다.")
+            double intentMatchBoost,
+
             @Valid
             @NotNull(message = "mix는 필수입니다.")
             CandidateMix mix,
@@ -92,8 +100,22 @@ public record PlaceRecommendationProperties(
             double freshnessWeight,
 
             @DecimalMin(value = "0.0", message = "explorationWeight는 0 이상이어야 합니다.")
-            double explorationWeight
+            double explorationWeight,
+
+            @DecimalMin(value = "0.0", message = "trustWeight는 0 이상이어야 합니다.")
+            double trustWeight
     ) {
+        private static final double WEIGHT_SUM_TOLERANCE = 0.0001d;
+
+        public RankingWeights {
+            if (trustWeight > 0d) {
+                double sum = geoWeight + personalWeight + qualityWeight + engagementWeight
+                        + conversionWeight + freshnessWeight + explorationWeight + trustWeight;
+                if (Math.abs(sum - 1d) > WEIGHT_SUM_TOLERANCE) {
+                    throw new IllegalArgumentException("Trust-aware ranking weights must sum to 1.0");
+                }
+            }
+        }
     }
 
     public enum RecommendationStage {

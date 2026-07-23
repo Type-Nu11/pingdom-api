@@ -48,6 +48,7 @@ class PlaceRecommendationScoringService {
             Map<Long, PlaceAggregate> aggregateMap,
             UserSignalContext signalContext,
             Map<Long, Double> graphAffinityScores,
+            Map<Long, Double> trustScores,
             long totalExposureCount,
             double maxSeedWeight,
             double appliedRadiusKm,
@@ -60,6 +61,10 @@ class PlaceRecommendationScoringService {
                         aggregateMap.getOrDefault(candidate.place().getId(), PlaceAggregate.empty()),
                         signalContext,
                         graphAffinityScores.getOrDefault(candidate.place().getId(), 0d),
+                        trustScores.getOrDefault(
+                                candidate.place().getId(),
+                                PlaceRecommendationTrustScoreLoader.NEUTRAL_TRUST_SCORE
+                        ),
                         scoreContext.globalCtr(),
                         scoreContext.globalConversionRate(),
                         totalExposureCount,
@@ -125,7 +130,8 @@ class PlaceRecommendationScoringService {
                             + (weights.engagementWeight() * normalizedEngagement)
                             + (weights.conversionWeight() * normalizedConversion)
                             + (weights.freshnessWeight() * candidate.freshnessScore())
-                            + (weights.explorationWeight() * normalizedExploration);
+                            + (weights.explorationWeight() * normalizedExploration)
+                            + (weights.trustWeight() * candidate.trustScore());
 
                     return new ScoredCandidate(
                             candidate.place(),
@@ -137,6 +143,8 @@ class PlaceRecommendationScoringService {
                             normalizedConversion,
                             normalizedExploration,
                             candidate.freshnessScore(),
+                            candidate.trustScore(),
+                            0d,
                             candidate.dominantSignalType(),
                             finalScore,
                             PlaceRecommendationCandidateSource.FALLBACK
@@ -192,6 +200,7 @@ class PlaceRecommendationScoringService {
             PlaceAggregate aggregate,
             UserSignalContext signalContext,
             double graphAffinityScore,
+            double trustScore,
             double globalCtr,
             double globalConversionRate,
             long totalExposureCount,
@@ -237,6 +246,7 @@ class PlaceRecommendationScoringService {
                 rawConversionScore,
                 rawExplorationScore,
                 freshnessScore,
+                trustScore,
                 dominantSignalType
         );
     }

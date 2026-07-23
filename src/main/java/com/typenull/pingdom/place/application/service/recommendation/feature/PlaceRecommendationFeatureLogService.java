@@ -45,6 +45,8 @@ public class PlaceRecommendationFeatureLogService {
                         .conversionScore(record.conversionScore())
                         .explorationScore(record.explorationScore())
                         .freshnessScore(record.freshnessScore())
+                        .trustScore(record.trustScore())
+                        .contextScore(record.contextScore())
                         .finalScore(record.finalScore())
                         .build())
                 .toList();

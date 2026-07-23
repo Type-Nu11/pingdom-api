@@ -1,7 +1,10 @@
 package com.typenull.pingdom.place.api.dto.recommendation;
 
+import com.typenull.pingdom.identity.domain.TravelPurpose;
+import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
+import java.util.Set;
 
 @Schema(description = "장소 추천 조회 응답")
 public record PlaceRecommendationResponse(
@@ -18,7 +21,11 @@ public record PlaceRecommendationResponse(
         @Schema(description = "실제 적용 반경(km)", example = "10.0")
         double appliedRadiusKm,
         @Schema(description = "추천 결과 수", example = "4")
-        int recommendedCount
+        int recommendedCount,
+        @Schema(description = "추천에 적용된 K-컬처 및 여행 관심사")
+        Set<TravelPurpose> appliedTravelPurposes,
+        @Schema(description = "추천에 적용된 현재 행동 의도", nullable = true, example = "CAFE")
+        CurrentActivityIntent appliedActivityIntent
 ) {
     public static PlaceRecommendationResponse of(
             List<PlaceRecommendationItem> places,
@@ -26,7 +33,9 @@ public record PlaceRecommendationResponse(
             String recommendationRequestId,
             int limit,
             double requestedRadiusKm,
-            double appliedRadiusKm
+            double appliedRadiusKm,
+            Set<TravelPurpose> appliedTravelPurposes,
+            CurrentActivityIntent appliedActivityIntent
     ) {
         return new PlaceRecommendationResponse(
                 places,
@@ -35,7 +44,9 @@ public record PlaceRecommendationResponse(
                 limit,
                 requestedRadiusKm,
                 appliedRadiusKm,
-                places.size()
+                places.size(),
+                appliedTravelPurposes == null ? Set.of() : Set.copyOf(appliedTravelPurposes),
+                appliedActivityIntent
         );
     }
 }

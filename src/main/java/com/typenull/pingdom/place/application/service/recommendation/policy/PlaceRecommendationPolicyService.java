@@ -260,9 +260,11 @@ public class PlaceRecommendationPolicyService {
                         false,
                         4,
                         0.75d,
+                        0.10d,
+                        0.15d,
                         new CandidateMix(0.35d, 0.25d, 0.20d, 0.20d),
-                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d),
-                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d)
+                        new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d),
+                        new RankingWeights(0.48d, 0.0d, 0.16d, 0.10d, 0.08d, 0.12d, 0.09d, 0.0d)
                 ),
                 new VersionPolicy(
                         "place-rec-v2",
@@ -271,9 +273,11 @@ public class PlaceRecommendationPolicyService {
                         true,
                         5,
                         0.70d,
+                        0d,
+                        0d,
                         new CandidateMix(0.40d, 0.20d, 0.25d, 0.15d),
-                        new RankingWeights(0.28d, 0.32d, 0.11d, 0.08d, 0.09d, 0.06d, 0.06d),
-                        new RankingWeights(0.40d, 0.0d, 0.14d, 0.10d, 0.10d, 0.16d, 0.10d)
+                        new RankingWeights(0.25d, 0.29d, 0.10d, 0.07d, 0.08d, 0.05d, 0.06d, 0.10d),
+                        new RankingWeights(0.36d, 0.0d, 0.13d, 0.09d, 0.09d, 0.14d, 0.09d, 0.10d)
                 )
         );
     }
@@ -284,6 +288,8 @@ public class PlaceRecommendationPolicyService {
             boolean featureLoggingEnabled,
             int portfolioSizeMultiplier,
             double mmrRelevanceWeight,
+            double interestMatchBoost,
+            double intentMatchBoost,
             PlaceRecommendationProperties.CandidateMix mix,
             PlaceRecommendationProperties.RankingWeights personalizedWeights,
             PlaceRecommendationProperties.RankingWeights anonymousWeights,
@@ -297,6 +303,8 @@ public class PlaceRecommendationPolicyService {
                     policy.featureLoggingEnabled(),
                     policy.portfolioSizeMultiplier(),
                     policy.mmrRelevanceWeight(),
+                    policy.interestMatchBoost(),
+                    policy.intentMatchBoost(),
                     policy.mix(),
                     policy.personalizedWeights(),
                     policy.anonymousWeights(),

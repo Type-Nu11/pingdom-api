@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import java.util.List;
@@ -10,6 +11,20 @@ import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 public interface MapPlaceRecommendationCandidateRepository extends Repository<MapPlace, Long> {
+
+    @Query("""
+            SELECT m.id AS placeId, category AS category
+            FROM MapPlace m
+            JOIN m.touristCategories category
+            WHERE m.id IN :placeIds
+            """)
+    List<PlaceTouristCategoryRow> findTouristCategoriesByPlaceIds(@Param("placeIds") List<Long> placeIds);
+
+    interface PlaceTouristCategoryRow {
+        Long getPlaceId();
+
+        TouristCategory getCategory();
+    }
 
     @Query("""
             SELECT m

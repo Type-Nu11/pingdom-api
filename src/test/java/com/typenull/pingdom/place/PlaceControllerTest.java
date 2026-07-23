@@ -451,6 +451,55 @@ class PlaceControllerTest {
     }
 
     @Test
+    void touristPlaceCardReturnsDecisionReadySummaryAndHidesNonPublicPlaces() throws Exception {
+        String accessToken = signupAndLogin("touristPlaceCard" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace visiblePlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("서울 K-컬처 스튜디오")
+                .englishName("Seoul K-Culture Studio")
+                .imageUrl("https://cdn.pingdom.test/studio.jpg")
+                .address("서울특별시 중구 문화로 1")
+                .roadAddress("서울특별시 중구 문화로 1")
+                .category("전시")
+                .latitude(37.5665)
+                .longitude(126.9780)
+                .userId(1L)
+                .registrant("placeOwner")
+                .build());
+        visiblePlace.updateTouristInformation(
+                "Seoul K-Culture Studio",
+                "A verified K-culture experience for international visitors.",
+                Set.of(TouristCategory.EXHIBITION)
+        );
+        mapPlaceRepository.saveAndFlush(visiblePlace);
+
+        mockMvc.perform(get("/places/{placeId}/card", visiblePlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(visiblePlace.getId()))
+                .andExpect(jsonPath("$.englishName").value("Seoul K-Culture Studio"))
+                .andExpect(jsonPath("$.imageUrl").value("https://cdn.pingdom.test/studio.jpg"))
+                .andExpect(jsonPath("$.currentlyOperating").value(false))
+                .andExpect(jsonPath("$.touristCategories[0]").value("EXHIBITION"));
+
+        visiblePlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(visiblePlace);
+
+        mockMvc.perform(get("/places/{placeId}/card", visiblePlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
+        visiblePlace.updateDiscoveryStatus(PlaceDiscoveryStatus.VISIBLE);
+        visiblePlace.updateOperatingStatus(PlaceOperatingStatus.TEMPORARILY_CLOSED, LocalDateTime.now());
+        mapPlaceRepository.saveAndFlush(visiblePlace);
+
+        mockMvc.perform(get("/places/{placeId}/card", visiblePlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.operatingStatus").value("TEMPORARILY_CLOSED"))
+                .andExpect(jsonPath("$.currentlyOperating").value(false));
+    }
+
+    @Test
     void listPlacesFiltersByRadiusAndSortsNearest() throws Exception {
         String accessToken = signupAndLogin("readerSearch02");
         MapPlace nearPlace = createMapPlace("가까운 장소", "경상남도 진주시 가까운로 1", "카페", 35.1802, 128.1079);
