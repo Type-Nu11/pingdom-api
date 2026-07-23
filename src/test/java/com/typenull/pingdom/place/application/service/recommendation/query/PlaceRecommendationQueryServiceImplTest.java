@@ -112,6 +112,9 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private ApplicationEventPublisher eventPublisher;
 
+    @Mock
+    private PlaceRecommendationCommerceSignalLoader placeRecommendationCommerceSignalLoader;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
@@ -172,6 +175,8 @@ class PlaceRecommendationQueryServiceImplTest {
                 placeRecommendationScoringService,
                 kCultureInterestRankingService,
                 currentActivityIntentRankingService,
+                placeRecommendationCommerceSignalLoader,
+                new PlaceRecommendationCommerceRankingService(),
                 placeRecommendationPortfolioService,
                 recommendationMetrics,
                 eventPublisher
@@ -182,6 +187,7 @@ class PlaceRecommendationQueryServiceImplTest {
         when(placeRecommendationSnapshotRepository.findByUpdatedAtGreaterThanEqual(any(), any()))
                 .thenReturn(Page.empty());
         when(placeRecommendationTrustScoreRepository.findTrustScoresByPlaceIds(any())).thenReturn(List.of());
+        when(placeRecommendationCommerceSignalLoader.load(any())).thenReturn(java.util.Map.of());
     }
 
     @Test
