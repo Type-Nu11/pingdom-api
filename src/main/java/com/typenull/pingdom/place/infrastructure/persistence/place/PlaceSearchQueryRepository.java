@@ -43,11 +43,10 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                         mp.longitude AS longitude,
                         CASE
                             WHEN :hasLocation = TRUE THEN
-                                6371000.0 * 2.0 * ASIN(SQRT(
-                                    POWER(SIN(RADIANS(mp.latitude - :latitude) / 2.0), 2.0)
-                                    + COS(RADIANS(:latitude)) * COS(RADIANS(mp.latitude))
-                                    * POWER(SIN(RADIANS(mp.longitude - :longitude) / 2.0), 2.0)
-                                ))
+                                ST_Distance(
+                                    mp.location::geography,
+                                    ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+                                )
                             ELSE NULL
                         END AS distanceMeters
                     FROM map_place mp
@@ -71,29 +70,22 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND (
                           :hasLocation = FALSE
                           OR (
-                              mp.latitude BETWEEN :minLatitude AND :maxLatitude
-                              AND (
-                                  (:longitudeWrapped = FALSE AND mp.longitude BETWEEN :westLongitude AND :eastLongitude)
-                                  OR (:longitudeWrapped = TRUE AND (mp.longitude >= :westLongitude OR mp.longitude <= :eastLongitude))
+                              mp.location IS NOT NULL
+                              AND ST_DWithin(
+                                  mp.location::geography,
+                                  ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                                  :radiusMeters
                               )
-                              AND (
-                                  6371000.0 * 2.0 * ASIN(SQRT(
-                                      POWER(SIN(RADIANS(mp.latitude - :latitude) / 2.0), 2.0)
-                                      + COS(RADIANS(:latitude)) * COS(RADIANS(mp.latitude))
-                                      * POWER(SIN(RADIANS(mp.longitude - :longitude) / 2.0), 2.0)
-                                  ))
-                              ) <= :radiusMeters
                           )
                       )
                     ORDER BY
                         CASE WHEN :sort = 'POPULAR' THEN COALESCE(mp.photo_count, 0) END DESC,
                         CASE
                             WHEN :sort = 'NEAREST' THEN
-                                6371000.0 * 2.0 * ASIN(SQRT(
-                                    POWER(SIN(RADIANS(mp.latitude - :latitude) / 2.0), 2.0)
-                                    + COS(RADIANS(:latitude)) * COS(RADIANS(mp.latitude))
-                                    * POWER(SIN(RADIANS(mp.longitude - :longitude) / 2.0), 2.0)
-                                ))
+                                ST_Distance(
+                                    mp.location::geography,
+                                    ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography
+                                )
                         END ASC,
                         mp.map_place_id DESC
                     """,
@@ -120,18 +112,12 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND (
                           :hasLocation = FALSE
                           OR (
-                              mp.latitude BETWEEN :minLatitude AND :maxLatitude
-                              AND (
-                                  (:longitudeWrapped = FALSE AND mp.longitude BETWEEN :westLongitude AND :eastLongitude)
-                                  OR (:longitudeWrapped = TRUE AND (mp.longitude >= :westLongitude OR mp.longitude <= :eastLongitude))
+                              mp.location IS NOT NULL
+                              AND ST_DWithin(
+                                  mp.location::geography,
+                                  ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                                  :radiusMeters
                               )
-                              AND (
-                                  6371000.0 * 2.0 * ASIN(SQRT(
-                                      POWER(SIN(RADIANS(mp.latitude - :latitude) / 2.0), 2.0)
-                                      + COS(RADIANS(:latitude)) * COS(RADIANS(mp.latitude))
-                                      * POWER(SIN(RADIANS(mp.longitude - :longitude) / 2.0), 2.0)
-                                  ))
-                              ) <= :radiusMeters
                           )
                       )
                     """,
@@ -147,11 +133,6 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
             @Param("latitude") Double latitude,
             @Param("longitude") Double longitude,
             @Param("radiusMeters") Double radiusMeters,
-            @Param("minLatitude") Double minLatitude,
-            @Param("maxLatitude") Double maxLatitude,
-            @Param("westLongitude") Double westLongitude,
-            @Param("eastLongitude") Double eastLongitude,
-            @Param("longitudeWrapped") boolean longitudeWrapped,
             @Param("sort") String sort,
             Pageable pageable
     );

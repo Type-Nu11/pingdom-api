@@ -96,6 +96,8 @@ class KCultureInterestRankingService {
                 candidate.freshnessScore(),
                 candidate.trustScore(),
                 candidate.contextScore() + interestMatchBoost,
+                candidate.benefitScore(),
+                candidate.availabilityScore(),
                 candidate.dominantSignalType(),
                 candidate.finalScore() + interestMatchBoost,
                 candidate.candidateSource()

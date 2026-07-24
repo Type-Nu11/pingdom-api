@@ -145,6 +145,8 @@ class PlaceRecommendationScoringService {
                             candidate.freshnessScore(),
                             candidate.trustScore(),
                             0d,
+                            0d,
+                            0d,
                             candidate.dominantSignalType(),
                             finalScore,
                             PlaceRecommendationCandidateSource.FALLBACK

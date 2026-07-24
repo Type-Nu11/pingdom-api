@@ -22,7 +22,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "70";
+    private static final String LATEST_MIGRATION_VERSION = "72";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -70,7 +70,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(70);
+        assertThat(result.migrationsExecuted).isEqualTo(72);
 
         assertPostMigrationSchema();
     }
@@ -79,14 +79,55 @@ class FlywayMigrationIntegrationTest {
     void baselinesExistingVersionOneSchemaAndAppliesIncrementalMigrations() throws Exception {
         executeBaselineSchemaScript();
 
+        Flyway.configure()
+                .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
+                .locations("classpath:db/migration")
+                .target("2")
+                .baselineOnMigrate(true)
+                .baselineVersion("1")
+                .load()
+                .migrate();
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        place_name, address, category, latitude, longitude,
+                        user_id, registrant, photo_count, location
+                    ) VALUES (
+                        '기존 좌표 장소', '기존 주소', '카페', 35.1801, 128.1078,
+                        1, 'migration-test', 0, NULL
+                    )
+                    """);
+        }
+
         MigrateResult result = migrate(true);
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(69);
+        assertThat(result.migrationsExecuted).isEqualTo(70);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_recommendation_feature_log'
+                      AND column_name IN ('benefit_score', 'availability_score')
+                      AND is_nullable = 'NO'
+                      AND column_default IS NOT NULL
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_recommendation_feature_log'::regclass
+                      AND conname IN (
+                          'ck_recommendation_feature_log_benefit_score',
+                          'ck_recommendation_feature_log_availability_score'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
@@ -95,6 +136,14 @@ class FlywayMigrationIntegrationTest {
                           AND type = 'BASELINE'
                           AND success = true
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT ST_Equals(
+                        location,
+                        ST_SetSRID(ST_MakePoint(128.1078, 35.1801), 4326)
+                    )
+                    FROM map_place
+                    WHERE registrant = 'migration-test'
                     """)).isTrue();
         }
         assertPostMigrationSchema();
@@ -126,7 +175,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(43);
+        assertThat(result.migrationsExecuted).isEqualTo(45);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -323,7 +372,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(15);
+        assertThat(result.migrationsExecuted).isEqualTo(17);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -2744,6 +2793,15 @@ class FlywayMigrationIntegrationTest {
                         'uq_place_media_primary_exploration',
                         'idx_place_media_place_purpose_order'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'map_place'
+                      AND indexname IN (
+                          'idx_map_place_location_gist',
+                          'idx_map_place_location_geography_gist'
+                      )
                     """)).isTrue();
         }
     }

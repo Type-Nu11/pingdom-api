@@ -47,6 +47,14 @@ public record PlaceRecommendationProperties(
             @DecimalMax(value = "1.0", message = "intentMatchBoost는 1 이하여야 합니다.")
             double intentMatchBoost,
 
+            @DecimalMin(value = "0.0", message = "benefitBoost는 0 이상이어야 합니다.")
+            @DecimalMax(value = "1.0", message = "benefitBoost는 1 이하여야 합니다.")
+            double benefitBoost,
+
+            @DecimalMin(value = "0.0", message = "availabilityBoost는 0 이상이어야 합니다.")
+            @DecimalMax(value = "1.0", message = "availabilityBoost는 1 이하여야 합니다.")
+            double availabilityBoost,
+
             @Valid
             @NotNull(message = "mix는 필수입니다.")
             CandidateMix mix,
@@ -59,6 +67,25 @@ public record PlaceRecommendationProperties(
             @NotNull(message = "anonymousWeights는 필수입니다.")
             RankingWeights anonymousWeights
     ) {
+        public VersionPolicy(
+                String version,
+                RecommendationStage stage,
+                int trafficPercentage,
+                boolean featureLoggingEnabled,
+                int portfolioSizeMultiplier,
+                double mmrRelevanceWeight,
+                double interestMatchBoost,
+                double intentMatchBoost,
+                CandidateMix mix,
+                RankingWeights personalizedWeights,
+                RankingWeights anonymousWeights
+        ) {
+            this(
+                    version, stage, trafficPercentage, featureLoggingEnabled, portfolioSizeMultiplier,
+                    mmrRelevanceWeight, interestMatchBoost, intentMatchBoost, 0d, 0d,
+                    mix, personalizedWeights, anonymousWeights
+            );
+        }
     }
 
     public record CandidateMix(

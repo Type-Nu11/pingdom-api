@@ -38,6 +38,10 @@ public record PlaceRecommendationItem(
         long distanceMeters,
         @Schema(description = "추천 사유", example = "저장한 장소와 가까운 추천 장소입니다.")
         String reason,
+        @Schema(description = "현재 발급 가능한 관광 혜택 존재 여부")
+        boolean hasActiveBenefit,
+        @Schema(description = "현재 예약 가능한 시간 존재 여부")
+        boolean reservable,
         @Schema(description = "장소 성장 상태")
         PlaceGrowthSnapshot placeGrowth
 ) {

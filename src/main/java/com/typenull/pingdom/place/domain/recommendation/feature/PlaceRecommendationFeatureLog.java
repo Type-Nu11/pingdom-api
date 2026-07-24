@@ -85,6 +85,12 @@ public class PlaceRecommendationFeatureLog {
     @Column(name = "context_score", nullable = false)
     private double contextScore;
 
+    @Column(name = "benefit_score", nullable = false)
+    private double benefitScore;
+
+    @Column(name = "availability_score", nullable = false)
+    private double availabilityScore;
+
     @Column(name = "final_score", nullable = false)
     private double finalScore;
 
