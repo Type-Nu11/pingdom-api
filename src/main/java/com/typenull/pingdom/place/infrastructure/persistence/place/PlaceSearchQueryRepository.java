@@ -55,14 +55,14 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND mp.longitude BETWEEN -180.0 AND 180.0
                       AND mp.operating_status = :operatingStatus
                       AND mp.discovery_status = :discoveryStatus
-                      AND (:keywordPattern IS NULL
+                      AND (CAST(:keywordPattern AS text) IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.road_address) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\')
-                      AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
-                      AND (:touristCategory IS NULL OR EXISTS (
+                      AND (CAST(:category AS text) IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
+                      AND (CAST(:touristCategory AS text) IS NULL OR EXISTS (
                           SELECT 1
                           FROM map_place_tourist_category mptc
                           WHERE mptc.map_place_id = mp.map_place_id
@@ -104,14 +104,14 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                       AND mp.longitude BETWEEN -180.0 AND 180.0
                       AND mp.operating_status = :operatingStatus
                       AND mp.discovery_status = :discoveryStatus
-                      AND (:keywordPattern IS NULL
+                      AND (CAST(:keywordPattern AS text) IS NULL
                            OR LOWER(mp.place_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.road_address) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\')
-                      AND (:category IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
-                      AND (:touristCategory IS NULL OR EXISTS (
+                      AND (CAST(:category AS text) IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
+                      AND (CAST(:touristCategory AS text) IS NULL OR EXISTS (
                           SELECT 1
                           FROM map_place_tourist_category mptc
                           WHERE mptc.map_place_id = mp.map_place_id
