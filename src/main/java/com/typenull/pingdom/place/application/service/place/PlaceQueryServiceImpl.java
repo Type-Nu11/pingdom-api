@@ -100,11 +100,6 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 locationSearch.latitude(),
                 locationSearch.longitude(),
                 locationSearch.radiusMeters(),
-                locationSearch.minLatitude(),
-                locationSearch.maxLatitude(),
-                locationSearch.westLongitude(),
-                locationSearch.eastLongitude(),
-                locationSearch.longitudeWrapped(),
                 searchSort.name(),
                 pageable
         );

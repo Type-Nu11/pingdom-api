@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaResponse;
+import com.typenull.pingdom.place.api.dto.place.map.MapViewportResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeListResponse;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickRequest;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationClickResponse;
@@ -18,6 +19,7 @@ import com.typenull.pingdom.place.application.service.recommendation.explanation
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
 import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
+import com.typenull.pingdom.place.application.service.place.MapViewportQueryService;
 import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingNoticeService;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
@@ -63,6 +65,19 @@ public class PlaceController {
     private final PlaceRecommendationExplanationQueryService placeRecommendationExplanationQueryService;
     private final PlaceMediaService placeMediaService;
     private final PlaceOperatingNoticeService placeOperatingNoticeService;
+    private final MapViewportQueryService mapViewportQueryService;
+
+    @GetMapping("/map")
+    @Operation(summary = "지도 viewport 장소 조회", description = "지도 경계와 zoom에 따라 장소 cluster 또는 marker를 조회합니다.")
+    public ResponseEntity<MapViewportResponse> mapViewport(
+            @RequestParam double west,
+            @RequestParam double south,
+            @RequestParam double east,
+            @RequestParam double north,
+            @RequestParam int zoom
+    ) {
+        return ResponseEntity.ok(mapViewportQueryService.find(west, south, east, north, zoom));
+    }
 
     @GetMapping
     @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
