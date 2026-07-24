@@ -84,25 +84,37 @@ class PlaceSearchIndexRegressionTest {
     }
 
     @Test
-    void 장소_반경_검색은_latitude_longitude_btree_인덱스를_사용한다() throws Exception {
+    void 장소_반경_검색은_location_geography_gist_인덱스를_사용한다() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
-                WHERE mp.latitude BETWEEN 35.1200 AND 35.2400
-                  AND mp.longitude BETWEEN 128.0400 AND 128.1600
-                  AND (
-                      6371000.0 * 2.0 * ASIN(SQRT(
-                          POWER(SIN(RADIANS(mp.latitude - 35.1801) / 2.0), 2.0)
-                          + COS(RADIANS(35.1801)) * COS(RADIANS(mp.latitude))
-                          * POWER(SIN(RADIANS(mp.longitude - 128.1078) / 2.0), 2.0)
-                      ))
-                  ) <= 5000
+                WHERE mp.location IS NOT NULL
+                  AND ST_DWithin(
+                      mp.location::geography,
+                      ST_SetSRID(ST_MakePoint(128.1078, 35.1801), 4326)::geography,
+                      5000
+                  )
                 ORDER BY mp.map_place_id DESC
                 LIMIT 20
                 """);
 
         assertThat(planLines)
-                .anyMatch(line -> line.contains("idx_map_place_latitude_longitude"));
+                .anyMatch(line -> line.contains("idx_map_place_location_geography_gist"));
+    }
+
+    @Test
+    void 지도_viewport_검색은_location_geometry_gist_인덱스를_사용한다() throws Exception {
+        List<String> planLines = explain("""
+                SELECT mp.map_place_id
+                FROM map_place mp
+                WHERE mp.location && ST_MakeEnvelope(128.04, 35.12, 128.16, 35.24, 4326)
+                  AND mp.operating_status = 'OPERATING'
+                  AND mp.discovery_status = 'VISIBLE'
+                LIMIT 501
+                """);
+
+        assertThat(planLines)
+                .anyMatch(line -> line.contains("idx_map_place_location_gist"));
     }
 
     @Test
