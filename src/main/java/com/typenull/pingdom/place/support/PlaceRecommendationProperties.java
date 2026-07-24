@@ -9,6 +9,7 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.validation.annotation.Validated;
 
 @Validated
@@ -67,6 +68,10 @@ public record PlaceRecommendationProperties(
             @NotNull(message = "anonymousWeights는 필수입니다.")
             RankingWeights anonymousWeights
     ) {
+        @ConstructorBinding
+        public VersionPolicy {
+        }
+
         public VersionPolicy(
                 String version,
                 RecommendationStage stage,
