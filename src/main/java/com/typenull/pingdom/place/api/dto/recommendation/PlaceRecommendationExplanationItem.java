@@ -33,6 +33,10 @@ public record PlaceRecommendationExplanationItem(
         double trustScore,
         @Schema(description = "K-컬처 관심사와 현재 여행 맥락 기반 score", example = "0.25")
         double contextScore,
+        @Schema(description = "현재 이용 가능한 혜택 기반 boost", example = "0.05")
+        double benefitScore,
+        @Schema(description = "예약 가능 시간 기반 boost", example = "0.05")
+        double availabilityScore,
         @Schema(description = "최종 score", example = "0.74")
         double finalScore
 ) {

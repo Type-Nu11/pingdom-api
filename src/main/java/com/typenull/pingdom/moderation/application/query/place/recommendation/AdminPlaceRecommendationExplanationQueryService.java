@@ -50,6 +50,8 @@ public class AdminPlaceRecommendationExplanationQueryService {
                         log.getFreshnessScore(),
                         log.getTrustScore(),
                         log.getContextScore(),
+                        log.getBenefitScore(),
+                        log.getAvailabilityScore(),
                         log.getFinalScore(),
                         log.getCreatedAt()
                 ))

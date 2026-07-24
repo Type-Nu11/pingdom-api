@@ -110,10 +110,35 @@ record ScoredCandidate(
         double freshnessScore,
         double trustScore,
         double contextScore,
+        double benefitScore,
+        double availabilityScore,
         PersonalSignalType dominantSignalType,
         double finalScore,
         PlaceRecommendationCandidateSource candidateSource
 ) {
+    ScoredCandidate(
+            MapPlace place,
+            double distanceMeters,
+            double geoScore,
+            double personalScore,
+            double qualityScore,
+            double engagementScore,
+            double conversionScore,
+            double explorationScore,
+            double freshnessScore,
+            double trustScore,
+            double contextScore,
+            PersonalSignalType dominantSignalType,
+            double finalScore,
+            PlaceRecommendationCandidateSource candidateSource
+    ) {
+        this(
+                place, distanceMeters, geoScore, personalScore, qualityScore, engagementScore,
+                conversionScore, explorationScore, freshnessScore, trustScore, contextScore,
+                0d, 0d, dominantSignalType, finalScore, candidateSource
+        );
+    }
+
     ScoredCandidate withCandidateSource(PlaceRecommendationCandidateSource candidateSource) {
         return new ScoredCandidate(
                 place,
@@ -127,6 +152,8 @@ record ScoredCandidate(
                 freshnessScore,
                 trustScore,
                 contextScore,
+                benefitScore,
+                availabilityScore,
                 dominantSignalType,
                 finalScore,
                 candidateSource

@@ -194,6 +194,17 @@ class OpenApiDocumentationValidationTest {
         assertThat(recommendationItem.has("currentlyOperatingCheckedAt"))
                 .as("추천 항목은 현재 영업 여부 판정 시각을 제공해야 한다")
                 .isTrue();
+        assertThat(recommendationItem.has("hasActiveBenefit"))
+                .as("추천 항목은 현재 이용 가능한 혜택 존재 여부를 제공해야 한다")
+                .isTrue();
+        assertThat(recommendationItem.has("reservable"))
+                .as("추천 항목은 현재 예약 가능 여부를 제공해야 한다")
+                .isTrue();
+        JsonNode explanationItem = appDocument.at(
+                "/components/schemas/PlaceRecommendationExplanationItem/properties"
+        );
+        assertThat(explanationItem.has("benefitScore")).isTrue();
+        assertThat(explanationItem.has("availabilityScore")).isTrue();
     }
 
     @Test

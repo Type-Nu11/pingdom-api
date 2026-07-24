@@ -52,6 +52,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final PlaceRecommendationScoringService placeRecommendationScoringService;
     private final KCultureInterestRankingService kCultureInterestRankingService;
     private final CurrentActivityIntentRankingService currentActivityIntentRankingService;
+    private final PlaceRecommendationCommerceSignalLoader placeRecommendationCommerceSignalLoader;
+    private final PlaceRecommendationCommerceRankingService placeRecommendationCommerceRankingService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
     private final RecommendationMetrics recommendationMetrics;
     private final ApplicationEventPublisher eventPublisher;
@@ -194,6 +196,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 intermediateCandidates,
                 resolvedPolicy.weights(hasPersonalSignals)
         );
+        Map<Long, PlaceRecommendationCommerceSignalLoader.CommerceSignal> commerceSignalsByPlaceId =
+                placeRecommendationCommerceSignalLoader.load(selection.candidates().stream()
+                        .map(candidate -> candidate.place().getId())
+                        .toList());
         KCultureInterestRankingService.InterestRankingResult interestRankingResult =
                 kCultureInterestRankingService.apply(
                         userId,
@@ -207,8 +213,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         resolvedPolicy.intentMatchBoost(),
                         interestRankingResult.categoriesByPlaceId()
                 );
-        List<ScoredCandidate> rerankedCandidates = selectOperationallyPrioritizedCandidates(
+        List<ScoredCandidate> commerceRankedCandidates = placeRecommendationCommerceRankingService.apply(
                 intentRankingResult.candidates(),
+                commerceSignalsByPlaceId,
+                resolvedPolicy.benefitBoost(),
+                resolvedPolicy.availabilityBoost()
+        );
+        List<ScoredCandidate> rerankedCandidates = selectOperationallyPrioritizedCandidates(
+                commerceRankedCandidates,
                 safeLimit,
                 resolvedPolicy,
                 similarityContext,
@@ -232,6 +244,14 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         candidate.place().getLongitude(),
                         Math.round(candidate.distanceMeters()),
                         buildReason(candidate, hasPersonalSignals),
+                        commerceSignalsByPlaceId.getOrDefault(
+                                candidate.place().getId(),
+                                PlaceRecommendationCommerceSignalLoader.CommerceSignal.NONE
+                        ).activeBenefit(),
+                        commerceSignalsByPlaceId.getOrDefault(
+                                candidate.place().getId(),
+                                PlaceRecommendationCommerceSignalLoader.CommerceSignal.NONE
+                        ).reservable(),
                         placeGrowthService.snapshot(candidate.place())
                 ))
                 .toList();
@@ -434,6 +454,15 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private String buildReason(ScoredCandidate candidate, boolean hasPersonalSignals) {
+        if (candidate.benefitScore() > 0d && candidate.availabilityScore() > 0d) {
+            return "현재 이용 가능한 혜택과 예약이 있는 장소입니다.";
+        }
+        if (candidate.benefitScore() > 0d) {
+            return "현재 이용 가능한 혜택이 있는 장소입니다.";
+        }
+        if (candidate.availabilityScore() > 0d) {
+            return "현재 예약 가능한 장소입니다.";
+        }
         if (candidate.contextScore() > 0d) {
             return "회원님의 K-컬처 관심사와 현재 여행 맥락에 맞는 장소입니다.";
         }

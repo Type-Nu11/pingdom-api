@@ -47,6 +47,8 @@ public class PlaceRecommendationExplanationQueryService {
                         log.getFreshnessScore(),
                         log.getTrustScore(),
                         log.getContextScore(),
+                        log.getBenefitScore(),
+                        log.getAvailabilityScore(),
                         log.getFinalScore()
                 ))
                 .toList();
