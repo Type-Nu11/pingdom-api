@@ -31,11 +31,11 @@ class VerifiedBoostProductTest {
 
     @Test
     void invalidPriceAndDurationAreRejected() {
-        assertThatThrownBy(() -> VerifiedBoostProduct.draft(1L, 2L, "Boost", "description", 0, 0, NOW))
+        assertThatThrownBy(() -> VerifiedBoostProduct.draft("Boost", "description", 0, 0, NOW))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
     private VerifiedBoostProduct product() {
-        return VerifiedBoostProduct.draft(1L, 2L, "Boost", "description", 30_000, 7, NOW);
+        return VerifiedBoostProduct.draft("Boost", "description", 30_000, 7, NOW);
     }
 }
