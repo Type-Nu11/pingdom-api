@@ -159,6 +159,27 @@ record ScoredCandidate(
                 candidateSource
         );
     }
+
+    ScoredCandidate withFinalScore(double finalScore) {
+        return new ScoredCandidate(
+                place,
+                distanceMeters,
+                geoScore,
+                personalScore,
+                qualityScore,
+                engagementScore,
+                conversionScore,
+                explorationScore,
+                freshnessScore,
+                trustScore,
+                contextScore,
+                benefitScore,
+                availabilityScore,
+                dominantSignalType,
+                finalScore,
+                candidateSource
+        );
+    }
 }
 
 final class PlaceAggregate {
