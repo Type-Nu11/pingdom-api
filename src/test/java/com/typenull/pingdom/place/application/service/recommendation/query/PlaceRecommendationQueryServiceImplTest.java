@@ -115,6 +115,9 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private PlaceRecommendationCommerceSignalLoader placeRecommendationCommerceSignalLoader;
 
+    @Mock
+    private VerifiedBoostRankingService verifiedBoostRankingService;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
@@ -177,6 +180,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 currentActivityIntentRankingService,
                 placeRecommendationCommerceSignalLoader,
                 new PlaceRecommendationCommerceRankingService(),
+                verifiedBoostRankingService,
                 placeRecommendationPortfolioService,
                 recommendationMetrics,
                 eventPublisher
@@ -188,6 +192,8 @@ class PlaceRecommendationQueryServiceImplTest {
                 .thenReturn(Page.empty());
         when(placeRecommendationTrustScoreRepository.findTrustScoresByPlaceIds(any())).thenReturn(List.of());
         when(placeRecommendationCommerceSignalLoader.load(any())).thenReturn(java.util.Map.of());
+        when(verifiedBoostRankingService.apply(any())).thenAnswer(invocation ->
+                new VerifiedBoostRankingService.RankingResult(invocation.getArgument(0), java.util.Set.of()));
     }
 
     @Test
