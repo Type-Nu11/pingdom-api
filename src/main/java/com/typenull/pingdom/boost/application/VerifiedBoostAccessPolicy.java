@@ -4,6 +4,7 @@ import com.typenull.pingdom.boost.domain.exception.VerifiedBoostErrorCode;
 import com.typenull.pingdom.boost.domain.exception.VerifiedBoostException;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
@@ -22,7 +23,9 @@ public class VerifiedBoostAccessPolicy {
     private final MerchantVerificationRepository verificationRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
 
-    public void requireOwnedPlace(Long ownerId, Long placeId, LocalDateTime now) {
+    public MerchantOwnerPlace requireOwnedPlaceForUpdate(Long ownerId, Long placeId, LocalDateTime now) {
+        MerchantOwnerPlace ownerPlace = ownerPlaceRepository.findByPlaceIdForUpdate(placeId)
+                .orElseThrow(() -> new VerifiedBoostException(VerifiedBoostErrorCode.PLACE_NOT_OWNED));
         User user = userRepository.findById(ownerId).orElse(null);
         boolean activeOwner = user != null
                 && user.isMerchantOwner()
@@ -31,8 +34,9 @@ public class VerifiedBoostAccessPolicy {
                 && profileRepository.existsByUserIdAndStatus(ownerId, MerchantOwnerStatus.ACTIVE)
                 && verificationRepository.existsByUserIdAndIdentityStatusAndBusinessStatus(
                         ownerId, MerchantVerificationStatus.APPROVED, MerchantVerificationStatus.APPROVED);
-        if (!activeOwner || !ownerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(placeId, ownerId)) {
+        if (!activeOwner || !ownerId.equals(ownerPlace.getMerchantOwnerUserId())) {
             throw new VerifiedBoostException(VerifiedBoostErrorCode.PLACE_NOT_OWNED);
         }
+        return ownerPlace;
     }
 }
