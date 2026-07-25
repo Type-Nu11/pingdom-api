@@ -25,12 +25,6 @@ public class VerifiedBoostProduct {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
-    @Column(name = "merchant_owner_user_id", nullable = false)
-    private Long merchantOwnerUserId;
-
-    @Column(name = "place_id", nullable = false)
-    private Long placeId;
-
     @Column(nullable = false, length = 100)
     private String name;
 
@@ -57,14 +51,12 @@ public class VerifiedBoostProduct {
     @Column(nullable = false)
     private long version;
 
-    public static VerifiedBoostProduct draft(Long ownerId, Long placeId, String name, String description,
+    public static VerifiedBoostProduct draft(String name, String description,
             long priceAmount, int durationDays, LocalDateTime now) {
         if (priceAmount <= 0 || durationDays < 1 || durationDays > 365) {
             throw new IllegalArgumentException("Boost 가격 또는 적용 기간이 올바르지 않습니다.");
         }
         VerifiedBoostProduct product = new VerifiedBoostProduct();
-        product.merchantOwnerUserId = Objects.requireNonNull(ownerId, "ownerId must not be null");
-        product.placeId = Objects.requireNonNull(placeId, "placeId must not be null");
         product.name = requireText(name, 100);
         product.description = requireText(description, 500);
         product.priceAmount = priceAmount;
