@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.campaign.api.dto.PopupCampaignCreateRequest;
+import com.typenull.pingdom.campaign.api.dto.BrandCreateRequest;
 import com.typenull.pingdom.campaign.domain.MerchantBrand;
 import com.typenull.pingdom.campaign.domain.PopupCampaign;
 import com.typenull.pingdom.campaign.domain.PopupCampaignStatus;
@@ -19,6 +20,9 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.sql.SQLException;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -91,6 +95,32 @@ class MerchantCampaignServiceTest {
         assertThat(response.status()).isEqualTo(PopupCampaignStatus.PUBLISHED);
     }
 
+    @Test
+    void duplicateBrandConstraintIsMappedToDomainError() {
+        when(brandRepository.existsByMerchantOwnerUserIdAndName(OWNER_ID, "핑덤")).thenReturn(false);
+        when(brandRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(MerchantBrand.class)))
+                .thenThrow(constraintViolation("uq_merchant_brand_owner_name"));
+
+        assertThatThrownBy(() -> service.createBrand(
+                OWNER_ID,
+                new BrandCreateRequest("핑덤", null, null)
+        )).isInstanceOfSatisfying(CampaignException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(CampaignErrorCode.BRAND_NAME_DUPLICATED));
+    }
+
+    @Test
+    void unrelatedBrandConstraintIsNotHiddenAsDuplicate() {
+        DataIntegrityViolationException violation = constraintViolation("fk_merchant_brand_owner");
+        when(brandRepository.existsByMerchantOwnerUserIdAndName(OWNER_ID, "핑덤")).thenReturn(false);
+        when(brandRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(MerchantBrand.class)))
+                .thenThrow(violation);
+
+        assertThatThrownBy(() -> service.createBrand(
+                OWNER_ID,
+                new BrandCreateRequest("핑덤", null, null)
+        )).isSameAs(violation);
+    }
+
     private PopupCampaignCreateRequest request() {
         return new PopupCampaignCreateRequest(
                 1L,
@@ -107,5 +137,17 @@ class MerchantCampaignServiceTest {
         when(brand.getId()).thenReturn(id);
         when(brand.getName()).thenReturn("핑덤");
         return brand;
+    }
+
+    private DataIntegrityViolationException constraintViolation(String constraintName) {
+        return new DataIntegrityViolationException(
+                "brand insert failed",
+                new ConstraintViolationException(
+                        "constraint violation",
+                        new SQLException("constraint violation"),
+                        "insert into merchant_brand",
+                        constraintName
+                )
+        );
     }
 }
