@@ -21,16 +21,14 @@ import org.springframework.transaction.annotation.Transactional;
 public class VerifiedBoostProductService {
 
     private final VerifiedBoostProductRepository repository;
-    private final VerifiedBoostAccessPolicy accessPolicy;
     private final Clock clock;
 
     @Transactional
-    public VerifiedBoostProductResponse create(Long ownerId, VerifiedBoostProductCreateRequest request) {
+    public VerifiedBoostProductResponse create(VerifiedBoostProductCreateRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
-        accessPolicy.requireOwnedPlace(ownerId, request.placeId(), now);
         try {
             return VerifiedBoostProductResponse.from(repository.save(VerifiedBoostProduct.draft(
-                    ownerId, request.placeId(), request.name(), request.description(), request.priceAmount(),
+                    request.name(), request.description(), request.priceAmount(),
                     request.durationDays(), now)));
         } catch (IllegalArgumentException exception) {
             throw new VerifiedBoostException(VerifiedBoostErrorCode.INVALID_PRODUCT_INPUT);
@@ -38,8 +36,8 @@ public class VerifiedBoostProductService {
     }
 
     @Transactional(readOnly = true)
-    public VerifiedBoostProductPageResponse list(Long ownerId, int page, int limit) {
-        Page<VerifiedBoostProduct> result = repository.findAllByMerchantOwnerUserId(ownerId,
+    public VerifiedBoostProductPageResponse list(int page, int limit) {
+        Page<VerifiedBoostProduct> result = repository.findAll(
                 PageRequest.of(Math.max(page - 1, 0), Math.min(Math.max(limit, 1), 100),
                         Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
         return new VerifiedBoostProductPageResponse(
@@ -49,16 +47,15 @@ public class VerifiedBoostProductService {
     }
 
     @Transactional(readOnly = true)
-    public VerifiedBoostProductResponse get(Long ownerId, Long productId) {
-        return VerifiedBoostProductResponse.from(repository.findByIdAndMerchantOwnerUserId(productId, ownerId)
+    public VerifiedBoostProductResponse get(Long productId) {
+        return VerifiedBoostProductResponse.from(repository.findById(productId)
                 .orElseThrow(() -> new VerifiedBoostException(VerifiedBoostErrorCode.PRODUCT_NOT_FOUND)));
     }
 
     @Transactional
-    public VerifiedBoostProductResponse activate(Long ownerId, Long productId) {
+    public VerifiedBoostProductResponse activate(Long productId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        VerifiedBoostProduct product = findOwnedForUpdate(ownerId, productId);
-        accessPolicy.requireOwnedPlace(ownerId, product.getPlaceId(), now);
+        VerifiedBoostProduct product = findForUpdate(productId);
         try {
             product.activate(now);
         } catch (IllegalStateException exception) {
@@ -68,10 +65,9 @@ public class VerifiedBoostProductService {
     }
 
     @Transactional
-    public VerifiedBoostProductResponse deactivate(Long ownerId, Long productId) {
+    public VerifiedBoostProductResponse deactivate(Long productId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        VerifiedBoostProduct product = findOwnedForUpdate(ownerId, productId);
-        accessPolicy.requireOwnedPlace(ownerId, product.getPlaceId(), now);
+        VerifiedBoostProduct product = findForUpdate(productId);
         try {
             product.deactivate(now);
         } catch (IllegalStateException exception) {
@@ -80,8 +76,8 @@ public class VerifiedBoostProductService {
         return VerifiedBoostProductResponse.from(product);
     }
 
-    private VerifiedBoostProduct findOwnedForUpdate(Long ownerId, Long productId) {
-        return repository.findOwnedByIdForUpdate(productId, ownerId)
+    private VerifiedBoostProduct findForUpdate(Long productId) {
+        return repository.findByIdForUpdate(productId)
                 .orElseThrow(() -> new VerifiedBoostException(VerifiedBoostErrorCode.PRODUCT_NOT_FOUND));
     }
 }
