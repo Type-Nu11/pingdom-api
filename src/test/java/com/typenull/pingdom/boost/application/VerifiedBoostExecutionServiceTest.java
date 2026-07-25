@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostExecutionStartRequest;
@@ -93,6 +94,39 @@ class VerifiedBoostExecutionServiceTest {
         verify(accessPolicy).requireOwnedPlaceForUpdate(1L, 2L, NOW);
         assertThat(response.status()).isEqualTo(VerifiedBoostExecutionStatus.STOPPED);
         assertThat(response.stoppedAt()).isEqualTo(NOW);
+    }
+
+    @Test
+    void repeatedStartReturnsExistingExecutionWithoutReapplyingGuardrail() {
+        MerchantVerifiedBoostSelection selection = selection();
+        VerifiedBoostExecution execution = VerifiedBoostExecution.start(selection, 7, NOW);
+        when(selectionRepository.findByIdAndMerchantOwnerUserId(4L, 1L)).thenReturn(Optional.of(selection));
+        when(accessPolicy.requireOwnedPlaceForUpdate(1L, 2L, NOW)).thenReturn(healthyOwnerPlace());
+        when(executionRepository.findBySelectionId(4L)).thenReturn(Optional.of(execution));
+
+        var response = service.start(1L, new VerifiedBoostExecutionStartRequest(4L));
+
+        assertThat(response.status()).isEqualTo(VerifiedBoostExecutionStatus.ACTIVE);
+        verifyNoInteractions(qualityGuardrail, productRepository);
+    }
+
+    @Test
+    void expiredExecutionCannotBeStopped() {
+        VerifiedBoostExecution execution = VerifiedBoostExecution.start(selection(), 1, NOW.minusDays(1));
+        when(executionRepository.findOwnedByIdForUpdate(5L, 1L)).thenReturn(Optional.of(execution));
+
+        assertThatThrownBy(() -> service.stop(1L, 5L))
+                .isInstanceOfSatisfying(VerifiedBoostException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.INVALID_EXECUTION_STATE));
+    }
+
+    @Test
+    void anotherOwnersExecutionIsNotExposed() {
+        when(executionRepository.findOwnedByIdForUpdate(5L, 1L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.stop(1L, 5L))
+                .isInstanceOfSatisfying(VerifiedBoostException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.EXECUTION_NOT_FOUND));
     }
 
     private MerchantVerifiedBoostSelection selection() {
