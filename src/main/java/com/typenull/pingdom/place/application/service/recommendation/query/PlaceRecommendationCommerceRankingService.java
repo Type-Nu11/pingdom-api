@@ -52,6 +52,7 @@ class PlaceRecommendationCommerceRankingService {
                 candidate.contextScore(),
                 benefitScore,
                 availabilityScore,
+                candidate.boostScore(),
                 candidate.dominantSignalType(),
                 candidate.finalScore() + benefitScore + availabilityScore,
                 candidate.candidateSource()
