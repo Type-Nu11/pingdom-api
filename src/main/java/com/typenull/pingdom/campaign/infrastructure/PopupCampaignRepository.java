@@ -26,6 +26,32 @@ public interface PopupCampaignRepository extends JpaRepository<PopupCampaign, Lo
               AND campaign.startsAt <= :now
               AND campaign.endsAt > :now
               AND (:placeId IS NULL OR campaign.placeId = :placeId)
+              AND EXISTS (
+                  SELECT ownerPlace.placeId FROM MerchantOwnerPlace ownerPlace
+                  WHERE ownerPlace.placeId = campaign.placeId
+                    AND ownerPlace.merchantOwnerUserId = campaign.merchantOwnerUserId
+              )
+              AND EXISTS (
+                  SELECT profile.userId FROM MerchantOwnerProfile profile
+                  WHERE profile.userId = campaign.merchantOwnerUserId
+                    AND profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
+              )
+              AND EXISTS (
+                  SELECT verification.userId FROM MerchantVerification verification
+                  WHERE verification.userId = campaign.merchantOwnerUserId
+                    AND verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+                    AND verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+              )
+              AND EXISTS (
+                  SELECT ownerUser.id FROM User ownerUser
+                  WHERE ownerUser.id = campaign.merchantOwnerUserId
+                    AND ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
+                    AND ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
+                    AND (ownerUser.banned = false OR (
+                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
+                        AND ownerUser.banExpiresAt <= :now
+                    ))
+              )
             """)
     Page<PopupCampaign> findDiscoverable(
             @Param("status") PopupCampaignStatus status,
@@ -34,10 +60,42 @@ public interface PopupCampaignRepository extends JpaRepository<PopupCampaign, Lo
             Pageable pageable
     );
 
-    Optional<PopupCampaign> findByIdAndStatusAndStartsAtLessThanEqualAndEndsAtAfter(
-            Long id,
-            PopupCampaignStatus status,
-            LocalDateTime startsAt,
-            LocalDateTime endsAt
+    @Query("""
+            SELECT campaign FROM PopupCampaign campaign
+            WHERE campaign.id = :id
+              AND campaign.status = :status
+              AND campaign.startsAt <= :now
+              AND campaign.endsAt > :now
+              AND EXISTS (
+                  SELECT ownerPlace.placeId FROM MerchantOwnerPlace ownerPlace
+                  WHERE ownerPlace.placeId = campaign.placeId
+                    AND ownerPlace.merchantOwnerUserId = campaign.merchantOwnerUserId
+              )
+              AND EXISTS (
+                  SELECT profile.userId FROM MerchantOwnerProfile profile
+                  WHERE profile.userId = campaign.merchantOwnerUserId
+                    AND profile.status = com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.ACTIVE
+              )
+              AND EXISTS (
+                  SELECT verification.userId FROM MerchantVerification verification
+                  WHERE verification.userId = campaign.merchantOwnerUserId
+                    AND verification.identityStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+                    AND verification.businessStatus = com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.APPROVED
+              )
+              AND EXISTS (
+                  SELECT ownerUser.id FROM User ownerUser
+                  WHERE ownerUser.id = campaign.merchantOwnerUserId
+                    AND ownerUser.role = com.typenull.pingdom.identity.domain.UserRole.MERCHANT_OWNER
+                    AND ownerUser.status = com.typenull.pingdom.identity.domain.UserStatus.ACTIVE
+                    AND (ownerUser.banned = false OR (
+                        ownerUser.banType = com.typenull.pingdom.identity.domain.UserBanType.TEMPORARY
+                        AND ownerUser.banExpiresAt <= :now
+                    ))
+              )
+            """)
+    Optional<PopupCampaign> findDiscoverableById(
+            @Param("id") Long id,
+            @Param("status") PopupCampaignStatus status,
+            @Param("now") LocalDateTime now
     );
 }
