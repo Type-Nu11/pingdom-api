@@ -147,6 +147,7 @@ class PlaceRecommendationScoringService {
                             0d,
                             0d,
                             0d,
+                            0d,
                             candidate.dominantSignalType(),
                             finalScore,
                             PlaceRecommendationCandidateSource.FALLBACK
