@@ -281,6 +281,31 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     @Test
+    void recommendPlaces는_Boost_적용_여부를_응답한다() {
+        MapPlace candidate = createPlace(250L, "boosted", 35.1800d, 128.1070d);
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                any(PlaceOperatingStatus.class), any(PlaceDiscoveryStatus.class), any(Pageable.class)
+        )).thenReturn(List.of(candidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(false));
+        when(verifiedBoostRankingService.apply(any())).thenAnswer(invocation -> {
+            List<ScoredCandidate> candidates = invocation.getArgument(0);
+            return new VerifiedBoostRankingService.RankingResult(
+                    candidates.stream().map(item -> item.withBoostScore(0.08d)).toList(),
+                    Set.of(candidate.getId()));
+        });
+
+        var response = placeRecommendationQueryService.recommendPlaces(
+                null, 35.1800d, 128.1070d, 1, 5.0d, null);
+
+        assertThat(response.places()).singleElement().satisfies(place -> {
+            assertThat(place.id()).isEqualTo(candidate.getId());
+            assertThat(place.boosted()).isTrue();
+        });
+    }
+
+    @Test
     void recommendPlaces는_현재_영업중인_후보를_영업외_후보보다_우선한다() {
         MapPlace closedCandidate = createPlace(301L, "closed", 35.1800d, 128.1070d);
         closedCandidate.replaceOperatingSchedule(Set.of(
