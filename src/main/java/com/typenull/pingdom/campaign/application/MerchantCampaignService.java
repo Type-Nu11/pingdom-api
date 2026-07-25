@@ -51,7 +51,10 @@ public class MerchantCampaignService {
                     now
             )));
         } catch (DataIntegrityViolationException exception) {
-            throw new CampaignException(CampaignErrorCode.BRAND_NAME_DUPLICATED);
+            if (hasConstraint(exception, "uq_merchant_brand_owner_name")) {
+                throw new CampaignException(CampaignErrorCode.BRAND_NAME_DUPLICATED);
+            }
+            throw exception;
         } catch (IllegalArgumentException exception) {
             throw new CampaignException(CampaignErrorCode.INVALID_INPUT);
         }
@@ -77,7 +80,8 @@ public class MerchantCampaignService {
     public BrandResponse updateBrand(Long ownerId, Long brandId, BrandCreateRequest request) {
         LocalDateTime now = now();
         accessPolicy.requireActiveOwner(ownerId, now);
-        MerchantBrand brand = findOwnedBrand(ownerId, brandId);
+        MerchantBrand brand = brandRepository.findOwnedByIdForUpdate(brandId, ownerId)
+                .orElseThrow(() -> new CampaignException(CampaignErrorCode.BRAND_NOT_FOUND));
         String normalizedName = request.name().trim();
         if (!brand.getName().equals(normalizedName)
                 && brandRepository.existsByMerchantOwnerUserIdAndName(ownerId, normalizedName)) {
@@ -85,7 +89,12 @@ public class MerchantCampaignService {
         }
         try {
             brand.update(normalizedName, request.description(), request.logoUrl(), now);
-            return BrandResponse.from(brand);
+            return BrandResponse.from(brandRepository.saveAndFlush(brand));
+        } catch (DataIntegrityViolationException exception) {
+            if (hasConstraint(exception, "uq_merchant_brand_owner_name")) {
+                throw new CampaignException(CampaignErrorCode.BRAND_NAME_DUPLICATED);
+            }
+            throw exception;
         } catch (IllegalArgumentException exception) {
             throw new CampaignException(CampaignErrorCode.INVALID_INPUT);
         }
@@ -222,5 +231,17 @@ public class MerchantCampaignService {
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
+    }
+
+    private boolean hasConstraint(Throwable throwable, String constraintName) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof org.hibernate.exception.ConstraintViolationException violation
+                    && constraintName.equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
