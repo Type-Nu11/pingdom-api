@@ -16,7 +16,7 @@ CREATE TABLE verified_boost_execution (
     CONSTRAINT fk_boost_execution_owner FOREIGN KEY (merchant_owner_user_id)
         REFERENCES merchant_owner_profile (user_id),
     CONSTRAINT fk_boost_execution_place FOREIGN KEY (place_id)
-        REFERENCES merchant_owner_place (place_id),
+        REFERENCES map_place (map_place_id),
     CONSTRAINT uq_boost_execution_selection UNIQUE (selection_id),
     CONSTRAINT ck_boost_execution_status CHECK (status IN ('ACTIVE', 'STOPPED')),
     CONSTRAINT ck_boost_execution_period CHECK (ends_at > started_at),
