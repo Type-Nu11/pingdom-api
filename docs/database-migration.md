@@ -168,6 +168,8 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 `V73`은 관리자가 운영하는 Verified Boost 상품 정책과 Merchant의 장소별 상품 선택 테이블을 추가한다.
 
 `V74`는 Merchant의 장소별 Verified Boost 집행 기간과 중단 상태를 저장하고, 활성 집행 조회를 위한 인덱스를 추가한다.
+
+`V75`는 추천 feature log에 Verified Boost 기여 점수를 추가해 최종 점수의 구성 근거를 보존한다.
 기존 데이터는 backfill하지 않으며 상품은 `DRAFT`, `ACTIVE`, `INACTIVE` 상태로 관리한다. 가격은 KRW
 최소 화폐 단위의 양수 정수로 저장하고 적용 기간은 1일부터 365일까지 제한한다. Merchant 선택은 장소
 소유 관계를 잠근 뒤 저장하며 `(merchant_owner_user_id, place_id, idempotency_key)` unique constraint로
