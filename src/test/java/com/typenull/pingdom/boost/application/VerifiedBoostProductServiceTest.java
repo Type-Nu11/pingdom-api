@@ -30,7 +30,6 @@ class VerifiedBoostProductServiceTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 26, 12, 0);
 
     @Mock private VerifiedBoostProductRepository repository;
-    @Mock private VerifiedBoostAccessPolicy accessPolicy;
     @Mock private Clock clock;
     @InjectMocks private VerifiedBoostProductService service;
 
@@ -41,37 +40,35 @@ class VerifiedBoostProductServiceTest {
     }
 
     @Test
-    void owningMerchantCanCreateDraft() {
-        var request = new VerifiedBoostProductCreateRequest(2L, "Boost", "description", 30_000L, 7);
+    void adminCanCreateDraft() {
+        var request = new VerifiedBoostProductCreateRequest("Boost", "description", 30_000L, 7);
         when(repository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        var response = service.create(1L, request);
+        var response = service.create(request);
 
-        verify(accessPolicy).requireOwnedPlace(1L, 2L, NOW);
         assertThat(response.status()).isEqualTo(VerifiedBoostProductStatus.DRAFT);
     }
 
     @Test
-    void owningMerchantCanActivateProduct() {
+    void adminCanActivateProduct() {
         VerifiedBoostProduct product = product();
-        when(repository.findOwnedByIdForUpdate(3L, 1L)).thenReturn(Optional.of(product));
+        when(repository.findByIdForUpdate(3L)).thenReturn(Optional.of(product));
 
-        var response = service.activate(1L, 3L);
+        var response = service.activate(3L);
 
-        verify(accessPolicy).requireOwnedPlace(1L, 2L, NOW);
         assertThat(response.status()).isEqualTo(VerifiedBoostProductStatus.ACTIVE);
     }
 
     @Test
-    void anotherOwnersProductIsNotExposed() {
-        when(repository.findOwnedByIdForUpdate(3L, 1L)).thenReturn(Optional.empty());
+    void unknownProductIsNotExposed() {
+        when(repository.findByIdForUpdate(3L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.activate(1L, 3L))
+        assertThatThrownBy(() -> service.activate(3L))
                 .isInstanceOfSatisfying(VerifiedBoostException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.PRODUCT_NOT_FOUND));
     }
 
     private VerifiedBoostProduct product() {
-        return VerifiedBoostProduct.draft(1L, 2L, "Boost", "description", 30_000, 7, NOW.minusDays(1));
+        return VerifiedBoostProduct.draft("Boost", "description", 30_000, 7, NOW.minusDays(1));
     }
 }
