@@ -42,6 +42,8 @@ public record PlaceRecommendationItem(
         boolean hasActiveBenefit,
         @Schema(description = "현재 예약 가능한 시간 존재 여부")
         boolean reservable,
+        @Schema(description = "Verified Boost가 적용된 추천 여부")
+        boolean boosted,
         @Schema(description = "장소 성장 상태")
         PlaceGrowthSnapshot placeGrowth
 ) {
