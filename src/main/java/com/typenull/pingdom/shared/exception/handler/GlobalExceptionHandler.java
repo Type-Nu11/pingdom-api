@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.exception.handler;
 
+import com.typenull.pingdom.campaign.domain.exception.CampaignException;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -29,6 +30,12 @@ import org.springframework.web.server.ResponseStatusException;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+    @ExceptionHandler(CampaignException.class)
+    public ResponseEntity<Map<String, String>> handleCampaignException(CampaignException exception) {
+        return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
 
     private final AuthMetrics authMetrics;
 
