@@ -165,6 +165,11 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 `V50`은 검증된 non-null 보조 제약을 근거로 table 재검사 없이 `product_type`을 `NOT NULL`로 전환하고,
 `V51`은 역할을 마친 보조 제약을 별도 transaction에서 제거한다.
 
+`V73`은 Merchant가 소유 장소에 등록하는 Verified Boost 상품 테이블을 추가한다. 기존 데이터는
+backfill하지 않으며 상품은 `DRAFT`, `ACTIVE`, `INACTIVE` 상태로 관리한다. 가격은 KRW 최소 화폐 단위의
+양수 정수로 저장하고 적용 기간은 1일부터 365일까지 제한한다. 실제 노출 집행과 구매·정산 이력은 이
+테이블에 포함하지 않고 후속 Boost 집행 및 결제 경계에서 관리한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.
