@@ -1,13 +1,13 @@
 package com.typenull.pingdom.place.application.service.recommendation.query;
 
 import com.typenull.pingdom.boost.infrastructure.VerifiedBoostExecutionRepository;
+import com.typenull.pingdom.place.support.VerifiedBoostRankingProperties;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
-import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -16,12 +16,10 @@ class VerifiedBoostRankingService {
 
     private final VerifiedBoostExecutionRepository executionRepository;
     private final Clock clock;
-
-    @Value("${place.recommendation.verified-boost-score:0.08}")
-    private double boostScore;
+    private final VerifiedBoostRankingProperties properties;
 
     RankingResult apply(List<ScoredCandidate> candidates) {
-        if (candidates.isEmpty() || boostScore <= 0d) {
+        if (candidates.isEmpty() || properties.score() <= 0d) {
             return new RankingResult(candidates, Set.of());
         }
         List<Long> candidatePlaceIds = candidates.stream().map(candidate -> candidate.place().getId()).toList();
@@ -32,7 +30,7 @@ class VerifiedBoostRankingService {
         }
         List<ScoredCandidate> ranked = candidates.stream()
                 .map(candidate -> boostedPlaceIds.contains(candidate.place().getId())
-                        ? candidate.withFinalScore(candidate.finalScore() + boostScore)
+                        ? candidate.withBoostScore(properties.score())
                         : candidate)
                 .toList();
         return new RankingResult(ranked, Set.copyOf(boostedPlaceIds));
