@@ -167,7 +167,7 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 
 ## 브랜드 및 팝업 캠페인
 
-`V73`은 Merchant가 소유하는 `merchant_brand`와 단일 장소에 연결되는 `popup_campaign`을 추가한다.
+`V76`은 Merchant가 소유하는 `merchant_brand`와 단일 장소에 연결되는 `popup_campaign`을 추가한다.
 브랜드명은 Merchant 내부에서 중복될 수 없고, 캠페인은 `DRAFT`, `PUBLISHED`, `CLOSED` 상태와 유효한
 시작·종료 기간을 DB 제약으로 보장한다. 브랜드·캠페인 소유자는 복합 FK로 일치시킨다. 공개 목록은
 상태·기간 및 장소 조건을 사용하는 전용 index를 사용한다. 장소 삭제는 캠페인 이력 보존을 위해 제한하고
