@@ -62,10 +62,9 @@ public class PopupCampaignQueryService {
     public PopupCampaignResponse get(Long campaignId) {
         LocalDateTime now = LocalDateTime.now(clock);
         PopupCampaign campaign = campaignRepository
-                .findByIdAndStatusAndStartsAtLessThanEqualAndEndsAtAfter(
+                .findDiscoverableById(
                         campaignId,
                         PopupCampaignStatus.PUBLISHED,
-                        now,
                         now
                 )
                 .orElseThrow(() -> new CampaignException(CampaignErrorCode.CAMPAIGN_NOT_FOUND));
