@@ -1,0 +1,47 @@
+package com.typenull.pingdom.boost.api;
+
+import com.typenull.pingdom.boost.api.dto.VerifiedBoostSelectionCreateRequest;
+import com.typenull.pingdom.boost.api.dto.VerifiedBoostSelectionPageResponse;
+import com.typenull.pingdom.boost.api.dto.VerifiedBoostSelectionResponse;
+import com.typenull.pingdom.boost.application.MerchantVerifiedBoostSelectionService;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+@RestController
+@RequestMapping("/merchant-owner/verified-boost-selections")
+@RequiredArgsConstructor
+@PreAuthorize("@merchantOwnerAuthorization.isActive(authentication)")
+@SecurityRequirement(name = "bearerAuth")
+@Tag(name = "App", description = "앱 전용 API")
+public class MerchantVerifiedBoostSelectionController {
+
+    private final MerchantVerifiedBoostSelectionService service;
+
+    @PostMapping
+    public ResponseEntity<VerifiedBoostSelectionResponse> select(
+            @Valid @RequestBody VerifiedBoostSelectionCreateRequest request,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.select(user.userId(), request));
+    }
+
+    @GetMapping
+    public VerifiedBoostSelectionPageResponse list(@RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return service.list(user.userId(), page, limit);
+    }
+}
