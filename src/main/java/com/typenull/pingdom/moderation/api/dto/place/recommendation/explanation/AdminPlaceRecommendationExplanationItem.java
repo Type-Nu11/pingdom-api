@@ -45,6 +45,8 @@ public record AdminPlaceRecommendationExplanationItem(
         double benefitScore,
         @Schema(description = "예약 가능 시간 기반 boost", example = "0.05")
         double availabilityScore,
+        @Schema(description = "Verified Boost 집행 기반 score", example = "0.08")
+        double boostScore,
         @Schema(description = "최종 score", example = "0.74")
         double finalScore,
         @Schema(description = "로그 생성 시각", example = "2026-06-25T16:00:00")

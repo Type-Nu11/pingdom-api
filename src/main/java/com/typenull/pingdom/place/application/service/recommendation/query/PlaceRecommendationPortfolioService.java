@@ -157,6 +157,7 @@ class PlaceRecommendationPortfolioService {
                     candidate.contextScore(),
                     candidate.benefitScore(),
                     candidate.availabilityScore(),
+                    candidate.boostScore(),
                     candidate.finalScore()
             ));
         }

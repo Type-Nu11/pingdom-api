@@ -165,6 +165,26 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 `V50`은 검증된 non-null 보조 제약을 근거로 table 재검사 없이 `product_type`을 `NOT NULL`로 전환하고,
 `V51`은 역할을 마친 보조 제약을 별도 transaction에서 제거한다.
 
+## 브랜드 및 팝업 캠페인
+
+`V76`은 Merchant가 소유하는 `merchant_brand`와 단일 장소에 연결되는 `popup_campaign`을 추가한다.
+브랜드명은 Merchant 내부에서 중복될 수 없고, 캠페인은 `DRAFT`, `PUBLISHED`, `CLOSED` 상태와 유효한
+시작·종료 기간을 DB 제약으로 보장한다. 브랜드·캠페인 소유자는 복합 FK로 일치시킨다. 공개 목록은
+상태·기간 및 장소 조건을 사용하는 전용 index를 사용한다. 장소 삭제는 캠페인 이력 보존을 위해 제한하고
+Merchant profile 삭제 시 소유 데이터는 함께 정리한다.
+
+## Verified Boost
+
+`V73`은 관리자가 운영하는 Verified Boost 상품 정책과 Merchant의 장소별 상품 선택 테이블을 추가한다.
+
+`V74`는 Merchant의 장소별 Verified Boost 집행 기간과 중단 상태를 저장하고, 활성 집행 조회를 위한 인덱스를 추가한다.
+
+`V75`는 추천 feature log에 Verified Boost 기여 점수를 추가해 최종 점수의 구성 근거를 보존한다.
+기존 데이터는 backfill하지 않으며 상품은 `DRAFT`, `ACTIVE`, `INACTIVE` 상태로 관리한다. 가격은 KRW
+최소 화폐 단위의 양수 정수로 저장하고 적용 기간은 1일부터 365일까지 제한한다. Merchant 선택은 장소
+소유 관계를 잠근 뒤 저장하며 `(merchant_owner_user_id, place_id, idempotency_key)` unique constraint로
+재시도 중복을 방지한다. 실제 노출 집행과 결제·정산 이력은 후속 경계에서 관리한다.
+
 ## validate 실패 대응
 
 Flyway validate 실패는 migration 파일과 DB 이력의 불일치로 봐야 한다.

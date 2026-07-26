@@ -91,6 +91,9 @@ public class PlaceRecommendationFeatureLog {
     @Column(name = "availability_score", nullable = false)
     private double availabilityScore;
 
+    @Column(name = "boost_score", nullable = false)
+    private double boostScore;
+
     @Column(name = "final_score", nullable = false)
     private double finalScore;
 
