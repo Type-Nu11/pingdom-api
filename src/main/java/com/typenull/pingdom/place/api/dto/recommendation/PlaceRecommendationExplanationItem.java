@@ -37,6 +37,8 @@ public record PlaceRecommendationExplanationItem(
         double benefitScore,
         @Schema(description = "예약 가능 시간 기반 boost", example = "0.05")
         double availabilityScore,
+        @Schema(description = "Verified Boost 집행 기반 score", example = "0.08")
+        double boostScore,
         @Schema(description = "최종 score", example = "0.74")
         double finalScore
 ) {

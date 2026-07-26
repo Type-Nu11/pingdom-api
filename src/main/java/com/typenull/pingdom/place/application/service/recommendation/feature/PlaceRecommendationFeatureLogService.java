@@ -49,6 +49,7 @@ public class PlaceRecommendationFeatureLogService {
                         .contextScore(record.contextScore())
                         .benefitScore(record.benefitScore())
                         .availabilityScore(record.availabilityScore())
+                        .boostScore(record.boostScore())
                         .finalScore(record.finalScore())
                         .build())
                 .toList();

@@ -54,6 +54,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final CurrentActivityIntentRankingService currentActivityIntentRankingService;
     private final PlaceRecommendationCommerceSignalLoader placeRecommendationCommerceSignalLoader;
     private final PlaceRecommendationCommerceRankingService placeRecommendationCommerceRankingService;
+    private final VerifiedBoostRankingService verifiedBoostRankingService;
     private final PlaceRecommendationPortfolioService placeRecommendationPortfolioService;
     private final RecommendationMetrics recommendationMetrics;
     private final ApplicationEventPublisher eventPublisher;
@@ -219,8 +220,11 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 resolvedPolicy.benefitBoost(),
                 resolvedPolicy.availabilityBoost()
         );
+        VerifiedBoostRankingService.RankingResult boostRankingResult = verifiedBoostRankingService.apply(
+                commerceRankedCandidates
+        );
         List<ScoredCandidate> rerankedCandidates = selectOperationallyPrioritizedCandidates(
-                commerceRankedCandidates,
+                boostRankingResult.candidates(),
                 safeLimit,
                 resolvedPolicy,
                 similarityContext,
@@ -252,6 +256,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                                 candidate.place().getId(),
                                 PlaceRecommendationCommerceSignalLoader.CommerceSignal.NONE
                         ).reservable(),
+                        boostRankingResult.boostedPlaceIds().contains(candidate.place().getId()),
                         placeGrowthService.snapshot(candidate.place())
                 ))
                 .toList();
