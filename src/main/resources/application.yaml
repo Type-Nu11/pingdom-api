@@ -237,6 +237,8 @@ abuse:
 
 place:
   recommendation:
+    verified-boost:
+      score: ${VERIFIED_BOOST_SCORE:0.08}
     default-version: place-rec-v1
     versions:
       - version: place-rec-v1
