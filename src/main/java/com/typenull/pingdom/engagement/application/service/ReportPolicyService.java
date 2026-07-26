@@ -15,6 +15,7 @@ import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
@@ -41,6 +42,7 @@ public class ReportPolicyService {
     private final TrustScoreAnomalyRepository trustScoreAnomalyRepository;
     private final TrustScoreInterventionRuleRepository trustScoreInterventionRuleRepository;
     private final PlaceGrowthService placeGrowthService;
+    private final Clock clock;
 
     public void validateCanReport(Long reporterUserId, LocalDateTime now) {
         reporterPolicyRepository.findById(reporterUserId)
@@ -61,7 +63,7 @@ public class ReportPolicyService {
     public void recordAccepted(Long reporterUserId, String reporterUsername) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
         int baselineScore = policy.getTrustScore();
-        LocalDateTime now = LocalDateTime.now();
+        LocalDateTime now = LocalDateTime.now(clock);
         policy.recordAccepted(reporterUsername);
         detectAnomalies(policy, baselineScore, now);
         applyHighestPriorityRule(policy, now);
@@ -133,7 +135,7 @@ public class ReportPolicyService {
     }
 
     private ReporterModerationPolicy getOrCreate(Long reporterUserId, String reporterUsername) {
-        return reporterPolicyRepository.findById(reporterUserId)
+        return reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
                 .orElseGet(() -> ReporterModerationPolicy.create(reporterUserId, reporterUsername));
     }
 
