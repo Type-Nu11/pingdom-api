@@ -98,11 +98,23 @@ public class PaymentTransaction {
         this.updatedAt = now;
     }
 
-    public void refund(LocalDateTime now) {
+    public void startRefund(LocalDateTime now) {
         requireStatus(PaymentStatus.PAID);
+        this.status = PaymentStatus.REFUND_PROCESSING;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
+    }
+
+    public void completeRefund(LocalDateTime now) {
+        requireStatus(PaymentStatus.REFUND_PROCESSING);
         this.status = PaymentStatus.REFUNDED;
         this.refundedAt = Objects.requireNonNull(now, "now must not be null");
         this.updatedAt = now;
+    }
+
+    public void cancelRefund(LocalDateTime now) {
+        requireStatus(PaymentStatus.REFUND_PROCESSING);
+        this.status = PaymentStatus.PAID;
+        this.updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
     private void requireStatus(PaymentStatus expected) {
