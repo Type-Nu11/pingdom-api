@@ -25,19 +25,26 @@ public class PaymentCommandService {
                     request.idempotencyKey()));
             return ledgerWriter.complete(preparation.paymentId(), result);
         } catch (PaymentProviderException exception) {
-            return ledgerWriter.fail(preparation.paymentId(), exception.getFailureCode());
+            if (exception.getFailureType() == PaymentProviderFailureType.DECLINED) {
+                return ledgerWriter.fail(preparation.paymentId(), exception.getFailureCode());
+            }
+            throw new PaymentException(PaymentErrorCode.PROVIDER_RESULT_UNKNOWN);
         }
     }
 
     public PaymentResponse refund(Long ownerId, Long paymentId) {
-        PaymentResponse payment = ledgerWriter.requireOwnedPaid(ownerId, paymentId);
+        PaymentResponse payment = ledgerWriter.prepareRefund(ownerId, paymentId);
         PaymentProvider provider = providerRegistry.require(payment.provider());
         try {
             provider.refund(payment.providerPaymentId(), payment.amountMinor(), payment.currency(),
                     "refund-" + payment.id());
-            return ledgerWriter.refund(ownerId, paymentId);
+            return ledgerWriter.completeRefund(ownerId, paymentId);
         } catch (PaymentProviderException exception) {
-            throw new PaymentException(PaymentErrorCode.PROVIDER_REJECTED);
+            if (exception.getFailureType() == PaymentProviderFailureType.DECLINED) {
+                ledgerWriter.cancelRefund(ownerId, paymentId);
+                throw new PaymentException(PaymentErrorCode.PROVIDER_REJECTED);
+            }
+            throw new PaymentException(PaymentErrorCode.PROVIDER_RESULT_UNKNOWN);
         }
     }
 }
