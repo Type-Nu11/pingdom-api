@@ -24,11 +24,23 @@ class PaymentTransactionTest {
     void paidPaymentCanBeRefundedOnlyOnce() {
         PaymentTransaction payment = paidPayment();
 
-        payment.refund(now.plusMinutes(2));
+        payment.startRefund(now.plusMinutes(2));
+        payment.completeRefund(now.plusMinutes(3));
 
         assertThat(payment.getStatus()).isEqualTo(PaymentStatus.REFUNDED);
-        assertThatThrownBy(() -> payment.refund(now.plusMinutes(3)))
+        assertThatThrownBy(() -> payment.startRefund(now.plusMinutes(4)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void declinedRefundCanReturnToPaid() {
+        PaymentTransaction payment = paidPayment();
+        payment.startRefund(now.plusMinutes(2));
+
+        payment.cancelRefund(now.plusMinutes(3));
+
+        assertThat(payment.getStatus()).isEqualTo(PaymentStatus.PAID);
+        assertThat(payment.getRefundedAt()).isNull();
     }
 
     @Test
