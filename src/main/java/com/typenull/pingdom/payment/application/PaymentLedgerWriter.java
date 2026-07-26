@@ -92,13 +92,13 @@ public class PaymentLedgerWriter {
     }
 
     @Transactional
-    public PaymentResponse refund(Long ownerId, Long paymentId) {
+    public PaymentResponse completeRefund(Long ownerId, Long paymentId) {
         PaymentTransaction payment = findForUpdate(paymentId);
         if (!payment.getMerchantOwnerUserId().equals(ownerId)) {
             throw new PaymentException(PaymentErrorCode.PAYMENT_FORBIDDEN);
         }
         try {
-            payment.refund(LocalDateTime.now(clock));
+            payment.completeRefund(LocalDateTime.now(clock));
             if (!ledgerRepository.existsByPaymentTransactionIdAndEntryType(paymentId, LedgerEntryType.REFUND)) {
                 SettlementLedgerEntry paymentEntry = ledgerRepository
                         .findByPaymentTransactionIdAndEntryType(paymentId, LedgerEntryType.PAYMENT)
@@ -119,17 +119,31 @@ public class PaymentLedgerWriter {
                 .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND)));
     }
 
-    @Transactional(readOnly = true)
-    public PaymentResponse requireOwnedPaid(Long ownerId, Long paymentId) {
-        PaymentTransaction payment = paymentRepository.findById(paymentId)
-                .orElseThrow(() -> new PaymentException(PaymentErrorCode.PAYMENT_NOT_FOUND));
+    @Transactional
+    public PaymentResponse prepareRefund(Long ownerId, Long paymentId) {
+        PaymentTransaction payment = findForUpdate(paymentId);
         if (!payment.getMerchantOwnerUserId().equals(ownerId)) {
             throw new PaymentException(PaymentErrorCode.PAYMENT_FORBIDDEN);
         }
-        if (payment.getStatus() != PaymentStatus.PAID) {
+        try {
+            payment.startRefund(LocalDateTime.now(clock));
+            return PaymentResponse.from(payment);
+        } catch (IllegalStateException exception) {
             throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_STATE);
         }
-        return PaymentResponse.from(payment);
+    }
+
+    @Transactional
+    public void cancelRefund(Long ownerId, Long paymentId) {
+        PaymentTransaction payment = findForUpdate(paymentId);
+        if (!payment.getMerchantOwnerUserId().equals(ownerId)) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_FORBIDDEN);
+        }
+        try {
+            payment.cancelRefund(LocalDateTime.now(clock));
+        } catch (IllegalStateException exception) {
+            throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_STATE);
+        }
     }
 
     private PaymentTransaction findForUpdate(Long paymentId) {
