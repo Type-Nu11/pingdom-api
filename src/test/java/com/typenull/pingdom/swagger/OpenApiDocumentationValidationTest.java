@@ -223,6 +223,28 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void visitEvidenceApisExposeSecuritySuccessAndFailureContracts() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode evidence = appDocument.at("/paths/~1location-check-ins~1{checkInId}~1evidence");
+        assertThat(evidence.path("post").at("/requestBody/content/multipart~1form-data/schema/properties/file/format")
+                .asText()).isEqualTo("binary");
+        assertThat(evidence.path("post").path("security").toString()).contains("bearerAuth");
+        assertThat(evidence.at("/post/responses/201/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/VisitEvidenceResponse");
+        for (String status : List.of("400", "404", "409", "413", "503")) {
+            assertThat(evidence.at("/post/responses/" + status + "/content/*~1*/schema/$ref").asText())
+                    .as("증빙 업로드 %s 응답은 공통 오류 계약을 사용해야 한다", status)
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
+        assertThat(evidence.path("get").path("responses").has("404")).isTrue();
+
+        JsonNode evidenceFile = appDocument.at(
+                "/paths/~1location-check-ins~1{checkInId}~1evidence~1file/get");
+        assertThat(evidenceFile.at("/responses/200/content/*~1*/schema/format").asText()).isEqualTo("byte");
+        assertThat(evidenceFile.path("security").toString()).contains("bearerAuth");
+    }
+
+    @Test
     void scoutFieldReportApisAreSeparatedIntoAppAndWebGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");
