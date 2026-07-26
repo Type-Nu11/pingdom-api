@@ -109,6 +109,7 @@ class CurrentActivityIntentRankingService {
                 candidate.contextScore() + intentMatchBoost,
                 candidate.benefitScore(),
                 candidate.availabilityScore(),
+                candidate.boostScore(),
                 candidate.dominantSignalType(),
                 candidate.finalScore() + intentMatchBoost,
                 candidate.candidateSource()

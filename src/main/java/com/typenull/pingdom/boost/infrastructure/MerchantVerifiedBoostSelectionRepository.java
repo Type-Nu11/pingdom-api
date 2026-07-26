@@ -9,6 +9,8 @@ import org.springframework.data.jpa.repository.JpaRepository;
 public interface MerchantVerifiedBoostSelectionRepository
         extends JpaRepository<MerchantVerifiedBoostSelection, Long> {
 
+    Optional<MerchantVerifiedBoostSelection> findByIdAndMerchantOwnerUserId(Long id, Long ownerId);
+
     Optional<MerchantVerifiedBoostSelection> findByMerchantOwnerUserIdAndPlaceIdAndIdempotencyKey(
             Long ownerId, Long placeId, String idempotencyKey);
 

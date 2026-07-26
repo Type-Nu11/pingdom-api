@@ -25,7 +25,7 @@ CREATE TABLE merchant_verified_boost_selection (
     selected_at TIMESTAMP(6) NOT NULL,
     CONSTRAINT fk_boost_selection_product FOREIGN KEY (product_id) REFERENCES verified_boost_product (id),
     CONSTRAINT fk_boost_selection_owner FOREIGN KEY (merchant_owner_user_id) REFERENCES merchant_owner_profile (user_id),
-    CONSTRAINT fk_boost_selection_place FOREIGN KEY (place_id) REFERENCES merchant_owner_place (place_id),
+    CONSTRAINT fk_boost_selection_place FOREIGN KEY (place_id) REFERENCES map_place (map_place_id),
     CONSTRAINT uq_boost_selection_idempotency UNIQUE (merchant_owner_user_id, place_id, idempotency_key)
 );
 

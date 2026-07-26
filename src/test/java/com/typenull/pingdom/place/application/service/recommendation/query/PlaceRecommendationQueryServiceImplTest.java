@@ -115,6 +115,9 @@ class PlaceRecommendationQueryServiceImplTest {
     @Mock
     private PlaceRecommendationCommerceSignalLoader placeRecommendationCommerceSignalLoader;
 
+    @Mock
+    private VerifiedBoostRankingService verifiedBoostRankingService;
+
     private PlaceRecommendationQueryServiceImpl placeRecommendationQueryService;
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
@@ -177,6 +180,7 @@ class PlaceRecommendationQueryServiceImplTest {
                 currentActivityIntentRankingService,
                 placeRecommendationCommerceSignalLoader,
                 new PlaceRecommendationCommerceRankingService(),
+                verifiedBoostRankingService,
                 placeRecommendationPortfolioService,
                 recommendationMetrics,
                 eventPublisher
@@ -188,6 +192,8 @@ class PlaceRecommendationQueryServiceImplTest {
                 .thenReturn(Page.empty());
         when(placeRecommendationTrustScoreRepository.findTrustScoresByPlaceIds(any())).thenReturn(List.of());
         when(placeRecommendationCommerceSignalLoader.load(any())).thenReturn(java.util.Map.of());
+        when(verifiedBoostRankingService.apply(any())).thenAnswer(invocation ->
+                new VerifiedBoostRankingService.RankingResult(invocation.getArgument(0), java.util.Set.of()));
     }
 
     @Test
@@ -272,6 +278,31 @@ class PlaceRecommendationQueryServiceImplTest {
                     && exposureEvent.placeIds().equals(List.of(candidate.getId()))
                     && exposureEvent.recommendationVersion().equals("place-rec-v1");
         }));
+    }
+
+    @Test
+    void recommendPlaces는_Boost_적용_여부를_응답한다() {
+        MapPlace candidate = createPlace(250L, "boosted", 35.1800d, 128.1070d);
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                any(PlaceOperatingStatus.class), any(PlaceDiscoveryStatus.class), any(Pageable.class)
+        )).thenReturn(List.of(candidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(false));
+        when(verifiedBoostRankingService.apply(any())).thenAnswer(invocation -> {
+            List<ScoredCandidate> candidates = invocation.getArgument(0);
+            return new VerifiedBoostRankingService.RankingResult(
+                    candidates.stream().map(item -> item.withBoostScore(0.08d)).toList(),
+                    Set.of(candidate.getId()));
+        });
+
+        var response = placeRecommendationQueryService.recommendPlaces(
+                null, 35.1800d, 128.1070d, 1, 5.0d, null);
+
+        assertThat(response.places()).singleElement().satisfies(place -> {
+            assertThat(place.id()).isEqualTo(candidate.getId());
+            assertThat(place.boosted()).isTrue();
+        });
     }
 
     @Test
