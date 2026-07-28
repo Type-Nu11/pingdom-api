@@ -12,7 +12,7 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplica
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateMergeRequest;
 import com.typenull.pingdom.moderation.application.query.place.management.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.service.place.duplicate.AdminPlaceDuplicateService;
-import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.application.service.place.merge.AdminPlaceMergeService;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +39,7 @@ import jakarta.validation.Valid;
 public class AdminPlaceDuplicateController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
-    private final AdminMapPlaceService adminMapPlaceService;
+    private final AdminPlaceMergeService adminPlaceMergeService;
     private final AdminPlaceDuplicateService adminPlaceDuplicateService;
 
     @GetMapping("/duplicate-candidates")
@@ -117,7 +117,7 @@ public class AdminPlaceDuplicateController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        AdminMapPlaceMergeResponse response = adminMapPlaceService.mergePlaces(adminUserId, request);
+        AdminMapPlaceMergeResponse response = adminPlaceMergeService.mergePlaces(adminUserId, request);
         return ResponseEntity.ok(response);
     }
 
@@ -127,7 +127,7 @@ public class AdminPlaceDuplicateController {
             description = "관리자가 최근 장소 병합 이력을 조회합니다."
     )
     public AdminPlaceMergeHistoryResponse listMergeHistories() {
-        return adminMapPlaceService.listMergeHistories();
+        return adminPlaceMergeService.listMergeHistories();
     }
 
     @PostMapping("/merge-histories/{historyId}/restore")
@@ -140,6 +140,6 @@ public class AdminPlaceDuplicateController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.restoreMerge(adminUserId, historyId));
+        return ResponseEntity.ok(adminPlaceMergeService.restoreMerge(adminUserId, historyId));
     }
 }

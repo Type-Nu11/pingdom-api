@@ -19,6 +19,8 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapP
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.application.service.place.quality.AdminPlaceQualityService;
+import com.typenull.pingdom.moderation.application.service.place.operating.AdminPlaceOperatingScheduleService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -53,6 +55,8 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminPlaceQualityController {
 
     private final AdminMapPlaceService adminMapPlaceService;
+    private final AdminPlaceQualityService adminPlaceQualityService;
+    private final AdminPlaceOperatingScheduleService adminPlaceOperatingScheduleService;
 
     @PatchMapping("/{id}/coordinates")
     @Operation(
@@ -114,7 +118,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceCoordinates(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceCoordinates(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/geocoding")
@@ -128,7 +132,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceGeocoding(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceGeocoding(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/kakao-place-id")
@@ -204,7 +208,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceKakaoPlaceId(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceKakaoPlaceId(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/tourist-info")
@@ -296,7 +300,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceTouristInfo(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceTouristInfo(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/operating-status")
@@ -319,7 +323,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceOperatingStatus(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceOperatingStatus(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/discovery-status")
@@ -342,7 +346,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceDiscoveryStatus(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceDiscoveryStatus(adminUserId, placeId, request));
     }
 
     @GetMapping("/{id}/information-evidence")
@@ -361,7 +365,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminPlaceInformationEvidenceResponse> getPlaceInformationEvidence(
             @Parameter(description = "증빙을 조회할 장소 ID", example = "1") @PathVariable("id") Long placeId
     ) {
-        return ResponseEntity.ok(adminMapPlaceService.getPlaceInformationEvidence(placeId));
+        return ResponseEntity.ok(adminPlaceQualityService.getPlaceInformationEvidence(placeId));
     }
 
     @PostMapping("/{id}/information-evidence")
@@ -384,7 +388,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.createPlaceInformationEvidence(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.createPlaceInformationEvidence(adminUserId, placeId, request));
     }
 
     @PatchMapping("/{id}/information-evidence/{evidenceId}/review")
@@ -408,7 +412,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.reviewPlaceInformationEvidence(adminUserId, placeId, evidenceId, request));
+        return ResponseEntity.ok(adminPlaceQualityService.reviewPlaceInformationEvidence(adminUserId, placeId, evidenceId, request));
     }
 
     @PatchMapping("/{id}/operating-schedule")
@@ -439,7 +443,7 @@ public class AdminPlaceQualityController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updatePlaceOperatingSchedule(adminUserId, placeId, request));
+        return ResponseEntity.ok(adminPlaceOperatingScheduleService.updatePlaceOperatingSchedule(adminUserId, placeId, request));
     }
 
     @DeleteMapping("/{id}/delete")
