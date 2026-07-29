@@ -10,7 +10,7 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeResponse;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
-import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.application.service.place.merge.AdminPlaceMergeService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -41,7 +41,7 @@ class AdminPlaceDuplicateServiceTest {
     @Mock
     private PlaceDuplicateCandidateRepository candidateRepository;
     @Mock
-    private AdminMapPlaceService adminMapPlaceService;
+    private AdminPlaceMergeService adminPlaceMergeService;
     @Mock
     private AdminAuditLogService adminAuditLogService;
 
@@ -51,7 +51,7 @@ class AdminPlaceDuplicateServiceTest {
     void setUp() {
         service = new AdminPlaceDuplicateService(
                 candidateRepository,
-                adminMapPlaceService,
+                adminPlaceMergeService,
                 adminAuditLogService,
                 CLOCK
         );
@@ -96,7 +96,7 @@ class AdminPlaceDuplicateServiceTest {
         PlaceDuplicateCandidate candidate = candidate();
         candidate.confirm(7L, "동일 장소 확인", LocalDateTime.now(CLOCK));
         when(candidateRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(candidate));
-        when(adminMapPlaceService.mergePlaces(eq(7L), any()))
+        when(adminPlaceMergeService.mergePlaces(eq(7L), any()))
                 .thenReturn(new AdminMapPlaceMergeResponse(2L, 1L, "중복 장소를 병합했습니다."));
 
         service.merge(7L, 10L, 1L);
@@ -105,7 +105,7 @@ class AdminPlaceDuplicateServiceTest {
                 ArgumentCaptor.forClass(
                         com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest.class
                 );
-        verify(adminMapPlaceService).mergePlaces(eq(7L), captor.capture());
+        verify(adminPlaceMergeService).mergePlaces(eq(7L), captor.capture());
         assertThat(captor.getValue().sourcePlaceId()).isEqualTo(2L);
         assertThat(captor.getValue().targetPlaceId()).isEqualTo(1L);
         assertThat(captor.getValue().candidateId()).isEqualTo(10L);
@@ -119,7 +119,7 @@ class AdminPlaceDuplicateServiceTest {
                 .isInstanceOfSatisfying(AdminException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED));
 
-        verify(adminMapPlaceService, never()).mergePlaces(any(), any());
+        verify(adminPlaceMergeService, never()).mergePlaces(any(), any());
     }
 
     private PlaceDuplicateCandidate candidate() {
