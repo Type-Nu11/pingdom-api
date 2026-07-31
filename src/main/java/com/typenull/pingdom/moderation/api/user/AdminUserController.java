@@ -268,7 +268,7 @@ public class AdminUserController {
                                               "page": 1,
                                               "limit": 5,
                                               "totalCount": 0,
-                                              "totalPages": 0,
+                                              "totalPages": 1,
                                               "hasNext": false
                                             }
                                             """

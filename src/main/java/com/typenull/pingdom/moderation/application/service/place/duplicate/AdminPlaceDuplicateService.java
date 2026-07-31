@@ -5,7 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMerg
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateCandidateListResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminPlaceDuplicateCandidateResponse;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
-import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.application.service.place.merge.AdminPlaceMergeService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -27,7 +27,7 @@ import org.springframework.util.StringUtils;
 public class AdminPlaceDuplicateService {
 
     private final PlaceDuplicateCandidateRepository candidateRepository;
-    private final AdminMapPlaceService adminMapPlaceService;
+    private final AdminPlaceMergeService adminPlaceMergeService;
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
 
@@ -69,7 +69,7 @@ public class AdminPlaceDuplicateService {
         Long sourcePlaceId = targetPlaceId.equals(candidate.getLeftPlaceId())
                 ? candidate.getRightPlaceId()
                 : candidate.getLeftPlaceId();
-        return adminMapPlaceService.mergePlaces(
+        return adminPlaceMergeService.mergePlaces(
                 adminUserId,
                 new AdminMapPlaceMergeRequest(sourcePlaceId, targetPlaceId, candidateId)
         );

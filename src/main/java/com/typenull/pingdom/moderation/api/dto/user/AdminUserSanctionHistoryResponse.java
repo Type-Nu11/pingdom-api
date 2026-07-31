@@ -19,6 +19,14 @@ public record AdminUserSanctionHistoryResponse(
             long totalCount,
             int totalPages
     ) {
-        return new AdminUserSanctionHistoryResponse(histories, page, limit, totalCount, totalPages, page < totalPages);
+        int normalizedTotalPages = Math.max(totalPages, 1);
+        return new AdminUserSanctionHistoryResponse(
+                histories,
+                page,
+                limit,
+                totalCount,
+                normalizedTotalPages,
+                page < normalizedTotalPages
+        );
     }
 }

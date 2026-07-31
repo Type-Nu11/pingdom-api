@@ -8,7 +8,7 @@ import com.typenull.pingdom.moderation.api.dto.place.recommendation.traffic.Admi
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.traffic.AdminPlaceRecommendationTrafficUpdateResponse;
 import com.typenull.pingdom.moderation.application.query.place.management.AdminMapPlaceQueryService;
 import com.typenull.pingdom.moderation.application.query.place.recommendation.AdminPlaceRecommendationExplanationQueryService;
-import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
+import com.typenull.pingdom.moderation.application.service.place.recommendation.AdminPlaceRecommendationPolicyService;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
@@ -46,7 +46,7 @@ public class AdminPlaceRecommendationController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
     private final AdminPlaceRecommendationExplanationQueryService adminPlaceRecommendationExplanationQueryService;
-    private final AdminMapPlaceService adminMapPlaceService;
+    private final AdminPlaceRecommendationPolicyService adminPlaceRecommendationPolicyService;
     private final RecommendationMetrics recommendationMetrics;
 
     @GetMapping("/recommendation-metrics")
@@ -157,7 +157,7 @@ public class AdminPlaceRecommendationController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
-        return ResponseEntity.ok(adminMapPlaceService.updateRecommendationTraffic(adminUserId, request));
+        return ResponseEntity.ok(adminPlaceRecommendationPolicyService.updateRecommendationTraffic(adminUserId, request));
     }
 
     @PostMapping("/recommendation-snapshots/resync")
@@ -195,7 +195,7 @@ public class AdminPlaceRecommendationController {
         PlaceRecommendationSnapshotResyncService.SnapshotResyncResult result;
 
         try {
-            result = adminMapPlaceService.resyncRecommendationSnapshots();
+            result = adminPlaceRecommendationPolicyService.resyncRecommendationSnapshots();
             recommendationMetrics.recordSnapshotResyncSuccess(result);
         } catch (RuntimeException exception) {
             recommendationMetrics.recordSnapshotResyncFailure(exception);

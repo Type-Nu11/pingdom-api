@@ -5,6 +5,8 @@ import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageError;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import com.typenull.pingdom.verification.domain.VisitEvidence;
 import com.typenull.pingdom.verification.domain.exception.*;
 import java.awt.image.BufferedImage;
@@ -62,6 +64,36 @@ class VisitEvidenceServiceTest {
         assertError(() -> service.upload(1L, 2L, jpeg()),
                 VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS);
         verify(objectStorage).delete("visit-evidence/key");
+    }
+
+    @Test
+    void preservesDatabaseFailureWhenUploadedObjectCleanupAlsoFails() throws Exception {
+        when(persistenceService.save(eq(1L), eq(2L), anyString(), anyString(), anyString(), anyLong(), any(), any()))
+                .thenThrow(new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS));
+        doThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "cleanup failure", null))
+                .when(objectStorage).delete("visit-evidence/key");
+
+        assertError(() -> service.upload(1L, 2L, jpeg()),
+                VisitorVerificationErrorCode.VISIT_EVIDENCE_ALREADY_EXISTS);
+        verify(objectStorage).delete("visit-evidence/key");
+    }
+
+    @Test
+    void allowsClientRetryAfterTransientStorageFailureWithoutPersistingPartialEvidence() throws Exception {
+        when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
+                .thenThrow(new S3StorageException(S3StorageError.CONNECTION_ERROR, "temporary failure", null))
+                .thenReturn(new S3ObjectStorage.S3PutResult("visit-evidence/retry-key", "unused"));
+
+        assertError(() -> service.upload(1L, 2L, jpeg()),
+                VisitorVerificationErrorCode.VISIT_EVIDENCE_STORAGE_UNAVAILABLE);
+        verify(persistenceService, never()).save(anyLong(), anyLong(), anyString(), anyString(), anyString(),
+                anyLong(), any(), any());
+
+        var retried = service.upload(1L, 2L, jpeg());
+
+        assertThat(retried.locationCheckInId()).isEqualTo(2L);
+        verify(persistenceService).save(eq(1L), eq(2L), eq("visit-evidence/retry-key"), anyString(),
+                eq("image/jpeg"), anyLong(), eq(NOW), eq(NOW.plus(Duration.ofDays(30))));
     }
 
     private MockMultipartFile jpeg() throws Exception {
