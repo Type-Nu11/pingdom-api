@@ -524,6 +524,34 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void touristPlaceCardContractIsDocumentedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode operation = appDocument.at("/paths/~1places~1{placeId}~1card/get");
+
+        assertThat(operation.isMissingNode()).as("관광객 장소 카드 조회 경로가 app 문서에 있어야 한다").isFalse();
+        assertThat(operation.path("parameters").size()).isEqualTo(1);
+        assertThat(operation.at("/parameters/0/name").asText()).isEqualTo("placeId");
+        assertThat(operation.at("/parameters/0/in").asText()).isEqualTo("path");
+        assertThat(operation.at("/parameters/0/required").asBoolean()).isTrue();
+        assertThat(operation.at("/parameters/0/schema/type").asText()).isEqualTo("integer");
+        assertThat(operation.at("/parameters/0/schema/format").asText()).isEqualTo("int64");
+        assertThat(operation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/TouristPlaceCardResponse");
+        assertThat(operation.at("/responses/404/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+
+        JsonNode cardSchema = appDocument.at("/components/schemas/TouristPlaceCardResponse");
+        assertThat(cardSchema.isMissingNode()).isFalse();
+        assertThat(cardSchema.path("properties").has("currentlyOperating")).isTrue();
+        assertThat(cardSchema.path("properties").has("touristCategories")).isTrue();
+        assertThat(cardSchema.path("properties").has("primaryInformationSource")).isTrue();
+        assertThat(cardSchema.path("properties").has("informationVerificationStatus")).isTrue();
+        assertThat(resolveSchema(appDocument, cardSchema.at("/properties/operatingStatus"))
+                .path("enum")).extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("OPERATING", "TEMPORARILY_CLOSED", "PERMANENTLY_CLOSED");
+    }
+
+    @Test
     void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
