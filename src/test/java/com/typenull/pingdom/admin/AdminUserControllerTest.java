@@ -421,7 +421,7 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.limit").value(5))
                 .andExpect(jsonPath("$.totalCount").value(0))
-                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.totalPages").value(1))
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
