@@ -40,6 +40,7 @@
 - [장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)
 - [Pingdom 2.0 목표 아키텍처와 도메인 이벤트](architecture/pingdom-2.0-domain-events.md)
 - [데이터 마이그레이션, 호환 API, 롤백 정책](architecture/pingdom-2.0-migration-compatibility-rollback.md)
+- [#550 공백 포함 중복 패키지 디렉터리 정리 분석](architecture/issue-550-package-directory-analysis.md)
 - [목표 아키텍처](architecture/README.md)
 
 ## Features
