@@ -9,8 +9,11 @@ import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreIntervention
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreInterventionRuleResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreInterventionRuleToggleResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreResponse;
+import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreBatchResponse;
+import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryItem;
 import com.typenull.pingdom.moderation.application.query.trust.AdminTrustScoreQueryService;
 import com.typenull.pingdom.moderation.application.service.trust.AdminTrustScoreService;
+import com.typenull.pingdom.moderation.application.service.trust.TrustScoreBatchService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -35,6 +38,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import java.util.List;
 
 @RestController
 @RequestMapping("/admin/trust-score")
@@ -45,6 +49,7 @@ public class AdminTrustScoreController {
 
     private final AdminTrustScoreService adminTrustScoreService;
     private final AdminTrustScoreQueryService adminTrustScoreQueryService;
+    private final TrustScoreBatchService trustScoreBatchService;
 
     @GetMapping("/reporters/{reporterUserId}")
     @Operation(
@@ -102,6 +107,16 @@ public class AdminTrustScoreController {
             @Parameter(description = "신고자 사용자 ID", example = "7") @PathVariable Long reporterUserId
     ) {
         return adminTrustScoreQueryService.getTrustScore(reporterUserId);
+    }
+
+    @PostMapping("/batch/recalculate")
+    public ResponseEntity<AdminTrustScoreBatchResponse> recalculateTrustScores() {
+        return ResponseEntity.ok(trustScoreBatchService.recalculate());
+    }
+
+    @GetMapping("/reporters/{reporterUserId}/history")
+    public List<AdminTrustScoreChangeHistoryItem> listTrustScoreHistory(@PathVariable Long reporterUserId) {
+        return trustScoreBatchService.listHistory(reporterUserId);
     }
 
     @GetMapping("/anomalies")
