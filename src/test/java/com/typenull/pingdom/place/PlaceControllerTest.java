@@ -704,6 +704,19 @@ class PlaceControllerTest {
     }
 
     @Test
+    void legacyPlaceDetailPathRemainsSupportedAfterCompatibilityPackageMigration() throws Exception {
+        String accessToken = signupAndLogin("legacyPlaceDetail" + Long.toUnsignedString(System.nanoTime()));
+        MapPlace place = createMapPlace("구 장소 상세", "경상남도 진주시 호환로 1");
+
+        mockMvc.perform(get("/place/{id}", place.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(place.getId()))
+                .andExpect(jsonPath("$.name").value("구 장소 상세"))
+                .andExpect(jsonPath("$.address").value("경상남도 진주시 호환로 1"));
+    }
+
+    @Test
     void uploadPlaceStoresImageUrl() throws Exception {
         String accessToken = signupAndLogin("placeUploader01");
         String coordinateToken = createCoordinateToken(accessToken, "27414316", 35.1801, 128.1078);
