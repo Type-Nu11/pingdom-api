@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.api;
+package com.typenull.pingdom.place.api.compat;
 
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateResponse;
