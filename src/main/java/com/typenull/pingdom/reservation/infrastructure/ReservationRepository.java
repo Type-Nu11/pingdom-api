@@ -1,6 +1,7 @@
 package com.typenull.pingdom.reservation.infrastructure;
 
 import com.typenull.pingdom.reservation.domain.Reservation;
+import com.typenull.pingdom.reservation.domain.ReservationStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
@@ -11,6 +12,26 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
+    @Query("""
+            select count(reservation)
+            from Reservation reservation
+            join PlaceAvailability availability on availability.id = reservation.availabilityId
+            where availability.merchantOwnerUserId = :ownerId
+            """)
+    long countOwnedByMerchantOwnerUserId(@Param("ownerId") Long ownerId);
+
+    @Query("""
+            select count(reservation)
+            from Reservation reservation
+            join PlaceAvailability availability on availability.id = reservation.availabilityId
+            where availability.merchantOwnerUserId = :ownerId
+              and reservation.status = :status
+            """)
+    long countOwnedByMerchantOwnerUserIdAndStatus(
+            @Param("ownerId") Long ownerId,
+            @Param("status") ReservationStatus status
+    );
+
     Optional<Reservation> findByTouristUserIdAndIdempotencyKey(Long touristUserId, String idempotencyKey);
 
     Page<Reservation> findAllByTouristUserId(Long touristUserId, Pageable pageable);
