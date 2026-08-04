@@ -3,6 +3,8 @@ package com.typenull.pingdom.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.typenull.pingdom.migration.fixture.FlywayBackfillScenario;
+import com.typenull.pingdom.migration.fixture.FlywayBackfillFixtures;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -428,6 +430,87 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void skipsLegacyPlacesWithoutUsableImagesDuringBackfill() throws Exception {
+        FlywayBackfillScenario scenario = scenario("legacy-place-without-image-is-skipped");
+        migrateTo("55");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, image_url,
+                        latitude, longitude, registrant, photo_count
+                    ) VALUES
+                        (930002, '이미지 없음 장소', '경상남도 진주시 빈이미지로 1', NULL,
+                         35.1802, 128.1079, 'empty-image-user', 0),
+                        (930003, '공백 이미지 장소', '경상남도 진주시 빈이미지로 2', '   ',
+                         35.1803, 128.1080, 'blank-image-user', 0)
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).as(scenario.assertions().toString()).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM place_media
+                    WHERE map_place_id IN (930002, 930003)
+                    """))
+                    .as("%s: %s", scenario.name(), scenario.expectedBackfill())
+                    .isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM map_place
+                    WHERE map_place_id IN (930002, 930003)
+                    """))
+                    .as("%s: 기존 장소 row는 보존되어야 한다", scenario.name())
+                    .isTrue();
+        }
+    }
+
+    @Test
+    void retryingMigrationDoesNotDuplicateBackfilledMedia() throws Exception {
+        FlywayBackfillScenario scenario = scenario("legacy-place-image-to-exploration-media");
+        migrateTo("55");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, image_url,
+                        latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        930004, '재실행 장소', '경상남도 진주시 재실행로 1',
+                        'https://example.com/retry-place.jpg',
+                        35.1804, 128.1081, 'retry-user', 1
+                    )
+                    """);
+        }
+
+        MigrateResult firstRun = migrate(false);
+        MigrateResult retryRun = migrate(false);
+
+        assertThat(firstRun.success).as(scenario.assertions().toString()).isTrue();
+        assertThat(retryRun.success).isTrue();
+        assertThat(retryRun.migrationsExecuted)
+                .as("%s: 재시도 시 이미 적용된 migration은 다시 실행되면 안 된다", scenario.name())
+                .isZero();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM place_media
+                    WHERE map_place_id = 930004
+                      AND purpose = 'EXPLORATION'
+                    """))
+                    .as("%s: %s", scenario.name(), scenario.expectedBackfill())
+                    .isTrue();
+        }
+    }
+
+    @Test
     void backfillsExistingMerchantPlaceClaimBeforeValidatingOwnershipConstraints() throws Exception {
         migrateTo("41");
 
@@ -652,6 +735,13 @@ class FlywayMigrationIntegrationTest {
                     920001, 920001, 920001, '소유권 확인', 'PENDING', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
                 )
                 """);
+    }
+
+    private FlywayBackfillScenario scenario(String name) {
+        return FlywayBackfillFixtures.scenarios().stream()
+                .filter(scenario -> scenario.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Missing Flyway backfill fixture: " + name));
     }
 
     private void executeBaselineSchemaScript() throws Exception {
