@@ -2424,6 +2424,17 @@ class FlywayMigrationIntegrationTest {
                     WHERE table_name IN ('trust_score_anomaly', 'trust_score_intervention_rule')
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'reporter_moderation_policy'::regclass
+                      AND conname IN (
+                          'ck_reporter_moderation_policy_counts',
+                          'ck_reporter_moderation_policy_trust_score'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 15
                     FROM information_schema.columns
                     WHERE table_name = 'trust_score_anomaly'
