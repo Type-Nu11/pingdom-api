@@ -19,6 +19,8 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreInte
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreAnomalyResolveRequest;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreInterventionRuleRequest;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import java.time.Clock;
@@ -142,11 +144,20 @@ class AdminTrustScoreServiceTest {
         when(trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc())
                 .thenReturn(List.of(rule));
 
-        var response = service.evaluateReporter(10L);
+        var response = service.evaluateReporter(10L, 99L);
 
         assertThat(response.matchedRuleId()).isEqualTo(3L);
         assertThat(response.restrictedUntil()).isEqualTo(LocalDateTime.of(2026, 7, 27, 18, 0));
         assertThat(policy.getRestrictedUntil()).isEqualTo(LocalDateTime.of(2026, 7, 27, 18, 0));
         assertThat(policy.getRestrictionReason()).isEqualTo("허위 신고 누적");
+        verify(adminAuditLogService).record(
+                org.mockito.ArgumentMatchers.eq(99L),
+                org.mockito.ArgumentMatchers.eq(AdminAuditAction.TRUST_SCORE_INTERVENTION_EVALUATED),
+                org.mockito.ArgumentMatchers.eq(AdminAuditTargetType.TRUST_SCORE_INTERVENTION_RULE),
+                org.mockito.ArgumentMatchers.eq(3L),
+                org.mockito.ArgumentMatchers.eq("허위 신고 누적"),
+                any(),
+                any()
+        );
     }
 }
