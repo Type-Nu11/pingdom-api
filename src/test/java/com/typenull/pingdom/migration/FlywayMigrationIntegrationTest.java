@@ -585,6 +585,76 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    @Test
+    void preservesLegacyConversionsAndDetachesAttributionWhenFeatureLogIsDeleted() throws Exception {
+        migrateTo("66");
+
+        long featureLogId;
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO place_recommendation_conversion (
+                        place_recommendation_click_id, place_id, user_id,
+                        conversion_type, recommendation_version, created_at
+                    ) VALUES (
+                        770001, 770001, 770001, 'BOOKMARK', 'place-rec-v1', CURRENT_TIMESTAMP
+                    )
+                    """);
+            try (ResultSet resultSet = statement.executeQuery("""
+                    INSERT INTO place_recommendation_feature_log (
+                        request_id, user_id, place_id, recommendation_version,
+                        recommendation_stage, candidate_source, ranking, distance_meters,
+                        geo_score, personal_score, quality_score, engagement_score,
+                        conversion_score, exploration_score, freshness_score, final_score,
+                        created_at
+                    ) VALUES (
+                        'attribution-request', 770002, 770002, 'place-rec-v2',
+                        'RANKED', 'GEO', 1, 120, 0.9, 0.4, 0.6, 0.3,
+                        0.2, 0.1, 0.5, 0.7, CURRENT_TIMESTAMP
+                    )
+                    RETURNING place_recommendation_feature_log_id
+                    """)) {
+                assertThat(resultSet.next()).isTrue();
+                featureLogId = resultSet.getLong(1);
+            }
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO place_recommendation_conversion (
+                        place_recommendation_click_id, place_recommendation_feature_log_id,
+                        place_id, user_id, conversion_type, recommendation_version, created_at
+                    ) VALUES (
+                        770002, %d, 770002, 770002, 'LIKE', 'place-rec-v2', CURRENT_TIMESTAMP
+                    )
+                    """.formatted(featureLogId));
+
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM place_recommendation_conversion
+                        WHERE place_recommendation_click_id = 770001
+                          AND place_recommendation_feature_log_id IS NULL
+                    )
+                    """)).isTrue();
+
+            statement.executeUpdate("""
+                    DELETE FROM place_recommendation_feature_log
+                    WHERE place_recommendation_feature_log_id = %d
+                    """.formatted(featureLogId));
+
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM place_recommendation_conversion
+                    WHERE place_recommendation_feature_log_id IS NULL
+                    """)).isTrue();
+        }
+    }
+
     private MigrateResult migrate(boolean baselineOnMigrate) {
         Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
