@@ -41,17 +41,30 @@ class OpenApiCompatibilityFixturesTest {
         assertThat(OpenApiCompatibilityFixtures.scenarios())
                 .filteredOn(scenario -> scenario.type() == OpenApiCompatibilityScenarioType.FAILURE)
                 .allSatisfy(scenario -> assertThat(scenario.expectedErrorCode())
-                        .as("%s 실패 시나리오 오류 코드", scenario.name())
-                        .isNotBlank());
+                        .as("%s 실패 시나리오는 오류 코드 또는 오류 응답 assertion을 가져야 한다", scenario.name())
+                        .satisfies(code -> assertThat(code != null && !code.isBlank()
+                                || scenario.assertions().stream().anyMatch(assertion -> assertion.contains("오류") || assertion.contains("ErrorResponse")))
+                                .isTrue()));
     }
 
     @Test
     void pointsToExistingPathsInEachDomainBaseline() throws IOException {
         for (OpenApiCompatibilityScenario scenario : OpenApiCompatibilityFixtures.scenarios()) {
             JsonNode document = readBaseline(scenario.domain());
-            assertThat(document.path("paths").has(scenario.path()))
+            JsonNode operation = document.path("paths").path(scenario.path()).path(scenario.method().toLowerCase());
+            assertThat(operation.isObject())
                     .as("%s fixture endpoint는 %s baseline에 존재해야 한다", scenario.name(), scenario.domain())
                     .isTrue();
+            assertThat(operation.path("responses").has(String.valueOf(scenario.expectedStatus())))
+                    .as("%s는 %s %s 응답을 계약에 포함해야 한다", scenario.name(), scenario.method(), scenario.expectedStatus())
+                    .isTrue();
+            if (scenario.expectedErrorCode() != null) {
+                assertThat(operation.path("responses").findValues("code").stream()
+                        .map(JsonNode::asText)
+                        .toList())
+                        .as("%s 실패 응답 오류 코드", scenario.name())
+                        .contains(scenario.expectedErrorCode());
+            }
         }
     }
 
