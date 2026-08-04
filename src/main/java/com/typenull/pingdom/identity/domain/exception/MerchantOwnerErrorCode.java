@@ -27,7 +27,14 @@ public enum MerchantOwnerErrorCode {
     INVALID_PLACE_CLAIM_STATE(HttpStatus.CONFLICT, "현재 상점 장소 Claim 상태에서는 요청을 처리할 수 없습니다."),
     PLACE_CLAIMANT_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "활성 상태이며 검증이 완료된 Merchant Owner만 장소 Claim을 요청할 수 있습니다."),
     INVALID_ONBOARDING_METRIC(HttpStatus.BAD_REQUEST, "온보딩 완료도 값이 올바르지 않습니다."),
-    INVALID_OPERATIONAL_QUALITY_METRIC(HttpStatus.BAD_REQUEST, "운영 품질 지표 값이 올바르지 않습니다.");
+    INVALID_OPERATIONAL_QUALITY_METRIC(HttpStatus.BAD_REQUEST, "운영 품질 지표 값이 올바르지 않습니다."),
+    MERCHANT_TEAM_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 팀원을 찾을 수 없습니다."),
+    MERCHANT_TEAM_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 팀원 초대를 찾을 수 없습니다."),
+    MERCHANT_TEAM_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, "Merchant 팀원 관리 권한이 필요합니다."),
+    MERCHANT_TEAM_INVITATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "대기 중인 Merchant 팀원 초대가 이미 존재합니다."),
+    MERCHANT_TEAM_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "해당 사용자는 이미 Merchant 팀원입니다."),
+    MERCHANT_TEAM_MEMBER_NOT_ACTIVE(HttpStatus.CONFLICT, "활성 상태의 Merchant 팀원만 변경할 수 있습니다."),
+    MERCHANT_TEAM_INVITATION_INVALID_ROLE(HttpStatus.BAD_REQUEST, "Merchant 팀원 초대 권한이 올바르지 않습니다.");
 
     private final HttpStatus status;
     private final String message;
