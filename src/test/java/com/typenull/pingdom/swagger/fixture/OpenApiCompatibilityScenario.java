@@ -7,6 +7,7 @@ public record OpenApiCompatibilityScenario(
         OpenApiCompatibilityDomain domain,
         OpenApiCompatibilityScenarioType type,
         String path,
+        String method,
         int expectedStatus,
         String expectedErrorCode,
         List<String> assertions
