@@ -774,12 +774,55 @@ class FlywayMigrationIntegrationTest {
                       AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM information_schema.columns
+                    WHERE table_name = 'settlement_ledger_entry'
+                      AND column_name IN (
+                          'payment_transaction_id', 'merchant_owner_user_id', 'entry_type',
+                          'gross_amount_minor', 'fee_amount_minor', 'net_amount_minor',
+                          'currency', 'status', 'created_at'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM pg_constraint
+                    WHERE conname IN (
+                        'ck_payment_provider',
+                        'ck_payment_amount',
+                        'ck_payment_currency',
+                        'ck_payment_status',
+                        'ck_payment_state',
+                        'ck_settlement_entry_type',
+                        'ck_settlement_currency',
+                        'ck_settlement_status',
+                        'ck_settlement_state'
+                    )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conname IN ('ck_payment_amount', 'ck_settlement_amounts')
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
                         FROM pg_indexes
                         WHERE tablename = 'payment_transaction'
                           AND indexname = 'uq_payment_reservation_active'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE (tablename = 'payment_transaction'
+                           AND indexname = 'idx_payment_merchant_created')
+                       OR (tablename = 'settlement_ledger_entry'
+                           AND indexname = 'idx_settlement_merchant_created')
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
