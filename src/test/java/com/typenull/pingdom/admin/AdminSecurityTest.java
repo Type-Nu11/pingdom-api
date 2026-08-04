@@ -149,6 +149,24 @@ class AdminSecurityTest {
     }
 
     @Test
+    void adminTrustScoreInterventionRejectsUnauthenticatedUser() throws Exception {
+        mockMvc.perform(post("/admin/trust-score/reporters/{reporterUserId}/interventions/evaluate", 7L))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
+    void adminTrustScoreInterventionRejectsNonAdminUser() throws Exception {
+        createUser("trustScoreInterventionNormalUser", UserRole.USER);
+        String accessToken = loginAndGetAccessToken("trustScoreInterventionNormalUser");
+
+        mockMvc.perform(post("/admin/trust-score/reporters/{reporterUserId}/interventions/evaluate", 7L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+    }
+
+    @Test
     void adminMerchantOnboardingMetricRejectsUnauthenticatedUser() throws Exception {
         mockMvc.perform(put("/admin/merchant-owners/{userId}/onboarding", 7L)
                         .contentType(MediaType.APPLICATION_JSON)

@@ -254,8 +254,10 @@ public class AdminTrustScoreController {
             description = "관리자가 신고자의 현재 Trust Score 정책에 활성 개입 규칙을 수동 평가합니다."
     )
     public ResponseEntity<AdminTrustScoreInterventionEvaluationResponse> evaluateReporter(
-            @PathVariable Long reporterUserId
+            @PathVariable Long reporterUserId,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return ResponseEntity.ok(adminTrustScoreService.evaluateReporter(reporterUserId));
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminTrustScoreService.evaluateReporter(reporterUserId, adminUserId));
     }
 }
