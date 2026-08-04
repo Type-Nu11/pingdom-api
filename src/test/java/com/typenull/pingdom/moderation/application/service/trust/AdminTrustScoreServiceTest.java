@@ -32,6 +32,7 @@ import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
@@ -150,14 +151,18 @@ class AdminTrustScoreServiceTest {
         assertThat(response.restrictedUntil()).isEqualTo(LocalDateTime.of(2026, 7, 27, 18, 0));
         assertThat(policy.getRestrictedUntil()).isEqualTo(LocalDateTime.of(2026, 7, 27, 18, 0));
         assertThat(policy.getRestrictionReason()).isEqualTo("허위 신고 누적");
+        ArgumentCaptor<Object> stateCaptor = ArgumentCaptor.forClass(Object.class);
         verify(adminAuditLogService).record(
                 org.mockito.ArgumentMatchers.eq(99L),
                 org.mockito.ArgumentMatchers.eq(AdminAuditAction.TRUST_SCORE_INTERVENTION_EVALUATED),
                 org.mockito.ArgumentMatchers.eq(AdminAuditTargetType.TRUST_SCORE_INTERVENTION_RULE),
                 org.mockito.ArgumentMatchers.eq(3L),
                 org.mockito.ArgumentMatchers.eq("허위 신고 누적"),
-                any(),
-                any()
+                stateCaptor.capture(),
+                stateCaptor.capture()
         );
+        assertThat(stateCaptor.getAllValues().get(0).toString()).contains("restrictedUntil=null");
+        assertThat(stateCaptor.getAllValues().get(1).toString())
+                .contains("matchedRuleId=3", "actionType=TEMPORARY_RESTRICT", "restrictedUntil=2026-07-27T18:00");
     }
 }
