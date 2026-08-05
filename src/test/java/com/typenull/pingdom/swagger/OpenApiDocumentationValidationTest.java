@@ -553,6 +553,9 @@ class OpenApiDocumentationValidationTest {
         assertThat(cardSchema.path("properties").has("touristCategories")).isTrue();
         assertThat(cardSchema.path("properties").has("primaryInformationSource")).isTrue();
         assertThat(cardSchema.path("properties").has("informationVerificationStatus")).isTrue();
+        assertThat(cardSchema.path("properties").has("verifiedEvidenceCount")).isTrue();
+        assertThat(cardSchema.path("properties").has("lastVerifiedAt")).isTrue();
+        assertThat(cardSchema.path("properties").has("lastVerifiedSourceType")).isTrue();
         assertThat(resolveSchema(appDocument, cardSchema.at("/properties/operatingStatus"))
                 .path("enum")).extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("OPERATING", "TEMPORARILY_CLOSED", "PERMANENTLY_CLOSED");

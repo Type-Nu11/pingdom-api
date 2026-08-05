@@ -489,7 +489,9 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.currentlyOperating").value(false))
                 .andExpect(jsonPath("$.currentlyOperatingCheckedAt").isNotEmpty())
                 .andExpect(jsonPath("$.primaryInformationSource").value("LEGACY"))
-                .andExpect(jsonPath("$.informationVerificationStatus").value("UNVERIFIED"));
+                .andExpect(jsonPath("$.informationVerificationStatus").value("UNVERIFIED"))
+                .andExpect(jsonPath("$.verifiedEvidenceCount").value(0))
+                .andExpect(jsonPath("$.lastVerifiedAt").doesNotExist());
 
         visiblePlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
         mapPlaceRepository.saveAndFlush(visiblePlace);
