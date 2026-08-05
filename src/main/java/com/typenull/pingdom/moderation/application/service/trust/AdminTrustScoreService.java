@@ -22,6 +22,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
@@ -208,14 +209,14 @@ public class AdminTrustScoreService {
     }
 
     @Transactional
-    public AdminTrustScoreInterventionEvaluationResponse evaluateReporter(Long reporterUserId) {
+    public AdminTrustScoreInterventionEvaluationResponse evaluateReporter(Long reporterUserId, Long adminUserId) {
         ReporterModerationPolicy policy = reporterModerationPolicyRepository.findById(reporterUserId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.TRUST_SCORE_REPORTER_POLICY_NOT_FOUND));
 
         return trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc().stream()
                 .filter(rule -> rule.matches(policy))
                 .findFirst()
-                .map(rule -> applyRule(policy, rule))
+                .map(rule -> applyRule(policy, rule, adminUserId))
                 .orElseGet(() -> new AdminTrustScoreInterventionEvaluationResponse(
                         policy.getReporterUserId(),
                         policy.getTrustScore(),
@@ -266,13 +267,34 @@ public class AdminTrustScoreService {
 
     private AdminTrustScoreInterventionEvaluationResponse applyRule(
             ReporterModerationPolicy policy,
-            TrustScoreInterventionRule rule
+            TrustScoreInterventionRule rule,
+            Long adminUserId
     ) {
         LocalDateTime restrictedUntil = policy.getRestrictedUntil();
+        LocalDateTime beforeRestrictedUntil = restrictedUntil;
         if (rule.getActionType() == TrustScoreInterventionAction.TEMPORARY_RESTRICT && rule.getDurationDays() != null) {
             restrictedUntil = LocalDateTime.now(clock).plusDays(rule.getDurationDays());
             policy.restrictUntil(restrictedUntil, rule.getReason());
         }
+
+        Map<String, Object> beforeState = new HashMap<>();
+        beforeState.put("reporterUserId", policy.getReporterUserId());
+        beforeState.put("restrictedUntil", beforeRestrictedUntil);
+        Map<String, Object> afterState = new HashMap<>();
+        afterState.put("reporterUserId", policy.getReporterUserId());
+        afterState.put("trustScore", policy.getTrustScore());
+        afterState.put("matchedRuleId", rule.getId());
+        afterState.put("actionType", rule.getActionType());
+        afterState.put("restrictedUntil", restrictedUntil);
+        adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.TRUST_SCORE_INTERVENTION_EVALUATED,
+                AdminAuditTargetType.TRUST_SCORE_INTERVENTION_RULE,
+                rule.getId(),
+                rule.getReason(),
+                beforeState,
+                afterState
+        );
 
         return new AdminTrustScoreInterventionEvaluationResponse(
                 policy.getReporterUserId(),
