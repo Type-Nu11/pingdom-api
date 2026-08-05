@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.api.user;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAssignmentService;
 import com.typenull.pingdom.identity.domain.admin.AdminRole;
 import com.typenull.pingdom.moderation.api.dto.user.AdminRoleAssignmentRequest;
+import com.typenull.pingdom.moderation.api.dto.user.AdminRoleAssignmentRevokeRequest;
 import com.typenull.pingdom.moderation.api.dto.user.AdminRoleAssignmentResponse;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -81,7 +82,7 @@ public class AdminRoleAssignmentController {
     public AdminRoleAssignmentResponse revoke(
             @PathVariable Long userId,
             @PathVariable AdminRole role,
-            @Valid @RequestBody(required = false) AdminRoleAssignmentRequest request,
+            @Valid @RequestBody(required = false) AdminRoleAssignmentRevokeRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
     ) {
         return roleAssignmentService.revoke(

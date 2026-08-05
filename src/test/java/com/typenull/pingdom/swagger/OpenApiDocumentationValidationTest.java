@@ -362,6 +362,7 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles/{role}")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentRequest")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentRevokeRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentResponse")).isTrue();
         assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties/claimType/enum"))
                 .isNotEmpty();
@@ -407,6 +408,8 @@ class OpenApiDocumentationValidationTest {
         }
 
         JsonNode roleRevokeOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles~1{role}/delete");
+        assertThat(roleRevokeOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminRoleAssignmentRevokeRequest");
         assertThat(roleRevokeOperation.path("responses").has("401")).isTrue();
         assertThat(roleRevokeOperation.path("responses").has("403")).isTrue();
         assertThat(roleRevokeOperation.path("responses").has("404")).isTrue();
