@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "80";
+    private static final String LATEST_MIGRATION_VERSION = "82";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(80);
+        assertThat(result.migrationsExecuted).isEqualTo(82);
 
         assertPostMigrationSchema();
     }
@@ -107,7 +107,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(78);
+        assertThat(result.migrationsExecuted).isEqualTo(80);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -152,6 +152,50 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void backfillsVerificationSummaryFromExistingVerifiedEvidence() throws Exception {
+        migrateTo("54");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (930010, '검증 요약 장소', '서울시 중구', 37.5, 127.0, 'summary-user', 0)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO place_information_evidence (
+                        place_information_evidence_id, map_place_id, source_type, evidence_type,
+                        verification_status, description, submitted_at, reviewed_by_admin_user_id,
+                        reviewed_at, created_at, updated_at
+                    ) VALUES
+                        (930010, 930010, 'ADMIN', 'ADMIN_REVIEW', 'ADMIN_VERIFIED',
+                         '관리자 확인', TIMESTAMP '2026-08-01 09:00:00', 1,
+                         TIMESTAMP '2026-08-02 10:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                         TIMESTAMP '2026-08-02 10:00:00'),
+                        (930011, 930010, 'USER_REPORT', 'PHOTO', 'UNVERIFIED',
+                         '방문자 사진', TIMESTAMP '2026-08-03 09:00:00', NULL,
+                         NULL, TIMESTAMP '2026-08-03 09:00:00', TIMESTAMP '2026-08-03 09:00:00')
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT verified_evidence_count = 1
+                       AND last_verified_evidence_id = 930010
+                       AND last_verified_source_type = 'ADMIN'
+                       AND last_verified_at = TIMESTAMP '2026-08-02 10:00:00'
+                    FROM place_information_verification_summary
+                    WHERE map_place_id = 930010
+                    """)).isTrue();
+        }
+    }
+
+    @Test
     void preservesExistingPlacesWhenApplyingTouristInformationMigration() throws Exception {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -177,7 +221,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(53);
+        assertThat(result.migrationsExecuted).isEqualTo(55);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -225,6 +269,32 @@ class FlywayMigrationIntegrationTest {
                           AND contype = 'f'
                           AND confrelid = 'merchant_owner_profile'::regclass
                           AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_information_verification_summary'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_verification_summary'::regclass
+                      AND conname IN (
+                          'fk_place_information_summary_place',
+                          'fk_place_information_summary_evidence',
+                          'ck_place_information_summary_count'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_information_verification_summary'
+                          AND indexname = 'idx_place_information_summary_last_verified'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -374,7 +444,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(25);
+        assertThat(result.migrationsExecuted).isEqualTo(27);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
