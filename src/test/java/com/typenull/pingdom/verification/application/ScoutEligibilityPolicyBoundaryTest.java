@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.when;
 
+import com.typenull.pingdom.verification.domain.ScoutActivityEligibility;
 import com.typenull.pingdom.verification.domain.ScoutProfile;
 import com.typenull.pingdom.verification.infrastructure.ScoutActivityEligibilityRepository;
 import com.typenull.pingdom.verification.infrastructure.ScoutProfileRepository;
@@ -33,6 +34,19 @@ class ScoutEligibilityPolicyBoundaryTest {
         profile.activate(9L, NOW);
         when(profileRepository.findById(1L)).thenReturn(Optional.of(profile));
         when(eligibilityRepository.findById(1L)).thenReturn(Optional.empty());
+
+        assertThat(policy.isEligible(1L)).isFalse();
+    }
+
+    @Test
+    void expiredEligibilityIsRejectedEvenWhenProfileRemainsActive() {
+        ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
+        profile.activate(9L, NOW);
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(1L, NOW);
+        eligibility.grant(9L, NOW.minusDays(2), NOW.minusDays(1), NOW.minusDays(2));
+        eligibility.expire(NOW);
+        when(profileRepository.findById(1L)).thenReturn(Optional.of(profile));
+        when(eligibilityRepository.findById(1L)).thenReturn(Optional.of(eligibility));
 
         assertThat(policy.isEligible(1L)).isFalse();
     }
