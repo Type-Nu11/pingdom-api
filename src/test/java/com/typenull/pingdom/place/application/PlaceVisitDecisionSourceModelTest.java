@@ -118,7 +118,7 @@ class PlaceVisitDecisionSourceModelTest {
     @Test
     void placeEventExposesUpcomingScheduleForVisitDecision() {
         PlaceEvent event = PlaceEvent.create(
-                legacyPlace(), "팝업 이벤트", "설명", PlaceEventType.POPUP,
+                legacyPlace(), "팝업 이벤트", "설명", PlaceEventType.POP_UP,
                 NOW.plusHours(1), NOW.plusDays(1), NOW
         );
 
@@ -128,7 +128,7 @@ class PlaceVisitDecisionSourceModelTest {
     @Test
     void placeEventExposesOngoingScheduleForVisitDecision() {
         PlaceEvent event = PlaceEvent.create(
-                legacyPlace(), "진행 중 이벤트", "설명", PlaceEventType.POPUP,
+                legacyPlace(), "진행 중 이벤트", "설명", PlaceEventType.POP_UP,
                 NOW.minusHours(1), NOW.plusHours(1), NOW.minusHours(1)
         );
 
@@ -138,7 +138,7 @@ class PlaceVisitDecisionSourceModelTest {
     @Test
     void placeEventExposesEndedScheduleForVisitDecision() {
         PlaceEvent event = PlaceEvent.create(
-                legacyPlace(), "종료된 이벤트", "설명", PlaceEventType.POPUP,
+                legacyPlace(), "종료된 이벤트", "설명", PlaceEventType.POP_UP,
                 NOW.minusDays(2), NOW.minusDays(1), NOW.minusDays(2)
         );
 
