@@ -46,4 +46,14 @@ class PlaceVisitDecisionSourceModelTest {
         );
         assertThat(availability.getRemainingCapacity()).isEqualTo(20);
     }
+
+    @Test
+    void availabilityRejectsNonPositivePeriodAndCapacity() {
+        assertThatThrownBy(() -> PlaceAvailability.create(
+                99L, 10L, NOW.plusHours(2), NOW, 20, NOW
+        )).isInstanceOf(IllegalArgumentException.class);
+        assertThatThrownBy(() -> PlaceAvailability.create(
+                99L, 10L, NOW, NOW.plusHours(2), 0, NOW
+        )).isInstanceOf(IllegalArgumentException.class);
+    }
 }
