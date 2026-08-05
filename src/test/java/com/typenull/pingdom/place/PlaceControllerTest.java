@@ -764,6 +764,30 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionExcludesInactiveAvailabilityAndDraftOffer() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReaderCommerceFilter");
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        MapPlace mapPlace = createMapPlace("전환 데이터 필터 장소", "경상남도 진주시 방문로 12");
+        User merchant = createActiveMerchantForVisitDecision(mapPlace, now);
+
+        PlaceAvailability inactiveAvailability = PlaceAvailability.create(
+                merchant.getId(), mapPlace.getId(), now.plusHours(1), now.plusHours(2), 3, now
+        );
+        inactiveAvailability.deactivate(now);
+        placeAvailabilityRepository.saveAndFlush(inactiveAvailability);
+        touristOfferRepository.saveAndFlush(TouristOffer.draft(
+                merchant.getId(), mapPlace.getId(), "초안 혜택", "공개 전 혜택", "혜택",
+                now.minusHours(1), now.plusDays(1), 3, 3, now.minusHours(2)
+        ));
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservableAvailabilities.length()").value(0))
+                .andExpect(jsonPath("$.availableOffers.offers.length()").value(0));
+    }
+
+    @Test
     void getPlaceVisitDecisionKeepsTemporarilyClosedPlaceVisible() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader02");
         MapPlace mapPlace = createMapPlace("임시 휴업 방문 결정 장소", "경상남도 진주시 방문로 2");
