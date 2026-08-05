@@ -29,7 +29,7 @@ CI artifact나 배포 증적을 별도 위치에 둘 때는 출력 경로를 첫
 ## API 기준선
 
 - API 경로의 정본은 Controller mapping과 Springdoc이 생성하는 OpenAPI 문서다.
-- `dev`, `openapi-export` 프로필에서 `app`, `common`, `web` OpenAPI 그룹을 제공한다.
+- `dev`, `local`, `openapi-export` 프로필에서 `app`, `common`, `web` OpenAPI 그룹을 제공한다.
 - 기준 스펙은 `src/test/resources/openapi-baseline`에 있고, 아래 명령으로 호환성을 확인한다.
 
 ```bash
@@ -47,8 +47,8 @@ baseline diff를 검토한 뒤 별도 API 이슈에서 반영한다.
 | 영속 모델 변경 | API 영향 검토 | 새 version 추가 및 backfill 검토 | 테이블·배치 영향 갱신 |
 | batch 추가·변경 | API 영향 검토 | 상태 저장 시 migration 검토 | 주기·중복 실행·복구 절차 갱신 |
 
-실행 중인 서비스의 API 문서는 `dev`, `openapi-export` 프로필에서만 제공된다. 운영 health 확인에는
-OpenAPI endpoint 대신 아래 probe를 사용한다.
+실행 중인 서비스의 API 문서는 개발·export 프로필에서만 제공된다. 운영 health 확인에는 OpenAPI endpoint
+대신 아래 probe를 사용한다.
 
 ```bash
 curl -fsS http://localhost:8080/actuator/health/liveness
