@@ -90,4 +90,16 @@ class PlaceVisitDecisionSourceModelTest {
         assertThat(offer.getStatus()).isEqualTo(com.typenull.pingdom.offer.domain.OfferStatus.DRAFT);
         assertThat(offer.getIssuedQuantity()).isZero();
     }
+
+    @Test
+    void touristOfferCanBePublishedOnlyBeforeItsEndTime() {
+        TouristOffer offer = TouristOffer.draft(
+                99L, 10L, "외국인 전용 혜택", "설명", "10% 할인",
+                NOW, NOW.plusDays(1), 100, 1, NOW
+        );
+
+        offer.publish(NOW.plusHours(1));
+
+        assertThat(offer.getStatus()).isEqualTo(com.typenull.pingdom.offer.domain.OfferStatus.PUBLISHED);
+    }
 }
