@@ -7,6 +7,10 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInformation;
 import com.typenull.pingdom.offer.domain.TouristOffer;
+import com.typenull.pingdom.place.domain.event.PlaceEvent;
+import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
+import com.typenull.pingdom.place.domain.event.PlaceEventType;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
@@ -109,5 +113,26 @@ class PlaceVisitDecisionSourceModelTest {
                 99L, 10L, "외국인 전용 혜택", "설명", "10% 할인",
                 NOW.plusDays(1), NOW, 100, 1, NOW
         )).isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void placeEventExposesUpcomingScheduleForVisitDecision() {
+        PlaceEvent event = PlaceEvent.create(
+                legacyPlace(), "팝업 이벤트", "설명", PlaceEventType.POPUP,
+                NOW.plusHours(1), NOW.plusDays(1), NOW
+        );
+
+        assertThat(event.scheduleStatusAt(NOW)).isEqualTo(PlaceEventScheduleStatus.UPCOMING);
+    }
+
+    private MapPlace legacyPlace() {
+        return MapPlace.builder()
+                .id(10L)
+                .name("장소")
+                .address("서울시 중구 테스트로 1")
+                .latitude(37.5665)
+                .longitude(126.9780)
+                .registrant("merchant")
+                .build();
     }
 }
