@@ -14,6 +14,17 @@ Spring Docker Compose 연동이 `docker-compose-local.yml`의 PostgreSQL, Redis�
 별도 `.env`가 없어도 기본 DB/Redis 값으로 실행되며, 필요한 경우 환경 변수로 덮어씁니다.
 Swagger UI는 `/swagger-ui`에서 활성화합니다.
 
+동일한 실행 순서를 재사용하려면 아래 보조 스크립트를 사용합니다. 기본 동작은 소스 기준 구성 검증이며,
+컨테이너 기동과 애플리케이션 실행은 명시적인 옵션에서만 수행합니다.
+
+```bash
+./scripts/bootstrap-local-development.sh --verify
+./scripts/bootstrap-local-development.sh --start-dependencies
+./scripts/bootstrap-local-development.sh --run
+```
+
+전체 시작·중지·복구 기준은 [로컬 개발 환경 부트스트랩 Runbook](operations/development-bootstrap-runbook.md)을 따른다.
+
 ## seed 설정
 
 | 환경변수 | 기본값 | 설명 |
