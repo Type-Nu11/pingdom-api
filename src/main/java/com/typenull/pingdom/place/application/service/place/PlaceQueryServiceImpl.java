@@ -1,9 +1,18 @@
 package com.typenull.pingdom.place.application.service.place;
 
+import com.typenull.pingdom.availability.api.dto.AvailabilityResponse;
+import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPublicQueryService;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInformation;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInformationRepository;
+import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
+import com.typenull.pingdom.offer.application.TouristOfferService;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionEventResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionMerchantInformationResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionResponse;
 import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
@@ -14,6 +23,7 @@ import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingN
 import com.typenull.pingdom.place.application.service.place.operating.PlaceCurrentOperatingState;
 import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingHoursEvaluator;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.event.PlaceEventPublicationStatus;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
@@ -25,6 +35,7 @@ import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationSummary;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceOperatingNoticeRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationVerificationSummaryRepository;
@@ -34,6 +45,7 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.EnumSet;
 import java.util.Comparator;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -69,6 +81,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private final PlaceOperatingNoticeRepository placeOperatingNoticeRepository;
     private final PlaceInformationVerificationSummaryRepository placeInformationVerificationSummaryRepository;
     private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
+    private final MerchantPlaceInformationRepository merchantPlaceInformationRepository;
+    private final PlaceEventRepository placeEventRepository;
+    private final PlaceAvailabilityService placeAvailabilityService;
+    private final TouristOfferService touristOfferService;
+    private final Clock clock;
 
     @Override
     @Transactional(readOnly = true)
@@ -180,6 +197,40 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
 
+        return toPlaceDetailResponse(mapPlace);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlaceVisitDecisionResponse getPlaceVisitDecision(Long placeId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        if (!mapPlace.isVisibleInDiscovery()
+                || mapPlace.getOperatingStatus() == PlaceOperatingStatus.PERMANENTLY_CLOSED) {
+            throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+        }
+
+        LocalDateTime checkedAt = LocalDateTime.now(clock);
+        // 임시 휴업은 방문 결정을 위해 상태와 공지를 노출하고, 영구 폐업만 공개 대상에서 제외한다.
+        return new PlaceVisitDecisionResponse(
+                toPlaceDetailResponse(mapPlace),
+                publicMerchantInformation(mapPlace.getId()),
+                placeEventRepository.findOngoingPublishedByPlaceId(
+                                mapPlace.getId(),
+                                PlaceEventPublicationStatus.PUBLISHED,
+                                checkedAt
+                        )
+                        .stream()
+                        .map(event -> PlaceVisitDecisionEventResponse.from(event, checkedAt))
+                        .toList(),
+                placeAvailabilityService.listPublic(mapPlace.getId()),
+                touristOfferService.list(mapPlace.getId(), 1, 20),
+                checkedAt
+        );
+    }
+
+    private PlaceDetailResponse toPlaceDetailResponse(MapPlace mapPlace) {
+
         PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
         PlaceInformationVerificationSummary verificationSummary = loadVerificationSummary(mapPlace.getId());
 
@@ -213,6 +264,16 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getRegistrant(),
                 merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
         );
+    }
+
+    private PlaceVisitDecisionMerchantInformationResponse publicMerchantInformation(Long placeId) {
+        // 비활성 Merchant의 과거 연락처·예약 링크는 관광객 응답에서 노출하지 않는다.
+        if (merchantOwnerPublicQueryService.findByPlaceId(placeId) == null) {
+            return null;
+        }
+        return merchantPlaceInformationRepository.findByPlaceId(placeId)
+                .map(PlaceVisitDecisionMerchantInformationResponse::from)
+                .orElse(null);
     }
 
     @Override
