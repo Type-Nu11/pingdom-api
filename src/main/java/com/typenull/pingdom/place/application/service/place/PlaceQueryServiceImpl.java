@@ -215,9 +215,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
         LocalDateTime checkedAt = LocalDateTime.now(clock);
         MerchantOwnerPublicResponse merchantOwner = merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId());
-        placeVisitDecisionMetrics.recordViewed(mapPlace.getOperatingStatus());
         // 임시 휴업은 방문 결정을 위해 상태와 공지를 노출하고, 영구 폐업만 공개 대상에서 제외한다.
-        return new PlaceVisitDecisionResponse(
+        PlaceVisitDecisionResponse response = new PlaceVisitDecisionResponse(
                 toPlaceDetailResponse(mapPlace, merchantOwner),
                 publicMerchantInformation(mapPlace.getId(), merchantOwner),
                 placeEventRepository.findOngoingPublishedByPlaceId(
@@ -232,6 +231,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 touristOfferService.list(mapPlace.getId(), 1, 20),
                 checkedAt
         );
+        placeVisitDecisionMetrics.recordViewed(mapPlace.getOperatingStatus());
+        return response;
     }
 
     private PlaceDetailResponse toPlaceDetailResponse(
