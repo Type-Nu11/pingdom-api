@@ -643,6 +643,29 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void placeVisitDecisionContractIsDocumentedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode operation = appDocument.at("/paths/~1places~1{placeId}~1visit-decision/get");
+
+        assertThat(operation.isMissingNode()).as("방문 결정 조회 경로가 app 문서에 있어야 한다").isFalse();
+        assertThat(operation.at("/parameters/0/name").asText()).isEqualTo("placeId");
+        assertThat(operation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/PlaceVisitDecisionResponse");
+        assertThat(operation.at("/responses/401/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(operation.at("/responses/404/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+
+        JsonNode responseSchema = appDocument.at("/components/schemas/PlaceVisitDecisionResponse/properties");
+        assertThat(responseSchema.has("place")).isTrue();
+        assertThat(responseSchema.has("merchantInformation")).isTrue();
+        assertThat(responseSchema.at("/ongoingEvents/type").asText()).isEqualTo("array");
+        assertThat(responseSchema.at("/reservableAvailabilities/type").asText()).isEqualTo("array");
+        assertThat(responseSchema.has("availableOffers")).isTrue();
+        assertThat(responseSchema.at("/checkedAt/format").asText()).isEqualTo("date-time");
+    }
+
+    @Test
     void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
