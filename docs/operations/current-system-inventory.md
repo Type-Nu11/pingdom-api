@@ -100,6 +100,10 @@ Flyway 오류 복구, concurrent index migration, 기존 데이터 backfill 판�
 배치가 멈추면 즉시 재시도하지 말고 health, `X-Request-Id`, Outbox metric과 worker 로그를 먼저
 확인한다. Outbox의 실패·재시도 기준은 [관측성 문서](../observability.md)를 따른다.
 
+현재 `@Scheduled` 작업은 애플리케이션 인스턴스마다 등록된다. 다중 인스턴스 배포에서는 Outbox처럼
+DB claim 또는 idempotency가 있는 작업과 그렇지 않은 정리 작업을 구분해 점검한다. 새 배치를 추가할 때는
+중복 실행 허용 여부, 잠금 또는 idempotency 근거, 실패 시 재실행 방법을 이 문서와 해당 기능 이슈에 기록한다.
+
 ## 실행 환경과 외부 의존성
 
 | 의존성 | 용도 | 구성 출처 | 점검 포인트 |
