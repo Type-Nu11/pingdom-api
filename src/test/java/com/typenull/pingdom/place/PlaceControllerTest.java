@@ -691,6 +691,19 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionRejectsHiddenPlace() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReader04");
+        MapPlace mapPlace = createMapPlace("숨김 방문 결정 장소", "경상남도 진주시 방문로 5");
+        mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
     void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
