@@ -14,6 +14,8 @@ import com.typenull.pingdom.reservation.api.dto.*;
 import com.typenull.pingdom.reservation.domain.Reservation;
 import com.typenull.pingdom.reservation.domain.exception.*;
 import com.typenull.pingdom.reservation.infrastructure.ReservationRepository;
+import com.typenull.pingdom.place.application.service.conversion.PlaceConversionEventService;
+import com.typenull.pingdom.place.domain.conversion.PlaceConversionEventType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +34,7 @@ public class ReservationService {
     private final AvailabilityAccessPolicy availabilityAccessPolicy;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
+    private final PlaceConversionEventService conversionEventService;
     private final Clock clock;
 
     @Transactional
@@ -51,9 +54,17 @@ public class ReservationService {
         LocalDateTime now = LocalDateTime.now(clock);
         PlaceAvailability availability = availabilityService.reserve(request.availabilityId(), request.quantity());
         try {
-            return ReservationResponse.from(reservationRepository.save(
+            Reservation saved = reservationRepository.save(
                     Reservation.create(userId, request.availabilityId(), availability.getProductId(),
-                            availability.getProductType(), request.idempotencyKey(), request.quantity(), now)));
+                            availability.getProductType(), request.idempotencyKey(), request.quantity(), now));
+            conversionEventService.publish(
+                    userId,
+                    availability.getPlaceId(),
+                    PlaceConversionEventType.RESERVATION,
+                    saved.getId(),
+                    now
+            );
+            return ReservationResponse.from(saved);
         } catch (IllegalArgumentException exception) {
             throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
         }

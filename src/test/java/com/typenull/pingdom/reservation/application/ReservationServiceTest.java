@@ -3,6 +3,8 @@ package com.typenull.pingdom.reservation.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.ArgumentMatchers.isNull;
 import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.availability.application.AvailabilityAccessPolicy;
@@ -20,6 +22,7 @@ import com.typenull.pingdom.reservation.domain.ReservationStatus;
 import com.typenull.pingdom.reservation.domain.exception.ReservationException;
 import com.typenull.pingdom.reservation.domain.exception.ReservationErrorCode;
 import com.typenull.pingdom.reservation.infrastructure.ReservationRepository;
+import com.typenull.pingdom.place.application.service.conversion.PlaceConversionEventService;
 import java.time.*;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
@@ -32,12 +35,14 @@ class ReservationServiceTest {
     private final AvailabilityAccessPolicy availabilityAccessPolicy = mock(AvailabilityAccessPolicy.class);
     private final MerchantOwnerPlaceRepository ownerPlaceRepository = mock(MerchantOwnerPlaceRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
+    private final PlaceConversionEventService conversionEventService = mock(PlaceConversionEventService.class);
     private ReservationService service;
 
     @BeforeEach
     void setUp() {
         service = new ReservationService(reservationRepository, availabilityRepository, availabilityService,
                 availabilityAccessPolicy, ownerPlaceRepository, userRepository,
+                conversionEventService,
                 Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC));
         User tourist = User.builder().id(1L).role(UserRole.USER).status(UserStatus.ACTIVE).build();
         when(userRepository.findById(1L)).thenReturn(Optional.of(tourist));
@@ -57,6 +62,7 @@ class ReservationServiceTest {
         assertThat(response.productType()).isEqualTo(AvailabilityProductType.GENERAL);
         verify(availabilityService).reserve(9L, 2);
         verify(reservationRepository).save(any(Reservation.class));
+        verify(conversionEventService).publish(eq(1L), eq(11L), any(), isNull(), any());
     }
 
     @Test

@@ -14,6 +14,7 @@ import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
 import com.typenull.pingdom.offer.domain.exception.OfferException;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.application.service.conversion.PlaceConversionEventService;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
@@ -38,6 +39,7 @@ class TouristOfferServiceTest {
     @Mock private TouristCouponRepository couponRepository;
     @Mock private TouristEligibilityPolicy eligibilityPolicy;
     @Mock private MerchantOfferAccessPolicy merchantAccessPolicy;
+    @Mock private PlaceConversionEventService conversionEventService;
     @Mock private Clock clock;
 
     @InjectMocks private TouristOfferService offerService;
