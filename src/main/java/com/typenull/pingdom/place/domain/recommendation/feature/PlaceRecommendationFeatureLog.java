@@ -1,6 +1,8 @@
 package com.typenull.pingdom.place.domain.recommendation.feature;
 
 import com.typenull.pingdom.place.domain.recommendation.candidate.PlaceRecommendationCandidateSource;
+import com.typenull.pingdom.place.domain.recommendation.explanation.PlaceRecommendationLimitReason;
+import com.typenull.pingdom.place.domain.recommendation.explanation.PlaceRecommendationReason;
 
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import jakarta.persistence.Column;
@@ -96,6 +98,14 @@ public class PlaceRecommendationFeatureLog {
 
     @Column(name = "final_score", nullable = false)
     private double finalScore;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "reason_code", length = 40)
+    private PlaceRecommendationReason reason;
+
+    @Enumerated(EnumType.STRING)
+    @Column(name = "limit_reason_code", length = 40)
+    private PlaceRecommendationLimitReason limitReason;
 
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)

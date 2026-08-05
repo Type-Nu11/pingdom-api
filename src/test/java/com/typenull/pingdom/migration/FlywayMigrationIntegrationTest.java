@@ -2409,6 +2409,32 @@ class FlywayMigrationIntegrationTest {
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_recommendation_feature_log'
+                      AND column_name IN ('reason_code', 'limit_reason_code')
+                      AND is_nullable = 'YES'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_recommendation_feature_log'::regclass
+                      AND conname IN (
+                          'ck_recommendation_feature_log_reason_code',
+                          'ck_recommendation_feature_log_limit_reason_code'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'place_recommendation_feature_log'
+                      AND indexname IN (
+                          'idx_recommendation_feature_log_reason',
+                          'idx_recommendation_feature_log_limit_reason'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
                     FROM information_schema.tables
                     WHERE table_name IN ('tourist_offer', 'tourist_coupon')
                     """)).isTrue();
