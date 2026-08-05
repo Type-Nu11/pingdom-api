@@ -382,6 +382,10 @@ class OpenApiDocumentationValidationTest {
         JsonNode placeInformationPut = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/put");
         assertThat(placeInformationGet.at("/responses/200/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/MerchantPlaceInformationResponse");
+        assertThat(placeInformationGet.path("responses").has("401")).isTrue();
+        assertThat(placeInformationGet.path("responses").has("403")).isTrue();
+        assertThat(placeInformationGet.path("responses").has("404")).isTrue();
+        assertThat(placeInformationGet.path("security").path(0).path("bearerAuth").isArray()).isTrue();
         assertThat(placeInformationPut.at("/requestBody/content/application~1json/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/MerchantPlaceInformationUpdateRequest");
         assertThat(placeInformationPut.at("/responses/200/content/*~1*/schema/$ref").asText())
@@ -390,7 +394,14 @@ class OpenApiDocumentationValidationTest {
         assertThat(placeInformationPut.path("responses").has("401")).isTrue();
         assertThat(placeInformationPut.path("responses").has("403")).isTrue();
         assertThat(placeInformationPut.path("security").path(0).path("bearerAuth").isArray()).isTrue();
-        assertThat(appDocument.at("/components/schemas/MerchantPlaceInformationUpdateRequest/properties/websiteUrl/pattern").asText())
+        JsonNode informationRequest = appDocument.at("/components/schemas/MerchantPlaceInformationUpdateRequest");
+        assertThat(informationRequest.at("/properties/description/maxLength").asInt()).isEqualTo(1000);
+        assertThat(informationRequest.at("/properties/contactPhone/maxLength").asInt()).isEqualTo(30);
+        assertThat(informationRequest.at("/properties/websiteUrl/maxLength").asInt()).isEqualTo(500);
+        assertThat(informationRequest.at("/properties/reservationUrl/maxLength").asInt()).isEqualTo(500);
+        assertThat(informationRequest.at("/properties/websiteUrl/pattern").asText())
+                .isEqualTo("^https?://\\S+$");
+        assertThat(informationRequest.at("/properties/reservationUrl/pattern").asText())
                 .isEqualTo("^https?://\\S+$");
 
         JsonNode onboardingRequestSchema = webDocument.at("/components/schemas/MerchantOnboardingUpdateRequest");
