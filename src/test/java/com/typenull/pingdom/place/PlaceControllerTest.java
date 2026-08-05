@@ -1,6 +1,8 @@
 package com.typenull.pingdom.place;
 
 import com.typenull.pingdom.place.api.PlaceController;
+import com.typenull.pingdom.availability.domain.PlaceAvailability;
+import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
@@ -34,6 +36,22 @@ import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
 import com.typenull.pingdom.identity.application.port.EmailSender;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInformation;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
+import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInformationRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.offer.domain.TouristOffer;
+import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.domain.event.PlaceEvent;
+import com.typenull.pingdom.place.domain.event.PlaceEventType;
+import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -114,6 +132,27 @@ class PlaceControllerTest {
 
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
+
+    @Autowired
+    private MerchantOwnerProfileRepository merchantOwnerProfileRepository;
+
+    @Autowired
+    private MerchantVerificationRepository merchantVerificationRepository;
+
+    @Autowired
+    private MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+
+    @Autowired
+    private MerchantPlaceInformationRepository merchantPlaceInformationRepository;
+
+    @Autowired
+    private PlaceEventRepository placeEventRepository;
+
+    @Autowired
+    private PlaceAvailabilityRepository placeAvailabilityRepository;
+
+    @Autowired
+    private TouristOfferRepository touristOfferRepository;
 
     @Autowired
     private JdbcTemplate jdbcTemplate;
