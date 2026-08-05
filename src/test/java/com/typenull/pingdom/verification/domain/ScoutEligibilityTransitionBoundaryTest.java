@@ -28,4 +28,13 @@ class ScoutEligibilityTransitionBoundaryTest {
         assertThat(eligibility.isEligibleAt(UNTIL.minusNanos(1))).isTrue();
         assertThat(eligibility.isEligibleAt(UNTIL)).isFalse();
     }
+
+    @Test
+    void nullEndTimeCreatesAnOpenEndedEligibilityWindow() {
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
+        eligibility.grant(99L, FROM, null, FROM);
+
+        assertThat(eligibility.isEligibleAt(FROM)).isTrue();
+        assertThat(eligibility.isEligibleAt(FROM.plusYears(1))).isTrue();
+    }
 }
