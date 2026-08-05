@@ -24,4 +24,15 @@ class ScoutProfileTransitionBoundaryTest {
         assertThatThrownBy(() -> profile.suspend(99L, "심사 보류", CREATED_AT))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void suspendedProfileCanReturnToActiveAfterReapproval() {
+        ScoutProfile profile = ScoutProfile.pending(10L, "Scout", null, CREATED_AT);
+        profile.activate(99L, CREATED_AT.plusDays(1));
+        profile.suspend(99L, "추가 확인", CREATED_AT.plusDays(2));
+
+        profile.activate(99L, CREATED_AT.plusDays(3));
+
+        org.assertj.core.api.Assertions.assertThat(profile.getStatus()).isEqualTo(ScoutProfileStatus.ACTIVE);
+    }
 }
