@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "85";
+    private static final String LATEST_MIGRATION_VERSION = "86";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,9 +72,51 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(85);
+        assertThat(result.migrationsExecuted).isEqualTo(86);
 
         assertPostMigrationSchema();
+    }
+
+    @Test
+    void backfillsLegacyAdminUsersAsSuperAdminAssignments() throws Exception {
+        migrateTo("85");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES
+                        (940001, 'legacy-admin', 'legacy-admin@example.com', true, 'password', 1990,
+                         'ko', 'KR', TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                         'ADMIN', false),
+                        (940002, 'regular-user', 'regular-user@example.com', true, 'password', 1990,
+                         'ko', 'KR', TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                         'USER', false)
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM admin_role_assignment
+                    WHERE admin_user_id = 940001
+                      AND role = 'SUPER_ADMIN'
+                      AND status = 'ACTIVE'
+                      AND assigned_by_user_id IS NULL
+                      AND assigned_at = TIMESTAMP '2026-08-01 09:00:00'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM admin_role_assignment
+                    WHERE admin_user_id = 940002
+                    """)).isTrue();
+        }
     }
 
     @Test
@@ -107,7 +149,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(83);
+        assertThat(result.migrationsExecuted).isEqualTo(84);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -221,7 +263,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(58);
+        assertThat(result.migrationsExecuted).isEqualTo(59);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -472,7 +514,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(30);
+        assertThat(result.migrationsExecuted).isEqualTo(31);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -953,6 +995,34 @@ class FlywayMigrationIntegrationTest {
                           'ck_merchant_place_information_reservation_url'
                       )
                       AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'admin_role_assignment'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'admin_role_assignment'::regclass
+                      AND conname IN (
+                          'fk_admin_role_assignment_user',
+                          'fk_admin_role_assignment_assigner',
+                          'ck_admin_role_assignment_user',
+                          'ck_admin_role_assignment_role',
+                          'ck_admin_role_assignment_status',
+                          'ck_admin_role_assignment_period'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'admin_role_assignment'
+                          AND indexname = 'uq_admin_role_assignment_active'
+                    )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (

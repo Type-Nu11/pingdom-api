@@ -183,6 +183,18 @@ Merchant profile 삭제 시 소유 데이터는 함께 정리한다.
 애플리케이션은 수정 시점에 현재 Merchant 소유 관계를 확인하고, 정보가 없는 장소는
 첫 수정에서 새 레코드를 생성한다.
 
+## 관리자 역할과 권한
+
+`V86`은 기존 `users.role = 'ADMIN'`을 유지하면서 관리자별 세부 역할 할당을
+`admin_role_assignment`에 추가한다. 역할은 `SUPER_ADMIN`, `CONTENT_MODERATOR`,
+`MERCHANT_OPERATOR`, `SUPPORT_OPERATOR`, `ANALYST`로 제한하고, 역할별 세부 권한은
+애플리케이션 enum에서 관리한다. 기존 관리자 계정은 `SUPER_ADMIN` 활성 할당으로
+backfill하므로 기존 JWT의 `ADMIN` 인증과 관리자 API 접근을 중단하지 않는다.
+
+역할 회수는 기존 행을 삭제하지 않고 `REVOKED`와 `revoked_at`을 기록한다. 같은 관리자와
+역할에는 활성 할당을 하나만 허용하고, 회수된 역할은 이력으로 보존한다. `assigned_by_user_id`는
+기존 데이터 backfill에서 `NULL`일 수 있으며, 할당자 탈퇴 시에도 역할 이력은 보존된다.
+
 ## Verified Boost
 
 `V73`은 관리자가 운영하는 Verified Boost 상품 정책과 Merchant의 장소별 상품 선택 테이블을 추가한다.

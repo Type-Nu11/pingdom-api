@@ -7,6 +7,10 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum AdminErrorCode {
+    ADMIN_ROLE_ASSIGNMENT_INVALID(HttpStatus.BAD_REQUEST, "관리자 역할 할당 요청이 올바르지 않습니다."),
+    ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, "요청을 처리할 관리자 권한이 없습니다."),
+    ADMIN_ROLE_ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "관리자 역할 할당을 찾을 수 없습니다."),
+    ADMIN_ROLE_ASSIGNMENT_CONFLICT(HttpStatus.CONFLICT, "이미 동일한 관리자 역할이 활성 상태입니다."),
     POST_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."),
     PLACE_DUPLICATE_NOT_FOUND(HttpStatus.NOT_FOUND, "중복 후보 장소를 찾을 수 없습니다."),
