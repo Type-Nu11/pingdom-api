@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 class SwaggerSecurityTest {
