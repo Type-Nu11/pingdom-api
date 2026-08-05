@@ -666,6 +666,28 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void placeVisitDecisionContractIsNotExposedInWebGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/places/{placeId}/visit-decision")).isTrue();
+        assertThat(webDocument.path("paths").has("/places/{placeId}/visit-decision")).isFalse();
+    }
+
+    @Test
+    void placeVisitDecisionMerchantSchemaDoesNotExposeEditorIdentity() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode merchantSchema = appDocument.at(
+                "/components/schemas/PlaceVisitDecisionMerchantInformationResponse/properties"
+        );
+
+        assertThat(merchantSchema.has("description")).isTrue();
+        assertThat(merchantSchema.has("reservationUrl")).isTrue();
+        assertThat(merchantSchema.has("updatedAt")).isTrue();
+        assertThat(merchantSchema.has("updatedByUserId")).isFalse();
+    }
+
+    @Test
     void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
