@@ -732,6 +732,7 @@ class PlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.merchantInformation.reservationUrl")
                         .value("https://pingdom.test/places/10/reservations"))
+                .andExpect(jsonPath("$.merchantInformation.updatedByUserId").doesNotExist())
                 .andExpect(jsonPath("$.ongoingEvents.length()").value(1))
                 .andExpect(jsonPath("$.ongoingEvents[0].title").value("진행 중인 팝업"))
                 .andExpect(jsonPath("$.reservableAvailabilities.length()").value(1))
