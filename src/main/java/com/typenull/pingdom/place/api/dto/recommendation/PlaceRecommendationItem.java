@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.api.dto.recommendation;
 import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
+import com.typenull.pingdom.place.domain.recommendation.explanation.PlaceRecommendationReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
@@ -38,6 +39,8 @@ public record PlaceRecommendationItem(
         long distanceMeters,
         @Schema(description = "추천 사유", example = "저장한 장소와 가까운 추천 장소입니다.")
         String reason,
+        @Schema(description = "추천 사유 코드", example = "PERSONAL_SIGNAL")
+        PlaceRecommendationReason reasonCode,
         @Schema(description = "현재 발급 가능한 관광 혜택 존재 여부")
         boolean hasActiveBenefit,
         @Schema(description = "현재 예약 가능한 시간 존재 여부")
