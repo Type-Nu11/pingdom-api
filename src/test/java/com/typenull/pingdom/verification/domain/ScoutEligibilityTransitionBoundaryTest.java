@@ -55,4 +55,12 @@ class ScoutEligibilityTransitionBoundaryTest {
         assertThatThrownBy(() -> eligibility.suspend(99L, "심사 보류", FROM))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void pendingEligibilityCannotBeRevokedBeforeGrant() {
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
+
+        assertThatThrownBy(() -> eligibility.revoke(99L, "자격 회수", FROM))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }
