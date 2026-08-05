@@ -31,6 +31,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import io.micrometer.core.instrument.Counter;
+import io.micrometer.core.instrument.MeterRegistry;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.application.port.EmailSendResult;
@@ -123,6 +125,9 @@ class PlaceControllerTest {
 
     @Autowired
     private ObjectMapper objectMapper;
+
+    @Autowired
+    private MeterRegistry meterRegistry;
 
     @Autowired
     private PlaceController placeController;
@@ -826,6 +831,28 @@ class PlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.merchantInformation").isEmpty());
+    }
+
+    @Test
+    void getPlaceVisitDecisionRecordsSuccessfulViewMetric() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReaderMetric");
+        MapPlace mapPlace = createMapPlace("관측 방문 결정 장소", "경상남도 진주시 방문로 14");
+        Counter counter = meterRegistry.find("pingdom.place.visit_decision_views")
+                .tag("operating_status", "OPERATING")
+                .counter();
+        double before = counter == null ? 0.0d : counter.count();
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk());
+
+        assertEquals(
+                before + 1.0d,
+                meterRegistry.get("pingdom.place.visit_decision_views")
+                        .tag("operating_status", "OPERATING")
+                        .counter()
+                        .count()
+        );
     }
 
     @Test
