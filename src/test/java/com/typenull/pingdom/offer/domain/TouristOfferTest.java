@@ -46,6 +46,38 @@ class TouristOfferTest {
     }
 
     @Test
+    void unlimitedInventoryDoesNotBecomeSoldOut() {
+        TouristOffer offer = TouristOffer.draft(
+                1L, 10L, "무제한 Offer", "설명", "혜택",
+                NOW.minusHours(1), NOW.plusDays(10), null, 7,
+                CouponEligibilityPolicy.PUBLIC,
+                CouponInventoryPolicy.UNLIMITED,
+                CouponExpiryPolicy.ISSUE_PLUS_DAYS,
+                NOW.minusDays(1)
+        );
+        offer.publish(NOW.minusMinutes(1));
+
+        assertThat(offer.issueCoupon(NOW)).isEqualTo(NOW.plusDays(7));
+        assertThat(offer.isSoldOut()).isFalse();
+        assertThat(offer.getInventoryPolicy()).isEqualTo(CouponInventoryPolicy.UNLIMITED);
+    }
+
+    @Test
+    void offerEndExpiryPolicyIgnoresCouponValidityDays() {
+        TouristOffer offer = TouristOffer.draft(
+                1L, 10L, "종료일 만료 Offer", "설명", "혜택",
+                NOW.minusHours(1), NOW.plusDays(10), 1, 7,
+                CouponEligibilityPolicy.ACTIVE_TRAVEL_SCHEDULE,
+                CouponInventoryPolicy.LIMITED,
+                CouponExpiryPolicy.OFFER_END,
+                NOW.minusDays(1)
+        );
+        offer.publish(NOW.minusMinutes(1));
+
+        assertThat(offer.issueCoupon(NOW)).isEqualTo(NOW.plusDays(10));
+    }
+
+    @Test
     void endedOfferCannotBePublished() {
         TouristOffer offer = TouristOffer.draft(
                 1L,
