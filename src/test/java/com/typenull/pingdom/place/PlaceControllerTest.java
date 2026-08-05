@@ -788,6 +788,46 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionHidesMerchantInformationWhenOwnerIsRevoked() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReaderRevokedMerchant");
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        MapPlace mapPlace = createMapPlace("회수 Merchant 장소", "경상남도 진주시 방문로 13");
+        User merchant = userRepository.saveAndFlush(User.builder()
+                .username("revokedMerchant" + Long.toUnsignedString(System.nanoTime()))
+                .email("revoked-merchant-" + Long.toUnsignedString(System.nanoTime()) + "@pingdom.test")
+                .password("password123")
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.MERCHANT_OWNER)
+                .build());
+        merchantOwnerProfileRepository.saveAndFlush(MerchantOwnerProfile.builder()
+                .userId(merchant.getId())
+                .businessName("회수 상점")
+                .displayName("회수 Merchant")
+                .contactEmail("revoked@pingdom.test")
+                .contactPhone("010-9999-9999")
+                .status(MerchantOwnerStatus.REVOKED)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        merchantOwnerPlaceRepository.saveAndFlush(MerchantOwnerPlace.builder()
+                .merchantOwnerUserId(merchant.getId())
+                .placeId(mapPlace.getId())
+                .createdAt(now)
+                .build());
+        merchantPlaceInformationRepository.saveAndFlush(MerchantPlaceInformation.create(
+                mapPlace.getId(), "노출되면 안 되는 Merchant 정보", "010-9999-9999",
+                "https://pingdom.test/revoked", "https://pingdom.test/revoked/reservations", merchant.getId(), now
+        ));
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.merchantInformation").isEmpty());
+    }
+
+    @Test
     void getPlaceVisitDecisionKeepsTemporarilyClosedPlaceVisible() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader02");
         MapPlace mapPlace = createMapPlace("임시 휴업 방문 결정 장소", "경상남도 진주시 방문로 2");
