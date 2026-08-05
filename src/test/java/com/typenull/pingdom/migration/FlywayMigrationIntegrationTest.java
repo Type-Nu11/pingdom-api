@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "83";
+    private static final String LATEST_MIGRATION_VERSION = "84";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(83);
+        assertThat(result.migrationsExecuted).isEqualTo(84);
 
         assertPostMigrationSchema();
     }
@@ -107,7 +107,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(81);
+        assertThat(result.migrationsExecuted).isEqualTo(82);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -221,9 +221,37 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(56);
+        assertThat(result.migrationsExecuted).isEqualTo(57);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM information_schema.columns
+                    WHERE table_name = 'tourist_offer'
+                      AND column_name IN ('eligibility_policy', 'inventory_policy', 'expiry_policy')
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'tourist_offer'::regclass
+                      AND conname IN (
+                          'ck_tourist_offer_eligibility_policy',
+                          'ck_tourist_offer_inventory_policy',
+                          'ck_tourist_offer_expiry_policy'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'tourist_offer'::regclass
+                          AND conname = 'ck_tourist_offer_quantity'
+                          AND pg_get_constraintdef(oid) LIKE '%UNLIMITED%'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
@@ -444,7 +472,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(28);
+        assertThat(result.migrationsExecuted).isEqualTo(29);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
