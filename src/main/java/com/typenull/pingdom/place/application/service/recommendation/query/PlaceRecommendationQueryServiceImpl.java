@@ -9,11 +9,14 @@ import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationItem
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.recommendation.explanation.PlaceRecommendationLimitReason;
+import com.typenull.pingdom.place.domain.recommendation.explanation.PlaceRecommendationReason;
 import com.typenull.pingdom.place.event.PlaceRecommendationExposureRecordRequestedEvent;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.observability.RecommendationMetrics;
 import java.util.ArrayList;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.HashSet;
 import java.util.LinkedHashSet;
@@ -100,7 +103,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     safeRadiusKm,
                     safeRadiusKm,
                     Set.of(),
-                    null
+                    null,
+                    resolveLimitReasons(limit, safeLimit, radiusKm, safeRadiusKm,
+                            signalContext.interactedPlaceIds(), false, List.of())
             ));
         }
 
@@ -145,7 +150,9 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                     safeRadiusKm,
                     selection.appliedRadiusKm(),
                     Set.of(),
-                    null
+                    null,
+                    resolveLimitReasons(limit, safeLimit, radiusKm, selection.appliedRadiusKm(),
+                            signalContext.interactedPlaceIds(), selection.fallbackCandidatePool(), selection.candidates())
             ));
         }
 
@@ -248,6 +255,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         candidate.place().getLongitude(),
                         Math.round(candidate.distanceMeters()),
                         buildReason(candidate, hasPersonalSignals),
+                        resolveReason(candidate, hasPersonalSignals),
                         commerceSignalsByPlaceId.getOrDefault(
                                 candidate.place().getId(),
                                 PlaceRecommendationCommerceSignalLoader.CommerceSignal.NONE
@@ -290,7 +298,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                 safeRadiusKm,
                 appliedRadiusKm,
                 interestRankingResult.interests(),
-                intentRankingResult.intent()
+                intentRankingResult.intent(),
+                resolveLimitReasons(limit, safeLimit, radiusKm, appliedRadiusKm,
+                        signalContext.interactedPlaceIds(), selection.fallbackCandidatePool(), selection.candidates(),
+                        rerankedCandidates, candidateStateByPlaceId)
         ));
     }
 
@@ -407,10 +418,11 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
                         fallbackCandidates.get(fallbackCandidates.size() - 1).distanceMeters() / 1_000d
                 );
                 candidates = fallbackCandidates;
+                return new CandidateSelection(candidates, appliedRadiusKm, true);
             }
         }
 
-        return new CandidateSelection(candidates, appliedRadiusKm);
+        return new CandidateSelection(candidates, appliedRadiusKm, false);
     }
 
     private Comparator<PlaceDistance> sourceBoostedCandidateComparator() {
@@ -459,51 +471,122 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     private String buildReason(ScoredCandidate candidate, boolean hasPersonalSignals) {
-        if (candidate.benefitScore() > 0d && candidate.availabilityScore() > 0d) {
-            return "현재 이용 가능한 혜택과 예약이 있는 장소입니다.";
-        }
-        if (candidate.benefitScore() > 0d) {
-            return "현재 이용 가능한 혜택이 있는 장소입니다.";
-        }
-        if (candidate.availabilityScore() > 0d) {
-            return "현재 예약 가능한 장소입니다.";
-        }
-        if (candidate.contextScore() > 0d) {
-            return "회원님의 K-컬처 관심사와 현재 여행 맥락에 맞는 장소입니다.";
-        }
-
-        if (hasPersonalSignals
-                && candidate.personalScore() >= 0.25d
-                && candidate.dominantSignalType() != PersonalSignalType.NONE) {
-            return switch (candidate.dominantSignalType()) {
+        return switch (resolveReason(candidate, hasPersonalSignals)) {
+            case BENEFIT_AND_RESERVABLE -> "현재 이용 가능한 혜택과 예약이 있는 장소입니다.";
+            case ACTIVE_BENEFIT -> "현재 이용 가능한 혜택이 있는 장소입니다.";
+            case RESERVABLE -> "현재 예약 가능한 장소입니다.";
+            case CONTEXT_MATCH -> "회원님의 K-컬처 관심사와 현재 여행 맥락에 맞는 장소입니다.";
+            case PERSONAL_SIGNAL -> switch (candidate.dominantSignalType()) {
                 case BOOKMARK -> "저장한 장소와 가까운 추천 장소입니다.";
                 case LIKE -> "좋아요한 장소와 가까운 추천 장소입니다.";
                 case UPLOAD -> "업로드한 장소와 가까운 추천 장소입니다.";
                 case NONE -> "회원님의 반응 이력과 가까운 장소입니다.";
             };
-        }
+            case FRESH_CONTENT -> "현재 위치 주변에서 최근 업로드가 활발한 장소입니다.";
+            case HIGH_ENGAGEMENT -> "현재 위치 주변에서 추천 클릭 반응이 좋은 장소입니다.";
+            case HIGH_CONVERSION -> "현재 위치 주변에서 저장 전환 반응이 좋은 장소입니다.";
+            case EXPLORATION -> "현재 위치 주변에서 새롭게 탐색 중인 장소입니다.";
+            case QUALITY_SIGNAL -> "현재 위치 주변에서 반응이 좋은 장소입니다.";
+            case NEARBY -> "현재 위치와 가까운 장소입니다.";
+        };
+    }
 
+    private PlaceRecommendationReason resolveReason(ScoredCandidate candidate, boolean hasPersonalSignals) {
+        if (candidate.benefitScore() > 0d && candidate.availabilityScore() > 0d) {
+            return PlaceRecommendationReason.BENEFIT_AND_RESERVABLE;
+        }
+        if (candidate.benefitScore() > 0d) {
+            return PlaceRecommendationReason.ACTIVE_BENEFIT;
+        }
+        if (candidate.availabilityScore() > 0d) {
+            return PlaceRecommendationReason.RESERVABLE;
+        }
+        if (candidate.contextScore() > 0d) {
+            return PlaceRecommendationReason.CONTEXT_MATCH;
+        }
+        if (hasPersonalSignals
+                && candidate.personalScore() >= 0.25d
+                && candidate.dominantSignalType() != PersonalSignalType.NONE) {
+            return PlaceRecommendationReason.PERSONAL_SIGNAL;
+        }
         if (candidate.freshnessScore() >= 0.60d) {
-            return "현재 위치 주변에서 최근 업로드가 활발한 장소입니다.";
+            return PlaceRecommendationReason.FRESH_CONTENT;
         }
-
         if (candidate.engagementScore() >= 0.60d) {
-            return "현재 위치 주변에서 추천 클릭 반응이 좋은 장소입니다.";
+            return PlaceRecommendationReason.HIGH_ENGAGEMENT;
         }
-
         if (candidate.conversionScore() >= 0.55d) {
-            return "현재 위치 주변에서 저장 전환 반응이 좋은 장소입니다.";
+            return PlaceRecommendationReason.HIGH_CONVERSION;
         }
-
         if (candidate.explorationScore() >= 0.65d && candidate.qualityScore() < 0.45d) {
-            return "현재 위치 주변에서 새롭게 탐색 중인 장소입니다.";
+            return PlaceRecommendationReason.EXPLORATION;
         }
-
         if (candidate.qualityScore() >= 0.45d) {
-            return "현재 위치 주변에서 반응이 좋은 장소입니다.";
+            return PlaceRecommendationReason.QUALITY_SIGNAL;
         }
+        return PlaceRecommendationReason.NEARBY;
+    }
 
-        return "현재 위치와 가까운 장소입니다.";
+    private List<PlaceRecommendationLimitReason> resolveLimitReasons(
+            int requestedLimit,
+            int safeLimit,
+            double requestedRadiusKm,
+            double appliedRadiusKm,
+            Set<Long> interactedPlaceIds,
+            boolean fallbackCandidatePool,
+            List<PlaceDistance> selectedCandidates
+    ) {
+        EnumSet<PlaceRecommendationLimitReason> reasons = EnumSet.noneOf(PlaceRecommendationLimitReason.class);
+        if (requestedLimit != safeLimit) {
+            reasons.add(PlaceRecommendationLimitReason.REQUEST_LIMIT_CLAMPED);
+        }
+        if (appliedRadiusKm > requestedRadiusKm) {
+            reasons.add(PlaceRecommendationLimitReason.RADIUS_EXPANDED);
+        }
+        if (!interactedPlaceIds.isEmpty()) {
+            reasons.add(PlaceRecommendationLimitReason.INTERACTED_PLACE_EXCLUDED);
+        }
+        if (fallbackCandidatePool) {
+            reasons.add(PlaceRecommendationLimitReason.FALLBACK_CANDIDATE_POOL);
+        }
+        if (selectedCandidates.stream().anyMatch(candidate -> !Boolean.TRUE.equals(candidate.currentlyOperating()))) {
+            reasons.add(PlaceRecommendationLimitReason.OPERATING_STATUS_PRIORITY);
+        }
+        return List.copyOf(reasons);
+    }
+
+    private List<PlaceRecommendationLimitReason> resolveLimitReasons(
+            int requestedLimit,
+            int safeLimit,
+            double requestedRadiusKm,
+            double appliedRadiusKm,
+            Set<Long> interactedPlaceIds,
+            boolean fallbackCandidatePool,
+            List<PlaceDistance> selectedCandidates,
+            List<ScoredCandidate> rerankedCandidates,
+            Map<Long, CandidatePlace> candidateStateByPlaceId
+    ) {
+        List<PlaceDistance> outputCandidates = rerankedCandidates.stream()
+                .map(candidate -> {
+                    CandidatePlace state = candidateStateByPlaceId.get(candidate.place().getId());
+                    return new PlaceDistance(
+                            candidate.place(),
+                            Set.of(),
+                            candidate.distanceMeters(),
+                            state.currentlyOperating(),
+                            state.currentlyOperatingCheckedAt()
+                    );
+                })
+                .toList();
+        return resolveLimitReasons(
+                requestedLimit,
+                safeLimit,
+                requestedRadiusKm,
+                appliedRadiusKm,
+                interactedPlaceIds,
+                fallbackCandidatePool,
+                selectedCandidates.isEmpty() ? outputCandidates : selectedCandidates
+        );
     }
 
     private double calculateDistanceMeters(

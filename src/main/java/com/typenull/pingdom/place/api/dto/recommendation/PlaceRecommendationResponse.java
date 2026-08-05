@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.api.dto.recommendation;
 
 import com.typenull.pingdom.identity.domain.TravelPurpose;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
+import com.typenull.pingdom.place.domain.recommendation.explanation.PlaceRecommendationLimitReason;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import java.util.Set;
@@ -25,7 +26,9 @@ public record PlaceRecommendationResponse(
         @Schema(description = "추천에 적용된 K-컬처 및 여행 관심사")
         Set<TravelPurpose> appliedTravelPurposes,
         @Schema(description = "추천에 적용된 현재 행동 의도", nullable = true, example = "CAFE")
-        CurrentActivityIntent appliedActivityIntent
+        CurrentActivityIntent appliedActivityIntent,
+        @Schema(description = "추천 결과에 영향을 준 제한 사유 코드")
+        List<PlaceRecommendationLimitReason> limitReasons
 ) {
     public static PlaceRecommendationResponse of(
             List<PlaceRecommendationItem> places,
@@ -46,7 +49,33 @@ public record PlaceRecommendationResponse(
                 appliedRadiusKm,
                 places.size(),
                 appliedTravelPurposes == null ? Set.of() : Set.copyOf(appliedTravelPurposes),
-                appliedActivityIntent
+                appliedActivityIntent,
+                List.of()
+        );
+    }
+
+    public static PlaceRecommendationResponse of(
+            List<PlaceRecommendationItem> places,
+            String recommendationVersion,
+            String recommendationRequestId,
+            int limit,
+            double requestedRadiusKm,
+            double appliedRadiusKm,
+            Set<TravelPurpose> appliedTravelPurposes,
+            CurrentActivityIntent appliedActivityIntent,
+            List<PlaceRecommendationLimitReason> limitReasons
+    ) {
+        return new PlaceRecommendationResponse(
+                places,
+                recommendationVersion,
+                recommendationRequestId,
+                limit,
+                requestedRadiusKm,
+                appliedRadiusKm,
+                places.size(),
+                appliedTravelPurposes == null ? Set.of() : Set.copyOf(appliedTravelPurposes),
+                appliedActivityIntent,
+                limitReasons == null ? List.of() : List.copyOf(limitReasons)
         );
     }
 }

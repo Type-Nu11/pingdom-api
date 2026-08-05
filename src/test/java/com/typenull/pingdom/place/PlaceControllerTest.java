@@ -1269,7 +1269,9 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.recommendedCount").value(2))
                 .andExpect(jsonPath("$.places.length()").value(2))
                 .andExpect(jsonPath("$.places[0].name").value("추천 장소"))
-                .andExpect(jsonPath("$.places[0].reason").value("저장한 장소와 가까운 추천 장소입니다."));
+                .andExpect(jsonPath("$.places[0].reason").value("저장한 장소와 가까운 추천 장소입니다."))
+                .andExpect(jsonPath("$.places[0].reasonCode").value("PERSONAL_SIGNAL"))
+                .andExpect(jsonPath("$.limitReasons").isArray());
     }
 
     @Test

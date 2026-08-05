@@ -200,6 +200,13 @@ class OpenApiDocumentationValidationTest {
         assertThat(recommendationItem.has("reservable"))
                 .as("추천 항목은 현재 예약 가능 여부를 제공해야 한다")
                 .isTrue();
+        assertThat(recommendationItem.has("reasonCode"))
+                .as("추천 항목은 기계 판독 가능한 추천 사유 코드를 제공해야 한다")
+                .isTrue();
+        assertThat(appDocument.at("/components/schemas/PlaceRecommendationResponse/properties/limitReasons")
+                .has("items"))
+                .as("추천 응답은 제한 사유 코드 목록을 제공해야 한다")
+                .isTrue();
         JsonNode explanationItem = appDocument.at(
                 "/components/schemas/PlaceRecommendationExplanationItem/properties"
         );
