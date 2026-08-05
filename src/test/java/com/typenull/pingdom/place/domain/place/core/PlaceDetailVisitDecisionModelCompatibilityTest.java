@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.domain.place.core;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
@@ -82,6 +83,14 @@ class PlaceDetailVisitDecisionModelCompatibilityTest {
         place.updateTouristInformation("Legacy Place", "방문 결정에 필요한 장소 설명", Set.of());
 
         assertThat(place.currentTouristCategories()).isEmpty();
+    }
+
+    @Test
+    void emptyLegacyCategoriesDoNotExposeMutablePersistenceState() {
+        MapPlace place = legacyPlace();
+
+        assertThatThrownBy(() -> place.currentTouristCategories().add(null))
+                .isInstanceOf(UnsupportedOperationException.class);
     }
 
     private MapPlace legacyPlace() {
