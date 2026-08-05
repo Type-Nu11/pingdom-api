@@ -136,3 +136,9 @@ tasks.register('verifyOpenApiContract') {
     description = 'Verifies generated OpenAPI specs against committed baseline specs.'
     dependsOn verifyOpenApiContractTasks
 }
+
+tasks.register('verifyCurrentSystemInventory', Exec) {
+    group = 'verification'
+    description = 'Verifies the source-based API, schema, and scheduler inventory.'
+    commandLine 'bash', 'scripts/verify-current-system-inventory.sh'
+}
