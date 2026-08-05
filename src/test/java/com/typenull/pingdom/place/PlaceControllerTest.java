@@ -688,6 +688,59 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionCombinesOnlyPublicVisitData() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReaderAggregate");
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        MapPlace mapPlace = createMapPlace("통합 방문 결정 장소", "경상남도 진주시 방문로 10");
+        User merchant = createActiveMerchantForVisitDecision(mapPlace, now);
+
+        merchantPlaceInformationRepository.saveAndFlush(MerchantPlaceInformation.create(
+                mapPlace.getId(),
+                "관광객용 장소 소개",
+                "010-1111-2222",
+                "https://pingdom.test/places/10",
+                "https://pingdom.test/places/10/reservations",
+                merchant.getId(),
+                now
+        ));
+
+        PlaceEvent event = PlaceEvent.create(
+                mapPlace,
+                "진행 중인 팝업",
+                "오늘만 진행합니다.",
+                PlaceEventType.POP_UP,
+                now.minusHours(1),
+                now.plusHours(1),
+                now.minusHours(2)
+        );
+        event.publish(now.minusMinutes(30));
+        placeEventRepository.saveAndFlush(event);
+
+        placeAvailabilityRepository.saveAndFlush(PlaceAvailability.create(
+                merchant.getId(), mapPlace.getId(), now.plusHours(1), now.plusHours(2), 4, now
+        ));
+
+        TouristOffer offer = TouristOffer.draft(
+                merchant.getId(), mapPlace.getId(), "방문 결정 혜택", "관광객 한정 혜택", "음료 1잔 무료",
+                now.minusHours(1), now.plusDays(1), 5, 3, now.minusHours(2)
+        );
+        offer.publish(now.minusMinutes(30));
+        touristOfferRepository.saveAndFlush(offer);
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.merchantInformation.reservationUrl")
+                        .value("https://pingdom.test/places/10/reservations"))
+                .andExpect(jsonPath("$.ongoingEvents.length()").value(1))
+                .andExpect(jsonPath("$.ongoingEvents[0].title").value("진행 중인 팝업"))
+                .andExpect(jsonPath("$.reservableAvailabilities.length()").value(1))
+                .andExpect(jsonPath("$.reservableAvailabilities[0].remainingCapacity").value(4))
+                .andExpect(jsonPath("$.availableOffers.offers.length()").value(1))
+                .andExpect(jsonPath("$.availableOffers.offers[0].title").value("방문 결정 혜택"));
+    }
+
+    @Test
     void getPlaceVisitDecisionKeepsTemporarilyClosedPlaceVisible() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader02");
         MapPlace mapPlace = createMapPlace("임시 휴업 방문 결정 장소", "경상남도 진주시 방문로 2");
@@ -2328,6 +2381,45 @@ class PlaceControllerTest {
         return objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
                 .get("coordinateToken")
                 .textValue();
+    }
+
+    private User createActiveMerchantForVisitDecision(MapPlace mapPlace, LocalDateTime now) {
+        String suffix = Long.toUnsignedString(System.nanoTime());
+        User merchant = userRepository.saveAndFlush(User.builder()
+                .username("visitDecisionMerchant" + suffix)
+                .email("visit-decision-merchant-" + suffix + "@example.com")
+                .password("password123")
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.MERCHANT_OWNER)
+                .build());
+        merchantOwnerProfileRepository.saveAndFlush(MerchantOwnerProfile.builder()
+                .userId(merchant.getId())
+                .businessName("방문 결정 상점")
+                .displayName("방문 결정 Merchant")
+                .contactEmail("merchant@pingdom.test")
+                .contactPhone("010-1111-2222")
+                .status(MerchantOwnerStatus.ACTIVE)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        merchantVerificationRepository.saveAndFlush(MerchantVerification.builder()
+                .userId(merchant.getId())
+                .legalName("핑덤 Merchant")
+                .businessName("방문 결정 상점")
+                .encryptedBusinessRegistrationNumber("encrypted-registration")
+                .identityStatus(MerchantVerificationStatus.APPROVED)
+                .businessStatus(MerchantVerificationStatus.APPROVED)
+                .createdAt(now)
+                .updatedAt(now)
+                .build());
+        merchantOwnerPlaceRepository.saveAndFlush(MerchantOwnerPlace.builder()
+                .merchantOwnerUserId(merchant.getId())
+                .placeId(mapPlace.getId())
+                .createdAt(now)
+                .build());
+        return merchant;
     }
 
     private MapPlace createMapPlace(String name, String address) {
