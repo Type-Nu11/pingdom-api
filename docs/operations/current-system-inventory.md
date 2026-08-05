@@ -30,6 +30,13 @@
 API 변경이 없는 구성 점검에서는 baseline을 갱신하지 않는다. 새 경로·요청·응답 변경은 생성 스펙과
 baseline diff를 검토한 뒤 별도 API 이슈에서 반영한다.
 
+| 변경 유형 | OpenAPI baseline | Flyway migration | 이 인벤토리 문서 |
+| --- | --- | --- | --- |
+| 설정·운영 절차만 변경 | 검토만 수행 | 검토만 수행 | 절차와 영향 갱신 |
+| 공개 API 계약 변경 | 생성·호환성 검증 후 갱신 | 데이터 영향 검토 | API 기준선 갱신 |
+| 영속 모델 변경 | API 영향 검토 | 새 version 추가 및 backfill 검토 | 테이블·배치 영향 갱신 |
+| batch 추가·변경 | API 영향 검토 | 상태 저장 시 migration 검토 | 주기·중복 실행·복구 절차 갱신 |
+
 실행 중인 서비스의 API 문서는 `dev`, `openapi-export` 프로필에서만 제공된다. 운영 health 확인에는
 OpenAPI endpoint 대신 아래 probe를 사용한다.
 
