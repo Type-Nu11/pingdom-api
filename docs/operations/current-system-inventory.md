@@ -14,6 +14,10 @@
 위치, Flyway 파일, `CREATE TABLE` 선언, `@Scheduled` 실행 지점이 모두 들어간다. 두 번째 명령은
 핵심 구간과 현재 Flyway 기준선을 확인한다. `build/` 아래의 결과는 Git에 커밋하지 않는다.
 
+Controller mapping 수는 `@GetMapping` 같은 선언의 개수이며, 실제 공개 endpoint 수와 같지 않을 수 있다.
+한 mapping이 여러 경로를 선언하거나 class-level mapping과 결합되기 때문이다. 외부 계약의 정본은 항상
+Springdoc export 결과와 OpenAPI baseline 검증이다.
+
 실행 중인 환경을 확인해야 할 때는 이 소스 인벤토리와 아래 운영 확인 절차를 함께 사용한다.
 
 ## API 기준선
