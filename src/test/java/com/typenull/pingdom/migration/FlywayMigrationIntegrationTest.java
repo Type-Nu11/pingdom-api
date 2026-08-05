@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "86";
+    private static final String LATEST_MIGRATION_VERSION = "87";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(86);
+        assertThat(result.migrationsExecuted).isEqualTo(87);
 
         assertPostMigrationSchema();
     }
@@ -120,6 +120,64 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void backfillsExistingScoutReportersAsActiveProfilesAndEligibleScouts() throws Exception {
+        migrateTo("86");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES (
+                        950001, 'legacy-scout', 'legacy-scout@example.com', true, 'password', 1995,
+                        'ko', 'KR', TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                        'USER', false
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        950001, '기존 Scout 제보 장소', '서울시 중구', 37.5, 127.0, 'legacy-scout', 0
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO scout_field_report (
+                        id, scout_user_id, place_id, report_type, description, status,
+                        reviewed_at, created_at, updated_at, version
+                    ) VALUES (
+                        950001, 950001, 950001, 'OPERATING_HOURS', '기존 영업시간 제보', 'ACCEPTED',
+                        TIMESTAMP '2026-08-02 11:00:00', TIMESTAMP '2026-08-02 10:00:00',
+                        TIMESTAMP '2026-08-02 10:00:00', 0
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT status = 'ACTIVE'
+                       AND display_name = 'legacy-scout'
+                       AND reviewed_by_admin_user_id IS NULL
+                       AND status_reason IS NULL
+                    FROM scout_profile
+                    WHERE user_id = 950001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT status = 'ELIGIBLE'
+                       AND eligible_from = TIMESTAMP '2026-08-02 10:00:00'
+                       AND eligible_until IS NULL
+                    FROM scout_activity_eligibility
+                    WHERE scout_user_id = 950001
+                    """)).isTrue();
+        }
+    }
+
+    @Test
     void baselinesExistingVersionOneSchemaAndAppliesIncrementalMigrations() throws Exception {
         executeBaselineSchemaScript();
 
@@ -149,7 +207,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(84);
+        assertThat(result.migrationsExecuted).isEqualTo(85);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -263,7 +321,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(59);
+        assertThat(result.migrationsExecuted).isEqualTo(60);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -514,7 +572,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(31);
+        assertThat(result.migrationsExecuted).isEqualTo(32);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1362,6 +1420,41 @@ class FlywayMigrationIntegrationTest {
                         FROM information_schema.tables
                         WHERE table_name = 'scout_field_report'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.tables
+                    WHERE table_name IN ('scout_profile', 'scout_activity_eligibility')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_profile'::regclass
+                      AND conname IN (
+                          'fk_scout_profile_user',
+                          'fk_scout_profile_reviewer',
+                          'ck_scout_profile_user',
+                          'ck_scout_profile_display_name',
+                          'ck_scout_profile_status',
+                          'ck_scout_profile_state',
+                          'ck_scout_profile_version'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_activity_eligibility'::regclass
+                      AND conname IN (
+                          'fk_scout_activity_eligibility_profile',
+                          'fk_scout_activity_eligibility_reviewer',
+                          'ck_scout_activity_eligibility_user',
+                          'ck_scout_activity_eligibility_status',
+                          'ck_scout_activity_eligibility_period',
+                          'ck_scout_activity_eligibility_lifecycle',
+                          'ck_scout_activity_eligibility_version'
+                      )
+                      AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (

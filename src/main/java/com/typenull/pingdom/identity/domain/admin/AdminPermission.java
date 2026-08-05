@@ -8,6 +8,7 @@ public enum AdminPermission {
     PLACE_MODERATE,
     MERCHANT_REVIEW,
     REPORT_REVIEW,
+    SCOUT_REVIEW,
     DASHBOARD_READ,
     AUDIT_READ
 }
