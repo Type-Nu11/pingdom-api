@@ -23,4 +23,12 @@ class PlaceVisitDecisionScenarioFixturesTest {
                     assertThat(scenario.expectedStatus()).isBetween(200, 499);
                 });
     }
+
+    @Test
+    void declaresErrorCodesForAuthorizationAndFailureScenarios() {
+        assertThat(PlaceVisitDecisionScenarioFixtures.scenarios())
+                .filteredOn(scenario -> scenario.type() == PlaceVisitDecisionScenarioType.AUTHORIZATION
+                        || scenario.type() == PlaceVisitDecisionScenarioType.FAILURE)
+                .allSatisfy(scenario -> assertThat(scenario.expectedErrorCode()).isNotBlank());
+    }
 }
