@@ -741,6 +741,29 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionExcludesScheduledAndDraftEvents() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReaderEventFilter");
+        LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
+        MapPlace mapPlace = createMapPlace("이벤트 필터 장소", "경상남도 진주시 방문로 11");
+
+        PlaceEvent scheduledEvent = PlaceEvent.create(
+                mapPlace, "예정 이벤트", "내일 진행합니다.", PlaceEventType.EXHIBITION,
+                now.plusHours(1), now.plusHours(2), now.minusHours(1)
+        );
+        scheduledEvent.publish(now);
+        placeEventRepository.saveAndFlush(scheduledEvent);
+        placeEventRepository.saveAndFlush(PlaceEvent.create(
+                mapPlace, "초안 이벤트", "아직 공개되지 않았습니다.", PlaceEventType.PERFORMANCE,
+                now.minusMinutes(30), now.plusMinutes(30), now.minusHours(1)
+        ));
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.ongoingEvents.length()").value(0));
+    }
+
+    @Test
     void getPlaceVisitDecisionKeepsTemporarilyClosedPlaceVisible() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader02");
         MapPlace mapPlace = createMapPlace("임시 휴업 방문 결정 장소", "경상남도 진주시 방문로 2");
