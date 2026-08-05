@@ -6,6 +6,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInformation;
+import com.typenull.pingdom.offer.domain.TouristOffer;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
@@ -77,5 +78,16 @@ class PlaceVisitDecisionSourceModelTest {
 
         assertThatThrownBy(() -> availability.reserve(1, NOW.plusMinutes(2)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void touristOfferStartsAsDraftUntilPublished() {
+        TouristOffer offer = TouristOffer.draft(
+                99L, 10L, "외국인 전용 혜택", "설명", "10% 할인",
+                NOW, NOW.plusDays(1), 100, 1, NOW
+        );
+
+        assertThat(offer.getStatus()).isEqualTo(com.typenull.pingdom.offer.domain.OfferStatus.DRAFT);
+        assertThat(offer.getIssuedQuantity()).isZero();
     }
 }
