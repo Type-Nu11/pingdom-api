@@ -30,6 +30,17 @@
 API 변경이 없는 구성 점검에서는 baseline을 갱신하지 않는다. 새 경로·요청·응답 변경은 생성 스펙과
 baseline diff를 검토한 뒤 별도 API 이슈에서 반영한다.
 
+실행 중인 서비스의 API 문서는 `dev`, `openapi-export` 프로필에서만 제공된다. 운영 health 확인에는
+OpenAPI endpoint 대신 아래 probe를 사용한다.
+
+```bash
+curl -fsS http://localhost:8080/actuator/health/liveness
+curl -fsS http://localhost:8080/actuator/health/readiness
+```
+
+인증이 필요한 API의 수동 점검은 관리자 또는 테스트 계정의 토큰을 사용하고, 실제 사용자 토큰과
+Authorization header 원문은 인벤토리 증적에 기록하지 않는다.
+
 ## 데이터베이스 기준선
 
 | 항목 | 현행 기준 | 확인 방법 |
