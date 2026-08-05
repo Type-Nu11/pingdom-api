@@ -65,6 +65,16 @@ FROM pg_extension
 WHERE extname IN ('postgis', 'pg_trgm');
 ```
 
+실제 DB의 테이블 목록은 migration SQL 선언 수와 같다고 가정하지 않는다. extension, Flyway history,
+운영 보정 테이블을 구분하기 위해 아래 쿼리 결과를 배포 증적으로 남긴다.
+
+```sql
+SELECT table_name
+FROM information_schema.tables
+WHERE table_schema = 'public'
+ORDER BY table_name;
+```
+
 Flyway 오류 복구, concurrent index migration, 기존 데이터 backfill 판단은
 [DB migration 문서](../database-migration.md)를 따른다. 이미 적용된 migration 파일은 수정하지 않고,
 새 변경은 새 version 파일로 추가한다.
