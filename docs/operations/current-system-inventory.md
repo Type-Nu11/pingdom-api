@@ -94,6 +94,17 @@ Flyway 오류 복구, concurrent index migration, 기존 데이터 backfill 판�
 `SEED_ADMIN_ENABLED=false`, `SEED_DEV_DATA_ENABLED=false`를 명시하고 기본 개발 계정을 사용하지 않는다.
 로컬 seed의 계정과 중복 실행 규칙은 [로컬 개발 문서](../local-development.md)를 따른다.
 
+## 배포 전 환경 변수 점검
+
+값 자체를 로그나 티켓에 남기지 않고, 배포 환경에 키가 존재하는지만 확인한다. 최소 확인 대상은
+`DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `MERCHANT_VERIFICATION_ENCRYPTION_KEY`,
+`AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`다. 이메일·OAuth·FCM을
+사용하는 배포는 해당 provider 설정도 함께 확인한다.
+
+프록시 뒤에서 실행한다면 `TRUSTED_PROXY_IPS_REGEX`가 실제 프록시 대역만 포함하는지 확인한다.
+허용되지 않은 forwarded header는 신뢰하지 않아야 하며, 기본 loopback 설정을 운영에서 그대로 사용하면
+클라이언트 IP 기반 rate-limit과 HTTPS redirect 판단이 틀어질 수 있다.
+
 ## 운영 영향과 롤백 기준
 
 1. 이 이슈는 설정값, API, Flyway 파일을 변경하지 않는다. 따라서 배포 시 schema migration이나 API
