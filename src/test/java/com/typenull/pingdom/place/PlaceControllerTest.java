@@ -704,6 +704,16 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionReturnsNotFoundForUnknownPlace() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReader05");
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", 999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
     void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
