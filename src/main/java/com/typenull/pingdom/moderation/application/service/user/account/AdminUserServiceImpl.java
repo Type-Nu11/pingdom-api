@@ -126,7 +126,9 @@ public class AdminUserServiceImpl implements AdminUserService {
                 normalizedKeyword,
                 condition.isNumericKeyword(),
                 condition.banType(),
+                condition.bannedFrom() != null,
                 condition.bannedFrom(),
+                condition.bannedTo() != null,
                 condition.bannedTo(),
                 normalizedPageable
         );
