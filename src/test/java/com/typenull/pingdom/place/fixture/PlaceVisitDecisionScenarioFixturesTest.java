@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.fixture;
 import static org.assertj.core.api.Assertions.assertThat;
 
 import java.util.EnumSet;
+import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 class PlaceVisitDecisionScenarioFixturesTest {
@@ -30,5 +31,13 @@ class PlaceVisitDecisionScenarioFixturesTest {
                 .filteredOn(scenario -> scenario.type() == PlaceVisitDecisionScenarioType.AUTHORIZATION
                         || scenario.type() == PlaceVisitDecisionScenarioType.FAILURE)
                 .allSatisfy(scenario -> assertThat(scenario.expectedErrorCode()).isNotBlank());
+    }
+
+    @Test
+    void usesUniqueFixtureNamesForFailureDiagnosis() {
+        assertThat(PlaceVisitDecisionScenarioFixtures.scenarios().stream()
+                .map(PlaceVisitDecisionScenario::name)
+                .collect(Collectors.toSet()))
+                .hasSameSizeAs(PlaceVisitDecisionScenarioFixtures.scenarios());
     }
 }
