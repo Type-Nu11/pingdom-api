@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "84";
+    private static final String LATEST_MIGRATION_VERSION = "85";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(84);
+        assertThat(result.migrationsExecuted).isEqualTo(85);
 
         assertPostMigrationSchema();
     }
@@ -107,7 +107,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(82);
+        assertThat(result.migrationsExecuted).isEqualTo(83);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -221,7 +221,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(57);
+        assertThat(result.migrationsExecuted).isEqualTo(58);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -472,7 +472,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(29);
+        assertThat(result.migrationsExecuted).isEqualTo(30);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -924,6 +924,36 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'merchant_place_information'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'merchant_place_information'
+                      AND column_name IN (
+                          'description', 'contact_phone', 'website_url',
+                          'reservation_url', 'updated_by_user_id'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_place_information'::regclass
+                      AND conname IN (
+                          'ck_merchant_place_information_place',
+                          'ck_merchant_place_information_updater',
+                          'ck_merchant_place_information_version',
+                          'ck_merchant_place_information_description',
+                          'ck_merchant_place_information_contact_phone',
+                          'ck_merchant_place_information_website_url',
+                          'ck_merchant_place_information_reservation_url'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
