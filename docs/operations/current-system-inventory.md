@@ -18,6 +18,12 @@ Controller mapping 수는 `@GetMapping` 같은 선언의 개수이며, 실제 �
 한 mapping이 여러 경로를 선언하거나 class-level mapping과 결합되기 때문이다. 외부 계약의 정본은 항상
 Springdoc export 결과와 OpenAPI baseline 검증이다.
 
+CI artifact나 배포 증적을 별도 위치에 둘 때는 출력 경로를 첫 번째 인자로 전달한다.
+
+```bash
+./scripts/collect-current-system-inventory.sh /tmp/pingdom-inventory.md
+```
+
 실행 중인 환경을 확인해야 할 때는 이 소스 인벤토리와 아래 운영 확인 절차를 함께 사용한다.
 
 ## API 기준선
