@@ -173,6 +173,16 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 상태·기간 및 장소 조건을 사용하는 전용 index를 사용한다. 장소 삭제는 캠페인 이력 보존을 위해 제한하고
 Merchant profile 삭제 시 소유 데이터는 함께 정리한다.
 
+## Merchant 장소 정보
+
+`V85`는 Merchant가 장소별로 관리하는 소개, 연락처, 웹사이트, 예약 URL을
+`merchant_place_information`에 저장한다. 기존 `map_place` 행에 정보를 자동 생성하거나
+기존 값을 덮어쓰지 않으므로 기존 장소와 공개 조회 API는 그대로 유지된다. 장소당 하나의
+레코드만 허용하고 장소 FK는 장소 삭제 시 함께 정리한다. 수정자 ID는 탈퇴 시 감사 이력을
+위해 nullable로 보존하며, URL·텍스트 값은 DB check constraint로 기본 형식을 검증한다.
+애플리케이션은 수정 시점에 현재 Merchant 소유 관계를 확인하고, 정보가 없는 장소는
+첫 수정에서 새 레코드를 생성한다.
+
 ## Verified Boost
 
 `V73`은 관리자가 운영하는 Verified Boost 상품 정책과 Merchant의 장소별 상품 선택 테이블을 추가한다.
