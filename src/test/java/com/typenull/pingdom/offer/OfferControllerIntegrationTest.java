@@ -22,6 +22,9 @@ import com.typenull.pingdom.offer.api.dto.CouponRedeemRequest;
 import com.typenull.pingdom.offer.api.dto.OfferCreateRequest;
 import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.application.TouristOfferService;
+import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
+import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
+import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.domain.OfferStatus;
@@ -196,7 +199,55 @@ class OfferControllerIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).isEmpty();
         org.assertj.core.api.Assertions.assertThat(
                 offerRepository.findById(offer.getId()).orElseThrow().getIssuedQuantity()
-        ).isZero();
+                ).isZero();
+    }
+
+    @Test
+    void publicUnlimitedOfferCanBeViewedAndIssuedWithoutTravelSchedule() throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        User merchant = saveUser("publicOfferMerchant", UserRole.MERCHANT_OWNER);
+        User tourist = saveUser("publicOfferTourist", UserRole.USER);
+        MapPlace place = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("공개 혜택 장소")
+                .address("서울시 중구")
+                .latitude(37.5665)
+                .longitude(126.9780)
+                .userId(merchant.getId())
+                .registrant(merchant.getUsername())
+                .build());
+        activateMerchant(merchant, place, now);
+        TouristOffer offer = TouristOffer.draft(
+                merchant.getId(),
+                place.getId(),
+                "공개 무제한 Offer",
+                "여행 일정 없이도 발급 가능한 혜택",
+                "음료 1잔 무료",
+                now.minusHours(1),
+                now.plusDays(5),
+                null,
+                3,
+                CouponEligibilityPolicy.PUBLIC,
+                CouponInventoryPolicy.UNLIMITED,
+                CouponExpiryPolicy.OFFER_END,
+                now.minusDays(1)
+        );
+        offer.publish(now.minusMinutes(1));
+        offerRepository.saveAndFlush(offer);
+
+        mockMvc.perform(get("/offers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.offers.length()").value(1))
+                .andExpect(jsonPath("$.offers[0].totalQuantity").doesNotExist())
+                .andExpect(jsonPath("$.offers[0].remainingQuantity").doesNotExist())
+                .andExpect(jsonPath("$.offers[0].eligibilityPolicy").value("PUBLIC"))
+                .andExpect(jsonPath("$.offers[0].inventoryPolicy").value("UNLIMITED"))
+                .andExpect(jsonPath("$.offers[0].expiryPolicy").value("OFFER_END"));
+
+        mockMvc.perform(post("/offers/{offerId}/coupons", offer.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isCreated())
+                .andExpect(jsonPath("$.expiresAt").value(offer.getEndsAt().toString()));
     }
 
     @Test

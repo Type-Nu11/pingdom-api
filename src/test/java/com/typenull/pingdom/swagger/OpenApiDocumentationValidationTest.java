@@ -464,9 +464,24 @@ class OpenApiDocumentationValidationTest {
                 "benefitDescription",
                 "startsAt",
                 "endsAt",
-                "totalQuantity",
                 "couponValidityDays"
         );
+        assertNullableProperty(appDocument, "OfferCreateRequest", "totalQuantity");
+        assertNullableProperty(appDocument, "OfferResponse", "totalQuantity");
+        assertNullableProperty(appDocument, "OfferResponse", "remainingQuantity");
+        assertThat(appDocument.at("/components/schemas/OfferCreateRequest/properties/eligibilityPolicy/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactly("ACTIVE_TRAVEL_SCHEDULE", "PUBLIC");
+        assertThat(appDocument.at("/components/schemas/OfferCreateRequest/properties/inventoryPolicy/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactly("LIMITED", "UNLIMITED");
+        assertThat(appDocument.at("/components/schemas/OfferCreateRequest/properties/expiryPolicy/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactly(
+                        "ISSUE_PLUS_DAYS_CAPPED_BY_OFFER_END",
+                        "ISSUE_PLUS_DAYS",
+                        "OFFER_END"
+                );
         for (String property : List.of("title", "description", "benefitDescription")) {
             assertThat(createRequestSchema.path("properties").path(property).path("minLength").asInt())
                     .isEqualTo(1);
