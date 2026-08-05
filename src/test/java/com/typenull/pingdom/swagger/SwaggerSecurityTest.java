@@ -45,7 +45,9 @@ class SwaggerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/places']").exists())
                 .andExpect(jsonPath("$.paths['/places/{id}']").exists())
+                .andExpect(jsonPath("$.paths['/places/{placeId}/card']").exists())
                 .andExpect(jsonPath("$.paths['/place']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/place/{id}']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/users/bookmarks']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/map/bookmarks']").exists())
                 .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());

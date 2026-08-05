@@ -110,6 +110,10 @@ public class ReporterModerationPolicy {
         }
     }
 
+    public void changeTrustScore(int trustScore) {
+        this.trustScore = Math.max(MIN_TRUST_SCORE, Math.min(MAX_TRUST_SCORE, trustScore));
+    }
+
     private void recalculateTrustScore() {
         long calculated = DEFAULT_TRUST_SCORE + acceptedCount * 5L - falseReportCount * 20L;
         this.trustScore = (int) Math.max(MIN_TRUST_SCORE, Math.min(MAX_TRUST_SCORE, calculated));

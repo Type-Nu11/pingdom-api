@@ -1,0 +1,134 @@
+package com.typenull.pingdom.identity.application.service.merchant;
+
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInvitationResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInviteRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamMemberResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamRoleUpdateRequest;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInvitation;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInvitationStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMember;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMemberRole;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMemberStatus;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInvitationRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMemberRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import java.util.List;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+@Service
+@RequiredArgsConstructor
+public class MerchantTeamService {
+    private final MerchantPlaceMemberRepository memberRepository;
+    private final MerchantPlaceInvitationRepository invitationRepository;
+    private final MerchantOwnerPlaceRepository ownerPlaceRepository;
+    private final UserRepository userRepository;
+    private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public List<MerchantTeamMemberResponse> list(Long actorId, Long placeId) {
+        requireManager(actorId, placeId);
+        return memberRepository.findAllByPlaceIdAndStatusOrderByIdAsc(placeId, MerchantPlaceMemberStatus.ACTIVE)
+                .stream().map(MerchantTeamMemberResponse::from).toList();
+    }
+
+    @Transactional
+    public MerchantTeamInvitationResponse invite(Long actorId, Long placeId, MerchantTeamInviteRequest request) {
+        requireManager(actorId, placeId);
+        if (request.role() == MerchantPlaceMemberRole.OWNER) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
+        }
+        User invitee = userRepository.findById(request.inviteeUserId())
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
+        if (invitee.isWithdrawn()) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_NOT_ACTIVE);
+        }
+        memberRepository.findByPlaceIdAndUserId(placeId, request.inviteeUserId()).ifPresent(member -> {
+            if (member.getStatus() == MerchantPlaceMemberStatus.ACTIVE) {
+                throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_ALREADY_EXISTS);
+            }
+        });
+        if (invitationRepository.existsByPlaceIdAndInviteeUserIdAndStatus(
+                placeId, request.inviteeUserId(), MerchantPlaceInvitationStatus.PENDING)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_ALREADY_EXISTS);
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        LocalDateTime expiresAt = request.expiresAt() == null ? now.plusDays(7) : request.expiresAt();
+        if (!expiresAt.isAfter(now)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
+        }
+        return MerchantTeamInvitationResponse.from(invitationRepository.save(
+                MerchantPlaceInvitation.pending(placeId, request.inviteeUserId(), actorId, request.role(), expiresAt, now)));
+    }
+
+    @Transactional
+    public MerchantTeamMemberResponse updateRole(Long actorId, Long placeId, Long memberId,
+                                                  MerchantTeamRoleUpdateRequest request) {
+        requireManager(actorId, placeId);
+        MerchantPlaceMember member = memberRepository.findById(memberId)
+                .filter(candidate -> candidate.getPlaceId().equals(placeId))
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_NOT_FOUND));
+        try {
+            member.changeRole(request.role(), LocalDateTime.now(clock));
+        } catch (IllegalStateException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_NOT_ACTIVE);
+        } catch (IllegalArgumentException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
+        }
+        return MerchantTeamMemberResponse.from(member);
+    }
+
+    @Transactional
+    public MerchantTeamMemberResponse acceptInvitation(Long actorId, Long invitationId) {
+        MerchantPlaceInvitation invitation = invitationRepository.findById(invitationId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
+        if (!invitation.getInviteeUserId().equals(actorId)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
+        }
+        if (memberRepository.findByPlaceIdAndUserId(invitation.getPlaceId(), actorId)
+                .filter(member -> member.getStatus() == MerchantPlaceMemberStatus.ACTIVE).isPresent()) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_ALREADY_EXISTS);
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        try {
+            invitation.accept(now);
+        } catch (IllegalStateException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND);
+        }
+        return MerchantTeamMemberResponse.from(memberRepository.save(
+                MerchantPlaceMember.create(invitation.getPlaceId(), actorId, invitation.getRole(), invitation.getInvitedBy(), now)));
+    }
+
+    @Transactional
+    public void revoke(Long actorId, Long placeId, Long memberId) {
+        requireManager(actorId, placeId);
+        MerchantPlaceMember member = memberRepository.findById(memberId)
+                .filter(candidate -> candidate.getPlaceId().equals(placeId))
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_NOT_FOUND));
+        if (member.getRole() == MerchantPlaceMemberRole.OWNER) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
+        }
+        member.revoke(LocalDateTime.now(clock));
+    }
+
+    private void requireManager(Long actorId, Long placeId) {
+        MerchantPlaceMember member = memberRepository.findByPlaceIdAndUserId(placeId, actorId)
+                .orElseGet(() -> ownerPlaceRepository.findById(placeId)
+                        .filter(owner -> owner.getMerchantOwnerUserId().equals(actorId))
+                        .map(owner -> MerchantPlaceMember.owner(placeId, actorId, LocalDateTime.now(clock)))
+                        .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED)));
+        if (member.getStatus() != MerchantPlaceMemberStatus.ACTIVE
+                || (member.getRole() != MerchantPlaceMemberRole.OWNER && member.getRole() != MerchantPlaceMemberRole.MANAGER)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
+        }
+    }
+}

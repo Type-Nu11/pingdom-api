@@ -8,6 +8,7 @@ import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommen
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -25,6 +26,7 @@ public class PlaceRecommendationConversionService {
     private final PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
+    private final Clock clock;
 
     @Transactional
     public void recordConversionIfEligible(
@@ -40,7 +42,7 @@ public class PlaceRecommendationConversionService {
             return;
         }
 
-        LocalDateTime cutoff = LocalDateTime.now().minusDays(CONVERSION_WINDOW_DAYS);
+        LocalDateTime cutoff = LocalDateTime.now(clock).minusDays(CONVERSION_WINDOW_DAYS);
         PlaceRecommendationClick recentClick =
                 placeRecommendationClickRepository
                         .findFirstByUserIdAndPlaceIdAndCreatedAtGreaterThanEqualOrderByCreatedAtDesc(
