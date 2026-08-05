@@ -16,4 +16,12 @@ class ScoutProfileTransitionBoundaryTest {
         assertThatThrownBy(() -> profile.revoke(99L, "회수", CREATED_AT))
                 .isInstanceOf(IllegalStateException.class);
     }
+
+    @Test
+    void pendingProfileCannotBeSuspendedBeforeApproval() {
+        ScoutProfile profile = ScoutProfile.pending(10L, "Scout", null, CREATED_AT);
+
+        assertThatThrownBy(() -> profile.suspend(99L, "심사 보류", CREATED_AT))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }
