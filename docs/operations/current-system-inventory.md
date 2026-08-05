@@ -119,6 +119,18 @@ DB claim 또는 idempotency가 있는 작업과 그렇지 않은 정리 작업�
 `SEED_ADMIN_ENABLED=false`, `SEED_DEV_DATA_ENABLED=false`를 명시하고 기본 개발 계정을 사용하지 않는다.
 로컬 seed의 계정과 중복 실행 규칙은 [로컬 개발 문서](../local-development.md)를 따른다.
 
+## 점검 증적 형식
+
+점검 완료 기록에는 비밀값 대신 다음만 남긴다.
+
+- 배포 대상 Git commit과 실행 프로필
+- 수집 스크립트와 `verifyCurrentSystemInventory` 실행 결과
+- Flyway 최신 version, 성공 여부, extension 조회 결과
+- liveness/readiness 상태와 확인 시각
+- Outbox `FAILED` 상태 수와 최근 worker 오류 여부
+
+이 형식으로 남기면 설정값을 노출하지 않고도 다음 배포에서 기준선 차이를 비교할 수 있다.
+
 ## 배포 전 환경 변수 점검
 
 값 자체를 로그나 티켓에 남기지 않고, 배포 환경에 키가 존재하는지만 확인한다. 최소 확인 대상은
