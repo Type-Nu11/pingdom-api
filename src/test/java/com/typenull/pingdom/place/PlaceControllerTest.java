@@ -682,6 +682,15 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionRejectsUnauthenticatedRequest() throws Exception {
+        MapPlace mapPlace = createMapPlace("인증 필요 방문 결정 장소", "경상남도 진주시 방문로 4");
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId()))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
