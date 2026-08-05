@@ -46,7 +46,7 @@ public class DevAdminSeedConfig {
     @Value("${seed.admin.email:admin@pingdom.local}")
     private String adminEmail;
 
-    @Value("${seed.admin.password:admin1234!}")
+    @Value("${seed.admin.password:}")
     private String adminPassword;
 
     @Value("${seed.dev-data.enabled:true}")

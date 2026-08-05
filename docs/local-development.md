@@ -5,7 +5,7 @@
 ## 실행
 
 ```bash
-SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
+PINGDOM_DEV_PROFILE_ENABLED=true SPRING_PROFILES_ACTIVE=dev ./gradlew bootRun
 # 또는
 SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ```
@@ -13,6 +13,11 @@ SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 Spring Docker Compose 연동이 `docker-compose-local.yml`의 PostgreSQL, Redis를 함께 실행합니다.
 별도 `.env`가 없어도 기본 DB/Redis 값으로 실행되며, 필요한 경우 환경 변수로 덮어씁니다.
 Swagger UI는 `/swagger-ui`에서 활성화합니다.
+
+`dev` 프로필은 Swagger를 공개하므로 `PINGDOM_DEV_PROFILE_ENABLED=true`를 명시해야만 시작됩니다.
+운영 배포에서는 `SPRING_PROFILES_ACTIVE`에 `dev`를 포함하거나 이 환경 변수를 설정하지 않습니다.
+또한 dev 프로필의 관리자 seed는 기본 비활성화이며, 필요한 개발 환경에서만
+`SEED_ADMIN_ENABLED=true`와 `SEED_ADMIN_PASSWORD`를 함께 지정합니다.
 
 ## seed 설정
 

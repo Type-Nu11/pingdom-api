@@ -40,6 +40,7 @@ class DevSeedProfileConfigTest {
                     assertThat(context.getEnvironment().getProperty("spring.docker.compose.enabled")).isEqualTo("true");
                     assertThat(context.getEnvironment().getProperty("springdoc.swagger-ui.enabled")).isEqualTo("true");
                     assertThat(context.getEnvironment().getProperty("seed.admin.username")).isEqualTo("admin");
+                    assertThat(context.getEnvironment().getProperty("seed.admin.enabled")).isEqualTo("true");
                     assertThat(context.getEnvironment().getProperty("seed.dev-data.enabled")).isEqualTo("true");
                     assertThat(context.getEnvironment().getProperty("seed.dev-data.user-password")).isEqualTo("pingdom1234!");
                     assertThat(context.getEnvironment().getProperty("fcm.enabled")).isEqualTo("false");
@@ -56,6 +57,7 @@ class DevSeedProfileConfigTest {
                     assertThat(context).getBeans(ApplicationRunner.class).hasSize(2);
                     assertThat(context.getEnvironment().getProperty("spring.docker.compose.enabled")).isEqualTo("true");
                     assertThat(context.getEnvironment().getProperty("springdoc.swagger-ui.enabled")).isEqualTo("true");
+                    assertThat(context.getEnvironment().getProperty("seed.admin.enabled")).isEqualTo("false");
                     assertThat(context.getEnvironment().getProperty("seed.dev-data.enabled")).isEqualTo("true");
                     assertThat(context.getEnvironment().getProperty("seed.dev-data.user-password")).isEqualTo("pingdom1234!");
                     assertThat(context.getEnvironment().getProperty("fcm.enabled")).isEqualTo("false");
