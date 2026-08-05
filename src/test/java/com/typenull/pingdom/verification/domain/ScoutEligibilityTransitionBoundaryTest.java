@@ -47,4 +47,12 @@ class ScoutEligibilityTransitionBoundaryTest {
                 .isInstanceOf(IllegalStateException.class);
         assertThat(eligibility.getStatus()).isEqualTo(ScoutActivityEligibilityStatus.ELIGIBLE);
     }
+
+    @Test
+    void pendingEligibilityCannotBeSuspendedBeforeGrant() {
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
+
+        assertThatThrownBy(() -> eligibility.suspend(99L, "심사 보류", FROM))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }
