@@ -649,6 +649,23 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionKeepsTemporarilyClosedPlaceVisible() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReader02");
+        MapPlace mapPlace = createMapPlace("임시 휴업 방문 결정 장소", "경상남도 진주시 방문로 2");
+        mapPlace.updateOperatingStatus(
+                PlaceOperatingStatus.TEMPORARILY_CLOSED,
+                LocalDateTime.of(2026, 8, 5, 9, 0)
+        );
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.place.operatingStatus").value("TEMPORARILY_CLOSED"))
+                .andExpect(jsonPath("$.place.currentlyOperating").value(false));
+    }
+
+    @Test
     void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
