@@ -632,6 +632,23 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionReturnsEmptySupplementalDataWhenNoneExists() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReader01");
+        MapPlace mapPlace = createMapPlace("방문 결정 장소", "경상남도 진주시 방문로 1");
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.place.id").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.place.name").value("방문 결정 장소"))
+                .andExpect(jsonPath("$.merchantInformation").isEmpty())
+                .andExpect(jsonPath("$.ongoingEvents.length()").value(0))
+                .andExpect(jsonPath("$.reservableAvailabilities.length()").value(0))
+                .andExpect(jsonPath("$.availableOffers.offers.length()").value(0))
+                .andExpect(jsonPath("$.checkedAt").isNotEmpty());
+    }
+
+    @Test
     void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
