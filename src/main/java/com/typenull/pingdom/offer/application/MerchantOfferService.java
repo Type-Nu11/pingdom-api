@@ -5,6 +5,9 @@ import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.api.dto.OfferCreateRequest;
 import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
 import com.typenull.pingdom.offer.api.dto.OfferResponse;
+import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
+import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
+import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
@@ -48,6 +51,15 @@ public class MerchantOfferService {
                     request.endsAt(),
                     request.totalQuantity(),
                     request.couponValidityDays(),
+                    request.eligibilityPolicy() == null
+                            ? CouponEligibilityPolicy.ACTIVE_TRAVEL_SCHEDULE
+                            : request.eligibilityPolicy(),
+                    request.inventoryPolicy() == null
+                            ? CouponInventoryPolicy.LIMITED
+                            : request.inventoryPolicy(),
+                    request.expiryPolicy() == null
+                            ? CouponExpiryPolicy.ISSUE_PLUS_DAYS_CAPPED_BY_OFFER_END
+                            : request.expiryPolicy(),
                     now
             );
             return OfferResponse.from(offerRepository.save(offer));

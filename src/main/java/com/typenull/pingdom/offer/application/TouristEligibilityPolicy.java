@@ -7,6 +7,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
 import com.typenull.pingdom.offer.domain.exception.OfferException;
+import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
@@ -20,19 +21,29 @@ public class TouristEligibilityPolicy {
     private final TravelScheduleRepository travelScheduleRepository;
 
     public void requireEligible(Long userId, LocalDateTime now) {
+        requireEligible(userId, now, CouponEligibilityPolicy.ACTIVE_TRAVEL_SCHEDULE);
+    }
+
+    public void requireEligible(
+            Long userId,
+            LocalDateTime now,
+            CouponEligibilityPolicy eligibilityPolicy
+    ) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new OfferException(OfferErrorCode.TOURIST_ELIGIBILITY_REQUIRED));
         LocalDate today = now.toLocalDate();
-        boolean eligible = user.getRole() == UserRole.USER
+        boolean activeUser = user.getRole() == UserRole.USER
                 && !user.isWithdrawn()
-                && !user.isCurrentlyBanned(now)
-                && travelScheduleRepository
-                .existsByUser_IdAndStateAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
-                        userId,
-                        TravelScheduleState.SCHEDULED,
-                        today,
-                        today
-                );
+                && !user.isCurrentlyBanned(now);
+        boolean hasActiveTravelSchedule = eligibilityPolicy == CouponEligibilityPolicy.PUBLIC
+                || travelScheduleRepository
+                        .existsByUser_IdAndStateAndStartDateLessThanEqualAndEndDateGreaterThanEqual(
+                                userId,
+                                TravelScheduleState.SCHEDULED,
+                                today,
+                                today
+                        );
+        boolean eligible = activeUser && hasActiveTravelSchedule;
         if (!eligible) {
             throw new OfferException(OfferErrorCode.TOURIST_ELIGIBILITY_REQUIRED);
         }

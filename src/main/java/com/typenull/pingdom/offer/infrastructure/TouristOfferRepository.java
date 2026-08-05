@@ -45,7 +45,10 @@ public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long
             WHERE offer.status = :status
               AND offer.startsAt <= :now
               AND offer.endsAt > :now
-              AND offer.issuedQuantity < offer.totalQuantity
+              AND (
+                  offer.inventoryPolicy = com.typenull.pingdom.offer.domain.CouponInventoryPolicy.UNLIMITED
+                  OR offer.issuedQuantity < offer.totalQuantity
+              )
               AND (:placeId IS NULL OR offer.placeId = :placeId)
               AND EXISTS (
                   SELECT ownerPlace.placeId
@@ -95,7 +98,10 @@ public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long
               AND offer.status = :status
               AND offer.startsAt <= :now
               AND offer.endsAt > :now
-              AND offer.issuedQuantity < offer.totalQuantity
+              AND (
+                  offer.inventoryPolicy = com.typenull.pingdom.offer.domain.CouponInventoryPolicy.UNLIMITED
+                  OR offer.issuedQuantity < offer.totalQuantity
+              )
               AND EXISTS (
                   SELECT ownerPlace.placeId
                   FROM MerchantOwnerPlace ownerPlace
@@ -143,7 +149,10 @@ public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long
               AND offer.status = com.typenull.pingdom.offer.domain.OfferStatus.PUBLISHED
               AND offer.startsAt <= :now
               AND offer.endsAt > :now
-              AND offer.issuedQuantity < offer.totalQuantity
+              AND (
+                  offer.inventoryPolicy = com.typenull.pingdom.offer.domain.CouponInventoryPolicy.UNLIMITED
+                  OR offer.issuedQuantity < offer.totalQuantity
+              )
               AND EXISTS (
                   SELECT ownerPlace.placeId FROM MerchantOwnerPlace ownerPlace
                   WHERE ownerPlace.placeId = offer.placeId

@@ -8,6 +8,9 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.offer.domain.OfferStatus;
+import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
+import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
+import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
@@ -61,10 +64,39 @@ class TouristOfferServiceTest {
 
         var response = offerService.issue(2L, 1L);
 
-        verify(eligibilityPolicy).requireEligible(2L, NOW);
+        verify(eligibilityPolicy).requireEligible(2L, NOW, CouponEligibilityPolicy.ACTIVE_TRAVEL_SCHEDULE);
         assertThat(response.offerId()).isEqualTo(1L);
         assertThat(response.status().name()).isEqualTo("ISSUED");
         assertThat(offer.getIssuedQuantity()).isEqualTo(1);
+    }
+
+    @Test
+    void publicOfferUsesPublicEligibilityPolicyWhenIssuing() {
+        TouristOffer offer = TouristOffer.draft(
+                10L,
+                100L,
+                "공개 Offer",
+                "설명",
+                "혜택",
+                NOW.minusHours(1),
+                NOW.plusDays(10),
+                null,
+                7,
+                CouponEligibilityPolicy.PUBLIC,
+                CouponInventoryPolicy.UNLIMITED,
+                CouponExpiryPolicy.OFFER_END,
+                NOW.minusHours(2)
+        );
+        offer.publish(NOW.minusMinutes(1));
+        when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
+        when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        when(couponRepository.saveAndFlush(any(TouristCoupon.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        var response = offerService.issue(2L, 1L);
+
+        verify(eligibilityPolicy).requireEligible(2L, NOW, CouponEligibilityPolicy.PUBLIC);
+        assertThat(response.expiresAt()).isEqualTo(offer.getEndsAt());
     }
 
     @Test
