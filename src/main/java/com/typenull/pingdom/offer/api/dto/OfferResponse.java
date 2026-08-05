@@ -1,5 +1,8 @@
 package com.typenull.pingdom.offer.api.dto;
 
+import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
+import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
+import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
 import com.typenull.pingdom.offer.domain.OfferStatus;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -14,10 +17,13 @@ public record OfferResponse(
         OfferStatus status,
         LocalDateTime startsAt,
         LocalDateTime endsAt,
-        int totalQuantity,
+        @Schema(nullable = true, description = "LIMITED 재고의 총 발급 수량. UNLIMITED이면 null") Integer totalQuantity,
         int issuedQuantity,
-        int remainingQuantity,
+        @Schema(nullable = true, description = "남은 발급 수량. UNLIMITED이면 null") Integer remainingQuantity,
         int couponValidityDays,
+        CouponEligibilityPolicy eligibilityPolicy,
+        CouponInventoryPolicy inventoryPolicy,
+        CouponExpiryPolicy expiryPolicy,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
 ) {
@@ -33,8 +39,13 @@ public record OfferResponse(
                 offer.getEndsAt(),
                 offer.getTotalQuantity(),
                 offer.getIssuedQuantity(),
-                Math.max(offer.getTotalQuantity() - offer.getIssuedQuantity(), 0),
+                offer.getTotalQuantity() == null
+                        ? null
+                        : Math.max(offer.getTotalQuantity() - offer.getIssuedQuantity(), 0),
                 offer.getCouponValidityDays(),
+                offer.getEligibilityPolicy(),
+                offer.getInventoryPolicy(),
+                offer.getExpiryPolicy(),
                 offer.getCreatedAt(),
                 offer.getUpdatedAt()
         );

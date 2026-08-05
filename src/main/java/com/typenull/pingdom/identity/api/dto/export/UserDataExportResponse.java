@@ -212,7 +212,7 @@ public record UserDataExportResponse(
             OfferStatus status,
             LocalDateTime startsAt,
             LocalDateTime endsAt,
-            int totalQuantity,
+            Integer totalQuantity,
             int issuedQuantity,
             int couponValidityDays,
             LocalDateTime createdAt,

@@ -67,9 +67,9 @@ public class TouristOfferService {
     @Transactional
     public CouponResponse issue(Long userId, Long offerId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        eligibilityPolicy.requireEligible(userId, now);
         TouristOffer offer = offerRepository.findByIdForUpdate(offerId)
                 .orElseThrow(() -> new OfferException(OfferErrorCode.OFFER_NOT_FOUND));
+        eligibilityPolicy.requireEligible(userId, now, offer.getEligibilityPolicy());
         if (!merchantAccessPolicy.isActiveOwnerOfPlace(
                 offer.getMerchantOwnerUserId(),
                 offer.getPlaceId(),
