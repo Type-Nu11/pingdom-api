@@ -1,11 +1,9 @@
 package com.typenull.pingdom.place.application.service.place;
 
-import com.typenull.pingdom.availability.api.dto.AvailabilityResponse;
 import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPublicResponse;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPublicQueryService;
-import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInformation;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInformationRepository;
-import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
 import com.typenull.pingdom.offer.application.TouristOfferService;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
@@ -197,7 +195,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
 
-        return toPlaceDetailResponse(mapPlace);
+        return toPlaceDetailResponse(
+                mapPlace,
+                merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
+        );
     }
 
     @Override
@@ -211,10 +212,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         }
 
         LocalDateTime checkedAt = LocalDateTime.now(clock);
+        MerchantOwnerPublicResponse merchantOwner = merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId());
         // 임시 휴업은 방문 결정을 위해 상태와 공지를 노출하고, 영구 폐업만 공개 대상에서 제외한다.
         return new PlaceVisitDecisionResponse(
-                toPlaceDetailResponse(mapPlace),
-                publicMerchantInformation(mapPlace.getId()),
+                toPlaceDetailResponse(mapPlace, merchantOwner),
+                publicMerchantInformation(mapPlace.getId(), merchantOwner),
                 placeEventRepository.findOngoingPublishedByPlaceId(
                                 mapPlace.getId(),
                                 PlaceEventPublicationStatus.PUBLISHED,
@@ -229,7 +231,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
-    private PlaceDetailResponse toPlaceDetailResponse(MapPlace mapPlace) {
+    private PlaceDetailResponse toPlaceDetailResponse(
+            MapPlace mapPlace,
+            MerchantOwnerPublicResponse merchantOwner
+    ) {
 
         PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
         PlaceInformationVerificationSummary verificationSummary = loadVerificationSummary(mapPlace.getId());
@@ -262,13 +267,16 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant(),
-                merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
+                merchantOwner
         );
     }
 
-    private PlaceVisitDecisionMerchantInformationResponse publicMerchantInformation(Long placeId) {
+    private PlaceVisitDecisionMerchantInformationResponse publicMerchantInformation(
+            Long placeId,
+            MerchantOwnerPublicResponse merchantOwner
+    ) {
         // 비활성 Merchant의 과거 연락처·예약 링크는 관광객 응답에서 노출하지 않는다.
-        if (merchantOwnerPublicQueryService.findByPlaceId(placeId) == null) {
+        if (merchantOwner == null) {
             return null;
         }
         return merchantPlaceInformationRepository.findByPlaceId(placeId)
