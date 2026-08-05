@@ -35,6 +35,7 @@ public enum VisitorVerificationErrorCode {
     INVALID_CORRECTION_REVIEW(HttpStatus.BAD_REQUEST, "제보 정정 심사 요청이 올바르지 않습니다."),
     SCOUT_FIELD_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "Scout 현장 제보를 찾을 수 없습니다."),
     SCOUT_FIELD_REPORT_FORBIDDEN(HttpStatus.FORBIDDEN, "이 Scout 현장 제보를 조회할 권한이 없습니다."),
+    SCOUT_PROFILE_ACCOUNT_REQUIRED(HttpStatus.FORBIDDEN, "활성 일반 사용자만 Scout 프로필을 신청할 수 있습니다."),
     SCOUT_ACCOUNT_REQUIRED(HttpStatus.FORBIDDEN, "활성 Scout 계정만 현장 제보를 등록할 수 있습니다."),
     SCOUT_FIELD_REPORT_ALREADY_SUBMITTED(HttpStatus.CONFLICT, "같은 장소와 유형의 처리 중인 Scout 제보가 이미 있습니다."),
     INVALID_SCOUT_FIELD_REPORT_DETAILS(HttpStatus.BAD_REQUEST, "Scout 현장 제보 내용이 올바르지 않습니다."),
@@ -47,6 +48,7 @@ public enum VisitorVerificationErrorCode {
     INVALID_SCOUT_PROFILE_DETAILS(HttpStatus.BAD_REQUEST, "Scout 프로필 정보가 올바르지 않습니다."),
     SCOUT_ACTIVITY_ELIGIBILITY_NOT_FOUND(HttpStatus.NOT_FOUND, "Scout 활동 자격을 찾을 수 없습니다."),
     SCOUT_ACTIVITY_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "현재 Scout 활동 자격이 없습니다."),
+    SCOUT_ACTIVITY_PROFILE_REQUIRED(HttpStatus.CONFLICT, "활성 Scout 프로필이 있어야 활동 자격을 부여할 수 있습니다."),
     INVALID_SCOUT_ACTIVITY_ELIGIBILITY_STATE(HttpStatus.CONFLICT, "현재 Scout 활동 자격 상태에서는 요청을 처리할 수 없습니다."),
     INVALID_SCOUT_ACTIVITY_ELIGIBILITY_PERIOD(HttpStatus.BAD_REQUEST, "Scout 활동 자격 기간이 올바르지 않습니다.");
 
