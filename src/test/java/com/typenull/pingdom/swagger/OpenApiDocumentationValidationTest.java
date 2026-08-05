@@ -335,6 +335,8 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/cancel")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/places/{placeId}/information")).isTrue();
+        assertThat(webDocument.path("paths").has("/merchant-owner/places/{placeId}/information")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners/{userId}/onboarding")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners/{userId}/places/{placeId}/quality")).isFalse();
@@ -351,6 +353,8 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceInformationResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceInformationUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOnboardingUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceQualityUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceResponse")).isTrue();
@@ -373,6 +377,21 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("#/components/schemas/MerchantOwnerPlaceQualityUpdateRequest");
         assertThat(qualityOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/MerchantOwnerPlaceResponse");
+
+        JsonNode placeInformationGet = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/get");
+        JsonNode placeInformationPut = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/put");
+        assertThat(placeInformationGet.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantPlaceInformationResponse");
+        assertThat(placeInformationPut.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantPlaceInformationUpdateRequest");
+        assertThat(placeInformationPut.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantPlaceInformationResponse");
+        assertThat(placeInformationPut.path("responses").has("400")).isTrue();
+        assertThat(placeInformationPut.path("responses").has("401")).isTrue();
+        assertThat(placeInformationPut.path("responses").has("403")).isTrue();
+        assertThat(placeInformationPut.path("security").path(0).path("bearerAuth").isArray()).isTrue();
+        assertThat(appDocument.at("/components/schemas/MerchantPlaceInformationUpdateRequest/properties/websiteUrl/pattern").asText())
+                .isEqualTo("^https?://\\S+$");
 
         JsonNode onboardingRequestSchema = webDocument.at("/components/schemas/MerchantOnboardingUpdateRequest");
         List<String> onboardingRequiredFields = new ArrayList<>();
