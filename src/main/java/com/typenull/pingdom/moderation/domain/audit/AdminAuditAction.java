@@ -1,6 +1,8 @@
 package com.typenull.pingdom.moderation.domain.audit;
 
 public enum AdminAuditAction {
+    ADMIN_ROLE_ASSIGNED,
+    ADMIN_ROLE_REVOKED,
     USER_BAN_APPLIED,
     USER_BAN_RELEASED,
     REPORT_ACCEPTED,

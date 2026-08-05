@@ -188,7 +188,8 @@ Merchant profile 삭제 시 소유 데이터는 함께 정리한다.
 `V86`은 기존 `users.role = 'ADMIN'`을 유지하면서 관리자별 세부 역할 할당을
 `admin_role_assignment`에 추가한다. 역할은 `SUPER_ADMIN`, `CONTENT_MODERATOR`,
 `MERCHANT_OPERATOR`, `SUPPORT_OPERATOR`, `ANALYST`로 제한하고, 역할별 세부 권한은
-애플리케이션 enum에서 관리한다. 기존 관리자 계정은 `SUPER_ADMIN` 활성 할당으로
+애플리케이션 enum에서 관리한다. 역할 할당과 회수는 `ADMIN_ROLE_MANAGE` 권한을 요구하며,
+기존 관리자 계정은 `SUPER_ADMIN` 활성 할당으로
 backfill하므로 기존 JWT의 `ADMIN` 인증과 관리자 API 접근을 중단하지 않는다.
 
 역할 회수는 기존 행을 삭제하지 않고 `REVOKED`와 `revoked_at`을 기록한다. 같은 관리자와

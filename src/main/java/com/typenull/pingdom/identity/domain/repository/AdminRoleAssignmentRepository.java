@@ -14,6 +14,8 @@ public interface AdminRoleAssignmentRepository extends JpaRepository<AdminRoleAs
             AdminRoleAssignmentStatus status
     );
 
+    List<AdminRoleAssignment> findAllByAdminUserIdOrderByAssignedAtDescIdDesc(Long adminUserId);
+
     Optional<AdminRoleAssignment> findByAdminUserIdAndRoleAndStatus(
             Long adminUserId,
             AdminRole role,
