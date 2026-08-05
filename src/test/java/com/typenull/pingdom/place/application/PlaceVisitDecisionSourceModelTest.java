@@ -67,4 +67,15 @@ class PlaceVisitDecisionSourceModelTest {
 
         assertThat(availability.getRemainingCapacity()).isEqualTo(17);
     }
+
+    @Test
+    void inactiveAvailabilityCannotBeReserved() {
+        PlaceAvailability availability = PlaceAvailability.create(
+                99L, 10L, NOW, NOW.plusHours(2), 20, NOW
+        );
+        availability.deactivate(NOW.plusMinutes(1));
+
+        assertThatThrownBy(() -> availability.reserve(1, NOW.plusMinutes(2)))
+                .isInstanceOf(IllegalStateException.class);
+    }
 }
