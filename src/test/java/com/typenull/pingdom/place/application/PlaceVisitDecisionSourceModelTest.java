@@ -125,6 +125,16 @@ class PlaceVisitDecisionSourceModelTest {
         assertThat(event.scheduleStatusAt(NOW)).isEqualTo(PlaceEventScheduleStatus.UPCOMING);
     }
 
+    @Test
+    void placeEventExposesOngoingScheduleForVisitDecision() {
+        PlaceEvent event = PlaceEvent.create(
+                legacyPlace(), "진행 중 이벤트", "설명", PlaceEventType.POPUP,
+                NOW.minusHours(1), NOW.plusHours(1), NOW.minusHours(1)
+        );
+
+        assertThat(event.scheduleStatusAt(NOW)).isEqualTo(PlaceEventScheduleStatus.ONGOING);
+    }
+
     private MapPlace legacyPlace() {
         return MapPlace.builder()
                 .id(10L)
