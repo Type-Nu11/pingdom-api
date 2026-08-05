@@ -56,4 +56,15 @@ class PlaceVisitDecisionSourceModelTest {
                 99L, 10L, NOW, NOW.plusHours(2), 0, NOW
         )).isInstanceOf(IllegalArgumentException.class);
     }
+
+    @Test
+    void availabilityReservationReducesRemainingCapacity() {
+        PlaceAvailability availability = PlaceAvailability.create(
+                99L, 10L, NOW, NOW.plusHours(2), 20, NOW
+        );
+
+        availability.reserve(3, NOW.plusMinutes(10));
+
+        assertThat(availability.getRemainingCapacity()).isEqualTo(17);
+    }
 }
