@@ -39,6 +39,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQu
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationVerificationSummaryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
+import com.typenull.pingdom.shared.observability.PlaceVisitDecisionMetrics;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.EnumSet;
@@ -83,6 +84,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private final PlaceEventRepository placeEventRepository;
     private final PlaceAvailabilityService placeAvailabilityService;
     private final TouristOfferService touristOfferService;
+    private final PlaceVisitDecisionMetrics placeVisitDecisionMetrics;
     private final Clock clock;
 
     @Override
@@ -213,6 +215,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
         LocalDateTime checkedAt = LocalDateTime.now(clock);
         MerchantOwnerPublicResponse merchantOwner = merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId());
+        placeVisitDecisionMetrics.recordViewed(mapPlace.getOperatingStatus());
         // 임시 휴업은 방문 결정을 위해 상태와 공지를 노출하고, 영구 폐업만 공개 대상에서 제외한다.
         return new PlaceVisitDecisionResponse(
                 toPlaceDetailResponse(mapPlace, merchantOwner),
