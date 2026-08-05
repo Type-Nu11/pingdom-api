@@ -22,9 +22,12 @@ import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.operating.notice.PlaceOperatingNoticeStatus;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationSummary;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceOperatingNoticeRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationVerificationSummaryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -64,6 +67,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private final PlaceSearchQueryRepository placeSearchQueryRepository;
     private final MerchantOwnerPublicQueryService merchantOwnerPublicQueryService;
     private final PlaceOperatingNoticeRepository placeOperatingNoticeRepository;
+    private final PlaceInformationVerificationSummaryRepository placeInformationVerificationSummaryRepository;
     private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
 
     @Override
@@ -107,11 +111,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
                 placePage.getContent().stream().map(PlaceSearchProjection::getId).toList()
         );
+        Map<Long, PlaceInformationVerificationSummary> verificationSummariesByPlaceId =
+                loadVerificationSummaries(placePage.getContent().stream().map(PlaceSearchProjection::getId).toList());
         List<PlaceListItem> places = placePage.getContent()
                 .stream()
                 .map(place -> toListItem(
                         place,
-                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of()),
+                        verificationSummariesByPlaceId.get(place.getId())
                 ))
                 .toList();
 
@@ -174,6 +181,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         }
 
         PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
+        PlaceInformationVerificationSummary verificationSummary = loadVerificationSummary(mapPlace.getId());
 
         return new PlaceDetailResponse(
                 mapPlace.getId(),
@@ -197,6 +205,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getInformationVerificationStatus(),
                 mapPlace.getInformationVerifiedAt(),
                 mapPlace.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant(),
@@ -215,6 +226,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         }
 
         PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
+        PlaceInformationVerificationSummary verificationSummary = loadVerificationSummary(mapPlace.getId());
         return new TouristPlaceCardResponse(
                 mapPlace.getId(),
                 mapPlace.getName(),
@@ -233,6 +245,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getInformationVerificationStatus(),
                 mapPlace.getInformationVerifiedAt(),
                 mapPlace.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude()
         );
@@ -258,10 +273,13 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
                 placePage.getContent().stream().map(MapPlace::getId).toList()
         );
+        Map<Long, PlaceInformationVerificationSummary> verificationSummariesByPlaceId =
+                loadVerificationSummaries(placePage.getContent().stream().map(MapPlace::getId).toList());
         List<PlaceListItem> places = placePage.getContent().stream()
                 .map(place -> toListItem(
                         place,
-                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of()),
+                        verificationSummariesByPlaceId.get(place.getId())
                 ))
                 .toList();
 
@@ -274,7 +292,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
-    private PlaceListItem toListItem(MapPlace mapPlace, Set<TouristCategory> touristCategories) {
+    private PlaceListItem toListItem(
+            MapPlace mapPlace,
+            Set<TouristCategory> touristCategories,
+            PlaceInformationVerificationSummary verificationSummary
+    ) {
         return new PlaceListItem(
                 mapPlace.getId(),
                 mapPlace.getName(),
@@ -293,6 +315,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getInformationVerificationStatus(),
                 mapPlace.getInformationVerifiedAt(),
                 mapPlace.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 null
@@ -301,7 +326,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private PlaceListItem toListItem(
             PlaceSearchProjection projection,
-            Set<TouristCategory> touristCategories
+            Set<TouristCategory> touristCategories,
+            PlaceInformationVerificationSummary verificationSummary
     ) {
         Double distanceMeters = projection.getDistanceMeters();
         return new PlaceListItem(
@@ -322,10 +348,43 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 projection.getInformationVerificationStatus(),
                 projection.getInformationVerifiedAt(),
                 projection.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 projection.getLatitude(),
                 projection.getLongitude(),
                 distanceMeters == null ? null : Math.round(distanceMeters)
         );
+    }
+
+    private PlaceInformationVerificationSummary loadVerificationSummary(Long placeId) {
+        return placeInformationVerificationSummaryRepository.findById(placeId).orElse(null);
+    }
+
+    private Map<Long, PlaceInformationVerificationSummary> loadVerificationSummaries(List<Long> placeIds) {
+        if (placeIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, PlaceInformationVerificationSummary> summaries = new HashMap<>();
+        for (PlaceInformationVerificationSummary summary :
+                placeInformationVerificationSummaryRepository.findAllById(placeIds)) {
+            summaries.put(summary.getPlaceId(), summary);
+        }
+        return summaries;
+    }
+
+    private int verifiedEvidenceCount(PlaceInformationVerificationSummary summary) {
+        return summary == null ? 0 : summary.getVerifiedEvidenceCount();
+    }
+
+    private LocalDateTime lastVerifiedAt(PlaceInformationVerificationSummary summary) {
+        return summary == null ? null : summary.getLastVerifiedAt();
+    }
+
+    private PlaceInformationSourceType lastVerifiedSourceType(
+            PlaceInformationVerificationSummary summary
+    ) {
+        return summary == null ? null : summary.getLastVerifiedSourceType();
     }
 
     private List<PlaceRegularOperatingHourResponse> regularHours(MapPlace mapPlace) {
