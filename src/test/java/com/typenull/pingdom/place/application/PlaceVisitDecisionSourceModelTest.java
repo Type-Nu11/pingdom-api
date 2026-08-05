@@ -19,4 +19,16 @@ class PlaceVisitDecisionSourceModelTest {
         assertThat(information.getPlaceId()).isEqualTo(10L);
         assertThat(information.getReservationUrl()).isNull();
     }
+
+    @Test
+    void merchantInformationNormalizesBlankOptionalValues() {
+        MerchantPlaceInformation information = MerchantPlaceInformation.create(
+                10L, "  설명  ", "  ", "  ", "  ", 99L, NOW
+        );
+
+        assertThat(information.getDescription()).isEqualTo("설명");
+        assertThat(information.getContactPhone()).isNull();
+        assertThat(information.getWebsiteUrl()).isNull();
+        assertThat(information.getReservationUrl()).isNull();
+    }
 }
