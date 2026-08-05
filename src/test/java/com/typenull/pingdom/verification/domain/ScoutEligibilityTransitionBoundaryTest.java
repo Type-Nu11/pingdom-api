@@ -37,4 +37,14 @@ class ScoutEligibilityTransitionBoundaryTest {
         assertThat(eligibility.isEligibleAt(FROM)).isTrue();
         assertThat(eligibility.isEligibleAt(FROM.plusYears(1))).isTrue();
     }
+
+    @Test
+    void eligibilityCannotExpireBeforeItsEndTime() {
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
+        eligibility.grant(99L, FROM, UNTIL, FROM);
+
+        assertThatThrownBy(() -> eligibility.expire(UNTIL.minusNanos(1)))
+                .isInstanceOf(IllegalStateException.class);
+        assertThat(eligibility.getStatus()).isEqualTo(ScoutActivityEligibilityStatus.ELIGIBLE);
+    }
 }
