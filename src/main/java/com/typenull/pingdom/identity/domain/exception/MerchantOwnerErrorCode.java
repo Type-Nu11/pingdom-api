@@ -28,6 +28,8 @@ public enum MerchantOwnerErrorCode {
     PLACE_CLAIMANT_NOT_ELIGIBLE(HttpStatus.FORBIDDEN, "활성 상태이며 검증이 완료된 Merchant Owner만 장소 Claim을 요청할 수 있습니다."),
     INVALID_ONBOARDING_METRIC(HttpStatus.BAD_REQUEST, "온보딩 완료도 값이 올바르지 않습니다."),
     INVALID_OPERATIONAL_QUALITY_METRIC(HttpStatus.BAD_REQUEST, "운영 품질 지표 값이 올바르지 않습니다."),
+    INVALID_PLACE_INFORMATION(HttpStatus.BAD_REQUEST, "Merchant 장소 정보 값이 올바르지 않습니다."),
+    PLACE_INFORMATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 장소 정보를 찾을 수 없습니다."),
     MERCHANT_TEAM_MEMBER_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 팀원을 찾을 수 없습니다."),
     MERCHANT_TEAM_INVITATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 팀원 초대를 찾을 수 없습니다."),
     MERCHANT_TEAM_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, "Merchant 팀원 관리 권한이 필요합니다."),
