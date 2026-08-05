@@ -7,7 +7,8 @@ public enum AdminRole {
     CONTENT_MODERATOR(Set.of(
             AdminPermission.PLACE_READ,
             AdminPermission.PLACE_MODERATE,
-            AdminPermission.REPORT_REVIEW
+            AdminPermission.REPORT_REVIEW,
+            AdminPermission.SCOUT_REVIEW
     )),
     MERCHANT_OPERATOR(Set.of(
             AdminPermission.PLACE_READ,
