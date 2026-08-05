@@ -666,6 +666,22 @@ class PlaceControllerTest {
     }
 
     @Test
+    void getPlaceVisitDecisionRejectsPermanentlyClosedPlace() throws Exception {
+        String accessToken = signupAndLogin("visitDecisionReader03");
+        MapPlace mapPlace = createMapPlace("영구 폐업 방문 결정 장소", "경상남도 진주시 방문로 3");
+        mapPlace.updateOperatingStatus(
+                PlaceOperatingStatus.PERMANENTLY_CLOSED,
+                LocalDateTime.of(2026, 8, 5, 9, 0)
+        );
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
+    }
+
+    @Test
     void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
