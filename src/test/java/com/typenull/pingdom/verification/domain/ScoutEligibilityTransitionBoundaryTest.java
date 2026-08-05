@@ -18,4 +18,14 @@ class ScoutEligibilityTransitionBoundaryTest {
 
         assertThat(eligibility.isEligibleAt(FROM)).isFalse();
     }
+
+    @Test
+    void eligibilityWindowIncludesStartAndExcludesEnd() {
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
+        eligibility.grant(99L, FROM, UNTIL, FROM);
+
+        assertThat(eligibility.isEligibleAt(FROM)).isTrue();
+        assertThat(eligibility.isEligibleAt(UNTIL.minusNanos(1))).isTrue();
+        assertThat(eligibility.isEligibleAt(UNTIL)).isFalse();
+    }
 }
