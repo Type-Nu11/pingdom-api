@@ -1,7 +1,9 @@
 package com.typenull.pingdom.verification.application;
 
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -41,6 +43,7 @@ public class ScoutFieldReportService {
     private final ScoutFieldReportRepository reportRepository;
     private final UserRepository userRepository;
     private final MapPlaceRepository placeRepository;
+    private final AdminRoleAuthorizationService adminRoleAuthorizationService;
     private final Clock clock;
     private final AdminAuditLogService adminAuditLogService;
     private final ScoutFieldReportMetrics metrics;
@@ -180,11 +183,7 @@ public class ScoutFieldReportService {
     }
 
     private void requireAdmin(Long userId) {
-        User user = userRepository.findById(userId).orElse(null);
-        LocalDateTime now = LocalDateTime.now(clock);
-        if (user == null || user.getRole() != UserRole.ADMIN || user.isWithdrawn() || user.isCurrentlyBanned(now)) {
-            throw new VisitorVerificationException(VisitorVerificationErrorCode.ADMIN_ACCOUNT_REQUIRED);
-        }
+        adminRoleAuthorizationService.requirePermission(userId, AdminPermission.SCOUT_REVIEW);
     }
 
     private ScoutFieldReport find(Long id) {

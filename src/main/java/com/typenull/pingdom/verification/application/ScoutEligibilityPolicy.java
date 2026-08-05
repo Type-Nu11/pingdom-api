@@ -1,13 +1,28 @@
 package com.typenull.pingdom.verification.application;
 
+import com.typenull.pingdom.verification.infrastructure.ScoutActivityEligibilityRepository;
+import com.typenull.pingdom.verification.domain.ScoutProfileStatus;
+import com.typenull.pingdom.verification.infrastructure.ScoutProfileRepository;
+import java.time.Clock;
+import java.time.LocalDateTime;
+import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 @Component
+@RequiredArgsConstructor
 public class ScoutEligibilityPolicy {
 
+    private final ScoutActivityEligibilityRepository eligibilityRepository;
+    private final ScoutProfileRepository profileRepository;
+    private final Clock clock;
+
     public boolean isEligible(Long userId) {
-        // #634의 Scout 자격 모델이 도입되기 전에는 일반 사용자를 Scout로 간주하지 않는다.
-        // 자격 조회 경계가 준비되면 이 fail-closed 정책을 실제 자격 검증으로 교체한다.
-        return false;
+        return userId != null
+                && profileRepository.findById(userId)
+                .map(profile -> profile.getStatus() == ScoutProfileStatus.ACTIVE)
+                .orElse(false)
+                && eligibilityRepository.findById(userId)
+                .map(eligibility -> eligibility.isEligibleAt(LocalDateTime.now(clock)))
+                .orElse(false);
     }
 }
