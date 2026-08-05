@@ -31,4 +31,8 @@ public enum AdminRole {
     public boolean allows(AdminPermission permission) {
         return this == SUPER_ADMIN || permissions.contains(permission);
     }
+
+    public Set<AdminPermission> permissions() {
+        return this == SUPER_ADMIN ? Set.of(AdminPermission.values()) : permissions;
+    }
 }

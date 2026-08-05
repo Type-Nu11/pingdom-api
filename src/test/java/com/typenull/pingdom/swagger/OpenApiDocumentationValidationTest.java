@@ -359,6 +359,10 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceQualityUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceResponse")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles/{role}")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentRequest")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentResponse")).isTrue();
         assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties/claimType/enum"))
                 .isNotEmpty();
         assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties")
@@ -377,6 +381,35 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("#/components/schemas/MerchantOwnerPlaceQualityUpdateRequest");
         assertThat(qualityOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/MerchantOwnerPlaceResponse");
+
+        JsonNode roleRequestSchema = webDocument.at("/components/schemas/AdminRoleAssignmentRequest");
+        assertThat(resolveSchema(webDocument, roleRequestSchema.at("/properties/role")).path("enum").toString())
+                .contains("SUPER_ADMIN", "CONTENT_MODERATOR", "MERCHANT_OPERATOR", "SUPPORT_OPERATOR", "ANALYST");
+        assertThat(roleRequestSchema.at("/properties/reason/maxLength").asInt()).isEqualTo(500);
+        JsonNode roleResponseSchema = webDocument.at("/components/schemas/AdminRoleAssignmentResponse");
+        assertThat(resolveSchema(webDocument, roleResponseSchema.at("/properties/status")).path("enum").toString())
+                .contains("ACTIVE", "REVOKED");
+        assertThat(roleResponseSchema.path("properties").has("permissions")).isTrue();
+
+        JsonNode roleListOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles/get");
+        assertThat(roleListOperation.at("/responses/200/content/*~1*/schema/type").asText())
+                .isEqualTo("array");
+        assertThat(roleListOperation.path("responses").has("401")).isTrue();
+        assertThat(roleListOperation.path("responses").has("403")).isTrue();
+        assertThat(roleListOperation.path("responses").has("404")).isTrue();
+        assertThat(roleListOperation.path("security").path(0).path("bearerAuth").isArray()).isTrue();
+
+        JsonNode roleAssignOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles/post");
+        assertThat(roleAssignOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminRoleAssignmentRequest");
+        for (String status : List.of("400", "401", "403", "404", "409")) {
+            assertThat(roleAssignOperation.path("responses").has(status)).isTrue();
+        }
+
+        JsonNode roleRevokeOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles~1{role}/delete");
+        assertThat(roleRevokeOperation.path("responses").has("401")).isTrue();
+        assertThat(roleRevokeOperation.path("responses").has("403")).isTrue();
+        assertThat(roleRevokeOperation.path("responses").has("404")).isTrue();
 
         JsonNode placeInformationGet = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/get");
         JsonNode placeInformationPut = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/put");
