@@ -35,4 +35,16 @@ class ScoutProfileTransitionBoundaryTest {
 
         org.assertj.core.api.Assertions.assertThat(profile.getStatus()).isEqualTo(ScoutProfileStatus.ACTIVE);
     }
+
+    @Test
+    void suspendedProfileCanBeRevokedWithReason() {
+        ScoutProfile profile = ScoutProfile.pending(10L, "Scout", null, CREATED_AT);
+        profile.activate(99L, CREATED_AT.plusDays(1));
+        profile.suspend(99L, "추가 확인", CREATED_AT.plusDays(2));
+
+        profile.revoke(99L, "자격 회수", CREATED_AT.plusDays(3));
+
+        org.assertj.core.api.Assertions.assertThat(profile.getStatus()).isEqualTo(ScoutProfileStatus.REVOKED);
+        org.assertj.core.api.Assertions.assertThat(profile.getStatusReason()).isEqualTo("자격 회수");
+    }
 }
