@@ -104,6 +104,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
         "spring.cloud.aws.credentials.access-key=test-access-key",
         "spring.cloud.aws.credentials.secret-key=test-secret-key",
         "abuse.rate-limit.redis-key-prefix=pingdom:test:place-controller:",
+        "abuse.rate-limit.signup-email.limit=1000",
         "abuse.rate-limit.signup-ip.limit=1000",
         "abuse.rate-limit.login-ip.limit=1000"
 })
