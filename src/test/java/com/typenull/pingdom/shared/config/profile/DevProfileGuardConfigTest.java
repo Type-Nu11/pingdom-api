@@ -18,6 +18,13 @@ class DevProfileGuardConfigTest {
     }
 
     @Test
+    void 활성_프로필이_비어_있으면_dev_프로필_가드를_등록하지_않는다() {
+        contextRunner
+                .withPropertyValues("spring.profiles.active=")
+                .run(context -> assertThat(context).doesNotHaveBean(DevProfileGuardConfig.class));
+    }
+
+    @Test
     void dev_프로필은_명시적으로_활성화하면_시작할_수_있다() {
         contextRunner
                 .withPropertyValues(
