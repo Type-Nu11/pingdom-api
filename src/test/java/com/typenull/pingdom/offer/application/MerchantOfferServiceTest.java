@@ -7,6 +7,10 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.offer.api.dto.CouponRedeemRequest;
 import com.typenull.pingdom.offer.api.dto.OfferCreateRequest;
+import com.typenull.pingdom.offer.api.dto.OfferResponse;
+import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
+import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
+import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
 import com.typenull.pingdom.offer.domain.CouponStatus;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
@@ -19,6 +23,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -100,6 +105,36 @@ class MerchantOfferServiceTest {
         assertThatThrownBy(() -> offerService.create(10L, request))
                 .isInstanceOfSatisfying(OfferException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.INVALID_OFFER_PERIOD));
+    }
+
+    @Test
+    void merchantCanCreateUnlimitedPublicOfferWithExplicitPolicies() {
+        OfferCreateRequest request = new OfferCreateRequest(
+                100L,
+                "상시 웰컴 혜택",
+                "누구나 발급할 수 있는 혜택",
+                "음료 1잔 무료",
+                NOW.minusHours(1),
+                NOW.plusDays(7),
+                null,
+                3,
+                CouponEligibilityPolicy.PUBLIC,
+                CouponInventoryPolicy.UNLIMITED,
+                CouponExpiryPolicy.OFFER_END
+        );
+        when(offerRepository.save(org.mockito.ArgumentMatchers.any(TouristOffer.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        OfferResponse response = offerService.create(10L, request);
+
+        ArgumentCaptor<TouristOffer> captor = ArgumentCaptor.forClass(TouristOffer.class);
+        verify(offerRepository).save(captor.capture());
+        TouristOffer saved = captor.getValue();
+        assertThat(saved.getTotalQuantity()).isNull();
+        assertThat(saved.getEligibilityPolicy()).isEqualTo(CouponEligibilityPolicy.PUBLIC);
+        assertThat(saved.getInventoryPolicy()).isEqualTo(CouponInventoryPolicy.UNLIMITED);
+        assertThat(saved.getExpiryPolicy()).isEqualTo(CouponExpiryPolicy.OFFER_END);
+        assertThat(response.remainingQuantity()).isNull();
     }
 
     private TouristOffer offer() {

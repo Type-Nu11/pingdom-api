@@ -173,6 +173,45 @@ FK cascade로 제거되며, 탈퇴 후 7일 보관 정책은 애플리케이션 
 상태·기간 및 장소 조건을 사용하는 전용 index를 사용한다. 장소 삭제는 캠페인 이력 보존을 위해 제한하고
 Merchant profile 삭제 시 소유 데이터는 함께 정리한다.
 
+## Merchant 장소 정보
+
+`V85`는 Merchant가 장소별로 관리하는 소개, 연락처, 웹사이트, 예약 URL을
+`merchant_place_information`에 저장한다. 기존 `map_place` 행에 정보를 자동 생성하거나
+기존 값을 덮어쓰지 않으므로 기존 장소와 공개 조회 API는 그대로 유지된다. 장소당 하나의
+레코드만 허용하고 장소 FK는 장소 삭제 시 함께 정리한다. 수정자 ID는 탈퇴 시 감사 이력을
+위해 nullable로 보존하며, URL·텍스트 값은 DB check constraint로 기본 형식을 검증한다.
+애플리케이션은 수정 시점에 현재 Merchant 소유 관계를 확인하고, 정보가 없는 장소는
+첫 수정에서 새 레코드를 생성한다.
+
+## 관리자 역할과 권한
+
+`V86`은 기존 `users.role = 'ADMIN'`을 유지하면서 관리자별 세부 역할 할당을
+`admin_role_assignment`에 추가한다. 역할은 `SUPER_ADMIN`, `CONTENT_MODERATOR`,
+`MERCHANT_OPERATOR`, `SUPPORT_OPERATOR`, `ANALYST`로 제한하고, 역할별 세부 권한은
+애플리케이션 enum에서 관리한다. 역할 할당과 회수는 `ADMIN_ROLE_MANAGE` 권한을 요구하며,
+Scout 프로필·활동 자격 심사는 `SCOUT_REVIEW` 권한으로 분리한다.
+기존 관리자 계정은 `SUPER_ADMIN` 활성 할당으로
+backfill하므로 기존 JWT의 `ADMIN` 인증과 관리자 API 접근을 중단하지 않는다.
+
+역할 회수는 기존 행을 삭제하지 않고 `REVOKED`와 `revoked_at`을 기록한다. 같은 관리자와
+역할에는 활성 할당을 하나만 허용하고, 회수된 역할은 이력으로 보존한다. `assigned_by_user_id`는
+기존 데이터 backfill에서 `NULL`일 수 있으며, 할당자 탈퇴 시에도 역할 이력은 보존된다.
+
+## Scout 프로필과 활동 자격
+
+`V87`은 Scout 개인 프로필과 활동 자격을 각각 `scout_profile`과
+`scout_activity_eligibility`에 저장한다. 프로필은 `PENDING`, `ACTIVE`, `SUSPENDED`,
+`REVOKED` 상태를, 활동 자격은 `PENDING`, `ELIGIBLE`, `SUSPENDED`, `EXPIRED`, `REVOKED`
+상태를 사용한다. 활동 자격의 시작·종료 시각은 DB check constraint로 순서를 보장하고,
+프로필·자격 모두 관리자 심사자, 심사 시각, 상태 사유를 보존한다.
+
+기존 `scout_field_report`에 제보 이력이 있는 사용자는 새 모델 도입으로 기존 활동이
+막히지 않도록 프로필을 `ACTIVE`, 활동 자격을 `ELIGIBLE`로 backfill한다. 프로필
+표시명은 기존 사용자명에서 가져오고, 관리자 심사자와 상태 사유는 임의로 만들지 않아
+`NULL`로 둔다. 탈퇴·물리 삭제된 사용자의 제보는 기존 `ON DELETE SET NULL` 정책에 따라
+backfill 대상에서 제외된다. 신규 신청자는 후속 Application Service에서 프로필과 자격의
+상태 전이를 함께 검증해야 한다.
+
 ## Verified Boost
 
 `V73`은 관리자가 운영하는 Verified Boost 상품 정책과 Merchant의 장소별 상품 선택 테이블을 추가한다.

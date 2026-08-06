@@ -12,7 +12,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 class SwaggerSecurityTest {
@@ -45,7 +45,9 @@ class SwaggerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/places']").exists())
                 .andExpect(jsonPath("$.paths['/places/{id}']").exists())
+                .andExpect(jsonPath("$.paths['/places/{placeId}/card']").exists())
                 .andExpect(jsonPath("$.paths['/place']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/place/{id}']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/users/bookmarks']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/map/bookmarks']").exists())
                 .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());

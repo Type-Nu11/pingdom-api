@@ -27,7 +27,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest
+@SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
 class OpenApiDocumentationValidationTest {
@@ -200,6 +200,13 @@ class OpenApiDocumentationValidationTest {
         assertThat(recommendationItem.has("reservable"))
                 .as("추천 항목은 현재 예약 가능 여부를 제공해야 한다")
                 .isTrue();
+        assertThat(recommendationItem.has("reasonCode"))
+                .as("추천 항목은 기계 판독 가능한 추천 사유 코드를 제공해야 한다")
+                .isTrue();
+        assertThat(appDocument.at("/components/schemas/PlaceRecommendationResponse/properties/limitReasons")
+                .has("items"))
+                .as("추천 응답은 제한 사유 코드 목록을 제공해야 한다")
+                .isTrue();
         JsonNode explanationItem = appDocument.at(
                 "/components/schemas/PlaceRecommendationExplanationItem/properties"
         );
@@ -328,6 +335,8 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/cancel")).isTrue();
+        assertThat(appDocument.path("paths").has("/merchant-owner/places/{placeId}/information")).isTrue();
+        assertThat(webDocument.path("paths").has("/merchant-owner/places/{placeId}/information")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners/{userId}/onboarding")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-owners/{userId}/places/{placeId}/quality")).isFalse();
@@ -344,10 +353,17 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceInformationResponse")).isTrue();
+        assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceInformationUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOnboardingUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceQualityUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceResponse")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles/{role}")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentRequest")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentRevokeRequest")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentResponse")).isTrue();
         assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties/claimType/enum"))
                 .isNotEmpty();
         assertThat(appDocument.at("/components/schemas/MerchantPlaceClaimResponse/properties")
@@ -366,6 +382,63 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("#/components/schemas/MerchantOwnerPlaceQualityUpdateRequest");
         assertThat(qualityOperation.at("/responses/200/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/MerchantOwnerPlaceResponse");
+
+        JsonNode roleRequestSchema = webDocument.at("/components/schemas/AdminRoleAssignmentRequest");
+        assertThat(resolveSchema(webDocument, roleRequestSchema.at("/properties/role")).path("enum").toString())
+                .contains("SUPER_ADMIN", "CONTENT_MODERATOR", "MERCHANT_OPERATOR", "SUPPORT_OPERATOR", "ANALYST");
+        assertThat(roleRequestSchema.at("/properties/reason/maxLength").asInt()).isEqualTo(500);
+        JsonNode roleResponseSchema = webDocument.at("/components/schemas/AdminRoleAssignmentResponse");
+        assertThat(resolveSchema(webDocument, roleResponseSchema.at("/properties/status")).path("enum").toString())
+                .contains("ACTIVE", "REVOKED");
+        assertThat(roleResponseSchema.path("properties").has("permissions")).isTrue();
+
+        JsonNode roleListOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles/get");
+        assertThat(roleListOperation.at("/responses/200/content/*~1*/schema/type").asText())
+                .isEqualTo("array");
+        assertThat(roleListOperation.path("responses").has("401")).isTrue();
+        assertThat(roleListOperation.path("responses").has("403")).isTrue();
+        assertThat(roleListOperation.path("responses").has("404")).isTrue();
+        assertThat(roleListOperation.path("security").path(0).path("bearerAuth").isArray()).isTrue();
+
+        JsonNode roleAssignOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles/post");
+        assertThat(roleAssignOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminRoleAssignmentRequest");
+        for (String status : List.of("400", "401", "403", "404", "409")) {
+            assertThat(roleAssignOperation.path("responses").has(status)).isTrue();
+        }
+
+        JsonNode roleRevokeOperation = webDocument.at("/paths/~1admin~1users~1{userId}~1roles~1{role}/delete");
+        assertThat(roleRevokeOperation.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminRoleAssignmentRevokeRequest");
+        assertThat(roleRevokeOperation.path("responses").has("401")).isTrue();
+        assertThat(roleRevokeOperation.path("responses").has("403")).isTrue();
+        assertThat(roleRevokeOperation.path("responses").has("404")).isTrue();
+
+        JsonNode placeInformationGet = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/get");
+        JsonNode placeInformationPut = appDocument.at("/paths/~1merchant-owner~1places~1{placeId}~1information/put");
+        assertThat(placeInformationGet.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantPlaceInformationResponse");
+        assertThat(placeInformationGet.path("responses").has("401")).isTrue();
+        assertThat(placeInformationGet.path("responses").has("403")).isTrue();
+        assertThat(placeInformationGet.path("responses").has("404")).isTrue();
+        assertThat(placeInformationGet.path("security").path(0).path("bearerAuth").isArray()).isTrue();
+        assertThat(placeInformationPut.at("/requestBody/content/application~1json/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantPlaceInformationUpdateRequest");
+        assertThat(placeInformationPut.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/MerchantPlaceInformationResponse");
+        assertThat(placeInformationPut.path("responses").has("400")).isTrue();
+        assertThat(placeInformationPut.path("responses").has("401")).isTrue();
+        assertThat(placeInformationPut.path("responses").has("403")).isTrue();
+        assertThat(placeInformationPut.path("security").path(0).path("bearerAuth").isArray()).isTrue();
+        JsonNode informationRequest = appDocument.at("/components/schemas/MerchantPlaceInformationUpdateRequest");
+        assertThat(informationRequest.at("/properties/description/maxLength").asInt()).isEqualTo(1000);
+        assertThat(informationRequest.at("/properties/contactPhone/maxLength").asInt()).isEqualTo(30);
+        assertThat(informationRequest.at("/properties/websiteUrl/maxLength").asInt()).isEqualTo(500);
+        assertThat(informationRequest.at("/properties/reservationUrl/maxLength").asInt()).isEqualTo(500);
+        assertThat(informationRequest.at("/properties/websiteUrl/pattern").asText())
+                .isEqualTo("^https?://\\S+$");
+        assertThat(informationRequest.at("/properties/reservationUrl/pattern").asText())
+                .isEqualTo("^https?://\\S+$");
 
         JsonNode onboardingRequestSchema = webDocument.at("/components/schemas/MerchantOnboardingUpdateRequest");
         List<String> onboardingRequiredFields = new ArrayList<>();
@@ -457,9 +530,24 @@ class OpenApiDocumentationValidationTest {
                 "benefitDescription",
                 "startsAt",
                 "endsAt",
-                "totalQuantity",
                 "couponValidityDays"
         );
+        assertNullableProperty(appDocument, "OfferCreateRequest", "totalQuantity");
+        assertNullableProperty(appDocument, "OfferResponse", "totalQuantity");
+        assertNullableProperty(appDocument, "OfferResponse", "remainingQuantity");
+        assertThat(appDocument.at("/components/schemas/OfferCreateRequest/properties/eligibilityPolicy/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactly("ACTIVE_TRAVEL_SCHEDULE", "PUBLIC");
+        assertThat(appDocument.at("/components/schemas/OfferCreateRequest/properties/inventoryPolicy/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactly("LIMITED", "UNLIMITED");
+        assertThat(appDocument.at("/components/schemas/OfferCreateRequest/properties/expiryPolicy/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactly(
+                        "ISSUE_PLUS_DAYS_CAPPED_BY_OFFER_END",
+                        "ISSUE_PLUS_DAYS",
+                        "OFFER_END"
+                );
         for (String property : List.of("title", "description", "benefitDescription")) {
             assertThat(createRequestSchema.path("properties").path(property).path("minLength").asInt())
                     .isEqualTo(1);
@@ -546,9 +634,57 @@ class OpenApiDocumentationValidationTest {
         assertThat(cardSchema.path("properties").has("touristCategories")).isTrue();
         assertThat(cardSchema.path("properties").has("primaryInformationSource")).isTrue();
         assertThat(cardSchema.path("properties").has("informationVerificationStatus")).isTrue();
+        assertThat(cardSchema.path("properties").has("verifiedEvidenceCount")).isTrue();
+        assertThat(cardSchema.path("properties").has("lastVerifiedAt")).isTrue();
+        assertThat(cardSchema.path("properties").has("lastVerifiedSourceType")).isTrue();
         assertThat(resolveSchema(appDocument, cardSchema.at("/properties/operatingStatus"))
                 .path("enum")).extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("OPERATING", "TEMPORARILY_CLOSED", "PERMANENTLY_CLOSED");
+    }
+
+    @Test
+    void placeVisitDecisionContractIsDocumentedInAppGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode operation = appDocument.at("/paths/~1places~1{placeId}~1visit-decision/get");
+
+        assertThat(operation.isMissingNode()).as("방문 결정 조회 경로가 app 문서에 있어야 한다").isFalse();
+        assertThat(operation.at("/parameters/0/name").asText()).isEqualTo("placeId");
+        assertThat(operation.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/PlaceVisitDecisionResponse");
+        assertThat(operation.at("/responses/401/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+        assertThat(operation.at("/responses/404/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/ErrorResponse");
+
+        JsonNode responseSchema = appDocument.at("/components/schemas/PlaceVisitDecisionResponse/properties");
+        assertThat(responseSchema.has("place")).isTrue();
+        assertThat(responseSchema.has("merchantInformation")).isTrue();
+        assertThat(responseSchema.at("/ongoingEvents/type").asText()).isEqualTo("array");
+        assertThat(responseSchema.at("/reservableAvailabilities/type").asText()).isEqualTo("array");
+        assertThat(responseSchema.has("availableOffers")).isTrue();
+        assertThat(responseSchema.at("/checkedAt/format").asText()).isEqualTo("date-time");
+    }
+
+    @Test
+    void placeVisitDecisionContractIsNotExposedInWebGroup() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+
+        assertThat(appDocument.path("paths").has("/places/{placeId}/visit-decision")).isTrue();
+        assertThat(webDocument.path("paths").has("/places/{placeId}/visit-decision")).isFalse();
+    }
+
+    @Test
+    void placeVisitDecisionMerchantSchemaDoesNotExposeEditorIdentity() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode merchantSchema = appDocument.at(
+                "/components/schemas/PlaceVisitDecisionMerchantInformationResponse/properties"
+        );
+
+        assertThat(merchantSchema.has("description")).isTrue();
+        assertThat(merchantSchema.has("reservationUrl")).isTrue();
+        assertThat(merchantSchema.has("updatedAt")).isTrue();
+        assertThat(merchantSchema.has("updatedByUserId")).isFalse();
     }
 
     @Test

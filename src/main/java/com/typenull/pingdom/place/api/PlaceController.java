@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.api;
 
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionResponse;
 import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
@@ -213,6 +214,34 @@ public class PlaceController {
     })
     public ResponseEntity<TouristPlaceCardResponse> getTouristPlaceCard(@PathVariable Long placeId) {
         return ResponseEntity.ok(placeQueryService.getTouristPlaceCard(placeId));
+    }
+
+    @GetMapping("/{placeId}/visit-decision")
+    @Operation(
+            summary = "관광객용 장소 방문 결정 정보 조회",
+            description = "현재 운영 상태, 공지, 진행 이벤트, 예약 가능 시간과 발급 가능한 혜택을 한 번에 조회합니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "방문 결정 정보 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceVisitDecisionResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "유효하지 않은 토큰",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "공개 중인 장소를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            )
+    })
+    public ResponseEntity<PlaceVisitDecisionResponse> getPlaceVisitDecision(
+            @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId
+    ) {
+        return ResponseEntity.ok(placeQueryService.getPlaceVisitDecision(placeId));
     }
 
     @GetMapping("/{placeId}/operating-notices")

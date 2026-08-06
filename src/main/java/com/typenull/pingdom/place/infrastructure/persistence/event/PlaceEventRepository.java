@@ -13,6 +13,7 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import java.util.List;
 
 public interface PlaceEventRepository extends JpaRepository<PlaceEvent, Long> {
 
@@ -57,5 +58,20 @@ public interface PlaceEventRepository extends JpaRepository<PlaceEvent, Long> {
             Long id,
             PlaceEventPublicationStatus publicationStatus,
             LocalDateTime now
+    );
+
+    @Query("""
+            SELECT event
+            FROM PlaceEvent event
+            WHERE event.place.id = :placeId
+              AND event.publicationStatus = :publicationStatus
+              AND event.startAt <= :now
+              AND event.endAt > :now
+            ORDER BY event.startAt ASC, event.id ASC
+            """)
+    List<PlaceEvent> findOngoingPublishedByPlaceId(
+            @Param("placeId") Long placeId,
+            @Param("publicationStatus") PlaceEventPublicationStatus publicationStatus,
+            @Param("now") LocalDateTime now
     );
 }

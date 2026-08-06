@@ -1,9 +1,16 @@
 package com.typenull.pingdom.place.application.service.place;
 
+import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPublicResponse;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPublicQueryService;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInformationRepository;
+import com.typenull.pingdom.offer.application.TouristOfferService;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionEventResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionMerchantInformationResponse;
+import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionResponse;
 import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
@@ -14,6 +21,7 @@ import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingN
 import com.typenull.pingdom.place.application.service.place.operating.PlaceCurrentOperatingState;
 import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingHoursEvaluator;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.event.PlaceEventPublicationStatus;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
@@ -22,15 +30,21 @@ import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
 import com.typenull.pingdom.place.domain.place.operating.notice.PlaceOperatingNoticeStatus;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
+import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationSummary;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceOperatingNoticeRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationVerificationSummaryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
+import com.typenull.pingdom.shared.observability.PlaceVisitDecisionMetrics;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.EnumSet;
 import java.util.Comparator;
+import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HashMap;
 import java.util.List;
@@ -64,7 +78,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private final PlaceSearchQueryRepository placeSearchQueryRepository;
     private final MerchantOwnerPublicQueryService merchantOwnerPublicQueryService;
     private final PlaceOperatingNoticeRepository placeOperatingNoticeRepository;
+    private final PlaceInformationVerificationSummaryRepository placeInformationVerificationSummaryRepository;
     private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
+    private final MerchantPlaceInformationRepository merchantPlaceInformationRepository;
+    private final PlaceEventRepository placeEventRepository;
+    private final PlaceAvailabilityService placeAvailabilityService;
+    private final TouristOfferService touristOfferService;
+    private final PlaceVisitDecisionMetrics placeVisitDecisionMetrics;
+    private final Clock clock;
 
     @Override
     @Transactional(readOnly = true)
@@ -107,11 +128,14 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
                 placePage.getContent().stream().map(PlaceSearchProjection::getId).toList()
         );
+        Map<Long, PlaceInformationVerificationSummary> verificationSummariesByPlaceId =
+                loadVerificationSummaries(placePage.getContent().stream().map(PlaceSearchProjection::getId).toList());
         List<PlaceListItem> places = placePage.getContent()
                 .stream()
                 .map(place -> toListItem(
                         place,
-                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of()),
+                        verificationSummariesByPlaceId.get(place.getId())
                 ))
                 .toList();
 
@@ -173,7 +197,51 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
             throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
         }
 
+        return toPlaceDetailResponse(
+                mapPlace,
+                merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
+        );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public PlaceVisitDecisionResponse getPlaceVisitDecision(Long placeId) {
+        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        if (!mapPlace.isVisibleInDiscovery()
+                || mapPlace.getOperatingStatus() == PlaceOperatingStatus.PERMANENTLY_CLOSED) {
+            throw new MapException(MapErrorCode.PLACE_NOT_FOUND);
+        }
+
+        LocalDateTime checkedAt = LocalDateTime.now(clock);
+        MerchantOwnerPublicResponse merchantOwner = merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId());
+        // 임시 휴업은 방문 결정을 위해 상태와 공지를 노출하고, 영구 폐업만 공개 대상에서 제외한다.
+        PlaceVisitDecisionResponse response = new PlaceVisitDecisionResponse(
+                toPlaceDetailResponse(mapPlace, merchantOwner),
+                publicMerchantInformation(mapPlace.getId(), merchantOwner),
+                placeEventRepository.findOngoingPublishedByPlaceId(
+                                mapPlace.getId(),
+                                PlaceEventPublicationStatus.PUBLISHED,
+                                checkedAt
+                        )
+                        .stream()
+                        .map(event -> PlaceVisitDecisionEventResponse.from(event, checkedAt))
+                        .toList(),
+                placeAvailabilityService.listPublic(mapPlace.getId()),
+                touristOfferService.list(mapPlace.getId(), 1, 20),
+                checkedAt
+        );
+        placeVisitDecisionMetrics.recordViewed(mapPlace.getOperatingStatus());
+        return response;
+    }
+
+    private PlaceDetailResponse toPlaceDetailResponse(
+            MapPlace mapPlace,
+            MerchantOwnerPublicResponse merchantOwner
+    ) {
+
         PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
+        PlaceInformationVerificationSummary verificationSummary = loadVerificationSummary(mapPlace.getId());
 
         return new PlaceDetailResponse(
                 mapPlace.getId(),
@@ -197,11 +265,27 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getInformationVerificationStatus(),
                 mapPlace.getInformationVerifiedAt(),
                 mapPlace.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant(),
-                merchantOwnerPublicQueryService.findByPlaceId(mapPlace.getId())
+                merchantOwner
         );
+    }
+
+    private PlaceVisitDecisionMerchantInformationResponse publicMerchantInformation(
+            Long placeId,
+            MerchantOwnerPublicResponse merchantOwner
+    ) {
+        // 비활성 Merchant의 과거 연락처·예약 링크는 관광객 응답에서 노출하지 않는다.
+        if (merchantOwner == null) {
+            return null;
+        }
+        return merchantPlaceInformationRepository.findByPlaceId(placeId)
+                .map(PlaceVisitDecisionMerchantInformationResponse::from)
+                .orElse(null);
     }
 
     @Override
@@ -215,6 +299,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         }
 
         PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(mapPlace);
+        PlaceInformationVerificationSummary verificationSummary = loadVerificationSummary(mapPlace.getId());
         return new TouristPlaceCardResponse(
                 mapPlace.getId(),
                 mapPlace.getName(),
@@ -233,6 +318,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getInformationVerificationStatus(),
                 mapPlace.getInformationVerifiedAt(),
                 mapPlace.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude()
         );
@@ -258,10 +346,13 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         Map<Long, Set<TouristCategory>> touristCategoriesByPlaceId = loadTouristCategories(
                 placePage.getContent().stream().map(MapPlace::getId).toList()
         );
+        Map<Long, PlaceInformationVerificationSummary> verificationSummariesByPlaceId =
+                loadVerificationSummaries(placePage.getContent().stream().map(MapPlace::getId).toList());
         List<PlaceListItem> places = placePage.getContent().stream()
                 .map(place -> toListItem(
                         place,
-                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of())
+                        touristCategoriesByPlaceId.getOrDefault(place.getId(), Set.of()),
+                        verificationSummariesByPlaceId.get(place.getId())
                 ))
                 .toList();
 
@@ -274,7 +365,11 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
-    private PlaceListItem toListItem(MapPlace mapPlace, Set<TouristCategory> touristCategories) {
+    private PlaceListItem toListItem(
+            MapPlace mapPlace,
+            Set<TouristCategory> touristCategories,
+            PlaceInformationVerificationSummary verificationSummary
+    ) {
         return new PlaceListItem(
                 mapPlace.getId(),
                 mapPlace.getName(),
@@ -293,6 +388,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getInformationVerificationStatus(),
                 mapPlace.getInformationVerifiedAt(),
                 mapPlace.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 null
@@ -301,7 +399,8 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private PlaceListItem toListItem(
             PlaceSearchProjection projection,
-            Set<TouristCategory> touristCategories
+            Set<TouristCategory> touristCategories,
+            PlaceInformationVerificationSummary verificationSummary
     ) {
         Double distanceMeters = projection.getDistanceMeters();
         return new PlaceListItem(
@@ -322,10 +421,43 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 projection.getInformationVerificationStatus(),
                 projection.getInformationVerifiedAt(),
                 projection.getInformationEvidenceUpdatedAt(),
+                verifiedEvidenceCount(verificationSummary),
+                lastVerifiedAt(verificationSummary),
+                lastVerifiedSourceType(verificationSummary),
                 projection.getLatitude(),
                 projection.getLongitude(),
                 distanceMeters == null ? null : Math.round(distanceMeters)
         );
+    }
+
+    private PlaceInformationVerificationSummary loadVerificationSummary(Long placeId) {
+        return placeInformationVerificationSummaryRepository.findById(placeId).orElse(null);
+    }
+
+    private Map<Long, PlaceInformationVerificationSummary> loadVerificationSummaries(List<Long> placeIds) {
+        if (placeIds.isEmpty()) {
+            return Map.of();
+        }
+        Map<Long, PlaceInformationVerificationSummary> summaries = new HashMap<>();
+        for (PlaceInformationVerificationSummary summary :
+                placeInformationVerificationSummaryRepository.findAllById(placeIds)) {
+            summaries.put(summary.getPlaceId(), summary);
+        }
+        return summaries;
+    }
+
+    private int verifiedEvidenceCount(PlaceInformationVerificationSummary summary) {
+        return summary == null ? 0 : summary.getVerifiedEvidenceCount();
+    }
+
+    private LocalDateTime lastVerifiedAt(PlaceInformationVerificationSummary summary) {
+        return summary == null ? null : summary.getLastVerifiedAt();
+    }
+
+    private PlaceInformationSourceType lastVerifiedSourceType(
+            PlaceInformationVerificationSummary summary
+    ) {
+        return summary == null ? null : summary.getLastVerifiedSourceType();
     }
 
     private List<PlaceRegularOperatingHourResponse> regularHours(MapPlace mapPlace) {

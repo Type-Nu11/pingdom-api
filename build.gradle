@@ -136,3 +136,21 @@ tasks.register('verifyOpenApiContract') {
     description = 'Verifies generated OpenAPI specs against committed baseline specs.'
     dependsOn verifyOpenApiContractTasks
 }
+
+tasks.register('verifyCurrentSystemInventory', Exec) {
+    group = 'verification'
+    description = 'Verifies the source-based API, schema, and scheduler inventory.'
+    commandLine 'bash', 'scripts/verify-current-system-inventory.sh'
+}
+
+tasks.register('collectDevelopmentBootstrapManifest', Exec) {
+    group = 'documentation'
+    description = 'Collects the repeatable local development bootstrap manifest.'
+    commandLine 'bash', 'scripts/collect-development-bootstrap-manifest.sh'
+}
+
+tasks.register('verifyDevelopmentBootstrap', Exec) {
+    group = 'verification'
+    description = 'Verifies local profile, dependency, seed, and inventory bootstrap contracts.'
+    commandLine 'bash', 'scripts/verify-development-bootstrap.sh'
+}

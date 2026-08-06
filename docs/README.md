@@ -26,7 +26,9 @@
 
 ## 운영 문서
 
+- [현행 API·테이블·배치 의존성 인벤토리](operations/current-system-inventory.md)
 - [로컬 개발 환경과 dev seed 데이터](local-development.md)
+- [로컬 개발 환경 부트스트랩 Runbook](operations/development-bootstrap-runbook.md)
 - [v1 API 경로 정책](api-path-policy.md)
 - [API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md): HTTP 오류 응답, Outbox 재시도, notification delivery 기록의 책임 경계를 정리합니다.
 - [운영 관측성](observability.md)
@@ -40,6 +42,7 @@
 - [장소 추천 행동 전환 도메인 기준](architecture/place-recommendation-conversion.md)
 - [Pingdom 2.0 목표 아키텍처와 도메인 이벤트](architecture/pingdom-2.0-domain-events.md)
 - [데이터 마이그레이션, 호환 API, 롤백 정책](architecture/pingdom-2.0-migration-compatibility-rollback.md)
+- [#550 공백 포함 중복 패키지 디렉터리 정리 분석](architecture/issue-550-package-directory-analysis.md)
 - [목표 아키텍처](architecture/README.md)
 
 ## Features

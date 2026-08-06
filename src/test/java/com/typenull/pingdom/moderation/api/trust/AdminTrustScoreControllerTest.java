@@ -10,6 +10,7 @@ import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreEvidenceResp
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreResponse;
 import com.typenull.pingdom.moderation.application.query.trust.AdminTrustScoreQueryService;
 import com.typenull.pingdom.moderation.application.service.trust.AdminTrustScoreService;
+import com.typenull.pingdom.moderation.application.service.trust.TrustScoreBatchService;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -28,12 +29,16 @@ class AdminTrustScoreControllerTest {
     @Mock
     private AdminTrustScoreQueryService adminTrustScoreQueryService;
 
+    @Mock
+    private TrustScoreBatchService trustScoreBatchService;
+
     private MockMvc mockMvc;
 
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders
-                .standaloneSetup(new AdminTrustScoreController(adminTrustScoreService, adminTrustScoreQueryService))
+                .standaloneSetup(new AdminTrustScoreController(
+                        adminTrustScoreService, adminTrustScoreQueryService, trustScoreBatchService))
                 .build();
     }
 

@@ -11,6 +11,8 @@ import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
 import com.typenull.pingdom.offer.domain.exception.OfferException;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.application.service.conversion.PlaceConversionEventService;
+import com.typenull.pingdom.place.domain.conversion.PlaceConversionEventType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
@@ -31,6 +33,7 @@ public class TouristOfferService {
     private final TouristCouponRepository couponRepository;
     private final TouristEligibilityPolicy eligibilityPolicy;
     private final MerchantOfferAccessPolicy merchantAccessPolicy;
+    private final PlaceConversionEventService conversionEventService;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -64,9 +67,9 @@ public class TouristOfferService {
     @Transactional
     public CouponResponse issue(Long userId, Long offerId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        eligibilityPolicy.requireEligible(userId, now);
         TouristOffer offer = offerRepository.findByIdForUpdate(offerId)
                 .orElseThrow(() -> new OfferException(OfferErrorCode.OFFER_NOT_FOUND));
+        eligibilityPolicy.requireEligible(userId, now, offer.getEligibilityPolicy());
         if (!merchantAccessPolicy.isActiveOwnerOfPlace(
                 offer.getMerchantOwnerUserId(),
                 offer.getPlaceId(),
@@ -95,7 +98,15 @@ public class TouristOfferService {
                 expiresAt
         );
         try {
-            return CouponResponse.from(couponRepository.saveAndFlush(coupon), now);
+            TouristCoupon saved = couponRepository.saveAndFlush(coupon);
+            conversionEventService.publish(
+                    userId,
+                    offer.getPlaceId(),
+                    PlaceConversionEventType.BENEFIT,
+                    saved.getId(),
+                    now
+            );
+            return CouponResponse.from(saved, now);
         } catch (DataIntegrityViolationException exception) {
             if (hasConstraint(exception, "uq_tourist_coupon_offer_user")) {
                 throw new OfferException(OfferErrorCode.COUPON_ALREADY_ISSUED);

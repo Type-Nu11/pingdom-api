@@ -3,6 +3,10 @@ spring:
     compose:
       enabled: true
 
+pingdom:
+  dev-profile:
+    enabled: ${PINGDOM_DEV_PROFILE_ENABLED:false}
+
 springdoc:
   api-docs:
     enabled: true
@@ -20,10 +24,10 @@ springdoc:
 
 seed:
   admin:
-    enabled: ${SEED_ADMIN_ENABLED:true}
+    enabled: ${SEED_ADMIN_ENABLED:false}
     username: ${SEED_ADMIN_USERNAME:admin}
     email: ${SEED_ADMIN_EMAIL:admin@local}
-    password: ${SEED_ADMIN_PASSWORD:admin1234!}
+    password: ${SEED_ADMIN_PASSWORD:}
   dev-data:
     enabled: ${SEED_DEV_DATA_ENABLED:true}
     user-password: ${SEED_DEV_USER_PASSWORD:pingdom1234!}

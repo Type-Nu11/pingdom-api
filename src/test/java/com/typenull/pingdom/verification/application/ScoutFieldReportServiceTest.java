@@ -6,6 +6,7 @@ import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.eq;
 import static org.mockito.Mockito.isNull;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.mock;
@@ -14,7 +15,11 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.shared.observability.ScoutFieldReportMetrics;
 import com.typenull.pingdom.verification.api.dto.ScoutFieldReportCreateRequest;
@@ -41,6 +46,8 @@ class ScoutFieldReportServiceTest {
     private final ScoutFieldReportRepository reportRepository = mock(ScoutFieldReportRepository.class);
     private final UserRepository userRepository = mock(UserRepository.class);
     private final MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
+    private final AdminRoleAuthorizationService adminRoleAuthorizationService =
+            mock(AdminRoleAuthorizationService.class);
     private final AdminAuditLogService adminAuditLogService = mock(AdminAuditLogService.class);
     private final ScoutFieldReportMetrics metrics = mock(ScoutFieldReportMetrics.class);
     private final ScoutEligibilityPolicy scoutEligibilityPolicy = mock(ScoutEligibilityPolicy.class);
@@ -52,6 +59,7 @@ class ScoutFieldReportServiceTest {
                 reportRepository,
                 userRepository,
                 placeRepository,
+                adminRoleAuthorizationService,
                 Clock.fixed(Instant.parse("2026-07-21T06:00:00Z"), ZoneOffset.UTC),
                 adminAuditLogService,
                 metrics,
@@ -163,13 +171,17 @@ class ScoutFieldReportServiceTest {
 
     @Test
     void nonAdminCannotReviewScoutFieldReport() {
+        doThrow(new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED))
+                .when(adminRoleAuthorizationService)
+                .requirePermission(1L, AdminPermission.SCOUT_REVIEW);
+
         assertThatThrownBy(() -> service.review(
                 1L,
                 5L,
                 new ScoutFieldReportReviewRequest(ScoutFieldReportStatus.ACCEPTED, null)
-        )).isInstanceOf(VisitorVerificationException.class)
-                .extracting(exception -> ((VisitorVerificationException) exception).getErrorCode())
-                .isEqualTo(VisitorVerificationErrorCode.ADMIN_ACCOUNT_REQUIRED);
+        )).isInstanceOf(AdminException.class)
+                .extracting(exception -> ((AdminException) exception).getErrorCode())
+                .isEqualTo(AdminErrorCode.ADMIN_PERMISSION_REQUIRED);
 
         verify(reportRepository, never()).findByIdForUpdate(any());
     }

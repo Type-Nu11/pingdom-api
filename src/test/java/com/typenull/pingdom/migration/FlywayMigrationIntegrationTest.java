@@ -3,6 +3,8 @@ package com.typenull.pingdom.migration;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
+import com.typenull.pingdom.migration.fixture.FlywayBackfillScenario;
+import com.typenull.pingdom.migration.fixture.FlywayBackfillFixtures;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;
@@ -22,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "77";
+    private static final String LATEST_MIGRATION_VERSION = "87";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -70,9 +72,109 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(77);
+        assertThat(result.migrationsExecuted).isEqualTo(87);
 
         assertPostMigrationSchema();
+    }
+
+    @Test
+    void backfillsLegacyAdminUsersAsSuperAdminAssignments() throws Exception {
+        migrateTo("85");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES
+                        (940001, 'legacy-admin', 'legacy-admin@example.com', true, 'password', 1990,
+                         'ko', 'KR', TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                         'ADMIN', false),
+                        (940002, 'regular-user', 'regular-user@example.com', true, 'password', 1990,
+                         'ko', 'KR', TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                         'USER', false)
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM admin_role_assignment
+                    WHERE admin_user_id = 940001
+                      AND role = 'SUPER_ADMIN'
+                      AND status = 'ACTIVE'
+                      AND assigned_by_user_id IS NULL
+                      AND assigned_at = TIMESTAMP '2026-08-01 09:00:00'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM admin_role_assignment
+                    WHERE admin_user_id = 940002
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void backfillsExistingScoutReportersAsActiveProfilesAndEligibleScouts() throws Exception {
+        migrateTo("86");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES (
+                        950001, 'legacy-scout', 'legacy-scout@example.com', true, 'password', 1995,
+                        'ko', 'KR', TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                        'USER', false
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        950001, '기존 Scout 제보 장소', '서울시 중구', 37.5, 127.0, 'legacy-scout', 0
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO scout_field_report (
+                        id, scout_user_id, place_id, report_type, description, status,
+                        reviewed_at, created_at, updated_at, version
+                    ) VALUES (
+                        950001, 950001, 950001, 'OPERATING_HOURS', '기존 영업시간 제보', 'ACCEPTED',
+                        TIMESTAMP '2026-08-02 11:00:00', TIMESTAMP '2026-08-02 10:00:00',
+                        TIMESTAMP '2026-08-02 10:00:00', 0
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT status = 'ACTIVE'
+                       AND display_name = 'legacy-scout'
+                       AND reviewed_by_admin_user_id IS NULL
+                       AND status_reason IS NULL
+                    FROM scout_profile
+                    WHERE user_id = 950001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT status = 'ELIGIBLE'
+                       AND eligible_from = TIMESTAMP '2026-08-02 10:00:00'
+                       AND eligible_until IS NULL
+                    FROM scout_activity_eligibility
+                    WHERE scout_user_id = 950001
+                    """)).isTrue();
+        }
     }
 
     @Test
@@ -105,7 +207,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(75);
+        assertThat(result.migrationsExecuted).isEqualTo(85);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -150,6 +252,50 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void backfillsVerificationSummaryFromExistingVerifiedEvidence() throws Exception {
+        migrateTo("54");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (930010, '검증 요약 장소', '서울시 중구', 37.5, 127.0, 'summary-user', 0)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO place_information_evidence (
+                        place_information_evidence_id, map_place_id, source_type, evidence_type,
+                        verification_status, description, submitted_at, reviewed_by_admin_user_id,
+                        reviewed_at, created_at, updated_at
+                    ) VALUES
+                        (930010, 930010, 'ADMIN', 'ADMIN_REVIEW', 'ADMIN_VERIFIED',
+                         '관리자 확인', TIMESTAMP '2026-08-01 09:00:00', 1,
+                         TIMESTAMP '2026-08-02 10:00:00', TIMESTAMP '2026-08-01 09:00:00',
+                         TIMESTAMP '2026-08-02 10:00:00'),
+                        (930011, 930010, 'USER_REPORT', 'PHOTO', 'UNVERIFIED',
+                         '방문자 사진', TIMESTAMP '2026-08-03 09:00:00', NULL,
+                         NULL, TIMESTAMP '2026-08-03 09:00:00', TIMESTAMP '2026-08-03 09:00:00')
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT verified_evidence_count = 1
+                       AND last_verified_evidence_id = 930010
+                       AND last_verified_source_type = 'ADMIN'
+                       AND last_verified_at = TIMESTAMP '2026-08-02 10:00:00'
+                    FROM place_information_verification_summary
+                    WHERE map_place_id = 930010
+                    """)).isTrue();
+        }
+    }
+
+    @Test
     void preservesExistingPlacesWhenApplyingTouristInformationMigration() throws Exception {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -175,9 +321,37 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(50);
+        assertThat(result.migrationsExecuted).isEqualTo(60);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM information_schema.columns
+                    WHERE table_name = 'tourist_offer'
+                      AND column_name IN ('eligibility_policy', 'inventory_policy', 'expiry_policy')
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'tourist_offer'::regclass
+                      AND conname IN (
+                          'ck_tourist_offer_eligibility_policy',
+                          'ck_tourist_offer_inventory_policy',
+                          'ck_tourist_offer_expiry_policy'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'tourist_offer'::regclass
+                          AND conname = 'ck_tourist_offer_quantity'
+                          AND pg_get_constraintdef(oid) LIKE '%UNLIMITED%'
+                          AND convalidated = true
+                    )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
@@ -223,6 +397,32 @@ class FlywayMigrationIntegrationTest {
                           AND contype = 'f'
                           AND confrelid = 'merchant_owner_profile'::regclass
                           AND convalidated = true
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_name = 'place_information_verification_summary'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_information_verification_summary'::regclass
+                      AND conname IN (
+                          'fk_place_information_summary_place',
+                          'fk_place_information_summary_evidence',
+                          'ck_place_information_summary_count'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'place_information_verification_summary'
+                          AND indexname = 'idx_place_information_summary_last_verified'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -372,7 +572,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(22);
+        assertThat(result.migrationsExecuted).isEqualTo(32);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -424,6 +624,87 @@ class FlywayMigrationIntegrationTest {
                           AND created_at = TIMESTAMP '2026-07-21 10:00:00'
                     )
                     """)).isTrue();
+        }
+    }
+
+    @Test
+    void skipsLegacyPlacesWithoutUsableImagesDuringBackfill() throws Exception {
+        FlywayBackfillScenario scenario = scenario("legacy-place-without-image-is-skipped");
+        migrateTo("55");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, image_url,
+                        latitude, longitude, registrant, photo_count
+                    ) VALUES
+                        (930002, '이미지 없음 장소', '경상남도 진주시 빈이미지로 1', NULL,
+                         35.1802, 128.1079, 'empty-image-user', 0),
+                        (930003, '공백 이미지 장소', '경상남도 진주시 빈이미지로 2', '   ',
+                         35.1803, 128.1080, 'blank-image-user', 0)
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).as(scenario.assertions().toString()).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM place_media
+                    WHERE map_place_id IN (930002, 930003)
+                    """))
+                    .as("%s: %s", scenario.name(), scenario.expectedBackfill())
+                    .isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM map_place
+                    WHERE map_place_id IN (930002, 930003)
+                    """))
+                    .as("%s: 기존 장소 row는 보존되어야 한다", scenario.name())
+                    .isTrue();
+        }
+    }
+
+    @Test
+    void retryingMigrationDoesNotDuplicateBackfilledMedia() throws Exception {
+        FlywayBackfillScenario scenario = scenario("legacy-place-image-to-exploration-media");
+        migrateTo("55");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, image_url,
+                        latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        930004, '재실행 장소', '경상남도 진주시 재실행로 1',
+                        'https://example.com/retry-place.jpg',
+                        35.1804, 128.1081, 'retry-user', 1
+                    )
+                    """);
+        }
+
+        MigrateResult firstRun = migrate(false);
+        MigrateResult retryRun = migrate(false);
+
+        assertThat(firstRun.success).as(scenario.assertions().toString()).isTrue();
+        assertThat(retryRun.success).isTrue();
+        assertThat(retryRun.migrationsExecuted)
+                .as("%s: 재시도 시 이미 적용된 migration은 다시 실행되면 안 된다", scenario.name())
+                .isZero();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM place_media
+                    WHERE map_place_id = 930004
+                      AND purpose = 'EXPLORATION'
+                    """))
+                    .as("%s: %s", scenario.name(), scenario.expectedBackfill())
+                    .isTrue();
         }
     }
 
@@ -585,6 +866,76 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    @Test
+    void preservesLegacyConversionsAndDetachesAttributionWhenFeatureLogIsDeleted() throws Exception {
+        migrateTo("66");
+
+        long featureLogId;
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO place_recommendation_conversion (
+                        place_recommendation_click_id, place_id, user_id,
+                        conversion_type, recommendation_version, created_at
+                    ) VALUES (
+                        770001, 770001, 770001, 'BOOKMARK', 'place-rec-v1', CURRENT_TIMESTAMP
+                    )
+                    """);
+            try (ResultSet resultSet = statement.executeQuery("""
+                    INSERT INTO place_recommendation_feature_log (
+                        request_id, user_id, place_id, recommendation_version,
+                        recommendation_stage, candidate_source, ranking, distance_meters,
+                        geo_score, personal_score, quality_score, engagement_score,
+                        conversion_score, exploration_score, freshness_score, final_score,
+                        created_at
+                    ) VALUES (
+                        'attribution-request', 770002, 770002, 'place-rec-v2',
+                        'RANKED', 'GEO', 1, 120, 0.9, 0.4, 0.6, 0.3,
+                        0.2, 0.1, 0.5, 0.7, CURRENT_TIMESTAMP
+                    )
+                    RETURNING place_recommendation_feature_log_id
+                    """)) {
+                assertThat(resultSet.next()).isTrue();
+                featureLogId = resultSet.getLong(1);
+            }
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO place_recommendation_conversion (
+                        place_recommendation_click_id, place_recommendation_feature_log_id,
+                        place_id, user_id, conversion_type, recommendation_version, created_at
+                    ) VALUES (
+                        770002, %d, 770002, 770002, 'LIKE', 'place-rec-v2', CURRENT_TIMESTAMP
+                    )
+                    """.formatted(featureLogId));
+
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM place_recommendation_conversion
+                        WHERE place_recommendation_click_id = 770001
+                          AND place_recommendation_feature_log_id IS NULL
+                    )
+                    """)).isTrue();
+
+            statement.executeUpdate("""
+                    DELETE FROM place_recommendation_feature_log
+                    WHERE place_recommendation_feature_log_id = %d
+                    """.formatted(featureLogId));
+
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM place_recommendation_conversion
+                    WHERE place_recommendation_feature_log_id IS NULL
+                    """)).isTrue();
+        }
+    }
+
     private MigrateResult migrate(boolean baselineOnMigrate) {
         Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -654,6 +1005,13 @@ class FlywayMigrationIntegrationTest {
                 """);
     }
 
+    private FlywayBackfillScenario scenario(String name) {
+        return FlywayBackfillFixtures.scenarios().stream()
+                .filter(scenario -> scenario.name().equals(name))
+                .findFirst()
+                .orElseThrow(() -> new AssertionError("Missing Flyway backfill fixture: " + name));
+    }
+
     private void executeBaselineSchemaScript() throws Exception {
         try (Connection connection = postgres.createConnection("")) {
             ScriptUtils.executeSqlScript(
@@ -666,6 +1024,105 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'merchant_place_information'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'merchant_place_information'
+                      AND column_name IN (
+                          'description', 'contact_phone', 'website_url',
+                          'reservation_url', 'updated_by_user_id'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_place_information'::regclass
+                      AND conname IN (
+                          'ck_merchant_place_information_place',
+                          'ck_merchant_place_information_updater',
+                          'ck_merchant_place_information_version',
+                          'ck_merchant_place_information_description',
+                          'ck_merchant_place_information_contact_phone',
+                          'ck_merchant_place_information_website_url',
+                          'ck_merchant_place_information_reservation_url'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'admin_role_assignment'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'admin_role_assignment'::regclass
+                      AND conname IN (
+                          'fk_admin_role_assignment_user',
+                          'fk_admin_role_assignment_assigner',
+                          'ck_admin_role_assignment_user',
+                          'ck_admin_role_assignment_role',
+                          'ck_admin_role_assignment_status',
+                          'ck_admin_role_assignment_period'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'admin_role_assignment'
+                          AND indexname = 'uq_admin_role_assignment_active'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM information_schema.tables
+                        WHERE table_schema = 'public'
+                          AND table_name = 'place_conversion_event'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_conversion_event'
+                      AND column_name IN (
+                          'user_id', 'map_place_id', 'conversion_type', 'source_id',
+                          'deduplication_key', 'occurred_at', 'created_at'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_conversion_event'::regclass
+                      AND conname IN (
+                          'ck_place_conversion_event_user',
+                          'ck_place_conversion_event_place',
+                          'ck_place_conversion_event_source',
+                          'ck_place_conversion_event_type',
+                          'uq_place_conversion_event_source',
+                          'uq_place_conversion_event_deduplication_key'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'place_conversion_event'
+                      AND indexname IN (
+                          'idx_place_conversion_event_place_occurred',
+                          'idx_place_conversion_event_user_occurred'
+                      )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2
                     FROM information_schema.tables
@@ -684,12 +1141,55 @@ class FlywayMigrationIntegrationTest {
                       AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM information_schema.columns
+                    WHERE table_name = 'settlement_ledger_entry'
+                      AND column_name IN (
+                          'payment_transaction_id', 'merchant_owner_user_id', 'entry_type',
+                          'gross_amount_minor', 'fee_amount_minor', 'net_amount_minor',
+                          'currency', 'status', 'created_at'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM pg_constraint
+                    WHERE conname IN (
+                        'ck_payment_provider',
+                        'ck_payment_amount',
+                        'ck_payment_currency',
+                        'ck_payment_status',
+                        'ck_payment_state',
+                        'ck_settlement_entry_type',
+                        'ck_settlement_currency',
+                        'ck_settlement_status',
+                        'ck_settlement_state'
+                    )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conname IN ('ck_payment_amount', 'ck_settlement_amounts')
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
                         FROM pg_indexes
                         WHERE tablename = 'payment_transaction'
                           AND indexname = 'uq_payment_reservation_active'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE (tablename = 'payment_transaction'
+                           AND indexname = 'idx_payment_merchant_created')
+                       OR (tablename = 'settlement_ledger_entry'
+                           AND indexname = 'idx_settlement_merchant_created')
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
@@ -920,6 +1420,41 @@ class FlywayMigrationIntegrationTest {
                         FROM information_schema.tables
                         WHERE table_name = 'scout_field_report'
                     )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM information_schema.tables
+                    WHERE table_name IN ('scout_profile', 'scout_activity_eligibility')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_profile'::regclass
+                      AND conname IN (
+                          'fk_scout_profile_user',
+                          'fk_scout_profile_reviewer',
+                          'ck_scout_profile_user',
+                          'ck_scout_profile_display_name',
+                          'ck_scout_profile_status',
+                          'ck_scout_profile_state',
+                          'ck_scout_profile_version'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 7
+                    FROM pg_constraint
+                    WHERE conrelid = 'scout_activity_eligibility'::regclass
+                      AND conname IN (
+                          'fk_scout_activity_eligibility_profile',
+                          'fk_scout_activity_eligibility_reviewer',
+                          'ck_scout_activity_eligibility_user',
+                          'ck_scout_activity_eligibility_status',
+                          'ck_scout_activity_eligibility_period',
+                          'ck_scout_activity_eligibility_lifecycle',
+                          'ck_scout_activity_eligibility_version'
+                      )
+                      AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
@@ -2206,6 +2741,32 @@ class FlywayMigrationIntegrationTest {
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_recommendation_feature_log'
+                      AND column_name IN ('reason_code', 'limit_reason_code')
+                      AND is_nullable = 'YES'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_recommendation_feature_log'::regclass
+                      AND conname IN (
+                          'ck_recommendation_feature_log_reason_code',
+                          'ck_recommendation_feature_log_limit_reason_code'
+                      )
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'place_recommendation_feature_log'
+                      AND indexname IN (
+                          'idx_recommendation_feature_log_reason',
+                          'idx_recommendation_feature_log_limit_reason'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
                     FROM information_schema.tables
                     WHERE table_name IN ('tourist_offer', 'tourist_coupon')
                     """)).isTrue();
@@ -2422,6 +2983,17 @@ class FlywayMigrationIntegrationTest {
                     SELECT COUNT(*) = 2
                     FROM information_schema.tables
                     WHERE table_name IN ('trust_score_anomaly', 'trust_score_intervention_rule')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'reporter_moderation_policy'::regclass
+                      AND conname IN (
+                          'ck_reporter_moderation_policy_counts',
+                          'ck_reporter_moderation_policy_trust_score'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 15

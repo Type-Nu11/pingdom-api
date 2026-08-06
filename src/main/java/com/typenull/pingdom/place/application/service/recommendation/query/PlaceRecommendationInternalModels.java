@@ -58,7 +58,11 @@ record PlaceDistance(
 ) {
 }
 
-record CandidateSelection(java.util.List<PlaceDistance> candidates, double appliedRadiusKm) {
+record CandidateSelection(
+        java.util.List<PlaceDistance> candidates,
+        double appliedRadiusKm,
+        boolean fallbackCandidatePool
+) {
 }
 
 final class CandidatePlaceAccumulator {
