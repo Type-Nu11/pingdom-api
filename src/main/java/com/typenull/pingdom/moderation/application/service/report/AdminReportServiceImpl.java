@@ -23,6 +23,7 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -49,6 +50,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
     private final ReportPolicyService reportPolicyService;
+    private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
     private final Clock clock;
 
     @Override
@@ -77,6 +79,11 @@ public class AdminReportServiceImpl implements AdminReportService {
                 postReport.getReason(),
                 beforeState,
                 reportState(postReport, reportedUser.isCurrentlyBanned(now), true)
+        );
+        adminNotificationOutboxPublisher.publishReportProcessed(
+                postReport.getId(),
+                postReport.getReportedImageId(),
+                postReport.getStatus()
         );
 
         return new AdminReportActionResponse(
@@ -114,6 +121,11 @@ public class AdminReportServiceImpl implements AdminReportService {
                 postReport.getReason(),
                 beforeState,
                 reportState(postReport, banned, false)
+        );
+        adminNotificationOutboxPublisher.publishReportProcessed(
+                postReport.getId(),
+                postReport.getReportedImageId(),
+                postReport.getStatus()
         );
 
         reporter.getUnacceptedReportPercent();
@@ -168,6 +180,11 @@ public class AdminReportServiceImpl implements AdminReportService {
                     beforeStates.get(report.getId()),
                     reportState(report, afterBanned, afterPostHidden)
             );
+            adminNotificationOutboxPublisher.publishReportProcessed(
+                    report.getId(),
+                    report.getReportedImageId(),
+                    report.getStatus()
+            );
         }
 
         return toBulkActionResponse(mapImage, PostReportStatus.ACCEPTED, pendingReports.size(), now);
@@ -206,6 +223,11 @@ public class AdminReportServiceImpl implements AdminReportService {
                     BULK_REPORT_DECLINED_REASON,
                     beforeStates.get(report.getId()),
                     reportState(report, beforeBanned, postHidden)
+            );
+            adminNotificationOutboxPublisher.publishReportProcessed(
+                    report.getId(),
+                    report.getReportedImageId(),
+                    report.getStatus()
             );
         }
 
