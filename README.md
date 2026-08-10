@@ -2,231 +2,130 @@
 
 ## Overview
 
-Pingdom Server는 Pingdom 사용자 애플리케이션과 관리자 시스템에서 사용하는
-REST API와 핵심 비즈니스 로직을 제공하는 백엔드 애플리케이션입니다.
+이 저장소는 Pingdom 프로젝트의 **백엔드 API와 핵심 비즈니스 로직**을 관리합니다.
 
-사용자 인증, 지도 기반 장소, 사진 게시글, 장소 추천을 비롯해 사업자 운영,
-예약, 혜택, 결제, 알림 및 관리자 기능을 하나의 서비스에서 관리합니다.
+Pingdom App과 Admin에서 필요한 인증, 장소, 게시글, 추천, 사업자 운영, 예약, 혜택,
+결제, 알림 및 관리 기능을 제공합니다. 핵심 데이터의 일관성을 보장하고 외부 서비스
+연동과 비동기 후속 처리를 안정적으로 수행하는 것이 이 저장소의 주요 역할입니다.
 
 ## Project Status
 
 현재 **SNAPSHOT 개발 단계**입니다.
 
-핵심 기능과 서비스 정책을 검증하고 있으며, 안정화 이전까지 API, 데이터 구조 및
-애플리케이션 동작이 예고 없이 변경될 수 있습니다.
+프로젝트 요구사항을 검증하고 있으며, 안정화 이전까지 기능, 구성, API 계약 및
+제공 결과가 예고 없이 변경될 수 있습니다.
 
 | Item | Status |
 |---|---|
 | Development | `In Progress` |
 | Release | `SNAPSHOT` |
 | Stability | `Experimental` |
-| Production Ready | `No` |
 
-## Core Capabilities
+## Repository Role
 
-| Domain | Description |
+| Item | Description |
 |---|---|
-| Identity | 회원가입, 로그인, JWT, Google OAuth2/OIDC, 계정 및 사용자 상태 관리 |
-| Place | 좌표 기반 장소 등록, 조회, 검색, 북마크 및 장소 정보 관리 |
-| Post | 장소에 연결된 사진 게시글 등록, 조회, 수정 및 삭제 |
-| Engagement | 게시글 좋아요, 신고 및 사용자 상호작용 관리 |
-| Recommendation | 위치와 사용자 활동을 기반으로 장소 추천 후보 및 전환 데이터 관리 |
-| Merchant | 사업자 인증, 장소 소유권, 사업자 프로필 및 팀 관리 |
-| Product | 사업자가 제공하는 예약 가능 상품과 서비스 관리 |
-| Reservation | 사용자 예약 생성, 조회, 확정 및 취소 |
-| Offer | 혜택, 쿠폰 발급 및 사용 처리 |
-| Payment | 결제 내역, 환불 및 정산 정보 관리 |
-| Campaign | 프로모션과 캠페인 운영 |
-| Verification | 위치 체크인, 방문 증빙, 현장 제보 및 검증 처리 |
-| Notification | 이메일과 Firebase Cloud Messaging 기반 알림 처리 |
-| Moderation | 신고, 사용자 제재, 콘텐츠 및 사업자 운영 관리 |
-| Privacy | 개인정보 처리 이력, 데이터 내보내기 및 탈퇴 데이터 정리 |
+| Type | `Service` |
+| Responsibility | Pingdom의 REST API, 핵심 비즈니스 규칙 및 데이터 일관성 관리 |
+| Primary Output | 실행 가능한 Spring Boot 애플리케이션, REST API, OpenAPI 계약 및 DB 마이그레이션 |
+| Target | Pingdom App, Pingdom Admin, 사업자 기능 및 외부 연동 시스템 |
 
-## Architecture
+## Scope
 
-Pingdom Server는 도메인 책임을 기준으로 분리한
-**Event-Driven Modular Monolith** 구조를 사용합니다.
+### Included
 
-복잡한 조회 요구사항이 있는 영역에는 선택적으로 CQRS 성격의 Query Service를 사용하고,
-이메일, 알림, 외부 저장소 처리와 같은 부수효과는 Outbox 기반 비동기 작업으로 분리합니다.
+- 사용자 인증, 계정, 권한 및 개인정보 처리
+- 지도 기반 장소, 사진 게시글, 북마크, 좋아요 및 장소 추천
+- 사업자 인증, 장소 소유권, 상품, 예약, 혜택, 쿠폰 및 결제
+- 사용자 알림, 신고, 제재, 현장 검증 및 관리자 운영 기능
+- PostgreSQL/PostGIS 데이터 저장, Redis 기반 상태 관리 및 Outbox 후속 처리
 
-```text
-User App ───────┐
-Merchant App ───┼──> REST API
-Admin System ───┘        │
-                         ▼
-              Application / Domain Modules
-                         │
-            ┌────────────┼────────────┐
-            ▼            ▼            ▼
-     PostgreSQL       Redis       Outbox Worker
-       PostGIS                          │
-                              ┌─────────┼─────────┐
-                              ▼         ▼         ▼
-                            AWS S3     FCM      Postmark
-```
+### Not Included
 
-### Design Principles
+- 사용자 및 사업자 화면의 UI/UX 구현
+- 관리자 웹 화면의 UI/UX 구현
+- 클라우드 리소스 프로비저닝과 네트워크 인프라 구성
 
-- 도메인 책임을 기준으로 모듈 경계를 분리합니다.
-- 핵심 상태 변경은 동기 트랜잭션으로 처리합니다.
-- 외부 시스템 호출과 후속 처리는 비동기로 분리합니다.
-- Outbox 작업은 재시도와 중복 처리를 고려합니다.
-- 복잡한 조회 요구가 있는 영역에만 선택적으로 CQRS를 적용합니다.
-- API와 데이터베이스 변경은 계약 및 마이그레이션으로 관리합니다.
-- 장애 발생 시 추적과 복구가 가능하도록 운영 정보를 기록합니다.
+## Key Capabilities
 
-상세한 설계 원칙은 [Architecture Documentation](docs/architecture/README.md)을 참고합니다.
+- **Identity and Access**: 이메일 계정, JWT, Google OAuth2/OIDC 및 사용자 상태를 관리합니다.
+- **Place and Content**: 좌표 기반 장소, 사진 게시글, 북마크와 사용자 상호작용을 제공합니다.
+- **Discovery and Recommendation**: 위치와 사용자 행동을 기반으로 장소 탐색과 추천을 지원합니다.
+- **Merchant Operations**: 사업자 인증, 장소 소유권, 팀과 운영 정보를 관리합니다.
+- **Reservation and Commerce**: 상품, 예약, 혜택, 쿠폰, 결제, 환불 및 정산 흐름을 처리합니다.
+- **Operations and Reliability**: 신고, 제재, 알림, 개인정보 처리와 재시도 가능한 후속 작업을 관리합니다.
 
-## Tech Stack
+## Technology and Tools
 
 | Category | Technology |
 |---|---|
-| Language | Java 21 |
-| Framework | Spring Boot 3.3.5 |
-| Web | Spring MVC, Spring Validation |
-| Security | Spring Security, JWT, BCrypt, Google OAuth2/OIDC |
-| Persistence | Spring Data JPA, Hibernate Spatial |
-| Database | PostgreSQL, PostGIS |
-| Cache | Redis |
-| Migration | Flyway |
-| Async | Spring Scheduling, Outbox Worker |
-| Storage | AWS S3 |
-| Notification | Firebase Cloud Messaging, Postmark |
-| API Documentation | SpringDoc OpenAPI |
-| Test | JUnit 5, Spring Boot Test, Testcontainers, H2 |
-| Build | Gradle 9.4.1 |
-| Infrastructure | Docker, Docker Compose, GitHub Actions, AWS EC2 |
+| Primary | Java 21, PostgreSQL 16, PostGIS, Redis 7.2 |
+| Framework | Spring Boot 3.3.5, Spring MVC, Spring Security, Spring Data JPA, Hibernate Spatial, Flyway |
+| Build | Gradle 9.4.1, Docker, Docker Compose |
+| Quality | JUnit 5, Spring Boot Test, Testcontainers, H2, SpringDoc OpenAPI, OpenAPI Diff |
+| Delivery | GitHub Actions, Docker Image, AWS EC2 |
 
 ## Getting Started
 
-### Prerequisites
+이 저장소를 실행하려면 Java와 Docker 기반의 로컬 개발 환경이 필요합니다.
 
-로컬 실행을 위해 다음 도구가 필요합니다.
+### Requirements
 
 - Git
 - Java 21
 - Docker 및 Docker Compose
+- Google OAuth, AWS S3, Postmark, Firebase 연동이 필요한 기능에 대한 별도 자격 증명
 
-Gradle은 저장소에 포함된 Gradle Wrapper를 사용하므로 별도로 설치하지 않아도 됩니다.
-
-### Clone
+### Setup
 
 ```bash
-git clone https://github.com/Type-Nu11/Pingdom_Server.git
-cd Pingdom_Server
+git clone https://github.com/Type-Nu11/pingdom-api.git
+cd pingdom-api
+./scripts/bootstrap-local-development.sh --verify
 ```
 
-### Run with Local Profile
+### Usage
 
 ```bash
 SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
 ```
 
-`local` 프로필을 사용하면 Spring Docker Compose 연동을 통해
-`docker-compose-local.yml`에 정의된 PostgreSQL과 Redis가 함께 실행됩니다.
-
-### Run with Development Profile
-
-```bash
-PINGDOM_DEV_PROFILE_ENABLED=true \
-SPRING_PROFILES_ACTIVE=dev \
-./gradlew bootRun
-```
-
-`dev` 프로필은 개발용 API 문서를 제공하므로
-`PINGDOM_DEV_PROFILE_ENABLED=true`가 설정된 경우에만 실행됩니다.
-
-### Bootstrap Script
-
-로컬 개발 환경은 제공되는 스크립트로 검증하고 실행할 수 있습니다.
-
-```bash
-./scripts/bootstrap-local-development.sh --verify
-./scripts/bootstrap-local-development.sh --start-dependencies
-./scripts/bootstrap-local-development.sh --run
-```
-
-상세한 실행 방법은 [Local Development Guide](docs/local-development.md)를 참고합니다.
+`local` 프로필에서는 `docker-compose-local.yml`에 정의된 PostgreSQL과 Redis가
+Spring Docker Compose 연동을 통해 함께 실행됩니다. 애플리케이션 실행 후
+`http://localhost:8080/swagger-ui`에서 API 문서를 확인할 수 있습니다.
 
 ## Configuration
 
-애플리케이션은 환경변수와 Spring Profile을 통해 실행 환경을 구성합니다.
-
-| Category | Environment Variables |
-|---|---|
-| Profile | `SPRING_PROFILES_ACTIVE` |
-| Database | `DB_URL`, `DB_USERNAME`, `DB_PASSWORD` |
-| Redis | `REDIS_HOST`, `REDIS_PORT`, `REDIS_PASSWORD` |
-| Authentication | `JWT_SECRET`, `JWT_ACCESS_TOKEN_EXPIRATION_SECONDS` |
-| Google OAuth | `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET` |
-| AWS S3 | `AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY` |
-| Email | `POSTMARK_SERVER_TOKEN`, `POSTMARK_FROM_EMAIL` |
-| Firebase | `FCM_KEY_PATH` |
-| CORS | `CORS_ALLOWED_ORIGINS` |
-
-> 실제 인증정보, API Key, 비밀 값 및 운영 환경 설정은 저장소에 커밋하지 않습니다.
-
-로컬 프로필에는 개발 환경 실행을 위한 기본값이 제공되며,
-운영 환경에서는 반드시 별도의 안전한 값을 사용해야 합니다.
-
-## API Documentation
-
-애플리케이션 실행 후 Swagger UI에서 API 문서를 확인할 수 있습니다.
+애플리케이션 설정과 로컬 개발 기준은 다음 파일과 문서에서 관리합니다.
 
 ```text
-http://localhost:8080/swagger-ui
+src/main/resources/application.yaml
+src/main/resources/application-local.yaml
+src/main/resources/application-dev.yaml
+docs/local-development.md
 ```
 
-OpenAPI 문서는 목적에 따라 다음 그룹으로 구분됩니다.
+데이터베이스, Redis, JWT, Google OAuth, AWS S3, Postmark, Firebase 및 CORS 설정은
+환경변수로 주입합니다. 실제 인증정보, API Key, 비밀 값 및 운영 환경 정보는
+저장소에 커밋하지 않습니다.
 
-| Group | URL |
-|---|---|
-| App API | `/v3/api-docs/app` |
-| Common API | `/v3/api-docs/common` |
-| Web/Admin API | `/v3/api-docs/web` |
+## Verification
 
-### Export OpenAPI Specifications
-
-```bash
-./gradlew exportOpenApiSpecs
-```
-
-생성된 OpenAPI 파일은 `build/openapi`에 저장됩니다.
-
-### Verify API Compatibility
-
-```bash
-./gradlew verifyOpenApiContract
-```
-
-기준 계약은 `src/test/resources/openapi-baseline`에서 관리합니다.
-
-## Testing
-
-### Run Tests
+저장소 변경사항은 테스트, API 계약, 로컬 개발 환경 및 시스템 인벤토리 기준으로 검증합니다.
 
 ```bash
 ./gradlew test
-```
-
-### Run a Specific Test
-
-```bash
-./gradlew test --tests "{TestClassName}"
-```
-
-### Verify Development Bootstrap
-
-```bash
+./gradlew verifyOpenApiContract
 ./gradlew verifyDevelopmentBootstrap
-```
-
-### Verify System Inventory
-
-```bash
 ./gradlew verifyCurrentSystemInventory
 ```
+
+| Verification | Purpose |
+|---|---|
+| `./gradlew test` | 단위 및 통합 테스트 실행 |
+| `./gradlew verifyOpenApiContract` | 기준 OpenAPI와 현재 API 계약의 호환성 검증 |
+| `./gradlew verifyDevelopmentBootstrap` | 로컬 프로필, 의존성 및 개발 환경 구성 검증 |
+| `./gradlew verifyCurrentSystemInventory` | API, 스키마 및 스케줄러 인벤토리 검증 |
 
 ## Repository Structure
 
@@ -242,9 +141,9 @@ OpenAPI 문서는 목적에 따라 다음 그룹으로 구분됩니다.
 │   │   │   ├── merchant          # 사업자 도메인
 │   │   │   ├── product           # 예약 가능 상품
 │   │   │   ├── reservation       # 예약 처리
+│   │   │   ├── availability      # 예약 및 이용 가능 상태
 │   │   │   ├── offer             # 혜택과 쿠폰
 │   │   │   ├── payment           # 결제, 환불 및 정산
-│   │   │   ├── availability      # 이용 가능 상태
 │   │   │   ├── campaign          # 캠페인
 │   │   │   ├── boost             # 장소 노출 강화
 │   │   │   ├── verification      # 방문 및 현장 검증
@@ -252,7 +151,7 @@ OpenAPI 문서는 목적에 따라 다음 그룹으로 구분됩니다.
 │   │   │   ├── moderation        # 관리자 운영 및 제재
 │   │   │   ├── privacy           # 개인정보 처리
 │   │   │   └── shared            # 공통 설정과 기술 지원
-│   │   └── resources             # 애플리케이션 설정과 DB 마이그레이션
+│   │   └── resources             # 설정과 데이터베이스 마이그레이션
 │   └── test                      # 단위 및 통합 테스트
 ├── docs                          # 아키텍처와 운영 문서
 ├── scripts                       # 개발 환경 및 검증 스크립트
@@ -262,6 +161,18 @@ OpenAPI 문서는 목적에 따라 다음 그룹으로 구분됩니다.
 ├── build.gradle                  # Gradle 빌드 구성
 └── README.md
 ```
+
+주요 도메인은 독립된 책임을 가지며, 공통 설정과 기술 지원은 `shared`에서 관리합니다.
+상세한 모듈 책임과 의존 방향은 아키텍처 문서를 기준으로 합니다.
+
+## Related Repositories
+
+| Repository | Relationship |
+|---|---|
+| [pingdom-app](https://github.com/Type-Nu11/pingdom-app) | Pingdom 사용자 및 사업자 애플리케이션 |
+| [pingdom-admin](https://github.com/Type-Nu11/pingdom-admin) | 서비스 운영을 위한 관리자 웹 애플리케이션 |
+| [pingdom-infra](https://github.com/Type-Nu11/pingdom-infra) | 클라우드 인프라와 배포 환경 구성 |
+| [pingdom-loadbalancer](https://github.com/Type-Nu11/pingdom-loadbalancer) | 서비스 트래픽 진입점과 로드밸런싱 구성 |
 
 ## Documentation
 
@@ -280,15 +191,15 @@ OpenAPI 문서는 목적에 따라 다음 그룹으로 구분됩니다.
 
 현재 버전은 안정화 이전의 SNAPSHOT 버전입니다.
 
-- API와 데이터 구조는 변경될 수 있습니다.
-- 이전 SNAPSHOT 버전과의 호환성을 보장하지 않습니다.
-- 데이터베이스 변경은 Flyway 마이그레이션을 통해 관리합니다.
-- 의도된 API 변경은 OpenAPI 기준 계약과 함께 갱신합니다.
-- 정식 버전 출시 이후 별도의 버전 및 호환성 정책을 적용할 예정입니다.
+- 정식 버전과의 호환성을 보장하지 않습니다.
+- API와 데이터 구조는 안정화 이전까지 변경될 수 있습니다.
+- 변경사항은 저장소의 Release 또는 변경 이력을 기준으로 확인합니다.
+- 데이터베이스 변경은 Flyway 마이그레이션으로 관리합니다.
+- 안정화 이후 별도의 버전 및 호환성 정책을 적용할 예정입니다.
 
 ## License
 
-이 프로젝트는 [MIT License](LICENSE)를 따릅니다.
+이 프로젝트의 사용 및 배포 조건은 [MIT License](LICENSE)를 따릅니다.
 
 ---
 
