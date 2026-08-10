@@ -18,12 +18,16 @@ import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
+import org.hibernate.exception.ConstraintViolationException;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
 public class MapImageLikeService {
+
+    private static final String MAP_IMAGE_LIKE_UNIQUE_CONSTRAINT = "uk_map_image_like_user_image";
 
     private final MapImageLikeRepository mapImageLikeRepository;
     private final MapImageRepository mapImageRepository;
@@ -51,7 +55,7 @@ public class MapImageLikeService {
                 .userId(userId)
                 .build();
 
-        MapImageLike savedLike = mapImageLikeRepository.save(mapImageLike);
+        MapImageLike savedLike = saveLike(mapImageLike);
         mapImageRepository.increaseLikeCount(mapImageId);
         if (mapImage.getMapPlace() != null) {
             placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());
@@ -103,5 +107,29 @@ public class MapImageLikeService {
 
         notification.setRead(true);
 
+    }
+
+    private MapImageLike saveLike(MapImageLike mapImageLike) {
+        try {
+            // 경쟁 요청의 고유 제약 위반을 이 지점에서 표준 예외로 변환한다.
+            return mapImageLikeRepository.saveAndFlush(mapImageLike);
+        } catch (DataIntegrityViolationException exception) {
+            if (hasConstraint(exception, MAP_IMAGE_LIKE_UNIQUE_CONSTRAINT)) {
+                throw new MapException(MapErrorCode.ALREADY_LIKED);
+            }
+            throw exception;
+        }
+    }
+
+    private boolean hasConstraint(Throwable throwable, String constraintName) {
+        Throwable current = throwable;
+        while (current != null) {
+            if (current instanceof ConstraintViolationException violation
+                    && constraintName.equalsIgnoreCase(violation.getConstraintName())) {
+                return true;
+            }
+            current = current.getCause();
+        }
+        return false;
     }
 }
