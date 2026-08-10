@@ -1,12 +1,4 @@
-<div align="center">
-
-# Pingdom Server
-
-### 장소의 발견과 기록, 사용자와 사업자 경험을 연결하는 Pingdom 백엔드 서버
-
-</div>
-
----
+<img width="7680" height="4320" alt="Frame 123677" src="https://github.com/user-attachments/assets/667fbadc-2b0e-4951-8aa7-e8e3cd9a904c" />
 
 ## Overview
 
