@@ -54,7 +54,9 @@ public class AdminNotificationQueryServiceImpl implements AdminNotificationQuery
                 userId,
                 type,
                 read,
+                from != null,
                 from,
+                to != null,
                 to,
                 pageable
         );
