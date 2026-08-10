@@ -1,7 +1,10 @@
 package com.typenull.pingdom.engagement.application.service;
 
+import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -14,14 +17,19 @@ import com.typenull.pingdom.place.application.service.recommendation.snapshot.Pl
 import com.typenull.pingdom.post.application.query.PostQueryService;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import java.sql.SQLException;
 import java.util.Optional;
+import org.hibernate.exception.ConstraintViolationException;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @ExtendWith(MockitoExtension.class)
 class MapImageLikeServiceTest {
@@ -64,7 +72,7 @@ class MapImageLikeServiceTest {
                 .build();
         when(mapImageLikeRepository.existsByUserIdAndMapImageId(likerId, mapImageId)).thenReturn(false);
         when(mapImageRepository.findWithMapPlaceById(mapImageId)).thenReturn(Optional.of(mapImage));
-        when(mapImageLikeRepository.save(any(MapImageLike.class))).thenReturn(
+        when(mapImageLikeRepository.saveAndFlush(any(MapImageLike.class))).thenReturn(
                 MapImageLike.builder()
                         .likeId(40L)
                         .mapImageId(mapImageId)
@@ -81,5 +89,32 @@ class MapImageLikeServiceTest {
                 eq("MAP_IMAGE"),
                 eq("10")
         );
+    }
+
+    @Test
+    void likeConvertsConcurrentDuplicateConstraintToAlreadyLiked() {
+        long mapImageId = 10L;
+        long likerId = 30L;
+        MapImage mapImage = MapImage.builder()
+                .id(mapImageId)
+                .userId(20L)
+                .imageUrl("https://example.com/image.jpg")
+                .s3Key("image-key")
+                .title("title")
+                .build();
+        ConstraintViolationException constraintViolation = new ConstraintViolationException(
+                "duplicate like", new SQLException(), "uk_map_image_like_user_image");
+
+        when(mapImageLikeRepository.existsByUserIdAndMapImageId(likerId, mapImageId)).thenReturn(false);
+        when(mapImageRepository.findWithMapPlaceById(mapImageId)).thenReturn(Optional.of(mapImage));
+        when(mapImageLikeRepository.saveAndFlush(any(MapImageLike.class)))
+                .thenThrow(new DataIntegrityViolationException("duplicate like", constraintViolation));
+
+        assertThatThrownBy(() -> mapImageLikeService.like(mapImageId, likerId))
+                .isInstanceOfSatisfying(MapException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.ALREADY_LIKED));
+
+        verify(mapImageRepository, never()).increaseLikeCount(mapImageId);
+        verify(outboxEventPublisher, never()).publish(any(), any(), any(), any(), any());
     }
 }
