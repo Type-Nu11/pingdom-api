@@ -2,7 +2,6 @@ package com.typenull.pingdom.post.infrastructure.storage;
 
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
-import jakarta.annotation.PreDestroy;
 import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -11,11 +10,11 @@ import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
-import java.util.concurrent.ExecutorService;
-import java.util.concurrent.Executors;
 import java.util.stream.Collectors;
-import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Qualifier;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.data.redis.core.StringRedisTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -28,7 +27,6 @@ import org.springframework.util.StringUtils;
  * 원본·썸네일 키의 고아 객체 판별 결과가 달라지지 않는다.</p>
  */
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class MapImageS3OrphanReportService {
 
@@ -39,11 +37,27 @@ public class MapImageS3OrphanReportService {
     private static final Duration REPORT_TTL = Duration.ofHours(1);
     private static final int DEFAULT_SCAN_LIMIT = 1_000;
     private static final int MAX_SCAN_LIMIT = 10_000;
+    private static final String EXECUTOR_SATURATED_MESSAGE = "S3 고아 파일 리포트 생성 대기열이 포화되었습니다.";
 
     private final S3ObjectStorage s3ObjectStorage;
     private final StringRedisTemplate redisTemplate;
     private final MapImageRepository mapImageRepository;
-    private final ExecutorService orphanReportExecutor = Executors.newSingleThreadExecutor();
+    private final TaskExecutor orphanReportExecutor;
+    private final Object refreshMonitor = new Object();
+
+    private String runningReportId;
+
+    public MapImageS3OrphanReportService(
+            S3ObjectStorage s3ObjectStorage,
+            StringRedisTemplate redisTemplate,
+            MapImageRepository mapImageRepository,
+            @Qualifier("s3OrphanReportExecutor") TaskExecutor orphanReportExecutor
+    ) {
+        this.s3ObjectStorage = s3ObjectStorage;
+        this.redisTemplate = redisTemplate;
+        this.mapImageRepository = mapImageRepository;
+        this.orphanReportExecutor = orphanReportExecutor;
+    }
 
     @Transactional(readOnly = true)
     public S3OrphanDryRunReport reportOrphanObjects(String prefix, Integer limit) {
@@ -67,17 +81,31 @@ public class MapImageS3OrphanReportService {
     }
 
     public S3OrphanReportStatus refreshMapImageS3OrphanReport() {
-        String reportId = UUID.randomUUID().toString();
-        String metaKey = reportMetaKey(reportId);
-        LocalDateTime now = LocalDateTime.now();
+        synchronized (refreshMonitor) {
+            if (runningReportId != null) {
+                return getMapImageS3OrphanReportStatus(runningReportId);
+            }
 
-        redisTemplate.opsForHash().put(metaKey, "status", "RUNNING");
-        redisTemplate.opsForHash().put(metaKey, "generatedAt", now.toString());
-        redisTemplate.expire(metaKey, REPORT_TTL);
-        redisTemplate.opsForValue().set(LATEST_REPORT_KEY, reportId, REPORT_TTL);
+            String reportId = UUID.randomUUID().toString();
+            initializeRunningReport(reportId);
+            runningReportId = reportId;
 
-        orphanReportExecutor.execute(() -> buildMapImageS3OrphanReport(reportId));
-        return getMapImageS3OrphanReportStatus(reportId);
+            try {
+                orphanReportExecutor.execute(() -> {
+                    try {
+                        buildMapImageS3OrphanReport(reportId);
+                    } finally {
+                        clearRunningReport(reportId);
+                    }
+                });
+            } catch (TaskRejectedException exception) {
+                log.warn("S3 고아 파일 리포트 생성 작업 제출이 거부되었습니다. reportId={}", reportId, exception);
+                failReport(reportId, EXECUTOR_SATURATED_MESSAGE);
+                clearRunningReport(reportId);
+            }
+
+            return getMapImageS3OrphanReportStatus(reportId);
+        }
     }
 
     public S3OrphanReport getMapImageS3OrphanReport(String reportId, int page, int limit) {
@@ -222,10 +250,31 @@ public class MapImageS3OrphanReportService {
             expireReportKeys(reportId);
         } catch (RuntimeException exception) {
             log.warn("S3 고아 파일 리포트 생성 실패. reportId={}", reportId, exception);
-            redisTemplate.opsForHash().put(metaKey, "status", "FAILED");
-            redisTemplate.opsForHash().put(metaKey, "completedAt", LocalDateTime.now().toString());
-            redisTemplate.opsForHash().put(metaKey, "errorMessage", exception.getMessage());
-            expireReportKeys(reportId);
+            failReport(reportId, exception.getMessage());
+        }
+    }
+
+    private void initializeRunningReport(String reportId) {
+        String metaKey = reportMetaKey(reportId);
+        redisTemplate.opsForHash().put(metaKey, "status", "RUNNING");
+        redisTemplate.opsForHash().put(metaKey, "generatedAt", LocalDateTime.now().toString());
+        redisTemplate.expire(metaKey, REPORT_TTL);
+        redisTemplate.opsForValue().set(LATEST_REPORT_KEY, reportId, REPORT_TTL);
+    }
+
+    private void failReport(String reportId, String errorMessage) {
+        String metaKey = reportMetaKey(reportId);
+        redisTemplate.opsForHash().put(metaKey, "status", "FAILED");
+        redisTemplate.opsForHash().put(metaKey, "completedAt", LocalDateTime.now().toString());
+        redisTemplate.opsForHash().put(metaKey, "errorMessage", errorMessage);
+        expireReportKeys(reportId);
+    }
+
+    private void clearRunningReport(String reportId) {
+        synchronized (refreshMonitor) {
+            if (reportId.equals(runningReportId)) {
+                runningReportId = null;
+            }
         }
     }
 
@@ -343,11 +392,6 @@ public class MapImageS3OrphanReportService {
 
     private String reportCandidateSetKey(String reportId) {
         return REPORT_KEY_PREFIX + reportId + ":candidate-set";
-    }
-
-    @PreDestroy
-    void shutdownOrphanReportExecutor() {
-        orphanReportExecutor.shutdown();
     }
 
     public record S3OrphanDryRunReport(

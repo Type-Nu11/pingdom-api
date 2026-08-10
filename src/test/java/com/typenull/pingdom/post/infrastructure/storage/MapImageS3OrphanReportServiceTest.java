@@ -1,24 +1,34 @@
 package com.typenull.pingdom.post.infrastructure.storage;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.junit.jupiter.api.Assertions.assertNotEquals;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyString;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.doAnswer;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.core.task.TaskExecutor;
+import org.springframework.core.task.TaskRejectedException;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.ListOperations;
 import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
+import org.springframework.data.redis.core.ValueOperations;
 
 @ExtendWith(MockitoExtension.class)
 class MapImageS3OrphanReportServiceTest {
@@ -33,6 +43,9 @@ class MapImageS3OrphanReportServiceTest {
     private MapImageRepository mapImageRepository;
 
     @Mock
+    private TaskExecutor orphanReportExecutor;
+
+    @Mock
     private HashOperations<String, Object, Object> hashOperations;
 
     @Mock
@@ -41,11 +54,19 @@ class MapImageS3OrphanReportServiceTest {
     @Mock
     private SetOperations<String, String> setOperations;
 
+    @Mock
+    private ValueOperations<String, String> valueOperations;
+
     private MapImageS3OrphanReportService service;
 
     @BeforeEach
     void setUp() {
-        service = new MapImageS3OrphanReportService(s3ObjectStorage, redisTemplate, mapImageRepository);
+        service = new MapImageS3OrphanReportService(
+                s3ObjectStorage,
+                redisTemplate,
+                mapImageRepository,
+                orphanReportExecutor
+        );
     }
 
     @Test
@@ -131,8 +152,73 @@ class MapImageS3OrphanReportServiceTest {
         verify(mapImageRepository, never()).findUsedOriginalS3Keys(any());
     }
 
+    @Test
+    void refreshReturnsRunningReportWithoutSubmittingDuplicateTask() {
+        stubReportMetadata();
+        List<Runnable> submittedTasks = new ArrayList<>();
+        doAnswer(invocation -> {
+            submittedTasks.add(invocation.getArgument(0));
+            return null;
+        }).when(orphanReportExecutor).execute(any(Runnable.class));
+        when(s3ObjectStorage.listKeysPage("map/", null))
+                .thenReturn(new S3ObjectStorage.S3KeyPage(List.of(), null));
+
+        MapImageS3OrphanReportService.S3OrphanReportStatus first =
+                service.refreshMapImageS3OrphanReport();
+        MapImageS3OrphanReportService.S3OrphanReportStatus duplicate =
+                service.refreshMapImageS3OrphanReport();
+
+        assertEquals(first.reportId(), duplicate.reportId());
+        assertEquals("RUNNING", duplicate.status());
+        assertEquals(1, submittedTasks.size());
+
+        submittedTasks.getFirst().run();
+        MapImageS3OrphanReportService.S3OrphanReportStatus next =
+                service.refreshMapImageS3OrphanReport();
+
+        assertNotEquals(first.reportId(), next.reportId());
+        assertEquals(2, submittedTasks.size());
+    }
+
+    @Test
+    void refreshMarksRejectedTaskAsFailedAndAllowsRetry() {
+        stubReportMetadata();
+        doThrow(new TaskRejectedException("queue full"))
+                .when(orphanReportExecutor)
+                .execute(any(Runnable.class));
+
+        MapImageS3OrphanReportService.S3OrphanReportStatus rejected =
+                service.refreshMapImageS3OrphanReport();
+        MapImageS3OrphanReportService.S3OrphanReportStatus retried =
+                service.refreshMapImageS3OrphanReport();
+
+        assertEquals("FAILED", rejected.status());
+        assertEquals("S3 고아 파일 리포트 생성 대기열이 포화되었습니다.", rejected.errorMessage());
+        assertEquals("FAILED", retried.status());
+        assertNotEquals(rejected.reportId(), retried.reportId());
+        verify(orphanReportExecutor, org.mockito.Mockito.times(2)).execute(any(Runnable.class));
+    }
+
     private void stubCompletedReport() {
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         when(hashOperations.get(any(), eq("status"))).thenReturn("COMPLETED");
+    }
+
+    private void stubReportMetadata() {
+        Map<String, Map<Object, Object>> metadata = new HashMap<>();
+        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(redisTemplate.opsForValue()).thenReturn(valueOperations);
+        doAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            Object field = invocation.getArgument(1);
+            Object value = invocation.getArgument(2);
+            metadata.computeIfAbsent(key, ignored -> new HashMap<>()).put(field, value);
+            return null;
+        }).when(hashOperations).put(anyString(), any(), any());
+        when(hashOperations.get(anyString(), any())).thenAnswer(invocation -> {
+            String key = invocation.getArgument(0);
+            Object field = invocation.getArgument(1);
+            return metadata.getOrDefault(key, Map.of()).get(field);
+        });
     }
 }
