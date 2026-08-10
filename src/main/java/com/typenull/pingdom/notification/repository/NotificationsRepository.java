@@ -48,6 +48,25 @@ public interface NotificationsRepository extends JpaRepository<Notifications, Lo
             """)
     int markAllAsRead();
 
+    @Modifying(flushAutomatically = true)
+    @Query(value = """
+            INSERT INTO notifications (
+                token, event_key, type, user_id, title, body, is_read, created_at
+            ) VALUES (
+                :token, :eventKey, :type, :userId, :title, :body, false, :createdAt
+            )
+            ON CONFLICT (user_id, event_key) DO NOTHING
+            """, nativeQuery = true)
+    int insertAdminNotificationIfAbsent(
+            @Param("userId") Long userId,
+            @Param("type") String type,
+            @Param("title") String title,
+            @Param("body") String body,
+            @Param("token") String token,
+            @Param("eventKey") String eventKey,
+            @Param("createdAt") LocalDateTime createdAt
+    );
+
     @Modifying
     @Query("""
             DELETE FROM Notifications n
