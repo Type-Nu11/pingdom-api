@@ -29,6 +29,18 @@ import lombok.NoArgsConstructor;
                 @Index(
                         name = "idx_outbox_event_processing",
                         columnList = "status, processing_started_at"
+                ),
+                @Index(
+                        name = "idx_outbox_event_status_created",
+                        columnList = "status, created_at DESC, event_id DESC"
+                ),
+                @Index(
+                        name = "idx_outbox_event_type_created",
+                        columnList = "event_type, created_at DESC, event_id DESC"
+                ),
+                @Index(
+                        name = "idx_outbox_event_aggregate_created",
+                        columnList = "aggregate_type, aggregate_id, created_at DESC, event_id DESC"
                 )
         }
 )

@@ -74,6 +74,16 @@ public class OutboxMetrics {
         meterRegistry.counter("pingdom.outbox.stale_recovered").increment(count);
     }
 
+    public void recordManualRetry(OutboxEventType eventType, String result) {
+        meterRegistry.counter(
+                "pingdom.outbox.manual_retry",
+                Tags.of(
+                        "event_type", tagValue(eventType),
+                        "result", safeTag(result)
+                )
+        ).increment();
+    }
+
     private io.micrometer.core.instrument.Counter counter(
             OutboxEventType eventType,
             String handler,

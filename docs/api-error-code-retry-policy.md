@@ -2,14 +2,13 @@
 
 ## 목적과 적용 범위
 
-이 문서는 Pingdom Backend가 2026-07-21 기준으로 실제 반환하거나 기록하는 오류 코드와
+이 문서는 Pingdom Backend가 2026-08-10 기준으로 실제 반환하거나 기록하는 오류 코드와
 재시도 동작을 구분해 설명한다. 클라이언트, 운영자, 외부 연동 handler가 오류를 같은
 의미로 해석하고, 구현보다 강한 전달 보장이나 재시도 약속을 문서로 선언하지 않는 것이
 목적이다.
 
-이 문서는 Java 오류 처리, Security handler, Outbox worker, 공개 HTTP API, OpenAPI
-annotation, Flyway migration, Outbox·notification delivery 스키마를 변경하지 않는다.
-최종 실패 event를 재처리하는 공개 운영 API도 현재 제공하지 않는다.
+관리자 Outbox 운영 API는 최종 실패 event의 조회·재처리만 제공한다. 비내구성 Spring
+이벤트의 일반 재생이나 외부 부수효과의 exactly-once 처리를 보장하지 않는다.
 
 관련 문서:
 
@@ -148,9 +147,10 @@ PENDING 또는 RETRY
 
 - 5분을 넘긴 <code>PROCESSING</code> event는 stale recovery 과정에서 같은 실패·backoff
   규칙을 적용한다.
-- <code>FAILED</code> event는 코드상 <code>retryFailedEvent</code>로 시도 횟수를
-  초기화해 <code>RETRY</code>로 돌릴 수 있지만, 현재 공개 운영 API는 제공하지 않는다.
-  운영자는 DB를 직접 수정하지 않고 원인·멱등성·보정 범위를 먼저 검토한다.
+- <code>FAILED</code> event는 <code>OUTBOX_RECOVERY</code> 권한을 가진 관리자가
+  <code>POST /admin/outbox-events/{eventId}/retry</code>로 시도 횟수를 초기화해
+  <code>RETRY</code>로 전환할 수 있다. 장애 원인과 중복 외부 효과 안전성을 먼저 확인하고
+  사유를 입력해야 하며, 동일 event의 반복 요청은 409로 거절된다.
 - <code>deduplication_key</code>는 중복 event 저장을 막을 뿐 외부 공급자 호출의
   exactly-once 처리를 보장하지 않는다.
 
@@ -171,11 +171,11 @@ notification delivery의 <code>retryable</code>, <code>attempt_count</code>,
 
 ## API·Flyway·OpenAPI·운영 영향
 
-| 대상 | 현재 기준 | 이 문서 변경의 영향 |
+| 대상 | 현재 기준 | #809 반영 내용 |
 | --- | --- | --- |
-| HTTP API·OpenAPI | 오류 본문과 Security 응답은 기존 구현을 따른다. | Controller, DTO, annotation을 변경하지 않으므로 OpenAPI baseline을 갱신하거나 export하지 않는다. |
-| Flyway | <code>V5__create_outbox_event.sql</code>이 Outbox 상태·시도 횟수·다음 시각을, <code>V20__create_notification_delivery.sql</code>이 delivery 결과를 저장한다. | 스키마·migration을 변경하지 않는다. enum·column·보관 정책 변경은 새 migration과 기존 대기 row 호환성을 별도 검토한다. |
-| 운영 | Outbox metric과 handler 로그, notification delivery 조회가 실패 분석의 근거다. | 배포 전 문서 링크와 구현 대조만 수행한다. 코드·설정 변경이 없으므로 별도 배포 절차는 없다. |
+| HTTP API·OpenAPI | 오류 본문과 Security 응답은 기존 구현을 따른다. | <code>GET /admin/outbox-events</code> 조회와 <code>POST /admin/outbox-events/{eventId}/retry</code> 명령을 OpenAPI baseline에 추가한다. |
+| Flyway | <code>V5__create_outbox_event.sql</code>이 Outbox 상태·시도 정보를 저장한다. | V90에서 상태·시도 횟수 제약과 관리자 조회 인덱스를 추가하며 기존 row 값은 변경하지 않는다. |
+| 운영 | Outbox metric, handler 로그, 관리자 감사 이력이 실패 분석의 근거다. | 수동 재처리 결과를 <code>pingdom.outbox.manual_retry</code>로 기록하고 payload는 API·감사 로그에서 제외한다. |
 
 ## 구현 대조 결과
 
@@ -185,8 +185,9 @@ notification delivery의 <code>retryable</code>, <code>attempt_count</code>,
 | Validation, ConstraintViolation, ResponseStatusException | <code>GlobalExceptionHandler</code> | 일부 실패 응답에는 <code>code</code>가 없으므로 클라이언트는 상태 코드와 본문 형태를 함께 처리해야 한다. |
 | 요청 제한 오류 | <code>RateLimitException</code>, <code>RateLimitUnavailableException</code> | 429와 503은 코드가 있지만 현재 <code>Retry-After</code> 헤더 계약은 없다. |
 | Outbox 재시도 설정 | <code>application.yaml</code>, <code>OutboxEvent</code>, <code>OutboxEventWorker</code> | 5초 선점 주기, 최대 5회, 10초 기반 backoff, 10분 최대 backoff, 5분 stale recovery 기준을 따른다. |
+| Outbox 운영 복구 | <code>AdminOutboxEventController</code>, <code>AdminOutboxEventRecoveryService</code> | <code>FAILED</code>만 행 잠금 후 <code>RETRY</code>로 전환하며 권한·사유·감사 이력을 요구한다. |
 | notification delivery 기록 | <code>NotificationDeliveryRecorder</code>, <code>NotificationDeliveryRecordWriter</code>, <code>AdminNotificationDeliveryController</code> | delivery의 <code>retryable</code>과 상태는 운영 관찰용이며 Outbox 상태 전이를 직접 제어하지 않는다. |
-| DB migration 영향 | <code>V5__create_outbox_event.sql</code>, <code>V20__create_notification_delivery.sql</code> | 이번 문서 정비는 schema 변경이 아니므로 Flyway 파일과 OpenAPI baseline을 갱신하지 않는다. |
+| DB migration 영향 | <code>V5__create_outbox_event.sql</code>, <code>V90__add_outbox_recovery_operations.sql</code> | 기존 Outbox row를 보존하면서 허용 상태·시도 횟수 제약과 운영 조회 인덱스를 적용한다. |
 
 ## 운영 확인과 장애 대응
 
@@ -207,3 +208,4 @@ notification delivery의 <code>retryable</code>, <code>attempt_count</code>,
 | --- | --- | --- | --- |
 | 2026-07-10 | #839, #840, #841 | HTTP 오류 코드, Outbox·delivery 재시도 책임, API·Flyway·운영 연결 기준을 문서화 | 완료 |
 | 2026-07-21 | #841 | 구현 대조 결과, 누락된 도메인 오류 코드, 관련 운영 문서 링크 기준을 갱신 | 완료 |
+| 2026-08-10 | #809, #810, #811 | 권한·감사·관측성을 갖춘 Outbox 조회 및 수동 재처리 운영 계약 추가 | 완료 |

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import org.junit.jupiter.api.Test;
@@ -44,5 +45,19 @@ class OutboxMetricsTest {
         }
         verify(outboxEventRepository, times(OutboxEventStatus.values().length))
                 .countByStatus(any(OutboxEventStatus.class));
+    }
+
+    @Test
+    void manualRetryMetricUsesBoundedEventTypeAndResultTags() {
+        SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
+        OutboxMetrics outboxMetrics = new OutboxMetrics(meterRegistry, outboxEventRepository);
+
+        outboxMetrics.recordManualRetry(OutboxEventType.EMAIL_VERIFICATION_REQUESTED, "success");
+
+        assertThat(meterRegistry.get("pingdom.outbox.manual_retry")
+                .tag("event_type", OutboxEventType.EMAIL_VERIFICATION_REQUESTED.name())
+                .tag("result", "success")
+                .counter()
+                .count()).isEqualTo(1.0);
     }
 }

@@ -80,12 +80,35 @@ class OutboxEventStateServiceTest {
             }
         }
 
-        boolean retried = stateService.retryFailedEvent(event.getEventId());
+        when(outboxEventRepository.findByEventIdForUpdate(event.getEventId())).thenReturn(Optional.of(event));
 
-        assertThat(retried).isTrue();
+        OutboxEventStateService.ManualRetryResult result = stateService.retryFailedEvent(event.getEventId());
+
+        assertThat(result.outcome()).isEqualTo(OutboxEventStateService.ManualRetryOutcome.RETRIED);
+        assertThat(result.before().status()).isEqualTo(OutboxEventStatus.FAILED);
+        assertThat(result.after().status()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.RETRY);
         assertThat(event.getAttemptCount()).isZero();
         assertThat(event.getLastError()).isNull();
+    }
+
+    @Test
+    void operatorCannotRetryEventThatIsNotFailed() {
+        OutboxEvent event = OutboxEvent.create(
+                "MAP_IMAGE_LIKED:10:21",
+                OutboxEventType.MAP_IMAGE_LIKED,
+                "{}",
+                "MAP_IMAGE",
+                "10",
+                LocalDateTime.ofInstant(NOW, ZoneOffset.UTC)
+        );
+        when(outboxEventRepository.findByEventIdForUpdate(event.getEventId())).thenReturn(Optional.of(event));
+
+        OutboxEventStateService.ManualRetryResult result = stateService.retryFailedEvent(event.getEventId());
+
+        assertThat(result.outcome()).isEqualTo(OutboxEventStateService.ManualRetryOutcome.NOT_RETRYABLE);
+        assertThat(result.before().status()).isEqualTo(OutboxEventStatus.PENDING);
+        assertThat(event.getStatus()).isEqualTo(OutboxEventStatus.PENDING);
     }
 
     private OutboxEvent claimedEvent() {
