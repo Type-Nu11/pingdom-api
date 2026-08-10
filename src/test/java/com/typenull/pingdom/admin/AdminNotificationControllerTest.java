@@ -61,10 +61,12 @@ class AdminNotificationControllerTest {
     }
 
     @Test
-    void listNotificationsFiltersByUserTypeReadAndPeriod() throws Exception {
-        String adminAccessToken = createUserAndLogin("notificationAdmin", UserRole.ADMIN);
+    void listNotificationsFiltersCurrentAdminByTypeReadAndPeriod() throws Exception {
+        String adminUsername = "notificationAdmin";
+        String adminAccessToken = createUserAndLogin(adminUsername, UserRole.ADMIN);
+        Long adminUserId = findUserId(adminUsername);
         saveNotification(
-                10L,
+                adminUserId,
                 NotificationType.ADMIN_REPORT_RECEIVED,
                 "신고 접수 알림",
                 "새로운 신고가 접수되었습니다.",
@@ -84,14 +86,14 @@ class AdminNotificationControllerTest {
 
         mockMvc.perform(get("/admin/notifications")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("userId", "10")
+                        .param("userId", String.valueOf(adminUserId))
                         .param("type", NotificationType.ADMIN_REPORT_RECEIVED.name())
                         .param("read", "false")
                         .param("from", "2026-07-21T00:00:00")
                         .param("to", "2026-07-21T23:59:59"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.notifications.length()").value(1))
-                .andExpect(jsonPath("$.notifications[0].userId").value(10))
+                .andExpect(jsonPath("$.notifications[0].userId").value(adminUserId))
                 .andExpect(jsonPath("$.notifications[0].type").value(NotificationType.ADMIN_REPORT_RECEIVED.name()))
                 .andExpect(jsonPath("$.notifications[0].read").value(false))
                 .andExpect(jsonPath("$.notifications[0].token").value("report:1"))
@@ -100,9 +102,11 @@ class AdminNotificationControllerTest {
 
     @Test
     void listNotificationsWithoutOptionalFilters() throws Exception {
-        String adminAccessToken = createUserAndLogin("notificationDefaultFilterAdmin", UserRole.ADMIN);
+        String adminUsername = "notificationDefaultFilterAdmin";
+        String adminAccessToken = createUserAndLogin(adminUsername, UserRole.ADMIN);
+        Long adminUserId = findUserId(adminUsername);
         saveNotification(
-                10L,
+                adminUserId,
                 NotificationType.ADMIN_REPORT_RECEIVED,
                 "신고 접수 알림",
                 "새로운 신고가 접수되었습니다.",
@@ -122,10 +126,17 @@ class AdminNotificationControllerTest {
 
     @Test
     void countUnreadNotifications() throws Exception {
-        String adminAccessToken = createUserAndLogin("notificationCountAdmin", UserRole.ADMIN);
-        saveNotification(10L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:1", false, LocalDateTime.now());
-        saveNotification(11L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:2", false, LocalDateTime.now());
-        saveNotification(12L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:3", true, LocalDateTime.now());
+        String adminUsername = "notificationCountAdmin";
+        String adminAccessToken = createUserAndLogin(adminUsername, UserRole.ADMIN);
+        Long adminUserId = findUserId(adminUsername);
+        saveNotification(adminUserId, NotificationType.ADMIN_REPORT_RECEIVED,
+                "신고 접수 알림", "신고", "report:1", false, LocalDateTime.now());
+        saveNotification(adminUserId, NotificationType.ADMIN_USER_SANCTION,
+                "사용자 제재 알림", "제재", "sanction:2", false, LocalDateTime.now());
+        saveNotification(adminUserId, NotificationType.NEW_LIKE,
+                "좋아요 알림", "좋아요", "post:3", false, LocalDateTime.now());
+        saveNotification(999L, NotificationType.ADMIN_REPORT_RECEIVED,
+                "다른 관리자 알림", "신고", "report:4", false, LocalDateTime.now());
 
         mockMvc.perform(get("/admin/notifications/unread-count")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -135,9 +146,11 @@ class AdminNotificationControllerTest {
 
     @Test
     void markNotificationAsReadRecordsAuditLog() throws Exception {
-        String adminAccessToken = createUserAndLogin("notificationReadAdmin", UserRole.ADMIN);
+        String adminUsername = "notificationReadAdmin";
+        String adminAccessToken = createUserAndLogin(adminUsername, UserRole.ADMIN);
+        Long adminUserId = findUserId(adminUsername);
         Notifications notification = saveNotification(
-                10L,
+                adminUserId,
                 NotificationType.ADMIN_DUPLICATE_PLACE_DETECTED,
                 "중복 장소 알림",
                 "중복 의심 장소가 발견되었습니다.",
@@ -165,10 +178,17 @@ class AdminNotificationControllerTest {
 
     @Test
     void markAllNotificationsAsRead() throws Exception {
-        String adminAccessToken = createUserAndLogin("notificationReadAllAdmin", UserRole.ADMIN);
-        saveNotification(10L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:1", false, LocalDateTime.now());
-        saveNotification(11L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:2", false, LocalDateTime.now());
-        saveNotification(12L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:3", true, LocalDateTime.now());
+        String adminUsername = "notificationReadAllAdmin";
+        String adminAccessToken = createUserAndLogin(adminUsername, UserRole.ADMIN);
+        Long adminUserId = findUserId(adminUsername);
+        Notifications ownUnread = saveNotification(adminUserId, NotificationType.ADMIN_REPORT_RECEIVED,
+                "신고 접수 알림", "신고", "report:1", false, LocalDateTime.now());
+        saveNotification(adminUserId, NotificationType.ADMIN_USER_SANCTION,
+                "사용자 제재 알림", "제재", "sanction:2", false, LocalDateTime.now());
+        Notifications userNotification = saveNotification(adminUserId, NotificationType.NEW_LIKE,
+                "좋아요 알림", "좋아요", "post:3", false, LocalDateTime.now());
+        Notifications otherAdminNotification = saveNotification(999L, NotificationType.ADMIN_REPORT_RECEIVED,
+                "다른 관리자 알림", "신고", "report:4", false, LocalDateTime.now());
 
         mockMvc.perform(patch("/admin/notifications/read")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -176,7 +196,13 @@ class AdminNotificationControllerTest {
                 .andExpect(jsonPath("$.updatedCount").value(2))
                 .andExpect(jsonPath("$.message").value("전체 알림을 읽음 처리했습니다."));
 
-        org.assertj.core.api.Assertions.assertThat(notificationsRepository.countByIsReadFalse()).isZero();
+        org.assertj.core.api.Assertions.assertThat(notificationsRepository.findById(ownUnread.getId()).orElseThrow().isRead())
+                .isTrue();
+        org.assertj.core.api.Assertions.assertThat(notificationsRepository.findById(userNotification.getId()).orElseThrow().isRead())
+                .isFalse();
+        org.assertj.core.api.Assertions.assertThat(
+                notificationsRepository.findById(otherAdminNotification.getId()).orElseThrow().isRead()
+        ).isFalse();
         org.assertj.core.api.Assertions.assertThat(adminAuditLogRepository.findAll())
                 .anySatisfy(log -> org.assertj.core.api.Assertions.assertThat(log.getAction())
                         .isEqualTo(AdminAuditAction.NOTIFICATION_READ_ALL));
@@ -192,6 +218,64 @@ class AdminNotificationControllerTest {
                         .param("to", "2026-07-21T00:00:00"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_NOTIFICATION_FILTER_PERIOD"));
+    }
+
+    @Test
+    void listNotificationsRejectsDifferentLegacyUserId() throws Exception {
+        String adminAccessToken = createUserAndLogin("notificationLegacyScopeAdmin", UserRole.ADMIN);
+
+        mockMvc.perform(get("/admin/notifications")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("userId", "999"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
+    }
+
+    @Test
+    void markNotificationAsReadRejectsAnotherAdminsNotification() throws Exception {
+        String adminAccessToken = createUserAndLogin("notificationScopeAdmin", UserRole.ADMIN);
+        Notifications otherAdminNotification = saveNotification(
+                999L,
+                NotificationType.ADMIN_REPORT_RECEIVED,
+                "신고 접수 알림",
+                "신고",
+                "report:99",
+                false,
+                LocalDateTime.now()
+        );
+
+        mockMvc.perform(patch("/admin/notifications/{notificationId}/read", otherAdminNotification.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOTIFICATION_NOT_FOUND"));
+
+        org.assertj.core.api.Assertions.assertThat(
+                notificationsRepository.findById(otherAdminNotification.getId()).orElseThrow().isRead()
+        ).isFalse();
+    }
+
+    @Test
+    void markNotificationAsReadRejectsNonAdminNotification() throws Exception {
+        String adminUsername = "notificationTypeScopeAdmin";
+        String adminAccessToken = createUserAndLogin(adminUsername, UserRole.ADMIN);
+        Notifications userNotification = saveNotification(
+                findUserId(adminUsername),
+                NotificationType.NEW_LIKE,
+                "좋아요 알림",
+                "좋아요",
+                "post:99",
+                false,
+                LocalDateTime.now()
+        );
+
+        mockMvc.perform(patch("/admin/notifications/{notificationId}/read", userNotification.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("NOTIFICATION_NOT_FOUND"));
+
+        org.assertj.core.api.Assertions.assertThat(
+                notificationsRepository.findById(userNotification.getId()).orElseThrow().isRead()
+        ).isFalse();
     }
 
     @Test
@@ -245,5 +329,9 @@ class AdminNotificationControllerTest {
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
                 .textValue();
+    }
+
+    private Long findUserId(String username) {
+        return userRepository.findByUsername(username).orElseThrow().getId();
     }
 }

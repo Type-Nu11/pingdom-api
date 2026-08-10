@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "89";
+    private static final String LATEST_MIGRATION_VERSION = "91";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(89);
+        assertThat(result.migrationsExecuted).isEqualTo(91);
 
         assertPostMigrationSchema();
     }
@@ -115,6 +115,45 @@ class FlywayMigrationIntegrationTest {
                     SELECT COUNT(*) = 0
                     FROM admin_role_assignment
                     WHERE admin_user_id = 940002
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void preservesExistingOutboxEventsWhenAddingRecoveryConstraintsAndIndexes() throws Exception {
+        migrateTo("89");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO outbox_event (
+                        event_id, deduplication_key, event_type, payload,
+                        aggregate_type, aggregate_id, status, attempt_count,
+                        next_attempt_at, processing_started_at, processed_at, last_error,
+                        created_at, updated_at, version
+                    ) VALUES (
+                        'legacy-failed-event', 'legacy-failed-event-key',
+                        'EMAIL_VERIFICATION_REQUESTED', '{}',
+                        'USER', '10', 'FAILED', 5,
+                        TIMESTAMP '2026-08-01 10:00:00', NULL, NULL, 'provider failure',
+                        TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 10:00:00', 0
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
+        assertThat(result.migrationsExecuted).isEqualTo(2);
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT status = 'FAILED'
+                       AND attempt_count = 5
+                       AND last_error = 'provider failure'
+                    FROM outbox_event
+                    WHERE event_id = 'legacy-failed-event'
                     """)).isTrue();
         }
     }
@@ -207,7 +246,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(87);
+        assertThat(result.migrationsExecuted).isEqualTo(89);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -321,7 +360,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(62);
+        assertThat(result.migrationsExecuted).isEqualTo(64);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -572,7 +611,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(34);
+        assertThat(result.migrationsExecuted).isEqualTo(36);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1024,6 +1063,27 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'outbox_event'::regclass
+                      AND conname IN (
+                          'ck_outbox_event_status',
+                          'ck_outbox_event_attempt_count'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE tablename = 'outbox_event'
+                      AND indexname IN (
+                          'idx_outbox_event_status_created',
+                          'idx_outbox_event_type_created',
+                          'idx_outbox_event_aggregate_created'
+                      )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 1
                     FROM information_schema.tables

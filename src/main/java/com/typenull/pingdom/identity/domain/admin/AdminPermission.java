@@ -10,5 +10,6 @@ public enum AdminPermission {
     REPORT_REVIEW,
     SCOUT_REVIEW,
     DASHBOARD_READ,
-    AUDIT_READ
+    AUDIT_READ,
+    OUTBOX_RECOVERY
 }

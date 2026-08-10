@@ -2,9 +2,11 @@ package com.typenull.pingdom.shared.outbox.infrastructure;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import jakarta.persistence.LockModeType;
 import java.lang.reflect.Method;
 import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.QueryHints;
 
 class OutboxEventRepositoryTest {
@@ -13,6 +15,19 @@ class OutboxEventRepositoryTest {
     void lockingQueriesUseSkipLockedHint() {
         assertSkipLockedHint("findReadyEventsForUpdate");
         assertSkipLockedHint("findStaleProcessingEventsForUpdate");
+    }
+
+    @Test
+    void manualRetryLookupUsesPessimisticWriteLock() {
+        Method method = Arrays.stream(OutboxEventRepository.class.getMethods())
+                .filter(candidate -> candidate.getName().equals("findByEventIdForUpdate"))
+                .findFirst()
+                .orElseThrow();
+
+        Lock lock = method.getAnnotation(Lock.class);
+
+        assertThat(lock).isNotNull();
+        assertThat(lock.value()).isEqualTo(LockModeType.PESSIMISTIC_WRITE);
     }
 
     private void assertSkipLockedHint(String methodName) {

@@ -19,6 +19,7 @@ import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateCandidate;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateMatchReason;
 import com.typenull.pingdom.moderation.infrastructure.persistence.PlaceDuplicateCandidateRepository;
+import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
 import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,6 +45,8 @@ class AdminPlaceDuplicateServiceTest {
     private AdminPlaceMergeService adminPlaceMergeService;
     @Mock
     private AdminAuditLogService adminAuditLogService;
+    @Mock
+    private AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
 
     private AdminPlaceDuplicateService service;
 
@@ -53,8 +56,30 @@ class AdminPlaceDuplicateServiceTest {
                 candidateRepository,
                 adminPlaceMergeService,
                 adminAuditLogService,
+                adminNotificationOutboxPublisher,
                 CLOCK
         );
+    }
+
+    @Test
+    void detectStoresNewCandidateAndPublishesNotification() {
+        when(candidateRepository.findByLeftPlaceIdAndRightPlaceId(1L, 2L)).thenReturn(Optional.empty());
+        when(candidateRepository.save(any())).thenAnswer(invocation -> {
+            PlaceDuplicateCandidate candidate = invocation.getArgument(0);
+            ReflectionTestUtils.setField(candidate, "id", 11L);
+            return candidate;
+        });
+
+        var response = service.detect(
+                2L,
+                1L,
+                PlaceDuplicateMatchReason.NAME_ADDRESS_COORDINATE,
+                new BigDecimal("0.9500"),
+                12
+        );
+
+        assertThat(response.candidateId()).isEqualTo(11L);
+        verify(adminNotificationOutboxPublisher).publishDuplicatePlaceDetected(11L, 1L, 2L);
     }
 
     @Test

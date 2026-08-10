@@ -15,6 +15,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
+import org.springframework.transaction.annotation.Transactional;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
@@ -35,6 +36,12 @@ import org.testcontainers.utility.DockerImageName;
 class NotificationsRepositoryPostgreSqlIntegrationTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 10, 12, 0);
+    private static final List<NotificationType> ADMIN_TYPES = List.of(
+            NotificationType.ADMIN_REPORT_RECEIVED,
+            NotificationType.ADMIN_REPORT_PROCESSED,
+            NotificationType.ADMIN_DUPLICATE_PLACE_DETECTED,
+            NotificationType.ADMIN_USER_SANCTION
+    );
 
     @Container
     private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
@@ -79,6 +86,19 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
                 .containsExactly("older");
     }
 
+    @Test
+    @Transactional
+    void adminNotificationInsertIsIdempotentPerRecipientAndEvent() {
+        int firstInsert = insertAdminNotification(10L, "ADMIN_NOTIFICATION:REPORT_RECEIVED:1");
+        int duplicateInsert = insertAdminNotification(10L, "ADMIN_NOTIFICATION:REPORT_RECEIVED:1");
+        int otherRecipientInsert = insertAdminNotification(11L, "ADMIN_NOTIFICATION:REPORT_RECEIVED:1");
+
+        assertThat(firstInsert).isEqualTo(1);
+        assertThat(duplicateInsert).isZero();
+        assertThat(otherRecipientInsert).isEqualTo(1);
+        assertThat(notificationsRepository.count()).isEqualTo(2);
+    }
+
     private Page<Notifications> findByPeriod(
             boolean hasFrom,
             LocalDateTime from,
@@ -86,7 +106,8 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
             LocalDateTime to
     ) {
         return notificationsRepository.findByAdminFilters(
-                null,
+                10L,
+                ADMIN_TYPES,
                 null,
                 null,
                 hasFrom,
@@ -97,6 +118,18 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
                         Sort.Order.desc("createdAt"),
                         Sort.Order.desc("id")
                 ))
+        );
+    }
+
+    private int insertAdminNotification(Long userId, String eventKey) {
+        return notificationsRepository.insertAdminNotificationIfAbsent(
+                userId,
+                NotificationType.ADMIN_REPORT_RECEIVED.name(),
+                "신고 접수 알림",
+                "신고 ID 1 접수가 게시글 ID 2에 등록되었습니다.",
+                "report:1",
+                eventKey,
+                NOW
         );
     }
 

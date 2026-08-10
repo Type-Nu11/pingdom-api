@@ -50,13 +50,19 @@ public class OutboxEventStateService {
     }
 
     @Transactional
-    public boolean retryFailedEvent(String eventId) {
-        OutboxEvent event = outboxEventRepository.findById(eventId).orElse(null);
-        if (event == null || event.getStatus() != OutboxEventStatus.FAILED) {
-            return false;
+    public ManualRetryResult retryFailedEvent(String eventId) {
+        OutboxEvent event = outboxEventRepository.findByEventIdForUpdate(eventId).orElse(null);
+        if (event == null) {
+            return ManualRetryResult.notFound();
         }
+
+        OutboxEventOperationSnapshot before = OutboxEventOperationSnapshot.from(event);
+        if (event.getStatus() != OutboxEventStatus.FAILED) {
+            return ManualRetryResult.notRetryable(before);
+        }
+
         event.retry(LocalDateTime.now(outboxClock));
-        return true;
+        return ManualRetryResult.retried(before, OutboxEventOperationSnapshot.from(event));
     }
 
     private String failureMessage(Throwable failure) {
@@ -80,6 +86,65 @@ public class OutboxEventStateService {
                     event.getAggregateType(),
                     event.getAggregateId(),
                     event.getAttemptCount()
+            );
+        }
+    }
+
+    public enum ManualRetryOutcome {
+        RETRIED,
+        NOT_FOUND,
+        NOT_RETRYABLE
+    }
+
+    public record ManualRetryResult(
+            ManualRetryOutcome outcome,
+            OutboxEventOperationSnapshot before,
+            OutboxEventOperationSnapshot after
+    ) {
+        private static ManualRetryResult retried(
+                OutboxEventOperationSnapshot before,
+                OutboxEventOperationSnapshot after
+        ) {
+            return new ManualRetryResult(ManualRetryOutcome.RETRIED, before, after);
+        }
+
+        private static ManualRetryResult notFound() {
+            return new ManualRetryResult(ManualRetryOutcome.NOT_FOUND, null, null);
+        }
+
+        private static ManualRetryResult notRetryable(OutboxEventOperationSnapshot snapshot) {
+            return new ManualRetryResult(ManualRetryOutcome.NOT_RETRYABLE, snapshot, snapshot);
+        }
+    }
+
+    public record OutboxEventOperationSnapshot(
+            String eventId,
+            com.typenull.pingdom.shared.outbox.domain.OutboxEventType eventType,
+            String aggregateType,
+            String aggregateId,
+            OutboxEventStatus status,
+            int attemptCount,
+            LocalDateTime nextAttemptAt,
+            LocalDateTime processingStartedAt,
+            LocalDateTime processedAt,
+            String lastError,
+            LocalDateTime createdAt,
+            LocalDateTime updatedAt
+    ) {
+        private static OutboxEventOperationSnapshot from(OutboxEvent event) {
+            return new OutboxEventOperationSnapshot(
+                    event.getEventId(),
+                    event.getEventType(),
+                    event.getAggregateType(),
+                    event.getAggregateId(),
+                    event.getStatus(),
+                    event.getAttemptCount(),
+                    event.getNextAttemptAt(),
+                    event.getProcessingStartedAt(),
+                    event.getProcessedAt(),
+                    event.getLastError(),
+                    event.getCreatedAt(),
+                    event.getUpdatedAt()
             );
         }
     }

@@ -12,11 +12,15 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateCandidate;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
+import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateMatchReason;
 import com.typenull.pingdom.moderation.infrastructure.persistence.PlaceDuplicateCandidateRepository;
+import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
+import java.math.BigDecimal;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -29,7 +33,31 @@ public class AdminPlaceDuplicateService {
     private final PlaceDuplicateCandidateRepository candidateRepository;
     private final AdminPlaceMergeService adminPlaceMergeService;
     private final AdminAuditLogService adminAuditLogService;
+    private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
     private final Clock clock;
+
+    @Transactional
+    public AdminPlaceDuplicateCandidateResponse detect(
+            Long firstPlaceId,
+            Long secondPlaceId,
+            PlaceDuplicateMatchReason matchReason,
+            BigDecimal confidenceScore,
+            Integer distanceMeters
+    ) {
+        Objects.requireNonNull(firstPlaceId, "firstPlaceId must not be null");
+        Objects.requireNonNull(secondPlaceId, "secondPlaceId must not be null");
+        long leftPlaceId = Math.min(firstPlaceId, secondPlaceId);
+        long rightPlaceId = Math.max(firstPlaceId, secondPlaceId);
+        return candidateRepository.findByLeftPlaceIdAndRightPlaceId(leftPlaceId, rightPlaceId)
+                .map(this::toResponse)
+                .orElseGet(() -> saveDetectedCandidate(
+                        firstPlaceId,
+                        secondPlaceId,
+                        matchReason,
+                        confidenceScore,
+                        distanceMeters
+                ));
+    }
 
     @Transactional(readOnly = true)
     public AdminPlaceDuplicateCandidateListResponse list(PlaceDuplicateDecisionStatus status) {
@@ -114,6 +142,29 @@ public class AdminPlaceDuplicateService {
     private PlaceDuplicateCandidate findForUpdate(Long candidateId) {
         return candidateRepository.findByIdForUpdate(candidateId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_DUPLICATE_CANDIDATE_NOT_FOUND));
+    }
+
+    private AdminPlaceDuplicateCandidateResponse saveDetectedCandidate(
+            Long firstPlaceId,
+            Long secondPlaceId,
+            PlaceDuplicateMatchReason matchReason,
+            BigDecimal confidenceScore,
+            Integer distanceMeters
+    ) {
+        PlaceDuplicateCandidate candidate = candidateRepository.save(PlaceDuplicateCandidate.detect(
+                firstPlaceId,
+                secondPlaceId,
+                matchReason,
+                confidenceScore,
+                distanceMeters,
+                LocalDateTime.now(clock)
+        ));
+        adminNotificationOutboxPublisher.publishDuplicatePlaceDetected(
+                candidate.getId(),
+                candidate.getLeftPlaceId(),
+                candidate.getRightPlaceId()
+        );
+        return toResponse(candidate);
     }
 
     private AdminPlaceDuplicateCandidateResponse toResponse(PlaceDuplicateCandidate candidate) {
