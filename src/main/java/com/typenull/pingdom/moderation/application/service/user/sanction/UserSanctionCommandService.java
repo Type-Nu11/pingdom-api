@@ -10,6 +10,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
+import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import jakarta.persistence.EntityManager;
 import java.sql.Connection;
@@ -35,6 +36,7 @@ public class UserSanctionCommandService {
     private final UserRepository userRepository;
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;
     private final UserAccessStatusService userAccessStatusService;
+    private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
     private final EntityManager entityManager;
     private final DataSource dataSource;
 
@@ -45,7 +47,7 @@ public class UserSanctionCommandService {
         User adminUser = findAdminUser(adminUserId);
         targetUser.ban(reason, now, expiresAt);
 
-        userSanctionHistoryRepository.save(UserSanctionHistory.builder()
+        UserSanctionHistory history = userSanctionHistoryRepository.save(UserSanctionHistory.builder()
                 .targetUserId(targetUser.getId())
                 .targetUsername(targetUser.getUsername())
                 .banType(targetUser.getBanType())
@@ -57,6 +59,11 @@ public class UserSanctionCommandService {
                 .adminUsername(adminUser.getUsername())
                 .processedAt(now)
                 .build());
+        adminNotificationOutboxPublisher.publishUserSanction(
+                history.getId(),
+                targetUser.getId(),
+                history.getAction()
+        );
 
         userAccessStatusService.evict(targetUser.getId());
     }
@@ -74,7 +81,7 @@ public class UserSanctionCommandService {
 
         targetUser.releaseBan();
 
-        userSanctionHistoryRepository.save(UserSanctionHistory.builder()
+        UserSanctionHistory history = userSanctionHistoryRepository.save(UserSanctionHistory.builder()
                 .targetUserId(targetUser.getId())
                 .targetUsername(targetUser.getUsername())
                 .banType(previousBanType)
@@ -86,6 +93,11 @@ public class UserSanctionCommandService {
                 .adminUsername(adminUser.getUsername())
                 .processedAt(now)
                 .build());
+        adminNotificationOutboxPublisher.publishUserSanction(
+                history.getId(),
+                targetUser.getId(),
+                history.getAction()
+        );
 
         userAccessStatusService.evict(targetUser.getId());
     }
@@ -173,7 +185,7 @@ public class UserSanctionCommandService {
 
         targetUser.releaseBan();
 
-        userSanctionHistoryRepository.save(UserSanctionHistory.builder()
+        UserSanctionHistory history = userSanctionHistoryRepository.save(UserSanctionHistory.builder()
                 .targetUserId(targetUser.getId())
                 .targetUsername(targetUser.getUsername())
                 .banType(previousBanType)
@@ -183,6 +195,11 @@ public class UserSanctionCommandService {
                 .endedAt(previousEndedAt)
                 .processedAt(now)
                 .build());
+        adminNotificationOutboxPublisher.publishUserSanction(
+                history.getId(),
+                targetUser.getId(),
+                history.getAction()
+        );
 
         userAccessStatusService.evict(targetUser.getId());
     }
