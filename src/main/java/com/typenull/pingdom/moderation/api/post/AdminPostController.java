@@ -10,8 +10,10 @@ import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.AdminReportService;
 import com.typenull.pingdom.moderation.application.query.post.AdminPostQueryService;
 import com.typenull.pingdom.post.infrastructure.storage.MapImageS3OrphanReportService;
-import com.typenull.pingdom.post.infrastructure.storage.S3Service;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import jakarta.validation.Valid;
+import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Size;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -47,7 +49,6 @@ public class AdminPostController {
     private final AdminReportService adminReportService;
     private final AdminPostQueryService adminPostQueryService;
     private final MapImageS3OrphanReportService mapImageS3OrphanReportService;
-    private final S3Service s3Service;
 
     @GetMapping("/posts")
     @Operation(
@@ -361,17 +362,25 @@ public class AdminPostController {
     @DeleteMapping("/posts/s3/orphans")
     @Operation(
             summary = "MapImage S3 고아 파일 삭제",
-            description = "요청 본문으로 받은 key 목록만 삭제합니다. 삭제 후보를 다시 계산하지 않으며 null 또는 blank key는 무시합니다."
+            description = "완료된 리포트의 삭제 후보인지 확인하고, 삭제 직전 DB에서 사용 중인 키를 다시 제외한 뒤 S3 객체를 삭제합니다."
     )
-    public S3Service.S3OrphanDeleteResult deleteS3Orphans(
-            @RequestBody(required = false) AdminS3OrphanDeleteRequest request
+    public MapImageS3OrphanReportService.S3OrphanDeleteResult deleteS3Orphans(
+            @Valid @RequestBody(required = false) AdminS3OrphanDeleteRequest request
     ) {
         if (request == null || !Boolean.TRUE.equals(request.confirmed())) {
             throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "S3 삭제 리포트 확인이 필요합니다.");
         }
-        return s3Service.deleteMapImageS3Keys(request.keys());
+        try {
+            return mapImageS3OrphanReportService.deleteMapImageS3Candidates(request.reportId(), request.keys());
+        } catch (IllegalStateException exception) {
+            throw new ResponseStatusException(HttpStatus.NOT_FOUND, exception.getMessage());
+        }
     }
 
-    public record AdminS3OrphanDeleteRequest(List<String> keys, Boolean confirmed) {
+    public record AdminS3OrphanDeleteRequest(
+            @NotBlank(message = "S3 고아 파일 리포트 ID는 필수입니다.") String reportId,
+            @Size(max = 100, message = "S3 삭제 요청은 최대 100개까지 가능합니다.") List<String> keys,
+            Boolean confirmed
+    ) {
     }
 }
