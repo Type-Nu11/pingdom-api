@@ -26,14 +26,16 @@ public interface NotificationsRepository extends JpaRepository<Notifications, Lo
             WHERE (:userId IS NULL OR notification.userId = :userId)
               AND (:type IS NULL OR notification.type = :type)
               AND (:read IS NULL OR notification.isRead = :read)
-              AND (:from IS NULL OR notification.createdAt >= :from)
-              AND (:to IS NULL OR notification.createdAt <= :to)
+              AND (:hasFrom = false OR notification.createdAt >= :from)
+              AND (:hasTo = false OR notification.createdAt <= :to)
             """)
     Page<Notifications> findByAdminFilters(
             @Param("userId") Long userId,
             @Param("type") NotificationType type,
             @Param("read") Boolean read,
+            @Param("hasFrom") boolean hasFrom,
             @Param("from") LocalDateTime from,
+            @Param("hasTo") boolean hasTo,
             @Param("to") LocalDateTime to,
             Pageable pageable
     );

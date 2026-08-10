@@ -99,6 +99,28 @@ class AdminNotificationControllerTest {
     }
 
     @Test
+    void listNotificationsWithoutOptionalFilters() throws Exception {
+        String adminAccessToken = createUserAndLogin("notificationDefaultFilterAdmin", UserRole.ADMIN);
+        saveNotification(
+                10L,
+                NotificationType.ADMIN_REPORT_RECEIVED,
+                "신고 접수 알림",
+                "새로운 신고가 접수되었습니다.",
+                "report:1",
+                false,
+                LocalDateTime.of(2026, 7, 21, 10, 0)
+        );
+
+        mockMvc.perform(get("/admin/notifications")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.notifications.length()").value(1))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
     void countUnreadNotifications() throws Exception {
         String adminAccessToken = createUserAndLogin("notificationCountAdmin", UserRole.ADMIN);
         saveNotification(10L, NotificationType.NEW_LIKE, "좋아요 알림", "좋아요", "post:1", false, LocalDateTime.now());
