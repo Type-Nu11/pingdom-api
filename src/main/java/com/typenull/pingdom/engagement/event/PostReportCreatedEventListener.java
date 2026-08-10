@@ -8,6 +8,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.moderation.outbox.notification.AdminNotificationOutboxPublisher;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
@@ -19,6 +20,7 @@ public class PostReportCreatedEventListener {
 
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
+    private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
 
     @Transactional
     @EventListener
@@ -44,5 +46,10 @@ public class PostReportCreatedEventListener {
         if (postReportRepository.existsAtLeastTenDistinctReportersByReportedImageId(report.getReportedImageId())){
             report.decreaseReportScore(15);
         }
+
+        adminNotificationOutboxPublisher.publishReportReceived(
+                report.getId(),
+                report.getReportedImageId()
+        );
     }
 }
