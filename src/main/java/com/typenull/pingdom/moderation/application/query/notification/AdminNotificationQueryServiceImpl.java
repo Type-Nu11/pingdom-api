@@ -26,13 +26,20 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminNotificationQueryServiceImpl implements AdminNotificationQueryService {
 
+    private static final List<NotificationType> ADMIN_NOTIFICATION_TYPES = List.of(
+            NotificationType.ADMIN_REPORT_RECEIVED,
+            NotificationType.ADMIN_REPORT_PROCESSED,
+            NotificationType.ADMIN_DUPLICATE_PLACE_DETECTED,
+            NotificationType.ADMIN_USER_SANCTION
+    );
+
     private final NotificationsRepository notificationsRepository;
     private final AdminAuditLogService adminAuditLogService;
 
     @Override
     @Transactional(readOnly = true)
     public AdminNotificationResponse listNotifications(
-            Long userId,
+            Long adminUserId,
             NotificationType type,
             Boolean read,
             LocalDateTime from,
@@ -51,7 +58,8 @@ public class AdminNotificationQueryServiceImpl implements AdminNotificationQuery
         );
 
         Page<Notifications> notificationPage = notificationsRepository.findByAdminFilters(
-                userId,
+                adminUserId,
+                ADMIN_NOTIFICATION_TYPES,
                 type,
                 read,
                 from != null,
@@ -75,14 +83,23 @@ public class AdminNotificationQueryServiceImpl implements AdminNotificationQuery
 
     @Override
     @Transactional(readOnly = true)
-    public AdminNotificationUnreadCountResponse countUnread() {
-        return new AdminNotificationUnreadCountResponse(notificationsRepository.countByIsReadFalse());
+    public AdminNotificationUnreadCountResponse countUnread(Long adminUserId) {
+        return new AdminNotificationUnreadCountResponse(
+                notificationsRepository.countByUserIdAndTypeInAndIsReadFalse(
+                        adminUserId,
+                        ADMIN_NOTIFICATION_TYPES
+                )
+        );
     }
 
     @Override
     @Transactional
     public AdminNotificationReadResponse markAsRead(Long notificationId, Long adminUserId) {
-        Notifications notification = notificationsRepository.findById(notificationId)
+        Notifications notification = notificationsRepository.findByIdAndUserIdAndTypeIn(
+                        notificationId,
+                        adminUserId,
+                        ADMIN_NOTIFICATION_TYPES
+                )
                 .orElseThrow(() -> new AdminException(AdminErrorCode.NOTIFICATION_NOT_FOUND));
         boolean beforeRead = notification.isRead();
 
@@ -106,8 +123,14 @@ public class AdminNotificationQueryServiceImpl implements AdminNotificationQuery
     @Override
     @Transactional
     public AdminNotificationReadAllResponse markAllAsRead(Long adminUserId) {
-        long unreadCount = notificationsRepository.countByIsReadFalse();
-        int updatedCount = notificationsRepository.markAllAsRead();
+        long unreadCount = notificationsRepository.countByUserIdAndTypeInAndIsReadFalse(
+                adminUserId,
+                ADMIN_NOTIFICATION_TYPES
+        );
+        int updatedCount = notificationsRepository.markAllAdminNotificationsAsRead(
+                adminUserId,
+                ADMIN_NOTIFICATION_TYPES
+        );
 
         adminAuditLogService.record(
                 adminUserId,

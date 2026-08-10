@@ -25,6 +25,7 @@ import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHi
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -79,10 +80,14 @@ class AdminReportControllerTest {
     private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
         userSanctionHistoryRepository.deleteAllInBatch();
         postReportRepository.deleteAllInBatch();
@@ -129,6 +134,13 @@ class AdminReportControllerTest {
                 .anyMatch(log -> log.getAction() == AdminAuditAction.POST_HIDDEN
                         && log.getTargetType() == AdminAuditTargetType.POST
                         && log.getTargetId().equals(String.valueOf(mapImage.getId()))));
+        assertTrue(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:REPORT_PROCESSED:" + postReport.getId()
+        ));
+        Long sanctionId = userSanctionHistoryRepository.findAll().getFirst().getId();
+        assertTrue(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:USER_SANCTION:" + sanctionId
+        ));
     }
 
     @Test
@@ -158,6 +170,9 @@ class AdminReportControllerTest {
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .anyMatch(log -> log.getAction() == AdminAuditAction.REPORT_DECLINED
                         && log.getTargetId().equals(String.valueOf(postReport.getId()))));
+        assertTrue(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:REPORT_PROCESSED:" + postReport.getId()
+        ));
     }
 
     @Test

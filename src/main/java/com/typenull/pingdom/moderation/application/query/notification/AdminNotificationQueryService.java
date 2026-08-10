@@ -10,7 +10,7 @@ import java.time.LocalDateTime;
 public interface AdminNotificationQueryService {
 
     AdminNotificationResponse listNotifications(
-            Long userId,
+            Long adminUserId,
             NotificationType type,
             Boolean read,
             LocalDateTime from,
@@ -19,7 +19,7 @@ public interface AdminNotificationQueryService {
             int limit
     );
 
-    AdminNotificationUnreadCountResponse countUnread();
+    AdminNotificationUnreadCountResponse countUnread(Long adminUserId);
 
     AdminNotificationReadResponse markAsRead(Long notificationId, Long adminUserId);
 

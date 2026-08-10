@@ -25,6 +25,7 @@ import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.LocalDateTime;
 import java.time.format.DateTimeFormatter;
 import java.util.List;
@@ -79,10 +80,14 @@ class AdminUserControllerTest {
     private UserSanctionCommandService userSanctionCommandService;
 
     @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
     private PasswordEncoder passwordEncoder;
 
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
         userSanctionHistoryRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
@@ -353,6 +358,9 @@ class AdminUserControllerTest {
         assertEquals("7일 제재", history.getReason());
         assertEquals("adminTester", history.getAdminUsername());
         assertEquals(targetUser.getId(), history.getTargetUserId());
+        assertTrue(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:USER_SANCTION:" + history.getId()
+        ));
 
         List<AdminAuditLog> auditLogs = adminAuditLogRepository.findAll();
         assertEquals(1, auditLogs.size());
@@ -486,6 +494,13 @@ class AdminUserControllerTest {
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .anyMatch(log -> log.getAction() == AdminAuditAction.USER_BAN_RELEASED
                         && log.getTargetId().equals(String.valueOf(targetUser.getId()))));
+        UserSanctionHistory releasedHistory = userSanctionHistoryRepository.findAll().stream()
+                .filter(history -> history.getAction() == UserSanctionAction.RELEASED)
+                .findFirst()
+                .orElseThrow();
+        assertTrue(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:USER_SANCTION:" + releasedHistory.getId()
+        ));
 
         mockMvc.perform(get("/admin/users/{userId}/sanction", targetUser.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
@@ -533,6 +548,9 @@ class AdminUserControllerTest {
         assertEquals(UserSanctionAction.EXPIRED, history.getAction());
         assertEquals(UserBanType.TEMPORARY, history.getBanType());
         assertEquals("만료 정리 테스트", history.getReason());
+        assertTrue(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:USER_SANCTION:" + history.getId()
+        ));
     }
 
     @Test

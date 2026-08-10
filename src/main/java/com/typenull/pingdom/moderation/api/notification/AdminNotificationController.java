@@ -5,6 +5,8 @@ import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationRea
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationResponse;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationUnreadCountResponse;
 import com.typenull.pingdom.moderation.application.query.notification.AdminNotificationQueryService;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -39,7 +41,8 @@ public class AdminNotificationController {
     @GetMapping
     @Operation(
             summary = "관리자 알림 목록 조회",
-            description = "관리자가 사용자, 알림 유형, 읽음 상태, 기간 조건으로 인앱 알림을 페이지 단위로 조회합니다."
+            description = "인증된 관리자가 자신에게 전달된 운영 알림을 유형, 읽음 상태, 기간 조건으로 조회합니다. "
+                    + "알림 token은 report:{reportId}, place:{placeId}, sanction:{sanctionId} 형식을 사용합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -55,7 +58,7 @@ public class AdminNotificationController {
                                           "userId": 10,
                                           "type": "ADMIN_REPORT_RECEIVED",
                                           "title": "신고 접수 알림",
-                                          "body": "새로운 신고가 접수되었습니다.",
+                                          "body": "신고 ID 30 접수가 게시글 ID 12에 등록되었습니다.",
                                           "token": "report:30",
                                           "read": false,
                                           "createdAt": "2026-07-21T15:30:00"
@@ -86,9 +89,17 @@ public class AdminNotificationController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminNotificationResponse listNotifications(
-            @Parameter(description = "수신 사용자 ID", example = "10")
+            @Parameter(
+                    description = "하위 호환용 수신 관리자 ID. 생략을 권장하며 인증 관리자 ID와 같아야 합니다.",
+                    example = "10",
+                    deprecated = true
+            )
             @RequestParam(required = false) Long userId,
-            @Parameter(description = "알림 유형", example = "NEW_LIKE")
+            @Parameter(
+                    description = "관리자 알림 유형: ADMIN_REPORT_RECEIVED, ADMIN_REPORT_PROCESSED, "
+                            + "ADMIN_DUPLICATE_PLACE_DETECTED, ADMIN_USER_SANCTION",
+                    example = "ADMIN_REPORT_RECEIVED"
+            )
             @RequestParam(required = false) NotificationType type,
             @Parameter(description = "읽음 여부", example = "false")
             @RequestParam(required = false) Boolean read,
@@ -101,9 +112,21 @@ public class AdminNotificationController {
             @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return adminNotificationQueryService.listNotifications(userId, type, read, from, to, page, limit);
+        if (userId != null && !userId.equals(adminUser.userId())) {
+            throw new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED);
+        }
+        return adminNotificationQueryService.listNotifications(
+                adminUser.userId(),
+                type,
+                read,
+                from,
+                to,
+                page,
+                limit
+        );
     }
 
     @GetMapping("/unread-count")
@@ -127,8 +150,10 @@ public class AdminNotificationController {
             @ApiResponse(responseCode = "401", description = "인증 실패"),
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
-    public AdminNotificationUnreadCountResponse countUnread() {
-        return adminNotificationQueryService.countUnread();
+    public AdminNotificationUnreadCountResponse countUnread(
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+    ) {
+        return adminNotificationQueryService.countUnread(adminUser.userId());
     }
 
     @PatchMapping("/{notificationId}/read")

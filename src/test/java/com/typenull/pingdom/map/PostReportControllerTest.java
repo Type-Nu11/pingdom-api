@@ -12,6 +12,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -61,8 +62,12 @@ class PostReportControllerTest {
     @Autowired
     private ReporterModerationPolicyRepository reporterModerationPolicyRepository;
 
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
     @BeforeEach
     void setUp() {
+        outboxEventRepository.deleteAllInBatch();
         postReportRepository.deleteAllInBatch();
         reporterModerationPolicyRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
@@ -89,6 +94,9 @@ class PostReportControllerTest {
         assertEquals("reporter01", postReport.getReporterUsername());
         assertEquals("부적절한 사진입니다.", postReport.getReason());
         assertEquals(mapImage.getId(), postReport.getMapImage().getId());
+        org.assertj.core.api.Assertions.assertThat(outboxEventRepository.existsByDeduplicationKey(
+                "ADMIN_NOTIFICATION:REPORT_RECEIVED:" + postReport.getId()
+        )).isTrue();
     }
 
     @Test
