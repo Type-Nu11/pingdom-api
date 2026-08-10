@@ -133,9 +133,10 @@ Outbox의 `deduplication_key`는 같은 작업 요청의 중복 저장을 막는
 1. `FAILED` 또는 반복 `RETRY`를 발견하면 event ID, event type, aggregate type·ID, attempt
    count, last error와 요청 상관관계를 보존한다.
 2. 공급자 설정, network, payload, handler 로그를 확인하고 원인을 먼저 제거한다.
-3. 최종 실패 row는 코드상 `retryFailedEvent`로 `RETRY` 전환할 수 있다. 현재 공개 운영 API는
-   제공하지 않으므로 DB를 직접 수정하지 않는다. 재처리 인터페이스가 필요하면 권한·감사
-   이력·중복 안전성을 포함한 별도 운영 기능 이슈로 처리한다.
+3. 최종 실패 row는 `OUTBOX_RECOVERY` 권한을 가진 관리자가
+   `POST /admin/outbox-events/{eventId}/retry`로 `RETRY` 전환할 수 있다. 요청 사유와 전후
+   상태는 관리자 감사 이력에 남으며, 행 잠금으로 동일 event의 중복 상태 전이를 막는다.
+   운영자는 DB를 직접 수정하지 않는다.
 4. 재시도 전에는 외부 효과의 중복이 안전한지 확인한다. 재시도가 위험하면 handler를 멈추고
    영향 범위와 수동 보정 방식을 결정한다.
 
@@ -155,8 +156,9 @@ Outbox 상태 지표와 alert 기준은 [운영 관측성](../observability.md),
 
 ## 6. 공개 계약과 변경 이력
 
-이 문서 작업은 Java 코드, `src/test/resources/openapi-baseline`, Flyway migration, 배포 설정을
-변경하지 않는다. 문서에서 확인한 구현 불일치나 신규 관측성 요구는 별도 이슈로 분리한다.
+초기 문서화 작업은 Java 코드와 공개 계약을 변경하지 않았다. 이후 #809에서 관리자 Outbox
+조회·재처리 API, 권한·감사·metric, Flyway 제약과 조회 인덱스를 추가했다. 비내구성 Spring
+이벤트의 일반 재생과 메시지 브로커 도입은 여전히 별도 범위다.
 
 | 계약 | 이벤트 변경 시 확인할 사항 |
 | --- | --- |
@@ -170,3 +172,4 @@ Outbox 상태 지표와 alert 기준은 [운영 관측성](../observability.md),
 | 2026-07-10 | #542, #543 | 현재 Spring 이벤트와 Outbox 작업 요청의 책임·전달 보장·설계 기준을 문서화 | 완료 |
 | 2026-07-10 | #544 | 구현·계약 대조 기준과 기존 제한 사항을 기록 | 완료 |
 | 2026-07-10 | #545 | Outbox 및 비내구성 이벤트의 점검·복구 절차를 Runbook·관측성 문서에 연결 | 완료 |
+| 2026-08-10 | #809, #810, #811 | Outbox 운영 조회·권한 기반 수동 재처리·감사·관측 계약 추가 | 완료 |

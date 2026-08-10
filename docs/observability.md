@@ -31,6 +31,7 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 | `pingdom.outbox.processed` | `event_type`, `handler`, `result` | Outbox success, retry, final failure count |
 | `pingdom.outbox.max_attempts_exceeded` | `event_type`, `handler` | Events that exceeded max attempts |
 | `pingdom.outbox.stale_recovered` | none | Stale `PROCESSING` recovery count |
+| `pingdom.outbox.manual_retry` | `event_type`, `result` | 관리자 수동 재처리 성공·거절 결과 |
 | `pingdom.auth.failures` | `code`, `source`, `status` | Authentication failure count |
 | `pingdom.auth.refresh_token` | `result`, `reason` | Refresh token success/failure count |
 | `pingdom.recommendation.requests` | `recommendation_version` | Recommendation request count by version |
@@ -55,6 +56,7 @@ Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인�
 - Investigate when `pingdom.outbox.events{status="FAILED"}` is greater than `0`.
 - Investigate retry pressure when `pingdom.outbox.processed{result="retry"}` keeps increasing for more than one poll cycle.
 - Investigate worker instability when `pingdom.outbox.stale_recovered` increases.
+- Investigate repeated `pingdom.outbox.manual_retry{result="not_retryable"}` increases as duplicate or stale operator requests.
 - Investigate authentication incidents when `pingdom.auth.failures{code="INVALID_TOKEN"}` spikes above the normal baseline.
 - Investigate recommendation rollout issues when `pingdom.recommendation.requests` traffic unexpectedly shifts by `recommendation_version`.
 - Investigate failed admin maintenance when `pingdom.recommendation.snapshot_resync{result="failure"}` increases.
@@ -65,6 +67,10 @@ Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인�
 
 - HTTP API 실패는 상태 코드, 응답 본문의 `code`, `X-Request-Id`를 함께 보존하고
   [API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md)의 클라이언트 재시도 기준과 대조한다.
-- Outbox 실패는 event ID, event type, attempt count, 마지막 오류, 위 metric을 함께 확인한다.
+- Outbox 실패는 관리자 `GET /admin/outbox-events`에서 event ID, event type, aggregate,
+  attempt count, 마지막 오류를 확인한다. payload와 deduplication key는 운영 API에 노출되지 않는다.
+- 원인 제거와 중복 외부 효과 안전성을 확인한 `FAILED` event만
+  `POST /admin/outbox-events/{eventId}/retry`로 재처리한다. 요청에는 사유가 필요하며
+  `OUTBOX_RECOVERY` 권한, 관리자 감사 이력, `pingdom.outbox.manual_retry` metric이 적용된다.
 - 알림 발송 실패는 관리자 `GET /admin/notification-deliveries` 조회 결과의 channel, status,
   notification type, provider error code를 Outbox 상태와 분리해 확인한다.
