@@ -20,6 +20,9 @@ public class Notifications {
     @Column(name = "token")
     private String token;
 
+    @Column(name = "event_key", length = 200, updatable = false)
+    private String eventKey;
+
     @Enumerated(EnumType.STRING)
     @Column(name = "type", nullable = false)
     private NotificationType type;
