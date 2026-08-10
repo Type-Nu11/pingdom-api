@@ -1,12 +1,10 @@
 package com.typenull.pingdom.moderation.application.query.storage;
 
-
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.moderation.api.dto.storage.AdminS3OrphanObjectReportResponse;
-import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.post.infrastructure.storage.MapImageS3OrphanReportService;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -18,30 +16,27 @@ import org.mockito.junit.jupiter.MockitoExtension;
 class AdminS3ObjectReportServiceTest {
 
     @Mock
-    private MapImageRepository mapImageRepository;
-
-    @Mock
-    private S3ObjectStorage s3ObjectStorage;
+    private MapImageS3OrphanReportService mapImageS3OrphanReportService;
 
     private AdminS3ObjectReportService service;
 
     @BeforeEach
     void setUp() {
-        service = new AdminS3ObjectReportService(mapImageRepository, s3ObjectStorage);
+        service = new AdminS3ObjectReportService(mapImageS3OrphanReportService);
     }
 
     @Test
-    void reportOrphanObjectsComparesS3ObjectsWithOriginalAndThumbnailKeys() {
-        when(s3ObjectStorage.listKeys("map/", 100))
-                .thenReturn(new S3ObjectStorage.S3ListResult(
-                        List.of("map/used.jpg", "map/orphan.jpg", "map/thumbnails/used-thumb.jpg"),
-                        false
+    void reportOrphanObjectsMapsSharedReportResultToExistingResponse() {
+        when(mapImageS3OrphanReportService.reportOrphanObjects("map/", 100))
+                .thenReturn(new MapImageS3OrphanReportService.S3OrphanDryRunReport(
+                        "map/",
+                        100,
+                        false,
+                        2,
+                        3,
+                        1,
+                        List.of("map/orphan.jpg")
                 ));
-        List<String> listedKeys = List.of("map/used.jpg", "map/orphan.jpg", "map/thumbnails/used-thumb.jpg");
-        when(mapImageRepository.findUsedOriginalS3Keys(listedKeys)).thenReturn(List.of("map/used.jpg"));
-        when(mapImageRepository.findUsedThumbnailS3Keys(listedKeys)).thenReturn(List.of("map/thumbnails/used-thumb.jpg"));
-        when(mapImageRepository.countOriginalS3Keys()).thenReturn(1L);
-        when(mapImageRepository.countThumbnailS3Keys()).thenReturn(1L);
 
         AdminS3OrphanObjectReportResponse response = service.reportOrphanObjects("map/", 100);
 
