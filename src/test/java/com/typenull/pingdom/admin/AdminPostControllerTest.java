@@ -474,6 +474,7 @@ class AdminPostControllerTest {
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
                                 {
+                                  "reportId": "report-1",
                                   "keys": [],
                                   "confirmed": true
                                 }

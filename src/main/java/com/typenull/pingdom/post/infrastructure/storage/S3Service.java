@@ -38,19 +38,14 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 import java.util.Arrays;
-import java.util.ArrayList;
-import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
-import java.util.Set;
-import java.util.stream.Collectors;
 
 @Service
 @RequiredArgsConstructor
 @Slf4j
 public class S3Service {
 
-    private static final String MAP_IMAGE_S3_PREFIX = "map/";
     private final S3ObjectStorage s3ObjectStorage;
     private final MapImageRepository mapImageRepository;
     private final MapPlaceRepository mapPlaceRepository;
@@ -226,40 +221,6 @@ public class S3Service {
         Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
         return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
     }
-    public S3OrphanDeleteResult deleteMapImageS3Keys(List<String> keys) {
-        // 리포트를 확인한 뒤 전달받은 key만 삭제한다. 여기서는 후보를 다시 계산하지 않는다.
-        Set<String> normalizedKeys = keys == null
-                ? Set.of()
-                : keys.stream()
-                        .filter(StringUtils::hasText)
-                        .map(String::trim)
-                        .filter(StringUtils::hasText)
-                        .filter(key -> key.startsWith(MAP_IMAGE_S3_PREFIX))
-                        .collect(Collectors.toCollection(LinkedHashSet::new));
-
-        List<String> deletedKeys = new ArrayList<>();
-        List<S3OrphanDeleteFailure> failedKeys = new ArrayList<>();
-
-        for (String key : normalizedKeys) {
-            try {
-                s3ObjectStorage.delete(key);
-                deletedKeys.add(key);
-                log.info("S3 고아 파일 삭제 성공. key={}", key);
-            } catch (RuntimeException exception) {
-                failedKeys.add(new S3OrphanDeleteFailure(key, exception.getMessage()));
-                log.warn("S3 고아 파일 삭제 실패. key={}", key, exception);
-            }
-        }
-
-        return new S3OrphanDeleteResult(
-                normalizedKeys.size(),
-                deletedKeys.size(),
-                failedKeys.size(),
-                deletedKeys,
-                failedKeys
-        );
-    }
-
     private PostResponse savePost(
             PostUploadRequest request,
             long userId,
@@ -409,15 +370,4 @@ public class S3Service {
         }
     }
 
-    public record S3OrphanDeleteFailure(String key, String reason) {
-    }
-
-    public record S3OrphanDeleteResult(
-            int requestedKeyCount,
-            int deletedKeyCount,
-            int failedKeyCount,
-            List<String> deletedKeys,
-            List<S3OrphanDeleteFailure> failedKeys
-    ) {
-    }
 }

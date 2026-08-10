@@ -7,11 +7,13 @@ import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.redis.core.StringRedisTemplate;
@@ -130,14 +132,72 @@ public class MapImageS3OrphanReportService {
         );
     }
 
+    /**
+     * 리포트 생성 시점의 후보 여부와 현재 DB 사용 여부를 모두 확인한 뒤 S3 객체를 삭제한다.
+     */
+    public S3OrphanDeleteResult deleteMapImageS3Candidates(String reportId, List<String> keys) {
+        Set<String> requestedKeys = normalizeDeleteKeys(keys);
+        if (requestedKeys.isEmpty()) {
+            return new S3OrphanDeleteResult(0, 0, 0, List.of(), List.of());
+        }
+
+        String resolvedReportId = resolveReportId(reportId);
+        String reportStatus = readMeta(reportMetaKey(resolvedReportId), "status", "NOT_FOUND");
+        if (!"COMPLETED".equals(reportStatus)) {
+            return failedDeleteResult(requestedKeys, "완료된 S3 고아 파일 리포트가 아닙니다.");
+        }
+
+        String candidateSetKey = reportCandidateSetKey(resolvedReportId);
+        List<String> reportCandidateKeys = new ArrayList<>();
+        List<S3OrphanDeleteFailure> failedKeys = new ArrayList<>();
+        for (String key : requestedKeys) {
+            if (Boolean.TRUE.equals(redisTemplate.opsForSet().isMember(candidateSetKey, key))) {
+                reportCandidateKeys.add(key);
+            } else {
+                failedKeys.add(new S3OrphanDeleteFailure(key, "리포트 삭제 후보에 없는 S3 객체입니다."));
+            }
+        }
+
+        Set<String> usedKeys = findUsedKeys(reportCandidateKeys);
+        List<String> deletableKeys = new ArrayList<>();
+        for (String key : reportCandidateKeys) {
+            if (usedKeys.contains(key)) {
+                failedKeys.add(new S3OrphanDeleteFailure(key, "DB(MapImage)에서 사용 중인 S3 객체입니다."));
+            } else {
+                deletableKeys.add(key);
+            }
+        }
+
+        List<String> deletedKeys = new ArrayList<>();
+        for (String key : deletableKeys) {
+            try {
+                s3ObjectStorage.delete(key);
+                deletedKeys.add(key);
+                log.info("S3 고아 파일 삭제 성공. reportId={}, key={}", resolvedReportId, key);
+            } catch (RuntimeException exception) {
+                failedKeys.add(new S3OrphanDeleteFailure(key, exception.getMessage()));
+                log.warn("S3 고아 파일 삭제 실패. reportId={}, key={}", resolvedReportId, key, exception);
+            }
+        }
+
+        return new S3OrphanDeleteResult(
+                requestedKeys.size(),
+                deletedKeys.size(),
+                failedKeys.size(),
+                deletedKeys,
+                failedKeys
+        );
+    }
+
     private void buildMapImageS3OrphanReport(String reportId) {
         String metaKey = reportMetaKey(reportId);
         String candidatesKey = reportCandidatesKey(reportId);
+        String candidateSetKey = reportCandidateSetKey(reportId);
         long s3KeyCount = 0;
         long deleteCandidateCount = 0;
 
         try {
-            redisTemplate.delete(candidatesKey);
+            redisTemplate.delete(List.of(candidatesKey, candidateSetKey));
 
             String continuationToken = null;
             do {
@@ -148,6 +208,7 @@ public class MapImageS3OrphanReportService {
                 List<String> candidateKeys = findOrphanKeys(pageKeys);
                 if (!candidateKeys.isEmpty()) {
                     redisTemplate.opsForList().rightPushAll(candidatesKey, candidateKeys);
+                    redisTemplate.opsForSet().add(candidateSetKey, candidateKeys.toArray(String[]::new));
                     deleteCandidateCount += candidateKeys.size();
                 }
                 continuationToken = s3KeyPage.nextContinuationToken();
@@ -173,11 +234,40 @@ public class MapImageS3OrphanReportService {
             return List.of();
         }
 
-        Set<String> usedKeys = new HashSet<>(mapImageRepository.findUsedOriginalS3Keys(s3Keys));
-        usedKeys.addAll(mapImageRepository.findUsedThumbnailS3Keys(s3Keys));
+        Set<String> usedKeys = findUsedKeys(s3Keys);
         return s3Keys.stream()
                 .filter(key -> !usedKeys.contains(key))
                 .toList();
+    }
+
+    private Set<String> findUsedKeys(List<String> keys) {
+        if (keys.isEmpty()) {
+            return Set.of();
+        }
+
+        Set<String> usedKeys = new HashSet<>(mapImageRepository.findUsedOriginalS3Keys(keys));
+        usedKeys.addAll(mapImageRepository.findUsedThumbnailS3Keys(keys));
+        return usedKeys;
+    }
+
+    private Set<String> normalizeDeleteKeys(List<String> keys) {
+        if (keys == null) {
+            return Set.of();
+        }
+
+        return keys.stream()
+                .filter(StringUtils::hasText)
+                .map(String::trim)
+                .filter(StringUtils::hasText)
+                .filter(key -> key.startsWith(MAP_IMAGE_S3_PREFIX))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
+    }
+
+    private S3OrphanDeleteResult failedDeleteResult(Set<String> requestedKeys, String reason) {
+        List<S3OrphanDeleteFailure> failedKeys = requestedKeys.stream()
+                .map(key -> new S3OrphanDeleteFailure(key, reason))
+                .toList();
+        return new S3OrphanDeleteResult(requestedKeys.size(), 0, failedKeys.size(), List.of(), failedKeys);
     }
 
     private List<String> normalizeKeys(List<String> keys) {
@@ -213,6 +303,7 @@ public class MapImageS3OrphanReportService {
     private void expireReportKeys(String reportId) {
         redisTemplate.expire(reportMetaKey(reportId), REPORT_TTL);
         redisTemplate.expire(reportCandidatesKey(reportId), REPORT_TTL);
+        redisTemplate.expire(reportCandidateSetKey(reportId), REPORT_TTL);
     }
 
     private String readMeta(String metaKey, String field, String defaultValue) {
@@ -248,6 +339,10 @@ public class MapImageS3OrphanReportService {
 
     private String reportCandidatesKey(String reportId) {
         return REPORT_KEY_PREFIX + reportId + ":candidates";
+    }
+
+    private String reportCandidateSetKey(String reportId) {
+        return REPORT_KEY_PREFIX + reportId + ":candidate-set";
     }
 
     @PreDestroy
@@ -295,6 +390,18 @@ public class MapImageS3OrphanReportService {
             long totalCount,
             long totalPages,
             boolean hasNext
+    ) {
+    }
+
+    public record S3OrphanDeleteFailure(String key, String reason) {
+    }
+
+    public record S3OrphanDeleteResult(
+            int requestedKeyCount,
+            int deletedKeyCount,
+            int failedKeyCount,
+            List<String> deletedKeys,
+            List<S3OrphanDeleteFailure> failedKeys
     ) {
     }
 }

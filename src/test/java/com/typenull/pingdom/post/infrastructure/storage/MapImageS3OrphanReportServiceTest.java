@@ -3,6 +3,8 @@ package com.typenull.pingdom.post.infrastructure.storage;
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -15,6 +17,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.redis.core.HashOperations;
 import org.springframework.data.redis.core.ListOperations;
+import org.springframework.data.redis.core.SetOperations;
 import org.springframework.data.redis.core.StringRedisTemplate;
 
 @ExtendWith(MockitoExtension.class)
@@ -34,6 +37,9 @@ class MapImageS3OrphanReportServiceTest {
 
     @Mock
     private ListOperations<String, String> listOperations;
+
+    @Mock
+    private SetOperations<String, String> setOperations;
 
     private MapImageS3OrphanReportService service;
 
@@ -84,5 +90,49 @@ class MapImageS3OrphanReportServiceTest {
         assertEquals(2, report.totalPages());
         assertEquals(true, report.hasNext());
         assertEquals("map/orphan-1.jpg", report.deleteCandidates().getFirst().key());
+    }
+
+    @Test
+    void deleteMapImageS3CandidatesRechecksDatabaseUsageBeforeDeleting() {
+        stubCompletedReport();
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        when(setOperations.isMember(any(), eq("map/orphan.jpg"))).thenReturn(true);
+        when(setOperations.isMember(any(), eq("map/active.jpg"))).thenReturn(true);
+        List<String> candidateKeys = List.of("map/orphan.jpg", "map/active.jpg");
+        when(mapImageRepository.findUsedOriginalS3Keys(candidateKeys)).thenReturn(List.of("map/active.jpg"));
+        when(mapImageRepository.findUsedThumbnailS3Keys(candidateKeys)).thenReturn(List.of());
+
+        MapImageS3OrphanReportService.S3OrphanDeleteResult result =
+                service.deleteMapImageS3Candidates("report-1", candidateKeys);
+
+        assertEquals(2, result.requestedKeyCount());
+        assertEquals(List.of("map/orphan.jpg"), result.deletedKeys());
+        assertEquals(1, result.failedKeyCount());
+        assertEquals("map/active.jpg", result.failedKeys().getFirst().key());
+        assertEquals("DB(MapImage)에서 사용 중인 S3 객체입니다.", result.failedKeys().getFirst().reason());
+        verify(s3ObjectStorage).delete("map/orphan.jpg");
+        verify(s3ObjectStorage, never()).delete("map/active.jpg");
+    }
+
+    @Test
+    void deleteMapImageS3CandidatesRejectsKeysMissingFromReportCandidates() {
+        stubCompletedReport();
+        when(redisTemplate.opsForSet()).thenReturn(setOperations);
+        when(setOperations.isMember(any(), eq("map/expired.jpg"))).thenReturn(false);
+
+        MapImageS3OrphanReportService.S3OrphanDeleteResult result =
+                service.deleteMapImageS3Candidates("report-1", List.of("map/expired.jpg"));
+
+        assertEquals(1, result.requestedKeyCount());
+        assertEquals(0, result.deletedKeyCount());
+        assertEquals(1, result.failedKeyCount());
+        assertEquals("리포트 삭제 후보에 없는 S3 객체입니다.", result.failedKeys().getFirst().reason());
+        verify(s3ObjectStorage, never()).delete(any());
+        verify(mapImageRepository, never()).findUsedOriginalS3Keys(any());
+    }
+
+    private void stubCompletedReport() {
+        when(redisTemplate.opsForHash()).thenReturn(hashOperations);
+        when(hashOperations.get(any(), eq("status"))).thenReturn("COMPLETED");
     }
 }
