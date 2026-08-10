@@ -3,27 +3,33 @@ package com.typenull.pingdom.notification.repository;
 import com.typenull.pingdom.notification.domain.Notifications;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import java.time.LocalDateTime;
-import org.springframework.data.jpa.repository.JpaRepository;
-import org.springframework.data.jpa.repository.Modifying;
+import java.util.Collection;
+import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
-
-import java.util.Optional;
-
 
 @Repository
 public interface NotificationsRepository extends JpaRepository<Notifications, Long> {
     Optional<Notifications> findByIdAndUserId(Long id, Long userId);
 
-    long countByIsReadFalse();
+    Optional<Notifications> findByIdAndUserIdAndTypeIn(
+            Long id,
+            Long userId,
+            Collection<NotificationType> types
+    );
+
+    long countByUserIdAndTypeInAndIsReadFalse(Long userId, Collection<NotificationType> types);
 
     @Query("""
             SELECT notification
             FROM Notifications notification
-            WHERE (:userId IS NULL OR notification.userId = :userId)
+            WHERE notification.userId = :userId
+              AND notification.type IN :adminTypes
               AND (:type IS NULL OR notification.type = :type)
               AND (:read IS NULL OR notification.isRead = :read)
               AND (:hasFrom = false OR notification.createdAt >= :from)
@@ -31,6 +37,7 @@ public interface NotificationsRepository extends JpaRepository<Notifications, Lo
             """)
     Page<Notifications> findByAdminFilters(
             @Param("userId") Long userId,
+            @Param("adminTypes") Collection<NotificationType> adminTypes,
             @Param("type") NotificationType type,
             @Param("read") Boolean read,
             @Param("hasFrom") boolean hasFrom,
@@ -40,13 +47,18 @@ public interface NotificationsRepository extends JpaRepository<Notifications, Lo
             Pageable pageable
     );
 
-    @Modifying
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
     @Query("""
             UPDATE Notifications notification
             SET notification.isRead = true
-            WHERE notification.isRead = false
+            WHERE notification.userId = :userId
+              AND notification.type IN :adminTypes
+              AND notification.isRead = false
             """)
-    int markAllAsRead();
+    int markAllAdminNotificationsAsRead(
+            @Param("userId") Long userId,
+            @Param("adminTypes") Collection<NotificationType> adminTypes
+    );
 
     @Modifying(flushAutomatically = true)
     @Query(value = """

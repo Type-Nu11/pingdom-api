@@ -36,6 +36,12 @@ import org.testcontainers.utility.DockerImageName;
 class NotificationsRepositoryPostgreSqlIntegrationTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 10, 12, 0);
+    private static final List<NotificationType> ADMIN_TYPES = List.of(
+            NotificationType.ADMIN_REPORT_RECEIVED,
+            NotificationType.ADMIN_REPORT_PROCESSED,
+            NotificationType.ADMIN_DUPLICATE_PLACE_DETECTED,
+            NotificationType.ADMIN_USER_SANCTION
+    );
 
     @Container
     private static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(
@@ -100,7 +106,8 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
             LocalDateTime to
     ) {
         return notificationsRepository.findByAdminFilters(
-                null,
+                10L,
+                ADMIN_TYPES,
                 null,
                 null,
                 hasFrom,
