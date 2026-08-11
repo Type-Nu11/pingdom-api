@@ -20,6 +20,8 @@ import org.mockito.junit.jupiter.MockitoExtension;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -83,6 +85,53 @@ class PlaceRecommendationVersionSnapshotServiceTest {
 
         assertThat(snapshot.getExposureCount()).isEqualTo(4L);
         verify(placeRecommendationVersionSnapshotRepository).saveAll(List.of(snapshot));
+    }
+
+    @Test
+    void resyncPlaceDeletesOnlyTargetVersionsWithoutCurrentMetrics() {
+        PlaceRecommendationVersionSnapshot staleSnapshot = PlaceRecommendationVersionSnapshot.builder()
+                .id(10L)
+                .placeId(1L)
+                .recommendationVersion(RECOMMENDATION_VERSION)
+                .clickCount(1L)
+                .bookmarkConversionCount(0L)
+                .likeConversionCount(0L)
+                .exposureCount(3L)
+                .updatedAt(LocalDateTime.now().minusMinutes(1))
+                .build();
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(createPlace(1L)));
+        when(placeRecommendationVersionSnapshotRepository.findByPlaceIdIn(List.of(1L)))
+                .thenReturn(List.of(staleSnapshot));
+
+        PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult result =
+                placeRecommendationVersionSnapshotService.resyncPlace(1L);
+
+        assertThat(result.synchronizedSnapshotCount()).isZero();
+        assertThat(result.deletedSnapshotCount()).isEqualTo(1L);
+        verify(placeRecommendationVersionSnapshotRepository).deleteAllByIdInBatch(List.of(10L));
+        verify(placeRecommendationVersionSnapshotRepository, never()).saveAll(any());
+    }
+
+    @Test
+    void resyncPlaceCreatesOnlyTargetVersionWithAggregatedMetrics() {
+        PlaceRecommendationExposureRepository.PlaceVersionExposureCountProjection projection =
+                mock(PlaceRecommendationExposureRepository.PlaceVersionExposureCountProjection.class);
+        when(projection.getPlaceId()).thenReturn(1L);
+        when(projection.getRecommendationVersion()).thenReturn(RECOMMENDATION_VERSION);
+        when(projection.getExposureCount()).thenReturn(7L);
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(createPlace(1L)));
+        when(placeRecommendationExposureRepository
+                .countExposuresByPlaceIdsGroupedByPlaceIdAndRecommendationVersion(List.of(1L)))
+                .thenReturn(List.of(projection));
+        when(placeRecommendationVersionSnapshotRepository.findByPlaceIdIn(List.of(1L)))
+                .thenReturn(List.of());
+
+        PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult result =
+                placeRecommendationVersionSnapshotService.resyncPlace(1L);
+
+        assertThat(result.synchronizedSnapshotCount()).isEqualTo(1L);
+        assertThat(result.deletedSnapshotCount()).isZero();
+        verify(placeRecommendationVersionSnapshotRepository).saveAll(any());
     }
 
     private MapPlace createPlace(Long placeId) {
