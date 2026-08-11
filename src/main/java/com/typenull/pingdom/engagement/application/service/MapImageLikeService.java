@@ -87,7 +87,7 @@ public class MapImageLikeService {
 
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(mapImageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
-        mapImageLikeRepository.deleteLike(userId, mapImageId);
+        mapImageLikeRepository.deleteByUserIdAndMapImageId(userId, mapImageId);
         mapImageRepository.decreaseLikeCount(mapImageId);
         if (mapImage.getMapPlace() != null) {
             placeRecommendationSnapshotService.refresh(mapImage.getMapPlace().getId());

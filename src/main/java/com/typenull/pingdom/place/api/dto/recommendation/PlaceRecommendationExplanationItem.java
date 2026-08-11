@@ -11,7 +11,7 @@ public record PlaceRecommendationExplanationItem(
         String placeName,
         @Schema(description = "노출 순위", example = "1")
         int ranking,
-        @Schema(description = "후보 소스", example = "PERSONALIZED")
+        @Schema(description = "후보 소스", example = "PERSONAL")
         PlaceRecommendationCandidateSource source,
         @Schema(description = "거리(m)", example = "128")
         long distanceMeters,

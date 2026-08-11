@@ -33,6 +33,7 @@ import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.DecimalMax;
@@ -70,11 +71,44 @@ public class PlaceController {
 
     @GetMapping("/map")
     @Operation(summary = "지도 viewport 장소 조회", description = "지도 경계와 zoom에 따라 장소 cluster 또는 marker를 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "지도 viewport 조회 성공",
+                    content = @Content(schema = @Schema(implementation = MapViewportResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "400",
+                    description = "지도 경계 또는 zoom 조건이 올바르지 않음",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            )
+    })
     public ResponseEntity<MapViewportResponse> mapViewport(
+            @Parameter(description = "서쪽 경도 경계", example = "128.0")
+            @DecimalMin(value = "-180.0", message = "west는 -180.0 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "west는 180.0 이하여야 합니다.")
             @RequestParam double west,
+            @Parameter(description = "남쪽 위도 경계", example = "35.0")
+            @DecimalMin(value = "-90.0", message = "south는 -90.0 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "south는 90.0 이하여야 합니다.")
             @RequestParam double south,
+            @Parameter(description = "동쪽 경도 경계", example = "129.0")
+            @DecimalMin(value = "-180.0", message = "east는 -180.0 이상이어야 합니다.")
+            @DecimalMax(value = "180.0", message = "east는 180.0 이하여야 합니다.")
             @RequestParam double east,
+            @Parameter(description = "북쪽 위도 경계", example = "36.0")
+            @DecimalMin(value = "-90.0", message = "north는 -90.0 이상이어야 합니다.")
+            @DecimalMax(value = "90.0", message = "north는 90.0 이하여야 합니다.")
             @RequestParam double north,
+            @Parameter(description = "지도 zoom 단계", example = "14")
+            @Min(value = 0, message = "zoom은 0 이상이어야 합니다.")
+            @Max(value = 20, message = "zoom은 20 이하여야 합니다.")
             @RequestParam int zoom
     ) {
         return ResponseEntity.ok(mapViewportQueryService.find(west, south, east, north, zoom));
@@ -200,11 +234,17 @@ public class PlaceController {
 
     @GetMapping("/{placeId}/card")
     @Operation(summary = "관광객용 장소 카드 조회", description = "관광객의 장소 탐색과 방문 결정을 위한 요약 정보를 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
                     description = "장소 카드 조회 성공",
                     content = @Content(schema = @Schema(implementation = TouristPlaceCardResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
             ),
             @ApiResponse(
                     responseCode = "404",
@@ -221,6 +261,7 @@ public class PlaceController {
             summary = "관광객용 장소 방문 결정 정보 조회",
             description = "현재 운영 상태, 공지, 진행 이벤트, 예약 가능 시간과 발급 가능한 혜택을 한 번에 조회합니다."
     )
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -246,6 +287,24 @@ public class PlaceController {
 
     @GetMapping("/{placeId}/operating-notices")
     @Operation(summary = "장소 활성 운영 상태 공지 조회", description = "현재 영업시간 기준 운영 여부와 활성 운영 상태 공지를 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "활성 운영 상태 공지 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceOperatingNoticeListResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "장소를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            )
+    })
     public ResponseEntity<PlaceOperatingNoticeListResponse> listOperatingNotices(
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId
     ) {
@@ -389,6 +448,7 @@ public class PlaceController {
 
     @GetMapping("/recommendations/{requestId}/explanation")
     @Operation(summary = "추천 설명 조회", description = "사용자가 본인 추천 응답 requestId의 후보 source, score, ranking 정보를 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -396,18 +456,14 @@ public class PlaceController {
                     content = @Content(schema = @Schema(implementation = PlaceRecommendationExplanationResponse.class))
             ),
             @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            ),
+            @ApiResponse(
                     responseCode = "404",
                     description = "추천 설명 정보를 찾을 수 없음",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "추천 설명 정보를 찾을 수 없습니다.",
-                                              "code": "RECOMMENDATION_EXPLANATION_NOT_FOUND"
-                                            }
-                                            """
-                            )
-                    )
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
             )
     })
     public ResponseEntity<PlaceRecommendationExplanationResponse> getRecommendationExplanation(
@@ -415,9 +471,6 @@ public class PlaceController {
             @PathVariable String requestId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
-        if (user == null) {
-            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
-        }
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
     }
 
@@ -512,11 +565,29 @@ public class PlaceController {
 
     @GetMapping("/{id}/media/verification")
     @Operation(summary = "장소 검증용 미디어 조회", description = "장소 소유자가 검증 출처로 기록된 미디어를 조회합니다.")
-    @ApiResponse(
-            responseCode = "200",
-            description = "검증용 미디어 조회 성공",
-            content = @Content(schema = @Schema(implementation = PlaceMediaResponse.class))
-    )
+    @SecurityRequirement(name = "bearerAuth")
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "검증용 미디어 조회 성공",
+                    content = @Content(schema = @Schema(implementation = PlaceMediaResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "401",
+                    description = "인증되지 않은 요청",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "본인 소유가 아닌 장소의 검증 미디어 조회",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            ),
+            @ApiResponse(
+                    responseCode = "404",
+                    description = "장소를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class))
+            )
+    })
     public ResponseEntity<PlaceMediaResponse> getVerificationMedia(
             @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user

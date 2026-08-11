@@ -9,20 +9,29 @@ import java.time.LocalDateTime;
 
 @Schema(description = "상점 운영 상태 공지 응답")
 public record PlaceOperatingNoticeResponse(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long placeId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         PlaceOperatingNoticeType noticeType,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         PlaceOperatingNoticeSeverity severity,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         PlaceOperatingNoticeStatus status,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String message,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime startsAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime expiresAt,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime expiredAt,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime canceledAt,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String cancelReason,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean visibleNow
 ) {
 

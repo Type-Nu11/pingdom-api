@@ -10,15 +10,6 @@ import org.springframework.data.repository.query.Param;
 
 public interface MapPlaceCoordinateQueryRepository extends Repository<MapPlace, Long> {
 
-    @Query("""
-            SELECT m
-            FROM MapPlace m
-            WHERE m.latitude IS NOT NULL
-              AND m.longitude IS NOT NULL
-            ORDER BY m.id ASC
-            """)
-    List<MapPlace> findAllWithCoordinates(Pageable pageable);
-
     @Query(
             value = """
                     SELECT m
