@@ -703,6 +703,113 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void placeExplorationContractsExposeSecurityErrorsAndStableSchemas() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+
+        assertAuthenticatedOperation(appDocument, "/places/map", "get", "200", "400", "401");
+        assertAuthenticatedOperation(appDocument, "/places/{placeId}/card", "get", "200", "401", "404");
+        assertAuthenticatedOperation(
+                appDocument,
+                "/places/{placeId}/visit-decision",
+                "get",
+                "200",
+                "401",
+                "404"
+        );
+        assertAuthenticatedOperation(
+                appDocument,
+                "/places/{placeId}/operating-notices",
+                "get",
+                "200",
+                "401",
+                "404"
+        );
+        assertAuthenticatedOperation(
+                appDocument,
+                "/places/{id}/media/verification",
+                "get",
+                "200",
+                "401",
+                "403",
+                "404"
+        );
+        assertAuthenticatedOperation(
+                appDocument,
+                "/places/recommendations/{requestId}/explanation",
+                "get",
+                "200",
+                "401",
+                "404"
+        );
+        assertAuthenticatedOperation(
+                appDocument,
+                "/places/{placeId}/map-link-conversions",
+                "post",
+                "204",
+                "400",
+                "401"
+        );
+
+        JsonNode conversionOperation = appDocument.at(
+                "/paths/~1places~1{placeId}~1map-link-conversions/post"
+        );
+        assertThat(conversionOperation.at("/responses/204/content").isMissingNode()).isTrue();
+        assertThat(requiredFields(appDocument.at("/components/schemas/MapLinkConversionRequest")))
+                .containsExactlyInAnyOrder("linkType", "provider", "requestId");
+
+        JsonNode mapOperation = appDocument.at("/paths/~1places~1map/get");
+        assertParameterRange(mapOperation, "west", -180.0, 180.0);
+        assertParameterRange(mapOperation, "south", -90.0, 90.0);
+        assertParameterRange(mapOperation, "east", -180.0, 180.0);
+        assertParameterRange(mapOperation, "north", -90.0, 90.0);
+        assertParameterRange(mapOperation, "zoom", 0.0, 20.0);
+
+        JsonNode viewportSchema = appDocument.at("/components/schemas/MapViewportResponse");
+        assertThat(requiredFields(viewportSchema))
+                .containsExactlyInAnyOrder("mode", "zoom", "clusters", "markers", "truncated");
+        assertThat(viewportSchema.at("/properties/mode/enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("MARKERS", "CLUSTERS");
+
+        assertThat(requiredFields(appDocument.at("/components/schemas/TouristPlaceCardResponse")))
+                .contains("id", "name", "currentlyOperating", "touristCategories", "latitude", "longitude");
+        assertThat(appDocument.at("/components/schemas/TouristPlaceCardResponse/properties/imageUrl/nullable")
+                .asBoolean()).isTrue();
+        assertThat(requiredFields(appDocument.at("/components/schemas/PlaceVisitDecisionResponse")))
+                .containsExactlyInAnyOrder(
+                        "place",
+                        "merchantInformation",
+                        "ongoingEvents",
+                        "reservableAvailabilities",
+                        "availableOffers",
+                        "checkedAt"
+                );
+        JsonNode merchantInformationSchema = appDocument.at(
+                "/components/schemas/PlaceVisitDecisionResponse/properties/merchantInformation"
+        );
+        assertThat(merchantInformationSchema.path("nullable").asBoolean())
+                .as("merchantInformation must be nullable: %s", merchantInformationSchema)
+                .isTrue();
+        JsonNode merchantOwnerSchema = appDocument.at(
+                "/components/schemas/PlaceDetailResponse/properties/merchantOwner"
+        );
+        assertThat(merchantOwnerSchema.path("nullable").asBoolean())
+                .as("merchantOwner must be nullable: %s", merchantOwnerSchema)
+                .isTrue();
+        assertThat(requiredFields(appDocument.at("/components/schemas/PlaceOperatingNoticeListResponse")))
+                .containsExactlyInAnyOrder("placeId", "currentlyOperating", "checkedAt", "notices");
+        assertThat(requiredFields(appDocument.at("/components/schemas/PlaceMediaResponse")))
+                .containsExactlyInAnyOrder("placeId", "media");
+
+        JsonNode errorSchema = appDocument.at("/components/schemas/ErrorResponse");
+        assertThat(requiredFields(errorSchema)).containsExactly("message");
+        assertThat(errorSchema.at("/properties/code/nullable").asBoolean()).isTrue();
+        assertThat(appDocument.at(
+                "/components/schemas/PlaceRecommendationExplanationItem/properties/source/example"
+        ).asText()).isEqualTo("PERSONAL");
+    }
+
+    @Test
     void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
@@ -872,6 +979,46 @@ class OpenApiDocumentationValidationTest {
         assertThat(resolved.path("type").asText()).isEqualTo("object");
         assertThat(resolved.path("required")).hasSize(1);
         assertThat(resolved.path("properties").path("name").path("type").asText()).isEqualTo("string");
+    }
+
+    private void assertAuthenticatedOperation(
+            JsonNode document,
+            String path,
+            String method,
+            String successStatus,
+            String... errorStatuses
+    ) {
+        JsonNode operation = document.path("paths").path(path).path(method);
+        assertThat(operation.isMissingNode())
+                .as("%s %s operation must exist", method.toUpperCase(), path)
+                .isFalse();
+        assertThat(operation.at("/security/0/bearerAuth").isArray())
+                .as("%s %s must require bearerAuth", method.toUpperCase(), path)
+                .isTrue();
+        assertThat(operation.path("responses").has(successStatus))
+                .as("%s %s must expose %s", method.toUpperCase(), path, successStatus)
+                .isTrue();
+
+        for (String errorStatus : errorStatuses) {
+            assertThat(operation.at("/responses/" + errorStatus + "/content/*~1*/schema/$ref").asText())
+                    .as("%s %s %s must use ErrorResponse", method.toUpperCase(), path, errorStatus)
+                    .isEqualTo("#/components/schemas/ErrorResponse");
+        }
+    }
+
+    private void assertParameterRange(
+            JsonNode operation,
+            String parameterName,
+            double expectedMinimum,
+            double expectedMaximum
+    ) {
+        JsonNode schema = parameter(operation, parameterName).path("schema");
+        assertThat(schema.path("minimum").asDouble())
+                .as("%s minimum", parameterName)
+                .isEqualTo(expectedMinimum);
+        assertThat(schema.path("maximum").asDouble())
+                .as("%s maximum", parameterName)
+                .isEqualTo(expectedMaximum);
     }
 
     private JsonNode readApiDocs(String apiDocPath) throws Exception {

@@ -12,6 +12,7 @@ class SpringdocProfileConfigurationTest {
     void localProfileRegistersGroupedOpenApiAndBearerSecurityConfiguration() {
         assertThat(profilesOf(SpringdocGroupsConfig.class)).contains("local");
         assertThat(profilesOf(SpringdocSecurityConfig.class)).contains("local");
+        assertThat(profilesOf(PlaceExplorationOpenApiConfig.class)).contains("local");
     }
 
     private String[] profilesOf(Class<?> configurationClass) {
