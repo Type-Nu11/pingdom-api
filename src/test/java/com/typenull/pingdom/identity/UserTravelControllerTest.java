@@ -155,6 +155,71 @@ class UserTravelControllerTest {
     }
 
     @Test
+    void rejectsPastAndOverlappingPeriodsWithDistinctErrorCodes() throws Exception {
+        User user = saveUser("travelScheduleValidation");
+        LocalDate today = LocalDate.now(ZoneOffset.UTC);
+        LocalDate firstStart = today.plusDays(2);
+        LocalDate firstEnd = firstStart.plusDays(2);
+
+        mockMvc.perform(post("/users/me/travel-schedules")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TravelScheduleCreateRequest(
+                                today.minusDays(1),
+                                today.plusDays(1)
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRAVEL_SCHEDULE_START_DATE_IN_PAST"));
+
+        mockMvc.perform(post("/users/me/travel-schedules")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TravelScheduleCreateRequest(firstStart, firstEnd))))
+                .andExpect(status().isCreated());
+
+        mockMvc.perform(post("/users/me/travel-schedules")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TravelScheduleCreateRequest(
+                                firstStart.plusDays(1),
+                                firstEnd.plusDays(1)
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TRAVEL_SCHEDULE_PERIOD_OVERLAP"));
+
+        LocalDate secondStart = firstEnd.plusDays(2);
+        LocalDate secondEnd = secondStart.plusDays(1);
+        mockMvc.perform(post("/users/me/travel-schedules")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TravelScheduleCreateRequest(secondStart, secondEnd))))
+                .andExpect(status().isCreated());
+        Long secondScheduleId = travelScheduleRepository.findAllByUser_IdOrderByStartDateAscIdAsc(user.getId())
+                .getLast()
+                .getId();
+
+        mockMvc.perform(patch("/users/me/travel-schedules/{scheduleId}", secondScheduleId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TravelScheduleUpdateRequest(
+                                firstStart.plusDays(1),
+                                firstEnd.plusDays(1)
+                        ))))
+                .andExpect(status().isConflict())
+                .andExpect(jsonPath("$.code").value("TRAVEL_SCHEDULE_PERIOD_OVERLAP"));
+
+        mockMvc.perform(patch("/users/me/travel-schedules/{scheduleId}", secondScheduleId)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(user))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new TravelScheduleUpdateRequest(
+                                today.minusDays(1),
+                                today.plusDays(1)
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("TRAVEL_SCHEDULE_START_DATE_IN_PAST"));
+    }
+
+    @Test
     void managesCurrentActivityIntentAndIncludesActiveTravelDataInExport() throws Exception {
         User user = saveUser("travelDataExport");
         LocalDate startDate = LocalDate.now(ZoneOffset.UTC).plusDays(1);

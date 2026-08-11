@@ -318,6 +318,12 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/users/me/current-activity-intent")).isTrue();
         assertThat(appDocument.at("/paths/~1users~1me~1travel-schedules/post/requestBody/content/application~1json/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/TravelScheduleCreateRequest");
+        JsonNode travelSchedulePostResponses = appDocument.at("/paths/~1users~1me~1travel-schedules/post/responses");
+        assertThat(travelSchedulePostResponses.has("400")).isTrue();
+        assertThat(travelSchedulePostResponses.has("409")).isTrue();
+        JsonNode travelSchedulePatchResponses = appDocument.at("/paths/~1users~1me~1travel-schedules~1{scheduleId}/patch/responses");
+        assertThat(travelSchedulePatchResponses.has("400")).isTrue();
+        assertThat(travelSchedulePatchResponses.has("409")).isTrue();
         assertThat(appDocument.at("/paths/~1users~1me~1current-activity-intent/put/requestBody/content/application~1json/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/CurrentActivityIntentUpdateRequest");
         assertThat(appDocument.at("/paths/~1users~1me~1current-activity-intent/get/responses/200/content/*~1*/schema/$ref")

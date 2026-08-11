@@ -24,6 +24,23 @@ public interface TravelScheduleRepository extends JpaRepository<TravelSchedule, 
             LocalDate endDate
     );
 
+    @Query("""
+            SELECT CASE WHEN COUNT(schedule) > 0 THEN true ELSE false END
+            FROM TravelSchedule schedule
+            WHERE schedule.user.id = :userId
+              AND schedule.state = :state
+              AND schedule.startDate <= :endDate
+              AND schedule.endDate >= :startDate
+              AND (:excludedScheduleId IS NULL OR schedule.id <> :excludedScheduleId)
+            """)
+    boolean existsOverlappingSchedule(
+            @Param("userId") Long userId,
+            @Param("state") TravelScheduleState state,
+            @Param("startDate") LocalDate startDate,
+            @Param("endDate") LocalDate endDate,
+            @Param("excludedScheduleId") Long excludedScheduleId
+    );
+
     @Modifying
     @Query("DELETE FROM TravelSchedule schedule WHERE schedule.user.id IN :userIds")
     int deleteAllByUserIds(@Param("userIds") Collection<Long> userIds);
