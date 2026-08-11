@@ -5,7 +5,6 @@ import com.typenull.pingdom.engagement.domain.MapImageLike;
 import java.util.Collection;
 import java.util.List;
 import java.util.Set;
-
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
@@ -25,14 +24,6 @@ public interface MapImageLikeRepository extends JpaRepository<MapImageLike, Long
     long countByMapImageId(Long mapImageId);
 
     void deleteByUserIdAndMapImageId(Long userId, Long mapImageId);
-
-    @Modifying
-    @Query("""
-    DELETE FROM MapImageLike m
-    WHERE m.userId = :userId
-    AND m.mapImageId = :mapImageId
-""")
-    void deleteLike(@Param("userId") Long userId, @Param("mapImageId") Long mapImageId);
 
     @Modifying
     @Query("""
