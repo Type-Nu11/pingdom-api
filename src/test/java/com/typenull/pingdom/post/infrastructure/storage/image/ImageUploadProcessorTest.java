@@ -80,6 +80,17 @@ class ImageUploadProcessorTest {
         assertEquals(MapErrorCode.INVALID_IMAGE_FILE, exception.getErrorCode());
     }
 
+    @Test
+    void rejectsHighResolutionImageBeforeDecode() throws Exception {
+        MockMultipartFile file = new MockMultipartFile(
+                "file", "huge.jpg", "image/jpeg", imageBytes("jpg", 8_001, 1)
+        );
+
+        MapException exception = assertThrows(MapException.class, () -> processor.process(file));
+
+        assertEquals(MapErrorCode.IMAGE_RESOLUTION_TOO_LARGE, exception.getErrorCode());
+    }
+
     private byte[] imageBytes(String format, int width, int height) throws Exception {
         BufferedImage image = new BufferedImage(width, height, BufferedImage.TYPE_INT_RGB);
         ByteArrayOutputStream outputStream = new ByteArrayOutputStream();
