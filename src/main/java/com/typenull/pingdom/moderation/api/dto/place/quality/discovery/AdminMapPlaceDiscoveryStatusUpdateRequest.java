@@ -9,7 +9,10 @@ import jakarta.validation.constraints.Size;
 @Schema(description = "관리자 장소 탐색 노출 상태 수정 요청")
 public record AdminMapPlaceDiscoveryStatusUpdateRequest(
         @NotNull(message = "탐색 노출 상태는 필수입니다.")
-        @Schema(description = "공개 탐색 노출 상태", example = "HIDDEN")
+        @Schema(
+                description = "탐색 노출 상태. VISIBLE은 공개 탐색·자동완성·북마크 목록·추천 후보에 노출되고, HIDDEN은 제외됩니다.",
+                example = "HIDDEN"
+        )
         PlaceDiscoveryStatus discoveryStatus,
 
         @NotBlank(message = "수정 사유는 필수입니다.")
