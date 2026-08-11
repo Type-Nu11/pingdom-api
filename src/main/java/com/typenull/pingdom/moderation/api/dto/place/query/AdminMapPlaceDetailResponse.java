@@ -2,6 +2,7 @@ package com.typenull.pingdom.moderation.api.dto.place.query;
 
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
+import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.category.TouristCategory;
@@ -26,6 +27,11 @@ public record AdminMapPlaceDetailResponse(
         PlaceOperatingStatus operatingStatus,
         @Schema(nullable = true)
         LocalDateTime operatingStatusCheckedAt,
+        @Schema(
+                description = "탐색 노출 상태. VISIBLE은 공개 탐색·자동완성·북마크 목록·추천 후보에 노출되고, HIDDEN은 제외됩니다.",
+                example = "VISIBLE"
+        )
+        PlaceDiscoveryStatus discoveryStatus,
         List<PlaceRegularOperatingHourResponse> regularHours,
         List<PlaceOperatingExceptionResponse> operatingExceptions,
         String category,
