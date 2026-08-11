@@ -7,20 +7,27 @@ import java.time.LocalDateTime;
 
 @Schema(description = "장소 미디어 항목")
 public record PlaceMediaItem(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long id,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long placeId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         PlaceMediaPurpose purpose,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String imageUrl,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String s3Key,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String thumbnailUrl,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String thumbnailS3Key,
-        @Schema(nullable = true)
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         Long sourceMapImageId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         int displayOrder,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime createdAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime updatedAt
 ) {
 
