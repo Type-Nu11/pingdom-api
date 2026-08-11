@@ -18,6 +18,7 @@ public class PlaceRecommendationGraphAffinityService {
     private static final double RESTART_PROBABILITY = 0.35d;
     private static final int ITERATION_COUNT = 12;
     private static final int MAX_NEIGHBOR_COUNT = 8;
+    private static final int MAX_GRAPH_NODE_COUNT = 64;
     private static final double MIN_EDGE_SIMILARITY = 0.05d;
 
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
@@ -32,8 +33,15 @@ public class PlaceRecommendationGraphAffinityService {
             return emptyScores;
         }
 
-        Set<Long> graphNodeIds = new LinkedHashSet<>(seedWeights.keySet());
-        graphNodeIds.addAll(candidatePlaceIds);
+        Set<Long> graphNodeIds = new LinkedHashSet<>();
+        seedWeights.entrySet().stream()
+                .filter(entry -> entry.getValue() != null && entry.getValue() > 0d)
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .limit(MAX_GRAPH_NODE_COUNT)
+                .forEach(entry -> graphNodeIds.add(entry.getKey()));
+        candidatePlaceIds.stream()
+                .filter(candidateId -> graphNodeIds.size() < MAX_GRAPH_NODE_COUNT)
+                .forEach(graphNodeIds::add);
 
         Map<Long, Double> prior = buildPrior(graphNodeIds, seedWeights);
         Map<Long, List<GraphEdge>> transitionGraph = buildTransitionGraph(graphNodeIds, similarityContext);
