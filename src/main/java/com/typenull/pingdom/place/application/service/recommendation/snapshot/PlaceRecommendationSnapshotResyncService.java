@@ -84,47 +84,7 @@ public class PlaceRecommendationSnapshotResyncService {
                     .map(MapPlace::getId)
                     .toList();
             activePlaceIds.addAll(placeIds);
-
-            Map<Long, Long> bookmarkCounts = loadBookmarkCounts(placeIds);
-            Map<Long, ImageAggregate> imageAggregates = loadImageAggregates(placeIds);
-            Map<Long, Long> clickCounts = loadClickCounts(placeIds);
-            Map<Long, ConversionCounts> conversionCounts = loadConversionCounts(placeIds);
-            Map<Long, Long> exposureCounts = loadExposureCounts(placeIds);
-            Map<Long, PlaceRecommendationSnapshot> existingSnapshotsByPlaceId = new HashMap<>();
-            for (PlaceRecommendationSnapshot existingSnapshot :
-                    placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
-                existingSnapshotsByPlaceId.put(existingSnapshot.getPlaceId(), existingSnapshot);
-            }
-
-            List<PlaceRecommendationSnapshot> snapshotsToSave = new ArrayList<>(places.size());
-            for (MapPlace place : places) {
-                Long placeId = place.getId();
-                ImageAggregate imageAggregate = imageAggregates.getOrDefault(placeId, ImageAggregate.empty());
-
-                PlaceRecommendationSnapshot snapshot = existingSnapshotsByPlaceId.get(placeId);
-                if (snapshot == null) {
-                    snapshot = PlaceRecommendationSnapshot.builder()
-                            .placeId(placeId)
-                            .updatedAt(syncedAt)
-                            .build();
-                }
-
-                snapshot.synchronize(
-                        place.currentPhotoCount(),
-                        bookmarkCounts.getOrDefault(placeId, 0L),
-                        imageAggregate.totalLikeCount(),
-                        clickCounts.getOrDefault(placeId, 0L),
-                        conversionCounts.getOrDefault(placeId, ConversionCounts.empty()).bookmarkConversionCount(),
-                        conversionCounts.getOrDefault(placeId, ConversionCounts.empty()).likeConversionCount(),
-                        exposureCounts.getOrDefault(placeId, 0L),
-                        imageAggregate.latestPostCreatedAt(),
-                        syncedAt
-                );
-                snapshotsToSave.add(snapshot);
-            }
-
-            placeRecommendationSnapshotRepository.saveAll(snapshotsToSave);
-            synchronizedSnapshotCount += snapshotsToSave.size();
+            synchronizedSnapshotCount += synchronizeSnapshots(places, syncedAt);
 
             if (!placePage.hasNext()) {
                 break;
@@ -147,6 +107,47 @@ public class PlaceRecommendationSnapshotResyncService {
                 placeCount,
                 synchronizedSnapshotCount,
                 orphanSnapshotPlaceIds.size(),
+                similarityResult.synchronizedSnapshotCount(),
+                similarityResult.deletedSnapshotCount(),
+                versionResult.synchronizedSnapshotCount(),
+                versionResult.deletedSnapshotCount()
+        );
+    }
+
+    @Transactional
+    public SnapshotResyncResult resyncPlace(Long placeId) {
+        MapPlace place = mapPlaceRepository.findByIdForUpdate(placeId).orElse(null);
+        if (place == null) {
+            boolean snapshotExists = placeRecommendationSnapshotRepository.existsById(placeId);
+            if (snapshotExists) {
+                placeRecommendationSnapshotRepository.deleteById(placeId);
+            }
+            long deletedSimilaritySnapshotCount = placeSimilaritySnapshotResyncService.deleteForPlace(placeId);
+            PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
+                    placeRecommendationVersionSnapshotService.resyncPlace(placeId);
+            return new SnapshotResyncResult(
+                    0L,
+                    0L,
+                    snapshotExists ? 1L : 0L,
+                    0L,
+                    deletedSimilaritySnapshotCount,
+                    versionResult.synchronizedSnapshotCount(),
+                    versionResult.deletedSnapshotCount()
+            );
+        }
+
+        LocalDateTime syncedAt = LocalDateTime.now();
+        synchronizeSnapshots(List.of(place), syncedAt);
+
+        PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult similarityResult =
+                placeSimilaritySnapshotResyncService.resyncPlace(place);
+        PlaceRecommendationVersionSnapshotService.VersionSnapshotResyncResult versionResult =
+                placeRecommendationVersionSnapshotService.resyncPlace(placeId);
+
+        return new SnapshotResyncResult(
+                1L,
+                1L,
+                0L,
                 similarityResult.synchronizedSnapshotCount(),
                 similarityResult.deletedSnapshotCount(),
                 versionResult.synchronizedSnapshotCount(),
@@ -187,6 +188,52 @@ public class PlaceRecommendationSnapshotResyncService {
 
         placeRecommendationSnapshotRepository.save(snapshot);
         placeRecommendationSnapshotRepository.deleteById(sourcePlaceId);
+    }
+
+    private long synchronizeSnapshots(List<MapPlace> places, LocalDateTime syncedAt) {
+        List<Long> placeIds = places.stream()
+                .map(MapPlace::getId)
+                .toList();
+        Map<Long, Long> bookmarkCounts = loadBookmarkCounts(placeIds);
+        Map<Long, ImageAggregate> imageAggregates = loadImageAggregates(placeIds);
+        Map<Long, Long> clickCounts = loadClickCounts(placeIds);
+        Map<Long, ConversionCounts> conversionCounts = loadConversionCounts(placeIds);
+        Map<Long, Long> exposureCounts = loadExposureCounts(placeIds);
+        Map<Long, PlaceRecommendationSnapshot> existingSnapshotsByPlaceId = new HashMap<>();
+        for (PlaceRecommendationSnapshot existingSnapshot :
+                placeRecommendationSnapshotRepository.findByPlaceIdIn(placeIds)) {
+            existingSnapshotsByPlaceId.put(existingSnapshot.getPlaceId(), existingSnapshot);
+        }
+
+        List<PlaceRecommendationSnapshot> snapshotsToSave = new ArrayList<>(places.size());
+        for (MapPlace place : places) {
+            Long placeId = place.getId();
+            ImageAggregate imageAggregate = imageAggregates.getOrDefault(placeId, ImageAggregate.empty());
+            ConversionCounts conversionCount = conversionCounts.getOrDefault(placeId, ConversionCounts.empty());
+            PlaceRecommendationSnapshot snapshot = existingSnapshotsByPlaceId.get(placeId);
+            if (snapshot == null) {
+                snapshot = PlaceRecommendationSnapshot.builder()
+                        .placeId(placeId)
+                        .updatedAt(syncedAt)
+                        .build();
+            }
+
+            snapshot.synchronize(
+                    place.currentPhotoCount(),
+                    bookmarkCounts.getOrDefault(placeId, 0L),
+                    imageAggregate.totalLikeCount(),
+                    clickCounts.getOrDefault(placeId, 0L),
+                    conversionCount.bookmarkConversionCount(),
+                    conversionCount.likeConversionCount(),
+                    exposureCounts.getOrDefault(placeId, 0L),
+                    imageAggregate.latestPostCreatedAt(),
+                    syncedAt
+            );
+            snapshotsToSave.add(snapshot);
+        }
+
+        placeRecommendationSnapshotRepository.saveAll(snapshotsToSave);
+        return snapshotsToSave.size();
     }
 
     private List<Long> collectOrphanSnapshotPlaceIds(Set<Long> activePlaceIds) {

@@ -91,60 +91,9 @@ public class PlaceRecommendationVersionSnapshotService {
                     .toList();
             activePlaceIds.addAll(placeIds);
 
-            Map<SnapshotKey, Counts> countsByKey = new HashMap<>();
-            accumulateExposureCounts(placeIds, countsByKey);
-            accumulateClickCounts(placeIds, countsByKey);
-            accumulateConversionCounts(placeIds, countsByKey);
-
-            List<PlaceRecommendationVersionSnapshot> existingSnapshots =
-                    placeRecommendationVersionSnapshotRepository.findByPlaceIdIn(placeIds);
-            Map<SnapshotKey, PlaceRecommendationVersionSnapshot> existingSnapshotByKey = new HashMap<>();
-            for (PlaceRecommendationVersionSnapshot existingSnapshot : existingSnapshots) {
-                existingSnapshotByKey.put(
-                        new SnapshotKey(existingSnapshot.getPlaceId(), existingSnapshot.getRecommendationVersion()),
-                        existingSnapshot
-                );
-            }
-
-            List<PlaceRecommendationVersionSnapshot> snapshotsToSave = new ArrayList<>();
-            for (Map.Entry<SnapshotKey, Counts> entry : countsByKey.entrySet()) {
-                SnapshotKey key = entry.getKey();
-                PlaceRecommendationVersionSnapshot snapshot = existingSnapshotByKey.get(key);
-                if (snapshot == null) {
-                    snapshot = PlaceRecommendationVersionSnapshot.builder()
-                            .placeId(key.placeId())
-                            .recommendationVersion(key.recommendationVersion())
-                            .updatedAt(syncedAt)
-                            .build();
-                }
-
-                Counts counts = entry.getValue();
-                snapshot.synchronize(
-                        counts.clickCount(),
-                        counts.bookmarkConversionCount(),
-                        counts.likeConversionCount(),
-                        counts.exposureCount(),
-                        syncedAt
-                );
-                snapshotsToSave.add(snapshot);
-            }
-
-            if (!snapshotsToSave.isEmpty()) {
-                placeRecommendationVersionSnapshotRepository.saveAll(snapshotsToSave);
-                synchronizedSnapshotCount += snapshotsToSave.size();
-            }
-
-            List<Long> orphanChunkSnapshotIds = existingSnapshots.stream()
-                    .filter(snapshot -> !countsByKey.containsKey(
-                            new SnapshotKey(snapshot.getPlaceId(), snapshot.getRecommendationVersion())
-                    ))
-                    .map(PlaceRecommendationVersionSnapshot::getId)
-                    .toList();
-
-            if (!orphanChunkSnapshotIds.isEmpty()) {
-                placeRecommendationVersionSnapshotRepository.deleteAllByIdInBatch(orphanChunkSnapshotIds);
-                deletedSnapshotCount += orphanChunkSnapshotIds.size();
-            }
+            VersionSnapshotResyncResult chunkResult = synchronizeVersions(placeIds, syncedAt);
+            synchronizedSnapshotCount += chunkResult.synchronizedSnapshotCount();
+            deletedSnapshotCount += chunkResult.deletedSnapshotCount();
 
             if (!placePage.hasNext()) {
                 break;
@@ -159,6 +108,72 @@ public class PlaceRecommendationVersionSnapshotService {
         }
 
         return new VersionSnapshotResyncResult(synchronizedSnapshotCount, deletedSnapshotCount);
+    }
+
+    @Transactional
+    public VersionSnapshotResyncResult resyncPlace(Long placeId) {
+        if (mapPlaceRepository.findByIdForUpdate(placeId).isEmpty()) {
+            long deletedSnapshotCount = placeRecommendationVersionSnapshotRepository.deleteByPlaceId(placeId);
+            return new VersionSnapshotResyncResult(0L, deletedSnapshotCount);
+        }
+
+        return synchronizeVersions(List.of(placeId), LocalDateTime.now());
+    }
+
+    private VersionSnapshotResyncResult synchronizeVersions(List<Long> placeIds, LocalDateTime syncedAt) {
+        Map<SnapshotKey, Counts> countsByKey = new HashMap<>();
+        accumulateExposureCounts(placeIds, countsByKey);
+        accumulateClickCounts(placeIds, countsByKey);
+        accumulateConversionCounts(placeIds, countsByKey);
+
+        List<PlaceRecommendationVersionSnapshot> existingSnapshots =
+                placeRecommendationVersionSnapshotRepository.findByPlaceIdIn(placeIds);
+        Map<SnapshotKey, PlaceRecommendationVersionSnapshot> existingSnapshotByKey = new HashMap<>();
+        for (PlaceRecommendationVersionSnapshot existingSnapshot : existingSnapshots) {
+            existingSnapshotByKey.put(
+                    new SnapshotKey(existingSnapshot.getPlaceId(), existingSnapshot.getRecommendationVersion()),
+                    existingSnapshot
+            );
+        }
+
+        List<PlaceRecommendationVersionSnapshot> snapshotsToSave = new ArrayList<>();
+        for (Map.Entry<SnapshotKey, Counts> entry : countsByKey.entrySet()) {
+            SnapshotKey key = entry.getKey();
+            PlaceRecommendationVersionSnapshot snapshot = existingSnapshotByKey.get(key);
+            if (snapshot == null) {
+                snapshot = PlaceRecommendationVersionSnapshot.builder()
+                        .placeId(key.placeId())
+                        .recommendationVersion(key.recommendationVersion())
+                        .updatedAt(syncedAt)
+                        .build();
+            }
+
+            Counts counts = entry.getValue();
+            snapshot.synchronize(
+                    counts.clickCount(),
+                    counts.bookmarkConversionCount(),
+                    counts.likeConversionCount(),
+                    counts.exposureCount(),
+                    syncedAt
+            );
+            snapshotsToSave.add(snapshot);
+        }
+
+        if (!snapshotsToSave.isEmpty()) {
+            placeRecommendationVersionSnapshotRepository.saveAll(snapshotsToSave);
+        }
+
+        List<Long> staleSnapshotIds = existingSnapshots.stream()
+                .filter(snapshot -> !countsByKey.containsKey(
+                        new SnapshotKey(snapshot.getPlaceId(), snapshot.getRecommendationVersion())
+                ))
+                .map(PlaceRecommendationVersionSnapshot::getId)
+                .toList();
+        if (!staleSnapshotIds.isEmpty()) {
+            placeRecommendationVersionSnapshotRepository.deleteAllByIdInBatch(staleSnapshotIds);
+        }
+
+        return new VersionSnapshotResyncResult(snapshotsToSave.size(), staleSnapshotIds.size());
     }
 
     private void increaseCounts(List<Long> placeIds, String recommendationVersion, CountType countType) {

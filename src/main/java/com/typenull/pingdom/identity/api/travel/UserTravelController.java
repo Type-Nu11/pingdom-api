@@ -13,6 +13,7 @@ import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -64,7 +65,15 @@ public class UserTravelController {
     @Operation(summary = "여행 일정 생성", description = "현재 인증된 사용자에게 날짜 범위의 여행 일정을 추가합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "생성 성공", content = @Content(schema = @Schema(implementation = TravelScheduleResponse.class))),
-            @ApiResponse(responseCode = "400", description = "요청 값 검증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "기간 역전 또는 과거 날짜", content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = {
+                            @ExampleObject(name = "invalidPeriod", value = "{\"message\":\"여행 종료일은 시작일보다 빠를 수 없습니다.\",\"code\":\"INVALID_TRAVEL_SCHEDULE_PERIOD\"}"),
+                            @ExampleObject(name = "pastStartDate", value = "{\"message\":\"여행 시작일은 오늘보다 이전일 수 없습니다.\",\"code\":\"TRAVEL_SCHEDULE_START_DATE_IN_PAST\"}")
+                    })),
+            @ApiResponse(responseCode = "409", description = "기존 일정과 기간 겹침", content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(value = "{\"message\":\"기존 여행 일정과 기간이 겹칩니다.\",\"code\":\"TRAVEL_SCHEDULE_PERIOD_OVERLAP\"}"))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<TravelScheduleResponse> createTravelSchedule(
@@ -84,9 +93,20 @@ public class UserTravelController {
     @Operation(summary = "여행 일정 기간 변경", description = "취소되지 않은 본인 여행 일정의 날짜 범위를 변경합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "변경 성공", content = @Content(schema = @Schema(implementation = TravelScheduleResponse.class))),
-            @ApiResponse(responseCode = "400", description = "요청 값 검증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "400", description = "기간 역전 또는 과거 날짜", content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = {
+                            @ExampleObject(name = "invalidPeriod", value = "{\"message\":\"여행 종료일은 시작일보다 빠를 수 없습니다.\",\"code\":\"INVALID_TRAVEL_SCHEDULE_PERIOD\"}"),
+                            @ExampleObject(name = "pastStartDate", value = "{\"message\":\"여행 시작일은 오늘보다 이전일 수 없습니다.\",\"code\":\"TRAVEL_SCHEDULE_START_DATE_IN_PAST\"}")
+                    })),
             @ApiResponse(responseCode = "404", description = "일정을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "취소된 일정 또는 동시 수정 충돌", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "기간 겹침, 취소된 일정 또는 동시 수정 충돌", content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = {
+                            @ExampleObject(name = "periodOverlap", value = "{\"message\":\"기존 여행 일정과 기간이 겹칩니다.\",\"code\":\"TRAVEL_SCHEDULE_PERIOD_OVERLAP\"}"),
+                            @ExampleObject(name = "notEditable", value = "{\"message\":\"취소된 여행 일정은 수정할 수 없습니다.\",\"code\":\"TRAVEL_SCHEDULE_NOT_EDITABLE\"}"),
+                            @ExampleObject(name = "concurrentModification", value = "{\"message\":\"여행 일정이 다른 요청으로 변경되었습니다. 다시 조회해 주세요.\",\"code\":\"TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION\"}")
+                    })),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<TravelScheduleResponse> updateTravelSchedule(

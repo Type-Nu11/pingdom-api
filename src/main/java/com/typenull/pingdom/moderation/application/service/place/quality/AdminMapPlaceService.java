@@ -295,7 +295,7 @@ public class AdminMapPlaceService {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
         }
 
-        MapPlace mapPlace = mapPlaceRepository.findById(placeId)
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
 
         Double beforeLatitude = mapPlace.getLatitude();
@@ -1093,7 +1093,7 @@ public class AdminMapPlaceService {
                 place.getId(),
                 UUID.randomUUID()
         );
-        outboxEventPublisher.publish(
+        outboxEventPublisher.publishCoalesced(
                 deduplicationKey,
                 OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED,
                 new PlaceRecommendationResyncOutboxPayload(place.getId(), reason),

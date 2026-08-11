@@ -8,6 +8,7 @@ import static org.mockito.ArgumentMatchers.anyCollection;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.anyMap;
 import static org.mockito.ArgumentMatchers.anyString;
+import static org.mockito.ArgumentMatchers.contains;
 import static org.mockito.Mockito.atLeastOnce;
 import static org.mockito.Mockito.doAnswer;
 import static org.mockito.Mockito.never;
@@ -164,6 +165,64 @@ class PlaceSimilaritySnapshotResyncServiceTest {
                 .findExistingSnapshotSlice(anyLong(), any(Pageable.class));
         verify(placeRecommendationSimilarityService, times(1))
                 .buildContext(anyCollection(), anyMap(), anyBoolean(), anyLong());
+    }
+
+    @Test
+    void 단건_재동기화는_반경_내_pair만_upsert하고_이탈_pair를_삭제한다() {
+        List<MapPlace> places = createPlaces(3);
+        MapPlace targetPlace = places.get(0);
+        MapPlace nearbyPlace = places.get(1);
+        MapPlace stalePlace = places.get(2);
+        PlaceSimilaritySnapshot currentSnapshot = PlaceSimilaritySnapshot.builder()
+                .id(100L)
+                .leftPlaceId(targetPlace.getId())
+                .rightPlaceId(nearbyPlace.getId())
+                .updatedAt(LocalDateTime.now())
+                .build();
+        PlaceSimilaritySnapshot staleSnapshot = PlaceSimilaritySnapshot.builder()
+                .id(101L)
+                .leftPlaceId(targetPlace.getId())
+                .rightPlaceId(stalePlace.getId())
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        when(mapPlaceCoordinateQueryRepository.findNearbyPlaces(targetPlace.getId(), 20_000d))
+                .thenReturn(List.of(nearbyPlace));
+        when(placeSimilaritySnapshotRepository.findByPlaceId(targetPlace.getId()))
+                .thenReturn(List.of(currentSnapshot, staleSnapshot));
+
+        PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult result =
+                placeSimilaritySnapshotResyncService.resyncPlace(targetPlace);
+
+        assertEquals(1L, result.synchronizedSnapshotCount());
+        assertEquals(1L, result.deletedSnapshotCount());
+        verify(jdbcTemplate).batchUpdate(contains("ON CONFLICT"), any(BatchPreparedStatementSetter.class));
+        verify(placeSimilaritySnapshotRepository).deleteAllByIdInBatch(List.of(101L));
+        verify(mapPlaceCoordinateQueryRepository, never()).findCoordinatePage(any(PageRequest.class));
+    }
+
+    @Test
+    void 단건_재동기화는_주변_장소가_없으면_기존_pair만_정리한다() {
+        MapPlace targetPlace = createPlaces(1).getFirst();
+        PlaceSimilaritySnapshot staleSnapshot = PlaceSimilaritySnapshot.builder()
+                .id(101L)
+                .leftPlaceId(targetPlace.getId())
+                .rightPlaceId(999L)
+                .updatedAt(LocalDateTime.now())
+                .build();
+
+        when(mapPlaceCoordinateQueryRepository.findNearbyPlaces(targetPlace.getId(), 20_000d))
+                .thenReturn(List.of());
+        when(placeSimilaritySnapshotRepository.findByPlaceId(targetPlace.getId()))
+                .thenReturn(List.of(staleSnapshot));
+
+        PlaceSimilaritySnapshotResyncService.SimilaritySnapshotResyncResult result =
+                placeSimilaritySnapshotResyncService.resyncPlace(targetPlace);
+
+        assertEquals(0L, result.synchronizedSnapshotCount());
+        assertEquals(1L, result.deletedSnapshotCount());
+        verify(jdbcTemplate, never()).batchUpdate(contains("ON CONFLICT"), any(BatchPreparedStatementSetter.class));
+        verify(placeSimilaritySnapshotRepository).deleteAllByIdInBatch(List.of(101L));
     }
 
     private Page<MapPlace> coordinatePage(List<MapPlace> places, PageRequest pageable) {

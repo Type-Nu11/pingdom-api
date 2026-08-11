@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.application.service.recommendation.similarity.
 
 import java.util.List;
 import java.util.Map;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -15,7 +16,7 @@ import org.mockito.quality.Strictness;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 import static org.junit.jupiter.api.Assertions.assertTrue;
-import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.*;
 
 @ExtendWith(MockitoExtension.class)
 @MockitoSettings(strictness = Strictness.LENIENT)
@@ -80,6 +81,21 @@ class PlaceRecommendationGraphAffinityServiceTest {
 
         assertEquals(0d, scores.get(200L));
         assertEquals(0d, scores.get(300L));
+    }
+
+    @Test
+    void limitsGraphConstructionForLargeSeedAndCandidateInput() {
+        PlaceRecommendationSimilarityService.SimilarityContext context =
+                new PlaceRecommendationSimilarityService.SimilarityContext(Map.of(), Map.of(), Map.of(), Map.of(), Map.of(), 0L);
+        List<Long> candidates = IntStream.rangeClosed(1, 200).mapToObj(Long::valueOf).toList();
+        Map<Long, Double> seeds = IntStream.rangeClosed(1, 200)
+                .boxed().collect(java.util.stream.Collectors.toMap(Long::valueOf, ignored -> 1d));
+
+        when(placeRecommendationSimilarityService.similarity(anyLong(), anyLong(), same(context))).thenReturn(0d);
+        placeRecommendationGraphAffinityService.score(candidates, seeds, context);
+
+        verify(placeRecommendationSimilarityService, atMost(2016))
+                .similarity(anyLong(), anyLong(), same(context));
     }
 
     private void stubBidirectionalSimilarity(

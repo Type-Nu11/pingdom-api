@@ -2,6 +2,7 @@ package com.typenull.pingdom.shared.outbox.infrastructure;
 
 import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventStatus;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
 import java.util.Collection;
@@ -19,6 +20,13 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
 
     boolean existsByDeduplicationKey(String deduplicationKey);
 
+    boolean existsByEventTypeAndAggregateTypeAndAggregateIdAndStatusIn(
+            OutboxEventType eventType,
+            String aggregateType,
+            String aggregateId,
+            Collection<OutboxEventStatus> statuses
+    );
+
     long countByStatus(OutboxEventStatus status);
 
     @Query("""
@@ -33,7 +41,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             """)
     Page<OutboxEvent> findByFilters(
             @Param("status") OutboxEventStatus status,
-            @Param("eventType") com.typenull.pingdom.shared.outbox.domain.OutboxEventType eventType,
+            @Param("eventType") OutboxEventType eventType,
             @Param("aggregateType") String aggregateType,
             @Param("aggregateId") String aggregateId,
             @Param("from") LocalDateTime from,

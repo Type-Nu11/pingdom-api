@@ -36,4 +36,13 @@ public interface PlaceSimilaritySnapshotRepository extends JpaRepository<PlaceSi
               AND s.rightPlaceId IN :placeIds
             """)
     List<PlaceSimilaritySnapshot> findByPlaceIdsWithin(@Param("placeIds") Collection<Long> placeIds);
+
+    @Query("""
+            SELECT s
+            FROM PlaceSimilaritySnapshot s
+            WHERE s.leftPlaceId = :placeId
+               OR s.rightPlaceId = :placeId
+            ORDER BY s.id ASC
+            """)
+    List<PlaceSimilaritySnapshot> findByPlaceId(@Param("placeId") Long placeId);
 }

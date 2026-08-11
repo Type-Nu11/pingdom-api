@@ -721,6 +721,36 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void repeatedCoordinateUpdatesCoalesceWaitingRecommendationResyncEvent() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("좌표 연속 수정 장소")
+                .address("경상남도 진주시 수정로 2")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(90L)
+                .registrant("coordinateOwner")
+                .build());
+
+        for (int index = 0; index < 2; index++) {
+            mockMvc.perform(patch("/admin/places/{id}/coordinates", mapPlace.getId())
+                            .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content(objectMapper.writeValueAsString(Map.of(
+                                    "latitude", 35.1796 + (index * 0.0001),
+                                    "longitude", 128.1076 + (index * 0.0001)
+                            ))))
+                    .andExpect(status().isOk());
+        }
+
+        long waitingResyncEventCount = outboxEventRepository.findAll().stream()
+                .filter(event -> event.getEventType() == OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED)
+                .filter(event -> event.getAggregateId().equals(String.valueOf(mapPlace.getId())))
+                .count();
+        assertEquals(1L, waitingResyncEventCount);
+    }
+
+    @Test
     void updatePlaceGeocodingUpdatesNormalizedAddressAndWritesAuditLog() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
