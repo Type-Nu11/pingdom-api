@@ -1,6 +1,8 @@
 package com.typenull.pingdom.shared.config.swagger;
 
 import org.springdoc.core.models.GroupedOpenApi;
+import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.Profile;
@@ -10,9 +12,13 @@ import org.springframework.context.annotation.Profile;
 public class SpringdocGroupsConfig {
 
     @Bean
-    public GroupedOpenApi appApi() {
+    public GroupedOpenApi appApi(
+            @Qualifier("placeExplorationNullableReferenceCustomizer")
+            OpenApiCustomizer placeExplorationNullableReferenceCustomizer
+    ) {
         return GroupedOpenApi.builder()
                 .group("app")
+                .addOpenApiCustomizer(placeExplorationNullableReferenceCustomizer)
                 .pathsToMatch(
                         "/users/**",
                         "/merchant-owner/**",

@@ -6,10 +6,11 @@ import java.time.LocalDateTime;
 
 @Schema(description = "관광객에게 공개하는 Merchant 장소 안내 정보")
 public record PlaceVisitDecisionMerchantInformationResponse(
-        @Schema(nullable = true) String description,
-        @Schema(nullable = true) String contactPhone,
-        @Schema(nullable = true) String websiteUrl,
-        @Schema(nullable = true) String reservationUrl,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String description,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String contactPhone,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String websiteUrl,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String reservationUrl,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime updatedAt
 ) {
 
