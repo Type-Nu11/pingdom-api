@@ -15,6 +15,9 @@ import javax.imageio.IIOImage;
 import javax.imageio.ImageIO;
 import javax.imageio.ImageWriteParam;
 import javax.imageio.ImageWriter;
+import javax.imageio.ImageReader;
+import javax.imageio.ImageIO;
+import javax.imageio.stream.ImageInputStream;
 import javax.imageio.stream.ImageOutputStream;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
@@ -36,8 +39,8 @@ public class ImageUploadProcessor {
         ImageUploadFormat format = ImageUploadFormat.detect(uploadBytes);
         validateDeclaredContentType(file.getContentType(), format);
 
+        validateEncodedDimensions(uploadBytes, format);
         BufferedImage image = decode(uploadBytes);
-        validateDimensions(image);
 
         BufferedImage normalizedOriginal = normalizeForFormat(image, format);
         byte[] originalBytes = writeWithoutMetadata(normalizedOriginal, format);
@@ -99,6 +102,32 @@ public class ImageUploadProcessor {
             return image;
         } catch (Exception exception) {
             throw new MapException(MapErrorCode.INVALID_IMAGE_FILE);
+        }
+    }
+
+    private void validateEncodedDimensions(byte[] bytes, ImageUploadFormat format) {
+        ImageReader reader = null;
+        try (ImageInputStream input = ImageIO.createImageInputStream(new ByteArrayInputStream(bytes))) {
+            Iterator<ImageReader> readers = ImageIO.getImageReadersByFormatName(format.writerFormatName());
+            if (!readers.hasNext() || input == null) {
+                throw new MapException(MapErrorCode.INVALID_IMAGE_FILE);
+            }
+            reader = readers.next();
+            reader.setInput(input, true, true);
+            int width = reader.getWidth(0);
+            int height = reader.getHeight(0);
+            long pixels = (long) width * height;
+            if (width > MAX_WIDTH || height > MAX_HEIGHT || pixels > MAX_PIXEL_COUNT) {
+                throw new MapException(MapErrorCode.IMAGE_RESOLUTION_TOO_LARGE);
+            }
+        } catch (MapException exception) {
+            throw exception;
+        } catch (Exception exception) {
+            throw new MapException(MapErrorCode.INVALID_IMAGE_FILE);
+        } finally {
+            if (reader != null) {
+                reader.dispose();
+            }
         }
     }
 
