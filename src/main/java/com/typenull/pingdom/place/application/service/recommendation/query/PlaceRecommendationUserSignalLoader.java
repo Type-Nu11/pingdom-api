@@ -6,12 +6,16 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.Collection;
 import java.util.HashMap;
 import java.util.Map;
+import java.util.LinkedHashMap;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 @Service
 @RequiredArgsConstructor
 class PlaceRecommendationUserSignalLoader {
+
+    private static final int MAX_PERSONAL_SEED_COUNT = 64;
 
     private final MapBookmarkRepository mapBookmarkRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
@@ -47,7 +51,14 @@ class PlaceRecommendationUserSignalLoader {
                 signalTypes
         );
 
-        return new UserSignalContext(seedWeights, signalTypes, java.util.Set.copyOf(seedWeights.keySet()));
+        Map<Long, Double> limitedSeedWeights = seedWeights.entrySet().stream()
+                .sorted(Map.Entry.<Long, Double>comparingByValue().reversed())
+                .limit(MAX_PERSONAL_SEED_COUNT)
+                .collect(Collectors.toMap(Map.Entry::getKey, Map.Entry::getValue,
+                        (left, ignored) -> left, LinkedHashMap::new));
+        Map<Long, PersonalSignalType> limitedSignalTypes = limitedSeedWeights.keySet().stream()
+                .collect(Collectors.toMap(key -> key, signalTypes::get));
+        return new UserSignalContext(limitedSeedWeights, limitedSignalTypes, java.util.Set.copyOf(limitedSeedWeights.keySet()));
     }
 
     private void registerSignals(
