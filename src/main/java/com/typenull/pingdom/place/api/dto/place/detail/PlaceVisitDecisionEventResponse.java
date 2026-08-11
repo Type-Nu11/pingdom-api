@@ -8,12 +8,18 @@ import java.time.LocalDateTime;
 
 @Schema(description = "방문 결정 화면에 노출하는 진행 중 장소 이벤트")
 public record PlaceVisitDecisionEventResponse(
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Long eventId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String title,
-        @Schema(nullable = true) String description,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String description,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         PlaceEventType eventType,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime startAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime endAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         PlaceEventScheduleStatus scheduleStatus
 ) {
 
