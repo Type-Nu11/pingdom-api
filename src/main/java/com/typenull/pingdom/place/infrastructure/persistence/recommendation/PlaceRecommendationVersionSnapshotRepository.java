@@ -49,6 +49,8 @@ public interface PlaceRecommendationVersionSnapshotRepository
 
     List<PlaceRecommendationVersionSnapshot> findByPlaceIdIn(Collection<Long> placeIds);
 
+    long deleteByPlaceId(Long placeId);
+
     @Query("""
             SELECT COALESCE(SUM(s.clickCount), 0)
             FROM PlaceRecommendationVersionSnapshot s

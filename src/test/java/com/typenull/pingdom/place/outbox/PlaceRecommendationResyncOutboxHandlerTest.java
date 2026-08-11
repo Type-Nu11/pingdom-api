@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.outbox;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -34,7 +35,18 @@ class PlaceRecommendationResyncOutboxHandlerTest {
 
         handler.handle("event-1", payload);
 
-        verify(resyncService).resyncAll();
+        verify(resyncService).resyncPlace(17L);
         assertThat(handler.supportedType()).isEqualTo(OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED);
+    }
+
+    @Test
+    void rejectsPayloadWithoutPlaceId() throws Exception {
+        String payload = objectMapper.writeValueAsString(
+                new PlaceRecommendationResyncOutboxPayload(null, "ADMIN_GEOCODING_UPDATED")
+        );
+
+        assertThatThrownBy(() -> handler.handle("event-1", payload))
+                .isInstanceOf(IllegalArgumentException.class)
+                .hasMessageContaining("placeId");
     }
 }

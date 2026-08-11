@@ -25,7 +25,10 @@ public class PlaceRecommendationResyncOutboxHandler implements OutboxEventHandle
     @Override
     public void handle(String eventId, String payload) {
         PlaceRecommendationResyncOutboxPayload event = deserialize(payload);
-        resyncService.resyncAll();
+        if (event.placeId() == null) {
+            throw new IllegalArgumentException("장소 추천 재동기화 Outbox payload에 placeId가 없습니다.");
+        }
+        resyncService.resyncPlace(event.placeId());
         log.info(
                 "장소 보정 후 추천 snapshot 재동기화를 완료했습니다. eventId={}, placeId={}, reason={}",
                 eventId,
