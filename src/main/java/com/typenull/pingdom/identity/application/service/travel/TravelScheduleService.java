@@ -6,6 +6,7 @@ import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
+import com.typenull.pingdom.identity.domain.travel.TravelScheduleState;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.List;
@@ -25,6 +26,8 @@ public class TravelScheduleService {
     @Transactional
     public TravelSchedule create(Long userId, LocalDate startDate, LocalDate endDate) {
         validatePeriod(startDate, endDate);
+        validateStartDateNotInPast(startDate);
+        validateNoOverlappingSchedule(userId, startDate, endDate, null);
         TravelSchedule schedule = TravelSchedule.create(findUser(userId), startDate, endDate);
         return travelScheduleRepository.save(schedule);
     }
@@ -38,7 +41,9 @@ public class TravelScheduleService {
     @Transactional
     public TravelSchedule update(Long userId, Long scheduleId, LocalDate startDate, LocalDate endDate) {
         validatePeriod(startDate, endDate);
+        validateStartDateNotInPast(startDate);
         TravelSchedule schedule = findSchedule(userId, scheduleId);
+        validateNoOverlappingSchedule(userId, startDate, endDate, scheduleId);
         try {
             schedule.updatePeriod(startDate, endDate);
         } catch (IllegalStateException exception) {
@@ -79,6 +84,30 @@ public class TravelScheduleService {
     private void validatePeriod(LocalDate startDate, LocalDate endDate) {
         if (startDate == null || endDate == null || endDate.isBefore(startDate)) {
             throw new UsersException(UsersErrorCode.INVALID_TRAVEL_SCHEDULE_PERIOD);
+        }
+    }
+
+    private void validateStartDateNotInPast(LocalDate startDate) {
+        if (startDate.isBefore(today())) {
+            throw new UsersException(UsersErrorCode.TRAVEL_SCHEDULE_START_DATE_IN_PAST);
+        }
+    }
+
+    private void validateNoOverlappingSchedule(
+            Long userId,
+            LocalDate startDate,
+            LocalDate endDate,
+            Long excludedScheduleId
+    ) {
+        boolean overlapping = travelScheduleRepository.existsOverlappingSchedule(
+                userId,
+                TravelScheduleState.SCHEDULED,
+                startDate,
+                endDate,
+                excludedScheduleId
+        );
+        if (overlapping) {
+            throw new UsersException(UsersErrorCode.TRAVEL_SCHEDULE_PERIOD_OVERLAP);
         }
     }
 }
