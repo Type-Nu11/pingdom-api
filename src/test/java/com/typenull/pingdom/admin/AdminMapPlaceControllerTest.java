@@ -218,6 +218,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].name").value("진주성"))
                 .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].discoveryStatus").value("VISIBLE"))
                 .andExpect(jsonPath("$.places[0].category").value("관광"))
                 .andExpect(jsonPath("$.places[0].categoryName").value("관광"))
                 .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"))
@@ -474,7 +475,7 @@ class AdminMapPlaceControllerTest {
                 .role(UserRole.USER)
                 .build());
 
-        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+        MapPlace mapPlace = MapPlace.builder()
                 .name("남강")
                 .englishName("Nam River")
                 .address("경상남도 진주시 남강변")
@@ -485,7 +486,9 @@ class AdminMapPlaceControllerTest {
                 .longitude(128.1078)
                 .userId(placeOwner.getId())
                 .registrant(placeOwner.getUsername())
-                .build());
+                .build();
+        mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlace = mapPlaceRepository.save(mapPlace);
 
         mapImageRepository.save(MapImage.builder()
                 .imageUrl("https://example.com/namgang.jpg")
@@ -503,6 +506,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.discoveryStatus").value("HIDDEN"))
                 .andExpect(jsonPath("$.category").value("풍경"))
                 .andExpect(jsonPath("$.categoryName").value("풍경"))
                 .andExpect(jsonPath("$.englishName").value("Nam River"))

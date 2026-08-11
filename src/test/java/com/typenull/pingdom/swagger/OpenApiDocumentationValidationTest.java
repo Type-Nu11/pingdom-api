@@ -611,10 +611,19 @@ class OpenApiDocumentationValidationTest {
 
         JsonNode discoveryRequestSchema = webDocument.at("/components/schemas/AdminMapPlaceDiscoveryStatusUpdateRequest");
         assertThat(requiredFields(discoveryRequestSchema)).contains("discoveryStatus", "reason");
-        assertThat(resolveSchema(webDocument, discoveryRequestSchema.at("/properties/discoveryStatus"))
-                .path("enum"))
-                .extracting(JsonNode::asText)
-                .containsExactlyInAnyOrder("VISIBLE", "HIDDEN");
+        for (String schemaName : List.of(
+                "AdminMapPlaceItem",
+                "AdminMapPlaceDetailResponse",
+                "AdminMapPlaceDiscoveryStatusUpdateRequest",
+                "AdminMapPlaceDiscoveryStatusUpdateResponse"
+        )) {
+            JsonNode discoveryStatusSchema = webDocument.at(
+                    "/components/schemas/" + schemaName + "/properties/discoveryStatus"
+            );
+            assertThat(resolveSchema(webDocument, discoveryStatusSchema).path("enum"))
+                    .extracting(JsonNode::asText)
+                    .containsExactlyInAnyOrder("VISIBLE", "HIDDEN");
+        }
     }
 
     @Test
