@@ -19,6 +19,8 @@ import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.recommendation.explanation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -46,6 +48,7 @@ public class LegacyPlaceCompatController {
     private final PlaceRecommendationQueryService placeRecommendationQueryService;
     private final PlaceRecommendationClickService placeRecommendationClickService;
     private final PlaceRecommendationExplanationQueryService placeRecommendationExplanationQueryService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @Deprecated
     @GetMapping("/place")
@@ -60,6 +63,7 @@ public class LegacyPlaceCompatController {
             @RequestParam(required = false) Double radiusKm,
             @RequestParam(defaultValue = "LATEST") String sort
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_LIST);
         return ResponseEntity.ok(placeQueryService.listPlaces(new PlaceSearchCondition(
                 page,
                 limit,
@@ -76,6 +80,7 @@ public class LegacyPlaceCompatController {
     @Deprecated
     @GetMapping("/place/{id}")
     public ResponseEntity<PlaceDetailResponse> getPlace(@PathVariable("id") Long placeId) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_DETAIL);
         return ResponseEntity.ok(placeQueryService.getPlace(placeId));
     }
 
@@ -138,6 +143,7 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE);
         PlaceCoordinateCreateResponse response = mapPlaceService.createCoordinateToken(
                 request.baseLatitude(),
                 request.baseLongitude(),
@@ -153,6 +159,7 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceUploadRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_UPLOAD);
         PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
                 request.kakaoPlaceId(),
                 request.name(),
@@ -177,6 +184,7 @@ public class LegacyPlaceCompatController {
             @PathVariable("id") Long placeId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_DELETE);
         mapPlaceService.deletePlace(placeId, authenticatedUserId(user));
         return ResponseEntity.ok("장소를 삭제했습니다.");
     }
