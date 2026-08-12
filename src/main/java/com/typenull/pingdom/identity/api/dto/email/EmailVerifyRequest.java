@@ -16,8 +16,4 @@ public record EmailVerifyRequest(
         @Schema(description = "이메일로 전달된 인증 코드", example = "123456")
         String code
 ) {
-    // 기존 단일 이메일 요청 호환 생성자
-    public EmailVerifyRequest(String email) {
-        this(email, "TEMP-CODE");
-    }
 }
