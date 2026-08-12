@@ -581,6 +581,17 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void adminPlacePostVisibilityContractIsDocumented() throws Exception {
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+        JsonNode postSchema = webDocument.at("/components/schemas/AdminMapPlaceImageItem");
+
+        assertThat(resolveSchema(webDocument, postSchema.at("/properties/visibilityStatus")).path("enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("VISIBLE", "HIDDEN");
+        assertNullableProperty(webDocument, "AdminMapPlaceImageItem", "hiddenReason");
+    }
+
+    @Test
     void placeDiscoveryFilterSortContractsAreDocumented() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");
