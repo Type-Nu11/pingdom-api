@@ -21,6 +21,13 @@ class SwaggerSecurityTest {
     private MockMvc mockMvc;
 
     @Test
+    void homeApiIsAccessibleWithoutAuthentication() throws Exception {
+        mockMvc.perform(get("/"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.message").value("Pingdom Backend is running."));
+    }
+
+    @Test
     void swaggerUiPathIsAccessibleWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/swagger-ui"))
                 .andExpect(status().is3xxRedirection())
