@@ -3,6 +3,7 @@ package com.typenull.pingdom.moderation.application.query.place.lookup;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceImageItem;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceItem;
+import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlacePostVisibilityStatus;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.SortParam;
@@ -216,7 +217,11 @@ public class AdminMapPlaceLookupQueryService {
                 mapImage.getUserId(),
                 mapImage.getUsername(),
                 mapImage.getCreatedAt(),
-                mapImage.getLikeCount()
+                mapImage.getLikeCount(),
+                mapImage.isVisible()
+                        ? AdminMapPlacePostVisibilityStatus.VISIBLE
+                        : AdminMapPlacePostVisibilityStatus.HIDDEN,
+                mapImage.isVisible() ? null : mapImage.getHiddenReason()
         );
     }
 
