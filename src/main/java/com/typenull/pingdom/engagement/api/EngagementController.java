@@ -11,6 +11,8 @@ import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -45,6 +47,7 @@ public class EngagementController {
     private final PostReportService postReportService;
     private final PostReportQueryService postReportQueryService;
     private final MapImageLikeService mapImageLikeService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping("/posts/{id}/report")
     @Operation(
@@ -126,6 +129,7 @@ public class EngagementController {
             @Valid @RequestBody PostReportRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_REPORT);
         return reportInternal(imageId, request, user);
     }
 

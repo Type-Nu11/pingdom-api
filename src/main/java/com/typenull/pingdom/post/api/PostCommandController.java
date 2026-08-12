@@ -8,6 +8,8 @@ import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.post.infrastructure.storage.S3Service;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -38,6 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostCommandController {
 
     private final S3Service s3Service;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping(value = "/posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(
@@ -128,6 +131,7 @@ public class PostCommandController {
             @Valid @ModelAttribute PostUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_CREATE);
         return uploadPostInternal(request, user);
     }
 
@@ -152,6 +156,7 @@ public class PostCommandController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_UPDATE);
         return updatePostInternal(request, user, imageId);
     }
 
@@ -232,6 +237,7 @@ public class PostCommandController {
             @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_DELETE);
         return deleteInternal(imageId, user);
     }
 
