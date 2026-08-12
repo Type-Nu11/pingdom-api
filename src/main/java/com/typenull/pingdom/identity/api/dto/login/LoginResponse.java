@@ -27,8 +27,4 @@ public record LoginResponse(
         @Schema(description = "현재 사용자 역할", example = "MERCHANT_OWNER")
         UserRole role
 ) {
-    // 토큰 미포함 호출 호환 생성자
-    public LoginResponse(Long id, String username, String email, Integer birthYear, String profileImageUrl, String language, String country, String message) {
-        this(id, username, email, birthYear, profileImageUrl, language, country, message, null, UserRole.USER);
-    }
 }
