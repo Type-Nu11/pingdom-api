@@ -517,7 +517,46 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.postCount").value(1))
                 .andExpect(jsonPath("$.posts[0].title").value("남강 야경"))
                 .andExpect(jsonPath("$.posts[0].likeCount").value(7))
-                .andExpect(jsonPath("$.posts[0].username").value("placeOwner"));
+                .andExpect(jsonPath("$.posts[0].username").value("placeOwner"))
+                .andExpect(jsonPath("$.posts[0].visibilityStatus").value("VISIBLE"))
+                .andExpect(jsonPath("$.posts[0].hiddenReason").value(nullValue()));
+    }
+
+    @Test
+    void getPlaceReturnsHiddenPostStatusReasonAndIdentity() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("숨김 게시글 장소")
+                .address("경상남도 진주시 숨김로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(31L)
+                .registrant("placeOwner")
+                .build());
+
+        MapImage hiddenPost = MapImage.builder()
+                .imageUrl("https://example.com/hidden.jpg")
+                .s3Key("map/hidden.jpg")
+                .title("숨김 게시글 제목")
+                .description("숨김 게시글 설명")
+                .userId(32L)
+                .username("bannedAuthor")
+                .likeCount(3L)
+                .mapPlace(mapPlace)
+                .build();
+        hiddenPost.autoHide("USER_BANNED", LocalDateTime.of(2026, 8, 12, 10, 0), 1L);
+        mapImageRepository.save(hiddenPost);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.postCount").value(1))
+                .andExpect(jsonPath("$.posts[0].visibilityStatus").value("HIDDEN"))
+                .andExpect(jsonPath("$.posts[0].hiddenReason").value("USER_BANNED"))
+                .andExpect(jsonPath("$.posts[0].title").value("숨김 게시글 제목"))
+                .andExpect(jsonPath("$.posts[0].userId").value(32L))
+                .andExpect(jsonPath("$.posts[0].username").value("bannedAuthor"))
+                .andExpect(jsonPath("$.posts[0].createdAt").isNotEmpty());
     }
 
     @Test
