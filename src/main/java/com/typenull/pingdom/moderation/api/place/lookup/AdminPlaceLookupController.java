@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse
 import com.typenull.pingdom.moderation.application.query.place.lookup.AdminMapPlaceLookupQueryService;
 import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.SortParam;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
@@ -41,8 +42,11 @@ public class AdminPlaceLookupController {
                     description = "장소 목록 조회 성공",
                     content = @Content(
                             schema = @Schema(implementation = AdminMapPlaceResponse.class),
-                            examples = @ExampleObject(
-                                    value = """
+                            examples = {
+                                    @ExampleObject(
+                                            name = "categoryFilteredResult",
+                                            summary = "카테고리 필터 조회 결과",
+                                            value = """
                                             {
                                               "places": [
                                                 {
@@ -52,6 +56,7 @@ public class AdminPlaceLookupController {
                                                   "discoveryStatus": "VISIBLE",
                                                   "category": "관광",
                                                   "categoryName": "관광",
+                                                  "touristCategories": ["EXHIBITION"],
                                                   "latitude": 35.1894,
                                                   "longitude": 128.0789,
                                                   "userId": 3,
@@ -72,7 +77,22 @@ public class AdminPlaceLookupController {
                                               "hasNext": false
                                             }
                                             """
-                            )
+                                    ),
+                                    @ExampleObject(
+                                            name = "emptyResult",
+                                            summary = "카테고리 필터 결과 없음",
+                                            value = """
+                                            {
+                                              "places": [],
+                                              "page": 1,
+                                              "limit": 20,
+                                              "totalCount": 0,
+                                              "totalPages": 1,
+                                              "hasNext": false
+                                            }
+                                            """
+                                    )
+                            }
                     )
             ),
             @ApiResponse(
@@ -102,9 +122,34 @@ public class AdminPlaceLookupController {
             )
             @RequestParam(defaultValue = "LATEST") String sortParam,
             @Parameter(description = "장소 검색 키워드. 장소명, 등록자 ID, 주소로 검색합니다.", example = "용인")
-            @RequestParam(required = false, defaultValue = "") String keyword
+            @RequestParam(required = false, defaultValue = "") String keyword,
+            @Parameter(
+                    description = "일반 장소 카테고리 필터. 입력값을 표준 카테고리로 정규화한 뒤 "
+                            + "AdminMapPlaceItem.category와 정확히 비교합니다. touristCategories와는 별도 기준입니다.",
+                    example = "카페",
+                    schema = @Schema(
+                            type = "string",
+                            allowableValues = {
+                                    PlaceCategoryPolicy.CAFE,
+                                    PlaceCategoryPolicy.RESTAURANT,
+                                    PlaceCategoryPolicy.TOURISM,
+                                    PlaceCategoryPolicy.SCENERY,
+                                    PlaceCategoryPolicy.CULTURE,
+                                    PlaceCategoryPolicy.SHOPPING,
+                                    PlaceCategoryPolicy.ACCOMMODATION,
+                                    PlaceCategoryPolicy.EXPERIENCE
+                            }
+                    )
+            )
+            @RequestParam(required = false) String category
     ) {
-        return adminMapPlaceLookupQueryService.listPlaces(page, limit, AdminPlaceSortParam.from(sortParam), keyword);
+        return adminMapPlaceLookupQueryService.listPlaces(
+                page,
+                limit,
+                AdminPlaceSortParam.from(sortParam),
+                keyword,
+                category
+        );
     }
 
     @GetMapping("/{id}")
