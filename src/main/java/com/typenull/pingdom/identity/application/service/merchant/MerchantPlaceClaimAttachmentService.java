@@ -35,6 +35,7 @@ public class MerchantPlaceClaimAttachmentService {
     private final S3ObjectDeleteOutboxPublisher deletePublisher;
     private final Clock clock;
     private final AdminAuditLogService auditLogService;
+    private final MerchantPlaceClaimAttachmentMalwareScanner malwareScanner;
 
     @Transactional
     public MerchantPlaceClaimAttachmentResponse upload(Long userId, Long claimId,
@@ -43,6 +44,7 @@ public class MerchantPlaceClaimAttachmentService {
         validate(file, type);
         byte[] bytes = read(file);
         validateSignature(bytes, file.getContentType(), type);
+        malwareScanner.scan(bytes);
         String hash = sha256(bytes);
         List<MerchantPlaceClaimAttachment> existing = attachmentRepository
                 .findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(claimId, type);
