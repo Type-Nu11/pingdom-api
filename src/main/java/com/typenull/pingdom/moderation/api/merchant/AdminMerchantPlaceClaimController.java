@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping("/admin/merchant-place-claims")
+@RequestMapping({"/admin/merchant-place-claims", "/admin/place-registration-applications"})
 @RequiredArgsConstructor
 @PreAuthorize("hasRole('ADMIN')")
 @Tag(name = "Web", description = "웹(관리자) 전용 API")

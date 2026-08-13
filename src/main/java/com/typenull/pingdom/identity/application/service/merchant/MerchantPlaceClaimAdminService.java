@@ -18,6 +18,8 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimReviewHistoryRepository;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimReviewHistory;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
@@ -49,6 +51,7 @@ public class MerchantPlaceClaimAdminService {
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
+    private final MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
 
     @Transactional(readOnly = true)
     public AdminMerchantPlaceClaimPageResponse list(MerchantPlaceClaimStatus status, int page, int limit) {
@@ -95,6 +98,9 @@ public class MerchantPlaceClaimAdminService {
         if (!claim.isPending()) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PLACE_CLAIM_STATE);
         }
+        if (!claim.matchesVersion(request.reviewedVersion())) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_OWNERSHIP_CHANGED);
+        }
         LocalDateTime now = LocalDateTime.now(clock);
         try {
             if (approved) {
@@ -106,6 +112,9 @@ public class MerchantPlaceClaimAdminService {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PLACE_CLAIM_STATE);
         }
         recordAudit(adminUserId, claim, beforeStatus, request.reason().trim());
+        reviewHistoryRepository.save(MerchantPlaceClaimReviewHistory.create(
+                claim.getId(), adminUserId, beforeStatus, claim.getStatus(),
+                claim.getVersion(), request.reason().trim(), now));
         return AdminMerchantPlaceClaimResponse.from(claim);
     }
 

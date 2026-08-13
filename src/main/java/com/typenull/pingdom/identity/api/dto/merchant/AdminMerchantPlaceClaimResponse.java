@@ -17,6 +17,7 @@ public record AdminMerchantPlaceClaimResponse(
         String claimReason,
         @Schema(nullable = true) String reviewReason,
         @Schema(nullable = true) Long reviewedBy,
+        long version,
         @Schema(nullable = true) LocalDateTime reviewedAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt
@@ -32,6 +33,7 @@ public record AdminMerchantPlaceClaimResponse(
                 claim.getClaimReason(),
                 claim.getReviewReason(),
                 claim.getReviewedBy(),
+                claim.getVersion(),
                 claim.getReviewedAt(),
                 claim.getCreatedAt(),
                 claim.getUpdatedAt()

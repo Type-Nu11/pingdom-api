@@ -7,6 +7,10 @@ import jakarta.validation.constraints.Size;
 
 public record MerchantPlaceClaimReviewRequest(
         @NotNull Boolean approved,
-        @NotBlank @Size(max = 500) @Schema(minLength = 1) String reason
+        @NotBlank @Size(max = 500) @Schema(minLength = 1) String reason,
+        Long reviewedVersion
 ) {
+    public MerchantPlaceClaimReviewRequest(Boolean approved, String reason) {
+        this(approved, reason, null);
+    }
 }
