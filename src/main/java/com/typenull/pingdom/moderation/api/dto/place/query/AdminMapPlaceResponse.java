@@ -9,6 +9,7 @@ public record AdminMapPlaceResponse(
         int page,
         int limit,
         long totalCount,
+        @Schema(description = "전체 페이지 수. 조회 결과가 없어도 1을 반환합니다.", minimum = "1", example = "1")
         long totalPages,
         boolean hasNext
 ) {
@@ -19,6 +20,14 @@ public record AdminMapPlaceResponse(
             long totalCount,
             long totalPages
     ) {
-        return new AdminMapPlaceResponse(places, page, limit, totalCount, totalPages, page < totalPages);
+        long normalizedTotalPages = Math.max(totalPages, 1);
+        return new AdminMapPlaceResponse(
+                places,
+                page,
+                limit,
+                totalCount,
+                normalizedTotalPages,
+                page < normalizedTotalPages
+        );
     }
 }
