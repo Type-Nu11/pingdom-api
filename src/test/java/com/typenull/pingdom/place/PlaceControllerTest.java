@@ -2059,6 +2059,21 @@ class PlaceControllerTest {
     }
 
     @Test
+    void publicPlaceUploadReturnsUnauthorizedWithoutToken() throws Exception {
+        mockMvc.perform(post("/places/upload")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "무인증 공개 장소",
+                                "address", "경상남도 진주시 테스트로 2",
+                                "category", "풍경",
+                                "imageUrl", "https://example.com/images/public-place.jpg",
+                                "coordinateToken", "invalid-token"
+                        ))))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
+    @Test
     void legacyPlaceDeleteReturnsUnauthorizedWithoutToken() throws Exception {
         mockMvc.perform(delete("/map/places/{id}/delete", 1L))
                 .andExpect(status().isUnauthorized())
