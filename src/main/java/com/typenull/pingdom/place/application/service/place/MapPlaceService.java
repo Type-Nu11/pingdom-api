@@ -104,6 +104,7 @@ public class MapPlaceService {
         String username = userRepository.findById(userId)
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND))
                 .getUsername();
+        rejectUnapprovedDirectCreation();
         String normalizedKakaoPlaceId = trimToNull(kakaoPlaceId);
         PlaceCoordinateTokenStore.Entry entry = placeCoordinateTokenStore.consume(coordinateToken);
         if (entry == null || entry.userId() != userId) {
@@ -199,6 +200,11 @@ public class MapPlaceService {
             return EnumSet.noneOf(TouristCategory.class);
         }
         return EnumSet.copyOf(touristCategories);
+    }
+
+    private void rejectUnapprovedDirectCreation() {
+        // #1101의 승인된 PlaceRegistrationApplication 최종 등록 경로가 생기기 전까지 우회 생성을 차단한다.
+        throw new MapException(MapErrorCode.PLACE_REGISTRATION_APPROVAL_REQUIRED);
     }
 
     @Transactional
