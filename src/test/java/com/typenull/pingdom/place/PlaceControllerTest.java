@@ -1206,6 +1206,11 @@ class PlaceControllerTest {
         assertNotNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("coordinateToken").textValue());
         assertNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("kakaoPlaceId").textValue());
         assertEquals(0L, mapPlaceRepository.count());
+        assertEquals(1.0d, meterRegistry.find("pingdom.api.legacy.requests")
+                .tag("method", "POST")
+                .tag("path", "/places/coordinates")
+                .counter()
+                .count());
     }
 
     @Test
