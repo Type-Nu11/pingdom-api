@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.application.service.merchant;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceClaimAttachmentResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimAttachmentResponse;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
@@ -70,6 +71,12 @@ public class MerchantPlaceClaimAttachmentService {
         ownedClaim(userId, claimId);
         return attachmentRepository.findAllByClaimIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(claimId)
                 .stream().map(MerchantPlaceClaimAttachmentResponse::from).toList();
+    }
+
+    @Transactional(readOnly = true)
+    public List<AdminMerchantPlaceClaimAttachmentResponse> listForAdmin(Long claimId) {
+        return attachmentRepository.findAllByClaimIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(claimId)
+                .stream().map(AdminMerchantPlaceClaimAttachmentResponse::from).toList();
     }
 
     @Transactional
