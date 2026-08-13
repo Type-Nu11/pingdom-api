@@ -23,10 +23,12 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimReviewHistoryRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.moderation.application.query.place.duplicate.AdminMapPlaceDuplicateQueryService;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -57,6 +59,8 @@ class MerchantPlaceClaimAdminServiceTest {
     @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
     @Mock private MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
+    @Mock private MerchantPlaceClaimAttachmentRepository attachmentRepository;
+    @Mock private AdminMapPlaceDuplicateQueryService duplicateQueryService;
 
     @InjectMocks
     private MerchantPlaceClaimAdminService claimAdminService;
@@ -70,6 +74,7 @@ class MerchantPlaceClaimAdminServiceTest {
         stubEligibleMerchantOwner(userId);
         when(claimRepository.findById(claimId)).thenReturn(Optional.of(claim));
         when(claimRepository.findByIdForUpdate(claimId)).thenReturn(Optional.of(claim));
+        when(claimRepository.findById(claimId)).thenReturn(Optional.of(claim));
         when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
         when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.empty());
 
@@ -145,6 +150,32 @@ class MerchantPlaceClaimAdminServiceTest {
                 assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.PLACE_OWNERSHIP_CHANGED));
 
         assertThat(claim.getStatus()).isEqualTo(MerchantPlaceClaimStatus.PENDING);
+    }
+
+    @Test
+    void reviewRejectsStaleSubmissionVersionBeforeChangingClaim() {
+        Long claimId = 100L;
+        MerchantPlaceClaim claim = MerchantPlaceClaim.builder()
+                .id(claimId)
+                .version(3L)
+                .merchantOwnerUserId(1L)
+                .placeId(10L)
+                .claimType(MerchantPlaceClaimType.INITIAL)
+                .claimReason("사업자 확인")
+                .status(MerchantPlaceClaimStatus.PENDING)
+                .createdAt(LocalDateTime.of(2026, 7, 14, 12, 0))
+                .updatedAt(LocalDateTime.of(2026, 7, 14, 12, 0))
+                .build();
+        when(claimRepository.findByIdForUpdate(claimId)).thenReturn(Optional.of(claim));
+
+        assertThatThrownBy(() -> claimAdminService.review(
+                99L, claimId, new MerchantPlaceClaimReviewRequest(false, "최신 정보 확인", 2L)
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.PLACE_OWNERSHIP_CHANGED));
+
+        assertThat(claim.getStatus()).isEqualTo(MerchantPlaceClaimStatus.PENDING);
+        verify(auditLogService, never()).record(any(), any(), any(), any(), any(), any(), any());
+        verify(reviewHistoryRepository, never()).save(any());
     }
 
     private MerchantPlaceClaim pendingClaim(Long claimId, Long userId, Long placeId) {
