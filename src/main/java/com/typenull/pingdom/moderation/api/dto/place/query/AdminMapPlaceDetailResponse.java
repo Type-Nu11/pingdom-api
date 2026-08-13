@@ -1,7 +1,6 @@
 package com.typenull.pingdom.moderation.api.dto.place.query;
 
 import com.typenull.pingdom.moderation.domain.SortParam;
-import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -47,7 +46,7 @@ public record AdminMapPlaceDetailResponse(
         String username,
         SortParam sortParam,
         int postCount,
-        PlaceGrowthSnapshot placeGrowth,
+        AdminMapPlaceGrowthResponse placeGrowth,
         List<AdminMapPlaceImageItem> posts
 ) {
 }

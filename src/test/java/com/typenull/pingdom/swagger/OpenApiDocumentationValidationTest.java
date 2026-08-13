@@ -637,6 +637,20 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void adminPlaceGrowthPhotoCountsAreDocumented() throws Exception {
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+        JsonNode detailSchema = webDocument.at("/components/schemas/AdminMapPlaceDetailResponse");
+        JsonNode growthSchema = webDocument.at("/components/schemas/AdminMapPlaceGrowthResponse");
+
+        assertThat(detailSchema.at("/properties/placeGrowth/$ref").asText())
+                .isEqualTo("#/components/schemas/AdminMapPlaceGrowthResponse");
+        assertThat(growthSchema.at("/properties/photoCount/description").asText())
+                .contains("성장에 반영된", "노출");
+        assertThat(growthSchema.at("/properties/hiddenPhotoCount/description").asText())
+                .contains("성장에 반영되지 않는", "숨김");
+    }
+
+    @Test
     void placeDiscoveryFilterSortContractsAreDocumented() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");

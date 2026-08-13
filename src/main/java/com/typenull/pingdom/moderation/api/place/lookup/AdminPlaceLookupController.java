@@ -180,6 +180,7 @@ public class AdminPlaceLookupController {
                                               "postCount": 1,
                                               "placeGrowth": {
                                                 "photoCount": 10,
+                                                "hiddenPhotoCount": 1,
                                                 "level": 5,
                                                 "currentLevelMinPhotoCount": 10,
                                                 "nextLevelMinPhotoCount": 16,
