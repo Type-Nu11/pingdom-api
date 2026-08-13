@@ -1024,10 +1024,15 @@ class PlaceControllerTest {
                                 "category", "카페",
                                 "imageUrl", "https://example.com/images/place-upload.jpg",
                                 "coordinateToken", coordinateToken
-                        ))))
+                ))))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
         assertTrue(mapPlaceRepository.findByKakaoPlaceId("27414316").isEmpty());
+        assertEquals(1.0d, meterRegistry.find("pingdom.api.legacy.requests")
+                .tag("method", "POST")
+                .tag("path", "/places/upload")
+                .counter()
+                .count());
     }
 
     @Test
