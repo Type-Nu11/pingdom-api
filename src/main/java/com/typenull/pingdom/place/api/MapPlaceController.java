@@ -6,6 +6,8 @@ import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
 
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -29,9 +31,10 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping("/coordinates")
-    @Operation(summary = "장소 좌표 생성/확정", description = "등록 버튼 클릭 시 호출하여 좌표 토큰을 발급합니다. 카카오 장소 ID는 선택값입니다.")
+    @Operation(summary = "장소 좌표 토큰 발급", description = "장소 등록 신청에서 사용할 임시 좌표 토큰만 발급합니다. 이 API는 장소를 생성하지 않습니다.")
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -73,6 +76,7 @@ public class MapPlaceController {
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE_PUBLIC);
         PlaceCoordinateCreateResponse response =
                 mapPlaceService.createCoordinateToken(
                         request.baseLatitude(),
@@ -84,7 +88,11 @@ public class MapPlaceController {
     }
 
     @PostMapping("/upload")
-    @Operation(summary = "장소 업로드(토큰 기반)", description = "업로드 버튼 클릭 시 호출하여 이름/주소/이미지와 좌표 토큰으로 장소를 저장합니다. 카카오 장소 ID 없이도 좌표 기반 등록이 가능합니다.")
+    @Operation(
+            summary = "장소 업로드(승인 전환 중)",
+            description = "레거시 장소 생성 경로입니다. 승인된 장소 등록 신청의 최종 등록 API가 제공되기 전까지 일반 사용자의 직접 생성을 차단합니다.",
+            deprecated = true
+    )
     @ApiResponses({
             @ApiResponse(
                     responseCode = "201",
@@ -120,12 +128,27 @@ public class MapPlaceController {
                                             """
                             )
                     )
+            ),
+            @ApiResponse(
+                    responseCode = "403",
+                    description = "승인된 장소 등록 신청 없이 직접 생성할 수 없음",
+                    content = @Content(
+                            examples = @ExampleObject(
+                                    value = """
+                                            {
+                                              "message": "승인된 장소 등록 신청을 통해서만 장소를 생성할 수 있습니다.",
+                                              "code": "PLACE_REGISTRATION_APPROVAL_REQUIRED"
+                                            }
+                                            """
+                            )
+                    )
             )
     })
     public ResponseEntity<PlaceCreateResponse> upload(
             @Valid @RequestBody PlaceUploadRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_UPLOAD_PUBLIC);
         PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
                 request.kakaoPlaceId(),
                 request.name(),
