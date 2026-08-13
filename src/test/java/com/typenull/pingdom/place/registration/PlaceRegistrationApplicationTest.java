@@ -36,6 +36,36 @@ class PlaceRegistrationApplicationTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void rejectsInvalidStateTransitionsAndRegistrationReuse() {
+        PlaceRegistrationApplication application = draft();
+        application.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        application.submit(NOW);
+        application.cancel(NOW);
+
+        assertThatThrownBy(() -> application.approve(99L, "승인", NOW))
+                .isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> application.register(10L, NOW))
+                .isInstanceOf(IllegalStateException.class);
+
+        PlaceRegistrationApplication approved = draft();
+        approved.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        approved.submit(NOW);
+        approved.approve(99L, "승인", NOW);
+        approved.register(10L, NOW);
+
+        assertThatThrownBy(() -> approved.register(11L, NOW))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void rejectsReopenFromNonRejectedState() {
+        PlaceRegistrationApplication application = draft();
+
+        assertThatThrownBy(() -> application.reopen(NOW))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
     private PlaceRegistrationApplication draft() {
         return PlaceRegistrationApplication.draft(1L, "테스트 장소", PlaceRegistrationCategory.CAFE,
                 35.1, 128.1, "도로명 주소", "지번 주소", "12345", "장소 설명", NOW);
