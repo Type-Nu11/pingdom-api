@@ -231,6 +231,109 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listPlacesFiltersByCategory() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace tourismPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("관광 카테고리 장소")
+                .address("경상남도 진주시 관광로 1")
+                .category("관광")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(31L)
+                .registrant("tourismRegistrar")
+                .build());
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("카페 카테고리 장소")
+                .address("경상남도 진주시 카페로 1")
+                .category("카페")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(32L)
+                .registrant("cafeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", "관광"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(tourismPlace.getId()))
+                .andExpect(jsonPath("$.places[0].category").value("관광"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesCombinesCategoryKeywordSortAndPagination() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("복합검색 카페 A")
+                .address("경상남도 진주시 복합검색로 1")
+                .category("카페")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(41L)
+                .registrant("firstCafeRegistrar")
+                .build());
+        MapPlace secondCafe = mapPlaceRepository.save(MapPlace.builder()
+                .name("복합검색 카페 B")
+                .address("경상남도 진주시 복합검색로 2")
+                .category("카페")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(42L)
+                .registrant("secondCafeRegistrar")
+                .build());
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("복합검색 식당")
+                .address("경상남도 진주시 복합검색로 3")
+                .category("식당")
+                .latitude(35.1896)
+                .longitude(128.0791)
+                .userId(43L)
+                .registrant("restaurantRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", " cafe ")
+                        .param("keyword", "복합검색")
+                        .param("sortParam", AdminPlaceSortParam.OLDEST.name())
+                        .param("page", "2")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(secondCafe.getId()))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.limit").value(1))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listPlacesReturnsNormalizedEmptyPageWhenCategoryDoesNotMatch() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("카페 장소")
+                .address("경상남도 진주시 카페로 10")
+                .category("카페")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(51L)
+                .registrant("cafeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", "숙박"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(0))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
     void listPlacesReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
@@ -551,6 +654,8 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.postCount").value(1))
+                .andExpect(jsonPath("$.placeGrowth.photoCount").value(0))
+                .andExpect(jsonPath("$.placeGrowth.hiddenPhotoCount").value(1))
                 .andExpect(jsonPath("$.posts[0].visibilityStatus").value("HIDDEN"))
                 .andExpect(jsonPath("$.posts[0].hiddenReason").value("USER_BANNED"))
                 .andExpect(jsonPath("$.posts[0].title").value("숨김 게시글 제목"))

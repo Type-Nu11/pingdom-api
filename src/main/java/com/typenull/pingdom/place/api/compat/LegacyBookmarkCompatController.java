@@ -9,6 +9,8 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.place.application.service.place.MapBookmarkService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Hidden;
 import jakarta.validation.Valid;
@@ -31,6 +33,7 @@ public class LegacyBookmarkCompatController {
 
     private final PlaceQueryService placeQueryService;
     private final MapBookmarkService mapBookmarkService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @Deprecated
     @GetMapping("/users/bookmarks")
@@ -39,6 +42,7 @@ public class LegacyBookmarkCompatController {
             @RequestParam(defaultValue = "20") int limit,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.BOOKMARK_LIST);
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }
@@ -51,6 +55,7 @@ public class LegacyBookmarkCompatController {
             @Valid @RequestBody BookmarkCreateRequest request,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.BOOKMARK_CREATE);
         BookmarkCreateResponse response = mapBookmarkService.createBookmark(request, authenticatedUserId(user));
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
@@ -61,6 +66,7 @@ public class LegacyBookmarkCompatController {
             @RequestParam Long placeId,
             @AuthenticationPrincipal JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.BOOKMARK_DELETE);
         BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, authenticatedUserId(user));
         return ResponseEntity.ok(response);
     }

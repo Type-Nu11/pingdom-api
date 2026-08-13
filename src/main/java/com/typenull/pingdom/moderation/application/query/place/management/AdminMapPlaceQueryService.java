@@ -12,7 +12,13 @@ import com.typenull.pingdom.moderation.domain.SortParam;
 
 public interface AdminMapPlaceQueryService {
 
-    AdminMapPlaceResponse listPlaces(int page, int limit, AdminPlaceSortParam sortParam, String keyword);
+    AdminMapPlaceResponse listPlaces(
+            int page,
+            int limit,
+            AdminPlaceSortParam sortParam,
+            String keyword,
+            String category
+    );
 
     AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword);
 

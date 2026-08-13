@@ -3,6 +3,8 @@ package com.typenull.pingdom.notification.api;
 import com.typenull.pingdom.notification.api.dto.fcm.FcmTokenRequest;
 
 import com.typenull.pingdom.notification.application.service.FcmDeviceTokenService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -30,6 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class FcmController {
 
     private final FcmDeviceTokenService fcmDeviceTokenService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @Deprecated
     @Operation(
@@ -64,6 +67,7 @@ public class FcmController {
                     content = @Content(schema = @Schema(implementation = FcmTokenRequest.class))
             )
             @Valid @RequestBody FcmTokenRequest request) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.FCM_TOKEN_UPDATE);
         fcmDeviceTokenService.registerToken(user.userId(), request.token());
         return ResponseEntity.ok().build();
     }

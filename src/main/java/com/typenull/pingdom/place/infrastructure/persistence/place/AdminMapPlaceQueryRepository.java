@@ -29,10 +29,12 @@ public interface AdminMapPlaceQueryRepository extends Repository<MapPlace, Long>
                    OR LOWER(m.englishName) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR LOWER(m.address) LIKE LOWER(CONCAT('%', :keyword, '%'))
                    OR (:numericKeyword IS NOT NULL AND m.userId = :numericKeyword))
+              AND (:category IS NULL OR LOWER(TRIM(m.category)) = :category)
             """)
     Page<MapPlace> searchAdminPlaces(
             @Param("keyword") String keyword,
             @Param("numericKeyword") Long numericKeyword,
+            @Param("category") String category,
             Pageable pageable
     );
 
