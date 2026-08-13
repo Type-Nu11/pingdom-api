@@ -10,6 +10,7 @@ import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.Set;
+import java.time.ZoneId;
 
 public record PlaceRegistrationRequest(
         @NotBlank @Size(max = 100) String placeName,
@@ -26,6 +27,8 @@ public record PlaceRegistrationRequest(
         String identityDocumentFileId,
         String representativeImageFileIds,
         Set<PlaceRegistrationTag> tags,
-        @Valid @Size(max = 20) List<PlaceRegistrationAttachmentRequest> attachments
+        @Valid @Size(max = 20) List<PlaceRegistrationAttachmentRequest> attachments,
+        @Size(max = 64) String timezone,
+        @Valid @Size(max = 7) List<PlaceRegistrationOperatingDay> operatingDays
 ) {
 }

@@ -29,6 +29,19 @@ import java.security.NoSuchAlgorithmException;
 import java.util.Comparator;
 import java.util.List;
 import java.util.HexFormat;
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+import java.time.ZoneId;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.Map;
+import java.util.Set;
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationOperatingDay;
+import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
+import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingBreakTime;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -51,6 +64,7 @@ public class PlaceRegistrationService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
     private final Clock clock;
+    private final ObjectMapper objectMapper;
 
     @Transactional
     public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
@@ -58,6 +72,7 @@ public class PlaceRegistrationService {
         PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
                 r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
         application.setContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
+        setOperatingSchedule(application, r, now);
         try {
             applyDraftFiles(application, userId, r, now);
         } catch (IllegalArgumentException exception) {
@@ -94,6 +109,7 @@ public class PlaceRegistrationService {
             LocalDateTime now = now();
             a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
             a.setContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
+            setOperatingSchedule(a, r, now);
             applyDraftFiles(a, userId, r, now);
         } catch (IllegalArgumentException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
@@ -151,6 +167,7 @@ public class PlaceRegistrationService {
                 .category(a.getCategory().name()).latitude(a.getLatitude()).longitude(a.getLongitude())
                 .location(point(a.getLatitude(), a.getLongitude())).userId(userId).registrant(user.getUsername())
                 .geocodingSource(GeocodingSource.LEGACY).build());
+        place.replaceOperatingSchedule(toRegularHours(a), toBreakTimes(a), List.of());
         ownerPlaceRepository.save(MerchantOwnerPlace.builder().placeId(place.getId()).merchantOwnerUserId(userId).createdAt(now).build());
         snapshotService.initialize(place.getId());
         a.register(place.getId(), now);
@@ -200,6 +217,7 @@ public class PlaceRegistrationService {
                 + application.getRoadAddress() + "|" + application.getJibunAddress() + "|"
                 + application.getPostalCode() + "|" + application.getDescription() + "|"
                 + application.getTags().stream().map(Enum::name).sorted().toList() + "|"
+                + application.getTimezone() + "|" + application.getOperatingScheduleJson() + "|"
                 + application.getAttachments().stream()
                 .sorted(Comparator.comparing(PlaceRegistrationAttachment::getDocumentType)
                         .thenComparing(PlaceRegistrationAttachment::getDisplayOrder)
@@ -213,6 +231,48 @@ public class PlaceRegistrationService {
         } catch (NoSuchAlgorithmException e) {
             throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", e);
         }
+    }
+    private void setOperatingSchedule(PlaceRegistrationApplication application, PlaceRegistrationRequest request, LocalDateTime now) {
+        String timezone = request.timezone() == null || request.timezone().isBlank() ? "Asia/Seoul" : request.timezone();
+        try { ZoneId.of(timezone); } catch (Exception e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
+        List<PlaceRegistrationOperatingDay> days = request.operatingDays() == null ? List.of() : request.operatingDays();
+        if (days.size() != 7 || days.stream().map(PlaceRegistrationOperatingDay::dayOfWeek).distinct().count() != 7) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        }
+        for (PlaceRegistrationOperatingDay day : days) validateDay(day);
+        try { application.setOperatingSchedule(timezone, objectMapper.writeValueAsString(days), now); }
+        catch (JsonProcessingException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
+    }
+    private void validateDay(PlaceRegistrationOperatingDay day) {
+        if (day.status() == com.typenull.pingdom.place.domain.registration.PlaceRegistrationOperatingStatus.OPEN) {
+            if (day.opensAt() == null || day.closesAt() == null || day.opensAt().equals(day.closesAt())) throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        } else if (day.status() == com.typenull.pingdom.place.domain.registration.PlaceRegistrationOperatingStatus.CLOSED) {
+            if (day.opensAt() != null || day.closesAt() != null || day.breakTimes() != null && !day.breakTimes().isEmpty()) throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        }
+        List<PlaceRegistrationOperatingDay.BreakTime> breaks = day.breakTimes() == null ? List.of() : day.breakTimes();
+        for (int i = 0; i < breaks.size(); i++) {
+            var b = breaks.get(i);
+            if (b.opensAt().equals(b.closesAt()) || day.status() != com.typenull.pingdom.place.domain.registration.PlaceRegistrationOperatingStatus.OPEN
+                    || !contains(day.opensAt(), day.closesAt(), b.opensAt(), b.closesAt())) throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+            for (int j = i + 1; j < breaks.size(); j++) if (overlap(b.opensAt(), b.closesAt(), breaks.get(j).opensAt(), breaks.get(j).closesAt())) throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        }
+    }
+    private boolean contains(LocalTime start, LocalTime end, LocalTime innerStart, LocalTime innerEnd) { return start.isBefore(end) && !innerStart.isBefore(start) && !innerEnd.isAfter(end) && innerStart.isBefore(innerEnd); }
+    private boolean overlap(LocalTime a, LocalTime b, LocalTime c, LocalTime d) { return a.isBefore(d) && c.isBefore(b); }
+    private Set<PlaceRegularOperatingHour> toRegularHours(PlaceRegistrationApplication application) {
+        try { List<PlaceRegistrationOperatingDay> days = objectMapper.readValue(application.getOperatingScheduleJson(), new TypeReference<>() {});
+            Set<PlaceRegularOperatingHour> result = new java.util.LinkedHashSet<>();
+            for (var day : days) if (day.status() == com.typenull.pingdom.place.domain.registration.PlaceRegistrationOperatingStatus.OPEN) result.add(PlaceRegularOperatingHour.of(day.dayOfWeek(), day.opensAt(), day.closesAt()));
+            return result;
+        } catch (Exception e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
+    }
+    private Set<PlaceRegularOperatingBreakTime> toBreakTimes(PlaceRegistrationApplication application) {
+        try { List<PlaceRegistrationOperatingDay> days = objectMapper.readValue(application.getOperatingScheduleJson(), new TypeReference<>() {});
+            Set<PlaceRegularOperatingBreakTime> result = new java.util.LinkedHashSet<>();
+            for (var day : days) for (var b : day.breakTimes() == null ? List.<PlaceRegistrationOperatingDay.BreakTime>of() : day.breakTimes())
+                result.add(PlaceRegularOperatingBreakTime.of(day.dayOfWeek(), b.opensAt(), b.closesAt()));
+            return result;
+        } catch (Exception e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
     }
     private PlaceRegistrationPageResponse page(Page<PlaceRegistrationApplication> p) { return new PlaceRegistrationPageResponse(p.getContent().stream().map(this::response).toList(), p.getNumber()+1, p.getSize(), p.getTotalElements(), p.getTotalPages(), p.hasNext()); }
     private PageRequest pageable(int page, int limit) { return PageRequest.of(Math.max(0, page-1), Math.min(Math.max(limit, 1), 100), Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"))); }

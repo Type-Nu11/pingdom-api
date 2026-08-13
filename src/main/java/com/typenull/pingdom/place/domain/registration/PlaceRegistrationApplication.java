@@ -97,6 +97,12 @@ public class PlaceRegistrationApplication {
     @Column(name = "representative_image_file_ids", length = 2000)
     private String representativeImageFileIds;
 
+    @Column(name = "timezone", nullable = false, length = 64)
+    private String timezone = "Asia/Seoul";
+
+    @Column(name = "operating_schedule_json", nullable = false, columnDefinition = "TEXT")
+    private String operatingScheduleJson = "[]";
+
     @Column(name = "review_reason", length = 500)
     private String reviewReason;
 
@@ -164,6 +170,13 @@ public class PlaceRegistrationApplication {
         if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
         this.businessContactPhone = businessContactPhone;
         this.applicantContactPhone = applicantContactPhone;
+    }
+
+    public void setOperatingSchedule(String timezone, String operatingScheduleJson, LocalDateTime now) {
+        if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
+        this.timezone = timezone;
+        this.operatingScheduleJson = operatingScheduleJson;
+        this.updatedAt = now;
     }
 
     public void update(String placeName, PlaceRegistrationCategory category, double latitude, double longitude,
