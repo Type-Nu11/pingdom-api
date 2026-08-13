@@ -1205,6 +1205,7 @@ class PlaceControllerTest {
 
         assertNotNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("coordinateToken").textValue());
         assertNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("kakaoPlaceId").textValue());
+        assertEquals(0L, mapPlaceRepository.count());
     }
 
     @Test
