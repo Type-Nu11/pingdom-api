@@ -105,6 +105,55 @@ class MerchantPlaceClaimAttachmentServiceTest {
     }
 
     @Test
+    void uploadRejectsOversizedFileBeforeMalwareScanOrStorage() {
+        MockMultipartFile file = file("large.jpg", "image/jpeg", new byte[20 * 1024 * 1024 + 1]);
+
+        assertThatThrownBy(() -> service.upload(USER_ID, CLAIM_ID,
+                MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE, file))
+                .isInstanceOf(MerchantOwnerException.class)
+                .hasMessageContaining("크기");
+        verify(malwareScanner, never()).scan(any());
+        verify(storage, never()).putPrivate(any(), any(), any());
+    }
+
+    @Test
+    void uploadRejectsSameFileHashWithoutReplacingExistingAttachment() {
+        byte[] bytes = new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff};
+        MerchantPlaceClaimAttachment existing = MerchantPlaceClaimAttachment.create(
+                CLAIM_ID, MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE, "private/existing",
+                "existing.jpg", "image/jpeg", bytes.length,
+                "6e568e1f67fba258184c78181539e5e8fdee447e49bb706fc0ea34fbf12336a5", 0,
+                LocalDateTime.now(CLOCK));
+        when(attachmentRepository.findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
+                CLAIM_ID, MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE)).thenReturn(List.of(existing));
+
+        MockMultipartFile file = file("same.jpg", "image/jpeg", bytes);
+
+        assertThatThrownBy(() -> service.upload(USER_ID, CLAIM_ID,
+                MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE, file))
+                .isInstanceOf(MerchantOwnerException.class)
+                .hasMessageContaining("동일한");
+        verify(storage, never()).putPrivate(any(), any(), any());
+        verify(attachmentRepository, never()).delete(any());
+    }
+
+    @Test
+    void reorderRejectsUnknownOrIncompleteRepresentativeImageIds() {
+        MerchantPlaceClaimAttachment first = MerchantPlaceClaimAttachment.create(
+                CLAIM_ID, MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE, "private/first",
+                "first.jpg", "image/jpeg", 3, "hash-1", 0, LocalDateTime.now(CLOCK));
+        MerchantPlaceClaimAttachment second = MerchantPlaceClaimAttachment.create(
+                CLAIM_ID, MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE, "private/second",
+                "second.jpg", "image/jpeg", 3, "hash-2", 1, LocalDateTime.now(CLOCK));
+        when(attachmentRepository.findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
+                CLAIM_ID, MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE)).thenReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> service.reorder(USER_ID, CLAIM_ID, List.of(999L, 1000L)))
+                .isInstanceOf(MerchantOwnerException.class)
+                .hasMessageContaining("첨부");
+    }
+
+    @Test
     void deleteRequiresClaimOwnership() {
         when(claimRepository.findByIdAndMerchantOwnerUserId(CLAIM_ID, USER_ID)).thenReturn(Optional.empty());
 
