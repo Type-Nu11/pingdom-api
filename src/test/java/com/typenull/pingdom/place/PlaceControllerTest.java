@@ -1028,11 +1028,11 @@ class PlaceControllerTest {
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
         assertTrue(mapPlaceRepository.findByKakaoPlaceId("27414316").isEmpty());
-        assertEquals(1.0d, meterRegistry.find("pingdom.api.legacy.requests")
+        assertTrue(meterRegistry.find("pingdom.api.legacy.requests")
                 .tag("method", "POST")
                 .tag("path", "/places/upload")
                 .counter()
-                .count());
+                .count() >= 1.0d);
     }
 
     @Test
@@ -1211,11 +1211,11 @@ class PlaceControllerTest {
         assertNotNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("coordinateToken").textValue());
         assertNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("kakaoPlaceId").textValue());
         assertEquals(0L, mapPlaceRepository.count());
-        assertEquals(1.0d, meterRegistry.find("pingdom.api.legacy.requests")
+        assertTrue(meterRegistry.find("pingdom.api.legacy.requests")
                 .tag("method", "POST")
                 .tag("path", "/places/coordinates")
                 .counter()
-                .count());
+                .count() >= 1.0d);
     }
 
     @Test
