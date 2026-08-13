@@ -22,6 +22,7 @@ class LegacyApiUsageMetricsTest {
                         .toArray(String[]::new));
 
         metrics.record(LegacyApiEndpoint.POST_CREATE);
+        metrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE_PUBLIC);
 
         assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
                 .tag("method", "POST")
@@ -33,6 +34,11 @@ class LegacyApiUsageMetricsTest {
                 .tag("path", "/place")
                 .counter()
                 .count()).isZero();
+        assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
+                .tag("method", "POST")
+                .tag("path", "/places/coordinates")
+                .counter()
+                .count()).isEqualTo(1.0d);
     }
 
     private String endpointTag(Counter counter) {
