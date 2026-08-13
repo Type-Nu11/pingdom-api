@@ -654,6 +654,8 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.postCount").value(1))
+                .andExpect(jsonPath("$.placeGrowth.photoCount").value(0))
+                .andExpect(jsonPath("$.placeGrowth.hiddenPhotoCount").value(1))
                 .andExpect(jsonPath("$.posts[0].visibilityStatus").value("HIDDEN"))
                 .andExpect(jsonPath("$.posts[0].hiddenReason").value("USER_BANNED"))
                 .andExpect(jsonPath("$.posts[0].title").value("숨김 게시글 제목"))

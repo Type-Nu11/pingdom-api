@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.application.query.place.lookup;
 
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
+import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceGrowthResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceImageItem;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceItem;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlacePostVisibilityStatus;
@@ -22,6 +23,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlace
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.Comparator;
 import java.util.EnumSet;
@@ -113,6 +115,10 @@ public class AdminMapPlaceLookupQueryService {
                 .toList();
 
         String category = toResponseCategory(mapPlace.getCategory());
+        long hiddenPhotoCount = mapImageRepository.countByMapPlace_IdAndVisibilityStatus(
+                placeId,
+                MapImageVisibilityStatus.AUTO_HIDDEN
+        );
 
         return new AdminMapPlaceDetailResponse(
                 mapPlace.getId(),
@@ -138,7 +144,10 @@ public class AdminMapPlaceLookupQueryService {
                 mapPlace.getRegistrant(),
                 safeSortParam,
                 Math.toIntExact(postPage.getTotalElements()),
-                placeGrowthService.snapshot(mapPlace),
+                AdminMapPlaceGrowthResponse.of(
+                        placeGrowthService.snapshot(mapPlace),
+                        hiddenPhotoCount
+                ),
                 posts
         );
     }
