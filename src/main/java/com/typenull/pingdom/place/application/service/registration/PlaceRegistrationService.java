@@ -7,12 +7,14 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationPageResponse;
+import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationAttachmentRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationResponse;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationReviewRequest;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
@@ -21,6 +23,12 @@ import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.Comparator;
+import java.util.List;
+import java.util.HexFormat;
 import lombok.RequiredArgsConstructor;
 import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
@@ -46,9 +54,14 @@ public class PlaceRegistrationService {
 
     @Transactional
     public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
+        LocalDateTime now = now();
         PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
-                r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), now());
-        application.attachFileIds(r.businessRegistrationFileId(), r.identityDocumentFileId(), r.representativeImageFileIds(), now());
+                r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
+        try {
+            applyDraftFiles(application, userId, r, now);
+        } catch (IllegalArgumentException exception) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
+        }
         return response(repository.save(application));
     }
 
@@ -77,8 +90,11 @@ public class PlaceRegistrationService {
     public PlaceRegistrationResponse update(Long userId, Long id, PlaceRegistrationRequest r) {
         PlaceRegistrationApplication a = mine(userId, id);
         try {
-            a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), now());
-            a.attachFileIds(r.businessRegistrationFileId(), r.identityDocumentFileId(), r.representativeImageFileIds(), now());
+            LocalDateTime now = now();
+            a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
+            applyDraftFiles(a, userId, r, now);
+        } catch (IllegalArgumentException e) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
         } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
@@ -88,7 +104,7 @@ public class PlaceRegistrationService {
     @Transactional
     public PlaceRegistrationResponse submit(Long userId, Long id) {
         PlaceRegistrationApplication a = mine(userId, id);
-        try { a.submit(now()); } catch (IllegalStateException e) {
+        try { a.submit(now(), contentHash(a)); } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(a.hasRequiredFiles() ? PlaceRegistrationErrorCode.INVALID_STATE : PlaceRegistrationErrorCode.REQUIRED_FILES_MISSING);
         }
         return response(a);
@@ -154,6 +170,48 @@ public class PlaceRegistrationService {
     private PlaceRegistrationApplication locked(Long id) { return repository.findByIdForUpdate(id).orElseThrow(this::notFound); }
     private PlaceRegistrationException notFound() { return new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND); }
     private PlaceRegistrationResponse response(PlaceRegistrationApplication a) { return PlaceRegistrationResponse.from(a); }
+
+    private void applyDraftFiles(PlaceRegistrationApplication application, Long userId,
+                                 PlaceRegistrationRequest request, LocalDateTime now) {
+        application.attachFileIds(request.businessRegistrationFileId(), request.identityDocumentFileId(),
+                request.representativeImageFileIds(), now);
+        List<PlaceRegistrationAttachment> attachments = request.attachments() == null
+                ? List.of()
+                : request.attachments().stream()
+                .map(attachment -> toAttachment(application, userId, attachment, now))
+                .toList();
+        application.replaceAttachments(attachments, now);
+    }
+
+    private PlaceRegistrationAttachment toAttachment(PlaceRegistrationApplication application, Long userId,
+                                                     PlaceRegistrationAttachmentRequest request, LocalDateTime now) {
+        LocalDateTime retentionExpiresAt = request.retentionDays() == null
+                ? null : now.plusDays(request.retentionDays());
+        return PlaceRegistrationAttachment.create(application, request.fileId(), request.documentType(),
+                request.storageKey(), request.originalFilename(), request.contentType(), request.fileSize(),
+                request.fileHash(), userId, now, retentionExpiresAt, request.resolvedDisplayOrder());
+    }
+
+    private String contentHash(PlaceRegistrationApplication application) {
+        String canonical = application.getPlaceName() + "|" + application.getCategory() + "|"
+                + application.getLatitude() + "|" + application.getLongitude() + "|"
+                + application.getRoadAddress() + "|" + application.getJibunAddress() + "|"
+                + application.getPostalCode() + "|" + application.getDescription() + "|"
+                + application.getTags().stream().map(Enum::name).sorted().toList() + "|"
+                + application.getAttachments().stream()
+                .sorted(Comparator.comparing(PlaceRegistrationAttachment::getDocumentType)
+                        .thenComparing(PlaceRegistrationAttachment::getDisplayOrder)
+                        .thenComparing(PlaceRegistrationAttachment::getStorageKey))
+                .map(attachment -> attachment.getDocumentType() + ":" + attachment.getStorageKey() + ":"
+                        + attachment.getFileHash() + ":" + attachment.getDisplayOrder())
+                .toList();
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256")
+                    .digest(canonical.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", e);
+        }
+    }
     private PlaceRegistrationPageResponse page(Page<PlaceRegistrationApplication> p) { return new PlaceRegistrationPageResponse(p.getContent().stream().map(this::response).toList(), p.getNumber()+1, p.getSize(), p.getTotalElements(), p.getTotalPages(), p.hasNext()); }
     private PageRequest pageable(int page, int limit) { return PageRequest.of(Math.max(0, page-1), Math.min(Math.max(limit, 1), 100), Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"))); }
     private LocalDateTime now() { return LocalDateTime.now(clock); }
