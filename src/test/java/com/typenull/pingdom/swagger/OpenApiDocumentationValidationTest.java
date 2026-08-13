@@ -610,10 +610,6 @@ class OpenApiDocumentationValidationTest {
         JsonNode document = readApiDocs("/v3/api-docs");
 
         for (String schemaName : List.of(
-                "PlaceUploadRequest",
-                "PlaceCreateResponse",
-                "PlaceDetailResponse",
-                "PlaceListItem",
                 "AdminMapPlaceTouristInfoUpdateRequest",
                 "AdminMapPlaceTouristInfoUpdateResponse",
                 "AdminMapPlaceDetailResponse",

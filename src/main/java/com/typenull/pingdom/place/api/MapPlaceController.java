@@ -10,6 +10,7 @@ import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
 import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -27,6 +28,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/places")
 @RequiredArgsConstructor
+@Hidden
 @Tag(name = "App Place", description = "앱용 장소 API")
 public class MapPlaceController {
 
