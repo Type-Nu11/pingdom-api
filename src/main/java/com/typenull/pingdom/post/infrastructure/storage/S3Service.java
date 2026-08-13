@@ -9,12 +9,9 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
-import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
-import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
-import com.typenull.pingdom.place.infrastructure.support.PlaceCoordinateTokenStore.Entry;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
@@ -51,7 +48,6 @@ public class S3Service {
     private final MapPlaceRepository mapPlaceRepository;
     private final PostReportRepository postReportRepository;
     private final UserRepository userRepository;
-    private final MapPlaceService mapPlaceService;
     private final PlatformTransactionManager transactionManager;
     private final PlaceGrowthService placeGrowthService;
     private final PlaceMediaService placeMediaService;
@@ -93,7 +89,7 @@ public class S3Service {
 
         Long placeId = request.placeId();
         if (placeId == null) {
-            return resolveOrCreatePlaceIdByCoordinateToken(request, userId);
+            throw new MapException(MapErrorCode.PLACE_REGISTRATION_APPROVAL_REQUIRED);
         }
 
         return mapPlaceRepository.findById(placeId)
@@ -101,67 +97,7 @@ public class S3Service {
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
     }
 
-    private Long resolveOrCreatePlaceIdByCoordinateToken(PostUploadRequest request, long userId) {
-        String normalizedPlaceName = trimToNull(request.placeName());
-        String normalizedAddress = trimToNull(request.address());
-        String normalizedCategory = trimToNull(request.category());
-
-        if (normalizedPlaceName == null
-                || normalizedAddress == null
-                || normalizedCategory == null
-                || !StringUtils.hasText(request.coordinateToken())) {
-            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
-        }
-
-        Entry coordinateTokenEntry = previewCoordinateToken(request.coordinateToken(), userId);
-        return mapPlaceRepository.findFirstByNameAndAddressAndLatitudeAndLongitude(
-                        normalizedPlaceName,
-                        normalizedAddress,
-                        coordinateTokenEntry.latitude(),
-                        coordinateTokenEntry.longitude()
-                )
-                .map(MapPlace::getId)
-                .orElseGet(() -> createPlaceByCoordinateToken(
-                        request.coordinateToken(),
-                        normalizedPlaceName,
-                        normalizedAddress,
-                        normalizedCategory,
-                        userId
-                ));
-    }
-
-    private Long createPlaceByCoordinateToken(
-            String coordinateToken,
-            String placeName,
-            String address,
-            String category,
-            long userId
-    ) {
-        PlaceCreateResponse placeResponse = mapPlaceService.uploadPlaceByToken(
-                null,
-                placeName,
-                address,
-                category,
-                null,
-                coordinateToken,
-                userId
-        );
-        return placeResponse.id();
-    }
-
-    private Entry previewCoordinateToken(String coordinateToken, long userId) {
-        Entry entry = mapPlaceService.peekCoordinateToken(coordinateToken);
-        if (entry == null || entry.userId() != userId) {
-            throw new MapException(MapErrorCode.PLACE_COORDINATE_TOKEN_INVALID);
-        }
-        return entry;
-    }
-
     private String normalizeKakaoPlaceId(String value) {
-        return StringUtils.hasText(value) ? value.trim() : null;
-    }
-
-    private String trimToNull(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
