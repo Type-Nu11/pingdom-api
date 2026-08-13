@@ -1064,6 +1064,34 @@ class FlywayMigrationIntegrationTest {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name IN (
+                          'place_registration_application',
+                          'place_registration_application_tag',
+                          'place_registration_application_attachment'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE tablename = 'place_registration_application_attachment'
+                      AND indexname IN (
+                          'idx_place_registration_attachment_application',
+                          'uq_place_registration_attachment_required_type',
+                          'uq_place_registration_attachment_hash'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_registration_application'::regclass
+                      AND conname = 'ck_place_registration_application_timestamps'
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2
                     FROM pg_constraint
                     WHERE conrelid = 'outbox_event'::regclass
