@@ -20,6 +20,8 @@ public record PlaceRegistrationRequest(
         @NotBlank @Size(max = 255) String jibunAddress,
         @NotBlank @Size(max = 20) String postalCode,
         @NotBlank @Size(max = 1000) String description,
+        @NotBlank @Size(max = 20) String businessContactPhone,
+        @NotBlank @Size(max = 20) String applicantContactPhone,
         String businessRegistrationFileId,
         String identityDocumentFileId,
         String representativeImageFileIds,

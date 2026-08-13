@@ -39,6 +39,7 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 
 @Service
 @RequiredArgsConstructor
@@ -51,12 +52,14 @@ public class PlaceRegistrationService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
     private final Clock clock;
+    private final MerchantVerificationCipher contactCipher;
 
     @Transactional
     public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
         LocalDateTime now = now();
         PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
                 r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
+        application.setContactPhones(normalizePhone(r.businessContactPhone()), contactCipher.encrypt(normalizePhone(r.applicantContactPhone())));
         try {
             applyDraftFiles(application, userId, r, now);
         } catch (IllegalArgumentException exception) {
@@ -92,6 +95,7 @@ public class PlaceRegistrationService {
         try {
             LocalDateTime now = now();
             a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
+            a.setContactPhones(normalizePhone(r.businessContactPhone()), contactCipher.encrypt(normalizePhone(r.applicantContactPhone())));
             applyDraftFiles(a, userId, r, now);
         } catch (IllegalArgumentException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
@@ -215,5 +219,10 @@ public class PlaceRegistrationService {
     private PlaceRegistrationPageResponse page(Page<PlaceRegistrationApplication> p) { return new PlaceRegistrationPageResponse(p.getContent().stream().map(this::response).toList(), p.getNumber()+1, p.getSize(), p.getTotalElements(), p.getTotalPages(), p.hasNext()); }
     private PageRequest pageable(int page, int limit) { return PageRequest.of(Math.max(0, page-1), Math.min(Math.max(limit, 1), 100), Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"))); }
     private LocalDateTime now() { return LocalDateTime.now(clock); }
+    private String normalizePhone(String phone) {
+        String normalized = phone == null ? "" : phone.replaceAll("[\\s-]", "");
+        if (!normalized.matches("\\+[1-9]\\d{7,14}")) throw new IllegalArgumentException("전화번호 형식이 올바르지 않습니다.");
+        return normalized;
+    }
     private static Point point(double lat, double lon) { return WGS84.createPoint(new Coordinate(lon, lat)); }
 }
