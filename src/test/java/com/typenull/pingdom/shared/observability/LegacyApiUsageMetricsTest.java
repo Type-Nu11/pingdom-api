@@ -23,6 +23,7 @@ class LegacyApiUsageMetricsTest {
 
         metrics.record(LegacyApiEndpoint.POST_CREATE);
         metrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE_PUBLIC);
+        metrics.record(LegacyApiEndpoint.PLACE_UPLOAD_PUBLIC);
 
         assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
                 .tag("method", "POST")
@@ -37,6 +38,11 @@ class LegacyApiUsageMetricsTest {
         assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
                 .tag("method", "POST")
                 .tag("path", "/places/coordinates")
+                .counter()
+                .count()).isEqualTo(1.0d);
+        assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
+                .tag("method", "POST")
+                .tag("path", "/places/upload")
                 .counter()
                 .count()).isEqualTo(1.0d);
     }
