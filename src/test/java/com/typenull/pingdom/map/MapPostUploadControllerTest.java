@@ -199,6 +199,26 @@ class MapPostUploadControllerTest {
     }
 
     @Test
+    void uploadPostLegacyRejectsCoordinateBasedPlaceCreationWithoutApproval() throws Exception {
+        String accessToken = signupAndLogin("writer-pin-legacy-01");
+        String coordinateToken = createCoordinateToken(accessToken, null, 35.1805, 128.1082);
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(imageFile("legacy-pin-post.jpg"))
+                        .param("title", "레거시 좌표 게시글")
+                        .param("placeName", "레거시 좌표 장소")
+                        .param("address", "경상남도 진주시 레거시좌표로 10")
+                        .param("category", "풍경")
+                        .param("coordinateToken", coordinateToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
+
+        assertEquals(0L, mapPlaceRepository.count());
+        assertEquals(0L, mapImageRepository.count());
+    }
+
+    @Test
     void uploadPostFailsWhenKakaoPlaceIdIsUnknown() throws Exception {
         String accessToken = signupAndLogin("writer-kakao-02");
         MockMultipartFile file = new MockMultipartFile(
