@@ -8,6 +8,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
+import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
 import com.typenull.pingdom.offer.domain.exception.OfferException;
 import com.typenull.pingdom.payment.domain.exception.PaymentException;
@@ -110,6 +111,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(MapException.class)
     public ResponseEntity<Map<String, String>> handleMapException(MapException exception) {
         return ResponseEntity.status(exception.getStatus())
+                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+    }
+
+    @ExceptionHandler(PlaceRegistrationException.class)
+    public ResponseEntity<Map<String, String>> handlePlaceRegistrationException(PlaceRegistrationException exception) {
+        return ResponseEntity.status(exception.getErrorCode().getStatus())
                 .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
     }
 
