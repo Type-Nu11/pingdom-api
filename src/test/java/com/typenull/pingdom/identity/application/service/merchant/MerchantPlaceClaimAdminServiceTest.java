@@ -23,6 +23,7 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimReviewHistoryRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
@@ -55,6 +56,7 @@ class MerchantPlaceClaimAdminServiceTest {
     @Mock private AdminAuditLogService auditLogService;
     @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
+    @Mock private MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
 
     @InjectMocks
     private MerchantPlaceClaimAdminService claimAdminService;

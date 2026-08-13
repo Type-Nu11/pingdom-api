@@ -27,6 +27,10 @@ public class MerchantPlaceClaim {
     @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
+    @jakarta.persistence.Version
+    @Column(nullable = false)
+    private long version;
+
     @Column(name = "merchant_owner_user_id", nullable = false)
     private Long merchantOwnerUserId;
 
@@ -109,6 +113,10 @@ public class MerchantPlaceClaim {
 
     public boolean isPending() {
         return status == MerchantPlaceClaimStatus.PENDING;
+    }
+
+    public boolean matchesVersion(Long expectedVersion) {
+        return expectedVersion == null || version == expectedVersion;
     }
 
     public boolean isOwnershipTransfer() {

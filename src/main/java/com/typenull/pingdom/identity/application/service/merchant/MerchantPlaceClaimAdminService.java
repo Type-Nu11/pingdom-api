@@ -3,6 +3,8 @@ package com.typenull.pingdom.identity.application.service.merchant;
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimListItemResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimPageResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimAttachmentResponse;
+import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimPlaceResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceClaimReviewRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
@@ -18,9 +20,15 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimReviewHistoryRepository;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimReviewHistory;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.moderation.application.query.place.duplicate.AdminMapPlaceDuplicateQueryService;
+import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
@@ -49,6 +57,9 @@ public class MerchantPlaceClaimAdminService {
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
+    private final MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
+    private final MerchantPlaceClaimAttachmentRepository attachmentRepository;
+    private final AdminMapPlaceDuplicateQueryService duplicateQueryService;
 
     @Transactional(readOnly = true)
     public AdminMerchantPlaceClaimPageResponse list(MerchantPlaceClaimStatus status, int page, int limit) {
@@ -72,7 +83,27 @@ public class MerchantPlaceClaimAdminService {
 
     @Transactional(readOnly = true)
     public AdminMerchantPlaceClaimResponse get(Long claimId) {
-        return AdminMerchantPlaceClaimResponse.from(requireClaim(claimId));
+        MerchantPlaceClaim claim = requireClaim(claimId);
+        var place = mapPlaceRepository.findById(claim.getPlaceId())
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_NOT_FOUND));
+        AdminMapPlaceDuplicateDetailResponse duplicateCandidates = null;
+        try {
+            duplicateCandidates = duplicateQueryService.getDuplicatePlace(place.getId());
+        } catch (AdminException ignored) {
+            // 후보가 없는 장소도 심사 상세 조회는 정상적으로 제공한다.
+        }
+        return AdminMerchantPlaceClaimResponse.from(claim, new AdminMerchantPlaceClaimPlaceResponse(
+                place.getId(),
+                place.getName(),
+                place.getAddress(),
+                place.getCategory(),
+                place.getLatitude(),
+                place.getLongitude(),
+                place.getImageUrl(),
+                attachmentRepository.findAllByClaimIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(claim.getId())
+                        .stream().map(AdminMerchantPlaceClaimAttachmentResponse::from).toList(),
+                duplicateCandidates
+        ));
     }
 
     @Transactional
@@ -95,6 +126,9 @@ public class MerchantPlaceClaimAdminService {
         if (!claim.isPending()) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PLACE_CLAIM_STATE);
         }
+        if (!claim.matchesVersion(request.reviewedVersion())) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_OWNERSHIP_CHANGED);
+        }
         LocalDateTime now = LocalDateTime.now(clock);
         try {
             if (approved) {
@@ -106,6 +140,9 @@ public class MerchantPlaceClaimAdminService {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PLACE_CLAIM_STATE);
         }
         recordAudit(adminUserId, claim, beforeStatus, request.reason().trim());
+        reviewHistoryRepository.save(MerchantPlaceClaimReviewHistory.create(
+                claim.getId(), adminUserId, beforeStatus, claim.getStatus(),
+                claim.getVersion(), request.reason().trim(), now));
         return AdminMerchantPlaceClaimResponse.from(claim);
     }
 
