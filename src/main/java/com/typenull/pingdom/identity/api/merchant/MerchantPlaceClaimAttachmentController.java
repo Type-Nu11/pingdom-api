@@ -48,4 +48,10 @@ public class MerchantPlaceClaimAttachmentController {
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
         service.delete(user.userId(), claimId, attachmentId);
     }
+
+    @PostMapping("/reorder")
+    public void reorder(@PathVariable Long claimId, @RequestParam List<Long> attachmentIds,
+            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        service.reorder(user.userId(), claimId, attachmentIds);
+    }
 }

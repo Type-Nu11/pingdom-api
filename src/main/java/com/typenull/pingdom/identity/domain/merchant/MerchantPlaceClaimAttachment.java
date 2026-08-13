@@ -87,4 +87,8 @@ public class MerchantPlaceClaimAttachment {
         this.displayOrder = displayOrder;
         this.updatedAt = now;
     }
+
+    public boolean isRepresentativeImage() {
+        return documentType == MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE;
+    }
 }

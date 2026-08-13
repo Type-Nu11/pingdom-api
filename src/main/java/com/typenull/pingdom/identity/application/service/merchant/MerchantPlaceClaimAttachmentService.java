@@ -19,6 +19,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import java.util.List;
+import java.util.HashSet;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -41,6 +42,7 @@ public class MerchantPlaceClaimAttachmentService {
         MerchantPlaceClaim claim = ownedClaim(userId, claimId);
         validate(file, type);
         byte[] bytes = read(file);
+        validateSignature(bytes, file.getContentType(), type);
         String hash = sha256(bytes);
         List<MerchantPlaceClaimAttachment> existing = attachmentRepository
                 .findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(claimId, type);
@@ -75,6 +77,25 @@ public class MerchantPlaceClaimAttachmentService {
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.CLAIM_ATTACHMENT_NOT_FOUND));
         attachmentRepository.delete(attachment);
         deletePublisher.publish(attachment.getStorageKey(), "MERCHANT_PLACE_CLAIM_ATTACHMENT", claimId.toString(), "DELETED");
+    }
+
+    @Transactional
+    public void reorder(Long userId, Long claimId, List<Long> attachmentIds) {
+        ownedClaim(userId, claimId);
+        List<MerchantPlaceClaimAttachment> attachments = attachmentRepository
+                .findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(claimId,
+                        MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE);
+        if (attachments.size() != attachmentIds.size()
+                || !new HashSet<>(attachmentIds).equals(attachments.stream().map(MerchantPlaceClaimAttachment::getId).collect(java.util.stream.Collectors.toSet()))) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.CLAIM_ATTACHMENT_INVALID);
+        }
+        LocalDateTime now = LocalDateTime.now(clock);
+        for (int index = 0; index < attachmentIds.size(); index++) {
+            Long attachmentId = attachmentIds.get(index);
+            attachments.stream().filter(item -> item.getId().equals(attachmentId)).findFirst()
+                    .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.CLAIM_ATTACHMENT_NOT_FOUND))
+                    .changeDisplayOrder(index, now);
+        }
     }
 
     @Transactional
@@ -115,6 +136,22 @@ public class MerchantPlaceClaimAttachmentService {
         try { return file.getBytes(); } catch (Exception exception) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.CLAIM_ATTACHMENT_INVALID);
         }
+    }
+
+    private void validateSignature(byte[] bytes, String contentType, MerchantPlaceClaimAttachmentType type) {
+        boolean jpeg = bytes.length >= 3 && (bytes[0] & 0xff) == 0xff
+                && (bytes[1] & 0xff) == 0xd8 && (bytes[2] & 0xff) == 0xff;
+        boolean png = bytes.length >= 8 && (bytes[0] & 0xff) == 0x89 && bytes[1] == 0x50
+                && bytes[2] == 0x4e && bytes[3] == 0x47 && bytes[4] == 0x0d
+                && bytes[5] == 0x0a && bytes[6] == 0x1a && bytes[7] == 0x0a;
+        boolean webp = bytes.length >= 12 && bytes[0] == 'R' && bytes[1] == 'I'
+                && bytes[2] == 'F' && bytes[3] == 'F' && bytes[8] == 'W'
+                && bytes[9] == 'E' && bytes[10] == 'B' && bytes[11] == 'P';
+        boolean pdf = bytes.length >= 5 && bytes[0] == '%' && bytes[1] == 'P'
+                && bytes[2] == 'D' && bytes[3] == 'F' && bytes[4] == '-';
+        boolean valid = "application/pdf".equals(contentType) ? pdf : jpeg || png || webp;
+        if (type != MerchantPlaceClaimAttachmentType.BUSINESS_LICENSE && pdf) valid = false;
+        if (!valid) throw new MerchantOwnerException(MerchantOwnerErrorCode.CLAIM_ATTACHMENT_INVALID);
     }
 
     private String sha256(byte[] bytes) {
