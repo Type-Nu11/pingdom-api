@@ -63,6 +63,13 @@ public class S3ObjectStorage {
         );
     }
 
+    public S3PutResult putPrivate(byte[] content, String contentType, String keyPrefix) {
+        if (content == null || content.length == 0) {
+            throw new IllegalArgumentException("파일이 비어있거나 존재하지 않습니다.");
+        }
+        return put(new java.io.ByteArrayInputStream(content), content.length, null, contentType, keyPrefix);
+    }
+
     private S3PutResult put(
             InputStream inputStream,
             long contentLength,

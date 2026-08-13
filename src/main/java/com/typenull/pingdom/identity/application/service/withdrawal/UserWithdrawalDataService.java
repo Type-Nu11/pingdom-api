@@ -6,6 +6,8 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
+import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
@@ -41,6 +43,8 @@ public class UserWithdrawalDataService {
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
     private final MerchantPlaceClaimRepository merchantPlaceClaimRepository;
     private final MerchantVerificationRepository merchantVerificationRepository;
+    private final MerchantPlaceClaimAttachmentRepository merchantPlaceClaimAttachmentRepository;
+    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final TouristOfferRepository touristOfferRepository;
     private final TouristCouponRepository touristCouponRepository;
     private final MerchantVerificationCipher merchantVerificationCipher;
@@ -49,6 +53,9 @@ public class UserWithdrawalDataService {
     @Transactional
     public void cleanupUserOwnedData(Long userId) {
         LocalDateTime now = LocalDateTime.now(clock);
+        merchantPlaceClaimAttachmentRepository.findAllByClaimOwnerUserId(userId).forEach(attachment ->
+                s3ObjectDeleteOutboxPublisher.publish(attachment.getStorageKey(),
+                        "MERCHANT_PLACE_CLAIM_ATTACHMENT", String.valueOf(attachment.getClaimId()), "USER_WITHDRAWAL"));
         int anonymizedPostCount = mapImageRepository.updateUsernameByUserId(
                 userId,
                 User.WITHDRAWN_DISPLAY_NAME
