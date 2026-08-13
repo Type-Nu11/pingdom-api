@@ -5,6 +5,7 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
+import java.util.List;
 
 @Schema(description = "관리자용 상점 장소 Claim 요청")
 public record AdminMerchantPlaceClaimResponse(
@@ -17,11 +18,20 @@ public record AdminMerchantPlaceClaimResponse(
         String claimReason,
         @Schema(nullable = true) String reviewReason,
         @Schema(nullable = true) Long reviewedBy,
+        long version,
         @Schema(nullable = true) LocalDateTime reviewedAt,
         LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        LocalDateTime updatedAt,
+        @Schema(nullable = true) AdminMerchantPlaceClaimPlaceResponse place
 ) {
     public static AdminMerchantPlaceClaimResponse from(MerchantPlaceClaim claim) {
+        return from(claim, null);
+    }
+
+    public static AdminMerchantPlaceClaimResponse from(
+            MerchantPlaceClaim claim,
+            AdminMerchantPlaceClaimPlaceResponse place
+    ) {
         return new AdminMerchantPlaceClaimResponse(
                 claim.getId(),
                 claim.getMerchantOwnerUserId(),
@@ -32,9 +42,11 @@ public record AdminMerchantPlaceClaimResponse(
                 claim.getClaimReason(),
                 claim.getReviewReason(),
                 claim.getReviewedBy(),
+                claim.getVersion(),
                 claim.getReviewedAt(),
                 claim.getCreatedAt(),
-                claim.getUpdatedAt()
+                claim.getUpdatedAt(),
+                place
         );
     }
 }

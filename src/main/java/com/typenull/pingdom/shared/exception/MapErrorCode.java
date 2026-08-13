@@ -21,6 +21,10 @@ public enum MapErrorCode {
     PLACE_EVENT_NOT_FOUND(HttpStatus.NOT_FOUND, "이벤트를 찾을 수 없습니다."),
     PLACE_EVENT_SEARCH_CONDITION_INVALID(HttpStatus.BAD_REQUEST, "이벤트 조회 기간 조건이 올바르지 않습니다."),
     PLACE_COORDINATE_TOKEN_INVALID(HttpStatus.UNAUTHORIZED, "좌표 토큰이 유효하지 않습니다."),
+    PLACE_REGISTRATION_APPROVAL_REQUIRED(
+            HttpStatus.FORBIDDEN,
+            "승인된 장소 등록 신청을 통해서만 장소를 생성할 수 있습니다."
+    ),
     PLACE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 등록된 장소입니다."),
     PLACE_INFORMATION_REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 정보 신고를 찾을 수 없습니다."),
     PLACE_INFORMATION_REPORT_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 장소 정보 신고에 접근할 수 없습니다."),

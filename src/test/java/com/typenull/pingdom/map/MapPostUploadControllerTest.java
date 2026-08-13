@@ -170,7 +170,7 @@ class MapPostUploadControllerTest {
     }
 
     @Test
-    void uploadPostCreatesPlaceFromCoordinateTokenWhenPlaceReferenceIsMissing() throws Exception {
+    void uploadPostRejectsCoordinateBasedPlaceCreationWithoutApproval() throws Exception {
         givenSuccessfulImageUpload(
                 "map/test-key-pin.jpg",
                 "https://example.com/test-key-pin.jpg",
@@ -191,21 +191,31 @@ class MapPostUploadControllerTest {
                         .param("category", "풍경")
                         .param("coordinateToken", coordinateToken)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("게시글을 저장했습니다."))
-                .andExpect(jsonPath("$.placeId").exists())
-                .andExpect(jsonPath("$.postId").exists());
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
 
-        assertEquals(1L, mapPlaceRepository.count());
-        MapPlace savedPlace = mapPlaceRepository.findAll().get(0);
-        assertEquals("핀 좌표 생성 장소", savedPlace.getName());
-        assertEquals("경상남도 진주시 핀좌표로 10", savedPlace.getAddress());
-        assertEquals("풍경", savedPlace.getCategory());
-        assertNull(savedPlace.getEnglishName());
-        assertNull(savedPlace.getTouristSummary());
-        assertEquals(1L, mapImageRepository.count());
-        MapImage savedImage = mapImageRepository.findAll().get(0);
-        assertEquals(savedPlace.getId(), savedImage.getMapPlace().getId());
+        assertEquals(0L, mapPlaceRepository.count());
+        assertEquals(0L, mapImageRepository.count());
+    }
+
+    @Test
+    void uploadPostLegacyRejectsCoordinateBasedPlaceCreationWithoutApproval() throws Exception {
+        String accessToken = signupAndLogin("writer-pin-legacy-01");
+        String coordinateToken = createCoordinateToken(accessToken, null, 35.1805, 128.1082);
+
+        mockMvc.perform(multipart("/map/post/create")
+                        .file(imageFile("legacy-pin-post.jpg"))
+                        .param("title", "레거시 좌표 게시글")
+                        .param("placeName", "레거시 좌표 장소")
+                        .param("address", "경상남도 진주시 레거시좌표로 10")
+                        .param("category", "풍경")
+                        .param("coordinateToken", coordinateToken)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
+
+        assertEquals(0L, mapPlaceRepository.count());
+        assertEquals(0L, mapImageRepository.count());
     }
 
     @Test

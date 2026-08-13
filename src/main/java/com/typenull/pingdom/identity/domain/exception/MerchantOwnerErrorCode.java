@@ -36,7 +36,12 @@ public enum MerchantOwnerErrorCode {
     MERCHANT_TEAM_INVITATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "대기 중인 Merchant 팀원 초대가 이미 존재합니다."),
     MERCHANT_TEAM_MEMBER_ALREADY_EXISTS(HttpStatus.CONFLICT, "해당 사용자는 이미 Merchant 팀원입니다."),
     MERCHANT_TEAM_MEMBER_NOT_ACTIVE(HttpStatus.CONFLICT, "활성 상태의 Merchant 팀원만 변경할 수 있습니다."),
-    MERCHANT_TEAM_INVITATION_INVALID_ROLE(HttpStatus.BAD_REQUEST, "Merchant 팀원 초대 권한이 올바르지 않습니다.");
+    MERCHANT_TEAM_INVITATION_INVALID_ROLE(HttpStatus.BAD_REQUEST, "Merchant 팀원 초대 권한이 올바르지 않습니다."),
+    CLAIM_ATTACHMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 Claim 첨부 파일을 찾을 수 없습니다."),
+    CLAIM_ATTACHMENT_INVALID(HttpStatus.BAD_REQUEST, "지원하지 않거나 손상된 첨부 파일입니다."),
+    CLAIM_ATTACHMENT_TOO_LARGE(HttpStatus.BAD_REQUEST, "첨부 파일 크기가 제한을 초과했습니다."),
+    CLAIM_ATTACHMENT_DUPLICATE(HttpStatus.CONFLICT, "동일한 첨부 파일이 이미 등록되어 있습니다."),
+    CLAIM_ATTACHMENT_REQUIRED(HttpStatus.CONFLICT, "문서 유형별 필수 첨부 파일을 먼저 등록해야 합니다.");
 
     private final HttpStatus status;
     private final String message;
