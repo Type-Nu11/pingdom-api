@@ -145,11 +145,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-<<<<<<< HEAD
-        assertThat(result.migrationsExecuted).isEqualTo(6);
-=======
         assertThat(result.migrationsExecuted).isEqualTo(7);
->>>>>>> d7adc639 (test : Flyway migration 실행 개수 기대값 재수정)
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -250,11 +246,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-<<<<<<< HEAD
-        assertThat(result.migrationsExecuted).isEqualTo(93);
-=======
         assertThat(result.migrationsExecuted).isEqualTo(94);
->>>>>>> d7adc639 (test : Flyway migration 실행 개수 기대값 재수정)
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -368,11 +360,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-<<<<<<< HEAD
-        assertThat(result.migrationsExecuted).isEqualTo(68);
-=======
         assertThat(result.migrationsExecuted).isEqualTo(69);
->>>>>>> d7adc639 (test : Flyway migration 실행 개수 기대값 재수정)
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -623,11 +611,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-<<<<<<< HEAD
-        assertThat(result.migrationsExecuted).isEqualTo(40);
-=======
         assertThat(result.migrationsExecuted).isEqualTo(41);
->>>>>>> d7adc639 (test : Flyway migration 실행 개수 기대값 재수정)
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
