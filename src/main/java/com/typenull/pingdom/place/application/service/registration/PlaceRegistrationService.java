@@ -39,7 +39,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 
 @Service
 @RequiredArgsConstructor
@@ -52,14 +51,13 @@ public class PlaceRegistrationService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
     private final Clock clock;
-    private final MerchantVerificationCipher contactCipher;
 
     @Transactional
     public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
         LocalDateTime now = now();
         PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
                 r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
-        application.setContactPhones(normalizePhone(r.businessContactPhone()), contactCipher.encrypt(normalizePhone(r.applicantContactPhone())));
+        application.setContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
         try {
             applyDraftFiles(application, userId, r, now);
         } catch (IllegalArgumentException exception) {
@@ -95,7 +93,7 @@ public class PlaceRegistrationService {
         try {
             LocalDateTime now = now();
             a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
-            a.setContactPhones(normalizePhone(r.businessContactPhone()), contactCipher.encrypt(normalizePhone(r.applicantContactPhone())));
+            a.setContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
             applyDraftFiles(a, userId, r, now);
         } catch (IllegalArgumentException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);

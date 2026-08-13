@@ -1,6 +1,6 @@
 ALTER TABLE place_registration_application
     ADD COLUMN business_contact_phone VARCHAR(20),
-    ADD COLUMN encrypted_applicant_contact_phone VARCHAR(512);
+    ADD COLUMN applicant_contact_phone VARCHAR(20);
 
 ALTER TABLE place_registration_application
     ADD CONSTRAINT ck_place_registration_business_contact_phone

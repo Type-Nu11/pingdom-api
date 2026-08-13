@@ -72,8 +72,8 @@ public class PlaceRegistrationApplication {
     @Column(name = "business_contact_phone", length = 20)
     private String businessContactPhone;
 
-    @Column(name = "encrypted_applicant_contact_phone", length = 512)
-    private String encryptedApplicantContactPhone;
+    @Column(name = "applicant_contact_phone", length = 20)
+    private String applicantContactPhone;
 
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "place_registration_application_tag",
@@ -160,10 +160,10 @@ public class PlaceRegistrationApplication {
                 roadAddress, jibunAddress, postalCode, description, tags, now);
     }
 
-    public void setContactPhones(String businessContactPhone, String encryptedApplicantContactPhone) {
+    public void setContactPhones(String businessContactPhone, String applicantContactPhone) {
         if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
         this.businessContactPhone = businessContactPhone;
-        this.encryptedApplicantContactPhone = encryptedApplicantContactPhone;
+        this.applicantContactPhone = applicantContactPhone;
     }
 
     public void update(String placeName, PlaceRegistrationCategory category, double latitude, double longitude,
