@@ -11,11 +11,13 @@ import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
 import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import java.nio.charset.StandardCharsets;
 import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
@@ -212,6 +214,49 @@ class OpenApiDocumentationValidationTest {
         );
         assertThat(explanationItem.has("benefitScore")).isTrue();
         assertThat(explanationItem.has("availabilityScore")).isTrue();
+    }
+
+    @Test
+    void adminPlaceListContractExposesCategoryFilterAndNormalizedEmptyPage() throws Exception {
+        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+        JsonNode operation = webDocument.at("/paths/~1admin~1places/get");
+        JsonNode categoryParameter = parameter(operation, "category");
+
+        assertThat(categoryParameter.isMissingNode()).isFalse();
+        assertThat(categoryParameter.path("required").asBoolean()).isFalse();
+        assertThat(categoryParameter.path("description").asText())
+                .contains("AdminMapPlaceItem.category", "touristCategories");
+        assertThat(categoryParameter.path("schema").path("enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder(
+                        PlaceCategoryPolicy.CAFE,
+                        PlaceCategoryPolicy.RESTAURANT,
+                        PlaceCategoryPolicy.TOURISM,
+                        PlaceCategoryPolicy.SCENERY,
+                        PlaceCategoryPolicy.CULTURE,
+                        PlaceCategoryPolicy.SHOPPING,
+                        PlaceCategoryPolicy.ACCOMMODATION,
+                        PlaceCategoryPolicy.EXPERIENCE
+                );
+
+        JsonNode emptyResult = operation.at("/responses/200/content/*~1*/examples/emptyResult/value");
+        assertThat(emptyResult.path("places").isArray()).isTrue();
+        assertThat(emptyResult.path("places").isEmpty()).isTrue();
+        assertThat(emptyResult.path("totalCount").asLong()).isZero();
+        assertThat(emptyResult.path("totalPages").asLong()).isEqualTo(1L);
+        assertThat(emptyResult.path("hasNext").asBoolean()).isFalse();
+
+        JsonNode itemProperties = webDocument.at("/components/schemas/AdminMapPlaceItem/properties");
+        assertThat(itemProperties.path("category").path("enum"))
+                .extracting(JsonNode::asText)
+                .contains(PlaceCategoryPolicy.CAFE, PlaceCategoryPolicy.EXPERIENCE);
+        assertThat(itemProperties.path("categoryName").path("enum"))
+                .extracting(JsonNode::asText)
+                .contains("미분류");
+        assertThat(itemProperties.path("touristCategories").path("description").asText())
+                .contains("별도 기준");
+        assertThat(webDocument.at("/components/schemas/AdminMapPlaceResponse/properties/totalPages/minimum")
+                .asLong()).isEqualTo(1L);
     }
 
     @Test
@@ -1036,7 +1081,7 @@ class OpenApiDocumentationValidationTest {
         String body = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(apiDocPath))
                 .andReturn()
                 .getResponse()
-                .getContentAsString();
+                .getContentAsString(StandardCharsets.UTF_8);
         return objectMapper.readTree(body);
     }
 
