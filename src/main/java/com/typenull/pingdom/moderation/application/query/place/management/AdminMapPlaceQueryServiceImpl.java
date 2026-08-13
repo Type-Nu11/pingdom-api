@@ -25,8 +25,14 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     private final AdminPlaceRecommendationMetricQueryService recommendationMetricQueryService;
 
     @Override
-    public AdminMapPlaceResponse listPlaces(int page, int limit, AdminPlaceSortParam sortParam, String keyword) {
-        return lookupQueryService.listPlaces(page, limit, sortParam, keyword);
+    public AdminMapPlaceResponse listPlaces(
+            int page,
+            int limit,
+            AdminPlaceSortParam sortParam,
+            String keyword,
+            String category
+    ) {
+        return lookupQueryService.listPlaces(page, limit, sortParam, keyword, category);
     }
 
     @Override

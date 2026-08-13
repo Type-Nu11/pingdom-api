@@ -13,17 +13,18 @@ import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptio
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
+import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
-import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
-import java.util.EnumSet;
 import java.util.Comparator;
+import java.util.EnumSet;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
@@ -50,16 +51,24 @@ public class AdminMapPlaceLookupQueryService {
     private final PlaceGrowthService placeGrowthService;
 
     @Transactional(readOnly = true)
-    public AdminMapPlaceResponse listPlaces(int page, int limit, AdminPlaceSortParam sortParam, String keyword) {
+    public AdminMapPlaceResponse listPlaces(
+            int page,
+            int limit,
+            AdminPlaceSortParam sortParam,
+            String keyword,
+            String category
+    ) {
         int safePage = Math.max(page, 1);
         int safeLimit = Math.max(1, Math.min(limit, 100));
         AdminPlaceSortParam safeSortParam = sortParam == null ? AdminPlaceSortParam.LATEST : sortParam;
         String safeKeyword = keyword == null ? "" : keyword.trim();
+        String safeCategory = PlaceCategoryPolicy.normalize(category);
         Long numericKeyword = parseLongKeyword(safeKeyword);
 
         Page<MapPlace> placePage = adminMapPlaceQueryRepository.searchAdminPlaces(
                 safeKeyword,
                 numericKeyword,
+                safeCategory,
                 PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
         );
 
