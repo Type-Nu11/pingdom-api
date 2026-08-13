@@ -18,8 +18,6 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
-import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
-import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimAttachmentType;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
@@ -51,7 +49,6 @@ public class MerchantPlaceClaimAdminService {
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
-    private final MerchantPlaceClaimAttachmentRepository attachmentRepository;
 
     @Transactional(readOnly = true)
     public AdminMerchantPlaceClaimPageResponse list(MerchantPlaceClaimStatus status, int page, int limit) {
@@ -113,14 +110,6 @@ public class MerchantPlaceClaimAdminService {
     }
 
     private void approveClaim(MerchantPlaceClaim claim, Long adminUserId, String reason, LocalDateTime now) {
-        if (attachmentRepository.findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
-                claim.getId(), MerchantPlaceClaimAttachmentType.BUSINESS_LICENSE).size() != 1
-                || attachmentRepository.findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
-                claim.getId(), MerchantPlaceClaimAttachmentType.RESIDENT_REGISTRATION).size() != 1
-                || attachmentRepository.findAllByClaimIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
-                claim.getId(), MerchantPlaceClaimAttachmentType.REPRESENTATIVE_IMAGE).isEmpty()) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.CLAIM_ATTACHMENT_REQUIRED);
-        }
         mapPlaceRepository.findByIdForUpdate(claim.getPlaceId())
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PLACE_NOT_FOUND));
         MerchantOwnerPlace currentOwner = ownerPlaceRepository.findByPlaceIdForUpdate(claim.getPlaceId())
