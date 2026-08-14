@@ -6,6 +6,7 @@ import com.typenull.pingdom.moderation.application.service.place.quality.AdminMa
 import com.typenull.pingdom.moderation.application.service.place.merge.AdminPlaceMergeService;
 import com.typenull.pingdom.moderation.application.service.place.operating.AdminPlaceOperatingScheduleService;
 import com.typenull.pingdom.moderation.application.service.place.quality.AdminPlaceQualityService;
+import com.typenull.pingdom.moderation.application.service.place.recommendation.AdminPlaceRecommendationPolicyService;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -45,6 +46,12 @@ class AdminPlaceServiceSplitTest {
                         "updatePlaceKakaoPlaceId",
                         "updatePlaceOperatingStatus",
                         "updatePlaceTouristInfo");
+    }
+
+    @org.junit.jupiter.api.Test
+    void recommendationServiceOwnsPolicyUseCases() {
+        assertThat(publicMethodNames(AdminPlaceRecommendationPolicyService.class))
+                .containsExactly("resyncRecommendationSnapshots", "updateRecommendationTraffic");
     }
 
     private List<String> publicMethodNames(Class<?> serviceType) {
