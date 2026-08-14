@@ -1064,6 +1064,12 @@ class FlywayMigrationIntegrationTest {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM information_schema.columns
+                    WHERE table_name = 'users'
+                      AND column_name = 'fcm_token'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 3
                     FROM information_schema.tables
                     WHERE table_schema = 'public'
