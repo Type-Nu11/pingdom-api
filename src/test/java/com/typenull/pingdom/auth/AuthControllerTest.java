@@ -25,9 +25,11 @@ import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
+import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
+import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
+import com.typenull.pingdom.notification.repository.FcmDeviceTokenRepository;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
@@ -124,6 +126,9 @@ class AuthControllerTest {
 
     @Autowired
     private NotificationsRepository notificationsRepository;
+
+    @Autowired
+    private FcmDeviceTokenRepository fcmDeviceTokenRepository;
 
     @Autowired
     private WithdrawnUserPurgeService withdrawnUserPurgeService;
