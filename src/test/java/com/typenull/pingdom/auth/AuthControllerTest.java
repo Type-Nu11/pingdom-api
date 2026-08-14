@@ -676,8 +676,9 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
         User signedUpUser = userRepository.findByUsername("withdrawuser").orElseThrow();
-        signedUpUser.updateFcmToken("fcm-token");
-        userRepository.saveAndFlush(signedUpUser);
+        fcmDeviceTokenRepository.saveAndFlush(
+                FcmDeviceToken.create(signedUpUser.getId(), "fcm-token", LocalDateTime.now())
+        );
 
         LoginRequest loginRequest = new LoginRequest("withdrawuser", "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
