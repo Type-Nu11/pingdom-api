@@ -246,7 +246,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(94);
+        assertThat(result.migrationsExecuted).isEqualTo(95);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
