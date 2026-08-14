@@ -264,10 +264,6 @@ public class User {
         clearRefreshToken();
     }
 
-    public void updateFcmToken(String token) {
-        this.fcmToken = token;
-    }
-
     public Set<TravelPurpose> currentTravelPurposes() {
         if (travelPurposes == null || travelPurposes.isEmpty()) {
             return Set.of();
