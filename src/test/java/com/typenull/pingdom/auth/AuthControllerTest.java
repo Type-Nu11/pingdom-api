@@ -703,7 +703,9 @@ class AuthControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals("withdrawn_user_%d@withdrawn.local".formatted(signedUpUser.getId()), withdrawnUser.getEmail());
         org.junit.jupiter.api.Assertions.assertNull(withdrawnUser.getProfileImageUrl());
         org.junit.jupiter.api.Assertions.assertNull(withdrawnUser.getRefreshToken());
-        org.junit.jupiter.api.Assertions.assertNull(withdrawnUser.getFcmToken());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                fcmDeviceTokenRepository.findAllByUserIdOrderByUpdatedAtDesc(signedUpUser.getId()).isEmpty()
+        );
         org.junit.jupiter.api.Assertions.assertTrue(userRepository.findByUsername("withdrawuser").isEmpty());
         org.junit.jupiter.api.Assertions.assertTrue(userRepository.findByEmail("withdrawuser@example.com").isEmpty());
 
