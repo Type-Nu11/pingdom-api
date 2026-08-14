@@ -12,4 +12,9 @@ class AdminPlaceServiceSupportTest {
         assertThat(AdminPlaceServiceSupport.trimToNull("  place  ")).isEqualTo("place");
         assertThat(AdminPlaceServiceSupport.trimToNull(" ")).isNull();
     }
+
+    @Test
+    void normalizeTouristCategoriesHandlesNull() {
+        assertThat(AdminPlaceServiceSupport.normalizeTouristCategories(null)).isEmpty();
+    }
 }
