@@ -139,6 +139,7 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         notificationsRepository.deleteAllInBatch();
+        fcmDeviceTokenRepository.deleteAllInBatch();
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
