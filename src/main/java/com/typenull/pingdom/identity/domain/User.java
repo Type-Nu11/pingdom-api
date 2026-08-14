@@ -315,7 +315,6 @@ public class User {
         this.emailVerificationExpiresAt = null;
         this.refreshToken = null;
         this.role = UserRole.USER;
-        this.fcmToken = null;
         replaceTravelPurposes(Set.of());
         releaseBan();
     }
