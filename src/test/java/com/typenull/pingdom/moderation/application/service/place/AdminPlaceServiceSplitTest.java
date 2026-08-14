@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.typenull.pingdom.moderation.application.service.place.quality.AdminMapPlaceService;
 import com.typenull.pingdom.moderation.application.service.place.merge.AdminPlaceMergeService;
 import com.typenull.pingdom.moderation.application.service.place.operating.AdminPlaceOperatingScheduleService;
+import com.typenull.pingdom.moderation.application.service.place.quality.AdminPlaceQualityService;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.Arrays;
@@ -29,6 +30,21 @@ class AdminPlaceServiceSplitTest {
     void operatingServiceOwnsOperatingScheduleUseCase() {
         assertThat(publicMethodNames(AdminPlaceOperatingScheduleService.class))
                 .containsExactly("updatePlaceOperatingSchedule");
+    }
+
+    @org.junit.jupiter.api.Test
+    void qualityServiceOwnsPlaceQualityUseCases() {
+        assertThat(publicMethodNames(AdminPlaceQualityService.class))
+                .containsExactly(
+                        "createPlaceInformationEvidence",
+                        "getPlaceInformationEvidence",
+                        "reviewPlaceInformationEvidence",
+                        "updatePlaceCoordinates",
+                        "updatePlaceDiscoveryStatus",
+                        "updatePlaceGeocoding",
+                        "updatePlaceKakaoPlaceId",
+                        "updatePlaceOperatingStatus",
+                        "updatePlaceTouristInfo");
     }
 
     private List<String> publicMethodNames(Class<?> serviceType) {
