@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "96";
+    private static final String LATEST_MIGRATION_VERSION = "97";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
