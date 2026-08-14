@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(96);
+        assertThat(result.migrationsExecuted).isEqualTo(97);
 
         assertPostMigrationSchema();
     }
