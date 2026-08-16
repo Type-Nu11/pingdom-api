@@ -41,7 +41,9 @@ public class PrivacyProcessingHistoryQueryService {
                 subjectUserId,
                 actorUserId,
                 action,
+                from != null,
                 from,
+                to != null,
                 to,
                 pageable
         );
