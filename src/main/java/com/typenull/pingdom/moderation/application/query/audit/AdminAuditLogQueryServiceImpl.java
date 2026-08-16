@@ -50,7 +50,9 @@ public class AdminAuditLogQueryServiceImpl implements AdminAuditLogQueryService 
                 action,
                 targetType,
                 normalizeTargetId(targetId),
+                from != null,
                 from,
+                to != null,
                 to,
                 pageable
         );

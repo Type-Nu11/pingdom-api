@@ -19,15 +19,17 @@ public interface AdminAuditLogRepository extends JpaRepository<AdminAuditLog, Lo
               AND (:action IS NULL OR log.action = :action)
               AND (:targetType IS NULL OR log.targetType = :targetType)
               AND (:targetId IS NULL OR log.targetId = :targetId)
-              AND (:from IS NULL OR log.createdAt >= :from)
-              AND (:to IS NULL OR log.createdAt <= :to)
+              AND (:hasFrom = false OR log.createdAt >= :from)
+              AND (:hasTo = false OR log.createdAt <= :to)
             """)
     Page<AdminAuditLog> findByFilters(
             @Param("actorUserId") Long actorUserId,
             @Param("action") AdminAuditAction action,
             @Param("targetType") AdminAuditTargetType targetType,
             @Param("targetId") String targetId,
+            @Param("hasFrom") boolean hasFrom,
             @Param("from") LocalDateTime from,
+            @Param("hasTo") boolean hasTo,
             @Param("to") LocalDateTime to,
             Pageable pageable
     );
