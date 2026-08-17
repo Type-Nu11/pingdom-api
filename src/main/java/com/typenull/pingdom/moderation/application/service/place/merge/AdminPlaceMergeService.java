@@ -58,6 +58,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Set;
+import java.util.HashMap;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.locationtech.jts.geom.Coordinate;
@@ -126,6 +127,7 @@ public class AdminPlaceMergeService {
         if (scoutFieldReportRepository.existsByPlaceId(sourcePlace.getId())) {
             throw new AdminException(AdminErrorCode.PLACE_SCOUT_FIELD_REPORT_CONNECTED);
         }
+        rejectUnsupportedRelatedData(sourcePlace.getId());
         if (duplicateCandidate == null && !adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
@@ -270,6 +272,51 @@ public class AdminPlaceMergeService {
         if (request.sourcePlaceId().equals(request.targetPlaceId())) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_INVALID_REQUEST);
         }
+    }
+
+    private void rejectUnsupportedRelatedData(Long sourcePlaceId) {
+        Set<String> supportedTables = Set.of(
+                "map_image",
+                "map_bookmark",
+                "place_recommendation_click",
+                "place_recommendation_exposure",
+                "place_recommendation_conversion",
+                "place_recommendation_feature_log"
+        );
+        List<Map<String, Object>> foreignKeys = jdbcTemplate.queryForList("""
+                SELECT tc.table_name, kcu.column_name
+                  FROM information_schema.table_constraints tc
+                  JOIN information_schema.key_column_usage kcu
+                    ON tc.constraint_name = kcu.constraint_name
+                   AND tc.table_schema = kcu.table_schema
+                  JOIN information_schema.constraint_column_usage ccu
+                    ON tc.constraint_name = ccu.constraint_name
+                   AND tc.table_schema = ccu.table_schema
+                 WHERE tc.constraint_type = 'FOREIGN KEY'
+                   AND tc.table_schema = current_schema()
+                   AND ccu.table_name = 'map_place'
+                """);
+        for (Map<String, Object> foreignKey : foreignKeys) {
+            String tableName = String.valueOf(foreignKey.get("table_name"));
+            if (supportedTables.contains(tableName) || "map_place".equals(tableName)) {
+                continue;
+            }
+            String columnName = String.valueOf(foreignKey.get("column_name"));
+            String tableIdentifier = quoteIdentifier(tableName);
+            String columnIdentifier = quoteIdentifier(columnName);
+            Long relatedCount = jdbcTemplate.queryForObject(
+                    "SELECT COUNT(*) FROM " + tableIdentifier + " WHERE " + columnIdentifier + " = ?",
+                    Long.class,
+                    sourcePlaceId
+            );
+            if (relatedCount != null && relatedCount > 0) {
+                throw new AdminException(AdminErrorCode.PLACE_MERGE_RELATED_DATA_CONNECTED);
+            }
+        }
+    }
+
+    private String quoteIdentifier(String identifier) {
+        return "\"" + identifier.replace("\"", "\"\"") + "\"";
     }
 
     private boolean candidateMatchesRequest(
