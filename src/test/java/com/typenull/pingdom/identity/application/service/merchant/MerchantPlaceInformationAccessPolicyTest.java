@@ -44,7 +44,6 @@ class MerchantPlaceInformationAccessPolicyTest {
         when(userRepository.findById(20L)).thenReturn(Optional.of(
                 User.builder().id(20L).role(UserRole.USER).build()
         ));
-        when(ownerPlaceRepository.existsById(10L)).thenReturn(true);
     }
 
     @Test
