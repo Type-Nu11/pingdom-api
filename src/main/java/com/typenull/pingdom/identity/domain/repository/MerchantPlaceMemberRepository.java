@@ -13,6 +13,8 @@ public interface MerchantPlaceMemberRepository extends JpaRepository<MerchantPla
     List<MerchantPlaceMember> findAllByPlaceIdAndStatusOrderByIdAsc(Long placeId, com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMemberStatus status);
     Optional<MerchantPlaceMember> findByPlaceIdAndUserId(Long placeId, Long userId);
 
+    List<MerchantPlaceMember> findAllByPlaceId(Long placeId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select member from MerchantPlaceMember member where member.placeId = :placeId and member.userId = :userId")
     Optional<MerchantPlaceMember> findByPlaceIdAndUserIdForUpdate(

@@ -98,4 +98,12 @@ public class MerchantPlaceMember {
         this.status = MerchantPlaceMemberStatus.ACTIVE;
         this.updatedAt = now;
     }
+
+    public void promoteToOwner(LocalDateTime now) {
+        if (status != MerchantPlaceMemberStatus.ACTIVE) {
+            throw new IllegalStateException("활성 팀원만 OWNER로 승격할 수 있습니다.");
+        }
+        this.role = MerchantPlaceMemberRole.OWNER;
+        this.updatedAt = now;
+    }
 }
