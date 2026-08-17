@@ -16,6 +16,7 @@ public record PlaceRegistrationResponse(
         LocalDateTime registeredAt, LocalDateTime createdAt, LocalDateTime updatedAt,
         long submissionVersion, String submissionContentHash, LocalDateTime canceledAt,
         Set<PlaceRegistrationTag> tags, List<PlaceRegistrationAttachmentResponse> attachments
+        , String timezone, String operatingScheduleJson
 ) {
     public static PlaceRegistrationResponse from(PlaceRegistrationApplication a) {
         return new PlaceRegistrationResponse(a.getId(), a.getApplicantUserId(), a.getStatus(), a.getPlaceName(),
@@ -23,6 +24,7 @@ public record PlaceRegistrationResponse(
                 a.getPostalCode(), a.getDescription(), a.getBusinessContactPhone(), a.getReviewReason(), a.getRegisteredPlaceId(),
                 a.getSubmittedAt(), a.getReviewedAt(), a.getRegisteredAt(), a.getCreatedAt(), a.getUpdatedAt(),
                 a.getSubmissionVersion(), a.getSubmissionContentHash(), a.getCanceledAt(), a.getTags(),
-                a.getAttachments().stream().map(PlaceRegistrationAttachmentResponse::from).toList());
+                a.getAttachments().stream().map(PlaceRegistrationAttachmentResponse::from).toList(),
+                a.getTimezone(), a.getOperatingScheduleJson());
     }
 }
