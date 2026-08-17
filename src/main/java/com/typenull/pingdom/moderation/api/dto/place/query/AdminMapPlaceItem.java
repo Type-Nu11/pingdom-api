@@ -32,7 +32,7 @@ public record AdminMapPlaceItem(
         @Schema(
                 description = "일반 장소 카테고리. touristCategories와 별도 기준이며 미분류 장소는 null입니다.",
                 nullable = true,
-                example = "관광",
+                example = "OTHER",
                 allowableValues = {
                         PlaceCategoryPolicy.CAFE,
                         PlaceCategoryPolicy.RESTAURANT,
@@ -47,7 +47,7 @@ public record AdminMapPlaceItem(
         String category,
         @Schema(
                 description = "화면 표시용 일반 장소 카테고리명. category가 없으면 미분류입니다.",
-                example = "관광",
+                example = "OTHER",
                 allowableValues = {
                         PlaceCategoryPolicy.CAFE,
                         PlaceCategoryPolicy.RESTAURANT,
