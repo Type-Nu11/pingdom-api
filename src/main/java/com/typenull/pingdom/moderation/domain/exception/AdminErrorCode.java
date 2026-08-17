@@ -37,6 +37,7 @@ public enum AdminErrorCode {
     PLACE_CHECK_IN_CONNECTED(HttpStatus.CONFLICT, "연결된 체크인 이력이 있어 장소를 삭제하거나 병합할 수 없습니다."),
     PLACE_SCOUT_FIELD_REPORT_CONNECTED(HttpStatus.CONFLICT, "연결된 Scout 현장 제보가 있어 장소를 삭제하거나 병합할 수 없습니다."),
     PLACE_MERGE_NOT_ALLOWED(HttpStatus.CONFLICT, "중복 장소로 확인되지 않아 병합할 수 없습니다."),
+    PLACE_MERGE_RELATED_DATA_CONNECTED(HttpStatus.CONFLICT, "지원하지 않는 장소 연관 데이터가 있어 병합할 수 없습니다."),
     PLACE_MERGE_HISTORY_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 병합 이력을 찾을 수 없습니다."),
     PLACE_MERGE_ALREADY_RESTORED(HttpStatus.CONFLICT, "이미 복구된 장소 병합 이력입니다."),
     PLACE_MERGE_RESTORE_NOT_ALLOWED(HttpStatus.CONFLICT, "현재 장소 상태로는 병합 복구를 진행할 수 없습니다."),
