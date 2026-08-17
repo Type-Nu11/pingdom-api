@@ -28,10 +28,6 @@ SET category = CASE LOWER(TRIM(category))
     WHEN 'cafe' THEN 'CAFE'
     WHEN 'pop_up' THEN 'POP_UP'
     WHEN 'other' THEN 'OTHER'
-    ELSE 'OTHER'
+    ELSE category
 END
 WHERE category IS NOT NULL;
-
-ALTER TABLE map_place
-    ADD CONSTRAINT ck_map_place_category_canonical
-    CHECK (category IS NULL OR category IN ('MUSIC', 'RESTAURANT', 'POP_UP', 'FASHION', 'BEAUTY', 'EXHIBITION', 'CAFE', 'OTHER'));
