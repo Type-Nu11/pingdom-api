@@ -24,6 +24,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 @RequiredArgsConstructor
@@ -66,8 +67,12 @@ public class MerchantTeamService {
         if (!expiresAt.isAfter(now)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
         }
-        return MerchantTeamInvitationResponse.from(invitationRepository.save(
-                MerchantPlaceInvitation.pending(placeId, request.inviteeUserId(), actorId, request.role(), expiresAt, now)));
+        try {
+            return MerchantTeamInvitationResponse.from(invitationRepository.save(
+                    MerchantPlaceInvitation.pending(placeId, request.inviteeUserId(), actorId, request.role(), expiresAt, now)));
+        } catch (DataIntegrityViolationException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_ALREADY_EXISTS);
+        }
     }
 
     @Transactional
@@ -89,23 +94,38 @@ public class MerchantTeamService {
 
     @Transactional
     public MerchantTeamMemberResponse acceptInvitation(Long actorId, Long invitationId) {
-        MerchantPlaceInvitation invitation = invitationRepository.findById(invitationId)
+        MerchantPlaceInvitation invitation = invitationRepository.findByIdForUpdate(invitationId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
         if (!invitation.getInviteeUserId().equals(actorId)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
         }
-        if (memberRepository.findByPlaceIdAndUserId(invitation.getPlaceId(), actorId)
-                .filter(member -> member.getStatus() == MerchantPlaceMemberStatus.ACTIVE).isPresent()) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_ALREADY_EXISTS);
-        }
         LocalDateTime now = LocalDateTime.now(clock);
+        User invitee = userRepository.findById(actorId)
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
+        if (invitee.isWithdrawn() || invitee.isCurrentlyBanned(now)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_NOT_ACTIVE);
+        }
+        var existingMember = memberRepository.findByPlaceIdAndUserIdForUpdate(invitation.getPlaceId(), actorId);
+        if (invitation.getStatus() == MerchantPlaceInvitationStatus.ACCEPTED) {
+            return existingMember.filter(member -> member.getStatus() == MerchantPlaceMemberStatus.ACTIVE)
+                    .map(MerchantTeamMemberResponse::from)
+                    .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
+        }
         try {
             invitation.accept(now);
         } catch (IllegalStateException exception) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND);
         }
-        return MerchantTeamMemberResponse.from(memberRepository.save(
-                MerchantPlaceMember.create(invitation.getPlaceId(), actorId, invitation.getRole(), invitation.getInvitedBy(), now)));
+        MerchantPlaceMember member = existingMember.orElseGet(() ->
+                MerchantPlaceMember.create(invitation.getPlaceId(), actorId, invitation.getRole(), invitation.getInvitedBy(), now));
+        if (existingMember.isPresent()) {
+            try {
+                member.reactivate(invitation.getRole(), invitation.getInvitedBy(), now);
+            } catch (IllegalStateException exception) {
+                throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_MEMBER_ALREADY_EXISTS);
+            }
+        }
+        return MerchantTeamMemberResponse.from(memberRepository.save(member));
     }
 
     @Transactional

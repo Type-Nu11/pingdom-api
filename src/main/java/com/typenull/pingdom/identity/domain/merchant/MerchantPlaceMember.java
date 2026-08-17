@@ -85,4 +85,17 @@ public class MerchantPlaceMember {
         status = MerchantPlaceMemberStatus.REVOKED;
         updatedAt = now;
     }
+
+    public void reactivate(MerchantPlaceMemberRole role, Long invitedBy, LocalDateTime now) {
+        if (status != MerchantPlaceMemberStatus.REVOKED) {
+            throw new IllegalStateException("회수된 팀원만 재활성화할 수 있습니다.");
+        }
+        if (role == MerchantPlaceMemberRole.OWNER) {
+            throw new IllegalArgumentException("팀원에게 OWNER 권한을 부여할 수 없습니다.");
+        }
+        this.role = role;
+        this.invitedBy = invitedBy;
+        this.status = MerchantPlaceMemberStatus.ACTIVE;
+        this.updatedAt = now;
+    }
 }
