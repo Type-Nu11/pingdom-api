@@ -1,0 +1,37 @@
+UPDATE map_place
+SET category = CASE LOWER(TRIM(category))
+    WHEN '카페' THEN 'CAFE'
+    WHEN '커피' THEN 'CAFE'
+    WHEN 'cafe' THEN 'CAFE'
+    WHEN '식당' THEN 'RESTAURANT'
+    WHEN '음식점' THEN 'RESTAURANT'
+    WHEN '맛집' THEN 'RESTAURANT'
+    WHEN 'restaurant' THEN 'RESTAURANT'
+    WHEN '전시' THEN 'EXHIBITION'
+    WHEN '문화' THEN 'EXHIBITION'
+    WHEN '박물관' THEN 'EXHIBITION'
+    WHEN '미술관' THEN 'EXHIBITION'
+    WHEN '공연' THEN 'MUSIC'
+    WHEN '음악' THEN 'MUSIC'
+    WHEN '쇼핑' THEN 'FASHION'
+    WHEN '패션' THEN 'FASHION'
+    WHEN '뷰티' THEN 'BEAUTY'
+    WHEN '미용' THEN 'BEAUTY'
+    WHEN '팝업' THEN 'POP_UP'
+    WHEN 'popup' THEN 'POP_UP'
+    WHEN 'pop-up' THEN 'POP_UP'
+    WHEN 'music' THEN 'MUSIC'
+    WHEN 'fashion' THEN 'FASHION'
+    WHEN 'beauty' THEN 'BEAUTY'
+    WHEN 'exhibition' THEN 'EXHIBITION'
+    WHEN 'restaurant' THEN 'RESTAURANT'
+    WHEN 'cafe' THEN 'CAFE'
+    WHEN 'pop_up' THEN 'POP_UP'
+    WHEN 'other' THEN 'OTHER'
+    ELSE 'OTHER'
+END
+WHERE category IS NOT NULL;
+
+ALTER TABLE map_place
+    ADD CONSTRAINT ck_map_place_category_canonical
+    CHECK (category IS NULL OR category IN ('MUSIC', 'RESTAURANT', 'POP_UP', 'FASHION', 'BEAUTY', 'EXHIBITION', 'CAFE', 'OTHER'));
