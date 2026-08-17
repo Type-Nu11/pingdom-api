@@ -143,9 +143,6 @@ public class User {
     @Column(name = "ban_expires_at")
     private LocalDateTime banExpiresAt;
 
-    // fcm 디바이스 아이디
-    private String fcmToken;
-
     // 이메일 인증 코드 발급 메서드
     public void issueEmailVerification(String verificationCode, LocalDateTime expiresAt) {
         this.emailVerificationCode = verificationCode;
@@ -267,10 +264,6 @@ public class User {
         clearRefreshToken();
     }
 
-    public void updateFcmToken(String token) {
-        this.fcmToken = token;
-    }
-
     public Set<TravelPurpose> currentTravelPurposes() {
         if (travelPurposes == null || travelPurposes.isEmpty()) {
             return Set.of();
@@ -322,7 +315,6 @@ public class User {
         this.emailVerificationExpiresAt = null;
         this.refreshToken = null;
         this.role = UserRole.USER;
-        this.fcmToken = null;
         replaceTravelPurposes(Set.of());
         releaseBan();
     }

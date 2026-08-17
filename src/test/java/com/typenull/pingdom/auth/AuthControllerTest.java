@@ -25,9 +25,11 @@ import com.typenull.pingdom.identity.domain.PasswordResetToken;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.PasswordResetTokenRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
+import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
+import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
+import com.typenull.pingdom.notification.repository.FcmDeviceTokenRepository;
 import com.typenull.pingdom.notification.repository.NotificationsRepository;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
@@ -126,6 +128,9 @@ class AuthControllerTest {
     private NotificationsRepository notificationsRepository;
 
     @Autowired
+    private FcmDeviceTokenRepository fcmDeviceTokenRepository;
+
+    @Autowired
     private WithdrawnUserPurgeService withdrawnUserPurgeService;
 
     @Autowired
@@ -134,6 +139,7 @@ class AuthControllerTest {
     @BeforeEach
     void setUp() {
         notificationsRepository.deleteAllInBatch();
+        fcmDeviceTokenRepository.deleteAllInBatch();
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
@@ -670,8 +676,9 @@ class AuthControllerTest {
                 .content(objectMapper.writeValueAsString(signupRequest)));
 
         User signedUpUser = userRepository.findByUsername("withdrawuser").orElseThrow();
-        signedUpUser.updateFcmToken("fcm-token");
-        userRepository.saveAndFlush(signedUpUser);
+        fcmDeviceTokenRepository.saveAndFlush(
+                FcmDeviceToken.create(signedUpUser.getId(), "fcm-token", LocalDateTime.now())
+        );
 
         LoginRequest loginRequest = new LoginRequest("withdrawuser", "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
@@ -696,7 +703,9 @@ class AuthControllerTest {
         org.junit.jupiter.api.Assertions.assertEquals("withdrawn_user_%d@withdrawn.local".formatted(signedUpUser.getId()), withdrawnUser.getEmail());
         org.junit.jupiter.api.Assertions.assertNull(withdrawnUser.getProfileImageUrl());
         org.junit.jupiter.api.Assertions.assertNull(withdrawnUser.getRefreshToken());
-        org.junit.jupiter.api.Assertions.assertNull(withdrawnUser.getFcmToken());
+        org.junit.jupiter.api.Assertions.assertTrue(
+                fcmDeviceTokenRepository.findAllByUserIdOrderByUpdatedAtDesc(signedUpUser.getId()).isEmpty()
+        );
         org.junit.jupiter.api.Assertions.assertTrue(userRepository.findByUsername("withdrawuser").isEmpty());
         org.junit.jupiter.api.Assertions.assertTrue(userRepository.findByEmail("withdrawuser@example.com").isEmpty());
 

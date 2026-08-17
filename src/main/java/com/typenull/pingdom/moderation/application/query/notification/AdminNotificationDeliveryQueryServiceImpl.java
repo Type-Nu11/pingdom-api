@@ -54,7 +54,9 @@ public class AdminNotificationDeliveryQueryServiceImpl implements AdminNotificat
                 status,
                 notificationType == null ? null : notificationType.name(),
                 outboxEventType == null ? null : outboxEventType.name(),
+                from != null,
                 from,
+                to != null,
                 to,
                 pageable
         );

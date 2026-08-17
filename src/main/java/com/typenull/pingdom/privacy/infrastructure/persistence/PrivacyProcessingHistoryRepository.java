@@ -18,14 +18,16 @@ public interface PrivacyProcessingHistoryRepository extends JpaRepository<Privac
             WHERE (:subjectUserId IS NULL OR history.subjectUserId = :subjectUserId)
               AND (:actorUserId IS NULL OR history.actorUserId = :actorUserId)
               AND (:action IS NULL OR history.action = :action)
-              AND (:from IS NULL OR history.createdAt >= :from)
-              AND (:to IS NULL OR history.createdAt <= :to)
+              AND (:hasFrom = false OR history.createdAt >= :from)
+              AND (:hasTo = false OR history.createdAt <= :to)
             """)
     Page<PrivacyProcessingHistory> findByFilters(
             @Param("subjectUserId") Long subjectUserId,
             @Param("actorUserId") Long actorUserId,
             @Param("action") PrivacyProcessingAction action,
+            @Param("hasFrom") boolean hasFrom,
             @Param("from") LocalDateTime from,
+            @Param("hasTo") boolean hasTo,
             @Param("to") LocalDateTime to,
             Pageable pageable
     );

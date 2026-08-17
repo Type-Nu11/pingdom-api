@@ -37,8 +37,8 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
               AND (:status IS NULL OR delivery.status = :status)
               AND (:notificationType IS NULL OR delivery.notificationType = :notificationType)
               AND (:outboxEventType IS NULL OR delivery.outboxEventType = :outboxEventType)
-              AND (:from IS NULL OR delivery.createdAt >= :from)
-              AND (:to IS NULL OR delivery.createdAt <= :to)
+              AND (:hasFrom = false OR delivery.createdAt >= :from)
+              AND (:hasTo = false OR delivery.createdAt <= :to)
             """)
     Page<NotificationDelivery> findByFilters(
             @Param("userId") Long userId,
@@ -46,7 +46,9 @@ public interface NotificationDeliveryRepository extends JpaRepository<Notificati
             @Param("status") NotificationDeliveryStatus status,
             @Param("notificationType") String notificationType,
             @Param("outboxEventType") String outboxEventType,
+            @Param("hasFrom") boolean hasFrom,
             @Param("from") LocalDateTime from,
+            @Param("hasTo") boolean hasTo,
             @Param("to") LocalDateTime to,
             Pageable pageable
     );
