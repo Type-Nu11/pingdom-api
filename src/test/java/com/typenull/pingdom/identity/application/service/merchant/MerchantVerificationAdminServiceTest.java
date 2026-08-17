@@ -7,6 +7,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationReviewRequest;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
@@ -42,6 +43,7 @@ class MerchantVerificationAdminServiceTest {
     @Mock private AdminAuditLogService auditLogService;
     @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
+    @Mock private AdminRoleAuthorizationService authorizationService;
 
     @InjectMocks
     private MerchantVerificationAdminService adminService;

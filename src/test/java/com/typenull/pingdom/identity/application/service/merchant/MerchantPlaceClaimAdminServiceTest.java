@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceClaimReviewRequest;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
@@ -66,6 +67,7 @@ class MerchantPlaceClaimAdminServiceTest {
     @Mock private MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
     @Mock private MerchantPlaceClaimAttachmentRepository attachmentRepository;
     @Mock private AdminMapPlaceDuplicateQueryService duplicateQueryService;
+    @Mock private AdminRoleAuthorizationService authorizationService;
 
     @InjectMocks
     private MerchantPlaceClaimAdminService claimAdminService;
