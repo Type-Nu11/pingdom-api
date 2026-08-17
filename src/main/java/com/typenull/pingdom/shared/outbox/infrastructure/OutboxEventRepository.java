@@ -36,15 +36,17 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
               AND (:eventType IS NULL OR event.eventType = :eventType)
               AND (:aggregateType IS NULL OR event.aggregateType = :aggregateType)
               AND (:aggregateId IS NULL OR event.aggregateId = :aggregateId)
-              AND (:from IS NULL OR event.createdAt >= :from)
-              AND (:to IS NULL OR event.createdAt <= :to)
+              AND (:hasFrom = false OR event.createdAt >= :from)
+              AND (:hasTo = false OR event.createdAt <= :to)
             """)
     Page<OutboxEvent> findByFilters(
             @Param("status") OutboxEventStatus status,
             @Param("eventType") OutboxEventType eventType,
             @Param("aggregateType") String aggregateType,
             @Param("aggregateId") String aggregateId,
+            @Param("hasFrom") boolean hasFrom,
             @Param("from") LocalDateTime from,
+            @Param("hasTo") boolean hasTo,
             @Param("to") LocalDateTime to,
             Pageable pageable
     );

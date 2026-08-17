@@ -55,7 +55,9 @@ public class AdminOutboxEventQueryServiceImpl implements AdminOutboxEventQuerySe
                 eventType,
                 normalize(aggregateType),
                 normalize(aggregateId),
+                from != null,
                 from,
+                to != null,
                 to,
                 pageable
         );
