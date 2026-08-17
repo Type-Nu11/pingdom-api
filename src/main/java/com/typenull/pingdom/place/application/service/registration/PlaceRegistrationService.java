@@ -3,6 +3,8 @@ package com.typenull.pingdom.place.application.service.registration;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMember;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMemberRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -62,6 +64,7 @@ public class PlaceRegistrationService {
     private final PlaceRecommendationSnapshotService snapshotService;
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
+    private final MerchantPlaceMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final Clock clock;
     private final ObjectMapper objectMapper;
@@ -169,6 +172,7 @@ public class PlaceRegistrationService {
                 .geocodingSource(GeocodingSource.LEGACY).build());
         place.replaceOperatingSchedule(toRegularHours(a), toBreakTimes(a), List.of());
         ownerPlaceRepository.save(MerchantOwnerPlace.builder().placeId(place.getId()).merchantOwnerUserId(userId).createdAt(now).build());
+        memberRepository.save(MerchantPlaceMember.owner(place.getId(), userId, now));
         snapshotService.initialize(place.getId());
         a.register(place.getId(), now);
         return response(a);
