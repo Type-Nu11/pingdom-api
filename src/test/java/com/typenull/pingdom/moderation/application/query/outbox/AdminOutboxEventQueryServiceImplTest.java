@@ -55,7 +55,9 @@ class AdminOutboxEventQueryServiceImplTest {
                 eq(OutboxEventType.EMAIL_VERIFICATION_REQUESTED),
                 eq("USER"),
                 eq("10"),
+                eq(false),
                 eq(null),
+                eq(false),
                 eq(null),
                 org.mockito.ArgumentMatchers.any(Pageable.class)
         )).thenReturn(new PageImpl<>(List.of(event)));
@@ -94,7 +96,9 @@ class AdminOutboxEventQueryServiceImplTest {
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.anyBoolean(),
                 org.mockito.ArgumentMatchers.any(),
                 org.mockito.ArgumentMatchers.any(Pageable.class)
         );

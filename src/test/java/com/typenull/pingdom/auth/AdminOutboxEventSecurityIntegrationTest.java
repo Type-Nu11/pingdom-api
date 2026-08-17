@@ -113,6 +113,42 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 });
     }
 
+    @Test
+    void superAdminCanQueryFailedEventsWithoutPeriodAndReceiveEmptyPage() throws Exception {
+        User actor = saveAdmin("outbox-filter-admin");
+        assignmentRepository.saveAndFlush(AdminRoleAssignment.assign(
+                actor.getId(), AdminRole.SUPER_ADMIN, actor.getId(), LocalDateTime.now()
+        ));
+        OutboxEvent failed = saveFailedEvent();
+        String token = bearerToken(actor);
+
+        mockMvc.perform(get("/admin/outbox-events")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .param("status", "FAILED")
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events.length()").value(1))
+                .andExpect(jsonPath("$.events[0].eventId").value(failed.getEventId()))
+                .andExpect(jsonPath("$.events[0].status").value("FAILED"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        outboxEventRepository.deleteAllInBatch();
+
+        mockMvc.perform(get("/admin/outbox-events")
+                        .header(HttpHeaders.AUTHORIZATION, token)
+                        .param("status", "FAILED")
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events").isEmpty())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
     private User saveAdmin(String username) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
