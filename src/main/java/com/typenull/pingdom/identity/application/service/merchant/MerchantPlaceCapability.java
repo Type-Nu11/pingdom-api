@@ -1,0 +1,21 @@
+package com.typenull.pingdom.identity.application.service.merchant;
+
+public enum MerchantPlaceCapability {
+    PLACE_INFO_VIEW,
+    PLACE_INFO_EDIT,
+    SCHEDULE_MANAGE,
+    OPERATING_NOTICE_MANAGE,
+    RESERVATION_VIEW,
+    RESERVATION_CONFIRM,
+    RESERVATION_CANCEL,
+    PRODUCT_MANAGE,
+    AVAILABILITY_MANAGE,
+    OFFER_MANAGE,
+    CAMPAIGN_MANAGE,
+    BOOST_MANAGE,
+    TEAM_VIEW,
+    TEAM_INVITE,
+    TEAM_ROLE_MANAGE,
+    PAYMENT_VIEW,
+    SETTLEMENT_VIEW
+}
