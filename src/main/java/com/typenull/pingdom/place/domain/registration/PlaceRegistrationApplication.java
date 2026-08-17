@@ -208,7 +208,9 @@ public class PlaceRegistrationApplication {
     public void replaceTags(Set<PlaceRegistrationTag> tags) {
         this.tags.clear();
         if (tags != null) {
-            this.tags.addAll(tags);
+            this.tags.addAll(tags.stream()
+                    .filter(tag -> !tag.isDynamic())
+                    .toList());
         }
     }
 

@@ -58,6 +58,20 @@ class PlaceRegistrationApplicationTest {
     }
 
     @Test
+    void doesNotPersistDynamicCommerceTagsInRegistrationApplication() {
+        PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(1L, "동적 태그 장소",
+                PlaceRegistrationCategory.CAFE, 35.1, 128.1, "도로명 주소", "지번 주소", "12345",
+                "장소 설명", Set.of(
+                        PlaceRegistrationTag.ENGLISH_MENU_AVAILABLE,
+                        PlaceRegistrationTag.RESERVATION_AVAILABLE,
+                        PlaceRegistrationTag.RESERVATION_COUPON_AVAILABLE,
+                        PlaceRegistrationTag.GENERAL_COUPON_AVAILABLE), NOW);
+
+        assertThat(application.getTags())
+                .containsExactly(PlaceRegistrationTag.ENGLISH_MENU_AVAILABLE);
+    }
+
+    @Test
     void doesNotSubmitWhenSensitiveAttachmentIsDuplicated() {
         PlaceRegistrationApplication application = draft();
         assertThatThrownBy(() -> application.replaceAttachments(List.of(
