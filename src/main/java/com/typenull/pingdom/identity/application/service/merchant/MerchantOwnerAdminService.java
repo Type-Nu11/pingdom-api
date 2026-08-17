@@ -8,6 +8,8 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfilePageRe
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
@@ -60,6 +62,7 @@ public class MerchantOwnerAdminService {
     private final TouristOfferRepository touristOfferRepository;
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
+    private final AdminRoleAuthorizationService authorizationService;
 
     @Transactional(readOnly = true)
     public MerchantOwnerProfilePageResponse list(MerchantOwnerStatus status, int page, int limit) {
@@ -103,6 +106,7 @@ public class MerchantOwnerAdminService {
             Long userId,
             MerchantOwnerReviewRequest request
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         User user = requireUserForUpdate(userId);
         LocalDateTime now = LocalDateTime.now(clock);
         if (user.isWithdrawn() || user.isCurrentlyBanned(now)) {
@@ -138,6 +142,7 @@ public class MerchantOwnerAdminService {
             Long userId,
             MerchantOwnerReviewRequest request
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         User user = requireUserForUpdate(userId);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
@@ -169,6 +174,7 @@ public class MerchantOwnerAdminService {
             Long userId,
             MerchantOwnerReviewRequest request
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         User user = requireUserForUpdate(userId);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
@@ -200,6 +206,7 @@ public class MerchantOwnerAdminService {
             Long userId,
             MerchantOwnerPlaceUpdateRequest request
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         if (profile.getStatus() != MerchantOwnerStatus.ACTIVE) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);

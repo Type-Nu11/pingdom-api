@@ -12,6 +12,7 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceQualityU
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerReviewRequest;
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.UserStatus;
@@ -58,6 +59,7 @@ class MerchantOwnerAdminServiceTest {
     @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Clock clock;
+    @Mock private AdminRoleAuthorizationService authorizationService;
 
     @InjectMocks
     private MerchantOwnerAdminService adminService;
