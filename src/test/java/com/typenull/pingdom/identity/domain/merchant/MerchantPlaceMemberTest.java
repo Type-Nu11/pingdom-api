@@ -30,6 +30,19 @@ class MerchantPlaceMemberTest {
     }
 
     @Test
+    void reactivatesRevokedMemberWithoutCreatingAnotherMember() {
+        MerchantPlaceMember member = MerchantPlaceMember.create(
+                10L, 2L, MerchantPlaceMemberRole.STAFF, 1L, NOW);
+        member.revoke(NOW.plusMinutes(1));
+
+        member.reactivate(MerchantPlaceMemberRole.MANAGER, 3L, NOW.plusMinutes(2));
+
+        assertThat(member.getStatus()).isEqualTo(MerchantPlaceMemberStatus.ACTIVE);
+        assertThat(member.getRole()).isEqualTo(MerchantPlaceMemberRole.MANAGER);
+        assertThat(member.getInvitedBy()).isEqualTo(3L);
+    }
+
+    @Test
     void expiresInvitationBeforeAccepting() {
         MerchantPlaceInvitation invitation = MerchantPlaceInvitation.pending(
                 10L, 2L, 1L, MerchantPlaceMemberRole.STAFF, NOW.plusHours(1), NOW);
