@@ -6,6 +6,8 @@ import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationR
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationReviewRequest;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
@@ -36,6 +38,7 @@ public class MerchantVerificationAdminService {
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
+    private final AdminRoleAuthorizationService authorizationService;
 
     @Transactional(readOnly = true)
     public AdminMerchantVerificationPageResponse list(
@@ -80,6 +83,7 @@ public class MerchantVerificationAdminService {
 
     @Transactional
     public AdminMerchantVerificationResponse get(Long adminUserId, Long userId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         MerchantVerification verification = verificationRepository.findById(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_NOT_FOUND));
         auditLogService.record(
@@ -100,6 +104,7 @@ public class MerchantVerificationAdminService {
             Long userId,
             MerchantVerificationReviewRequest request
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         MerchantOwnerProfile profile = profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
         MerchantVerification verification = verificationRepository.findByUserIdForUpdate(userId)
