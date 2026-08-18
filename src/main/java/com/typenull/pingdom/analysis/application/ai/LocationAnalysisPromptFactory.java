@@ -20,16 +20,13 @@ public class LocationAnalysisPromptFactory {
         try {
             Map<String, Object> criteriaMap = request.toCriteriaMap();
             String criteria = objectMapper.writeValueAsString(criteriaMap);
-            return new AiAnalysisPrompt(
-                    systemInstruction() + "\n\n" + userPrompt(criteria, analysisBasisDate),
-                    analysisBasisDate
-            );
+            return new AiAnalysisPrompt(buildPrompt(criteria, analysisBasisDate), analysisBasisDate);
         } catch (JsonProcessingException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
         }
     }
 
-    private String systemInstruction() {
+    private String buildPrompt(String criteria, LocalDate analysisBasisDate) {
         return """
                 너는 Pingdom의 상권·입지 분석 보고서 작성 AI다.
                 MCP 서버를 통해 조회 가능한 DB 데이터만 근거로 사용하고, 조회되지 않은 값은 추정하지 말고 '데이터 없음'으로 표시한다.
@@ -37,11 +34,7 @@ public class LocationAnalysisPromptFactory {
                 서버가 보고서명, 보고서 ID, 발행일자, 분석 기준일 메타데이터를 최종 HTML에 주입한다.
                 AI HTML 본문에는 종합 입지 평가, 타깃 인구 분석, 유동 인구 분석, 주변 시설 섹션을 포함한다.
                 표와 목록은 인쇄 가능한 semantic HTML(table, section, h1~h3)로 작성하며 script와 외부 실행 코드는 포함하지 않는다.
-                """;
-    }
 
-    private String userPrompt(String criteria, LocalDate analysisBasisDate) {
-        return """
                 다음 조건으로 입지 분석 보고서를 생성해라.
                 분석 기준일: %s
                 프론트 요청 조건(JSON): %s
