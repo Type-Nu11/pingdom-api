@@ -24,6 +24,7 @@ EC2의 배포 디렉터리에서 실행한다.
 cd ~/Pingdom_Backend
 set -a
 source .env
+source "$HOME/.pingdom-deploy.env"
 set +a
 
 BACKUP_DIR="$HOME/pingdom-backups"
@@ -78,6 +79,7 @@ docker compose exec -T postgres dropdb -U "$POSTGRES_USER" "$RESTORE_CHECK_DB"
 cd ~/Pingdom_Backend
 set -a
 source .env
+source "$HOME/.pingdom-deploy.env"
 set +a
 
 BACKUP_FILE="$HOME/pingdom-backups/pingdom-YYYYMMDD-HHMMSS.dump"
