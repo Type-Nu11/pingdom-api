@@ -1,5 +1,6 @@
 package com.typenull.pingdom.analysis.infrastructure.ai;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
@@ -13,7 +14,7 @@ public class AiAnalysisClientConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "analysis.ai", name = "provider", havingValue = "ollama")
-    public AiAnalysisClient ollamaAiAnalysisClient(AiAnalysisProperties properties) {
+    public AiAnalysisClient ollamaAiAnalysisClient(AiAnalysisProperties properties, ObjectMapper objectMapper) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.connectTimeout());
         requestFactory.setReadTimeout(properties.readTimeout());
@@ -21,7 +22,7 @@ public class AiAnalysisClientConfig {
                 .baseUrl(properties.baseUrl())
                 .requestFactory(requestFactory)
                 .build();
-        return new OllamaAiAnalysisClient(restClient, properties);
+        return new OllamaAiAnalysisClient(restClient, properties, objectMapper);
     }
 
     @Bean

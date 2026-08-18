@@ -1,8 +1,12 @@
 package com.typenull.pingdom.analysis.infrastructure.ai;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
+import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import java.util.List;
@@ -16,10 +20,9 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class OllamaAiAnalysisClient implements AiAnalysisClient {
 
-    private static final String REPORT_NAME = "입지 분석 보고서";
-
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
+    private final ObjectMapper objectMapper;
 
     @Override
     public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
@@ -39,16 +42,24 @@ public class OllamaAiAnalysisClient implements AiAnalysisClient {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, exception);
         }
 
-        String html = normalizeHtml(response == null || response.message() == null
+        String json = normalizeJson(response == null || response.message() == null
                 ? null
                 : response.message().content());
-        if (!StringUtils.hasText(html)) {
+        if (!StringUtils.hasText(json)) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
         }
-        return new AiAnalysisResponse(REPORT_NAME, prompt.analysisBasisDate(), html);
+        try {
+            LocationAnalysisContent content = objectMapper.reader()
+                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                    .forType(LocationAnalysisContent.class)
+                    .readValue(json);
+            return new AiAnalysisResponse(content, prompt.analysisBasisDate());
+        } catch (JsonProcessingException exception) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
+        }
     }
 
-    private String normalizeHtml(String content) {
+    private String normalizeJson(String content) {
         if (!StringUtils.hasText(content)) {
             return null;
         }
