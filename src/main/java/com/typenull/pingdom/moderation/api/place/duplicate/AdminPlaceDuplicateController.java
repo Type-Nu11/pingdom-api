@@ -113,7 +113,7 @@ public class AdminPlaceDuplicateController {
             description = "관리자가 중복 장소의 참조 데이터를 대상 장소로 옮기고 원본 장소를 병합합니다."
     )
     public ResponseEntity<AdminMapPlaceMergeResponse> mergePlaces(
-            @RequestBody AdminMapPlaceMergeRequest request,
+            @Valid @RequestBody AdminMapPlaceMergeRequest request,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();

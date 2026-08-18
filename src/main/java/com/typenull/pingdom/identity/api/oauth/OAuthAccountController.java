@@ -16,6 +16,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
@@ -119,7 +120,7 @@ public class OAuthAccountController {
     })
     public ResponseEntity<OAuthAccountResponse> unlinkGoogle(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser authenticatedUser,
-            @RequestBody(required = false) OAuthAccountDisconnectRequest request
+            @Valid @RequestBody(required = false) OAuthAccountDisconnectRequest request
     ) {
         String currentPassword = request == null ? null : request.currentPassword();
         oAuthAccountCommandService.unlinkGoogleAccount(authenticatedUser.userId(), currentPassword);

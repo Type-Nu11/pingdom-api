@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
@@ -84,7 +85,7 @@ public class NotificationSettingController {
     })
     public ResponseEntity<NotificationSettingResponse> updateSetting(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @RequestBody NotificationSettingUpdateRequest request
+            @Valid @RequestBody NotificationSettingUpdateRequest request
     ) {
         return ResponseEntity.ok(notificationSettingService.updateSetting(user.userId(), request));
     }
