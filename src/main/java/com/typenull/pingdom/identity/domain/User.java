@@ -18,6 +18,9 @@ import java.util.Collections;
 import java.util.LinkedHashSet;
 import java.util.Objects;
 import java.util.Set;
+import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import lombok.*;
 import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
@@ -99,7 +102,7 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // 현재 활성 Refresh Token 저장 필드
+    // 현재 활성 Refresh Token hash 저장 필드. 기존 refresh_token 컬럼은 점진적으로 hash 값으로 전환한다.
     @Column(length = 1000)
     private String refreshToken;
 
@@ -169,12 +172,29 @@ public class User {
 
     // Refresh Token 발급 상태 반영 메서드
     public void issueRefreshToken(String refreshToken) {
-        this.refreshToken = refreshToken;
+        this.refreshToken = hashRefreshToken(refreshToken);
     }
 
     // Refresh Token 일치 여부 확인 메서드
     public boolean matchesRefreshToken(String refreshToken) {
-        return Objects.equals(this.refreshToken, refreshToken);
+        if (refreshToken == null || this.refreshToken == null) {
+            return false;
+        }
+        String hashedToken = hashRefreshToken(refreshToken);
+        return MessageDigest.isEqual(
+                this.refreshToken.getBytes(StandardCharsets.UTF_8),
+                hashedToken.getBytes(StandardCharsets.UTF_8)
+        ) || Objects.equals(this.refreshToken, refreshToken);
+    }
+
+    private String hashRefreshToken(String refreshToken) {
+        try {
+            byte[] digest = MessageDigest.getInstance("SHA-256")
+                    .digest(refreshToken.getBytes(StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(digest);
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", exception);
+        }
     }
 
     // Refresh Token 제거 메서드

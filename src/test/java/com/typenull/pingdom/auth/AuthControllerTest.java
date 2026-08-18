@@ -862,10 +862,13 @@ class AuthControllerTest {
                 .textValue();
     }
 
-    private String refreshTokenOf(String username) {
-        return userRepository.findByUsername(username)
-                .orElseThrow()
-                .getRefreshToken();
+    private String refreshTokenOf(String username) throws Exception {
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(new LoginRequest(username, "password123"))))
+                .andExpect(status().isOk())
+                .andReturn();
+        return loginResult.getResponse().getCookie(REFRESH_TOKEN_COOKIE_NAME).getValue();
     }
 
     private Cookie refreshTokenCookie(String refreshToken) {
