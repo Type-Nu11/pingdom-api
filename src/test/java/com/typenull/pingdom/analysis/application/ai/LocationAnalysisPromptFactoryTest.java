@@ -23,6 +23,7 @@ class LocationAnalysisPromptFactoryTest {
         assertThat(prompt.content()).contains("MCP의 읽기 전용 도구");
         assertThat(prompt.content()).contains("서울 강남구", "카페", "budget", "100000000");
         assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설");
+        assertThat(prompt.content()).contains("analysisScope", "dataSources", "반경");
     }
 
     @Test
