@@ -145,7 +145,10 @@ public class LocationAnalysisResponseValidator {
             requireText(place.name(), "recommendedPlaces.name");
             requireText(place.address(), "recommendedPlaces.address");
             requireText(place.reason(), "recommendedPlaces.reason");
-            if (place.score() != null && (place.score() < 0 || place.score() > 100)) {
+            if (place.score() == null || place.score() < 0 || place.score() > 100) {
+                invalid();
+            }
+            if (place.evidenceIds().stream().anyMatch(id -> !StringUtils.hasText(id))) {
                 invalid();
             }
         }
