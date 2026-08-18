@@ -4,6 +4,15 @@ spring:
     driver-class-name: ${DB_DRIVER_CLASS_NAME:org.postgresql.Driver}
     username: ${DB_USERNAME:pingdom}
     password: ${DB_PASSWORD:pingdom}
+
+analysis:
+  ai:
+    provider: ${AI_PROVIDER:ollama}
+    base-url: ${AI_BASE_URL:http://localhost:11434}
+    model: ${AI_MODEL:qwen2.5:7b}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
+    read-timeout: ${AI_READ_TIMEOUT:2m}
+
   docker:
     compose:
       enabled: true

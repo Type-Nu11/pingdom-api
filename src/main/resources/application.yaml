@@ -7,6 +7,14 @@ server:
       remote-ip-header: X-Forwarded-For
       protocol-header: X-Forwarded-Proto
 
+analysis:
+  ai:
+    provider: ${AI_PROVIDER:placeholder}
+    base-url: ${AI_BASE_URL:http://localhost:11434}
+    model: ${AI_MODEL:qwen2.5:7b}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
+    read-timeout: ${AI_READ_TIMEOUT:2m}
+
 spring:
   application:
     name: Pingdom

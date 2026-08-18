@@ -2,14 +2,36 @@ package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.http.client.SimpleClientHttpRequestFactory;
+import org.springframework.web.client.RestClient;
 
 @Configuration
 public class AiAnalysisClientConfig {
 
     @Bean
+    @ConditionalOnProperty(prefix = "analysis.ai", name = "provider", havingValue = "ollama")
+    public AiAnalysisClient ollamaAiAnalysisClient(AiAnalysisProperties properties) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(properties.connectTimeout());
+        requestFactory.setReadTimeout(properties.readTimeout());
+        RestClient restClient = RestClient.builder()
+                .baseUrl(properties.baseUrl())
+                .requestFactory(requestFactory)
+                .build();
+        return new OllamaAiAnalysisClient(restClient, properties);
+    }
+
+    @Bean
     @ConditionalOnMissingBean(AiAnalysisClient.class)
+    @ConditionalOnProperty(
+            prefix = "analysis.ai",
+            name = "provider",
+            havingValue = "placeholder",
+            matchIfMissing = true
+    )
     public AiAnalysisClient placeholderAiAnalysisClient() {
         return new PlaceholderAiAnalysisClient();
     }
