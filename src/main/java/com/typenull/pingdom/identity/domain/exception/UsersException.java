@@ -1,20 +1,10 @@
 package com.typenull.pingdom.identity.domain.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class UsersException extends RuntimeException {
+public class UsersException extends DomainException {
 
-    private final UsersErrorCode errorCode;
-
-  public UsersException(UsersErrorCode errorCode) {
-    super(errorCode.getMessage());
-    this.errorCode = errorCode;
-  }
-
-  public HttpStatus getStatus() {
-    return errorCode.getStatus();
-  }
-
+    public UsersException(UsersErrorCode errorCode) {
+        super(errorCode);
+    }
 }

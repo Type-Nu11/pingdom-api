@@ -1,12 +1,13 @@
 package com.typenull.pingdom.availability.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum AvailabilityErrorCode {
+public enum AvailabilityErrorCode implements ErrorCode {
     AVAILABILITY_NOT_FOUND(HttpStatus.NOT_FOUND, "예약 가능 시간을 찾을 수 없습니다."),
     PLACE_NOT_OWNED(HttpStatus.FORBIDDEN, "소유한 장소의 예약 가능 시간만 관리할 수 있습니다."),
     AVAILABILITY_ALREADY_EXISTS(HttpStatus.CONFLICT, "동일한 예약 가능 시간이 이미 존재합니다."),

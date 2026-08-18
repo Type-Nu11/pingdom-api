@@ -1,23 +1,15 @@
 package com.typenull.pingdom.shared.ratelimit.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import com.typenull.pingdom.shared.exception.CommonErrorCode;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class RateLimitUnavailableException extends RuntimeException {
-
-    public static final String CODE = "RATE_LIMIT_UNAVAILABLE";
-    private static final String MESSAGE = "요청 처리에 필요한 제한 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요.";
+public class RateLimitUnavailableException extends DomainException {
 
     public RateLimitUnavailableException(Throwable cause) {
-        super(MESSAGE, cause);
-    }
-
-    public HttpStatus getStatus() {
-        return HttpStatus.SERVICE_UNAVAILABLE;
+        super(CommonErrorCode.RATE_LIMIT_UNAVAILABLE, cause);
     }
 
     public String getCode() {
-        return CODE;
+        return getErrorCode().getCode();
     }
 }

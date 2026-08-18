@@ -1,12 +1,13 @@
 package com.typenull.pingdom.place.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum PlaceRegistrationErrorCode {
+public enum PlaceRegistrationErrorCode implements ErrorCode {
     APPLICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 등록 신청을 찾을 수 없습니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "해당 장소 등록 신청에 접근할 수 없습니다."),
     INVALID_STATE(HttpStatus.CONFLICT, "현재 신청 상태에서는 요청을 처리할 수 없습니다."),
