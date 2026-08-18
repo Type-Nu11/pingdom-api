@@ -1,24 +1,14 @@
 package com.typenull.pingdom.moderation.domain.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class AdminException extends RuntimeException {
-
-    private final AdminErrorCode errorCode;
+public class AdminException extends DomainException {
 
     public AdminException(AdminErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 
     public AdminException(AdminErrorCode errorCode, Throwable cause) {
-        super(errorCode.getMessage(), cause);
-        this.errorCode = errorCode;
-    }
-
-    public HttpStatus getStatus() {
-        return errorCode.getStatus();
+        super(errorCode, cause);
     }
 }

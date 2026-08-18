@@ -2,13 +2,13 @@ package com.typenull.pingdom.shared.security.jwt;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.security.cors.CorsErrorResponseHeaderWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
@@ -47,9 +47,6 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         response.setStatus(errorCode.getStatus().value());
         response.setContentType(MediaType.APPLICATION_JSON_VALUE);
         response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(Map.of(
-                "message", errorCode.getMessage(),
-                "code", errorCode.name()
-        )));
+        response.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.from(errorCode)));
     }
 }

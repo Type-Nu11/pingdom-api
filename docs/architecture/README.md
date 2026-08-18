@@ -277,6 +277,18 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 
 Entity 상태 변경과 쓰기 잠금 명명 규칙은 `EntityRepositoryConventionTest`로 검증한다.
 
+### 9-6. 예외 처리 규칙
+
+- 도메인 ErrorCode는 공통 `ErrorCode`를 구현하고 `UPPER_SNAKE_CASE`로 작성한다.
+- 도메인 Exception은 `DomainException`을 상속하고 ErrorCode 외 상태와 메시지를 중복 정의하지 않는다.
+- 도메인 예외 응답은 `message`, `code` 형식을 사용한다.
+- RequestBody와 Constraint Validation 오류는 `VALIDATION_FAILED`와 필드별 `errors`를 반환한다.
+- 인증·권한 실패도 동일한 `ErrorResponse` 형식을 사용한다.
+- 예상하지 못한 예외는 내부 메시지와 민감 정보를 응답 또는 로그에 노출하지 않는다.
+- 외부 Provider 실패처럼 재시도 정책이 필요한 기술 예외는 도메인 예외와 분리한다.
+
+ErrorCode와 DomainException 구조는 `ExceptionConventionTest`로 검증한다.
+
 ## 10. 패키지 구조 예시
 
 다음은 목표 구조 기준 패키지 구조 예시다. 실제 패키지와의 차이 및 전환 기준은

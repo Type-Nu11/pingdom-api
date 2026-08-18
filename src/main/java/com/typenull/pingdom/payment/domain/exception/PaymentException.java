@@ -1,18 +1,10 @@
 package com.typenull.pingdom.payment.domain.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class PaymentException extends RuntimeException {
-    private final PaymentErrorCode errorCode;
+public class PaymentException extends DomainException {
 
     public PaymentException(PaymentErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
-    }
-
-    public HttpStatus getStatus() {
-        return errorCode.getStatus();
+        super(errorCode);
     }
 }
