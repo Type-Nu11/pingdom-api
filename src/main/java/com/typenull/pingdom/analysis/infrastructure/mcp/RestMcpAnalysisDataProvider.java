@@ -55,8 +55,10 @@ public class RestMcpAnalysisDataProvider implements McpAnalysisDataProvider {
     }
 
     private String value(Object value) {
-        return StringUtils.hasText(String.valueOf(value)) && !"null".equals(value)
-                ? String.valueOf(value)
-                : "미지정";
+        if (value == null) {
+            return "미지정";
+        }
+        String text = String.valueOf(value);
+        return StringUtils.hasText(text) ? text : "미지정";
     }
 }
