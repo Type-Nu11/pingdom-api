@@ -47,7 +47,7 @@ class LocationAnalysisResponseValidatorTest {
                 ),
                 new LocationAnalysisContent.NearbyFacilities(List.of(), List.of(), List.of(), List.of()),
                 List.of(new LocationAnalysisContent.RecommendedPlace(
-                        1, "추천 장소 A", "대구 북구 주소", null, null, 80d, List.of("유동인구"), List.of()
+                        1, "추천 장소 A", "대구 북구 주소", 80d, "유동인구가 많음", List.of()
                 )),
                 new LocationAnalysisContent.AnalysisScope(
                         "대구광역시 북구", "대구광역시 북구", LocationAnalysisContent.ScopeLevel.DISTRICT,

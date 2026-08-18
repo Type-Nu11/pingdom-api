@@ -112,14 +112,11 @@ public record LocationAnalysisContent(
             Integer rank,
             String name,
             String address,
-            Double latitude,
-            Double longitude,
             Double score,
-            List<String> reasons,
+            String reason,
             List<String> evidenceIds
     ) {
         public RecommendedPlace {
-            reasons = reasons == null ? List.of() : List.copyOf(reasons);
             evidenceIds = evidenceIds == null ? List.of() : List.copyOf(evidenceIds);
         }
     }

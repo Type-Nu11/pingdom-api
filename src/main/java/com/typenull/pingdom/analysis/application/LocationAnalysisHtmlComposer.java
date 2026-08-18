@@ -96,7 +96,7 @@ public class LocationAnalysisHtmlComposer {
                         + escape(text(place.name())) + "</td><td>"
                         + escape(text(place.address())) + "</td><td>"
                         + escape(value(place.score())) + "</td><td>"
-                        + escape(text(String.join(", ", place.reasons()))) + "</td></tr>")
+                        + escape(text(place.reason())) + "</td></tr>")
                 .collect(Collectors.joining());
         return "<table><tr><th>순위</th><th>장소</th><th>주소</th><th>점수</th><th>추천 근거</th></tr>"
                 + rows + "</table>";

@@ -144,12 +144,7 @@ public class LocationAnalysisResponseValidator {
             }
             requireText(place.name(), "recommendedPlaces.name");
             requireText(place.address(), "recommendedPlaces.address");
-            if (place.latitude() != null && (place.latitude() < -90 || place.latitude() > 90)) {
-                invalid();
-            }
-            if (place.longitude() != null && (place.longitude() < -180 || place.longitude() > 180)) {
-                invalid();
-            }
+            requireText(place.reason(), "recommendedPlaces.reason");
             if (place.score() != null && (place.score() < 0 || place.score() > 100)) {
                 invalid();
             }

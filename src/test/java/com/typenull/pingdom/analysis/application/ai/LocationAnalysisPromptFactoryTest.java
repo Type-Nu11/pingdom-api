@@ -26,7 +26,9 @@ class LocationAnalysisPromptFactoryTest {
         assertThat(prompt.content()).contains(
                 "analysisScope", "dataSources", "recommendedPlaces", "derivedFromPlace", "반경",
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
-                "totalScore >= 70", "totalScore가 45~69"
+                "totalScore >= 70", "totalScore가 45~69",
+                "\"rank\": 1", "\"name\": \"장소명\"", "\"reason\": \"추천 이유\"",
+                "evidenceIds", "place, reasons, latitude, longitude"
         );
     }
 

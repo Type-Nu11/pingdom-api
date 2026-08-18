@@ -127,7 +127,14 @@ public class LocationAnalysisPromptFactory {
                     "transportFacilities": [],
                     "evidences": []
                   },
-                  "recommendedPlaces": [],
+                  "recommendedPlaces": [{
+                    "rank": 1,
+                    "name": "장소명",
+                    "address": "주소",
+                    "score": 85.3,
+                    "reason": "추천 이유",
+                    "evidenceIds": ["evidence-1", "evidence-2"]
+                  }],
                   "analysisScope": {
                     "requestedRegion": "",
                     "normalizedRegion": "",
@@ -149,7 +156,10 @@ public class LocationAnalysisPromptFactory {
                 reportId, publishedDate, analysisBasisDate는 서버가 생성하므로 JSON에 포함하지 않는다.
                 모든 age/gender/byTime/byDay/facilities 배열의 항목은 label/value/unit/sharePercent 또는
                 name/category/distanceMeters/address/description 계약을 따른다. 데이터가 없으면 해당 배열은 []이다.
-                recommendedPlaces가 없으면 []이며, derivedFromPlace는 "데이터 없음"이다.
+                recommendedPlaces 항목은 반드시 rank(integer), name(string), address(string), score(number),
+                reason(string), evidenceIds(string 배열)만 사용한다. place, reasons, latitude, longitude 등
+                다른 이름의 필드는 사용하지 않는다. 데이터가 없으면 recommendedPlaces는 []이다.
+                recommendedPlaces가 있으면 rank는 1 이상의 정수, score는 0~100 숫자이며 reason은 필수다.
                 JSON 외의 문자는 절대 출력하지 않는다.
                 """.formatted(analysisBasisDate, criteria);
     }
