@@ -4,10 +4,13 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateRequest;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateResponse;
+import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListItem;
+import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListResponse;
 import com.typenull.pingdom.moderation.application.AdminAdService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.ad.AdminAd;
+import com.typenull.pingdom.moderation.domain.ad.AdminAdDisplayStatus;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAdRepository;
@@ -18,6 +21,9 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +32,36 @@ public class AdminAdServiceImpl implements AdminAdService {
     private final AdminAdRepository adminAdRepository;
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminAdListResponse list(String keyword, AdminAdDisplayStatus displayStatus,
+            LocalDateTime startedFrom, LocalDateTime startedTo, int page, int limit) {
+        int safePage = Math.max(1, Math.min(page, 10_000));
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        LocalDateTime now = LocalDateTime.now(clock);
+        Page<AdminAd> ads = adminAdRepository.findAdminAds(
+                keyword == null || keyword.isBlank() ? null : keyword.trim(), displayStatus,
+                startedFrom, startedTo, now,
+                PageRequest.of(safePage - 1, safeLimit, Sort.by("createdAt").descending().and(Sort.by("id").descending())));
+        return new AdminAdListResponse(ads.getContent().stream().map(ad -> toItem(ad, now)).toList(),
+                safePage, safeLimit, ads.getTotalElements(), ads.getTotalPages(), ads.hasNext());
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public AdminAdListItem get(Long adId) {
+        AdminAd ad = adminAdRepository.findById(adId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.AD_NOT_FOUND));
+        return toItem(ad, LocalDateTime.now(clock));
+    }
+
+    private AdminAdListItem toItem(AdminAd ad, LocalDateTime now) {
+        AdminAdDisplayStatus status = now.isBefore(ad.getStartAt()) ? AdminAdDisplayStatus.SCHEDULED
+                : now.isBefore(ad.getEndAt()) ? AdminAdDisplayStatus.ACTIVE : AdminAdDisplayStatus.EXPIRED;
+        return new AdminAdListItem(ad.getId(), ad.getTitle(), ad.getImageUrl(), ad.getRedirectUrl(),
+                ad.getStartAt(), ad.getEndAt(), status, ad.getCreatedAt(), ad.getUpdatedAt());
+    }
 
     @Override
     @Transactional

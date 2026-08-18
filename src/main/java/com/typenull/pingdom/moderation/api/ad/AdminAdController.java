@@ -2,6 +2,9 @@ package com.typenull.pingdom.moderation.api.ad;
 
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateRequest;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateResponse;
+import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListResponse;
+import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListItem;
+import com.typenull.pingdom.moderation.domain.ad.AdminAdDisplayStatus;
 import com.typenull.pingdom.moderation.application.AdminAdService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -19,6 +22,10 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.validation.constraints.Min;
+import java.time.LocalDateTime;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -33,6 +40,23 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAdController {
 
     private final AdminAdService adminAdService;
+
+    @GetMapping
+    @Operation(summary = "관리자 광고 목록 조회")
+    public AdminAdListResponse listAds(@RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int limit,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) AdminAdDisplayStatus displayStatus,
+            @RequestParam(required = false) LocalDateTime startedFrom,
+            @RequestParam(required = false) LocalDateTime startedTo) {
+        return adminAdService.list(keyword, displayStatus, startedFrom, startedTo, page, limit);
+    }
+
+    @GetMapping("/{adId}")
+    @Operation(summary = "관리자 광고 상세 조회")
+    public AdminAdListItem getAd(@PathVariable Long adId) {
+        return adminAdService.get(adId);
+    }
 
     @PostMapping
     @Operation(
