@@ -16,7 +16,7 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.notification.domain.Notifications;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;

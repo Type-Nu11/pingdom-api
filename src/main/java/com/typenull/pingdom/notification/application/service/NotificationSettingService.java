@@ -9,7 +9,7 @@ import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpd
 import com.typenull.pingdom.notification.domain.NotificationSetting;
 import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
-import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationSettingRepository;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;

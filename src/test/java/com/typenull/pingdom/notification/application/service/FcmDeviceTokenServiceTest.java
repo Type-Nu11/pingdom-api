@@ -12,7 +12,7 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
-import com.typenull.pingdom.notification.repository.FcmDeviceTokenRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.FcmDeviceTokenRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.ZoneOffset;

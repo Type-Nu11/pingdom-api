@@ -6,7 +6,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.notification.domain.NotificationType;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
