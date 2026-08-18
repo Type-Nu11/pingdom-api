@@ -23,6 +23,8 @@ AI_MODEL=qwen2.5:7b \
 
 `POST /analysis/reports/location` 요청이 들어오면 서버가 Ollama `/api/chat`으로 시스템 지침과 분석 조건을 전달하고, AI가 반환한 HTML을 PDF로 변환합니다.
 
+`pingdom-mcp`를 함께 실행하는 경우 `MCP_ENABLED=true`를 설정하면 서버가 MCP의 `POST /recommend` 결과를 Ollama 프롬프트에 포함합니다. 현재 MCP 저장소의 `/recommend`는 내부에서 `GROQ_API_KEY`를 사용하므로 MCP 실행에는 해당 키가 필요합니다.
+
 ## 3. 설정값
 
 | 환경변수 | 기본값 | 설명 |
@@ -32,5 +34,7 @@ AI_MODEL=qwen2.5:7b \
 | `AI_MODEL` | `qwen2.5:7b` | 설치한 Ollama 모델명 |
 | `AI_CONNECT_TIMEOUT` | `2s` | 연결 제한 시간 |
 | `AI_READ_TIMEOUT` | `2m` | 모델 응답 제한 시간 |
+| `MCP_ENABLED` | `false` | MCP `/recommend` 조회 사용 여부 |
+| `MCP_BASE_URL` | `http://localhost:8080` | pingdom-mcp 주소 |
 
 현재 MCP 서버는 별도 구현 대상입니다. MCP 조회 결과를 프롬프트에 포함하는 어댑터를 추가하면 동일한 `AiAnalysisClient` 인터페이스를 유지한 채 DB 기반 분석으로 확장할 수 있습니다.

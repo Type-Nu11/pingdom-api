@@ -6,19 +6,39 @@ import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import java.time.LocalDate;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
 @Service
-@RequiredArgsConstructor
 public class LocationAnalysisPromptFactory {
 
     private final ObjectMapper objectMapper;
+    private final McpAnalysisDataProvider mcpDataProvider;
+
+    public LocationAnalysisPromptFactory(ObjectMapper objectMapper) {
+        this(objectMapper, criteria -> null);
+    }
+
+    @Autowired
+    public LocationAnalysisPromptFactory(
+            ObjectMapper objectMapper,
+            McpAnalysisDataProvider mcpDataProvider
+    ) {
+        this.objectMapper = objectMapper;
+        this.mcpDataProvider = mcpDataProvider;
+    }
 
     public AiAnalysisPrompt create(LocationAnalysisRequest request, LocalDate analysisBasisDate) {
         try {
-            String criteria = objectMapper.writeValueAsString(request.toCriteriaMap());
-            return new AiAnalysisPrompt(systemInstruction(), userPrompt(criteria, analysisBasisDate), analysisBasisDate);
+            Map<String, Object> criteriaMap = request.toCriteriaMap();
+            String criteria = objectMapper.writeValueAsString(criteriaMap);
+            String mcpData = mcpDataProvider.fetch(criteriaMap);
+            return new AiAnalysisPrompt(
+                    systemInstruction(),
+                    userPrompt(criteria, mcpData, analysisBasisDate),
+                    analysisBasisDate
+            );
         } catch (JsonProcessingException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
         }
@@ -35,17 +55,18 @@ public class LocationAnalysisPromptFactory {
                 """;
     }
 
-    private String userPrompt(String criteria, LocalDate analysisBasisDate) {
+    private String userPrompt(String criteria, String mcpData, LocalDate analysisBasisDate) {
         return """
                 다음 조건으로 입지 분석 보고서를 생성해라.
                 분석 기준일: %s
                 프론트 요청 조건(JSON): %s
+                MCP 조회 결과(JSON): %s
 
                 처리 순서:
-                1. MCP를 통해 지역과 조건에 필요한 인구·유동인구·주변시설 데이터를 조회한다.
+                1. MCP 조회 결과가 있으면 해당 데이터만 근거로 사용한다.
                 2. 조회 기준과 데이터 한계를 명시한다.
                 3. 업종 적합성, 타깃 도달 가능성, 유동인구, 주변 시설을 종합 평가한다.
                 4. 종합 입지 평가, 타깃 인구 분석, 유동 인구 분석, 주변 시설 섹션을 포함한 HTML만 반환한다.
-                """.formatted(analysisBasisDate, criteria);
+                """.formatted(analysisBasisDate, criteria, mcpData == null ? "데이터 없음" : mcpData);
     }
 }
