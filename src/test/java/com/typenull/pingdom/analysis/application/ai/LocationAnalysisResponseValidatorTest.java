@@ -32,6 +32,37 @@ class LocationAnalysisResponseValidatorTest {
         validator.validate(request, new AiAnalysisResponse(content, LocalDate.of(2026, 8, 18)));
     }
 
+    @Test
+    void acceptsSuitableGradeOnlyWhenRecommendedPlaceAndDerivedTrafficDataExist() {
+        LocationAnalysisContent content = new LocationAnalysisContent(
+                "입지 분석",
+                new LocationAnalysisContent.OverallLocationEvaluation(
+                        LocationAnalysisContent.Grade.SUITABLE, "분석", List.of(), List.of(), List.of()
+                ),
+                new LocationAnalysisContent.TargetPopulationAnalysis(
+                        "분석", "추천 장소 A", List.of(metric("20-29")), List.of(metric("여성")), List.of()
+                ),
+                new LocationAnalysisContent.FootTrafficAnalysis(
+                        "분석", 100d, List.of(), List.of(), List.of()
+                ),
+                new LocationAnalysisContent.NearbyFacilities(List.of(), List.of(), List.of(), List.of()),
+                List.of(new LocationAnalysisContent.RecommendedPlace(
+                        1, "추천 장소 A", "대구 북구 주소", null, null, 80d, List.of("유동인구"), List.of()
+                )),
+                new LocationAnalysisContent.AnalysisScope(
+                        "대구광역시 북구", "대구광역시 북구", LocationAnalysisContent.ScopeLevel.DISTRICT,
+                        "구 전체", null
+                ),
+                List.of(), List.of()
+        );
+
+        validator.validate(request(), new AiAnalysisResponse(content, LocalDate.of(2026, 8, 18)));
+    }
+
+    private LocationAnalysisContent.Metric metric(String label) {
+        return new LocationAnalysisContent.Metric(label, 10d, "PEOPLE", 10d);
+    }
+
     private LocationAnalysisRequest request() {
         LocationAnalysisRequest request = new LocationAnalysisRequest();
         request.setRegion("대구광역시 북구");

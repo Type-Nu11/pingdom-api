@@ -59,20 +59,23 @@ public class LocationAnalysisHtmlComposer {
         LocationAnalysisContent.FootTrafficAnalysis traffic = content.footTrafficAnalysis();
         LocationAnalysisContent.NearbyFacilities facilities = content.nearbyFacilities();
         return """
+                <section><h2>추천 장소</h2>%s</section>
                 <section><h2>종합 입지 평가</h2>
                   <span class="grade">%s</span><p>%s</p>
                   %s%s%s
                 </section>
-                <section><h2>타깃 인구 분석</h2><p>%s</p>%s%s%s</section>
+                <section><h2>타깃 인구 분석</h2><p>%s</p><p class="muted"><strong>산출 기준 장소:</strong> %s</p>%s%s%s</section>
                 <section><h2>유동 인구 분석</h2><p>%s</p>%s%s%s%s</section>
                 <section><h2>주변 시설</h2>%s%s%s%s</section>
                 <section><h2>분석 범위 및 출처</h2>%s%s%s</section>
                 """.formatted(
+                renderRecommendedPlaces(content.recommendedPlaces()),
                 escape(overall.grade().name()), escape(text(overall.summary())),
                 renderStringList("강점", overall.strengths()),
                 renderStringList("주의 요인", overall.risks()),
                 renderEvidenceTable(overall.evidences()),
-                escape(text(target.summary())), renderMetricTable("연령", target.age()),
+                escape(text(target.summary())), escape(text(target.derivedFromPlace())),
+                renderMetricTable("연령", target.age()),
                 renderMetricTable("성별", target.gender()), renderEvidenceTable(target.evidences()),
                 escape(text(traffic.summary())), renderValue("전체 유동 인구", traffic.total()),
                 renderMetricTable("시간대", traffic.byTime()), renderMetricTable("요일", traffic.byDay()),
@@ -84,6 +87,19 @@ public class LocationAnalysisHtmlComposer {
                 renderScope(content.analysisScope()), renderDataSources(content.dataSources()),
                 renderStringList("제한사항", content.limitations())
         );
+    }
+
+    private String renderRecommendedPlaces(List<LocationAnalysisContent.RecommendedPlace> places) {
+        if (places.isEmpty()) return "<p class=\"muted\">데이터 없음</p>";
+        String rows = places.stream()
+                .map(place -> "<tr><td>" + escape(value(place.rank())) + "</td><td>"
+                        + escape(text(place.name())) + "</td><td>"
+                        + escape(text(place.address())) + "</td><td>"
+                        + escape(value(place.score())) + "</td><td>"
+                        + escape(text(String.join(", ", place.reasons()))) + "</td></tr>")
+                .collect(Collectors.joining());
+        return "<table><tr><th>순위</th><th>장소</th><th>주소</th><th>점수</th><th>추천 근거</th></tr>"
+                + rows + "</table>";
     }
 
     private String renderStringList(String title, List<String> values) {
@@ -153,6 +169,10 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String value(Double value) {
+        return value == null ? "데이터 없음" : String.valueOf(value);
+    }
+
+    private String value(Integer value) {
         return value == null ? "데이터 없음" : String.valueOf(value);
     }
 

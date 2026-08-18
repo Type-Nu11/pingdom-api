@@ -26,6 +26,9 @@ public class LocationAnalysisResponseValidator {
                 || content.analysisScope() == null) {
             invalid();
         }
+        if (content.overallLocationEvaluation().grade() == null) {
+            invalid();
+        }
         validateScope(request, content.analysisScope());
         validateEvidence(content.overallLocationEvaluation().evidences());
         validateEvidence(content.targetPopulationAnalysis().evidences());
@@ -39,6 +42,9 @@ public class LocationAnalysisResponseValidator {
         validateFacilities(content.nearbyFacilities().competitors());
         validateFacilities(content.nearbyFacilities().convenienceFacilities());
         validateFacilities(content.nearbyFacilities().transportFacilities());
+        validateRecommendedPlaces(content.recommendedPlaces());
+        requireText(content.targetPopulationAnalysis().derivedFromPlace(),
+                "targetPopulationAnalysis.derivedFromPlace");
 
         boolean noCoreData = content.overallLocationEvaluation().evidences().isEmpty()
                 && content.targetPopulationAnalysis().evidences().isEmpty()
@@ -51,7 +57,8 @@ public class LocationAnalysisResponseValidator {
                 && content.footTrafficAnalysis().byDay().isEmpty()
                 && content.nearbyFacilities().competitors().isEmpty()
                 && content.nearbyFacilities().convenienceFacilities().isEmpty()
-                && content.nearbyFacilities().transportFacilities().isEmpty();
+                && content.nearbyFacilities().transportFacilities().isEmpty()
+                && content.recommendedPlaces().isEmpty();
         if (noCoreData && content.overallLocationEvaluation().grade()
                 != LocationAnalysisContent.Grade.INSUFFICIENT_DATA) {
             invalid();
@@ -59,6 +66,17 @@ public class LocationAnalysisResponseValidator {
         if (content.overallLocationEvaluation().grade()
                 == LocationAnalysisContent.Grade.INSUFFICIENT_DATA
                 && content.limitations().isEmpty()) {
+            invalid();
+        }
+        if (content.overallLocationEvaluation().grade()
+                != LocationAnalysisContent.Grade.INSUFFICIENT_DATA
+                && (content.recommendedPlaces().isEmpty()
+                || content.targetPopulationAnalysis().age().isEmpty()
+                || content.targetPopulationAnalysis().gender().isEmpty()
+                || (content.footTrafficAnalysis().total() == null
+                && content.footTrafficAnalysis().byTime().isEmpty()
+                && content.footTrafficAnalysis().byDay().isEmpty())
+                || "데이터 없음".equals(content.targetPopulationAnalysis().derivedFromPlace()))) {
             invalid();
         }
     }
@@ -114,6 +132,25 @@ public class LocationAnalysisResponseValidator {
             requireText(facility.name(), "facility.name");
             requireText(facility.category(), "facility.category");
             if (facility.distanceMeters() != null && facility.distanceMeters() < 0) {
+                invalid();
+            }
+        }
+    }
+
+    private void validateRecommendedPlaces(List<LocationAnalysisContent.RecommendedPlace> places) {
+        for (LocationAnalysisContent.RecommendedPlace place : places) {
+            if (place.rank() == null || place.rank() < 1) {
+                invalid();
+            }
+            requireText(place.name(), "recommendedPlaces.name");
+            requireText(place.address(), "recommendedPlaces.address");
+            if (place.latitude() != null && (place.latitude() < -90 || place.latitude() > 90)) {
+                invalid();
+            }
+            if (place.longitude() != null && (place.longitude() < -180 || place.longitude() > 180)) {
+                invalid();
+            }
+            if (place.score() != null && (place.score() < 0 || place.score() > 100)) {
                 invalid();
             }
         }

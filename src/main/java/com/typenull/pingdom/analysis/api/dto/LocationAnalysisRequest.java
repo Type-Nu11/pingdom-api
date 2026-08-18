@@ -7,7 +7,7 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 프론트가 전달하는 입지 분석 조건이다. 지역만 필수이고 나머지는 확장 가능하다. */
+/** 프론트가 전달하는 입지 분석 조건이다. 지역은 필수이며 업종과 함께 AI 입력으로 사용한다. */
 public class LocationAnalysisRequest {
 
     @NotBlank(message = "지역은 필수입니다.")
@@ -65,9 +65,6 @@ public class LocationAnalysisRequest {
         Map<String, Object> criteria = new LinkedHashMap<>();
         criteria.put("region", region);
         criteria.put("desiredIndustry", desiredIndustry);
-        criteria.put("targetAge", targetAge);
-        criteria.put("targetGender", targetGender);
-        criteria.putAll(additionalCriteria);
         return criteria;
     }
 }

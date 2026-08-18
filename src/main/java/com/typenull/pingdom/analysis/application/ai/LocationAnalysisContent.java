@@ -12,6 +12,7 @@ public record LocationAnalysisContent(
         TargetPopulationAnalysis targetPopulationAnalysis,
         FootTrafficAnalysis footTrafficAnalysis,
         NearbyFacilities nearbyFacilities,
+        List<RecommendedPlace> recommendedPlaces,
         AnalysisScope analysisScope,
         List<DataSource> dataSources,
         List<String> limitations
@@ -19,7 +20,22 @@ public record LocationAnalysisContent(
 
     public LocationAnalysisContent {
         dataSources = dataSources == null ? List.of() : List.copyOf(dataSources);
+        recommendedPlaces = recommendedPlaces == null ? List.of() : List.copyOf(recommendedPlaces);
         limitations = limitations == null ? List.of() : List.copyOf(limitations);
+    }
+
+    public LocationAnalysisContent(
+            String reportName,
+            OverallLocationEvaluation overallLocationEvaluation,
+            TargetPopulationAnalysis targetPopulationAnalysis,
+            FootTrafficAnalysis footTrafficAnalysis,
+            NearbyFacilities nearbyFacilities,
+            AnalysisScope analysisScope,
+            List<DataSource> dataSources,
+            List<String> limitations
+    ) {
+        this(reportName, overallLocationEvaluation, targetPopulationAnalysis, footTrafficAnalysis,
+                nearbyFacilities, List.of(), analysisScope, dataSources, limitations);
     }
 
     @JsonIgnoreProperties(ignoreUnknown = false)
@@ -40,6 +56,7 @@ public record LocationAnalysisContent(
     @JsonIgnoreProperties(ignoreUnknown = false)
     public record TargetPopulationAnalysis(
             String summary,
+            String derivedFromPlace,
             List<Metric> age,
             List<Metric> gender,
             List<Evidence> evidences
@@ -48,6 +65,15 @@ public record LocationAnalysisContent(
             age = age == null ? List.of() : List.copyOf(age);
             gender = gender == null ? List.of() : List.copyOf(gender);
             evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+
+        public TargetPopulationAnalysis(
+                String summary,
+                List<Metric> age,
+                List<Metric> gender,
+                List<Evidence> evidences
+        ) {
+            this(summary, "데이터 없음", age, gender, evidences);
         }
     }
 
@@ -78,6 +104,23 @@ public record LocationAnalysisContent(
             convenienceFacilities = convenienceFacilities == null ? List.of() : List.copyOf(convenienceFacilities);
             transportFacilities = transportFacilities == null ? List.of() : List.copyOf(transportFacilities);
             evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record RecommendedPlace(
+            Integer rank,
+            String name,
+            String address,
+            Double latitude,
+            Double longitude,
+            Double score,
+            List<String> reasons,
+            List<String> evidenceIds
+    ) {
+        public RecommendedPlace {
+            reasons = reasons == null ? List.of() : List.copyOf(reasons);
+            evidenceIds = evidenceIds == null ? List.of() : List.copyOf(evidenceIds);
         }
     }
 
