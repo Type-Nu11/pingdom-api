@@ -8,8 +8,9 @@ spring:
 analysis:
   ai:
     provider: ${AI_PROVIDER:ollama}
-    base-url: ${AI_BASE_URL:http://localhost:11434}
-    model: ${AI_MODEL:qwen2.5:7b}
+    base-url: ${AI_BASE_URL:}
+    model: ${AI_MODEL:}
+    api-key: ${GEMINI_API_KEY:${AI_API_KEY:}}
     connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
     read-timeout: ${AI_READ_TIMEOUT:2m}
   mcp:

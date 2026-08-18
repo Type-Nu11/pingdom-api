@@ -26,6 +26,23 @@ public class AiAnalysisClientConfig {
     }
 
     @Bean
+    @ConditionalOnProperty(prefix = "analysis.ai", name = "provider", havingValue = "gemini")
+    public AiAnalysisClient geminiAiAnalysisClient(AiAnalysisProperties properties, ObjectMapper objectMapper) {
+        SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
+        requestFactory.setConnectTimeout(properties.connectTimeout());
+        requestFactory.setReadTimeout(properties.readTimeout());
+        RestClient restClient = RestClient.builder()
+                .baseUrl(withTrailingSlash(properties.baseUrl()))
+                .requestFactory(requestFactory)
+                .build();
+        return new GeminiAiAnalysisClient(restClient, properties, objectMapper);
+    }
+
+    private String withTrailingSlash(String baseUrl) {
+        return baseUrl.endsWith("/") ? baseUrl : baseUrl + "/";
+    }
+
+    @Bean
     @ConditionalOnMissingBean(AiAnalysisClient.class)
     @ConditionalOnProperty(
             prefix = "analysis.ai",

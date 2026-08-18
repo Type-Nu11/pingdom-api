@@ -9,16 +9,38 @@ public record AiAnalysisProperties(
         String provider,
         String baseUrl,
         String model,
+        String apiKey,
         Duration connectTimeout,
         Duration readTimeout
 ) {
 
     public AiAnalysisProperties {
         provider = defaultValue(provider, "placeholder");
-        baseUrl = defaultValue(baseUrl, "http://localhost:11434");
-        model = defaultValue(model, "qwen2.5:7b");
+        baseUrl = defaultValue(baseUrl, defaultBaseUrl(provider));
+        model = defaultValue(model, defaultModel(provider));
+        apiKey = apiKey == null ? "" : apiKey;
         connectTimeout = connectTimeout == null ? Duration.ofSeconds(2) : connectTimeout;
         readTimeout = readTimeout == null ? Duration.ofMinutes(2) : readTimeout;
+    }
+
+    public AiAnalysisProperties(
+            String provider,
+            String baseUrl,
+            String model,
+            Duration connectTimeout,
+            Duration readTimeout
+    ) {
+        this(provider, baseUrl, model, "", connectTimeout, readTimeout);
+    }
+
+    private static String defaultBaseUrl(String provider) {
+        return "gemini".equalsIgnoreCase(provider)
+                ? "https://generativelanguage.googleapis.com/v1beta"
+                : "http://localhost:11434";
+    }
+
+    private static String defaultModel(String provider) {
+        return "gemini".equalsIgnoreCase(provider) ? "gemini-2.5-flash" : "qwen2.5:7b";
     }
 
     private static String defaultValue(String value, String fallback) {

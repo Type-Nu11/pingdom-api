@@ -20,12 +20,13 @@ class LocationAnalysisPromptFactoryTest {
 
         AiAnalysisPrompt prompt = factory.create(request, LocalDate.of(2026, 8, 18));
 
-        assertThat(prompt.content()).contains("MCP의 읽기 전용 도구");
+        assertThat(prompt.content()).contains("MCP 조회 결과");
         assertThat(prompt.content()).contains("서울 강남구", "카페");
         assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설");
         assertThat(prompt.content()).contains(
                 "analysisScope", "dataSources", "recommendedPlaces", "derivedFromPlace", "반경",
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
+                "MCP_RECOMMENDATION_JSON_BEGIN", "MCP_RECOMMENDATION_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
                 "\"rank\": 1", "\"name\": \"장소명\"", "\"reason\": \"추천 이유\"",
                 "evidenceIds", "place, reasons, latitude, longitude"
@@ -42,5 +43,23 @@ class LocationAnalysisPromptFactoryTest {
         assertThat(request.toCriteriaMap())
                 .containsEntry("region", "부산 해운대구")
                 .doesNotContainKeys("targetAge", "targetGender", "monthlyBudget");
+    }
+
+    @Test
+    void includesMcpResultInsideDelimitedDataSection() {
+        LocationAnalysisRequest request = new LocationAnalysisRequest();
+        request.setRegion("서울 강남구");
+
+        AiAnalysisPrompt prompt = factory.create(
+                request,
+                LocalDate.of(2026, 8, 18),
+                "{\"recommendations\":[{\"name\":\"테스트 장소\"}]}"
+        );
+
+        assertThat(prompt.content()).contains(
+                "[MCP_RECOMMENDATION_JSON_BEGIN]",
+                "테스트 장소",
+                "[MCP_RECOMMENDATION_JSON_END]"
+        );
     }
 }
