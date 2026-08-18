@@ -48,6 +48,7 @@ dependencies {
     implementation 'io.jsonwebtoken:jjwt-api:0.12.6'
     implementation 'io.awspring.cloud:spring-cloud-aws-starter-s3:3.3.0'
     implementation 'com.google.firebase:firebase-admin:9.3.0'
+    implementation 'com.openhtmltopdf:openhtmltopdf-pdfbox:1.0.10'
     compileOnly 'org.projectlombok:lombok'
     developmentOnly 'org.springframework.boot:spring-boot-devtools'
     developmentOnly 'org.springframework.boot:spring-boot-docker-compose'
