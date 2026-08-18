@@ -189,7 +189,7 @@ public class AuthServiceImpl implements AuthService {
         request.validatePassword();
 
         LocalDateTime now = now();
-        PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHash(passwordResetTokenHash(request.token()))
+        PasswordResetToken resetToken = passwordResetTokenRepository.findByTokenHashForUpdate(passwordResetTokenHash(request.token()))
                 .orElseThrow(() -> new AuthException(AuthErrorCode.INVALID_PASSWORD_RESET_TOKEN));
 
         if (resetToken.isUsed()) {

@@ -105,7 +105,7 @@ public class MapImageLikeService {
                 .findByIdAndUserId(notificationsId, userId)
                 .orElseThrow(() -> new NotificationsException(NotificationsErrorCode.NOTIFICATION_NOT_FOUND));
 
-        notification.setRead(true);
+        notification.markAsRead();
 
     }
 

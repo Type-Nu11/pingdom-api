@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
@@ -13,5 +15,12 @@ public interface PlaceInformationReportDisputeRepository extends JpaRepository<P
     List<PlaceInformationReportDispute> findAllByReport_IdOrderByCreatedAtDescIdDesc(Long reportId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<PlaceInformationReportDispute> findWithLockByIdAndReport_Id(Long id, Long reportId);
+    @Query("""
+            SELECT dispute FROM PlaceInformationReportDispute dispute
+            WHERE dispute.id = :id AND dispute.report.id = :reportId
+            """)
+    Optional<PlaceInformationReportDispute> findByIdAndReport_IdForUpdate(
+            @Param("id") Long id,
+            @Param("reportId") Long reportId
+    );
 }
