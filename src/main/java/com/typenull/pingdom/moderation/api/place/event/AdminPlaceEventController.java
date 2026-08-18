@@ -3,6 +3,8 @@ package com.typenull.pingdom.moderation.api.place.event;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventActionRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventResponse;
+import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventListResponse;
+import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventListItem;
 import com.typenull.pingdom.moderation.application.service.place.event.AdminPlaceEventService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -25,6 +27,12 @@ import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import jakarta.validation.constraints.Min;
+import com.typenull.pingdom.place.domain.event.PlaceEventType;
+import com.typenull.pingdom.place.domain.event.PlaceEventPublicationStatus;
+import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
 
 @RestController
 @RequestMapping("/admin/place-events")
@@ -34,6 +42,25 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminPlaceEventController {
 
     private final AdminPlaceEventService adminPlaceEventService;
+
+    @GetMapping
+    @Operation(summary = "관리자 기간형 이벤트 목록 조회")
+    public AdminPlaceEventListResponse listEvents(
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @RequestParam(defaultValue = "20") @Min(1) int limit,
+            @RequestParam(required = false) String keyword,
+            @RequestParam(required = false) Long placeId,
+            @RequestParam(required = false) PlaceEventType eventType,
+            @RequestParam(required = false) PlaceEventPublicationStatus publicationStatus,
+            @RequestParam(required = false) PlaceEventScheduleStatus scheduleStatus) {
+        return adminPlaceEventService.list(keyword, placeId, eventType, publicationStatus, scheduleStatus, page, limit);
+    }
+
+    @GetMapping("/{eventId}")
+    @Operation(summary = "관리자 기간형 이벤트 상세 조회")
+    public AdminPlaceEventListItem getEvent(@PathVariable Long eventId) {
+        return adminPlaceEventService.get(eventId);
+    }
 
     @PostMapping
     @Operation(summary = "관리자 기간형 이벤트 등록", description = "장소와 연결된 기간형 이벤트를 초안으로 등록합니다.")

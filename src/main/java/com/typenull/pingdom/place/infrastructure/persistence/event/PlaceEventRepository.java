@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.infrastructure.persistence.event;
 
 import com.typenull.pingdom.place.domain.event.PlaceEvent;
 import com.typenull.pingdom.place.domain.event.PlaceEventPublicationStatus;
+import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
 import com.typenull.pingdom.place.domain.event.PlaceEventType;
 import jakarta.persistence.LockModeType;
 import java.time.LocalDateTime;
@@ -16,6 +17,38 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 public interface PlaceEventRepository extends JpaRepository<PlaceEvent, Long> {
+
+    @EntityGraph(attributePaths = "place")
+    @Query(value = """
+            SELECT e FROM PlaceEvent e
+            WHERE (:keyword IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(e.place.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:placeId IS NULL OR e.place.id = :placeId)
+              AND (:eventType IS NULL OR e.eventType = :eventType)
+              AND (:publicationStatus IS NULL OR e.publicationStatus = :publicationStatus)
+              AND (:scheduleStatus IS NULL OR
+                   (:scheduleStatus = com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus.UPCOMING AND e.startAt > :now) OR
+                   (:scheduleStatus = com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus.ONGOING AND e.startAt <= :now AND e.endAt > :now) OR
+                   (:scheduleStatus = com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus.ENDED AND e.endAt <= :now))
+            """,
+            countQuery = """
+            SELECT COUNT(e) FROM PlaceEvent e
+            WHERE (:keyword IS NULL OR LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(e.place.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:placeId IS NULL OR e.place.id = :placeId)
+              AND (:eventType IS NULL OR e.eventType = :eventType)
+              AND (:publicationStatus IS NULL OR e.publicationStatus = :publicationStatus)
+              AND (:scheduleStatus IS NULL OR
+                   (:scheduleStatus = com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus.UPCOMING AND e.startAt > :now) OR
+                   (:scheduleStatus = com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus.ONGOING AND e.startAt <= :now AND e.endAt > :now) OR
+                   (:scheduleStatus = com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus.ENDED AND e.endAt <= :now))
+            """)
+    Page<PlaceEvent> findAdminEvents(
+            @Param("keyword") String keyword, @Param("placeId") Long placeId,
+            @Param("eventType") PlaceEventType eventType,
+            @Param("publicationStatus") PlaceEventPublicationStatus publicationStatus,
+            @Param("scheduleStatus") PlaceEventScheduleStatus scheduleStatus,
+            @Param("now") LocalDateTime now, Pageable pageable);
 
     boolean existsByPlace_Id(Long placeId);
 
