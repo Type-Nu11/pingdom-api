@@ -30,10 +30,7 @@ public class OllamaAiAnalysisClient implements AiAnalysisClient {
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(new OllamaChatRequest(
                             properties.model(),
-                            List.of(
-                                    new OllamaMessage("system", prompt.systemInstruction()),
-                                    new OllamaMessage("user", prompt.userPrompt())
-                            ),
+                            List.of(new OllamaMessage("user", prompt.content())),
                             false
                     ))
                     .retrieve()

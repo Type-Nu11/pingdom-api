@@ -20,9 +20,9 @@ class LocationAnalysisPromptFactoryTest {
 
         AiAnalysisPrompt prompt = factory.create(request, LocalDate.of(2026, 8, 18));
 
-        assertThat(prompt.systemInstruction()).contains("MCP 서버");
-        assertThat(prompt.userPrompt()).contains("서울 강남구", "카페", "budget", "100000000");
-        assertThat(prompt.userPrompt()).contains("종합 입지 평가", "주변 시설");
+        assertThat(prompt.content()).contains("MCP 서버");
+        assertThat(prompt.content()).contains("서울 강남구", "카페", "budget", "100000000");
+        assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설");
     }
 
     @Test

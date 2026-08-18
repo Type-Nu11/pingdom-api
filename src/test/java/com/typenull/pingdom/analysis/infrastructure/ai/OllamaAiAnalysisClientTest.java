@@ -33,8 +33,9 @@ class OllamaAiAnalysisClientTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(jsonPath("$.model").value("qwen2.5:7b"))
                 .andExpect(jsonPath("$.stream").value(false))
-                .andExpect(jsonPath("$.messages[0].role").value("system"))
-                .andExpect(jsonPath("$.messages[1].role").value("user"))
+                .andExpect(jsonPath("$.messages.length()").value(1))
+                .andExpect(jsonPath("$.messages[0].role").value("user"))
+                .andExpect(jsonPath("$.messages[0].content").value("user"))
                 .andRespond(withSuccess(
                         "{\"message\":{\"role\":\"assistant\",\"content\":\"```html\\n<h2>분석</h2>\\n```\"}}",
                         MediaType.APPLICATION_JSON
@@ -43,7 +44,7 @@ class OllamaAiAnalysisClientTest {
         OllamaAiAnalysisClient client = new OllamaAiAnalysisClient(builder.build(), properties);
 
         AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
-                "system", "user", LocalDate.of(2026, 8, 18)
+                "user", LocalDate.of(2026, 8, 18)
         ));
 
         assertThat(response.reportName()).isEqualTo("입지 분석 보고서");
@@ -61,7 +62,7 @@ class OllamaAiAnalysisClientTest {
         OllamaAiAnalysisClient client = new OllamaAiAnalysisClient(builder.build(), properties);
 
         assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt(
-                "system", "user", LocalDate.of(2026, 8, 18)
+                "user", LocalDate.of(2026, 8, 18)
         )))
                 .isInstanceOf(AnalysisReportException.class)
                 .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())

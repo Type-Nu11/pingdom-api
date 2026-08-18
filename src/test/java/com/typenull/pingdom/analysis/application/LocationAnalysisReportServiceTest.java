@@ -26,7 +26,7 @@ class LocationAnalysisReportServiceTest {
         HtmlToPdfConverter pdfConverter = mock(HtmlToPdfConverter.class);
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T00:00:00Z"), ZoneOffset.UTC);
         LocationAnalysisRequest request = new LocationAnalysisRequest();
-        AiAnalysisPrompt prompt = new AiAnalysisPrompt("system", "user", java.time.LocalDate.of(2026, 8, 18));
+        AiAnalysisPrompt prompt = new AiAnalysisPrompt("prompt", java.time.LocalDate.of(2026, 8, 18));
 
         when(promptFactory.create(request, java.time.LocalDate.of(2026, 8, 18))).thenReturn(prompt);
         when(aiClient.analyze(prompt)).thenReturn(new AiAnalysisResponse(

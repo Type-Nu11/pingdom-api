@@ -23,7 +23,7 @@ AI_MODEL=qwen2.5:7b \
 
 `POST /analysis/reports/location` 요청이 들어오면 서버가 Ollama `/api/chat`으로 시스템 지침과 분석 조건을 전달하고, AI가 반환한 HTML을 PDF로 변환합니다.
 
-`pingdom-mcp`를 함께 실행하는 경우 `MCP_ENABLED=true`를 설정하면 서버가 MCP의 `POST /recommend` 결과를 Ollama 프롬프트에 포함합니다. 현재 MCP 저장소의 `/recommend`는 내부에서 `GROQ_API_KEY`를 사용하므로 MCP 실행에는 해당 키가 필요합니다.
+`pingdom-mcp` 연동 도구를 사용할 경우 `MCP_ENABLED=true`를 설정합니다. 현재 MCP 저장소의 `/recommend`는 내부에서 `GROQ_API_KEY`를 사용하므로 MCP 실행에는 해당 키가 필요합니다.
 
 ## 3. 설정값
 

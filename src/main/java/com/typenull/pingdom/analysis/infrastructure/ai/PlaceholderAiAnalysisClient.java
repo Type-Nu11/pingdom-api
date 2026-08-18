@@ -10,7 +10,7 @@ public class PlaceholderAiAnalysisClient implements AiAnalysisClient {
 
     @Override
     public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
-        String criteria = HtmlUtils.htmlEscape(prompt.userPrompt());
+        String criteria = HtmlUtils.htmlEscape(prompt.content());
         String reportName = "입지 분석 보고서";
         String html = """
                 <p class="notice">현재는 AI/MCP 연결 전 단계입니다. 아래 문서는 PDF 변환 및 API 계약 검증용 임시 응답입니다.</p>
