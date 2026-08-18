@@ -14,7 +14,7 @@ import com.typenull.pingdom.notification.domain.NotificationDelivery;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryChannel;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryStatus;
 import com.typenull.pingdom.notification.domain.NotificationType;
-import com.typenull.pingdom.notification.repository.NotificationDeliveryRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationDeliveryRepository;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;

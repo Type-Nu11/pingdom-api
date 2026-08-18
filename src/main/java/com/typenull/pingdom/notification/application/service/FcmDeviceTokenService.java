@@ -7,7 +7,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.notification.domain.FcmDeviceToken;
 import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
-import com.typenull.pingdom.notification.repository.FcmDeviceTokenRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.FcmDeviceTokenRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;

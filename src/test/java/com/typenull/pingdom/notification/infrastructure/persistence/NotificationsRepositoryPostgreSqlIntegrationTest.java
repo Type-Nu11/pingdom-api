@@ -1,4 +1,4 @@
-package com.typenull.pingdom.notification.repository;
+package com.typenull.pingdom.notification.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

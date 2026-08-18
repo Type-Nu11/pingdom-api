@@ -147,6 +147,13 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - application은 domain을 사용해 흐름을 조립해야 한다.
 - infrastructure는 domain 규칙의 소유자가 되어서는 안 된다.
 - event consumer는 부수효과 처리와 후속 갱신에 집중해야 한다.
+- Repository 구현과 Spring Data Repository는 `infrastructure.persistence`에 둔다.
+- 일반 도메인 모듈의 최상위 계층은 `api`, `application`, `domain`, `infrastructure`,
+  `event`, `outbox`, `support`만 허용한다.
+- `shared`는 공통 기술 책임에 따라 별도 하위 구조를 사용할 수 있다.
+
+위 패키지 규칙과 Java package 선언·물리 경로의 일치 여부는
+`PackageConventionTest`로 검증한다.
 
 ## 7. CQRS 적용 범위
 

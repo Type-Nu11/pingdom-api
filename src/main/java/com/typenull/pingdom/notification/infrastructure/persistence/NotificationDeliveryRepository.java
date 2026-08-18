@@ -1,4 +1,4 @@
-package com.typenull.pingdom.notification.repository;
+package com.typenull.pingdom.notification.infrastructure.persistence;
 
 import com.typenull.pingdom.notification.domain.NotificationDelivery;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryChannel;

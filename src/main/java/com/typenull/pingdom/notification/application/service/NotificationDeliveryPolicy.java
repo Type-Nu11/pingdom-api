@@ -2,7 +2,7 @@ package com.typenull.pingdom.notification.application.service;
 
 import com.typenull.pingdom.notification.domain.NotificationSetting;
 import com.typenull.pingdom.notification.domain.NotificationType;
-import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationSettingRepository;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalTime;

@@ -2,7 +2,7 @@ package com.typenull.pingdom.notification.application.service;
 
 import com.typenull.pingdom.notification.domain.NotificationDelivery;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryStatus;
-import com.typenull.pingdom.notification.repository.NotificationDeliveryRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationDeliveryRepository;
 import com.typenull.pingdom.shared.outbox.application.OutboxProperties;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
