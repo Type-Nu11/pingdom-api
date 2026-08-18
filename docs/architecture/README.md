@@ -148,6 +148,16 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - infrastructure는 domain 규칙의 소유자가 되어서는 안 된다.
 - event consumer는 부수효과 처리와 후속 갱신에 집중해야 한다.
 
+### 6-1. Controller와 DTO 규칙
+
+- `@RequestBody` DTO는 `@Valid`로 검증한다.
+- 요청과 응답에는 DTO를 사용하고 Entity를 직접 노출하지 않는다.
+- 단순한 `200 OK` 응답은 DTO를 직접 반환할 수 있다.
+- 상태 코드, Header 또는 빈 Body를 명시해야 할 때는 `ResponseEntity`를 사용한다.
+- 리팩터링에서는 기존 HTTP 상태 코드와 응답 Body 형식을 유지한다.
+
+`ControllerConventionTest`는 Request DTO Validation과 Entity 직접 반환 여부를 검증한다.
+
 ## 7. CQRS 적용 범위
 
 ### 7-1. CQRS를 적용해야 하는 영역
