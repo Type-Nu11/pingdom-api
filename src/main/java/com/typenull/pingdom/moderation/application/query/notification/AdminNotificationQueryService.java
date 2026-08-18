@@ -1,7 +1,5 @@
 package com.typenull.pingdom.moderation.application.query.notification;
 
-import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationReadResponse;
-import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationReadAllResponse;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationResponse;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationUnreadCountResponse;
 import com.typenull.pingdom.notification.domain.NotificationType;
@@ -20,8 +18,4 @@ public interface AdminNotificationQueryService {
     );
 
     AdminNotificationUnreadCountResponse countUnread(Long adminUserId);
-
-    AdminNotificationReadResponse markAsRead(Long notificationId, Long adminUserId);
-
-    AdminNotificationReadAllResponse markAllAsRead(Long adminUserId);
 }

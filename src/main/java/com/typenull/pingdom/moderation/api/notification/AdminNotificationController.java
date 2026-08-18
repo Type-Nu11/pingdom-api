@@ -5,6 +5,7 @@ import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationRea
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationResponse;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationUnreadCountResponse;
 import com.typenull.pingdom.moderation.application.query.notification.AdminNotificationQueryService;
+import com.typenull.pingdom.moderation.application.service.notification.AdminNotificationCommandService;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.NotificationType;
@@ -37,6 +38,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminNotificationController {
 
     private final AdminNotificationQueryService adminNotificationQueryService;
+    private final AdminNotificationCommandService adminNotificationCommandService;
 
     @GetMapping
     @Operation(
@@ -196,7 +198,7 @@ public class AdminNotificationController {
             @PathVariable Long notificationId,
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return adminNotificationQueryService.markAsRead(notificationId, adminUser.userId());
+        return adminNotificationCommandService.markAsRead(notificationId, adminUser.userId());
     }
 
     @PatchMapping("/read")
@@ -224,6 +226,6 @@ public class AdminNotificationController {
     public AdminNotificationReadAllResponse markAllAsRead(
             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
     ) {
-        return adminNotificationQueryService.markAllAsRead(adminUser.userId());
+        return adminNotificationCommandService.markAllAsRead(adminUser.userId());
     }
 }

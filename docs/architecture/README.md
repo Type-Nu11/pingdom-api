@@ -254,6 +254,16 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - 외부 자원과 DB가 함께 얽히는 흐름은 롤백 보정 전략을 가져야 한다.
 - 이벤트 발행은 트랜잭션 성공 이후 기준으로 관리해야 한다.
 
+### 9-4. Service 트랜잭션 규칙
+
+- Query Service의 DB 조회는 `@Transactional(readOnly = true)`를 사용한다.
+- 상태 변경과 감사 이력은 Command Service의 쓰기 트랜잭션에서 처리한다.
+- `PESSIMISTIC_WRITE` 조회와 후속 상태 변경은 같은 쓰기 트랜잭션에 포함한다.
+- 외부 API나 S3 호출은 DB 트랜잭션을 불필요하게 길게 유지하지 않도록 분리한다.
+- 하나의 Service에 Query와 Command 메서드를 함께 두지 않는다.
+
+위 규칙은 `ServiceTransactionConventionTest`로 검증한다.
+
 ## 10. 패키지 구조 예시
 
 다음은 목표 구조 기준 패키지 구조 예시다. 실제 패키지와의 차이 및 전환 기준은
