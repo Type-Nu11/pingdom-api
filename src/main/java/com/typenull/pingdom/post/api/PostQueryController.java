@@ -23,6 +23,10 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.typenull.pingdom.place.api.dto.ranking.PlaceRankingPeriod;
+import com.typenull.pingdom.place.api.dto.ranking.PlaceRankingResponse;
+import com.typenull.pingdom.place.api.dto.ranking.PlaceRankingScope;
+import com.typenull.pingdom.place.application.service.place.PlaceRankingQueryService;
 
 @RestController
 @RequestMapping("/map")
@@ -31,6 +35,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostQueryController {
 
     private final PostQueryService postQueryService;
+    private final PlaceRankingQueryService placeRankingQueryService;
+
+    @GetMapping("/place-rankings")
+    @Operation(summary = "장소 핫플·트렌드 랭킹 조회")
+    public PlaceRankingResponse placeRankings(
+            @RequestParam(defaultValue = "LOCAL") PlaceRankingScope scope,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double radiusKm,
+            @RequestParam(defaultValue = "WEEK") PlaceRankingPeriod period,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @AuthenticationPrincipal JwtAuthenticatedUser user) {
+        return placeRankingQueryService.find(scope, latitude, longitude, radiusKm, period, category, page, limit, user == null ? null : user.userId());
+    }
 
     @GetMapping("/posts")
     @Operation(
