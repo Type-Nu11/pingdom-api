@@ -8,14 +8,20 @@ import org.springframework.util.StringUtils;
 
 public final class PlaceCategoryPolicy {
 
-    public static final String CAFE = "카페";
-    public static final String RESTAURANT = "식당";
-    public static final String TOURISM = "관광";
-    public static final String SCENERY = "풍경";
-    public static final String CULTURE = "문화";
-    public static final String SHOPPING = "쇼핑";
-    public static final String ACCOMMODATION = "숙박";
-    public static final String EXPERIENCE = "체험";
+    public static final String MUSIC = "MUSIC";
+    public static final String RESTAURANT = "RESTAURANT";
+    public static final String POP_UP = "POP_UP";
+    public static final String FASHION = "FASHION";
+    public static final String BEAUTY = "BEAUTY";
+    public static final String EXHIBITION = "EXHIBITION";
+    public static final String CAFE = "CAFE";
+    public static final String OTHER = "OTHER";
+    @Deprecated public static final String TOURISM = OTHER;
+    @Deprecated public static final String SCENERY = OTHER;
+    @Deprecated public static final String CULTURE = EXHIBITION;
+    @Deprecated public static final String SHOPPING = FASHION;
+    @Deprecated public static final String ACCOMMODATION = OTHER;
+    @Deprecated public static final String EXPERIENCE = OTHER;
 
     private static final Map<String, String> STANDARD_CATEGORY_MAP = createStandardCategoryMap();
 
@@ -28,19 +34,19 @@ public final class PlaceCategoryPolicy {
         }
 
         String trimmed = category.trim();
-        return STANDARD_CATEGORY_MAP.getOrDefault(trimmed.toLowerCase(Locale.ROOT), trimmed.toLowerCase(Locale.ROOT));
+        return STANDARD_CATEGORY_MAP.getOrDefault(trimmed.toLowerCase(Locale.ROOT), OTHER);
     }
 
     private static Map<String, String> createStandardCategoryMap() {
         Map<String, String> categories = new LinkedHashMap<>();
-        register(categories, CAFE, "커피", "coffee", "cafe", "디저트", "베이커리");
-        register(categories, RESTAURANT, "맛집", "음식점", "레스토랑", "restaurant", "food");
-        register(categories, TOURISM, "관광지", "명소", "여행", "tour", "travel");
-        register(categories, SCENERY, "자연", "공원", "산책", "야경", "view", "scenery");
-        register(categories, CULTURE, "전시", "박물관", "미술관", "공연", "culture");
-        register(categories, SHOPPING, "마트", "편집샵", "shopping");
-        register(categories, ACCOMMODATION, "호텔", "모텔", "펜션", "숙소", "hotel", "stay");
-        register(categories, EXPERIENCE, "액티비티", "activity", "sports", "스포츠");
+        register(categories, CAFE, "카페", "커피", "coffee", "cafe", "디저트", "베이커리");
+        register(categories, RESTAURANT, "식당", "맛집", "음식점", "레스토랑", "restaurant", "food");
+        register(categories, EXHIBITION, "전시", "박물관", "미술관", "문화", "culture");
+        register(categories, MUSIC, "공연", "음악", "music");
+        register(categories, FASHION, "쇼핑", "패션", "마트", "편집샵", "shopping", "fashion");
+        register(categories, BEAUTY, "뷰티", "미용", "beauty");
+        register(categories, POP_UP, "팝업", "pop-up", "popup");
+        register(categories, OTHER, "관광", "관광지", "명소", "여행", "자연", "공원", "산책", "야경", "숙박", "체험", "tour", "travel", "scenery", "hotel", "stay", "activity", "sports", "스포츠");
         return Collections.unmodifiableMap(categories);
     }
 

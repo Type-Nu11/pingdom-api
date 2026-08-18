@@ -103,6 +103,46 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     @Test
+    void listDeliveriesSupportsStatusFilterWithoutPeriodAndEmptyResult() throws Exception {
+        String adminAccessToken = createUserAndLogin("deliveryStatusAdmin", UserRole.ADMIN);
+        saveDelivery(
+                10L,
+                NotificationDeliveryChannel.FCM,
+                NotificationDeliveryStatus.FAILED,
+                NotificationType.NEW_LIKE.name(),
+                OutboxEventType.MAP_IMAGE_LIKED.name(),
+                "event-status-filter",
+                null,
+                "FCM_SEND_FAILED",
+                "failed",
+                LocalDateTime.of(2026, 8, 16, 12, 0)
+        );
+
+        mockMvc.perform(get("/admin/notification-deliveries")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("status", NotificationDeliveryStatus.FAILED.name())
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveries.length()").value(1))
+                .andExpect(jsonPath("$.deliveries[0].status").value(NotificationDeliveryStatus.FAILED.name()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        mockMvc.perform(get("/admin/notification-deliveries")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("status", NotificationDeliveryStatus.RETRY_SCHEDULED.name())
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.deliveries").isEmpty())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
     void listDeliveriesRejectsInvalidPeriod() throws Exception {
         String adminAccessToken = createUserAndLogin("deliveryPeriodAdmin", UserRole.ADMIN);
 

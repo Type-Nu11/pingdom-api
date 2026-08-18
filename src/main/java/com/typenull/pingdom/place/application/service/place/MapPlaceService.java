@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.application.service.place;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
@@ -32,6 +33,7 @@ public class MapPlaceService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final UserRepository userRepository;
+    private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
     private final PlaceCoordinateTokenStore placeCoordinateTokenStore;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
@@ -212,7 +214,7 @@ public class MapPlaceService {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
 
-        if (!Objects.equals(mapPlace.getUserId(), userId)) {
+        if (!merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(placeId, userId)) {
             throw new MapException(MapErrorCode.OTHERS_PLACE_NOT_DELETED);
         }
 

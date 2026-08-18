@@ -98,6 +98,45 @@ class AdminAuditLogControllerTest {
     }
 
     @Test
+    void listAuditLogsSupportsDefaultFiltersAndEmptyResult() throws Exception {
+        String adminAccessToken = createUserAndLogin("auditDefaultAdmin", UserRole.ADMIN);
+
+        adminAuditLogRepository.save(AdminAuditLog.builder()
+                .actorUserId(1L)
+                .actorUsername("auditDefaultAdmin")
+                .action(AdminAuditAction.USER_BAN_APPLIED)
+                .targetType(AdminAuditTargetType.USER)
+                .targetId("7")
+                .reason("반복 신고")
+                .requestId("audit-default-request")
+                .createdAt(LocalDateTime.of(2026, 8, 16, 12, 0))
+                .build());
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auditLogs.length()").value(1))
+                .andExpect(jsonPath("$.auditLogs[0].requestId").value("audit-default-request"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        adminAuditLogRepository.deleteAllInBatch();
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.auditLogs").isEmpty())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
     void listAuditLogsRejectsInvalidPeriod() throws Exception {
         String adminAccessToken = createUserAndLogin("auditPeriodAdmin", UserRole.ADMIN);
 

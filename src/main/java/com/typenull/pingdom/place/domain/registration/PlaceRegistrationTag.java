@@ -6,5 +6,11 @@ public enum PlaceRegistrationTag {
     RESERVATION_AVAILABLE,
     RESERVATION_COUPON_AVAILABLE,
     GENERAL_COUPON_AVAILABLE,
-    GOOD_AMBIENCE
+    GOOD_AMBIENCE;
+
+    public boolean isDynamic() {
+        return this == RESERVATION_AVAILABLE
+                || this == RESERVATION_COUPON_AVAILABLE
+                || this == GENERAL_COUPON_AVAILABLE;
+    }
 }

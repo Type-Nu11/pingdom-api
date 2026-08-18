@@ -10,6 +10,7 @@ import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
 import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Hidden;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -33,6 +34,7 @@ public class MapPlaceController {
     private final MapPlaceService mapPlaceService;
     private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
+    @Hidden
     @PostMapping("/coordinates")
     @Operation(summary = "장소 좌표 토큰 발급", description = "장소 등록 신청에서 사용할 임시 좌표 토큰만 발급합니다. 이 API는 장소를 생성하지 않습니다.")
     @ApiResponses({
@@ -87,6 +89,7 @@ public class MapPlaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Hidden
     @PostMapping("/upload")
     @Operation(
             summary = "장소 업로드(승인 전환 중)",
@@ -167,6 +170,7 @@ public class MapPlaceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
     }
 
+    @Hidden
     @DeleteMapping("/{id}")
     @Operation(summary = "장소 삭제", description = "지정한 장소 ID를 삭제합니다. 본인 소유 장소만 삭제 가능합니다.")
     @ApiResponses({

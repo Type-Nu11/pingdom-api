@@ -69,6 +69,12 @@ public class PlaceRegistrationApplication {
     @Column(nullable = false, length = 1000)
     private String description;
 
+    @Column(name = "business_contact_phone", length = 20)
+    private String businessContactPhone;
+
+    @Column(name = "applicant_contact_phone", length = 20)
+    private String applicantContactPhone;
+
     @ElementCollection(fetch = FetchType.LAZY)
     @CollectionTable(name = "place_registration_application_tag",
             joinColumns = @JoinColumn(name = "application_id", nullable = false,
@@ -90,6 +96,12 @@ public class PlaceRegistrationApplication {
 
     @Column(name = "representative_image_file_ids", length = 2000)
     private String representativeImageFileIds;
+
+    @Column(name = "timezone", nullable = false, length = 64)
+    private String timezone = "Asia/Seoul";
+
+    @Column(name = "operating_schedule_json", nullable = false, columnDefinition = "TEXT")
+    private String operatingScheduleJson = "[]";
 
     @Column(name = "review_reason", length = 500)
     private String reviewReason;
@@ -154,6 +166,19 @@ public class PlaceRegistrationApplication {
                 roadAddress, jibunAddress, postalCode, description, tags, now);
     }
 
+    public void setContactPhones(String businessContactPhone, String applicantContactPhone) {
+        if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
+        this.businessContactPhone = businessContactPhone;
+        this.applicantContactPhone = applicantContactPhone;
+    }
+
+    public void setOperatingSchedule(String timezone, String operatingScheduleJson, LocalDateTime now) {
+        if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
+        this.timezone = timezone;
+        this.operatingScheduleJson = operatingScheduleJson;
+        this.updatedAt = now;
+    }
+
     public void update(String placeName, PlaceRegistrationCategory category, double latitude, double longitude,
                        String roadAddress, String jibunAddress, String postalCode, String description,
                        LocalDateTime now) {
@@ -183,7 +208,9 @@ public class PlaceRegistrationApplication {
     public void replaceTags(Set<PlaceRegistrationTag> tags) {
         this.tags.clear();
         if (tags != null) {
-            this.tags.addAll(tags);
+            this.tags.addAll(tags.stream()
+                    .filter(tag -> !tag.isDynamic())
+                    .toList());
         }
     }
 

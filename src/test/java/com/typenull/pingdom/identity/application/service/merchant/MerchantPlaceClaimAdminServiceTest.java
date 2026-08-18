@@ -10,6 +10,7 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceClaimReviewRequest;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
@@ -21,6 +22,8 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimType;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMemberRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInvitationRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
@@ -37,6 +40,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -54,6 +58,8 @@ class MerchantPlaceClaimAdminServiceTest {
     @Mock private MerchantOwnerProfileRepository profileRepository;
     @Mock private MerchantVerificationRepository verificationRepository;
     @Mock private MerchantOwnerPlaceRepository ownerPlaceRepository;
+    @Mock private MerchantPlaceMemberRepository memberRepository;
+    @Mock private MerchantPlaceInvitationRepository invitationRepository;
     @Mock private MapPlaceRepository mapPlaceRepository;
     @Mock private AdminAuditLogService auditLogService;
     @Mock private TouristOfferRepository touristOfferRepository;
@@ -61,6 +67,7 @@ class MerchantPlaceClaimAdminServiceTest {
     @Mock private MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
     @Mock private MerchantPlaceClaimAttachmentRepository attachmentRepository;
     @Mock private AdminMapPlaceDuplicateQueryService duplicateQueryService;
+    @Mock private AdminRoleAuthorizationService authorizationService;
 
     @InjectMocks
     private MerchantPlaceClaimAdminService claimAdminService;
@@ -111,6 +118,9 @@ class MerchantPlaceClaimAdminServiceTest {
         when(claimRepository.findByIdForUpdate(claimId)).thenReturn(Optional.of(claim));
         when(mapPlaceRepository.findByIdForUpdate(placeId)).thenReturn(Optional.of(mock(MapPlace.class)));
         when(ownerPlaceRepository.findByPlaceIdForUpdate(placeId)).thenReturn(Optional.of(ownerPlace));
+        when(memberRepository.findAllByPlaceId(placeId)).thenReturn(List.of());
+        when(invitationRepository.findAllByPlaceIdAndStatus(any(), any())).thenReturn(List.of());
+        when(memberRepository.findByPlaceIdAndUserIdForUpdate(placeId, userId)).thenReturn(Optional.empty());
 
         claimAdminService.review(
                 99L,

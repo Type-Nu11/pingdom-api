@@ -71,13 +71,11 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     }
 
     private String loginAndReadRefreshToken(String username) throws Exception {
-        mockMvc.perform(post("/auth/login")
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new LoginRequest(username, "password123"))))
-                .andExpect(status().isOk());
-
-        return userRepository.findByUsername(username)
-                .orElseThrow()
-                .getRefreshToken();
+                .andExpect(status().isOk())
+                .andReturn();
+        return loginResult.getResponse().getCookie(REFRESH_TOKEN_COOKIE_NAME).getValue();
     }
 }

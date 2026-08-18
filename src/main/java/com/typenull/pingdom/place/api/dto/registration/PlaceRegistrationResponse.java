@@ -11,18 +11,20 @@ import java.util.Set;
 public record PlaceRegistrationResponse(
         Long id, Long applicantUserId, PlaceRegistrationStatus status, String placeName,
         PlaceRegistrationCategory category, double latitude, double longitude, String roadAddress,
-        String jibunAddress, String postalCode, String description, String reviewReason,
+        String jibunAddress, String postalCode, String description, String businessContactPhone, String reviewReason,
         Long registeredPlaceId, LocalDateTime submittedAt, LocalDateTime reviewedAt,
         LocalDateTime registeredAt, LocalDateTime createdAt, LocalDateTime updatedAt,
         long submissionVersion, String submissionContentHash, LocalDateTime canceledAt,
         Set<PlaceRegistrationTag> tags, List<PlaceRegistrationAttachmentResponse> attachments
+        , String timezone, String operatingScheduleJson
 ) {
     public static PlaceRegistrationResponse from(PlaceRegistrationApplication a) {
         return new PlaceRegistrationResponse(a.getId(), a.getApplicantUserId(), a.getStatus(), a.getPlaceName(),
                 a.getCategory(), a.getLatitude(), a.getLongitude(), a.getRoadAddress(), a.getJibunAddress(),
-                a.getPostalCode(), a.getDescription(), a.getReviewReason(), a.getRegisteredPlaceId(),
+                a.getPostalCode(), a.getDescription(), a.getBusinessContactPhone(), a.getReviewReason(), a.getRegisteredPlaceId(),
                 a.getSubmittedAt(), a.getReviewedAt(), a.getRegisteredAt(), a.getCreatedAt(), a.getUpdatedAt(),
                 a.getSubmissionVersion(), a.getSubmissionContentHash(), a.getCanceledAt(), a.getTags(),
-                a.getAttachments().stream().map(PlaceRegistrationAttachmentResponse::from).toList());
+                a.getAttachments().stream().map(PlaceRegistrationAttachmentResponse::from).toList(),
+                a.getTimezone(), a.getOperatingScheduleJson());
     }
 }

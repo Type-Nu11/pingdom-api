@@ -14,7 +14,6 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
-import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.place.application.service.place.PlaceGrowthService;
 import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
@@ -60,9 +59,6 @@ class S3ServiceTest {
     private UserRepository userRepository;
 
     @Mock
-    private MapPlaceService mapPlaceService;
-
-    @Mock
     private PlaceGrowthService placeGrowthService;
 
     @Mock
@@ -84,7 +80,6 @@ class S3ServiceTest {
                 mapPlaceRepository,
                 postReportRepository,
                 userRepository,
-                mapPlaceService,
                 transactionManager(),
                 placeGrowthService,
                 placeMediaService,

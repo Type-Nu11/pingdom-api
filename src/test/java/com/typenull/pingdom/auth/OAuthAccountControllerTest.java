@@ -202,10 +202,8 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
 
         assertEquals(302, response.getStatus());
         assertTrue(response.getRedirectedUrl().contains("linked=GOOGLE"));
-        assertEquals(
-                "existing-refresh-token",
-                userRepository.findById(user.getId()).orElseThrow().getRefreshToken()
-        );
+        assertTrue(userRepository.findById(user.getId()).orElseThrow()
+                .matchesRefreshToken("existing-refresh-token"));
     }
 
     @Test
@@ -226,7 +224,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
 
         assertTrue(refreshCookie.contains("Path=/auth"));
         assertTrue(refreshCookie.contains("HttpOnly"));
-        assertTrue(refreshCookie.contains(userRepository.findById(user.getId()).orElseThrow().getRefreshToken()));
+        assertFalse(refreshCookie.contains("refresh-token"));
         assertFalse(response.getHeaders(HttpHeaders.SET_COOKIE).stream()
                 .anyMatch(header -> header.startsWith("OAUTH2_REFRESH_TOKEN=")));
     }

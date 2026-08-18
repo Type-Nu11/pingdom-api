@@ -18,6 +18,12 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMemberRepository;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInvitationRepository;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMember;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMemberRole;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMemberStatus;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInvitationStatus;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
@@ -25,6 +31,8 @@ import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimReviewH
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimReviewHistory;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.application.query.place.duplicate.AdminMapPlaceDuplicateQueryService;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
@@ -53,6 +61,8 @@ public class MerchantPlaceClaimAdminService {
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantVerificationRepository verificationRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
+    private final MerchantPlaceMemberRepository memberRepository;
+    private final MerchantPlaceInvitationRepository invitationRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
@@ -60,6 +70,7 @@ public class MerchantPlaceClaimAdminService {
     private final MerchantPlaceClaimReviewHistoryRepository reviewHistoryRepository;
     private final MerchantPlaceClaimAttachmentRepository attachmentRepository;
     private final AdminMapPlaceDuplicateQueryService duplicateQueryService;
+    private final AdminRoleAuthorizationService authorizationService;
 
     @Transactional(readOnly = true)
     public AdminMerchantPlaceClaimPageResponse list(MerchantPlaceClaimStatus status, int page, int limit) {
@@ -112,6 +123,7 @@ public class MerchantPlaceClaimAdminService {
             Long claimId,
             MerchantPlaceClaimReviewRequest request
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         boolean approved = Boolean.TRUE.equals(request.approved());
         if (approved) {
             MerchantPlaceClaim claimSnapshot = requireClaim(claimId);
@@ -161,6 +173,7 @@ public class MerchantPlaceClaimAdminService {
                     .build());
         } else {
             Long previousOwnerUserId = currentOwner.getMerchantOwnerUserId();
+            synchronizePlaceTeam(claim.getPlaceId(), previousOwnerUserId, claim.getMerchantOwnerUserId(), now);
             currentOwner.transferOwnership(claim.getMerchantOwnerUserId());
             touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(
                     previousOwnerUserId,
@@ -168,6 +181,25 @@ public class MerchantPlaceClaimAdminService {
                     now
             );
         }
+    }
+
+    private void synchronizePlaceTeam(Long placeId, Long previousOwnerUserId, Long newOwnerUserId,
+                                      LocalDateTime now) {
+        for (MerchantPlaceMember member : memberRepository.findAllByPlaceId(placeId)) {
+            if (!member.getUserId().equals(newOwnerUserId)
+                    && member.getStatus() == MerchantPlaceMemberStatus.ACTIVE) {
+                member.revoke(now);
+            }
+        }
+        invitationRepository.findAllByPlaceIdAndStatus(placeId, MerchantPlaceInvitationStatus.PENDING)
+                .forEach(invitation -> invitation.revoke(now));
+
+        MerchantPlaceMember newOwner = memberRepository.findByPlaceIdAndUserIdForUpdate(placeId, newOwnerUserId)
+                .orElseGet(() -> MerchantPlaceMember.owner(placeId, newOwnerUserId, now));
+        if (!newOwner.getRole().equals(MerchantPlaceMemberRole.OWNER)) {
+            newOwner.promoteToOwner(now);
+        }
+        memberRepository.save(newOwner);
     }
 
     private void validateOwnershipSnapshot(MerchantPlaceClaim claim, MerchantOwnerPlace currentOwner) {

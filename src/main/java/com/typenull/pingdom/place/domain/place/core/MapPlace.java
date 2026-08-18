@@ -8,6 +8,7 @@ import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerif
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingException;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
+import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingBreakTime;
 
 import jakarta.persistence.*;
 import java.util.ArrayList;
@@ -88,6 +89,12 @@ public class MapPlace {
     )
     @Getter(AccessLevel.NONE)
     private Set<PlaceRegularOperatingHour> regularOperatingHours = new LinkedHashSet<>();
+
+    @Builder.Default
+    @ElementCollection
+    @CollectionTable(name = "map_place_regular_operating_break_time", joinColumns = @JoinColumn(name = "map_place_id", nullable = false))
+    @Getter(AccessLevel.NONE)
+    private Set<PlaceRegularOperatingBreakTime> regularOperatingBreakTimes = new LinkedHashSet<>();
 
     @Builder.Default
     @OneToMany(mappedBy = "place", cascade = CascadeType.ALL, orphanRemoval = true)
@@ -358,7 +365,18 @@ public class MapPlace {
             Set<PlaceRegularOperatingHour> regularOperatingHours,
             List<PlaceOperatingException> operatingExceptions
     ) {
+        replaceOperatingSchedule(regularOperatingHours, Set.of(), operatingExceptions);
+    }
+
+    public void replaceOperatingSchedule(
+            Set<PlaceRegularOperatingHour> regularOperatingHours,
+            Set<PlaceRegularOperatingBreakTime> regularOperatingBreakTimes,
+            List<PlaceOperatingException> operatingExceptions
+    ) {
         replaceRegularOperatingHours(regularOperatingHours == null ? Set.of() : regularOperatingHours);
+        if (this.regularOperatingBreakTimes == null) this.regularOperatingBreakTimes = new LinkedHashSet<>();
+        else this.regularOperatingBreakTimes.clear();
+        this.regularOperatingBreakTimes.addAll(regularOperatingBreakTimes == null ? Set.of() : regularOperatingBreakTimes);
         replaceOperatingExceptions(operatingExceptions == null ? List.of() : operatingExceptions);
     }
 
