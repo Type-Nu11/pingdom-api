@@ -264,6 +264,19 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 
 위 규칙은 `ServiceTransactionConventionTest`로 검증한다.
 
+### 9-5. Entity와 Repository 규칙
+
+- Entity는 생성자나 정적 팩터리로 생성하고 범용 Setter를 노출하지 않는다.
+- 상태 변경은 `update`, `mark`, `approve`, `reject`처럼 의도가 드러나는 메서드로 처리한다.
+- 단건 조회 실패는 Service에서 도메인 `ErrorCode` 기반 예외로 변환한다.
+- 비관적 쓰기 잠금 조회 메서드는 `ForUpdate` 접미사를 사용하고 쓰기 트랜잭션 안에서 호출한다.
+- 고정된 연관 그래프는 `EntityGraph`, 조건이 포함된 복합 조회는 Fetch Join을 사용한다.
+- 목록 조회의 컬렉션 Fetch Join과 pagination 조합은 사용하지 않는다.
+- Soft Delete Entity는 삭제 시각이나 상태 변경 메서드를 사용하고 기본 조회에서 삭제 데이터를 제외한다.
+- 복잡한 목록·집계 조회는 Query Repository 또는 DTO projection으로 분리한다.
+
+Entity 상태 변경과 쓰기 잠금 명명 규칙은 `EntityRepositoryConventionTest`로 검증한다.
+
 ## 10. 패키지 구조 예시
 
 다음은 목표 구조 기준 패키지 구조 예시다. 실제 패키지와의 차이 및 전환 기준은

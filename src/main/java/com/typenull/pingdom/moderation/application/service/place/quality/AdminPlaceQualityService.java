@@ -459,7 +459,7 @@ public class AdminPlaceQualityService {
 
         MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
-        PlaceInformationEvidence evidence = placeInformationEvidenceRepository.findWithLockByIdAndPlace_Id(evidenceId, placeId)
+        PlaceInformationEvidence evidence = placeInformationEvidenceRepository.findByIdAndPlace_IdForUpdate(evidenceId, placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_INFORMATION_EVIDENCE_NOT_FOUND));
         Map<String, Object> beforeState = AdminPlaceServiceSupport.informationEvidenceState(evidence);
         PlaceInformationVerificationStatus beforeStatus = evidence.getVerificationStatus();

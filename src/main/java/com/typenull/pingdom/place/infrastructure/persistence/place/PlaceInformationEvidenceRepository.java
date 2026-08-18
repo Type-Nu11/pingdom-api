@@ -5,6 +5,8 @@ import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
+import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
@@ -15,5 +17,12 @@ public interface PlaceInformationEvidenceRepository extends JpaRepository<PlaceI
     Optional<PlaceInformationEvidence> findByIdAndPlace_Id(Long id, Long placeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    Optional<PlaceInformationEvidence> findWithLockByIdAndPlace_Id(Long id, Long placeId);
+    @Query("""
+            SELECT evidence FROM PlaceInformationEvidence evidence
+            WHERE evidence.id = :id AND evidence.place.id = :placeId
+            """)
+    Optional<PlaceInformationEvidence> findByIdAndPlace_IdForUpdate(
+            @Param("id") Long id,
+            @Param("placeId") Long placeId
+    );
 }

@@ -22,7 +22,7 @@ public interface PlaceOperatingNoticeRepository extends JpaRepository<PlaceOpera
             JOIN FETCH notice.place
             WHERE notice.id = :id
             """)
-    Optional<PlaceOperatingNotice> findWithLockById(@Param("id") Long id);
+    Optional<PlaceOperatingNotice> findByIdForUpdate(@Param("id") Long id);
 
     List<PlaceOperatingNotice> findAllByPlace_IdAndStatusInOrderByStartsAtAscIdAsc(
             Long placeId,
