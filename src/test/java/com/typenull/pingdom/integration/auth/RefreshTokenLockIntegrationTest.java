@@ -1,4 +1,4 @@
-package com.typenull.pingdom.auth;
+package com.typenull.pingdom.integration.auth;
 
 import static org.junit.jupiter.api.Assertions.assertFalse;
 import static org.junit.jupiter.api.Assertions.assertTrue;
