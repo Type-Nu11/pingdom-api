@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.registration;
+package com.typenull.pingdom.place.domain.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
