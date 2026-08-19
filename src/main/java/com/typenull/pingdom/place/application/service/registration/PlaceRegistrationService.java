@@ -16,6 +16,7 @@ import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationReviewRe
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -88,28 +89,46 @@ public class PlaceRegistrationService {
 
     @Transactional(readOnly = true)
     public PlaceRegistrationPageResponse list(Long userId, int page, int limit) {
-        Page<PlaceRegistrationApplication> result = repository.findAllByApplicantUserId(userId, pageable(page, limit));
+        Page<PlaceRegistrationApplication> result = repository.findAllByApplicantUserIdAndApplicationType(
+                userId, MerchantPlaceApplicationType.LEGACY, pageable(page, limit));
         return page(result);
     }
 
     @Transactional(readOnly = true)
     public PlaceRegistrationPageResponse listAll(int page, int limit) {
-        return page(repository.findAll(pageable(page, limit)));
+        return page(repository.findAllByApplicationType(MerchantPlaceApplicationType.LEGACY, pageable(page, limit)));
     }
 
     @Transactional(readOnly = true)
     public PlaceRegistrationResponse getAny(Long id) {
-        return response(repository.findById(id).orElseThrow(this::notFound));
+        PlaceRegistrationApplication application = repository.findById(id).orElseThrow(this::notFound);
+        requireLegacy(application);
+        return response(application);
     }
 
     @Transactional(readOnly = true)
     public PlaceRegistrationResponse get(Long userId, Long id) {
-        return response(repository.findByIdAndApplicantUserId(id, userId).orElseThrow(this::notFound));
+        PlaceRegistrationApplication application = repository.findByIdAndApplicantUserId(id, userId).orElseThrow(this::notFound);
+        requireLegacy(application);
+        return response(application);
     }
 
     @Transactional
     public PlaceRegistrationResponse update(Long userId, Long id, PlaceRegistrationRequest r) {
         PlaceRegistrationApplication a = mine(userId, id);
+        requireLegacy(a);
+        updateDraft(a, userId, r);
+        return response(a);
+    }
+
+    @Transactional
+    public void updateForUnifiedApplication(Long userId, Long id, PlaceRegistrationRequest r) {
+        PlaceRegistrationApplication application = mine(userId, id);
+        requireUnifiedNewPlace(application);
+        updateDraft(application, userId, r);
+    }
+
+    private void updateDraft(PlaceRegistrationApplication a, Long userId, PlaceRegistrationRequest r) {
         try {
             LocalDateTime now = now();
             a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
@@ -121,17 +140,28 @@ public class PlaceRegistrationService {
         } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
-        return response(a);
     }
 
     @Transactional
     /** 제출 가능한 초안인지 검증한 뒤 심사 대기 상태로 전환합니다. */
     public PlaceRegistrationResponse submit(Long userId, Long id) {
         PlaceRegistrationApplication a = mine(userId, id);
+        requireLegacy(a);
+        submitDraft(a);
+        return response(a);
+    }
+
+    @Transactional
+    public void submitForUnifiedApplication(Long userId, Long id) {
+        PlaceRegistrationApplication application = mine(userId, id);
+        requireUnifiedNewPlace(application);
+        submitDraft(application);
+    }
+
+    private void submitDraft(PlaceRegistrationApplication a) {
         try { a.submit(now(), contentHash(a)); } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(a.hasRequiredFiles() ? PlaceRegistrationErrorCode.INVALID_STATE : PlaceRegistrationErrorCode.REQUIRED_FILES_MISSING);
         }
-        return response(a);
     }
 
     @Transactional
@@ -143,6 +173,7 @@ public class PlaceRegistrationService {
     @Transactional
     public PlaceRegistrationResponse approve(Long adminId, Long id, PlaceRegistrationReviewRequest r) {
         PlaceRegistrationApplication a = locked(id);
+        requireLegacy(a);
         try { a.approve(adminId, r.reason(), now()); } catch (IllegalStateException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
         return response(a);
     }
@@ -150,6 +181,7 @@ public class PlaceRegistrationService {
     @Transactional
     public PlaceRegistrationResponse reject(Long adminId, Long id, PlaceRegistrationReviewRequest r) {
         PlaceRegistrationApplication a = locked(id);
+        requireLegacy(a);
         try { a.reject(adminId, r.reason(), now()); } catch (IllegalStateException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
         return response(a);
     }
@@ -157,6 +189,21 @@ public class PlaceRegistrationService {
     @Transactional
     public PlaceRegistrationResponse complete(Long userId, Long id) {
         PlaceRegistrationApplication a = mine(userId, id);
+        requireLegacy(a);
+        Long placeId = createApprovedPlace(a, userId);
+        a.register(placeId, now());
+        return response(a);
+    }
+
+    /** 통합 신청 승인에서 신규 장소를 생성하되, 상태 전이는 호출 측의 COMPLETED 전이로 위임합니다. */
+    @Transactional
+    public Long createApprovedPlaceForUnifiedApplication(Long userId, Long id) {
+        PlaceRegistrationApplication application = mine(userId, id);
+        requireUnifiedNewPlace(application);
+        return createApprovedPlace(application, userId);
+    }
+
+    private Long createApprovedPlace(PlaceRegistrationApplication a, Long userId) {
         if (a.getStatus() != PlaceRegistrationStatus.APPROVED) throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         if (placeRepository.existsByNameAndAddressAndLatitudeAndLongitude(a.getPlaceName(), a.getRoadAddress(), a.getLatitude(), a.getLongitude())) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.DUPLICATE_PLACE);
@@ -177,12 +224,12 @@ public class PlaceRegistrationService {
         ownerPlaceRepository.save(MerchantOwnerPlace.builder().placeId(place.getId()).merchantOwnerUserId(userId).createdAt(now).build());
         memberRepository.save(MerchantPlaceMember.owner(place.getId(), userId, now));
         snapshotService.initialize(place.getId());
-        a.register(place.getId(), now);
-        return response(a);
+        return place.getId();
     }
 
     private PlaceRegistrationResponse transition(Long userId, Long id, java.util.function.Consumer<PlaceRegistrationApplication> action) {
         PlaceRegistrationApplication a = mine(userId, id);
+        requireLegacy(a);
         try { action.accept(a); } catch (IllegalStateException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
         return response(a);
     }
@@ -194,6 +241,16 @@ public class PlaceRegistrationService {
         return application;
     }
     private PlaceRegistrationApplication locked(Long id) { return repository.findByIdForUpdate(id).orElseThrow(this::notFound); }
+    private void requireLegacy(PlaceRegistrationApplication application) {
+        if (application.getApplicationType() != MerchantPlaceApplicationType.LEGACY) {
+            throw notFound();
+        }
+    }
+    private void requireUnifiedNewPlace(PlaceRegistrationApplication application) {
+        if (application.getApplicationType() != MerchantPlaceApplicationType.NEW_PLACE) {
+            throw notFound();
+        }
+    }
     private PlaceRegistrationException notFound() { return new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND); }
     private PlaceRegistrationResponse response(PlaceRegistrationApplication a) { return PlaceRegistrationResponse.from(a); }
 

@@ -87,6 +87,19 @@ class MerchantVerificationTest {
         assertThat(verification.getReviewReason()).isNull();
     }
 
+    @Test
+    void approvedVerificationCanBeResubmittedWithLatestBusinessEvidence() {
+        MerchantVerification verification = pendingVerification();
+        verification.review(99L, true, true, "확인 완료", NOW.plusMinutes(1));
+
+        verification.resubmit("새 대표자", "핑덤 카페", "encrypted-987", NOW.plusMinutes(2));
+
+        assertThat(verification.getLegalName()).isEqualTo("새 대표자");
+        assertThat(verification.getEncryptedBusinessRegistrationNumber()).isEqualTo("encrypted-987");
+        assertThat(verification.getIdentityStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
+        assertThat(verification.getBusinessStatus()).isEqualTo(MerchantVerificationStatus.PENDING);
+    }
+
     private MerchantVerification pendingVerification() {
         return MerchantVerification.pending(1L, "김핑덤", "핑덤 카페", "encrypted-123", NOW);
     }

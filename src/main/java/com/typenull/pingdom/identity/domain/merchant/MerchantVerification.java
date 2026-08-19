@@ -104,6 +104,21 @@ public class MerchantVerification {
         reviewedAt = null;
     }
 
+    /** 통합 신청 심사에 제출된 최신 사업자 정보를 기준으로 검증을 다시 시작합니다. */
+    public void resubmit(
+            String legalName,
+            String businessName,
+            String encryptedBusinessRegistrationNumber,
+            LocalDateTime now
+    ) {
+        applySubmission(legalName, businessName, encryptedBusinessRegistrationNumber, now);
+        identityStatus = MerchantVerificationStatus.PENDING;
+        businessStatus = MerchantVerificationStatus.PENDING;
+        reviewReason = null;
+        reviewedBy = null;
+        reviewedAt = null;
+    }
+
     public void review(
             Long adminUserId,
             boolean identityApproved,
