@@ -55,6 +55,7 @@ public class AdminReportServiceImpl implements AdminReportService {
 
     @Override
     @Transactional
+    /** 신고를 승인하고 대상 콘텐츠의 운영 상태 및 처리 이력을 갱신합니다. */
     public AdminReportActionResponse acceptReport(Long reportId, Long adminUserId) {
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())

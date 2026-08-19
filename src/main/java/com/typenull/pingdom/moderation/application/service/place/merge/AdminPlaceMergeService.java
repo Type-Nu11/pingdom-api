@@ -93,6 +93,7 @@ public class AdminPlaceMergeService {
     private final Clock clock;
 
     @Transactional
+    /** 원본 장소의 병합 가능성을 검증한 뒤 대상 장소로 데이터를 이동하고 이력을 남깁니다. */
     public AdminMapPlaceMergeResponse mergePlaces(Long adminUserId, AdminMapPlaceMergeRequest request) {
         validateMergeRequest(request);
 
