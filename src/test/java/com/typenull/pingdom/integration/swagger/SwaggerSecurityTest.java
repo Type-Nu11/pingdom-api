@@ -42,8 +42,16 @@ class SwaggerSecurityTest {
 
     @Test
     void apiDocsAreAccessibleWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/v3/api-docs"))
-                .andExpect(status().isOk());
+        for (String apiDocsPath : new String[]{
+                "/v3/api-docs",
+                "/v3/api-docs/app",
+                "/v3/api-docs/common",
+                "/v3/api-docs/consulting",
+                "/v3/api-docs/web"
+        }) {
+            mockMvc.perform(get(apiDocsPath))
+                    .andExpect(status().isOk());
+        }
     }
 
     @Test
@@ -61,6 +69,26 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/places/upload']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/places/{id}']").exists())
                 .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());
+    }
+
+    @Test
+    void appGroupDocsIncludePreviouslyUnmatchedAppApis() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/app"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/popup-campaigns']").exists())
+                .andExpect(jsonPath("$.paths['/payments']").exists())
+                .andExpect(jsonPath("$.paths['/reservations']").exists());
+    }
+
+    @Test
+    void consultingGroupDocsContainOnlyConsultationIntroApi() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/consulting"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/consultations/intro'].post").exists());
+
+        mockMvc.perform(get("/v3/api-docs/web"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/consultations/intro']").doesNotExist());
     }
 
     @Test

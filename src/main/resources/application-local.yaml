@@ -28,6 +28,8 @@ springdoc:
         url: /v3/api-docs/app
       - name: common
         url: /v3/api-docs/common
+      - name: consulting
+        url: /v3/api-docs/consulting
       - name: web
         url: /v3/api-docs/web
 

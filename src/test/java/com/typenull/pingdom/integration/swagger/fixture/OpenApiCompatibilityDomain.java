@@ -3,6 +3,7 @@ package com.typenull.pingdom.integration.swagger.fixture;
 public enum OpenApiCompatibilityDomain {
     APP("app"),
     COMMON("common"),
+    CONSULTING("consulting"),
     WEB("web");
 
     private final String specName;
