@@ -32,6 +32,7 @@ public class AdminOutboxEventRecoveryService {
     private final OutboxMetrics outboxMetrics;
 
     @Transactional
+    /** 권한을 확인한 뒤 재처리 가능한 outbox 이벤트를 수동 재시도하고 감사 이력을 남깁니다. */
     public AdminOutboxEventItem retry(Long adminUserId, String eventId, String reason) {
         authorizationService.requirePermission(adminUserId, AdminPermission.OUTBOX_RECOVERY);
         String normalizedReason = normalizeReason(reason);
@@ -71,6 +72,7 @@ public class AdminOutboxEventRecoveryService {
         return AdminOutboxEventItem.from(result.after());
     }
 
+    /** 감사 로그에 사용할 재시도 사유의 존재 여부와 최대 길이를 검증합니다. */
     private String normalizeReason(String reason) {
         if (reason == null || reason.isBlank() || reason.length() > MAX_REASON_LENGTH) {
             throw new AdminException(AdminErrorCode.OUTBOX_EVENT_RETRY_REASON_REQUIRED);
@@ -85,6 +87,7 @@ public class AdminOutboxEventRecoveryService {
             String lastError,
             LocalDateTime updatedAt
     ) {
+        /** 이벤트 처리 전후 상태에서 감사 기록용 불변 스냅샷을 생성합니다. */
         private static RetryAuditState from(OutboxEventOperationSnapshot event) {
             return new RetryAuditState(
                     event.status(),
