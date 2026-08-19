@@ -18,7 +18,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/consultations")
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Consulting", description = "컨설팅 API")
 public class ConsultationIntroController {
 
     private final ConsultationIntroService consultationIntroService;

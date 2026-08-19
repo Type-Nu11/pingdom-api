@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/places/{placeId}/map-link-conversions")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "App Place", description = "앱용 장소 API")
+@Tag(name = "App", description = "앱 전용 API")
 public class MapLinkConversionController {
     private final MapLinkConversionEventService service;
 

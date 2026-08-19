@@ -21,7 +21,7 @@ import org.springframework.validation.annotation.Validated;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @Validated
-@Tag(name = "App Place", description = "앱용 장소 API")
+@Tag(name = "App", description = "앱 전용 API")
 public class MerchantPlaceInformationReverificationController {
 
     private final PlaceInformationReverificationService service;

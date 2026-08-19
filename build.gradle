@@ -77,7 +77,7 @@ tasks.named('test') {
 def openApiOutputDir = layout.buildDirectory.dir('openapi')
 def openApiBaselineDir = layout.projectDirectory.dir('src/test/resources/openapi-baseline')
 def openApiDiffOutputDir = layout.buildDirectory.dir('reports/openapi-diff')
-def openApiSpecs = ['openapi.json', 'app.json', 'common.json', 'web.json']
+def openApiSpecs = ['openapi.json', 'app.json', 'common.json', 'consulting.json', 'web.json']
 
 tasks.register('exportOpenApiSpecs', JavaExec) {
     group = 'documentation'
