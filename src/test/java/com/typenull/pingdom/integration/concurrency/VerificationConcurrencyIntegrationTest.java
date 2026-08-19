@@ -1,4 +1,4 @@
-package com.typenull.pingdom.concurrency;
+package com.typenull.pingdom.integration.concurrency;
 
 import static com.typenull.pingdom.verification.VerificationSecurityFixture.*;
 import static org.assertj.core.api.Assertions.assertThat;

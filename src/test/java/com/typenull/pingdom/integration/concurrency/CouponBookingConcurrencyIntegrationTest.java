@@ -1,4 +1,4 @@
-package com.typenull.pingdom.concurrency;
+package com.typenull.pingdom.integration.concurrency;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;

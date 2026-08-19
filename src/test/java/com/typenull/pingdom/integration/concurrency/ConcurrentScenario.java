@@ -1,4 +1,4 @@
-package com.typenull.pingdom.concurrency;
+package com.typenull.pingdom.integration.concurrency;
 
 import java.time.Duration;
 import java.util.List;
