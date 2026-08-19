@@ -14,6 +14,7 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/** 장소 기본 조회와 상태·소유자·중복 판정을 위한 영속성 경계를 제공합니다. */
 public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     Optional<MapPlace> findByKakaoPlaceId(String kakaoPlaceId);
 
