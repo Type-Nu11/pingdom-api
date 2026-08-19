@@ -32,6 +32,9 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -63,6 +66,7 @@ public class MerchantOwnerAdminService {
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AdminRoleAuthorizationService authorizationService;
+    private final PlaceRegistrationApplicationRepository applicationRepository;
 
     @Transactional(readOnly = true)
     public MerchantOwnerProfilePageResponse list(MerchantOwnerStatus status, int page, int limit) {
@@ -107,6 +111,7 @@ public class MerchantOwnerAdminService {
             MerchantOwnerReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        requireNoPendingUnifiedApplication(userId);
         User user = requireUserForUpdate(userId);
         LocalDateTime now = LocalDateTime.now(clock);
         if (user.isWithdrawn() || user.isCurrentlyBanned(now)) {
@@ -143,6 +148,7 @@ public class MerchantOwnerAdminService {
             MerchantOwnerReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        requireNoPendingUnifiedApplication(userId);
         User user = requireUserForUpdate(userId);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
@@ -372,6 +378,16 @@ public class MerchantOwnerAdminService {
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED));
         if (!verification.isFullyApproved() || !verification.matchesBusinessName(businessName)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED);
+        }
+    }
+
+    private void requireNoPendingUnifiedApplication(Long userId) {
+        if (applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        )) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED);
         }
     }
 

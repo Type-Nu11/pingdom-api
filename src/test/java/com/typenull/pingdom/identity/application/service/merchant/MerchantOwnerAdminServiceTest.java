@@ -31,6 +31,9 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.Instant;
@@ -60,6 +63,7 @@ class MerchantOwnerAdminServiceTest {
     @Mock private ApplicationEventPublisher eventPublisher;
     @Mock private Clock clock;
     @Mock private AdminRoleAuthorizationService authorizationService;
+    @Mock private PlaceRegistrationApplicationRepository applicationRepository;
 
     @InjectMocks
     private MerchantOwnerAdminService adminService;
@@ -105,6 +109,26 @@ class MerchantOwnerAdminServiceTest {
         );
 
         verify(profileRepository, never()).findByUserIdForUpdate(userId);
+    }
+
+    @Test
+    void pendingUnifiedApplicationCannotBeApprovedThroughMerchantOwnerApi() {
+        Long userId = 1L;
+        when(applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> adminService.approve(
+                99L,
+                userId,
+                new MerchantOwnerReviewRequest("승인", Set.of())
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED)
+        );
+
+        verify(userRepository, never()).findByIdForUpdate(userId);
     }
 
     @Test
