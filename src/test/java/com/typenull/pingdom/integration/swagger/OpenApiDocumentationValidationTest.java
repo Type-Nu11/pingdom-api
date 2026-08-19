@@ -348,10 +348,10 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void deprecatedEndpointsAreMarkedInApiDocs() throws Exception {
+    void removedDeprecatedEndpointsAreAbsentFromApiDocs() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
-        assertThat(appDocument.at("/paths/~1firebase~1fcm-token/patch/deprecated").asBoolean()).isTrue();
+        assertThat(appDocument.path("paths").has("/firebase/fcm-token")).isFalse();
         assertThat(appDocument.path("paths").has("/place")).isFalse();
         assertThat(appDocument.path("paths").has("/users/bookmarks")).isFalse();
     }
