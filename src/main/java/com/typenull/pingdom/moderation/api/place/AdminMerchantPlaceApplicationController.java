@@ -13,6 +13,7 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.InvalidMediaTypeException;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -66,8 +67,16 @@ public class AdminMerchantPlaceApplicationController {
         MerchantPlaceApplicationService.DownloadedAttachment attachment =
                 service.downloadAttachmentForAdmin(admin.userId(), id, attachmentId);
         return ResponseEntity.ok()
-                .contentType(MediaType.parseMediaType(attachment.contentType()))
+                .contentType(resolveContentType(attachment.contentType()))
                 .body(attachment.bytes());
+    }
+
+    private MediaType resolveContentType(String contentType) {
+        try {
+            return MediaType.parseMediaType(contentType);
+        } catch (InvalidMediaTypeException exception) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 
     @PostMapping("/{id}/approve")
