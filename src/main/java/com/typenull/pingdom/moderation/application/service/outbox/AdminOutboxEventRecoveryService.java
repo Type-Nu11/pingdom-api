@@ -21,6 +21,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** 관리자 요청에 따른 outbox 이벤트 재처리와 재시도 이력 기록을 담당합니다. */
 public class AdminOutboxEventRecoveryService {
 
     private static final int MAX_REASON_LENGTH = 500;
