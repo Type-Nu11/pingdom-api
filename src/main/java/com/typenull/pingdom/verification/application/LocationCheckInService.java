@@ -20,6 +20,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 위치·시간·중복 조건을 검증해 방문 인증용 check-in 상태를 생성하고 조회합니다. */
 public class LocationCheckInService {
     private static final double EARTH_RADIUS_METERS = 6_371_000.0;
     private static final ZoneId CHECK_IN_ZONE = ZoneId.of("Asia/Seoul");
@@ -31,6 +32,7 @@ public class LocationCheckInService {
     private final LocationCheckInProperties properties;
 
     @Transactional
+    /** 요청 좌표가 장소 반경과 허용 시간 조건을 만족하는지 검증한 뒤 check-in을 저장합니다. */
     public LocationCheckInResponse checkIn(Long userId, LocationCheckInRequest request) {
         requireTourist(userId);
         Instant now = clock.instant();

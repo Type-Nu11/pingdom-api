@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 
 // JWT Access Token, Refresh Token 생성 클래스
 @Component
+/** JWT 발급·서명 검증·payload 파싱을 담당하며 토큰 상태를 호출자에게 명시적으로 반환합니다. */
 public class JwtTokenProvider {
 
     private final JwtProperties jwtProperties;
@@ -25,6 +26,7 @@ public class JwtTokenProvider {
     }
 
     // Access Token 생성 메서드
+    /** 사용자 식별자와 권한을 담은 access token을 발급합니다. */
     public String generateAccessToken(Long userId, String username, String role) {
         return buildToken(userId, username, role, jwtProperties.accessTokenExpirationSeconds(), "access");
     }
@@ -60,6 +62,7 @@ public class JwtTokenProvider {
         return validateAccessTokenStatus(accessToken) == TokenStatus.VALID;
     }
 
+    /** 만료·서명·필수 claim을 검증하고 access token payload를 파싱합니다. */
     public AccessTokenParseResult parseAccessToken(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);

@@ -29,6 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @Tag(name = "Common", description = "앱/웹 공통")
+/** 사용자와 관리자 로그인 요청을 인증 서비스로 전달하고 토큰 응답을 구성합니다. */
 public class AuthLoginController {
 
     private final AuthService authService;

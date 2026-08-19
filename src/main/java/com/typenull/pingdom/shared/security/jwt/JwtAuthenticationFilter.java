@@ -18,6 +18,7 @@ import org.springframework.web.filter.OncePerRequestFilter;
 
 // Authorization 헤더의 Bearer 토큰을 인증 객체로 변환하는 필터
 @Component
+/** 요청의 Bearer token을 해석해 유효한 경우 SecurityContext에 인증 주체를 설정합니다. */
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
     private static final String AUTHORIZATION_HEADER = "Authorization";
