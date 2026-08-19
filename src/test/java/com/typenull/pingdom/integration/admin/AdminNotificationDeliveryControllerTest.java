@@ -1,4 +1,4 @@
-package com.typenull.pingdom.admin;
+package com.typenull.pingdom.integration.admin;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
