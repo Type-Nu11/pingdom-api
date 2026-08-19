@@ -6,6 +6,7 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceClaimAttachme
 import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceClaimAttachmentService;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimAttachmentType;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,6 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/merchant-owner/place-claims/{claimId}/attachments")
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
+@Tag(name = "Web", description = "웹 전용 API")
 public class MerchantPlaceClaimAttachmentController {
     private final MerchantPlaceClaimAttachmentService service;
 
