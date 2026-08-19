@@ -73,6 +73,7 @@ public class RateLimitAspect {
             case MAP_IMAGE_LIKE -> abuseRateLimitService.checkMapImageLike(requiredUser(args).userId(), clientIp);
             case RECOMMENDATION_CLICK -> abuseRateLimitService.checkRecommendationClick(requiredUser(args).userId(), clientIp);
             case IMAGE_UPLOAD -> abuseRateLimitService.checkImageUpload(requiredUser(args).userId(), clientIp);
+            case CONSULTATION_INTRO -> abuseRateLimitService.checkConsultationIntro(clientIp);
         }
     }
 

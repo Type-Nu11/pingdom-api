@@ -176,6 +176,7 @@ class RedisRateLimitStoreTest {
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(1, Duration.ofHours(1)),
                 new WindowPolicy(100, Duration.ofHours(1)),
+                new WindowPolicy(2, Duration.ofMinutes(1)),
                 "test:rate-limit:",
                 failOpen
         );
