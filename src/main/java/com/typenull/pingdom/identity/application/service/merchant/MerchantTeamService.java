@@ -37,7 +37,7 @@ public class MerchantTeamService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    /** 관리자 권한을 확인하고 장소의 활성 팀원을 조회합니다. */
+    // 관리자 권한을 확인하고 장소의 활성 팀원을 조회합니다.
     public List<MerchantTeamMemberResponse> list(Long actorId, Long placeId) {
         requireManager(actorId, placeId);
         return memberRepository.findAllByPlaceIdAndStatusOrderByIdAsc(placeId, MerchantPlaceMemberStatus.ACTIVE)
@@ -45,7 +45,7 @@ public class MerchantTeamService {
     }
 
     @Transactional
-    /** 초대 대상과 역할을 검증한 뒤 만료 시각이 있는 팀 초대를 생성합니다. */
+    // 초대 대상과 역할을 검증한 뒤 만료 시각이 있는 팀 초대를 생성합니다.
     public MerchantTeamInvitationResponse invite(Long actorId, Long placeId, MerchantTeamInviteRequest request) {
         requireManager(actorId, placeId);
         if (request.role() == MerchantPlaceMemberRole.OWNER) {
@@ -79,7 +79,7 @@ public class MerchantTeamService {
     }
 
     @Transactional
-    /** 장소 팀원의 역할 변경 권한과 도메인 상태를 검증합니다. */
+    // 장소 팀원의 역할 변경 권한과 도메인 상태를 검증합니다.
     public MerchantTeamMemberResponse updateRole(Long actorId, Long placeId, Long memberId,
                                                   MerchantTeamRoleUpdateRequest request) {
         requireManager(actorId, placeId);
@@ -97,7 +97,7 @@ public class MerchantTeamService {
     }
 
     @Transactional
-    /** 초대 수신자 본인인지와 계정 상태를 확인한 뒤 초대를 수락합니다. */
+    // 초대 수신자 본인인지와 계정 상태를 확인한 뒤 초대를 수락합니다.
     public MerchantTeamMemberResponse acceptInvitation(Long actorId, Long invitationId) {
         MerchantPlaceInvitation invitation = invitationRepository.findByIdForUpdate(invitationId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
@@ -134,7 +134,7 @@ public class MerchantTeamService {
     }
 
     @Transactional
-    /** 관리자가 소유자가 아닌 팀원을 비활성화합니다. */
+    // 관리자가 소유자가 아닌 팀원을 비활성화합니다.
     public void revoke(Long actorId, Long placeId, Long memberId) {
         requireManager(actorId, placeId);
         MerchantPlaceMember member = memberRepository.findById(memberId)
@@ -146,7 +146,7 @@ public class MerchantTeamService {
         member.revoke(LocalDateTime.now(clock));
     }
 
-    /** 장소 소유자 또는 관리자 역할인지 확인하고 아니면 권한 예외를 발생시킵니다. */
+    // 장소 소유자 또는 관리자 역할인지 확인하고 아니면 권한 예외를 발생시킵니다.
     private void requireManager(Long actorId, Long placeId) {
         MerchantPlaceMember member = memberRepository.findByPlaceIdAndUserId(placeId, actorId)
                 .orElseGet(() -> ownerPlaceRepository.findById(placeId)
