@@ -22,13 +22,12 @@ class LocationAnalysisPromptFactoryTest {
 
         AiAnalysisPrompt prompt = factory.create(request, LocalDate.of(2026, 8, 18));
 
-        assertThat(prompt.content()).contains("MCP 조회 결과");
+        assertThat(prompt.content()).contains("Pingdom MCP 서버", "읽기 전용 도구");
         assertThat(prompt.content()).contains("서울 강남구", "카페", "20-39 여성", "18:00-22:00");
         assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설", "분석 범위", "데이터 출처");
         assertThat(prompt.content()).contains(
                 "recommendedPlaces", "derivedFromPlace", "반경",
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
-                "MCP_RECOMMENDATION_JSON_BEGIN", "MCP_RECOMMENDATION_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
                 "\"html\"",
                 "additionalCriteria", "고정 스타일"
@@ -52,21 +51,4 @@ class LocationAnalysisPromptFactoryTest {
                 .containsEntry("monthlyBudget", 5000000);
     }
 
-    @Test
-    void includesMcpResultInsideDelimitedDataSection() {
-        LocationAnalysisRequest request = new LocationAnalysisRequest();
-        request.setRegion("서울 강남구");
-
-        AiAnalysisPrompt prompt = factory.create(
-                request,
-                LocalDate.of(2026, 8, 18),
-                "{\"recommendations\":[{\"name\":\"테스트 장소\"}]}"
-        );
-
-        assertThat(prompt.content()).contains(
-                "[MCP_RECOMMENDATION_JSON_BEGIN]",
-                "테스트 장소",
-                "[MCP_RECOMMENDATION_JSON_END]"
-        );
-    }
 }

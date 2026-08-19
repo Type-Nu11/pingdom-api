@@ -11,8 +11,6 @@ SPRING_PROFILES_ACTIVE=local \
 AI_PROVIDER=gemini \
 GEMINI_API_KEY=your-api-key \
 AI_MODEL=gemini-3.1-flash-lite \
-MCP_ENABLED=true \
-MCP_BASE_URL=http://127.0.0.1:8080 \
 ./gradlew bootRun
 ```
 
@@ -35,11 +33,10 @@ AI_MODEL=qwen2.5:7b \
 
 `POST /analysis/reports/location` 요청이 들어오면 서버는 다음 순서로 처리합니다.
 
-1. 프론트 입력(`category`, `region`, `targetCustomerGroup`, `operatingHours`)을 프롬프트에 삽입합니다.
-2. `MCP_ENABLED=true`이면 pingdom-mcp의 `/recommend`를 조회합니다.
-3. MCP 결과를 별도 구분자로 감싼 하나의 프롬프트에 포함합니다.
-4. Gemini 또는 Ollama에서 고정 JSON envelope(`reportName`, `html`)를 받습니다.
-5. 서버가 HTML 안전성·필수 필드를 검증한 뒤 PDF로 변환합니다.
+1. 프론트 입력(`category`, `region`, `targetCustomerGroup`, `operatingHours` 및 기타 조건)을 하나의 프롬프트에 삽입합니다.
+2. Gemini가 연결된 Pingdom MCP 읽기 전용 도구를 사용해 DB를 조회합니다.
+3. Gemini에서 고정 JSON envelope(`reportName`, `html`)를 받습니다.
+4. 서버가 HTML 안전성·필수 필드를 검증한 뒤 PDF로 변환합니다.
 
 ## 주요 환경변수
 
@@ -51,7 +48,5 @@ AI_MODEL=qwen2.5:7b \
 | `AI_MODEL` | Gemini 또는 Ollama 모델명 |
 | `AI_CONNECT_TIMEOUT` | 연결 제한 시간 |
 | `AI_READ_TIMEOUT` | 응답 제한 시간 |
-| `MCP_ENABLED` | MCP `/recommend` 조회 여부 |
-| `MCP_BASE_URL` | pingdom-mcp 주소 |
 
 Gemini 무료 티어의 모델별 한도와 요금은 Google 공식 가격·제한 문서를 확인해야 합니다.

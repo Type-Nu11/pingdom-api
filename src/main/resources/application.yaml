@@ -15,12 +15,6 @@ analysis:
     api-key: ${GEMINI_API_KEY:${AI_API_KEY:}}
     connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
     read-timeout: ${AI_READ_TIMEOUT:2m}
-  mcp:
-    enabled: ${MCP_ENABLED:false}
-    base-url: ${MCP_BASE_URL:http://localhost:8080}
-    connect-timeout: ${MCP_CONNECT_TIMEOUT:2s}
-    read-timeout: ${MCP_READ_TIMEOUT:30s}
-
 spring:
   application:
     name: Pingdom
