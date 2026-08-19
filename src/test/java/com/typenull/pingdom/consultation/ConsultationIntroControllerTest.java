@@ -35,10 +35,10 @@ class ConsultationIntroControllerTest {
     private RateLimitStore rateLimitStore;
 
     @Test
-    void documentsConsultationIntroInWebTag() throws Exception {
+    void documentsConsultationIntroInConsultingTag() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.paths['/consultations/intro'].post.tags[0]").value("Web"));
+                .andExpect(jsonPath("$.paths['/consultations/intro'].post.tags[0]").value("Consulting"));
     }
 
     @Test
