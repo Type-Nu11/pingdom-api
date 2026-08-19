@@ -1,4 +1,4 @@
-package com.typenull.pingdom.moderation.trust.fixture;
+package com.typenull.pingdom.fixture.moderation.trust.fixture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

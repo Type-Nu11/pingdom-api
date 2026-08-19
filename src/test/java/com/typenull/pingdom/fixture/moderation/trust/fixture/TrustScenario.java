@@ -1,4 +1,4 @@
-package com.typenull.pingdom.moderation.trust.fixture;
+package com.typenull.pingdom.fixture.moderation.trust.fixture;
 
 import java.util.List;
 

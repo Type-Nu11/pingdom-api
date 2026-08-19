@@ -1,11 +1,11 @@
-package com.typenull.pingdom.moderation.trust;
+package com.typenull.pingdom.fixture.moderation.trust;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import com.typenull.pingdom.moderation.trust.fixture.TrustLayerFixtures;
-import com.typenull.pingdom.moderation.trust.fixture.TrustReporterFixture;
-import com.typenull.pingdom.moderation.trust.fixture.TrustScenario;
-import com.typenull.pingdom.moderation.trust.fixture.TrustScenarioType;
+import com.typenull.pingdom.fixture.moderation.trust.fixture.TrustLayerFixtures;
+import com.typenull.pingdom.fixture.moderation.trust.fixture.TrustReporterFixture;
+import com.typenull.pingdom.fixture.moderation.trust.fixture.TrustScenario;
+import com.typenull.pingdom.fixture.moderation.trust.fixture.TrustScenarioType;
 import java.util.stream.Stream;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
