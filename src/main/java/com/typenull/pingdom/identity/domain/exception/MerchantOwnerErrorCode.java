@@ -22,6 +22,7 @@ public enum MerchantOwnerErrorCode implements ErrorCode {
     VERIFICATION_NOT_FOUND(HttpStatus.NOT_FOUND, "Merchant 신원 및 사업자 검증 신청을 찾을 수 없습니다."),
     VERIFICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 Merchant 검증 신청이 존재합니다."),
     INVALID_VERIFICATION_STATE(HttpStatus.CONFLICT, "현재 Merchant 검증 상태에서는 요청을 처리할 수 없습니다."),
+    UNIFIED_APPLICATION_REVIEW_REQUIRED(HttpStatus.CONFLICT, "심사 대기 중인 통합 사업자·장소 신청은 통합 신청 심사 경로에서 처리해야 합니다."),
     VERIFICATION_REQUIRED(HttpStatus.CONFLICT, "신원 및 사업자 검증이 모두 승인되어야 합니다."),
     PLACE_CLAIM_NOT_FOUND(HttpStatus.NOT_FOUND, "상점 장소 Claim 요청을 찾을 수 없습니다."),
     PLACE_CLAIM_ALREADY_PENDING(HttpStatus.CONFLICT, "해당 장소에는 심사 대기 중인 Claim 요청이 이미 있습니다."),
