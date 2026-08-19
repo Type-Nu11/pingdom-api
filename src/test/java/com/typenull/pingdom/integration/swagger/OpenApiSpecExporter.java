@@ -44,6 +44,7 @@ public class OpenApiSpecExporter {
                     "openapi.json", "/v3/api-docs",
                     "app.json", "/v3/api-docs/app",
                     "common.json", "/v3/api-docs/common",
+                    "consulting.json", "/v3/api-docs/consulting",
                     "web.json", "/v3/api-docs/web"
             );
 
