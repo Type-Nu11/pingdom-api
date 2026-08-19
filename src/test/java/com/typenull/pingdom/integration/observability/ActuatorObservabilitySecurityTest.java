@@ -1,4 +1,4 @@
-package com.typenull.pingdom.observability;
+package com.typenull.pingdom.integration.observability;
 
 import static org.hamcrest.Matchers.not;
 import static org.hamcrest.Matchers.blankOrNullString;
