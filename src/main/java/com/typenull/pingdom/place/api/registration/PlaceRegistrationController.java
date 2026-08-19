@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/place-registration-applications")
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "Web", description = "웹 전용 API")
 public class PlaceRegistrationController {
     private final PlaceRegistrationService service;
 
