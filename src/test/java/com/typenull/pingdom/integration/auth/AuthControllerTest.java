@@ -229,6 +229,16 @@ class AuthControllerTest {
     }
 
     @Test
+    void tokenRefreshCorsAllowsLocalhost5174AndCredentials() throws Exception {
+        mockMvc.perform(options("/auth/token/refresh")
+                        .header(HttpHeaders.ORIGIN, "http://localhost:5174")
+                        .header(HttpHeaders.ACCESS_CONTROL_REQUEST_METHOD, "POST"))
+                .andExpect(status().isOk())
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_ORIGIN, "http://localhost:5174"))
+                .andExpect(header().string(HttpHeaders.ACCESS_CONTROL_ALLOW_CREDENTIALS, "true"));
+    }
+
+    @Test
     void verifyEmailMarksUserAsVerified() throws Exception {
         SignupRequest signupRequest = new SignupRequest("emailuser", "emailuser@example.com", "password123", 1998, null, "ko", "KR");
         mockMvc.perform(post("/auth/signup")
