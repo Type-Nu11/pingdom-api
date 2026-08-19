@@ -67,6 +67,10 @@ public class SpringdocGroupsConfig {
     }
 
     private boolean hasTag(Method method, String tagName) {
+        Tag methodTag = method.getAnnotation(Tag.class);
+        if (methodTag != null) {
+            return tagName.equals(methodTag.name());
+        }
         Tag tag = method.getDeclaringClass().getAnnotation(Tag.class);
         return tag != null && tagName.equals(tag.name());
     }
