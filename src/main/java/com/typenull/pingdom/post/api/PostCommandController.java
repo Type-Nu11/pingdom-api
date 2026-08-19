@@ -146,46 +146,12 @@ public class PostCommandController {
             @Valid @ModelAttribute PostUploadRequest request,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_CREATE);
-        recordCoordinatePlaceCreationAttempt(request);
-        return uploadPostInternal(request, user);
-    }
-
-    @Deprecated
-    @PostMapping(value = "/post/create", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(
-            summary = "게시글 업로드(구 경로)",
-            description = "기존 게시글 업로드 경로입니다. `/map/posts` 사용을 권장합니다.",
-            deprecated = true
-    )
-    @RateLimited(RateLimitAction.IMAGE_UPLOAD)
-    public ResponseEntity<PostResponse> uploadPostLegacy(
-            @Valid @ModelAttribute PostUploadRequest request,
-            @CurrentUser JwtAuthenticatedUser user
-    ) {
-        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_CREATE);
         recordCoordinatePlaceCreationAttempt(request);
         return uploadPostInternal(request, user);
     }
 
     @PostMapping("/posts/{id}")
     public ResponseEntity<PostUpdateResponse> updatePost(
-            @Valid @ModelAttribute PostUpdateRequest request,
-            @CurrentUser JwtAuthenticatedUser user,
-            @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
-    ) {
-        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_UPDATE);
-        return updatePostInternal(request, user, imageId);
-    }
-
-    @Deprecated
-    @PostMapping("/post/{id}/update")
-    @Operation(
-            summary = "게시글 수정(구 경로)",
-            description = "기존 게시글 수정 경로입니다. `/map/posts/{id}` 사용을 권장합니다.",
-            deprecated = true
-    )
-    public ResponseEntity<PostUpdateResponse> updatePostLegacy(
             @Valid @ModelAttribute PostUpdateRequest request,
             @CurrentUser JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
@@ -252,21 +218,6 @@ public class PostCommandController {
             )
     })
     public ResponseEntity<String> delete(
-            @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
-            @CurrentUser JwtAuthenticatedUser user
-    ) {
-        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_DELETE);
-        return deleteInternal(imageId, user);
-    }
-
-    @Deprecated
-    @DeleteMapping("/post/{id}/delete")
-    @Operation(
-            summary = "게시글 삭제(구 경로)",
-            description = "기존 게시글 삭제 경로입니다. `/map/posts/{id}` 사용을 권장합니다.",
-            deprecated = true
-    )
-    public ResponseEntity<String> deleteLegacy(
             @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @CurrentUser JwtAuthenticatedUser user
     ) {

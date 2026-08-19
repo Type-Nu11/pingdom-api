@@ -12,8 +12,6 @@ import com.typenull.pingdom.engagement.application.service.MapImageLikeService;
 import com.typenull.pingdom.engagement.application.service.PostReportService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
-import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
-import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -47,7 +45,6 @@ public class EngagementController {
     private final PostReportService postReportService;
     private final PostReportQueryService postReportQueryService;
     private final MapImageLikeService mapImageLikeService;
-    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping("/posts/{id}/report")
     @Operation(
@@ -125,23 +122,6 @@ public class EngagementController {
     })
     @RateLimited(RateLimitAction.POST_REPORT)
     public ResponseEntity<String> report(
-            @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
-            @Valid @RequestBody PostReportRequest request,
-            @CurrentUser JwtAuthenticatedUser user
-    ) {
-        legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_REPORT);
-        return reportInternal(imageId, request, user);
-    }
-
-    @Deprecated
-    @PostMapping("/post/{id}/report")
-    @Operation(
-            summary = "게시글 신고(구 경로)",
-            description = "기존 게시글 신고 경로입니다. `/map/posts/{id}/report` 사용을 권장합니다.",
-            deprecated = true
-    )
-    @RateLimited(RateLimitAction.POST_REPORT)
-    public ResponseEntity<String> reportLegacy(
             @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Valid @RequestBody PostReportRequest request,
             @CurrentUser JwtAuthenticatedUser user

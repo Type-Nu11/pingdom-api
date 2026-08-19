@@ -124,24 +124,14 @@ class MapPostUploadControllerTest {
     }
 
     @Test
-    void uploadPostLegacyAliasStillWorks() throws Exception {
-        givenSuccessfulImageUpload(
-                "map/legacy-key.jpg",
-                "https://example.com/legacy-key.jpg",
-                "map/thumbnails/legacy-key-thumbnail.jpg",
-                "https://example.com/legacy-key-thumbnail.jpg"
-        );
-
+    void uploadPostLegacyRouteIsNotMapped() throws Exception {
         String accessToken = signupAndLogin("writer-legacy-upload");
-        MapPlace mapPlace = createMapPlace();
 
         mockMvc.perform(multipart("/map/post/create")
                         .file(imageFile("legacy-post.jpg"))
                         .param("title", "레거시 업로드")
-                        .param("placeId", mapPlace.getId().toString())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.message").value("게시글을 저장했습니다."));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -199,7 +189,7 @@ class MapPostUploadControllerTest {
     }
 
     @Test
-    void uploadPostLegacyRejectsCoordinateBasedPlaceCreationWithoutApproval() throws Exception {
+    void uploadPostLegacyRouteIsNotMappedForCoordinateBasedRequest() throws Exception {
         String accessToken = signupAndLogin("writer-pin-legacy-01");
         String coordinateToken = createCoordinateToken(accessToken, null, 35.1805, 128.1082);
 
@@ -211,8 +201,7 @@ class MapPostUploadControllerTest {
                         .param("category", "풍경")
                         .param("coordinateToken", coordinateToken)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
+                .andExpect(status().isNotFound());
 
         assertEquals(0L, mapPlaceRepository.count());
         assertEquals(0L, mapImageRepository.count());
@@ -354,7 +343,7 @@ class MapPostUploadControllerTest {
     }
 
     @Test
-    void deletePostLegacyAliasStillWorks() throws Exception {
+    void deletePostLegacyRouteIsNotMapped() throws Exception {
         String accessToken = signupAndLogin("writer-legacy-delete");
         Long userId = userRepository.findByUsername("writer-legacy-delete").orElseThrow().getId();
         MapImage mapImage = mapImageRepository.save(MapImage.builder()
@@ -366,8 +355,7 @@ class MapPostUploadControllerTest {
 
         mockMvc.perform(delete("/map/post/{id}/delete", mapImage.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$").value("게시글을 삭제했습니다."));
+                .andExpect(status().isNotFound());
     }
 
     @Test
