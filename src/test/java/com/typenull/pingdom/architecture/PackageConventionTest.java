@@ -14,6 +14,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
+/** 운영 코드의 패키지 계층 규칙이 소스 경로와 일치하는지 검증합니다. */
 class PackageConventionTest {
 
     private static final Path JAVA_SOURCE_ROOT = Path.of("src/main/java");
