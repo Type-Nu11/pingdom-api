@@ -1,4 +1,4 @@
-package com.typenull.pingdom.admin;
+package com.typenull.pingdom.integration.admin;
 
 import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.hamcrest.Matchers.nullValue;
