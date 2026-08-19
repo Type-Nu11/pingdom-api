@@ -9,7 +9,7 @@ server:
 
 analysis:
   ai:
-    provider: ${AI_PROVIDER:placeholder}
+    provider: ${AI_PROVIDER:gemini}
     base-url: ${AI_BASE_URL:}
     model: ${AI_MODEL:}
     api-key: ${GEMINI_API_KEY:${AI_API_KEY:}}

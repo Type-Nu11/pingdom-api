@@ -15,7 +15,7 @@ public record AiAnalysisProperties(
 ) {
 
     public AiAnalysisProperties {
-        provider = defaultValue(provider, "placeholder");
+        provider = defaultValue(provider, "gemini");
         baseUrl = defaultValue(baseUrl, defaultBaseUrl(provider));
         model = defaultValue(model, defaultModel(provider));
         apiKey = apiKey == null ? "" : apiKey;
