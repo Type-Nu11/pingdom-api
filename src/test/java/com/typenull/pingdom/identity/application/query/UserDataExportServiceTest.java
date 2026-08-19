@@ -1,4 +1,4 @@
-package com.typenull.pingdom.users;
+package com.typenull.pingdom.identity.application.query;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.groups.Tuple.tuple;
