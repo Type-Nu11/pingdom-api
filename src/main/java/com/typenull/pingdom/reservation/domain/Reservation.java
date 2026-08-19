@@ -12,6 +12,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Table(name = "reservation")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+/** 예약의 대상 상품, 멱등 키와 예약 상태 전이를 보유하는 핵심 도메인입니다. */
 public class Reservation {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -80,6 +81,7 @@ public class Reservation {
         return reservation;
     }
 
+    /** 결제·재고 조건이 충족된 예약을 확정 상태로 전환합니다. */
     public void confirm(LocalDateTime now) {
         if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 확정할 수 있습니다.");
         status = ReservationStatus.CONFIRMED;

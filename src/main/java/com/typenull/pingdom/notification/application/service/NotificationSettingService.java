@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
+/** 사용자별 알림 채널과 수신 설정을 조회·변경합니다. */
 public class NotificationSettingService {
 
     private final UserRepository userRepository;

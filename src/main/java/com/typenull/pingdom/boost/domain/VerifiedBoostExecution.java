@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Table(name = "verified_boost_execution")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+/** 검증된 부스트 상품의 집행 기간과 시점별 유효 상태를 관리합니다. */
 public class VerifiedBoostExecution {
 
     @Id
