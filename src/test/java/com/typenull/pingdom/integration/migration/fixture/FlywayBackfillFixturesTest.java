@@ -1,4 +1,4 @@
-package com.typenull.pingdom.migration.fixture;
+package com.typenull.pingdom.integration.migration.fixture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 

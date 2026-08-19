@@ -52,7 +52,7 @@ jobs:
 
       - name: Run migration test gate
         if: github.event_name == 'push' && github.ref == 'refs/heads/release'
-        run: ./gradlew --no-daemon --build-cache --configuration-cache test --tests com.typenull.pingdom.migration.FlywayMigrationIntegrationTest
+        run: ./gradlew --no-daemon --build-cache --configuration-cache test --tests com.typenull.pingdom.integration.migration.FlywayMigrationIntegrationTest
 
       - name: Build bootJar
         run: ./gradlew --no-daemon --build-cache --configuration-cache bootJar -x test

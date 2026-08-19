@@ -1,4 +1,4 @@
-package com.typenull.pingdom.migration;
+package com.typenull.pingdom.integration.migration;
 
 import java.sql.Connection;
 import java.sql.DriverManager;

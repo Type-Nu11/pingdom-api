@@ -1,10 +1,10 @@
-package com.typenull.pingdom.migration;
+package com.typenull.pingdom.integration.migration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.typenull.pingdom.migration.fixture.FlywayBackfillScenario;
-import com.typenull.pingdom.migration.fixture.FlywayBackfillFixtures;
+import com.typenull.pingdom.integration.migration.fixture.FlywayBackfillScenario;
+import com.typenull.pingdom.integration.migration.fixture.FlywayBackfillFixtures;
 import java.sql.Connection;
 import java.sql.ResultSet;
 import java.sql.Statement;

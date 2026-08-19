@@ -1,4 +1,4 @@
-package com.typenull.pingdom.migration.fixture;
+package com.typenull.pingdom.integration.migration.fixture;
 
 import java.util.List;
 
