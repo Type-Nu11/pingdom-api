@@ -44,6 +44,7 @@ public class MerchantTeamService {
 
     @Transactional
     public MerchantTeamInvitationResponse invite(Long actorId, Long placeId, MerchantTeamInviteRequest request) {
+        lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
         if (request.role() == MerchantPlaceMemberRole.OWNER) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
@@ -78,6 +79,7 @@ public class MerchantTeamService {
     @Transactional
     public MerchantTeamMemberResponse updateRole(Long actorId, Long placeId, Long memberId,
                                                   MerchantTeamRoleUpdateRequest request) {
+        lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
         MerchantPlaceMember member = memberRepository.findById(memberId)
                 .filter(candidate -> candidate.getPlaceId().equals(placeId))
@@ -94,6 +96,9 @@ public class MerchantTeamService {
 
     @Transactional
     public MerchantTeamMemberResponse acceptInvitation(Long actorId, Long invitationId) {
+        MerchantPlaceInvitation invitationSnapshot = invitationRepository.findById(invitationId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
+        lockPlaceOwnership(invitationSnapshot.getPlaceId());
         MerchantPlaceInvitation invitation = invitationRepository.findByIdForUpdate(invitationId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
         if (!invitation.getInviteeUserId().equals(actorId)) {
@@ -130,6 +135,7 @@ public class MerchantTeamService {
 
     @Transactional
     public void revoke(Long actorId, Long placeId, Long memberId) {
+        lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
         MerchantPlaceMember member = memberRepository.findById(memberId)
                 .filter(candidate -> candidate.getPlaceId().equals(placeId))
@@ -150,5 +156,10 @@ public class MerchantTeamService {
                 || (member.getRole() != MerchantPlaceMemberRole.OWNER && member.getRole() != MerchantPlaceMemberRole.MANAGER)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
         }
+    }
+
+    private void lockPlaceOwnership(Long placeId) {
+        ownerPlaceRepository.findByPlaceIdForUpdate(placeId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED));
     }
 }
