@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 @org.springframework.validation.annotation.Validated
+/** 관광객 예약 생성·조회·취소 요청을 예약 서비스로 전달합니다. */
 public class ReservationController {
     private final ReservationService service;
 

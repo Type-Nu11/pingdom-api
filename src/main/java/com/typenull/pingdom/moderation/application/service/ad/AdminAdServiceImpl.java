@@ -39,10 +39,17 @@ public class AdminAdServiceImpl implements AdminAdService {
             LocalDateTime startedFrom, LocalDateTime startedTo, int page, int limit) {
         int safePage = Math.max(1, Math.min(page, 10_000));
         int safeLimit = Math.max(1, Math.min(limit, 100));
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
         LocalDateTime now = LocalDateTime.now(clock);
         Page<AdminAd> ads = adminAdRepository.findAdminAds(
-                keyword == null || keyword.isBlank() ? null : keyword.trim(), displayStatus,
-                startedFrom, startedTo, now,
+                normalizedKeyword != null, normalizedKeyword,
+                startedFrom != null, startedFrom,
+                startedTo != null, startedTo,
+                displayStatus != null,
+                displayStatus == AdminAdDisplayStatus.SCHEDULED,
+                displayStatus == AdminAdDisplayStatus.ACTIVE,
+                displayStatus == AdminAdDisplayStatus.EXPIRED,
+                now,
                 PageRequest.of(safePage - 1, safeLimit, Sort.by("createdAt").descending().and(Sort.by("id").descending())));
         return new AdminAdListResponse(ads.getContent().stream().map(ad -> toItem(ad, now)).toList(),
                 safePage, safeLimit, ads.getTotalElements(), ads.getTotalPages(), ads.hasNext());

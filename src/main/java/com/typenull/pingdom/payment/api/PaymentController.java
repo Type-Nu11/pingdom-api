@@ -20,6 +20,7 @@ import org.springframework.web.bind.annotation.*;
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 @org.springframework.validation.annotation.Validated
+/** 결제 내역과 결제 상태 조회 API의 진입점입니다. */
 public class PaymentController {
     private final PaymentQueryService queryService;
 

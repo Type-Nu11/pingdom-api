@@ -1,0 +1,213 @@
+package com.typenull.pingdom.analysis.infrastructure.ai;
+
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.DeserializationFeature;
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
+import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
+import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
+import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
+import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
+import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
+import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Map;
+import org.springframework.http.MediaType;
+import org.springframework.util.StringUtils;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+
+/** Gemini tool call과 Pingdom MCP tool 실행을 중계하는 클라이언트다. */
+public class GeminiAiAnalysisClient implements AiAnalysisClient {
+
+    private static final int MAX_TOOL_CALLS = 3;
+
+    private final RestClient restClient;
+    private final AiAnalysisProperties properties;
+    private final ObjectMapper objectMapper;
+    private final McpAnalysisClient mcpAnalysisClient;
+
+    public GeminiAiAnalysisClient(
+            RestClient restClient,
+            AiAnalysisProperties properties,
+            ObjectMapper objectMapper
+    ) {
+        this(restClient, properties, objectMapper, new DisabledMcpAnalysisClient());
+    }
+
+    public GeminiAiAnalysisClient(
+            RestClient restClient,
+            AiAnalysisProperties properties,
+            ObjectMapper objectMapper,
+            McpAnalysisClient mcpAnalysisClient
+    ) {
+        this.restClient = restClient;
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+        this.mcpAnalysisClient = mcpAnalysisClient;
+    }
+
+    @Override
+    public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
+        if (!StringUtils.hasText(properties.apiKey())) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, null);
+        }
+
+        List<McpAnalysisClient.McpTool> mcpTools = mcpAnalysisClient.listTools();
+        ArrayNode contents = objectMapper.createArrayNode();
+        contents.addObject()
+                .put("role", "user")
+                .putArray("parts")
+                .addObject()
+                .put("text", prompt.content());
+
+        for (int toolCallCount = 0; toolCallCount <= MAX_TOOL_CALLS; toolCallCount++) {
+            JsonNode response = generateContent(contents, mcpTools);
+            JsonNode modelContent = response.path("candidates").path(0).path("content");
+            JsonNode functionCall = findFunctionCall(modelContent);
+            if (functionCall == null) {
+                return parseFinalResponse(extractText(response), prompt);
+            }
+            if (toolCallCount == MAX_TOOL_CALLS) {
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+
+            String name = functionCall.path("name").asText(null);
+            Map<String, Object> arguments = objectMapper.convertValue(
+                    functionCall.path("args"), Map.class
+            );
+            if (!StringUtils.hasText(name)) {
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+
+            contents.add(modelContent.deepCopy());
+            McpAnalysisClient.McpToolResult toolResult = mcpAnalysisClient.callTool(name, arguments);
+            appendFunctionResponse(contents, toolResult);
+        }
+        throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+    }
+
+    private JsonNode generateContent(ArrayNode contents, List<McpAnalysisClient.McpTool> mcpTools) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.set("contents", contents);
+        if (!mcpTools.isEmpty()) {
+            ArrayNode declarations = body.putArray("tools").addObject().putArray("functionDeclarations");
+            for (McpAnalysisClient.McpTool tool : mcpTools) {
+                ObjectNode declaration = declarations.addObject();
+                declaration.put("name", tool.name());
+                declaration.put("description", tool.description());
+                declaration.set("parameters", objectMapper.valueToTree(tool.inputSchema()));
+            }
+        }
+        ObjectNode generationConfig = body.putObject("generationConfig");
+        generationConfig.put("responseMimeType", "application/json");
+        generationConfig.put("temperature", 0.2);
+
+        try {
+            JsonNode response = restClient.post()
+                    .uri("models/{model}:generateContent", properties.model())
+                    .header("x-goog-api-key", properties.apiKey())
+                    .contentType(MediaType.APPLICATION_JSON)
+                    .body(body)
+                    .retrieve()
+                    .body(JsonNode.class);
+            if (response == null) {
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+            return response;
+        } catch (RestClientException exception) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, exception);
+        }
+    }
+
+    private JsonNode findFunctionCall(JsonNode modelContent) {
+        for (JsonNode part : modelContent.path("parts")) {
+            if (part.path("functionCall").isObject()) {
+                return part.path("functionCall");
+            }
+        }
+        return null;
+    }
+
+    private void appendFunctionResponse(
+            ArrayNode contents,
+            McpAnalysisClient.McpToolResult toolResult
+    ) {
+        ObjectNode content = contents.addObject().put("role", "user");
+        ObjectNode part = content.putArray("parts").addObject();
+        ObjectNode functionResponse = part.putObject("functionResponse");
+        functionResponse.put("name", toolResult.name());
+        ObjectNode response = functionResponse.putObject("response");
+        try {
+            response.set("result", objectMapper.readTree(toolResult.content()));
+        } catch (JsonProcessingException exception) {
+            response.put("result", toolResult.content());
+        }
+        response.put("isError", toolResult.isError());
+    }
+
+    private AiAnalysisResponse parseFinalResponse(String content, AiAnalysisPrompt prompt) {
+        if (!StringUtils.hasText(content)) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+        }
+        try {
+            String normalizedJson = normalizeJson(content);
+            JsonNode payload = objectMapper.readTree(normalizedJson);
+            if (payload.has("html")) {
+                return new AiAnalysisResponse(
+                        payload.path("reportName").asText(null),
+                        payload.path("html").asText(null),
+                        prompt.analysisBasisDate()
+                );
+            }
+            LocationAnalysisContent structured = objectMapper.reader()
+                    .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
+                    .forType(LocationAnalysisContent.class)
+                    .readValue(normalizedJson);
+            return new AiAnalysisResponse(structured, prompt.analysisBasisDate());
+        } catch (JsonProcessingException exception) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
+        }
+    }
+
+    private String extractText(JsonNode response) {
+        if (response == null || !response.has("candidates")) {
+            return null;
+        }
+        StringBuilder content = new StringBuilder();
+        for (JsonNode part : response.path("candidates").path(0).path("content").path("parts")) {
+            if (part.path("text").isTextual()) {
+                content.append(part.path("text").asText());
+            }
+        }
+        return content.toString();
+    }
+
+    private String normalizeJson(String content) {
+        String normalized = content.trim();
+        if (normalized.startsWith("```") && normalized.endsWith("```")) {
+            int firstLineEnd = normalized.indexOf('\n');
+            normalized = firstLineEnd < 0
+                    ? normalized.substring(3, normalized.length() - 3).trim()
+                    : normalized.substring(firstLineEnd + 1, normalized.length() - 3).trim();
+        }
+        return normalized;
+    }
+
+    private static final class DisabledMcpAnalysisClient implements McpAnalysisClient {
+
+        @Override
+        public List<McpTool> listTools() {
+            return List.of();
+        }
+
+        @Override
+        public McpToolResult callTool(String name, Map<String, Object> arguments) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.MCP_SERVICE_UNAVAILABLE, null);
+        }
+    }
+}

@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users/me/merchant-verification")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "Web", description = "웹 전용 API")
 public class MerchantVerificationController {
 
     private final MerchantVerificationService verificationService;

@@ -16,6 +16,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** Merchant가 제공하는 예약 가능 상품의 생성·수정·판매 상태를 관리합니다. */
 public class ReservableProductService {
     private final ReservableProductRepository repository;
     private final AvailabilityAccessPolicy accessPolicy;

@@ -32,6 +32,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
+/** 사용자 신호, 후보 원천, 정책 가중치와 운영 상태를 단계적으로 결합하는 장소 추천 오케스트레이터입니다. */
 public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQueryService {
 
     private static final int MIN_LIMIT = 1;
@@ -64,6 +65,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
     @Override
     @Transactional
+    /** 요청값을 보정하고 후보 수집부터 최종 재정렬·노출 기록까지 수행합니다. */
     public PlaceRecommendationResponse recommendPlaces(
             Long userId,
             double latitude,

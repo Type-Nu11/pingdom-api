@@ -43,6 +43,7 @@ public class UserSanctionCommandService {
     private volatile Boolean postgreSQL;
 
     @Transactional
+    /** 대상 사용자의 기존 제재 상태와 기간을 검증한 뒤 새 제재를 적용합니다. */
     public void applyBan(User targetUser, String reason, LocalDateTime now, LocalDateTime expiresAt, Long adminUserId) {
         User adminUser = findAdminUser(adminUserId);
         targetUser.ban(reason, now, expiresAt);

@@ -38,12 +38,14 @@ import org.springframework.util.StringUtils;
 @RequestMapping("/map")
 @RequiredArgsConstructor
 @Tag(name = "App", description = "앱 전용 API")
+/** 게시글 업로드·수정·삭제 요청을 검증하고 이미지 처리 흐름으로 전달합니다. */
 public class PostCommandController {
 
     private final S3Service s3Service;
     private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping(value = "/posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Tag(name = "Web", description = "웹 전용 API")
     @Operation(
             summary = "게시글 업로드",
             description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시)를 사용해 기존 장소에 게시글을 저장합니다. 장소 참조 없이 좌표 토큰만 전달하는 자동 장소 생성은 승인된 등록 신청 경로가 제공될 때까지 차단됩니다."
@@ -142,6 +144,7 @@ public class PostCommandController {
             )
     })
     @RateLimited(RateLimitAction.IMAGE_UPLOAD)
+    /** 장소 참조 방식에 따라 게시글 업로드 또는 승인된 장소 등록 흐름을 선택합니다. */
     public ResponseEntity<PostResponse> uploadPost(
             @Valid @ModelAttribute PostUploadRequest request,
             @CurrentUser JwtAuthenticatedUser user

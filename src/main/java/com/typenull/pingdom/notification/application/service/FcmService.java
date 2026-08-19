@@ -19,6 +19,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** 알림 도메인 이벤트를 FCM 메시지로 변환하고 전송 결과를 기록합니다. */
 public class FcmService {
 
     private final UserRepository userRepository;

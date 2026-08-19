@@ -11,6 +11,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Table(name = "payment_transaction")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+/** 예약 결제와 환불의 외부 거래 식별자 및 상태 전이를 관리합니다. */
 public class PaymentTransaction {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -79,6 +80,7 @@ public class PaymentTransaction {
         return transaction;
     }
 
+    /** 외부 결제 성공 결과를 금액·통화 검증과 함께 반영합니다. */
     public void succeed(String providerPaymentId, long amountMinor, String currency, LocalDateTime now) {
         requireStatus(PaymentStatus.PROCESSING);
         if (amountMinor <= 0) throw new IllegalArgumentException("결제 금액은 0보다 커야 합니다.");

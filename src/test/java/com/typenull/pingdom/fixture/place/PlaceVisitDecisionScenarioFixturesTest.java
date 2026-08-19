@@ -6,6 +6,7 @@ import java.util.EnumSet;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
+/** 방문 판단 테스트 fixture가 일관된 상태와 입력을 제공하는지 검증합니다. */
 class PlaceVisitDecisionScenarioFixturesTest {
 
     @Test

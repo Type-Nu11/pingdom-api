@@ -3,6 +3,7 @@
 name: pingdom
 
 services:
+  # 운영 의존성(PostgreSQL/PostGIS, Redis)을 먼저 기동하고 애플리케이션이 연결합니다.
   postgres:
     image: 'postgis/postgis:16-3.4'
     env_file:

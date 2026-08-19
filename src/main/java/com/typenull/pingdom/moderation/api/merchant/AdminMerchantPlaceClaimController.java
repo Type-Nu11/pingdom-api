@@ -16,12 +16,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 @RestController
-@RequestMapping({"/admin/merchant-place-claims", "/admin/place-registration-applications"})
 @RequiredArgsConstructor
 @AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
@@ -29,7 +27,10 @@ public class AdminMerchantPlaceClaimController {
 
     private final MerchantPlaceClaimAdminService claimAdminService;
 
-    @GetMapping
+    @GetMapping({
+            "/admin/merchant-place-claims",
+            "/admin/place-registration-applications"
+    })
     @Operation(summary = "상점 장소 Claim 요청 목록 조회")
     public AdminMerchantPlaceClaimPageResponse list(
             @RequestParam(required = false) MerchantPlaceClaimStatus status,
@@ -39,13 +40,16 @@ public class AdminMerchantPlaceClaimController {
         return claimAdminService.list(status, page, limit);
     }
 
-    @GetMapping("/{claimId}")
+    @GetMapping({
+            "/admin/merchant-place-claims/{claimId}",
+            "/admin/place-registration-applications/{claimId}"
+    })
     @Operation(summary = "상점 장소 Claim 요청 상세 조회")
     public AdminMerchantPlaceClaimResponse get(@PathVariable Long claimId) {
         return claimAdminService.get(claimId);
     }
 
-    @PostMapping("/{claimId}/review")
+    @PostMapping("/admin/merchant-place-claims/{claimId}/review")
     @Operation(summary = "상점 장소 Claim 요청 심사")
     public AdminMerchantPlaceClaimResponse review(
             @PathVariable Long claimId,

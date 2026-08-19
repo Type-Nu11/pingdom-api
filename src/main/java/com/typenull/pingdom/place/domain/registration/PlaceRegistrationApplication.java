@@ -44,6 +44,40 @@ public class PlaceRegistrationApplication {
     @Column(nullable = false, length = 20)
     private PlaceRegistrationStatus status;
 
+    @Enumerated(EnumType.STRING)
+    @Column(name = "application_type", nullable = false, length = 30)
+    private MerchantPlaceApplicationType applicationType = MerchantPlaceApplicationType.LEGACY;
+
+    @Column(name = "legal_name", length = 100)
+    private String legalName;
+
+    @Column(name = "business_name", length = 100)
+    private String businessName;
+
+    @Column(name = "business_registration_number", length = 255)
+    private String encryptedBusinessRegistrationNumber;
+
+    @Column(name = "merchant_display_name", length = 100)
+    private String merchantDisplayName;
+
+    @Column(name = "merchant_contact_email", length = 255)
+    private String merchantContactEmail;
+
+    @Column(name = "merchant_description", length = 1000)
+    private String merchantDescription;
+
+    @Column(name = "merchant_contact_phone", length = 30)
+    private String merchantContactPhone;
+
+    @Column(name = "existing_place_id")
+    private Long existingPlaceId;
+
+    @Column(name = "previous_owner_user_id")
+    private Long previousOwnerUserId;
+
+    @Column(name = "claim_reason", length = 500)
+    private String claimReason;
+
     @Column(name = "place_name", nullable = false, length = 100)
     private String placeName;
 
@@ -130,6 +164,12 @@ public class PlaceRegistrationApplication {
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
 
+    @Column(name = "completed_place_id")
+    private Long completedPlaceId;
+
+    @Column(name = "completed_at")
+    private LocalDateTime completedAt;
+
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
@@ -170,6 +210,50 @@ public class PlaceRegistrationApplication {
         if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
         this.businessContactPhone = businessContactPhone;
         this.applicantContactPhone = applicantContactPhone;
+    }
+
+    public void configureMerchantSubmission(
+            MerchantPlaceApplicationType applicationType,
+            String legalName,
+            String businessName,
+            String encryptedBusinessRegistrationNumber,
+            String merchantDisplayName,
+            String merchantContactEmail,
+            String merchantDescription,
+            String merchantContactPhone,
+            Long existingPlaceId,
+            Long previousOwnerUserId,
+            String claimReason,
+            LocalDateTime now
+    ) {
+        if (status != PlaceRegistrationStatus.DRAFT) {
+            throw new IllegalStateException("초안 상태의 신청만 사업자 정보를 수정할 수 있습니다.");
+        }
+        if (applicationType == null || applicationType == MerchantPlaceApplicationType.LEGACY
+                || legalName == null || legalName.isBlank()
+                || businessName == null || businessName.isBlank()
+                || encryptedBusinessRegistrationNumber == null || encryptedBusinessRegistrationNumber.isBlank()
+                || merchantDisplayName == null || merchantDisplayName.isBlank()
+                || merchantContactEmail == null || merchantContactEmail.isBlank()
+                || merchantContactPhone == null || merchantContactPhone.isBlank()) {
+            throw new IllegalArgumentException("필수 사업자 정보가 누락되었습니다.");
+        }
+        if (applicationType == MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM
+                && (existingPlaceId == null || claimReason == null || claimReason.isBlank())) {
+            throw new IllegalArgumentException("기존 장소 Claim에는 대상 장소와 사유가 필요합니다.");
+        }
+        this.applicationType = applicationType;
+        this.legalName = legalName.trim();
+        this.businessName = businessName.trim();
+        this.encryptedBusinessRegistrationNumber = encryptedBusinessRegistrationNumber;
+        this.merchantDisplayName = merchantDisplayName.trim();
+        this.merchantContactEmail = merchantContactEmail.trim();
+        this.merchantDescription = merchantDescription == null || merchantDescription.isBlank() ? null : merchantDescription.trim();
+        this.merchantContactPhone = merchantContactPhone;
+        this.existingPlaceId = applicationType == MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM ? existingPlaceId : null;
+        this.previousOwnerUserId = applicationType == MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM ? previousOwnerUserId : null;
+        this.claimReason = applicationType == MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM ? claimReason.trim() : null;
+        this.updatedAt = now;
     }
 
     public void updateOperatingSchedule(String timezone, String operatingScheduleJson, LocalDateTime now) {
@@ -322,6 +406,17 @@ public class PlaceRegistrationApplication {
         status = PlaceRegistrationStatus.REGISTERED;
         registeredPlaceId = placeId;
         registeredAt = now;
+        updatedAt = now;
+    }
+
+    public void complete(Long placeId, LocalDateTime now) {
+        requireStatus(PlaceRegistrationStatus.APPROVED);
+        if (placeId == null) {
+            throw new IllegalArgumentException("완료 장소 ID가 필요합니다.");
+        }
+        status = PlaceRegistrationStatus.COMPLETED;
+        completedPlaceId = placeId;
+        completedAt = now;
         updatedAt = now;
     }
 

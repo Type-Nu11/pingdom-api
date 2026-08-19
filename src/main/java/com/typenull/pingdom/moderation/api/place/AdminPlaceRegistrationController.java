@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationResponse
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationReviewRequest;
 import com.typenull.pingdom.place.application.service.registration.PlaceRegistrationService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -21,6 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RequestMapping("/admin/place-registration-applications")
 @AdminOnly
+@Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceRegistrationController {
     private final PlaceRegistrationService service;
     @GetMapping

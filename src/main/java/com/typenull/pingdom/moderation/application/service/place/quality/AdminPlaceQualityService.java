@@ -74,6 +74,7 @@ public class AdminPlaceQualityService {
     }
 
     @Transactional
+    /** 좌표 변경 전 유효 범위와 중복 여부를 검증하고 장소 좌표를 갱신합니다. */
     public AdminMapPlaceCoordinateUpdateResponse updatePlaceCoordinates(
             Long adminUserId,
             Long placeId,
