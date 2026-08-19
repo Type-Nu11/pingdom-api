@@ -7,6 +7,18 @@ server:
       remote-ip-header: X-Forwarded-For
       protocol-header: X-Forwarded-Proto
 
+analysis:
+  ai:
+    provider: ${AI_PROVIDER:gemini}
+    base-url: ${AI_BASE_URL:}
+    model: ${AI_MODEL:}
+    api-key: ${GEMINI_API_KEY:${AI_API_KEY:}}
+    connect-timeout: ${AI_CONNECT_TIMEOUT:2s}
+    read-timeout: ${AI_READ_TIMEOUT:2m}
+  mcp:
+    server-url: ${MCP_SERVER_URL:http://localhost:8081/mcp}
+    connect-timeout: ${MCP_CONNECT_TIMEOUT:2s}
+    read-timeout: ${MCP_READ_TIMEOUT:30s}
 spring:
   application:
     name: Pingdom
