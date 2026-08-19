@@ -129,6 +129,7 @@ DB claim 또는 idempotency가 있는 작업과 그렇지 않은 정리 작업�
 | Redis | rate limit, 분산 상태 | `REDIS_*` | 연결·timeout·key prefix |
 | AWS S3 | 이미지 저장 | `AWS_*` | bucket, region, credential |
 | Postmark | 이메일 인증·비밀번호 재설정 | `POSTMARK_*` | sender, callback base URL |
+| Gemini | 첫 상담 안내 생성 | `GEMINI_*` | 서버 전용 key, enabled kill switch, timeout, IP 제한 |
 | Google OAuth | OAuth 로그인 | `GOOGLE_*` | redirect URI |
 | FCM | push notification | `FCM_KEY_PATH` | 운영 key mount 여부 |
 
@@ -153,7 +154,8 @@ DB claim 또는 idempotency가 있는 작업과 그렇지 않은 정리 작업�
 값 자체를 로그나 티켓에 남기지 않고, 배포 환경에 키가 존재하는지만 확인한다. 최소 확인 대상은
 `DB_URL`, `DB_USERNAME`, `DB_PASSWORD`, `JWT_SECRET`, `MERCHANT_VERIFICATION_ENCRYPTION_KEY`,
 `AWS_S3_BUCKET`, `AWS_REGION`, `AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`다. 이메일·OAuth·FCM을
-사용하는 배포는 해당 provider 설정도 함께 확인한다.
+사용하는 배포는 해당 provider 설정도 함께 확인한다. Gemini 첫 상담 안내를 사용하는 배포는 `GEMINI_ENABLED`와
+`GEMINI_API_KEY`의 존재 여부만 확인하고 실제 값은 로그나 티켓에 남기지 않는다.
 
 프록시 뒤에서 실행한다면 `TRUSTED_PROXY_IPS_REGEX`가 실제 프록시 대역만 포함하는지 확인한다.
 허용되지 않은 forwarded header는 신뢰하지 않아야 하며, 기본 loopback 설정을 운영에서 그대로 사용하면
