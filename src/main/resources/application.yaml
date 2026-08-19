@@ -234,6 +234,9 @@ abuse:
     image-upload-ip:
       limit: 100
       window: PT1H
+    consultation-intro-ip:
+      limit: 10
+      window: PT1M
 
 gemini:
   enabled: ${GEMINI_ENABLED:false}
