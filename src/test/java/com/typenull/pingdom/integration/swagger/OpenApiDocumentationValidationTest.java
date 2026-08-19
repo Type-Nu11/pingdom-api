@@ -140,6 +140,18 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void defaultDocumentationExcludesAmbiguousLegacyAdminClaimDetailOperation() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs");
+
+        assertThat(document.path("paths")
+                .path("/admin/place-registration-applications/{id}")
+                .has("get")).isTrue();
+        assertThat(document.path("paths")
+                .path("/admin/place-registration-applications/{claimId}")
+                .has("get")).isFalse();
+    }
+
+    @Test
     void adminDashboardRecentActivitiesAndPendingItemsAreDocumentedInWebGroup() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");

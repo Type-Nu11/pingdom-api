@@ -1,7 +1,9 @@
 package com.typenull.pingdom.shared.config.swagger;
 
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.models.PathItem;
 import java.lang.reflect.Method;
+import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -12,6 +14,23 @@ import org.springframework.context.annotation.Profile;
 @Configuration
 @Profile({"dev", "local", "openapi-export"})
 public class SpringdocGroupsConfig {
+
+    private static final String LEGACY_ADMIN_PLACE_REGISTRATION_DETAIL_PATH =
+            "/admin/place-registration-applications/{claimId}";
+
+    @Bean
+    public GlobalOpenApiCustomizer hideAmbiguousLegacyAdminClaimDetailOperation() {
+        return openApi -> {
+            if (openApi.getPaths() == null) {
+                return;
+            }
+
+            PathItem legacyPath = openApi.getPaths().get(LEGACY_ADMIN_PLACE_REGISTRATION_DETAIL_PATH);
+            if (legacyPath != null) {
+                legacyPath.setGet(null);
+            }
+        };
+    }
 
     @Bean
     public GroupedOpenApi appApi(
