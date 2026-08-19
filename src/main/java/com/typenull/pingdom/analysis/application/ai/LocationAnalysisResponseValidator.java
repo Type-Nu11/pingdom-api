@@ -13,6 +13,22 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class LocationAnalysisResponseValidator {
 
+    public void validateHtml(AiAnalysisResponse response) {
+        if (response == null || !StringUtils.hasText(response.reportName())
+                || !StringUtils.hasText(response.htmlReport())) {
+            invalid();
+        }
+        String html = response.htmlReport();
+        if (html.length() > 2_000_000
+                || !html.toLowerCase().contains("<html")
+                || !html.toLowerCase().contains("<body")
+                || html.toLowerCase().contains("<script")
+                || html.toLowerCase().contains("javascript:")
+                || html.toLowerCase().contains("<iframe")) {
+            invalid();
+        }
+    }
+
     public void validate(LocationAnalysisRequest request, AiAnalysisResponse response) {
         if (response == null || response.content() == null || response.analysisBasisDate() == null) {
             invalid();

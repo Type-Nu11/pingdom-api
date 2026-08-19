@@ -19,9 +19,11 @@ class RestMcpAnalysisDataProviderTest {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("/recommend"))
-                .andExpect(jsonPath("$.business").value("카페"))
+                .andExpect(jsonPath("$.category").value("카페"))
                 .andExpect(jsonPath("$.region").value("서울 강남구"))
-                .andExpect(jsonPath("$.message").value("업종: 카페\n지역: 서울 강남구\n주요 고객층: 20-39 여성\n주요 영업 시간대: 18:00-22:00"))
+                .andExpect(jsonPath("$.targetCustomerGroup").value("20-39 여성"))
+                .andExpect(jsonPath("$.operatingHours").value("18:00-22:00"))
+                .andExpect(jsonPath("$.additionalCriteria.budget").value(5000000))
                 .andRespond(withSuccess("{\"recommendations\":[{\"score\":0.9}]}", MediaType.APPLICATION_JSON));
 
         RestMcpAnalysisDataProvider provider = new RestMcpAnalysisDataProvider(
@@ -33,7 +35,8 @@ class RestMcpAnalysisDataProviderTest {
                 "category", "카페",
                 "region", "서울 강남구",
                 "targetCustomerGroup", "20-39 여성",
-                "operatingHours", "18:00-22:00"
+                "operatingHours", "18:00-22:00",
+                "additionalCriteria", Map.of("budget", 5000000)
         ));
 
         assertThat(result).contains("recommendations", "0.9");

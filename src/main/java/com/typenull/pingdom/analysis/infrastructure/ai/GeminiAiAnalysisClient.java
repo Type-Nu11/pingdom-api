@@ -52,10 +52,19 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
         }
         try {
+            String normalizedJson = normalizeJson(json);
+            JsonNode payload = objectMapper.readTree(normalizedJson);
+            if (payload.has("html")) {
+                return new AiAnalysisResponse(
+                        payload.path("reportName").asText(null),
+                        payload.path("html").asText(null),
+                        prompt.analysisBasisDate()
+                );
+            }
             LocationAnalysisContent content = objectMapper.reader()
                     .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                     .forType(LocationAnalysisContent.class)
-                    .readValue(normalizeJson(json));
+                    .readValue(normalizedJson);
             return new AiAnalysisResponse(content, prompt.analysisBasisDate());
         } catch (JsonProcessingException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);

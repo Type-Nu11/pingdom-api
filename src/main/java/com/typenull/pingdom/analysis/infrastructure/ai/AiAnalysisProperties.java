@@ -2,6 +2,7 @@ package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
+import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /** 로컬 AI 공급자를 환경변수로 교체할 수 있도록 하는 설정이다. */
 @ConfigurationProperties(prefix = "analysis.ai")
@@ -14,6 +15,7 @@ public record AiAnalysisProperties(
         Duration readTimeout
 ) {
 
+    @ConstructorBinding
     public AiAnalysisProperties {
         provider = defaultValue(provider, "gemini");
         baseUrl = defaultValue(baseUrl, defaultBaseUrl(provider));

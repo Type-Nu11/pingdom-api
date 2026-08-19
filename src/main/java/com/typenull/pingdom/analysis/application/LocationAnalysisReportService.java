@@ -64,16 +64,22 @@ public class LocationAnalysisReportService {
                         ? promptFactory.create(request, analysisBasisDate)
                         : promptFactory.create(request, analysisBasisDate, mcpRecommendationJson)
         );
-        responseValidator.validate(request, aiResponse);
+        if (aiResponse.hasHtmlReport()) {
+            responseValidator.validateHtml(aiResponse);
+        } else {
+            responseValidator.validate(request, aiResponse);
+        }
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
-        String html = htmlComposer.compose(
-                reportId,
-                aiResponse.reportName(),
-                publishedDate,
-                aiResponse.analysisBasisDate(),
-                aiResponse.content()
-        );
+        String html = aiResponse.hasHtmlReport()
+                ? aiResponse.htmlReport()
+                : htmlComposer.compose(
+                        reportId,
+                        aiResponse.reportName(),
+                        publishedDate,
+                        aiResponse.analysisBasisDate(),
+                        aiResponse.content()
+                );
         byte[] pdf = htmlToPdfConverter.convert(html);
         return new LocationAnalysisPdf(pdf, reportId, aiResponse.reportName());
     }

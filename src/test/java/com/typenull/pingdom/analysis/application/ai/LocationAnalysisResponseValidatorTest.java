@@ -1,6 +1,7 @@
 package com.typenull.pingdom.analysis.application.ai;
 
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.assertj.core.api.Assertions.assertThatCode;
 
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
@@ -11,6 +12,24 @@ import org.junit.jupiter.api.Test;
 class LocationAnalysisResponseValidatorTest {
 
     private final LocationAnalysisResponseValidator validator = new LocationAnalysisResponseValidator();
+
+    @Test
+    void acceptsSafeHtmlReport() {
+        assertThatCode(() -> validator.validateHtml(new AiAnalysisResponse(
+                "입지 분석",
+                "<!doctype html><html><body>보고서</body></html>",
+                LocalDate.of(2026, 8, 18)
+        ))).doesNotThrowAnyException();
+    }
+
+    @Test
+    void rejectsHtmlReportWithScript() {
+        assertThatThrownBy(() -> validator.validateHtml(new AiAnalysisResponse(
+                "입지 분석",
+                "<!doctype html><html><body><script>alert(1)</script></body></html>",
+                LocalDate.of(2026, 8, 18)
+        ))).isInstanceOf(AnalysisReportException.class);
+    }
 
     @Test
     void rejectsSuitableGradeWhenCoreDataIsMissing() {

@@ -49,12 +49,16 @@ class GeminiAiAnalysisClientTest {
         ));
 
         assertThat(response.reportName()).isEqualTo("입지 분석");
+        assertThat(response.htmlReport()).contains("<html>");
         server.verify();
     }
 
     private String responseJson() {
         try {
-            String content = new ObjectMapper().writeValueAsString(Map.of("reportName", "입지 분석"));
+            String content = new ObjectMapper().writeValueAsString(Map.of(
+                    "reportName", "입지 분석",
+                    "html", "<!doctype html><html><body>보고서</body></html>"
+            ));
             return new ObjectMapper().writeValueAsString(Map.of(
                     "candidates", List.of(Map.of(
                             "content", Map.of("parts", List.of(Map.of("text", content)))

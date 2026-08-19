@@ -38,8 +38,8 @@ AI_MODEL=qwen2.5:7b \
 1. 프론트 입력(`category`, `region`, `targetCustomerGroup`, `operatingHours`)을 프롬프트에 삽입합니다.
 2. `MCP_ENABLED=true`이면 pingdom-mcp의 `/recommend`를 조회합니다.
 3. MCP 결과를 별도 구분자로 감싼 하나의 프롬프트에 포함합니다.
-4. Gemini 또는 Ollama에서 JSON 응답을 받습니다.
-5. 서버가 응답 계약을 검증한 뒤 고정 HTML을 만들고 PDF로 변환합니다.
+4. Gemini 또는 Ollama에서 고정 JSON envelope(`reportName`, `html`)를 받습니다.
+5. 서버가 HTML 안전성·필수 필드를 검증한 뒤 PDF로 변환합니다.
 
 ## 주요 환경변수
 

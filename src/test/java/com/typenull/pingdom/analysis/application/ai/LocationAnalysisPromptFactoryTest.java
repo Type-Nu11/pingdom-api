@@ -24,14 +24,14 @@ class LocationAnalysisPromptFactoryTest {
 
         assertThat(prompt.content()).contains("MCP 조회 결과");
         assertThat(prompt.content()).contains("서울 강남구", "카페", "20-39 여성", "18:00-22:00");
-        assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설");
+        assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설", "분석 범위", "데이터 출처");
         assertThat(prompt.content()).contains(
-                "analysisScope", "dataSources", "recommendedPlaces", "derivedFromPlace", "반경",
+                "recommendedPlaces", "derivedFromPlace", "반경",
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
                 "MCP_RECOMMENDATION_JSON_BEGIN", "MCP_RECOMMENDATION_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
-                "\"rank\": 1", "\"name\": \"장소명\"", "\"reason\": \"추천 이유\"",
-                "evidenceIds", "place, reasons, latitude, longitude"
+                "\"html\"",
+                "additionalCriteria", "고정 스타일"
         );
     }
 
@@ -47,7 +47,9 @@ class LocationAnalysisPromptFactoryTest {
                 .containsEntry("category", "카페")
                 .containsEntry("targetCustomerGroup", "20-39 여성")
                 .containsEntry("operatingHours", "18:00-22:00")
-                .doesNotContainKey("monthlyBudget");
+                .extractingByKey("additionalCriteria")
+                .asInstanceOf(org.assertj.core.api.InstanceOfAssertFactories.MAP)
+                .containsEntry("monthlyBudget", 5000000);
     }
 
     @Test
