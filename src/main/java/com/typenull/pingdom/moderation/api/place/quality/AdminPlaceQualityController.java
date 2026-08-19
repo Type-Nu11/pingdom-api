@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.quality;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateRequest;
@@ -35,8 +37,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -50,7 +50,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceQualityController {
 
@@ -115,7 +115,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceCoordinateUpdateResponse> updatePlaceCoordinates(
             @Parameter(description = "좌표를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceCoordinateUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.updatePlaceCoordinates(adminUserId, placeId, request));
@@ -129,7 +129,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceGeocodingUpdateResponse> updatePlaceGeocoding(
             @Parameter(description = "주소와 좌표를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceGeocodingUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.updatePlaceGeocoding(adminUserId, placeId, request));
@@ -205,7 +205,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceKakaoPlaceIdUpdateResponse> updatePlaceKakaoPlaceId(
             @Parameter(description = "Kakao place id를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceKakaoPlaceIdUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.updatePlaceKakaoPlaceId(adminUserId, placeId, request));
@@ -297,7 +297,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceTouristInfoUpdateResponse> updatePlaceTouristInfo(
             @Parameter(description = "관광 정보를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceTouristInfoUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.updatePlaceTouristInfo(adminUserId, placeId, request));
@@ -320,7 +320,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceOperatingStatusUpdateResponse> updatePlaceOperatingStatus(
             @Parameter(description = "운영 상태를 확인할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceOperatingStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.updatePlaceOperatingStatus(adminUserId, placeId, request));
@@ -343,7 +343,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceDiscoveryStatusUpdateResponse> updatePlaceDiscoveryStatus(
             @Parameter(description = "탐색 노출 상태를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceDiscoveryStatusUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.updatePlaceDiscoveryStatus(adminUserId, placeId, request));
@@ -385,7 +385,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminPlaceInformationEvidenceUpdateResponse> createPlaceInformationEvidence(
             @Parameter(description = "증빙을 등록할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminPlaceInformationEvidenceCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.createPlaceInformationEvidence(adminUserId, placeId, request));
@@ -409,7 +409,7 @@ public class AdminPlaceQualityController {
             @Parameter(description = "증빙을 검토할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Parameter(description = "증빙 ID", example = "10") @PathVariable Long evidenceId,
             @Valid @RequestBody AdminPlaceInformationEvidenceReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceQualityService.reviewPlaceInformationEvidence(adminUserId, placeId, evidenceId, request));
@@ -440,7 +440,7 @@ public class AdminPlaceQualityController {
     public ResponseEntity<AdminMapPlaceOperatingScheduleUpdateResponse> updatePlaceOperatingSchedule(
             @Parameter(description = "영업시간 일정을 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody AdminMapPlaceOperatingScheduleUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceOperatingScheduleService.updatePlaceOperatingSchedule(adminUserId, placeId, request));
@@ -506,7 +506,7 @@ public class AdminPlaceQualityController {
     })
     public ResponseEntity<Void> forceDeletePlace(
             @Parameter(description = "강제 삭제할 장소 ID", example = "5") @PathVariable Long id,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         adminMapPlaceService.deletePlace(id, adminUserId);

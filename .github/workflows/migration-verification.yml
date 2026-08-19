@@ -7,7 +7,7 @@ on:
       - develop
     paths:
       - 'src/main/resources/db/migration/**'
-      - 'src/test/java/com/typenull/pingdom/migration/**'
+      - 'src/test/java/com/typenull/pingdom/integration/migration/**'
       - 'src/main/resources/application*.yaml'
       - 'build.gradle'
       - 'settings.gradle'
@@ -43,7 +43,7 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Run Flyway migration verification
-        run: ./gradlew --no-daemon --build-cache --configuration-cache test --tests com.typenull.pingdom.migration.FlywayMigrationIntegrationTest
+        run: ./gradlew --no-daemon --build-cache --configuration-cache test --tests com.typenull.pingdom.integration.migration.FlywayMigrationIntegrationTest
 
       - name: Upload migration diagnostics
         if: always()

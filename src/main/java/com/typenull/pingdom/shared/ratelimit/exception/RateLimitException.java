@@ -1,22 +1,15 @@
 package com.typenull.pingdom.shared.ratelimit.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import com.typenull.pingdom.shared.exception.CommonErrorCode;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class RateLimitException extends RuntimeException {
-
-    public static final String CODE = "RATE_LIMIT_EXCEEDED";
+public class RateLimitException extends DomainException {
 
     public RateLimitException(String message) {
-        super(message);
-    }
-
-    public HttpStatus getStatus() {
-        return HttpStatus.TOO_MANY_REQUESTS;
+        super(CommonErrorCode.RATE_LIMIT_EXCEEDED, message);
     }
 
     public String getCode() {
-        return CODE;
+        return getErrorCode().getCode();
     }
 }

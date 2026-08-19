@@ -1,12 +1,13 @@
 package com.typenull.pingdom.campaign.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum CampaignErrorCode {
+public enum CampaignErrorCode implements ErrorCode {
     BRAND_NOT_FOUND(HttpStatus.NOT_FOUND, "브랜드를 찾을 수 없습니다."),
     BRAND_NAME_DUPLICATED(HttpStatus.CONFLICT, "이미 사용 중인 브랜드명입니다."),
     CAMPAIGN_NOT_FOUND(HttpStatus.NOT_FOUND, "팝업 캠페인을 찾을 수 없습니다."),

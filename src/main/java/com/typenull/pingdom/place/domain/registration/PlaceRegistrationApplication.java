@@ -166,13 +166,13 @@ public class PlaceRegistrationApplication {
                 roadAddress, jibunAddress, postalCode, description, tags, now);
     }
 
-    public void setContactPhones(String businessContactPhone, String applicantContactPhone) {
+    public void updateContactPhones(String businessContactPhone, String applicantContactPhone) {
         if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
         this.businessContactPhone = businessContactPhone;
         this.applicantContactPhone = applicantContactPhone;
     }
 
-    public void setOperatingSchedule(String timezone, String operatingScheduleJson, LocalDateTime now) {
+    public void updateOperatingSchedule(String timezone, String operatingScheduleJson, LocalDateTime now) {
         if (status != PlaceRegistrationStatus.DRAFT) throw new IllegalStateException("초안 상태의 신청만 수정할 수 있습니다.");
         this.timezone = timezone;
         this.operatingScheduleJson = operatingScheduleJson;

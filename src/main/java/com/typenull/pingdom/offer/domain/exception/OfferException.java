@@ -1,18 +1,10 @@
 package com.typenull.pingdom.offer.domain.exception;
 
-import lombok.Getter;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class OfferException extends RuntimeException {
-
-    private final OfferErrorCode errorCode;
+public class OfferException extends DomainException {
 
     public OfferException(OfferErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
-    }
-
-    public org.springframework.http.HttpStatus getStatus() {
-        return errorCode.getStatus();
+        super(errorCode);
     }
 }

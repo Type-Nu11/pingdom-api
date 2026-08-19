@@ -227,6 +227,19 @@ public class AbuseRateLimitService {
         );
     }
 
+    public void checkConsultationIntro(String clientIp) {
+        String normalizedIp = normalizeIp(clientIp);
+        acquireWithLogging(
+                "consultation-intro",
+                "ip=" + normalizedIp,
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(windowRule("consultation-intro:ip:" + normalizedIp, properties.consultationIntroIp())),
+                        List.of()
+                )
+        );
+    }
+
     private void acquireWithLogging(String action, String subject, Runnable acquireAction) {
         try {
             acquireAction.run();

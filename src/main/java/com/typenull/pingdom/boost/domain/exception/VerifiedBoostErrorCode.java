@@ -1,12 +1,13 @@
 package com.typenull.pingdom.boost.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum VerifiedBoostErrorCode {
+public enum VerifiedBoostErrorCode implements ErrorCode {
     PRODUCT_NOT_FOUND(HttpStatus.NOT_FOUND, "Verified Boost 상품을 찾을 수 없습니다."),
     PRODUCT_NOT_ACTIVE(HttpStatus.CONFLICT, "활성화된 Verified Boost 상품이 아닙니다."),
     PLACE_NOT_OWNED(HttpStatus.FORBIDDEN, "소유한 장소의 Verified Boost 상품만 관리할 수 있습니다."),

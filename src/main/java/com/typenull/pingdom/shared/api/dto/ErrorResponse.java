@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.api.dto;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "에러 응답")
@@ -18,4 +19,7 @@ public record ErrorResponse(
         )
         String code
 ) {
+    public static ErrorResponse from(ErrorCode errorCode) {
+        return new ErrorResponse(errorCode.getMessage(), errorCode.getCode());
+    }
 }

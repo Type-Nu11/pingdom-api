@@ -1,17 +1,10 @@
 package com.typenull.pingdom.reservation.domain.exception;
 
-import lombok.Getter;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class ReservationException extends RuntimeException {
-    private final ReservationErrorCode errorCode;
+public class ReservationException extends DomainException {
 
     public ReservationException(ReservationErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
-    }
-
-    public org.springframework.http.HttpStatus getStatus() {
-        return errorCode.getStatus();
+        super(errorCode);
     }
 }

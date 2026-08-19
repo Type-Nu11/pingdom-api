@@ -167,7 +167,7 @@ class PlaceInformationReportServiceTest {
     @Test
     void submitDisputeRequiresPlaceManagerPermission() {
         PlaceInformationReport report = acceptedReport(200L, place(10L, 99L), 1L);
-        when(placeInformationReportRepository.findWithLockById(200L)).thenReturn(Optional.of(report));
+        when(placeInformationReportRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(report));
         when(merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(10L, 2L)).thenReturn(false);
 
         assertThatThrownBy(() -> service.submitDispute(
@@ -184,7 +184,7 @@ class PlaceInformationReportServiceTest {
     @Test
     void submitDisputePublishesDisputeAndReportDisputedEvents() {
         PlaceInformationReport report = acceptedReport(200L, place(10L, 99L), 1L);
-        when(placeInformationReportRepository.findWithLockById(200L)).thenReturn(Optional.of(report));
+        when(placeInformationReportRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(report));
 
         PlaceInformationDisputeResponse response = service.submitDispute(
                 99L,
@@ -222,7 +222,7 @@ class PlaceInformationReportServiceTest {
     @Test
     void reviewReportWritesAuditMetricAndReviewedEvent() {
         PlaceInformationReport report = submittedReport(200L, place(10L, 99L), 1L);
-        when(placeInformationReportRepository.findWithLockById(200L)).thenReturn(Optional.of(report));
+        when(placeInformationReportRepository.findByIdForUpdate(200L)).thenReturn(Optional.of(report));
 
         PlaceInformationReportResponse response = service.reviewReport(
                 7L,
@@ -260,7 +260,7 @@ class PlaceInformationReportServiceTest {
         PlaceInformationReport report = acceptedReport(200L, place(10L, 99L), 1L);
         PlaceInformationReportDispute dispute = report.submitDispute(99L, "반박합니다.", null, NOW);
         ReflectionTestUtils.setField(dispute, "id", 300L);
-        when(placeInformationReportDisputeRepository.findWithLockByIdAndReport_Id(300L, 200L))
+        when(placeInformationReportDisputeRepository.findByIdAndReport_IdForUpdate(300L, 200L))
                 .thenReturn(Optional.of(dispute));
 
         assertThatThrownBy(() -> service.reviewDispute(

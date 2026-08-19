@@ -1,19 +1,15 @@
 package com.typenull.pingdom.identity.domain.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class AuthException extends RuntimeException {
-
-    private final AuthErrorCode errorCode;
+public class AuthException extends DomainException {
 
     public AuthException(AuthErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
 
-    public HttpStatus getStatus() {
-        return errorCode.getStatus();
+    @Override
+    public AuthErrorCode getErrorCode() {
+        return (AuthErrorCode) super.getErrorCode();
     }
 }

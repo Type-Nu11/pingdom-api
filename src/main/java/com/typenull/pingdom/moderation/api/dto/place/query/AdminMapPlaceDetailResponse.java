@@ -1,6 +1,7 @@
 package com.typenull.pingdom.moderation.api.dto.place.query;
 
 import com.typenull.pingdom.moderation.domain.SortParam;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
@@ -33,12 +34,45 @@ public record AdminMapPlaceDetailResponse(
         PlaceDiscoveryStatus discoveryStatus,
         List<PlaceRegularOperatingHourResponse> regularHours,
         List<PlaceOperatingExceptionResponse> operatingExceptions,
+        @Schema(
+                description = "일반 장소 카테고리. touristCategories와 별도 기준이며 미분류 장소는 null입니다.",
+                nullable = true,
+                example = "OTHER",
+                allowableValues = {
+                        PlaceCategoryPolicy.RESTAURANT,
+                        PlaceCategoryPolicy.MUSIC,
+                        PlaceCategoryPolicy.POP_UP,
+                        PlaceCategoryPolicy.FASHION,
+                        PlaceCategoryPolicy.BEAUTY,
+                        PlaceCategoryPolicy.EXHIBITION,
+                        PlaceCategoryPolicy.CAFE,
+                        PlaceCategoryPolicy.CULTURAL_HERITAGE,
+                        PlaceCategoryPolicy.OTHER
+                }
+        )
         String category,
+        @Schema(
+                description = "화면 표시용 일반 장소 카테고리명. category가 없으면 미분류입니다.",
+                example = "기타",
+                allowableValues = {
+                        "음식점",
+                        "음악",
+                        "팝업",
+                        "패션",
+                        "뷰티",
+                        "전시",
+                        "카페",
+                        "문화재",
+                        "기타",
+                        "미분류"
+                }
+        )
         String categoryName,
         @Schema(nullable = true)
         String englishName,
         @Schema(nullable = true)
         String touristSummary,
+        @Schema(description = "외국인 관광 관심사 분류. 일반 장소 category와는 별도 기준입니다.")
         Set<TouristCategory> touristCategories,
         Double latitude,
         Double longitude,
@@ -46,6 +80,13 @@ public record AdminMapPlaceDetailResponse(
         String username,
         SortParam sortParam,
         int postCount,
+        @Schema(
+                description = "장소 성장 레벨. 10 이상이면 관리자 지도에서 불꽃 마커로 표시할 수 있습니다.",
+                example = "5",
+                minimum = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        int level,
         AdminMapPlaceGrowthResponse placeGrowth,
         List<AdminMapPlaceImageItem> posts
 ) {

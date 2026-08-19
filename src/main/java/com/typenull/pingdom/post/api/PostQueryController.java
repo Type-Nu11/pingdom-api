@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.post.api.dto.post.PostDetailResponse;
 import com.typenull.pingdom.post.api.dto.post.PostListResponse;
 
@@ -17,12 +18,15 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import com.typenull.pingdom.place.api.dto.ranking.PlaceRankingPeriod;
+import com.typenull.pingdom.place.api.dto.ranking.PlaceRankingResponse;
+import com.typenull.pingdom.place.api.dto.ranking.PlaceRankingScope;
+import com.typenull.pingdom.place.application.service.place.PlaceRankingQueryService;
 
 @RestController
 @RequestMapping("/map")
@@ -31,6 +35,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class PostQueryController {
 
     private final PostQueryService postQueryService;
+    private final PlaceRankingQueryService placeRankingQueryService;
+
+    @GetMapping("/place-rankings")
+    @Operation(summary = "장소 핫플·트렌드 랭킹 조회")
+    public PlaceRankingResponse placeRankings(
+            @RequestParam(defaultValue = "LOCAL") PlaceRankingScope scope,
+            @RequestParam(required = false) Double latitude,
+            @RequestParam(required = false) Double longitude,
+            @RequestParam(required = false) Double radiusKm,
+            @RequestParam(defaultValue = "WEEK") PlaceRankingPeriod period,
+            @RequestParam(required = false) String category,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit,
+            @CurrentUser JwtAuthenticatedUser user) {
+        return placeRankingQueryService.find(scope, latitude, longitude, radiusKm, period, category, page, limit, user == null ? null : user.userId());
+    }
 
     @GetMapping("/posts")
     @Operation(
@@ -92,7 +112,7 @@ public class PostQueryController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         Long userId = user.userId();
         return postQueryService.listPosts(page, limit, userId);
@@ -108,7 +128,7 @@ public class PostQueryController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -147,7 +167,7 @@ public class PostQueryController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -190,7 +210,7 @@ public class PostQueryController {
             @RequestParam(defaultValue = "LATEST") SortParam sortParam,
             @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 연결 장소명, 설명으로 검색합니다.", example = "진주성")
             @RequestParam(required = false, defaultValue = "") String keyword,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -262,7 +282,7 @@ public class PostQueryController {
     })
     public PostDetailResponse getPost(
             @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long postId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         Long userId = (user != null) ? user.userId() : null;
         return postQueryService.getPost(postId, userId);

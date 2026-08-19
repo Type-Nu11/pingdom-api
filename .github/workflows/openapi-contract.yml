@@ -7,7 +7,7 @@ on:
       - develop
     paths:
       - 'src/main/**'
-      - 'src/test/java/com/typenull/pingdom/swagger/**'
+      - 'src/test/java/com/typenull/pingdom/integration/swagger/**'
       - 'src/main/resources/application*.yaml'
       - 'src/test/resources/openapi-baseline/**'
       - 'build.gradle'

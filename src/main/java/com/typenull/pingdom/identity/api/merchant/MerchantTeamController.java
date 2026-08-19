@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.merchant;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInvitationResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInviteRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamMemberResponse;
@@ -7,14 +8,12 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamRoleUpdateRequ
 import com.typenull.pingdom.identity.application.service.merchant.MerchantTeamService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -35,7 +34,7 @@ public class MerchantTeamController {
     @GetMapping("/places/{placeId}/members")
     @Operation(summary = "Merchant 장소 팀원 목록 조회")
     public List<MerchantTeamMemberResponse> list(@PathVariable Long placeId,
-                                                  @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                                                  @CurrentUser JwtAuthenticatedUser user) {
         return teamService.list(user.userId(), placeId);
     }
 
@@ -45,7 +44,7 @@ public class MerchantTeamController {
     @ApiResponse(responseCode = "201", description = "팀원 초대 생성 성공")
     public MerchantTeamInvitationResponse invite(@PathVariable Long placeId,
                                                   @Valid @RequestBody MerchantTeamInviteRequest request,
-                                                  @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                                                  @CurrentUser JwtAuthenticatedUser user) {
         return teamService.invite(user.userId(), placeId, request);
     }
 
@@ -53,14 +52,14 @@ public class MerchantTeamController {
     @Operation(summary = "Merchant 장소 팀원 권한 변경")
     public MerchantTeamMemberResponse updateRole(@PathVariable Long placeId, @PathVariable Long memberId,
                                                   @Valid @RequestBody MerchantTeamRoleUpdateRequest request,
-                                                  @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                                                  @CurrentUser JwtAuthenticatedUser user) {
         return teamService.updateRole(user.userId(), placeId, memberId, request);
     }
 
     @PostMapping("/invitations/{invitationId}/accept")
     @Operation(summary = "Merchant 장소 팀원 초대 수락")
     public MerchantTeamMemberResponse accept(@PathVariable Long invitationId,
-                                             @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                                             @CurrentUser JwtAuthenticatedUser user) {
         return teamService.acceptInvitation(user.userId(), invitationId);
     }
 
@@ -68,7 +67,7 @@ public class MerchantTeamController {
     @ResponseStatus(HttpStatus.NO_CONTENT)
     @Operation(summary = "Merchant 장소 팀원 권한 회수")
     public void revoke(@PathVariable Long placeId, @PathVariable Long memberId,
-                       @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                       @CurrentUser JwtAuthenticatedUser user) {
         teamService.revoke(user.userId(), placeId, memberId);
     }
 }

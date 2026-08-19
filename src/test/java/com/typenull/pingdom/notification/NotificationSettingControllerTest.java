@@ -1,7 +1,7 @@
 package com.typenull.pingdom.notification;
 
 import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpdateRequest;
-import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationSettingRepository;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;

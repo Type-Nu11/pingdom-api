@@ -1,5 +1,6 @@
 package com.typenull.pingdom.moderation.api.place.lookup;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.application.query.place.lookup.AdminMapPlaceLookupQueryService;
@@ -15,7 +16,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceLookupController {
 
@@ -54,13 +54,14 @@ public class AdminPlaceLookupController {
                                                   "name": "진주성",
                                                   "address": "경상남도 진주시 남강로 626",
                                                   "discoveryStatus": "VISIBLE",
-                                                  "category": "OTHER",
-                                                  "categoryName": "OTHER",
+                                                  "category": "CULTURAL_HERITAGE",
+                                                  "categoryName": "문화재",
                                                   "touristCategories": ["EXHIBITION"],
                                                   "latitude": 35.1894,
                                                   "longitude": 128.0789,
                                                   "userId": 3,
                                                   "registrant": "placeRegistrar",
+                                                  "level": 5,
                                                   "placeGrowth": {
                                                     "photoCount": 10,
                                                     "level": 5,
@@ -126,18 +127,19 @@ public class AdminPlaceLookupController {
             @Parameter(
                     description = "일반 장소 카테고리 필터. 입력값을 표준 카테고리로 정규화한 뒤 "
                             + "AdminMapPlaceItem.category와 정확히 비교합니다. touristCategories와는 별도 기준입니다.",
-                    example = "카페",
+                    example = "CAFE",
                     schema = @Schema(
                             type = "string",
                             allowableValues = {
-                                    PlaceCategoryPolicy.CAFE,
                                     PlaceCategoryPolicy.RESTAURANT,
-                                    PlaceCategoryPolicy.TOURISM,
-                                    PlaceCategoryPolicy.SCENERY,
-                                    PlaceCategoryPolicy.CULTURE,
-                                    PlaceCategoryPolicy.SHOPPING,
-                                    PlaceCategoryPolicy.ACCOMMODATION,
-                                    PlaceCategoryPolicy.EXPERIENCE
+                                    PlaceCategoryPolicy.MUSIC,
+                                    PlaceCategoryPolicy.POP_UP,
+                                    PlaceCategoryPolicy.FASHION,
+                                    PlaceCategoryPolicy.BEAUTY,
+                                    PlaceCategoryPolicy.EXHIBITION,
+                                    PlaceCategoryPolicy.CAFE,
+                                    PlaceCategoryPolicy.CULTURAL_HERITAGE,
+                                    PlaceCategoryPolicy.OTHER
                             }
                     )
             )
@@ -170,14 +172,15 @@ public class AdminPlaceLookupController {
                                               "name": "진주성",
                                               "address": "경상남도 진주시 남강로 626",
                                               "discoveryStatus": "VISIBLE",
-                                              "category": "OTHER",
-                                              "categoryName": "OTHER",
+                                              "category": "CULTURAL_HERITAGE",
+                                              "categoryName": "문화재",
                                               "latitude": 35.1894,
                                               "longitude": 128.0789,
                                               "userId": 3,
                                               "username": "placeOwner",
                                               "sortParam": "LATEST",
                                               "postCount": 1,
+                                              "level": 5,
                                               "placeGrowth": {
                                                 "photoCount": 10,
                                                 "hiddenPhotoCount": 1,
