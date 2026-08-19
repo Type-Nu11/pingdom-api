@@ -1,4 +1,4 @@
-package com.typenull.pingdom.auth;
+package com.typenull.pingdom.integration.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
