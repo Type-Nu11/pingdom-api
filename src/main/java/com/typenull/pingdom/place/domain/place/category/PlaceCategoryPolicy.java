@@ -4,6 +4,8 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
 import org.springframework.util.StringUtils;
 
 public final class PlaceCategoryPolicy {
@@ -15,6 +17,7 @@ public final class PlaceCategoryPolicy {
     public static final String BEAUTY = "BEAUTY";
     public static final String EXHIBITION = "EXHIBITION";
     public static final String CAFE = "CAFE";
+    public static final String CULTURAL_HERITAGE = "CULTURAL_HERITAGE";
     public static final String OTHER = "OTHER";
     @Deprecated public static final String TOURISM = OTHER;
     @Deprecated public static final String SCENERY = OTHER;
@@ -24,6 +27,17 @@ public final class PlaceCategoryPolicy {
     @Deprecated public static final String EXPERIENCE = OTHER;
 
     private static final Map<String, String> STANDARD_CATEGORY_MAP = createStandardCategoryMap();
+    private static final Map<String, String> CATEGORY_DISPLAY_NAME_MAP = Map.of(
+            RESTAURANT, "음식점",
+            MUSIC, "음악",
+            POP_UP, "팝업",
+            FASHION, "패션",
+            BEAUTY, "뷰티",
+            EXHIBITION, "전시",
+            CAFE, "카페",
+            CULTURAL_HERITAGE, "문화재",
+            OTHER, "기타"
+    );
 
     private PlaceCategoryPolicy() {
     }
@@ -33,20 +47,46 @@ public final class PlaceCategoryPolicy {
             return null;
         }
 
-        String trimmed = category.trim();
-        return STANDARD_CATEGORY_MAP.getOrDefault(trimmed.toLowerCase(Locale.ROOT), OTHER);
+        String canonicalCategory = canonicalOrNull(category);
+        return canonicalCategory == null ? OTHER : canonicalCategory;
+    }
+
+    public static String canonicalOrNull(String category) {
+        if (!StringUtils.hasText(category)) {
+            return null;
+        }
+
+        return STANDARD_CATEGORY_MAP.get(category.trim().toLowerCase(Locale.ROOT));
+    }
+
+    public static String displayName(String category) {
+        String canonicalCategory = canonicalOrNull(category);
+        return canonicalCategory == null ? "미분류" : CATEGORY_DISPLAY_NAME_MAP.get(canonicalCategory);
+    }
+
+    public static Set<String> normalizedAliases(String category) {
+        String canonicalCategory = canonicalOrNull(category);
+        if (canonicalCategory == null) {
+            return Set.of();
+        }
+
+        return STANDARD_CATEGORY_MAP.entrySet().stream()
+                .filter(entry -> entry.getValue().equals(canonicalCategory))
+                .map(Map.Entry::getKey)
+                .collect(Collectors.toUnmodifiableSet());
     }
 
     private static Map<String, String> createStandardCategoryMap() {
         Map<String, String> categories = new LinkedHashMap<>();
         register(categories, CAFE, "카페", "커피", "coffee", "cafe", "디저트", "베이커리");
         register(categories, RESTAURANT, "식당", "맛집", "음식점", "레스토랑", "restaurant", "food");
-        register(categories, EXHIBITION, "전시", "박물관", "미술관", "문화", "culture");
+        register(categories, EXHIBITION, "전시", "박물관", "미술관", "문화", "culture", "exhibition");
+        register(categories, CULTURAL_HERITAGE, "문화재", "유적", "heritage", "cultural heritage");
         register(categories, MUSIC, "공연", "음악", "music");
         register(categories, FASHION, "쇼핑", "패션", "마트", "편집샵", "shopping", "fashion");
         register(categories, BEAUTY, "뷰티", "미용", "beauty");
         register(categories, POP_UP, "팝업", "pop-up", "popup");
-        register(categories, OTHER, "관광", "관광지", "명소", "여행", "자연", "공원", "산책", "야경", "숙박", "체험", "tour", "travel", "scenery", "hotel", "stay", "activity", "sports", "스포츠");
+        register(categories, OTHER, "기타", "관광", "관광지", "명소", "여행", "자연", "공원", "산책", "야경", "숙박", "체험", "tour", "travel", "scenery", "hotel", "stay", "activity", "sports", "스포츠");
         return Collections.unmodifiableMap(categories);
     }
 

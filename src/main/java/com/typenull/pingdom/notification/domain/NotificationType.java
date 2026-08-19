@@ -1,5 +1,7 @@
 package com.typenull.pingdom.notification.domain;
 
+import java.util.Arrays;
+import java.util.List;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 
@@ -16,6 +18,10 @@ public enum NotificationType {
     ADMIN_DUPLICATE_PLACE_DETECTED("중복 장소 알림", "장소 ID %s, %s 조합이 중복 후보로 탐지되었습니다."),
     ADMIN_USER_SANCTION("사용자 제재 알림", "사용자 ID %s의 제재 상태가 %s되었습니다. (제재 ID: %s)");
 
+    private static final List<NotificationType> ADMIN_TYPES = Arrays.stream(values())
+            .filter(NotificationType::isAdminType)
+            .toList();
+
     private final String title;
     private final String bodyTemplate;
 
@@ -25,5 +31,9 @@ public enum NotificationType {
 
     public boolean isAdminType() {
         return name().startsWith("ADMIN_");
+    }
+
+    public static List<NotificationType> adminTypes() {
+        return ADMIN_TYPES;
     }
 }

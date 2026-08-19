@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.report;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
 import com.typenull.pingdom.moderation.api.dto.report.ReportedUsersItem;
 import com.typenull.pingdom.moderation.api.dto.report.ReportedUsersResponse;
@@ -14,15 +16,14 @@ import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin/reports")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
+/** 신고 승인·반려와 신고 사용자 조회 요청을 관리자 서비스로 전달합니다. */
 public class AdminReportController {
 
     private final AdminReportService adminReportService;
@@ -109,7 +110,7 @@ public class AdminReportController {
     })
     public AdminReportActionResponse acceptReport(
             @PathVariable Long id,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminReportService.acceptReport(id, adminUser.userId());
     }
@@ -196,7 +197,7 @@ public class AdminReportController {
     })
     public AdminReportActionResponse declineReport(
             @PathVariable Long id,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return adminReportService.declineReport(id, adminUserId);

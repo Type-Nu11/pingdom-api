@@ -4,7 +4,7 @@ import com.typenull.pingdom.engagement.domain.MapImageLike;
 import com.typenull.pingdom.notification.domain.Notifications;
 import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import com.typenull.pingdom.notification.outbox.MapImageLikedOutboxPayload;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationConversionService;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
@@ -105,7 +105,7 @@ public class MapImageLikeService {
                 .findByIdAndUserId(notificationsId, userId)
                 .orElseThrow(() -> new NotificationsException(NotificationsErrorCode.NOTIFICATION_NOT_FOUND));
 
-        notification.setRead(true);
+        notification.markAsRead();
 
     }
 

@@ -9,7 +9,7 @@ import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpd
 import com.typenull.pingdom.notification.domain.NotificationSetting;
 import com.typenull.pingdom.notification.domain.exception.NotificationsErrorCode;
 import com.typenull.pingdom.notification.domain.exception.NotificationsException;
-import com.typenull.pingdom.notification.repository.NotificationSettingRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationSettingRepository;
 import java.time.Clock;
 import java.time.DateTimeException;
 import java.time.LocalDateTime;
@@ -22,6 +22,7 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
+/** 사용자별 알림 채널과 수신 설정을 조회·변경합니다. */
 public class NotificationSettingService {
 
     private final UserRepository userRepository;

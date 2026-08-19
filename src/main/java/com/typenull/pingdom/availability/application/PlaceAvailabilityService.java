@@ -22,6 +22,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 장소별 예약 가능 상품과 시간·재고 상태를 조회하고 예약 가능 여부를 판단합니다. */
 public class PlaceAvailabilityService {
     private final PlaceAvailabilityRepository repository;
     private final AvailabilityAccessPolicy accessPolicy;

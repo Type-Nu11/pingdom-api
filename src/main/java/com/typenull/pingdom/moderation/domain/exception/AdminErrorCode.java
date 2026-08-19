@@ -1,12 +1,13 @@
 package com.typenull.pingdom.moderation.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum AdminErrorCode {
+public enum AdminErrorCode implements ErrorCode {
     ADMIN_ROLE_ASSIGNMENT_INVALID(HttpStatus.BAD_REQUEST, "관리자 역할 할당 요청이 올바르지 않습니다."),
     ADMIN_PERMISSION_REQUIRED(HttpStatus.FORBIDDEN, "요청을 처리할 관리자 권한이 없습니다."),
     ADMIN_ROLE_ASSIGNMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "관리자 역할 할당을 찾을 수 없습니다."),

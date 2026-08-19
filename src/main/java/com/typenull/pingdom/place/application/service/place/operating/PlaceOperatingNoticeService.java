@@ -263,7 +263,7 @@ public class PlaceOperatingNoticeService {
     }
 
     private PlaceOperatingNotice findNotice(Long noticeId) {
-        return placeOperatingNoticeRepository.findWithLockById(noticeId)
+        return placeOperatingNoticeRepository.findByIdForUpdate(noticeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_OPERATING_NOTICE_NOT_FOUND));
     }
 

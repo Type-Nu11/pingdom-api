@@ -972,41 +972,30 @@ class PlaceControllerTest {
     }
 
     @Test
-    void placeAndBookmarkLegacyPathsRemainSupported() throws Exception {
+    void removedLegacyPlaceAndBookmarkPathsAreNotMapped() throws Exception {
         String accessToken = signupAndLogin("legacyPathReader01");
-        User user = userRepository.findByUsername("legacyPathReader01").orElseThrow();
-        MapPlace bookmarkedPlace = createMapPlace("레거시 북마크 장소", "경상남도 진주시 레거시로 1");
-        mapBookmarkRepository.save(MapBookmark.builder()
-                .userId(user.getId())
-                .placeId(bookmarkedPlace.getId())
-                .build());
 
         mockMvc.perform(get("/place")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.places[0].name").value("레거시 북마크 장소"));
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(get("/users/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.places[0].name").value("레거시 북마크 장소"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void legacyPlaceDetailPathRemainsSupportedAfterCompatibilityPackageMigration() throws Exception {
+    void removedLegacyPlaceDetailPathIsNotMapped() throws Exception {
         String accessToken = signupAndLogin("legacyPlaceDetail" + Long.toUnsignedString(System.nanoTime()));
         MapPlace place = createMapPlace("구 장소 상세", "경상남도 진주시 호환로 1");
 
         mockMvc.perform(get("/place/{id}", place.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(place.getId()))
-                .andExpect(jsonPath("$.name").value("구 장소 상세"))
-                .andExpect(jsonPath("$.address").value("경상남도 진주시 호환로 1"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2042,20 +2031,25 @@ class PlaceControllerTest {
     }
 
     @Test
-    void legacyPlaceCoordinateCreateReturnsUnauthorizedWithoutToken() throws Exception {
+    void removedLegacyPlaceCoordinatePathIsNotMapped() throws Exception {
+        String accessToken = signupAndLogin("removedLegacyCoordinate");
+
         mockMvc.perform(post("/map/places/coordinates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "baseLatitude", 35.1814,
                                 "baseLongitude", 128.1084
                         ))))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
-    void legacyPlaceUploadReturnsUnauthorizedWithoutToken() throws Exception {
+    void removedLegacyPlaceUploadPathIsNotMapped() throws Exception {
+        String accessToken = signupAndLogin("removedLegacyUpload");
+
         mockMvc.perform(post("/map/places/upload")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
                                 "name", "무인증 레거시 장소",
@@ -2064,8 +2058,7 @@ class PlaceControllerTest {
                                 "imageUrl", "https://example.com/images/legacy-place.jpg",
                                 "coordinateToken", "invalid-token"
                         ))))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2084,10 +2077,12 @@ class PlaceControllerTest {
     }
 
     @Test
-    void legacyPlaceDeleteReturnsUnauthorizedWithoutToken() throws Exception {
-        mockMvc.perform(delete("/map/places/{id}/delete", 1L))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    void removedLegacyPlaceDeletePathIsNotMapped() throws Exception {
+        String accessToken = signupAndLogin("removedLegacyDelete");
+
+        mockMvc.perform(delete("/map/places/{id}/delete", 1L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2328,39 +2323,24 @@ class PlaceControllerTest {
     }
 
     @Test
-    void legacyBookmarkPathRemainsSupportedForExistingPlace() throws Exception {
+    void removedLegacyBookmarkMethodsAreNotAllowed() throws Exception {
         String accessToken = signupAndLogin("legacyPathWriter01");
-        MapPlace savedPlace = createMapPlace("기존 레거시 북마크 장소", "경상남도 진주시 레거시북마크로 1");
 
         mockMvc.perform(post("/map/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("placeId", savedPlace.getId()))))
-                .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.placeId").value(savedPlace.getId()));
+                        .content(objectMapper.writeValueAsString(Map.of("placeId", 1L))))
+                .andExpect(status().isMethodNotAllowed());
 
         mockMvc.perform(delete("/map/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("placeId", savedPlace.getId().toString()))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.placeId").value(savedPlace.getId()));
+                        .param("placeId", "1"))
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
-    void legacyPlaceUploadIsBlockedWithoutApprovedRegistration() throws Exception {
+    void removedLegacyPlaceUploadPathIsNotMappedWithValidRequest() throws Exception {
         String accessToken = signupAndLogin("legacyPlaceUploadBlocked01");
-        MvcResult coordinateResult = mockMvc.perform(post("/map/places/coordinates")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "baseLatitude", 35.1814,
-                                "baseLongitude", 128.1084
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-        String coordinateToken = objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
-                .get("coordinateToken")
-                .asText();
 
         mockMvc.perform(post("/map/places/upload")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -2370,10 +2350,9 @@ class PlaceControllerTest {
                                 "address", "경상남도 진주시 차단레거시로 1",
                                 "category", "풍경",
                                 "imageUrl", "https://example.com/images/blocked-place.jpg",
-                                "coordinateToken", coordinateToken
+                                "coordinateToken", "removed-legacy-token"
                         ))))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
+                .andExpect(status().isNotFound());
     }
 
     @Test

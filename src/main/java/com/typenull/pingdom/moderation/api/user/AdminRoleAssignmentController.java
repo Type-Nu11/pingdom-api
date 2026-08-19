@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.user;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAssignmentService;
 import com.typenull.pingdom.identity.domain.admin.AdminRole;
 import com.typenull.pingdom.moderation.api.dto.user.AdminRoleAssignmentRequest;
@@ -8,7 +10,6 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminRoleAssignmentResponse;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -18,8 +19,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,7 +30,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/users/{userId}/roles")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminRoleAssignmentController {
@@ -48,7 +47,7 @@ public class AdminRoleAssignmentController {
     })
     public List<AdminRoleAssignmentResponse> list(
             @PathVariable Long userId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return roleAssignmentService.list(admin.userId(), userId);
     }
@@ -66,7 +65,7 @@ public class AdminRoleAssignmentController {
     public AdminRoleAssignmentResponse assign(
             @PathVariable Long userId,
             @Valid @RequestBody AdminRoleAssignmentRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return roleAssignmentService.assign(admin.userId(), userId, request);
     }
@@ -83,7 +82,7 @@ public class AdminRoleAssignmentController {
             @PathVariable Long userId,
             @PathVariable AdminRole role,
             @Valid @RequestBody(required = false) AdminRoleAssignmentRevokeRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return roleAssignmentService.revoke(
                 admin.userId(),

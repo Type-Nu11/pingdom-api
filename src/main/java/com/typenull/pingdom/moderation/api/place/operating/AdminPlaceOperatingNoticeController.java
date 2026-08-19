@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.operating;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeCancelRequest;
 import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeResponse;
@@ -13,8 +15,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -25,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/places/{placeId}/operating-notices")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceOperatingNoticeController {
 
@@ -36,7 +36,7 @@ public class AdminPlaceOperatingNoticeController {
     public ResponseEntity<PlaceOperatingNoticeResponse> createNotice(
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId,
             @Valid @RequestBody PlaceOperatingNoticeCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(placeOperatingNoticeService.createByAdmin(userId(adminUser), placeId, request));
@@ -48,7 +48,7 @@ public class AdminPlaceOperatingNoticeController {
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId,
             @Parameter(description = "공지 ID", example = "10") @PathVariable Long noticeId,
             @Valid @RequestBody PlaceOperatingNoticeUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.ok(placeOperatingNoticeService.updateByAdmin(userId(adminUser), placeId, noticeId, request));
     }
@@ -59,7 +59,7 @@ public class AdminPlaceOperatingNoticeController {
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId,
             @Parameter(description = "공지 ID", example = "10") @PathVariable Long noticeId,
             @Valid @RequestBody PlaceOperatingNoticeCancelRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.ok(placeOperatingNoticeService.cancelByAdmin(userId(adminUser), placeId, noticeId, request));
     }

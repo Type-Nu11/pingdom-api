@@ -1,5 +1,7 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.verification.api.dto.*;
@@ -17,14 +19,12 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/admin/visitor-verification-reports")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 @org.springframework.validation.annotation.Validated
@@ -38,7 +38,7 @@ public class AdminVisitorVerificationReportController {
             @RequestParam(required = false) VisitorVerificationReportStatus status,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin) {
+            @CurrentUser JwtAuthenticatedUser admin) {
         return service.listForAdmin(admin.userId(), status, page, limit);
     }
 
@@ -46,7 +46,7 @@ public class AdminVisitorVerificationReportController {
     @Operation(summary = "방문자 검증 제보 심사")
     public VisitorVerificationReportResponse review(@PathVariable Long reportId,
             @Valid @RequestBody VisitorVerificationReportReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin) {
+            @CurrentUser JwtAuthenticatedUser admin) {
         return service.review(admin.userId(), reportId, request);
     }
 
@@ -56,7 +56,7 @@ public class AdminVisitorVerificationReportController {
             @RequestParam(required = false) VisitorVerificationReportCorrectionStatus status,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin) {
+            @CurrentUser JwtAuthenticatedUser admin) {
         return correctionService.listForAdmin(admin.userId(), status, page, limit);
     }
 
@@ -78,7 +78,7 @@ public class AdminVisitorVerificationReportController {
     public VisitorVerificationReportCorrectionResponse reviewCorrection(
             @PathVariable Long correctionId,
             @Valid @RequestBody VisitorVerificationReportCorrectionReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin) {
+            @CurrentUser JwtAuthenticatedUser admin) {
         return correctionService.review(admin.userId(), correctionId, request);
     }
 }

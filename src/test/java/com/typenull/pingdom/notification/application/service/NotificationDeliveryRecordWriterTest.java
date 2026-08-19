@@ -9,7 +9,7 @@ import static org.mockito.Mockito.when;
 import com.typenull.pingdom.notification.domain.NotificationDelivery;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryChannel;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryStatus;
-import com.typenull.pingdom.notification.repository.NotificationDeliveryRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationDeliveryRepository;
 import com.typenull.pingdom.shared.outbox.application.OutboxProperties;
 import java.time.Clock;
 import java.time.Duration;

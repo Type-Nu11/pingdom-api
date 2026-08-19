@@ -64,6 +64,7 @@ import org.springframework.web.server.ResponseStatusException;
 
 @Service
 @RequiredArgsConstructor
+/** 장소 검색과 상세 조회에 필요한 영속성 조회 결과를 공개 응답으로 조합합니다. */
 public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private static final int MAX_SEARCH_LIMIT = 100;
@@ -89,6 +90,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    /** 검색 조건을 조회 쿼리에 전달하고 장소별 부가 데이터를 일괄 조합합니다. */
     public PlaceListResponse listPlaces(PlaceSearchCondition condition) {
         if (condition == null) {
             throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
@@ -150,6 +152,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    /** 후보를 제한한 뒤 이름·주소·거리 우선순위로 자동완성 결과를 정렬합니다. */
     public PlaceAutocompleteResponse autocompletePlaces(String keyword, int limit, Double latitude, Double longitude) {
         String normalizedKeyword = normalizeAutocompleteKeyword(keyword);
         int safeLimit = Math.max(1, Math.min(limit, AUTOCOMPLETE_MAX_LIMIT));
@@ -190,6 +193,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    /** 장소 본문과 운영·검증·상업 정보를 하나의 상세 DTO로 변환합니다. */
     public PlaceDetailResponse getPlace(Long placeId) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));

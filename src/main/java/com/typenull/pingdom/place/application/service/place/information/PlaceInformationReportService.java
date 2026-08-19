@@ -117,7 +117,7 @@ public class PlaceInformationReportService {
             Long reportId,
             PlaceInformationDisputeCreateRequest request
     ) {
-        PlaceInformationReport report = placeInformationReportRepository.findWithLockById(reportId)
+        PlaceInformationReport report = placeInformationReportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_INFORMATION_REPORT_NOT_FOUND));
         if (!canManagePlace(userId, report.getPlace())) {
             throw new MapException(MapErrorCode.PLACE_INFORMATION_DISPUTE_FORBIDDEN);
@@ -160,7 +160,7 @@ public class PlaceInformationReportService {
             Long reportId,
             PlaceInformationReportReviewRequest request
     ) {
-        PlaceInformationReport report = placeInformationReportRepository.findWithLockById(reportId)
+        PlaceInformationReport report = placeInformationReportRepository.findByIdForUpdate(reportId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_INFORMATION_REPORT_NOT_FOUND));
         PlaceInformationReportStatus beforeStatus = report.getStatus();
         Map<String, Object> beforeState = reportState(report);
@@ -198,7 +198,7 @@ public class PlaceInformationReportService {
             PlaceInformationDisputeReviewRequest request
     ) {
         PlaceInformationReportDispute dispute = placeInformationReportDisputeRepository
-                .findWithLockByIdAndReport_Id(disputeId, reportId)
+                .findByIdAndReport_IdForUpdate(disputeId, reportId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_INFORMATION_DISPUTE_NOT_FOUND));
         PlaceInformationDisputeStatus beforeStatus = dispute.getStatus();
         Map<String, Object> beforeState = disputeState(dispute);

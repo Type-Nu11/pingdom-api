@@ -1,5 +1,6 @@
 package com.typenull.pingdom.offer.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
 import com.typenull.pingdom.offer.api.dto.OfferResponse;
@@ -7,7 +8,6 @@ import com.typenull.pingdom.offer.application.TouristOfferService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -70,7 +69,7 @@ public class TouristOfferController {
     })
     public ResponseEntity<CouponResponse> issue(
             @PathVariable Long offerId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(offerService.issue(user.userId(), offerId));
     }

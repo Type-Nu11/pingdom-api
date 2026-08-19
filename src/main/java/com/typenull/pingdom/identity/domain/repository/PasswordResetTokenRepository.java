@@ -16,7 +16,8 @@ public interface PasswordResetTokenRepository extends JpaRepository<PasswordRese
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
-    Optional<PasswordResetToken> findByTokenHash(String tokenHash);
+    @Query("SELECT token FROM PasswordResetToken token WHERE token.tokenHash = :tokenHash")
+    Optional<PasswordResetToken> findByTokenHashForUpdate(@Param("tokenHash") String tokenHash);
 
     @Modifying(flushAutomatically = true)
     @Query("""

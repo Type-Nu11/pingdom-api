@@ -1,5 +1,7 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.verification.api.dto.*;
@@ -14,14 +16,12 @@ import jakarta.validation.Valid;
 import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequestMapping("/location-check-ins")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+@AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 @org.springframework.validation.annotation.Validated
@@ -45,7 +45,7 @@ public class LocationCheckInController {
     @ApiResponse(responseCode = "422", description = "장소 체크인 허용 반경 밖",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     public ResponseEntity<LocationCheckInResponse> checkIn(@Valid @RequestBody LocationCheckInRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+            @CurrentUser JwtAuthenticatedUser user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.checkIn(user.userId(), request));
     }
 
@@ -53,7 +53,7 @@ public class LocationCheckInController {
     @Operation(summary = "내 위치 체크인 목록 조회")
     public LocationCheckInPageResponse listMine(@RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+            @CurrentUser JwtAuthenticatedUser user) {
         return service.listMine(user.userId(), page, limit);
     }
 }

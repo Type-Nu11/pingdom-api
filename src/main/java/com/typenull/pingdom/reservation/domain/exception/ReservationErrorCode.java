@@ -1,12 +1,13 @@
 package com.typenull.pingdom.reservation.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum ReservationErrorCode {
+public enum ReservationErrorCode implements ErrorCode {
     RESERVATION_NOT_FOUND(HttpStatus.NOT_FOUND, "예약을 찾을 수 없습니다."),
     RESERVATION_FORBIDDEN(HttpStatus.FORBIDDEN, "이 예약을 처리할 권한이 없습니다."),
     INVALID_RESERVATION_INPUT(HttpStatus.BAD_REQUEST, "예약 입력값이 올바르지 않습니다."),

@@ -57,6 +57,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 장소 등록 신청의 초안, 제출, 심사, 취소·재개·완료 상태 전이를 관리합니다. */
 public class PlaceRegistrationService {
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
     private final PlaceRegistrationApplicationRepository repository;
@@ -70,12 +71,13 @@ public class PlaceRegistrationService {
     private final ObjectMapper objectMapper;
 
     @Transactional
+    /** 등록 신청과 첨부파일·운영시간 초안을 함께 저장합니다. */
     public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
         LocalDateTime now = now();
         PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
                 r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
-        application.setContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
-        setOperatingSchedule(application, r, now);
+        application.updateContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
+        updateOperatingSchedule(application, r, now);
         try {
             applyDraftFiles(application, userId, r, now);
         } catch (IllegalArgumentException exception) {
@@ -111,8 +113,8 @@ public class PlaceRegistrationService {
         try {
             LocalDateTime now = now();
             a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
-            a.setContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
-            setOperatingSchedule(a, r, now);
+            a.updateContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
+            updateOperatingSchedule(a, r, now);
             applyDraftFiles(a, userId, r, now);
         } catch (IllegalArgumentException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
@@ -123,6 +125,7 @@ public class PlaceRegistrationService {
     }
 
     @Transactional
+    /** 제출 가능한 초안인지 검증한 뒤 심사 대기 상태로 전환합니다. */
     public PlaceRegistrationResponse submit(Long userId, Long id) {
         PlaceRegistrationApplication a = mine(userId, id);
         try { a.submit(now(), contentHash(a)); } catch (IllegalStateException e) {
@@ -236,7 +239,7 @@ public class PlaceRegistrationService {
             throw new IllegalStateException("SHA-256을 사용할 수 없습니다.", e);
         }
     }
-    private void setOperatingSchedule(PlaceRegistrationApplication application, PlaceRegistrationRequest request, LocalDateTime now) {
+    private void updateOperatingSchedule(PlaceRegistrationApplication application, PlaceRegistrationRequest request, LocalDateTime now) {
         String timezone = request.timezone() == null || request.timezone().isBlank() ? "Asia/Seoul" : request.timezone();
         try { ZoneId.of(timezone); } catch (Exception e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
         List<PlaceRegistrationOperatingDay> days = request.operatingDays() == null ? List.of() : request.operatingDays();
@@ -244,7 +247,7 @@ public class PlaceRegistrationService {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
         for (PlaceRegistrationOperatingDay day : days) validateDay(day);
-        try { application.setOperatingSchedule(timezone, objectMapper.writeValueAsString(days), now); }
+        try { application.updateOperatingSchedule(timezone, objectMapper.writeValueAsString(days), now); }
         catch (JsonProcessingException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
     }
     private void validateDay(PlaceRegistrationOperatingDay day) {

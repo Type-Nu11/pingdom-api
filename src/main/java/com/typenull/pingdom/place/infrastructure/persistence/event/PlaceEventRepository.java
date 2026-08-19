@@ -17,6 +17,43 @@ import java.util.List;
 
 public interface PlaceEventRepository extends JpaRepository<PlaceEvent, Long> {
 
+    @EntityGraph(attributePaths = "place")
+    @Query(value = """
+            SELECT e FROM PlaceEvent e
+            WHERE (:hasKeyword = false OR LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(e.place.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:hasPlaceId = false OR e.place.id = :placeId)
+              AND (:hasEventType = false OR e.eventType = :eventType)
+              AND (:hasPublicationStatus = false OR e.publicationStatus = :publicationStatus)
+              AND (:hasScheduleStatus = false OR
+                   (:upcoming = true AND e.startAt > :now) OR
+                   (:ongoing = true AND e.startAt <= :now AND e.endAt > :now) OR
+                   (:ended = true AND e.endAt <= :now))
+            """,
+            countQuery = """
+            SELECT COUNT(e) FROM PlaceEvent e
+            WHERE (:hasKeyword = false OR LOWER(e.title) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                   OR LOWER(e.place.name) LIKE LOWER(CONCAT('%', :keyword, '%')))
+              AND (:hasPlaceId = false OR e.place.id = :placeId)
+              AND (:hasEventType = false OR e.eventType = :eventType)
+              AND (:hasPublicationStatus = false OR e.publicationStatus = :publicationStatus)
+              AND (:hasScheduleStatus = false OR
+                   (:upcoming = true AND e.startAt > :now) OR
+                   (:ongoing = true AND e.startAt <= :now AND e.endAt > :now) OR
+                   (:ended = true AND e.endAt <= :now))
+            """)
+    Page<PlaceEvent> findAdminEvents(
+            @Param("hasKeyword") boolean hasKeyword, @Param("keyword") String keyword,
+            @Param("hasPlaceId") boolean hasPlaceId, @Param("placeId") Long placeId,
+            @Param("hasEventType") boolean hasEventType, @Param("eventType") PlaceEventType eventType,
+            @Param("hasPublicationStatus") boolean hasPublicationStatus,
+            @Param("publicationStatus") PlaceEventPublicationStatus publicationStatus,
+            @Param("hasScheduleStatus") boolean hasScheduleStatus,
+            @Param("upcoming") boolean upcoming,
+            @Param("ongoing") boolean ongoing,
+            @Param("ended") boolean ended,
+            @Param("now") LocalDateTime now, Pageable pageable);
+
     boolean existsByPlace_Id(Long placeId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

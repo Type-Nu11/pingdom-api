@@ -1,7 +1,7 @@
 package com.typenull.pingdom.moderation.application.service.notification;
 
 import com.typenull.pingdom.notification.domain.NotificationType;
-import com.typenull.pingdom.notification.repository.NotificationsRepository;
+import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;

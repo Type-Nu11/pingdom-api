@@ -11,5 +11,6 @@ public enum RateLimitAction {
     POST_REPORT,
     MAP_IMAGE_LIKE,
     RECOMMENDATION_CLICK,
-    IMAGE_UPLOAD
+    IMAGE_UPLOAD,
+    CONSULTATION_INTRO
 }

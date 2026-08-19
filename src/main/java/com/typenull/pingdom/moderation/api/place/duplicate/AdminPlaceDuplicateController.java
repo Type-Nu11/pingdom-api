@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.duplicate;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
@@ -20,8 +22,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,8 +34,9 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
+/** 중복 장소 후보의 판정·병합·복구 관리 요청을 관리자 서비스로 전달합니다. */
 public class AdminPlaceDuplicateController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;
@@ -61,7 +62,7 @@ public class AdminPlaceDuplicateController {
     public AdminPlaceDuplicateCandidateResponse confirmDuplicateCandidate(
             @PathVariable Long candidateId,
             @Valid @RequestBody AdminPlaceDuplicateDecisionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminPlaceDuplicateService.confirm(adminUser.userId(), candidateId, request.reviewNote());
     }
@@ -71,7 +72,7 @@ public class AdminPlaceDuplicateController {
     public AdminPlaceDuplicateCandidateResponse rejectDuplicateCandidate(
             @PathVariable Long candidateId,
             @Valid @RequestBody AdminPlaceDuplicateDecisionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminPlaceDuplicateService.reject(adminUser.userId(), candidateId, request.reviewNote());
     }
@@ -81,7 +82,7 @@ public class AdminPlaceDuplicateController {
     public AdminMapPlaceMergeResponse mergeDuplicateCandidate(
             @PathVariable Long candidateId,
             @Valid @RequestBody AdminPlaceDuplicateMergeRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminPlaceDuplicateService.merge(adminUser.userId(), candidateId, request.targetPlaceId());
     }
@@ -113,8 +114,8 @@ public class AdminPlaceDuplicateController {
             description = "관리자가 중복 장소의 참조 데이터를 대상 장소로 옮기고 원본 장소를 병합합니다."
     )
     public ResponseEntity<AdminMapPlaceMergeResponse> mergePlaces(
-            @RequestBody AdminMapPlaceMergeRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @Valid @RequestBody AdminMapPlaceMergeRequest request,
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         AdminMapPlaceMergeResponse response = adminPlaceMergeService.mergePlaces(adminUserId, request);
@@ -137,7 +138,7 @@ public class AdminPlaceDuplicateController {
     )
     public ResponseEntity<AdminPlaceMergeRestoreResponse> restoreMerge(
             @PathVariable Long historyId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceMergeService.restoreMerge(adminUserId, historyId));

@@ -1,20 +1,8 @@
 package com.typenull.pingdom.shared.exception;
 
-import lombok.Getter;
-import org.springframework.http.HttpStatus;
-
-@Getter
-public class MapException extends RuntimeException {
-
-    private final MapErrorCode errorCode;
+public class MapException extends DomainException {
 
     public MapException(MapErrorCode errorCode) {
-        super(errorCode.getMessage());
-        this.errorCode = errorCode;
+        super(errorCode);
     }
-
-    public HttpStatus getStatus() {
-        return errorCode.getStatus();
-    }
-
 }

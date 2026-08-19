@@ -1,0 +1,579 @@
+package com.typenull.pingdom.integration.admin;
+
+import static org.junit.jupiter.api.Assertions.assertEquals;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.delete;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
+
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.engagement.domain.PostReport;
+import com.typenull.pingdom.engagement.domain.PostReportStatus;
+import com.typenull.pingdom.engagement.infrastructure.persistence.PostReportRepository;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.moderation.domain.AdminPostReviewStatus;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.post.domain.MapImage;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
+import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
+import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
+import java.util.List;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Test;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
+import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.http.HttpHeaders;
+import org.springframework.http.MediaType;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.test.web.servlet.MockMvc;
+import org.springframework.test.web.servlet.MvcResult;
+import org.springframework.transaction.annotation.Transactional;
+import software.amazon.awssdk.services.s3.S3Client;
+
+@SpringBootTest(properties = {
+        "spring.cloud.aws.s3.bucket=test-bucket",
+        "spring.cloud.aws.s3.public-base-url=https://cdn.pingdom.test",
+        "spring.cloud.aws.region.static=ap-northeast-2",
+        "spring.cloud.aws.credentials.access-key=test-access-key",
+        "spring.cloud.aws.credentials.secret-key=test-secret-key",
+        "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
+        "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret",
+        "fcm.enabled=false",
+        "fcm.key-path=dummy",
+        "spring.main.allow-bean-definition-overriding=true"
+})
+@AutoConfigureMockMvc
+@Transactional
+class AdminPostControllerTest {
+
+    @MockBean
+    private S3Client s3Client;
+
+    @Autowired
+    private MockMvc mockMvc;
+
+    @Autowired
+    private ObjectMapper objectMapper;
+
+    @Autowired
+    private UserRepository userRepository;
+
+    @Autowired
+    private MapImageRepository mapImageRepository;
+
+    @Autowired
+    private MapPlaceRepository mapPlaceRepository;
+
+    @Autowired
+    private PostReportRepository postReportRepository;
+
+    @Autowired
+    private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private AdminAuditLogRepository adminAuditLogRepository;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
+
+    @BeforeEach
+    void setUp() {
+        adminAuditLogRepository.deleteAllInBatch();
+        outboxEventRepository.deleteAllInBatch();
+        postReportRepository.deleteAllInBatch();
+        mapImageRepository.deleteAllInBatch();
+        mapPlaceRepository.deleteAllInBatch();
+        userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void listPostsIncludesReportsInSamePostItem() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("postOwner01");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-1.jpg");
+
+        User reporter1 = createUser("reporter01");
+        User reporter2 = createUser("reporter02");
+
+        PostReport olderReport = createPostReport(reporter1.getId(), reporter1.getUsername(), mapImage, "첫 번째 신고");
+        PostReport newerReport = createPostReport(reporter2.getId(), reporter2.getUsername(), mapImage, "두 번째 신고");
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.posts[0].reports.length()").value(2))
+                .andExpect(jsonPath("$.posts[0].reports[0].reportId").value(newerReport.getId()))
+                .andExpect(jsonPath("$.posts[0].reports[0].reporterUserId").value(reporter2.getId()))
+                .andExpect(jsonPath("$.posts[0].reports[0].reporterUsername").value("reporter02"))
+                .andExpect(jsonPath("$.posts[0].reports[0].reason").value("두 번째 신고"))
+                .andExpect(jsonPath("$.posts[0].reports[0].status").value(PostReportStatus.PENDING.name()))
+                .andExpect(jsonPath("$.posts[0].reports[0].createdAt").exists())
+                .andExpect(jsonPath("$.posts[0].reports[0].processedAt").doesNotExist())
+                .andExpect(jsonPath("$.posts[0].reports[1].reportId").value(olderReport.getId()));
+    }
+
+    @Test
+    void listPostsReturnsEmptyReportsWhenNoReportExists() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("postOwner02");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/image-2.jpg");
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.posts[0].reports.length()").value(0));
+    }
+
+    @Test
+    void getPostReturnsDetailWithReports() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("postOwner03");
+        MapImage mapImage = createMapImage(
+                owner.getId(),
+                owner.getUsername(),
+                "https://cdn.pingdom.local/map/image-3.jpg",
+                "신고 대상 제목",
+                "신고 대상 설명",
+                "map/image-3.jpg",
+                "https://cdn.pingdom.local/map/thumbnails/image-3.jpg",
+                "map/thumbnails/image-3.jpg"
+        );
+
+        User reporter = createUser("reporter03");
+        PostReport report = createPostReport(reporter.getId(), reporter.getUsername(), mapImage, "상세 신고");
+
+        mockMvc.perform(get("/admin/posts/{id}", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.name").value("신고 대상 제목"))
+                .andExpect(jsonPath("$.imageUrl").value("https://cdn.pingdom.test/map/image-3.jpg"))
+                .andExpect(jsonPath("$.thumbnailUrl").value("https://cdn.pingdom.test/map/thumbnails/image-3.jpg"))
+                .andExpect(jsonPath("$.userId").value(owner.getId()))
+                .andExpect(jsonPath("$.username").value(owner.getUsername()))
+                .andExpect(jsonPath("$.reports.length()").value(1))
+                .andExpect(jsonPath("$.reports[0].reportId").value(report.getId()))
+                .andExpect(jsonPath("$.reports[0].reporterUserId").value(reporter.getId()))
+                .andExpect(jsonPath("$.reports[0].reporterUsername").value("reporter03"))
+                .andExpect(jsonPath("$.reports[0].reason").value("상세 신고"))
+                .andExpect(jsonPath("$.reports[0].status").value(PostReportStatus.PENDING.name()))
+                .andExpect(jsonPath("$.reports[0].createdAt").exists());
+    }
+
+    @Test
+    void listPostsFiltersByReportStatus() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("reportStatusOwner");
+
+        MapImage pendingPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/pending-image.jpg");
+        MapImage acceptedPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/accepted-image.jpg");
+        MapImage noReportPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/no-report-image.jpg");
+
+        User reporter = createUser("reportStatusReporter");
+        createPostReport(reporter.getId(), reporter.getUsername(), pendingPost, "대기 신고");
+        PostReport acceptedReport = createPostReport(reporter.getId(), reporter.getUsername(), acceptedPost, "처리 신고");
+        acceptedReport.accept(java.time.LocalDateTime.now());
+        postReportRepository.save(acceptedReport);
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reportStatus", PostReportStatus.PENDING.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(pendingPost.getId()))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(acceptedPost.getId().intValue())))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(noReportPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsReturnsConfiguredCdnUrlFromS3Key() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("cdnUrlOwner");
+        MapImage mapImage = createMapImage(
+                owner.getId(),
+                owner.getUsername(),
+                "https://cdn.pingdom.local/map/admin-list.jpg",
+                "CDN 변환 게시글",
+                "환경별 CDN URL 테스트",
+                "map/admin-list.jpg",
+                "https://cdn.pingdom.local/map/thumbnails/admin-list.jpg",
+                "map/thumbnails/admin-list.jpg"
+        );
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts[0].id").value(mapImage.getId()))
+                .andExpect(jsonPath("$.posts[0].imageUrl").value("https://cdn.pingdom.test/map/admin-list.jpg"))
+                .andExpect(jsonPath("$.posts[0].thumbnailUrl").value("https://cdn.pingdom.test/map/thumbnails/admin-list.jpg"));
+    }
+
+    @Test
+    void listPostsFiltersByReviewStatusWithPaginationAndCounts() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("reviewStatusOwner");
+        User reporter = createUser("reviewStatusReporter");
+
+        MapImage pendingPost1 = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/pending-review-1.jpg", "처리 대기 1", "대기 신고 게시글");
+        MapImage pendingPost2 = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/pending-review-2.jpg", "처리 대기 2", "대기 신고 게시글");
+        MapImage processedPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/processed-review.jpg", "처리 완료", "처리된 신고 게시글");
+        MapImage normalPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/normal-review.jpg", "신고 없음", "정상 게시글");
+
+        createPostReport(reporter.getId(), reporter.getUsername(), pendingPost1, "대기 신고 1");
+        createPostReport(reporter.getId(), reporter.getUsername(), pendingPost2, "대기 신고 2");
+        PostReport processedReport = createPostReport(reporter.getId(), reporter.getUsername(), processedPost, "처리 신고");
+        processedReport.accept(java.time.LocalDateTime.now());
+        postReportRepository.save(processedReport);
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.PENDING.name())
+                        .param("sortParam", "OLDEST")
+                        .param("page", "1")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(pendingPost1.getId()))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true))
+                .andExpect(jsonPath("$.counts.all").value(4))
+                .andExpect(jsonPath("$.counts.pending").value(2))
+                .andExpect(jsonPath("$.counts.processed").value(1))
+                .andExpect(jsonPath("$.counts.normal").value(1));
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.PROCESSED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(processedPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.NORMAL.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(normalPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPostsAppliesKeywordToReviewStatusCounts() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("reviewKeywordOwner");
+        User reporter = createUser("reviewKeywordReporter");
+
+        MapImage matchingPendingPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/matching-pending.jpg", "검수 키워드 대기", "검색 대상");
+        MapImage otherPendingPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/other-pending.jpg", "다른 대기", "검색 제외");
+        MapImage matchingNormalPost = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/matching-normal.jpg", "검수 키워드 정상", "검색 대상");
+
+        createPostReport(reporter.getId(), reporter.getUsername(), matchingPendingPost, "대기 신고");
+        createPostReport(reporter.getId(), reporter.getUsername(), otherPendingPost, "다른 신고");
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reviewStatus", AdminPostReviewStatus.PENDING.name())
+                        .param("keyword", "검수 키워드"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(matchingPendingPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.counts.all").value(2))
+                .andExpect(jsonPath("$.counts.pending").value(1))
+                .andExpect(jsonPath("$.counts.processed").value(0))
+                .andExpect(jsonPath("$.counts.normal").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(matchingNormalPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsRejectsReportStatusAndReviewStatusCombination() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("reportStatus", PostReportStatus.PENDING.name())
+                        .param("reviewStatus", AdminPostReviewStatus.PENDING.name()))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void getPostReturnsNotFoundWhenPostDoesNotExist() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/posts/{id}", 999_999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    void listPostsFiltersByKeywordAcrossPostAndPlaceFields() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("keywordOwner");
+
+        MapPlace matchingPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("대구소프트웨어마이스터고등학교")
+                .address("대구광역시 달성군 구지면 창리로11길 93")
+                .latitude(35.6427)
+                .longitude(128.3916)
+                .userId(owner.getId())
+                .registrant(owner.getUsername())
+                .build());
+
+        MapImage matchingPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/matching-image.jpg")
+                .s3Key("matching-key")
+                .title("검색 대상 게시글")
+                .description("장소명 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .mapPlace(matchingPlace)
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/other-image.jpg")
+                .s3Key("other-key")
+                .title("다른 게시글")
+                .description("검색되지 않아야 함")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", "대구소프트웨어마이스터고등학교"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(matchingPost.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPostsMatchesPostIdExactlyWhenKeywordIsNumeric() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("numericKeywordOwner");
+
+        MapImage firstPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-1.jpg")
+                .s3Key("post-1")
+                .title("첫 번째 게시글")
+                .description("숫자 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        MapImage secondPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-10.jpg")
+                .s3Key("post-10")
+                .title("두 번째 게시글")
+                .description("숫자 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", String.valueOf(firstPost.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(firstPost.getId()))
+                .andExpect(jsonPath("$.posts[0].id").value(org.hamcrest.Matchers.not(secondPost.getId().intValue())));
+    }
+
+    @Test
+    void listPostsDoesNotIncludeTitleMatchesWhenKeywordIsNumeric() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("numericStrictOwner");
+
+        MapImage exactIdPost = mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-exact.jpg")
+                .s3Key("post-exact")
+                .title("정확히 찾는 게시글")
+                .description("정밀 검색 테스트")
+                .userId(owner.getId())
+                .username(owner.getUsername())
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/post-title-contains.jpg")
+                .s3Key("post-title-contains")
+                .title(exactIdPost.getId() + "가 포함된 제목")
+                .description("숫자 키워드 포함 제목")
+                .userId(owner.getId() + 999)
+                .username(owner.getUsername())
+                .build());
+
+        mockMvc.perform(get("/admin/posts")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .param("keyword", String.valueOf(exactIdPost.getId())))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.posts.length()").value(1))
+                .andExpect(jsonPath("$.posts[0].id").value(exactIdPost.getId()));
+    }
+
+    @Test
+    void deletePostRemovesDatabaseRecordAndCreatesS3DeleteOutboxEvent() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+        User owner = createUser("deleteTargetOwner");
+        MapImage mapImage = createMapImage(owner.getId(), owner.getUsername(), "https://example.com/delete-target.jpg");
+
+        mockMvc.perform(delete("/admin/posts/{id}/delete", mapImage.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isNoContent());
+
+        assertEquals(0L, mapImageRepository.count());
+        assertS3DeleteOutboxEvent(mapImage.getId(), "test-key-" + owner.getId(), "ADMIN_MAP_IMAGE_DELETED");
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        assertEquals(AdminAuditAction.POST_DELETED, adminAuditLogRepository.findAll().getFirst().getAction());
+        assertEquals(AdminAuditTargetType.POST, adminAuditLogRepository.findAll().getFirst().getTargetType());
+        assertEquals(String.valueOf(mapImage.getId()), adminAuditLogRepository.findAll().getFirst().getTargetId());
+    }
+
+    @Test
+    void deleteS3OrphansRequiresReportConfirmation() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(delete("/admin/posts/s3/orphans")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "keys": ["map/orphan.jpg"]
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void deleteS3OrphansAcceptsConfirmedRequest() throws Exception {
+        String adminAccessToken = createAdminAndLogin();
+
+        mockMvc.perform(delete("/admin/posts/s3/orphans")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "reportId": "report-1",
+                                  "keys": [],
+                                  "confirmed": true
+                                }
+                                """))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.requestedKeyCount").value(0))
+                .andExpect(jsonPath("$.deletedKeyCount").value(0))
+                .andExpect(jsonPath("$.failedKeyCount").value(0));
+    }
+
+    private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
+        List<OutboxEvent> events = outboxEventRepository.findAll()
+                .stream()
+                .filter(event -> event.getEventType() == OutboxEventType.S3_OBJECT_DELETE_REQUESTED)
+                .toList();
+        assertEquals(1, events.size());
+        OutboxEvent event = events.get(0);
+        assertEquals(OutboxEventType.S3_OBJECT_DELETE_REQUESTED, event.getEventType());
+        assertEquals("MAP_IMAGE", event.getAggregateType());
+        assertEquals(String.valueOf(mapImageId), event.getAggregateId());
+        assertEquals(s3Key, objectMapper.readTree(event.getPayload()).get("s3Key").asText());
+        assertEquals(reason, objectMapper.readTree(event.getPayload()).get("reason").asText());
+    }
+
+    private User createUser(String username) {
+        return userRepository.save(User.builder()
+                .username(username)
+                .email(username + "@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+    }
+
+    private String createAdminAndLogin() throws Exception {
+        String username = "adminTester" + System.nanoTime();
+        userRepository.save(User.builder()
+                .username(username)
+                .email(username + "@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.ADMIN)
+                .build());
+
+        LoginRequest loginRequest = new LoginRequest(username, "password123");
+        MvcResult loginResult = mockMvc.perform(post("/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(loginRequest)))
+                .andExpect(status().isOk())
+                .andReturn();
+
+        return objectMapper.readTree(loginResult.getResponse().getContentAsString())
+                .get("accessToken")
+                .textValue();
+    }
+
+    private MapImage createMapImage(Long userId, String username, String imageUrl) {
+        return createMapImage(userId, username, imageUrl, "신고 대상 제목", "신고 대상 설명");
+    }
+
+    private MapImage createMapImage(Long userId, String username, String imageUrl, String title, String description) {
+        return createMapImage(userId, username, imageUrl, title, description, "test-key-" + userId, null, null);
+    }
+
+    private MapImage createMapImage(
+            Long userId,
+            String username,
+            String imageUrl,
+            String title,
+            String description,
+            String s3Key,
+            String thumbnailUrl,
+            String thumbnailS3Key
+    ) {
+        return mapImageRepository.save(MapImage.builder()
+                .imageUrl(imageUrl)
+                .s3Key(s3Key)
+                .thumbnailUrl(thumbnailUrl)
+                .thumbnailS3Key(thumbnailS3Key)
+                .title(title)
+                .description(description)
+                .userId(userId)
+                .username(username)
+                .build());
+    }
+
+    private PostReport createPostReport(Long reporterUserId, String reporterUsername, MapImage mapImage, String reason) {
+        return postReportRepository.save(PostReport.builder()
+                .reporterUserId(reporterUserId)
+                .reporterUsername(reporterUsername)
+                .reportedImageId(mapImage.getId())
+                .reportedUserId(mapImage.getUserId())
+                .reportedImageUrl(mapImage.getImageUrl())
+                .mapImage(mapImage)
+                .reason(reason)
+                .build());
+    }
+}

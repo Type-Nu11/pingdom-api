@@ -1,5 +1,7 @@
 package com.typenull.pingdom.offer.api;
 
+import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.offer.api.dto.CouponRedeemRequest;
 import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.api.dto.OfferCreateRequest;
@@ -9,7 +11,6 @@ import com.typenull.pingdom.offer.application.MerchantOfferService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -20,8 +21,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -33,7 +32,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/merchant-owner/offers")
 @RequiredArgsConstructor
-@PreAuthorize("@merchantOwnerAuthorization.isActive(authentication)")
+@ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 public class MerchantOfferController {
@@ -50,7 +49,7 @@ public class MerchantOfferController {
     })
     public ResponseEntity<OfferResponse> create(
             @Valid @RequestBody OfferCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(offerService.create(user.userId(), request));
     }
@@ -64,7 +63,7 @@ public class MerchantOfferController {
     public OfferPageResponse list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return offerService.list(user.userId(), page, limit);
     }
@@ -78,7 +77,7 @@ public class MerchantOfferController {
     })
     public OfferResponse get(
             @PathVariable Long offerId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return offerService.get(user.userId(), offerId);
     }
@@ -93,7 +92,7 @@ public class MerchantOfferController {
     })
     public OfferResponse publish(
             @PathVariable Long offerId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return offerService.publish(user.userId(), offerId);
     }
@@ -108,7 +107,7 @@ public class MerchantOfferController {
     })
     public OfferResponse close(
             @PathVariable Long offerId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return offerService.close(user.userId(), offerId);
     }
@@ -123,7 +122,7 @@ public class MerchantOfferController {
     })
     public CouponResponse redeem(
             @Valid @RequestBody CouponRedeemRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return offerService.redeem(user.userId(), request);
     }

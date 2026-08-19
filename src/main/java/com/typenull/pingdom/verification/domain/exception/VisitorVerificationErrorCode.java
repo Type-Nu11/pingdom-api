@@ -1,12 +1,13 @@
 package com.typenull.pingdom.verification.domain.exception;
 
+import com.typenull.pingdom.shared.exception.ErrorCode;
 import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
 @Getter
 @RequiredArgsConstructor
-public enum VisitorVerificationErrorCode {
+public enum VisitorVerificationErrorCode implements ErrorCode {
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "방문자 검증 제보를 찾을 수 없습니다."),
     PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "장소를 찾을 수 없습니다."),
     REPORT_FORBIDDEN(HttpStatus.FORBIDDEN, "이 제보를 조회할 권한이 없습니다."),

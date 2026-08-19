@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionResponse;
@@ -43,7 +44,6 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -58,7 +58,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/places")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "App Place", description = "앱용 장소 API")
+@Tag(name = "App", description = "앱 전용 API")
+/** 장소 조회, 추천, 방문 판단, 운영 공지 및 장소 미디어 API의 진입점입니다. */
 public class PlaceController {
 
     private final PlaceQueryService placeQueryService;
@@ -366,7 +367,7 @@ public class PlaceController {
             @RequestParam(defaultValue = "5.0") double radiusKm,
             @Parameter(description = "강제 추천 버전", example = "place-rec-v2")
             @RequestParam(required = false) String recommendationVersion,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(
@@ -434,7 +435,7 @@ public class PlaceController {
     @RateLimited(RateLimitAction.RECOMMENDATION_CLICK)
     public ResponseEntity<PlaceRecommendationClickResponse> recordRecommendationClick(
             @Valid @RequestBody PlaceRecommendationClickRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         placeRecommendationClickService.recordClick(
                 user.userId(),
@@ -469,7 +470,7 @@ public class PlaceController {
     public ResponseEntity<PlaceRecommendationExplanationResponse> getRecommendationExplanation(
             @Parameter(description = "추천 응답 requestId", example = "9f7263d5-65f1-4834-9ca3-86ad2fc4e7d0")
             @PathVariable String requestId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
     }
@@ -544,7 +545,7 @@ public class PlaceController {
     public ResponseEntity<PlaceMediaItem> createExplorationMedia(
             @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Valid @RequestBody PlaceMediaCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(placeMediaService.createExplorationMedia(placeId, user.userId(), request));
@@ -590,7 +591,7 @@ public class PlaceController {
     })
     public ResponseEntity<PlaceMediaResponse> getVerificationMedia(
             @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(placeMediaService.getVerificationMedia(placeId, user.userId()));
     }
@@ -607,7 +608,7 @@ public class PlaceController {
     public ResponseEntity<String> deleteExplorationMedia(
             @Parameter(description = "장소 ID", example = "1") @PathVariable("id") Long placeId,
             @Parameter(description = "장소 미디어 ID", example = "10") @PathVariable Long mediaId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         placeMediaService.deleteExplorationMedia(placeId, mediaId, user.userId());
         return ResponseEntity.ok("장소 탐색용 미디어를 삭제했습니다.");

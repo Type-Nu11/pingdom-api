@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.trust;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreAnomalyItem;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreAnomalyResolveRequest;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreAnomalyResponse;
@@ -27,8 +29,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -43,8 +43,9 @@ import java.util.List;
 @RestController
 @RequestMapping("/admin/trust-score")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
+/** Trust Score 조회·재계산·이상 징후 및 개입 규칙 관리 API의 진입점입니다. */
 public class AdminTrustScoreController {
 
     private final AdminTrustScoreService adminTrustScoreService;
@@ -152,7 +153,7 @@ public class AdminTrustScoreController {
     public ResponseEntity<AdminTrustScoreAnomalyItem> resolveAnomaly(
             @PathVariable Long anomalyId,
             @Valid @RequestBody AdminTrustScoreAnomalyResolveRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminTrustScoreService.resolveAnomaly(anomalyId, request, adminUserId));
@@ -202,7 +203,7 @@ public class AdminTrustScoreController {
     })
     public ResponseEntity<AdminTrustScoreInterventionRuleItem> createRule(
             @Valid @RequestBody AdminTrustScoreInterventionRuleRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminTrustScoreService.createRule(request, adminUserId));
@@ -216,7 +217,7 @@ public class AdminTrustScoreController {
     public ResponseEntity<AdminTrustScoreInterventionRuleItem> updateRule(
             @PathVariable Long ruleId,
             @Valid @RequestBody AdminTrustScoreInterventionRuleRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminTrustScoreService.updateRule(ruleId, request, adminUserId));
@@ -229,7 +230,7 @@ public class AdminTrustScoreController {
     )
     public ResponseEntity<AdminTrustScoreInterventionRuleToggleResponse> enableRule(
             @PathVariable Long ruleId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminTrustScoreService.enableRule(ruleId, adminUserId));
@@ -242,7 +243,7 @@ public class AdminTrustScoreController {
     )
     public ResponseEntity<AdminTrustScoreInterventionRuleToggleResponse> disableRule(
             @PathVariable Long ruleId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminTrustScoreService.disableRule(ruleId, adminUserId));
@@ -255,7 +256,7 @@ public class AdminTrustScoreController {
     )
     public ResponseEntity<AdminTrustScoreInterventionEvaluationResponse> evaluateReporter(
             @PathVariable Long reporterUserId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminTrustScoreService.evaluateReporter(reporterUserId, adminUserId));

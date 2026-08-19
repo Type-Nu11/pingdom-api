@@ -20,7 +20,7 @@ import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantPerformanceControllerTest {
@@ -35,7 +35,7 @@ class MerchantPerformanceControllerTest {
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
-                        return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+                        return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
                     @Override

@@ -5,12 +5,16 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventActionRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventResponse;
+import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventListItem;
+import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventListResponse;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.domain.event.PlaceEvent;
 import com.typenull.pingdom.place.domain.event.PlaceEventPublicationStatus;
+import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
+import com.typenull.pingdom.place.domain.event.PlaceEventType;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -20,6 +24,9 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -30,6 +37,43 @@ public class AdminPlaceEventService {
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public AdminPlaceEventListResponse list(String keyword, Long placeId, PlaceEventType eventType,
+            PlaceEventPublicationStatus publicationStatus, PlaceEventScheduleStatus scheduleStatus,
+            int page, int limit) {
+        int safePage = Math.max(1, Math.min(page, 10_000));
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
+        LocalDateTime now = now();
+        Page<PlaceEvent> result = placeEventRepository.findAdminEvents(
+                normalizedKeyword != null, normalizedKeyword,
+                placeId != null, placeId,
+                eventType != null, eventType,
+                publicationStatus != null, publicationStatus,
+                scheduleStatus != null,
+                scheduleStatus == PlaceEventScheduleStatus.UPCOMING,
+                scheduleStatus == PlaceEventScheduleStatus.ONGOING,
+                scheduleStatus == PlaceEventScheduleStatus.ENDED,
+                now,
+                PageRequest.of(safePage - 1, safeLimit, Sort.by("createdAt").descending().and(Sort.by("id").descending())));
+        return new AdminPlaceEventListResponse(result.getContent().stream().map(event -> toListItem(event, now)).toList(),
+                safePage, safeLimit, result.getTotalElements(), Math.max(result.getTotalPages(), 1), result.hasNext());
+    }
+
+    @Transactional(readOnly = true)
+    public AdminPlaceEventListItem get(Long eventId) {
+        PlaceEvent event = placeEventRepository.findById(eventId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_EVENT_NOT_FOUND));
+        return toListItem(event, now());
+    }
+
+    private AdminPlaceEventListItem toListItem(PlaceEvent event, LocalDateTime now) {
+        return new AdminPlaceEventListItem(event.getId(), event.getPlace().getId(), event.getPlace().getName(),
+                event.getPlace().getAddress(), event.getTitle(), event.getDescription(), event.getEventType(),
+                event.getPublicationStatus(), event.scheduleStatusAt(now), event.getStartAt(), event.getEndAt(),
+                event.getCreatedAt(), event.getUpdatedAt());
+    }
 
     @Transactional
     public AdminPlaceEventResponse create(Long adminUserId, AdminPlaceEventRequest request) {

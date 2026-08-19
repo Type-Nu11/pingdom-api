@@ -10,6 +10,7 @@ import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
 import org.springframework.mock.web.MockMultipartFile;
 
+/** 방문 증빙 파일의 형식·크기·픽셀 검증 기준을 검증합니다. */
 class VisitEvidenceFileValidatorTest {
     private final VisitEvidenceFileValidator validator = new VisitEvidenceFileValidator(
             new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 10, 10));

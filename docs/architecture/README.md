@@ -147,6 +147,23 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - application은 domain을 사용해 흐름을 조립해야 한다.
 - infrastructure는 domain 규칙의 소유자가 되어서는 안 된다.
 - event consumer는 부수효과 처리와 후속 갱신에 집중해야 한다.
+- Repository 구현과 Spring Data Repository는 `infrastructure.persistence`에 둔다.
+- 일반 도메인 모듈의 최상위 계층은 `api`, `application`, `domain`, `infrastructure`,
+  `event`, `outbox`, `support`만 허용한다.
+- `shared`는 공통 기술 책임에 따라 별도 하위 구조를 사용할 수 있다.
+
+위 패키지 규칙과 Java package 선언·물리 경로의 일치 여부는
+`PackageConventionTest`로 검증한다.
+
+### 6-1. Controller와 DTO 규칙
+
+- `@RequestBody` DTO는 `@Valid`로 검증한다.
+- 요청과 응답에는 DTO를 사용하고 Entity를 직접 노출하지 않는다.
+- 단순한 `200 OK` 응답은 DTO를 직접 반환할 수 있다.
+- 상태 코드, Header 또는 빈 Body를 명시해야 할 때는 `ResponseEntity`를 사용한다.
+- 리팩터링에서는 기존 HTTP 상태 코드와 응답 Body 형식을 유지한다.
+
+`ControllerConventionTest`는 Request DTO Validation과 Entity 직접 반환 여부를 검증한다.
 
 ## 7. CQRS 적용 범위
 
@@ -236,6 +253,41 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - 외부 시스템 후속 처리는 이벤트 기반으로 분리해야 한다.
 - 외부 자원과 DB가 함께 얽히는 흐름은 롤백 보정 전략을 가져야 한다.
 - 이벤트 발행은 트랜잭션 성공 이후 기준으로 관리해야 한다.
+
+### 9-4. Service 트랜잭션 규칙
+
+- Query Service의 DB 조회는 `@Transactional(readOnly = true)`를 사용한다.
+- 상태 변경과 감사 이력은 Command Service의 쓰기 트랜잭션에서 처리한다.
+- `PESSIMISTIC_WRITE` 조회와 후속 상태 변경은 같은 쓰기 트랜잭션에 포함한다.
+- 외부 API나 S3 호출은 DB 트랜잭션을 불필요하게 길게 유지하지 않도록 분리한다.
+- 하나의 Service에 Query와 Command 메서드를 함께 두지 않는다.
+
+위 규칙은 `ServiceTransactionConventionTest`로 검증한다.
+
+### 9-5. Entity와 Repository 규칙
+
+- Entity는 생성자나 정적 팩터리로 생성하고 범용 Setter를 노출하지 않는다.
+- 상태 변경은 `update`, `mark`, `approve`, `reject`처럼 의도가 드러나는 메서드로 처리한다.
+- 단건 조회 실패는 Service에서 도메인 `ErrorCode` 기반 예외로 변환한다.
+- 비관적 쓰기 잠금 조회 메서드는 `ForUpdate` 접미사를 사용하고 쓰기 트랜잭션 안에서 호출한다.
+- 고정된 연관 그래프는 `EntityGraph`, 조건이 포함된 복합 조회는 Fetch Join을 사용한다.
+- 목록 조회의 컬렉션 Fetch Join과 pagination 조합은 사용하지 않는다.
+- Soft Delete Entity는 삭제 시각이나 상태 변경 메서드를 사용하고 기본 조회에서 삭제 데이터를 제외한다.
+- 복잡한 목록·집계 조회는 Query Repository 또는 DTO projection으로 분리한다.
+
+Entity 상태 변경과 쓰기 잠금 명명 규칙은 `EntityRepositoryConventionTest`로 검증한다.
+
+### 9-6. 예외 처리 규칙
+
+- 도메인 ErrorCode는 공통 `ErrorCode`를 구현하고 `UPPER_SNAKE_CASE`로 작성한다.
+- 도메인 Exception은 `DomainException`을 상속하고 ErrorCode 외 상태와 메시지를 중복 정의하지 않는다.
+- 도메인 예외 응답은 `message`, `code` 형식을 사용한다.
+- RequestBody와 Constraint Validation 오류는 `VALIDATION_FAILED`와 필드별 `errors`를 반환한다.
+- 인증·권한 실패도 동일한 `ErrorResponse` 형식을 사용한다.
+- 예상하지 못한 예외는 내부 메시지와 민감 정보를 응답 또는 로그에 노출하지 않는다.
+- 외부 Provider 실패처럼 재시도 정책이 필요한 기술 예외는 도메인 예외와 분리한다.
+
+ErrorCode와 DomainException 구조는 `ExceptionConventionTest`로 검증한다.
 
 ## 10. 패키지 구조 예시
 

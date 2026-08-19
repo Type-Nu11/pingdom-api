@@ -1,28 +1,28 @@
 package com.typenull.pingdom.notification.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingResponse;
 import com.typenull.pingdom.notification.api.dto.settings.NotificationSettingUpdateRequest;
 
 import com.typenull.pingdom.notification.application.service.NotificationSettingService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "FCM/Notification", description = "푸시 알림 및 기기 토큰 관리 API")
+@Tag(name = "App", description = "앱 전용 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notifications/settings")
@@ -54,7 +54,7 @@ public class NotificationSettingController {
             )
     })
     public ResponseEntity<NotificationSettingResponse> getSetting(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(notificationSettingService.getSetting(user.userId()));
     }
@@ -83,8 +83,8 @@ public class NotificationSettingController {
             )
     })
     public ResponseEntity<NotificationSettingResponse> updateSetting(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
-            @RequestBody NotificationSettingUpdateRequest request
+            @CurrentUser JwtAuthenticatedUser user,
+            @Valid @RequestBody NotificationSettingUpdateRequest request
     ) {
         return ResponseEntity.ok(notificationSettingService.updateSetting(user.userId(), request));
     }

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.user;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
 import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
 import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
@@ -17,7 +18,6 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -27,7 +27,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -102,7 +101,7 @@ public class UsersController {
             )
     })
     public ResponseEntity<MyPageResponse> getMyPageInfo(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         MyPageQueryResult result = myPageService.getMyPageInfo(authenticatedUserId(user));
         return ResponseEntity.ok(MyPageResponse.from(result));
@@ -128,7 +127,7 @@ public class UsersController {
             )
     })
     public ResponseEntity<TravelPurposePreferenceResponse> getTravelPurposes(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(new TravelPurposePreferenceResponse(
                 travelPurposePreferenceService.getTravelPurposes(authenticatedUserId(user))
@@ -161,7 +160,7 @@ public class UsersController {
     })
     public ResponseEntity<TravelPurposePreferenceResponse> replaceTravelPurposes(
             @Valid @RequestBody TravelPurposePreferenceUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(new TravelPurposePreferenceResponse(
                 travelPurposePreferenceService.replaceTravelPurposes(
@@ -255,7 +254,7 @@ public class UsersController {
             )
     })
     public ResponseEntity<UserDataExportResponse> exportMyData(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         UserDataExportResult result = userDataExportService.exportMyData(authenticatedUserId(user));
         return ResponseEntity.ok(UserDataExportResponse.from(result));
@@ -347,7 +346,7 @@ public class UsersController {
     })
     public ResponseEntity<String> changePassword(
             @Valid @RequestBody ChangePasswordRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         changeInfoService.changePassword(request, authenticatedUserId(user));
         return ResponseEntity.ok("비밀번호 변경 완료");
@@ -429,7 +428,7 @@ public class UsersController {
     })
     public ResponseEntity<String> changeUsername(
             @Valid @RequestBody ChangeUsernameRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         changeInfoService.changeUsername(request, authenticatedUserId(user));
         return ResponseEntity.ok("아이디 변경 완료");

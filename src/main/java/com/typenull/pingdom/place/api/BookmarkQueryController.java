@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
@@ -15,7 +16,6 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
-@Tag(name = "App Place", description = "앱용 장소 API")
+@Tag(name = "App", description = "앱 전용 API")
 public class BookmarkQueryController {
 
     private final PlaceQueryService placeQueryService;
@@ -76,7 +76,7 @@ public class BookmarkQueryController {
     public ResponseEntity<PlaceListResponse> listBookmarks(
             @Parameter(description = "페이지 번호", example = "1") @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20") @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);

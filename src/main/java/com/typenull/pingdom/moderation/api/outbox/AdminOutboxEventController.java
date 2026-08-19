@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.outbox;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.outbox.AdminOutboxEventItem;
 import com.typenull.pingdom.moderation.api.dto.outbox.AdminOutboxEventResponse;
 import com.typenull.pingdom.moderation.api.dto.outbox.AdminOutboxEventRetryRequest;
@@ -21,8 +23,6 @@ import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/outbox-events")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminOutboxEventController {
@@ -72,7 +72,7 @@ public class AdminOutboxEventController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return queryService.list(
                 admin.userId(),
@@ -103,7 +103,7 @@ public class AdminOutboxEventController {
     public AdminOutboxEventItem retry(
             @PathVariable String eventId,
             @Valid @RequestBody AdminOutboxEventRetryRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return recoveryService.retry(admin.userId(), eventId, request.reason());
     }

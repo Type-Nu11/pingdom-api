@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.information;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.information.report.PlaceInformationDisputeResponse;
 import com.typenull.pingdom.place.api.dto.place.information.report.PlaceInformationDisputeReviewRequest;
 import com.typenull.pingdom.place.api.dto.place.information.report.PlaceInformationReportPageResponse;
@@ -9,14 +11,11 @@ import com.typenull.pingdom.place.application.service.place.information.PlaceInf
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationReportStatus;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -30,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/place-information-reports")
 @RequiredArgsConstructor
 @Validated
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceInformationReportController {
 
@@ -57,7 +56,7 @@ public class AdminPlaceInformationReportController {
     public PlaceInformationReportResponse reviewReport(
             @PathVariable Long reportId,
             @Valid @RequestBody PlaceInformationReportReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return placeInformationReportService.reviewReport(admin.userId(), reportId, request);
     }
@@ -68,7 +67,7 @@ public class AdminPlaceInformationReportController {
             @PathVariable Long reportId,
             @PathVariable Long disputeId,
             @Valid @RequestBody PlaceInformationDisputeReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return placeInformationReportService.reviewDispute(admin.userId(), reportId, disputeId, request);
     }

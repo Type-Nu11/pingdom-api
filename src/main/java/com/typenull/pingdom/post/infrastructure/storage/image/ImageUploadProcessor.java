@@ -24,6 +24,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
+/** 업로드 파일의 크기·콘텐츠·픽셀을 검증하고 메타데이터를 제거한 이미지와 썸네일을 생성합니다. */
 public class ImageUploadProcessor {
 
     private static final long MAX_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
@@ -34,6 +35,7 @@ public class ImageUploadProcessor {
     private static final int THUMBNAIL_MAX_HEIGHT = 512;
     private static final float JPEG_QUALITY = 0.9f;
 
+    /** 파일 검증, 디코딩, 포맷 정규화, 원본·썸네일 인코딩을 순서대로 수행합니다. */
     public ProcessedImageUpload process(MultipartFile file) {
         byte[] uploadBytes = readAndValidateSize(file);
         ImageUploadFormat format = ImageUploadFormat.detect(uploadBytes);

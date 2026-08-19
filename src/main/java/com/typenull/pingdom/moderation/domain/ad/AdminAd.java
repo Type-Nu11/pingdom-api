@@ -41,6 +41,9 @@ public class AdminAd {
     @Column(name = "created_at", nullable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at", nullable = false)
+    private LocalDateTime updatedAt;
+
     @Builder
     private AdminAd(
             String title,
@@ -71,5 +74,6 @@ public class AdminAd {
         this.startAt = startAt;
         this.endAt = endAt;
         this.createdAt = createdAt;
+        this.updatedAt = createdAt;
     }
 }

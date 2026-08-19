@@ -74,6 +74,7 @@ public class AdminPlaceQualityService {
     }
 
     @Transactional
+    /** 좌표 변경 전 유효 범위와 중복 여부를 검증하고 장소 좌표를 갱신합니다. */
     public AdminMapPlaceCoordinateUpdateResponse updatePlaceCoordinates(
             Long adminUserId,
             Long placeId,
@@ -459,7 +460,7 @@ public class AdminPlaceQualityService {
 
         MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
-        PlaceInformationEvidence evidence = placeInformationEvidenceRepository.findWithLockByIdAndPlace_Id(evidenceId, placeId)
+        PlaceInformationEvidence evidence = placeInformationEvidenceRepository.findByIdAndPlace_IdForUpdate(evidenceId, placeId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_INFORMATION_EVIDENCE_NOT_FOUND));
         Map<String, Object> beforeState = AdminPlaceServiceSupport.informationEvidenceState(evidence);
         PlaceInformationVerificationStatus beforeStatus = evidence.getVerificationStatus();
