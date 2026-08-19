@@ -1,4 +1,4 @@
-package com.typenull.pingdom.swagger;
+package com.typenull.pingdom.integration.swagger;
 
 import com.typenull.pingdom.PingdomApplication;
 import java.io.IOException;

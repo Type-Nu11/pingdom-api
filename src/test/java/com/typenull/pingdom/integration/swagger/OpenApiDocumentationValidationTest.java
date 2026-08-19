@@ -1,4 +1,4 @@
-package com.typenull.pingdom.swagger;
+package com.typenull.pingdom.integration.swagger;
 
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingScheduleUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingTimeRangeRequest;

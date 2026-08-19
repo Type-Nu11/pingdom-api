@@ -1,4 +1,4 @@
-package com.typenull.pingdom.swagger;
+package com.typenull.pingdom.integration.swagger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.swagger.fixture;
+package com.typenull.pingdom.integration.swagger.fixture;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
