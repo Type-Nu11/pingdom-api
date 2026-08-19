@@ -1,4 +1,4 @@
-package com.typenull.pingdom.performance.fixture;
+package com.typenull.pingdom.fixture.performance;
 
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationDisputeStatus;
 import com.typenull.pingdom.place.domain.place.information.report.PlaceInformationReportReasonType;

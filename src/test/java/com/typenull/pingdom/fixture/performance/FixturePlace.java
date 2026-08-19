@@ -1,4 +1,4 @@
-package com.typenull.pingdom.performance.fixture;
+package com.typenull.pingdom.fixture.performance;
 
 import com.typenull.pingdom.place.application.service.place.PlaceSearchSort;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.performance.fixture;
+package com.typenull.pingdom.fixture.performance;
 
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 

@@ -1,4 +1,4 @@
-package com.typenull.pingdom.performance.fixture;
+package com.typenull.pingdom.fixture.performance;
 
 public enum PerformanceLoadScenarioType {
     NORMAL,

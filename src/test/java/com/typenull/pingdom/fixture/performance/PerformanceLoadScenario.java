@@ -1,4 +1,4 @@
-package com.typenull.pingdom.performance.fixture;
+package com.typenull.pingdom.fixture.performance;
 
 import java.util.List;
 
