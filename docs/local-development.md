@@ -14,6 +14,20 @@ Spring Docker Compose 연동이 `docker-compose-local.yml`의 PostgreSQL, Redis�
 별도 `.env`가 없어도 기본 DB/Redis 값으로 실행되며, 필요한 경우 환경 변수로 덮어씁니다.
 Swagger UI는 `/swagger-ui`에서 활성화합니다.
 
+## Gemini 첫 상담 안내
+
+첫 상담 안내 API는 기본적으로 비활성화되어 있으며, 키가 없거나 Gemini 호출에 실패하면 기본 안내문을 반환합니다.
+로컬에서 실제 호출을 확인할 때만 현재 셸 또는 로컬 비밀 관리 도구에 아래 값을 설정합니다. `.env`, 소스 코드,
+테스트 fixture에는 실제 키를 저장하지 않습니다.
+
+```bash
+GEMINI_ENABLED=true
+GEMINI_API_KEY=발급받은_서버_전용_키
+```
+
+운영에서는 `GEMINI_API_KEY`를 배포 서버의 비밀 환경 설정 또는 Secret Manager로 주입하고, Gemini API 전용·서버
+출발 IP 제한을 적용합니다. `GEMINI_ENABLED`는 키 교체·장애 대응 시 즉시 `false`로 전환하는 kill switch로 사용합니다.
+
 `dev` 프로필은 Swagger를 공개하므로 `PINGDOM_DEV_PROFILE_ENABLED=true`를 명시해야만 시작됩니다.
 운영 배포에서는 `SPRING_PROFILES_ACTIVE`에 `dev`를 포함하거나 이 환경 변수를 설정하지 않습니다.
 또한 dev 프로필의 관리자 seed는 기본 비활성화이며, 필요한 개발 환경에서만
