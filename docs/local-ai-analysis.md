@@ -10,7 +10,7 @@ Google AI Studio에서 발급한 키를 EC2 환경변수로 등록합니다.
 SPRING_PROFILES_ACTIVE=local \
 AI_PROVIDER=gemini \
 GEMINI_API_KEY=your-api-key \
-AI_MODEL=gemini-2.5-flash \
+AI_MODEL=gemini-3.1-flash-lite \
 MCP_ENABLED=true \
 MCP_BASE_URL=http://127.0.0.1:8080 \
 ./gradlew bootRun

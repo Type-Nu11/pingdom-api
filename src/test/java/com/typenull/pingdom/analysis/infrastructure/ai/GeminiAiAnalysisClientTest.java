@@ -26,7 +26,7 @@ class GeminiAiAnalysisClientTest {
     void sendsJsonGenerationRequestAndParsesCandidateText() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("models/gemini-2.5-flash:generateContent"))
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("x-goog-api-key", "test-key"))
                 .andExpect(jsonPath("$.contents[0].parts[0].text").value("prompt"))
@@ -37,7 +37,7 @@ class GeminiAiAnalysisClientTest {
                 ));
 
         AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", "gemini-2.5-flash", "test-key",
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
                 Duration.ofSeconds(1), Duration.ofSeconds(2)
         );
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(

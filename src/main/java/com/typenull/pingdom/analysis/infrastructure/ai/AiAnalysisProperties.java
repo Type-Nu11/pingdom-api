@@ -40,7 +40,7 @@ public record AiAnalysisProperties(
     }
 
     private static String defaultModel(String provider) {
-        return "gemini".equalsIgnoreCase(provider) ? "gemini-2.5-flash" : "qwen2.5:7b";
+        return "gemini".equalsIgnoreCase(provider) ? "gemini-3.1-flash-lite" : "qwen2.5:7b";
     }
 
     private static String defaultValue(String value, String fallback) {
