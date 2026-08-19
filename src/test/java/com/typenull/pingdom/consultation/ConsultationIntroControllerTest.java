@@ -1,6 +1,7 @@
 package com.typenull.pingdom.consultation;
 
 import static org.mockito.BDDMockito.given;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
@@ -32,6 +33,13 @@ class ConsultationIntroControllerTest {
 
     @MockBean
     private RateLimitStore rateLimitStore;
+
+    @Test
+    void documentsConsultationIntroInWebTag() throws Exception {
+        mockMvc.perform(get("/v3/api-docs"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/consultations/intro'].post.tags[0]").value("Web"));
+    }
 
     @Test
     void allowsAnonymousRequestAndReturnsGeminiContract() throws Exception {
