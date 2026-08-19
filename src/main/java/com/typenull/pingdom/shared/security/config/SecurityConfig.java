@@ -37,6 +37,7 @@ import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2SuccessHandler;
 @EnableWebSecurity
 @EnableMethodSecurity
 @Order(Ordered.HIGHEST_PRECEDENCE)
+/** OAuth2와 API JWT 보안 체인을 분리하고 공통 인증·인가·예외 처리 구성을 조립합니다. */
 public class SecurityConfig {
 
     private static final RequestMatcher OAUTH2_ENDPOINTS = new OrRequestMatcher(

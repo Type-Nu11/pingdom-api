@@ -25,6 +25,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 
 @Service
 @RequiredArgsConstructor
+/** 방문자 검증 리포트의 제출·조회·관리자 심사 상태 전이를 처리합니다. */
 public class VisitorVerificationReportService {
     private final VisitorVerificationReportRepository reportRepository;
     private final UserRepository userRepository;
@@ -34,6 +35,7 @@ public class VisitorVerificationReportService {
     private final VisitorVerificationReportMetrics metrics;
 
     @Transactional
+    /** check-in과 증빙 조건을 확인한 뒤 방문 검증 리포트를 제출합니다. */
     public MyVisitorVerificationReportResponse submit(Long userId, VisitorVerificationReportCreateRequest request) {
         requireTourist(userId);
         if (!placeRepository.existsById(request.placeId())) {

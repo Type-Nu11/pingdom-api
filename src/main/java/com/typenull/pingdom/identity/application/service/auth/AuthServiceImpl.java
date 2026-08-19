@@ -44,6 +44,7 @@ import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
+/** 회원가입, 로그인, 이메일·비밀번호 인증, 토큰 갱신과 탈퇴 흐름을 조정합니다. */
 public class AuthServiceImpl implements AuthService {
 
     private static final long EMAIL_VERIFICATION_EXPIRATION_MINUTES = 10L;
@@ -105,6 +106,7 @@ public class AuthServiceImpl implements AuthService {
 
     @Override
     @Transactional
+    /** 자격 증명과 계정 상태를 확인한 뒤 access·refresh token을 발급합니다. */
     public LoginResult login(LoginRequest request) {
         User user = authenticateUser(request);
         return issueLoginResponse(user);
@@ -220,6 +222,7 @@ public class AuthServiceImpl implements AuthService {
     @Override
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
+    /** 쿠키의 refresh token과 저장된 세션을 대조해 access token을 재발급합니다. */
     public TokenRefreshResult refreshToken(String refreshToken) {
         try {
             Long userId = extractValidRefreshTokenUserId(refreshToken);

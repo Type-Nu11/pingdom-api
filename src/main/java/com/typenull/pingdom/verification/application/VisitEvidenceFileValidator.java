@@ -17,6 +17,7 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
 @Component
+/** 방문 인증 파일의 크기·형식·이미지 메타데이터를 검증해 안전한 입력으로 정규화합니다. */
 public class VisitEvidenceFileValidator {
     private static final int MAX_WIDTH = 8_000;
     private static final int MAX_HEIGHT = 8_000;
@@ -27,6 +28,7 @@ public class VisitEvidenceFileValidator {
         this.properties = properties;
     }
 
+    /** 업로드 파일을 읽고 허용된 콘텐츠 타입과 크기·픽셀 조건을 검증합니다. */
     public ValidatedVisitEvidenceFile validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_EVIDENCE_FILE_EMPTY);
