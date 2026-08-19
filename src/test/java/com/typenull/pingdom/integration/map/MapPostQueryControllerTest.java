@@ -1,4 +1,4 @@
-package com.typenull.pingdom.map;
+package com.typenull.pingdom.integration.map;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.engagement.domain.MapImageLike;
