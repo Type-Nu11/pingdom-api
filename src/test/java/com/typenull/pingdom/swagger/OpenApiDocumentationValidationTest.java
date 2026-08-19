@@ -40,6 +40,29 @@ class OpenApiDocumentationValidationTest {
             "/v3/api-docs/common",
             "/v3/api-docs/web"
     );
+    private static final List<String> ADMIN_PLACE_CATEGORIES = List.of(
+            PlaceCategoryPolicy.RESTAURANT,
+            PlaceCategoryPolicy.MUSIC,
+            PlaceCategoryPolicy.POP_UP,
+            PlaceCategoryPolicy.FASHION,
+            PlaceCategoryPolicy.BEAUTY,
+            PlaceCategoryPolicy.EXHIBITION,
+            PlaceCategoryPolicy.CAFE,
+            PlaceCategoryPolicy.CULTURAL_HERITAGE,
+            PlaceCategoryPolicy.OTHER
+    );
+    private static final List<String> ADMIN_PLACE_CATEGORY_NAMES = List.of(
+            "음식점",
+            "음악",
+            "팝업",
+            "패션",
+            "뷰티",
+            "전시",
+            "카페",
+            "문화재",
+            "기타",
+            "미분류"
+    );
 
     @Autowired
     private MockMvc mockMvc;
@@ -217,27 +240,19 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void adminPlaceListContractExposesCategoryFilterAndNormalizedEmptyPage() throws Exception {
+    void adminPlaceContractsExposeCanonicalCategoryAndLevel() throws Exception {
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");
         JsonNode operation = webDocument.at("/paths/~1admin~1places/get");
         JsonNode categoryParameter = parameter(operation, "category");
 
         assertThat(categoryParameter.isMissingNode()).isFalse();
         assertThat(categoryParameter.path("required").asBoolean()).isFalse();
+        assertThat(categoryParameter.path("example").asText()).isEqualTo(PlaceCategoryPolicy.CAFE);
         assertThat(categoryParameter.path("description").asText())
                 .contains("AdminMapPlaceItem.category", "touristCategories");
         assertThat(categoryParameter.path("schema").path("enum"))
                 .extracting(JsonNode::asText)
-                .containsExactlyInAnyOrder(
-                        PlaceCategoryPolicy.CAFE,
-                        PlaceCategoryPolicy.RESTAURANT,
-                        PlaceCategoryPolicy.TOURISM,
-                        PlaceCategoryPolicy.SCENERY,
-                        PlaceCategoryPolicy.CULTURE,
-                        PlaceCategoryPolicy.SHOPPING,
-                        PlaceCategoryPolicy.ACCOMMODATION,
-                        PlaceCategoryPolicy.EXPERIENCE
-                );
+                .containsExactlyInAnyOrderElementsOf(ADMIN_PLACE_CATEGORIES);
 
         JsonNode emptyResult = operation.at("/responses/200/content/*~1*/examples/emptyResult/value");
         assertThat(emptyResult.path("places").isArray()).isTrue();
@@ -246,15 +261,23 @@ class OpenApiDocumentationValidationTest {
         assertThat(emptyResult.path("totalPages").asLong()).isEqualTo(1L);
         assertThat(emptyResult.path("hasNext").asBoolean()).isFalse();
 
-        JsonNode itemProperties = webDocument.at("/components/schemas/AdminMapPlaceItem/properties");
-        assertThat(itemProperties.path("category").path("enum"))
-                .extracting(JsonNode::asText)
-                .contains(PlaceCategoryPolicy.CAFE, PlaceCategoryPolicy.EXPERIENCE);
-        assertThat(itemProperties.path("categoryName").path("enum"))
-                .extracting(JsonNode::asText)
-                .contains("미분류");
-        assertThat(itemProperties.path("touristCategories").path("description").asText())
-                .contains("별도 기준");
+        for (String schemaName : List.of("AdminMapPlaceItem", "AdminMapPlaceDetailResponse")) {
+            JsonNode schema = webDocument.at("/components/schemas/" + schemaName);
+            JsonNode properties = schema.path("properties");
+
+            assertThat(properties.path("category").path("enum"))
+                    .extracting(JsonNode::asText)
+                    .containsExactlyInAnyOrderElementsOf(ADMIN_PLACE_CATEGORIES);
+            assertThat(properties.path("categoryName").path("enum"))
+                    .extracting(JsonNode::asText)
+                    .containsExactlyInAnyOrderElementsOf(ADMIN_PLACE_CATEGORY_NAMES);
+            assertThat(properties.path("touristCategories").path("description").asText())
+                    .contains("별도 기준");
+            assertThat(properties.path("level").path("type").asText()).isEqualTo("integer");
+            assertThat(properties.path("level").path("minimum").asInt()).isZero();
+            assertThat(requiredFields(schema)).contains("level");
+            assertNullableProperty(webDocument, schemaName, "category");
+        }
         assertThat(webDocument.at("/components/schemas/AdminMapPlaceResponse/properties/totalPages/minimum")
                 .asLong()).isEqualTo(1L);
     }
