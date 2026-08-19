@@ -19,6 +19,7 @@ import com.typenull.pingdom.place.domain.place.category.TouristCategory;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange;
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
+import com.typenull.pingdom.place.domain.place.statistics.PlaceGrowthSnapshot;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.AdminMapPlaceQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
@@ -38,15 +39,12 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
-import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
 public class AdminMapPlaceLookupQueryService {
 
     private static final int PLACE_DETAIL_POST_LIMIT = 20;
-    private static final String UNCATEGORIZED_CATEGORY_NAME = "미분류";
-
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminMapPlaceQueryRepository adminMapPlaceQueryRepository;
     private final MapImageRepository mapImageRepository;
@@ -65,12 +63,14 @@ public class AdminMapPlaceLookupQueryService {
         AdminPlaceSortParam safeSortParam = sortParam == null ? AdminPlaceSortParam.LATEST : sortParam;
         String safeKeyword = keyword == null ? "" : keyword.trim();
         String safeCategory = PlaceCategoryPolicy.normalize(category);
+        Set<String> categoryAliases = PlaceCategoryPolicy.normalizedAliases(safeCategory);
         Long numericKeyword = parseLongKeyword(safeKeyword);
 
         Page<MapPlace> placePage = adminMapPlaceQueryRepository.searchAdminPlaces(
                 safeKeyword,
                 numericKeyword,
-                safeCategory,
+                safeCategory != null,
+                categoryAliases.isEmpty() ? Set.of("") : categoryAliases,
                 PageRequest.of(safePage - 1, safeLimit, toListSort(safeSortParam))
         );
 
@@ -119,6 +119,7 @@ public class AdminMapPlaceLookupQueryService {
                 placeId,
                 MapImageVisibilityStatus.AUTO_HIDDEN
         );
+        PlaceGrowthSnapshot placeGrowth = placeGrowthService.snapshot(mapPlace);
 
         return new AdminMapPlaceDetailResponse(
                 mapPlace.getId(),
@@ -144,8 +145,9 @@ public class AdminMapPlaceLookupQueryService {
                 mapPlace.getRegistrant(),
                 safeSortParam,
                 Math.toIntExact(postPage.getTotalElements()),
+                placeGrowth.level(),
                 AdminMapPlaceGrowthResponse.of(
-                        placeGrowthService.snapshot(mapPlace),
+                        placeGrowth,
                         hiddenPhotoCount
                 ),
                 posts
@@ -200,6 +202,7 @@ public class AdminMapPlaceLookupQueryService {
 
     private AdminMapPlaceItem toItem(MapPlace mapPlace, Set<TouristCategory> touristCategories) {
         String category = toResponseCategory(mapPlace.getCategory());
+        PlaceGrowthSnapshot placeGrowth = placeGrowthService.snapshot(mapPlace);
 
         return new AdminMapPlaceItem(
                 mapPlace.getId(),
@@ -221,7 +224,8 @@ public class AdminMapPlaceLookupQueryService {
                 mapPlace.getLongitude(),
                 mapPlace.getUserId(),
                 mapPlace.getRegistrant(),
-                placeGrowthService.snapshot(mapPlace)
+                placeGrowth.level(),
+                placeGrowth
         );
     }
 
@@ -244,11 +248,11 @@ public class AdminMapPlaceLookupQueryService {
     }
 
     private String toResponseCategory(String category) {
-        return StringUtils.hasText(category) ? category.trim() : null;
+        return PlaceCategoryPolicy.canonicalOrNull(category);
     }
 
     private String toCategoryName(String category) {
-        return category == null ? UNCATEGORIZED_CATEGORY_NAME : category;
+        return PlaceCategoryPolicy.displayName(category);
     }
 
     private Long parseLongKeyword(String keyword) {

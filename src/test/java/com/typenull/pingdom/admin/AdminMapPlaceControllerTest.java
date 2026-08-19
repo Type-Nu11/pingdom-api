@@ -201,7 +201,7 @@ class AdminMapPlaceControllerTest {
                 .name("진주성")
                 .englishName("Jinju Castle")
                 .address("경상남도 진주시 남강로 626")
-                .category("관광")
+                .category("문화재")
                 .touristSummary("남강을 내려다보는 역사 유적")
                 .touristCategories(Set.of(TouristCategory.EXHIBITION, TouristCategory.OTHER))
                 .latitude(35.1894)
@@ -219,11 +219,13 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].name").value("진주성"))
                 .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 남강로 626"))
                 .andExpect(jsonPath("$.places[0].discoveryStatus").value("VISIBLE"))
-                .andExpect(jsonPath("$.places[0].category").value("관광"))
-                .andExpect(jsonPath("$.places[0].categoryName").value("관광"))
+                .andExpect(jsonPath("$.places[0].category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("문화재"))
                 .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"))
                 .andExpect(jsonPath("$.places[0].touristSummary").value("남강을 내려다보는 역사 유적"))
                 .andExpect(jsonPath("$.places[0].touristCategories", containsInAnyOrder("EXHIBITION", "OTHER")))
+                .andExpect(jsonPath("$.places[0].level").value(1))
+                .andExpect(jsonPath("$.places[0].placeGrowth.level").value(1))
                 .andExpect(jsonPath("$.page").value(1))
                 .andExpect(jsonPath("$.limit").value(20))
                 .andExpect(jsonPath("$.totalCount").value(1))
@@ -233,10 +235,10 @@ class AdminMapPlaceControllerTest {
     @Test
     void listPlacesFiltersByCategory() throws Exception {
         String accessToken = createAdminAndLogin();
-        MapPlace tourismPlace = mapPlaceRepository.save(MapPlace.builder()
-                .name("관광 카테고리 장소")
-                .address("경상남도 진주시 관광로 1")
-                .category("관광")
+        MapPlace culturalHeritagePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("문화재 카테고리 장소")
+                .address("경상남도 진주시 문화재로 1")
+                .category("문화재")
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(31L)
@@ -245,7 +247,7 @@ class AdminMapPlaceControllerTest {
         mapPlaceRepository.save(MapPlace.builder()
                 .name("카페 카테고리 장소")
                 .address("경상남도 진주시 카페로 1")
-                .category("카페")
+                .category("CAFE")
                 .latitude(35.1895)
                 .longitude(128.0790)
                 .userId(32L)
@@ -254,11 +256,12 @@ class AdminMapPlaceControllerTest {
 
         mockMvc.perform(get("/admin/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("category", "관광"))
+                        .param("category", "CULTURAL_HERITAGE"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places.length()").value(1))
-                .andExpect(jsonPath("$.places[0].id").value(tourismPlace.getId()))
-                .andExpect(jsonPath("$.places[0].category").value("관광"))
+                .andExpect(jsonPath("$.places[0].id").value(culturalHeritagePlace.getId()))
+                .andExpect(jsonPath("$.places[0].category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("문화재"))
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
@@ -268,7 +271,7 @@ class AdminMapPlaceControllerTest {
         mapPlaceRepository.save(MapPlace.builder()
                 .name("복합검색 카페 A")
                 .address("경상남도 진주시 복합검색로 1")
-                .category("카페")
+                .category("CAFE")
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(41L)
@@ -277,7 +280,7 @@ class AdminMapPlaceControllerTest {
         MapPlace secondCafe = mapPlaceRepository.save(MapPlace.builder()
                 .name("복합검색 카페 B")
                 .address("경상남도 진주시 복합검색로 2")
-                .category("카페")
+                .category("CAFE")
                 .latitude(35.1895)
                 .longitude(128.0790)
                 .userId(42L)
@@ -286,7 +289,7 @@ class AdminMapPlaceControllerTest {
         mapPlaceRepository.save(MapPlace.builder()
                 .name("복합검색 식당")
                 .address("경상남도 진주시 복합검색로 3")
-                .category("식당")
+                .category("RESTAURANT")
                 .latitude(35.1896)
                 .longitude(128.0791)
                 .userId(43L)
@@ -316,7 +319,7 @@ class AdminMapPlaceControllerTest {
         mapPlaceRepository.save(MapPlace.builder()
                 .name("카페 장소")
                 .address("경상남도 진주시 카페로 10")
-                .category("카페")
+                .category("CAFE")
                 .latitude(35.1894)
                 .longitude(128.0789)
                 .userId(51L)
@@ -347,6 +350,48 @@ class AdminMapPlaceControllerTest {
 
         mockMvc.perform(get("/admin/places")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value(nullValue()))
+                .andExpect(jsonPath("$.places[0].categoryName").value("미분류"))
+                .andExpect(jsonPath("$.places[0].level").value(1));
+    }
+
+    @Test
+    void listPlacesReturnsOtherNameOnlyForOtherCategory() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("기타 장소")
+                .address("경상남도 진주시 기타로 1")
+                .category("OTHER")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(14L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value("OTHER"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("기타"));
+    }
+
+    @Test
+    void listPlacesTreatsUnsupportedLegacyCategoryAsUncategorized() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("기존 자유 문자열 장소")
+                .address("경상남도 진주시 레거시로 1")
+                .category("legacy-free-text")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(15L)
+                .registrant("legacyRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "기존 자유 문자열 장소"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].category").value(nullValue()))
                 .andExpect(jsonPath("$.places[0].categoryName").value("미분류"));
@@ -397,12 +442,14 @@ class AdminMapPlaceControllerTest {
                         .param("sortParam", AdminPlaceSortParam.LEVEL_DESC.name()))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.places[0].id").value(secondHighLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[0].level").value(5))
                 .andExpect(jsonPath("$.places[0].placeGrowth.level").value(5))
                 .andExpect(jsonPath("$.places[1].id").value(firstHighLevelPlace.getId()))
                 .andExpect(jsonPath("$.places[1].placeGrowth.level").value(5))
                 .andExpect(jsonPath("$.places[2].id").value(middleLevelPlace.getId()))
                 .andExpect(jsonPath("$.places[2].placeGrowth.level").value(3))
                 .andExpect(jsonPath("$.places[3].id").value(lowLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[3].level").value(1))
                 .andExpect(jsonPath("$.places[3].placeGrowth.level").value(1));
     }
 
@@ -422,7 +469,8 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.category").value(nullValue()))
-                .andExpect(jsonPath("$.categoryName").value("미분류"));
+                .andExpect(jsonPath("$.categoryName").value("미분류"))
+                .andExpect(jsonPath("$.level").value(1));
     }
 
     @Test
@@ -582,7 +630,7 @@ class AdminMapPlaceControllerTest {
                 .name("남강")
                 .englishName("Nam River")
                 .address("경상남도 진주시 남강변")
-                .category("풍경")
+                .category("CULTURAL_HERITAGE")
                 .touristSummary("진주의 대표 강변 산책 장소")
                 .touristCategories(Set.of(TouristCategory.NIGHTLIFE))
                 .latitude(35.1801)
@@ -610,14 +658,16 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
                 .andExpect(jsonPath("$.discoveryStatus").value("HIDDEN"))
-                .andExpect(jsonPath("$.category").value("풍경"))
-                .andExpect(jsonPath("$.categoryName").value("풍경"))
+                .andExpect(jsonPath("$.category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.categoryName").value("문화재"))
                 .andExpect(jsonPath("$.englishName").value("Nam River"))
                 .andExpect(jsonPath("$.touristSummary").value("진주의 대표 강변 산책 장소"))
                 .andExpect(jsonPath("$.touristCategories[0]").value("NIGHTLIFE"))
                 .andExpect(jsonPath("$.username").value("placeOwner"))
                 .andExpect(jsonPath("$.sortParam").value(SortParam.LATEST.name()))
                 .andExpect(jsonPath("$.postCount").value(1))
+                .andExpect(jsonPath("$.level").value(1))
+                .andExpect(jsonPath("$.placeGrowth.level").value(1))
                 .andExpect(jsonPath("$.posts[0].title").value("남강 야경"))
                 .andExpect(jsonPath("$.posts[0].likeCount").value(7))
                 .andExpect(jsonPath("$.posts[0].username").value("placeOwner"))
