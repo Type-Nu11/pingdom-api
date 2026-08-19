@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateResponse;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
@@ -7,7 +8,6 @@ import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.application.service.place.MapBookmarkService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -17,7 +17,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -82,7 +81,7 @@ public class MapBookmarkController {
     })
     public ResponseEntity<BookmarkCreateResponse> createBookmark(
             @Valid @RequestBody BookmarkCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         BookmarkCreateResponse response = mapBookmarkService.createBookmark(request, user.userId());
         return ResponseEntity.status(HttpStatus.CREATED).body(response);
@@ -123,7 +122,7 @@ public class MapBookmarkController {
     })
     public ResponseEntity<BookmarkRemoveResponse> removeBookmark(
             @PathVariable Long placeId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ){
         BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, user.userId());
         return ResponseEntity.ok().body(response);

@@ -1,15 +1,12 @@
 package com.typenull.pingdom.shared.security.jwt;
 
-import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
-import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
-import com.typenull.pingdom.shared.security.cors.CorsErrorResponseHeaderWriter;
+import com.typenull.pingdom.shared.security.handler.SecurityErrorResponseWriter;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.io.IOException;
-import org.springframework.http.MediaType;
 import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
@@ -18,17 +15,14 @@ import org.springframework.stereotype.Component;
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 
-    private final ObjectMapper objectMapper;
-    private final CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter;
+    private final SecurityErrorResponseWriter securityErrorResponseWriter;
     private final AuthMetrics authMetrics;
 
     public JwtAuthenticationEntryPoint(
-            ObjectMapper objectMapper,
-            CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter,
+            SecurityErrorResponseWriter securityErrorResponseWriter,
             AuthMetrics authMetrics
     ) {
-        this.objectMapper = objectMapper;
-        this.corsErrorResponseHeaderWriter = corsErrorResponseHeaderWriter;
+        this.securityErrorResponseWriter = securityErrorResponseWriter;
         this.authMetrics = authMetrics;
     }
 
@@ -43,10 +37,6 @@ public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
         AuthErrorCode errorCode = expired ? AuthErrorCode.EXPIRED_TOKEN : AuthErrorCode.INVALID_TOKEN;
         authMetrics.recordAuthFailure(errorCode, "security_entry_point");
 
-        corsErrorResponseHeaderWriter.apply(request, response);
-        response.setStatus(errorCode.getStatus().value());
-        response.setContentType(MediaType.APPLICATION_JSON_VALUE);
-        response.setCharacterEncoding("UTF-8");
-        response.getWriter().write(objectMapper.writeValueAsString(ErrorResponse.from(errorCode)));
+        securityErrorResponseWriter.write(request, response, errorCode);
     }
 }

@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.merchant;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOnboardingUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceQualityUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceResponse;
@@ -11,13 +13,10 @@ import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerA
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -30,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/merchant-owners")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminMerchantOwnerController {
 
@@ -63,7 +62,7 @@ public class AdminMerchantOwnerController {
     public MerchantOwnerProfileResponse approve(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOwnerReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return adminService.approve(admin.userId(), userId, request);
     }
@@ -73,7 +72,7 @@ public class AdminMerchantOwnerController {
     public MerchantOwnerProfileResponse reject(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOwnerReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return adminService.reject(admin.userId(), userId, request);
     }
@@ -83,7 +82,7 @@ public class AdminMerchantOwnerController {
     public MerchantOwnerProfileResponse revoke(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOwnerReviewRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return adminService.revoke(admin.userId(), userId, request);
     }
@@ -93,7 +92,7 @@ public class AdminMerchantOwnerController {
     public MerchantOwnerProfileResponse replacePlaces(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOwnerPlaceUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return adminService.replacePlaces(admin.userId(), userId, request);
     }
@@ -103,7 +102,7 @@ public class AdminMerchantOwnerController {
     public MerchantOwnerProfileResponse updateOnboarding(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOnboardingUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return adminService.updateOnboarding(admin.userId(), userId, request);
     }
@@ -114,7 +113,7 @@ public class AdminMerchantOwnerController {
             @PathVariable Long userId,
             @PathVariable Long placeId,
             @Valid @RequestBody MerchantOwnerPlaceQualityUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
         return adminService.updateOperationalQuality(admin.userId(), userId, placeId, request);
     }

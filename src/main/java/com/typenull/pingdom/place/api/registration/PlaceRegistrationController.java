@@ -1,17 +1,16 @@
 package com.typenull.pingdom.place.api.registration;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationResponse;
 import com.typenull.pingdom.place.application.service.registration.PlaceRegistrationService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -31,25 +30,25 @@ public class PlaceRegistrationController {
 
     @PostMapping
     public ResponseEntity<PlaceRegistrationResponse> create(@Valid @RequestBody PlaceRegistrationRequest request,
-                                                            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                                                            @CurrentUser JwtAuthenticatedUser user) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.create(user.userId(), request));
     }
     @GetMapping
     public PlaceRegistrationPageResponse list(@RequestParam(defaultValue = "1") int page,
                                               @RequestParam(defaultValue = "20") int limit,
-                                              @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) {
+                                              @CurrentUser JwtAuthenticatedUser user) {
         return service.list(user.userId(), page, limit);
     }
     @GetMapping("/{id}")
-    public PlaceRegistrationResponse get(@PathVariable Long id, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) { return service.get(user.userId(), id); }
+    public PlaceRegistrationResponse get(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) { return service.get(user.userId(), id); }
     @PutMapping("/{id}")
-    public PlaceRegistrationResponse update(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationRequest request, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) { return service.update(user.userId(), id, request); }
+    public PlaceRegistrationResponse update(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationRequest request, @CurrentUser JwtAuthenticatedUser user) { return service.update(user.userId(), id, request); }
     @PostMapping("/{id}/submit")
-    public PlaceRegistrationResponse submit(@PathVariable Long id, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) { return service.submit(user.userId(), id); }
+    public PlaceRegistrationResponse submit(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) { return service.submit(user.userId(), id); }
     @PostMapping("/{id}/cancel")
-    public PlaceRegistrationResponse cancel(@PathVariable Long id, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) { return service.cancel(user.userId(), id); }
+    public PlaceRegistrationResponse cancel(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) { return service.cancel(user.userId(), id); }
     @PostMapping("/{id}/reopen")
-    public PlaceRegistrationResponse reopen(@PathVariable Long id, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) { return service.reopen(user.userId(), id); }
+    public PlaceRegistrationResponse reopen(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) { return service.reopen(user.userId(), id); }
     @PostMapping("/{id}/complete")
-    public PlaceRegistrationResponse complete(@PathVariable Long id, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user) { return service.complete(user.userId(), id); }
+    public PlaceRegistrationResponse complete(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) { return service.complete(user.userId(), id); }
 }

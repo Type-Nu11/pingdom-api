@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api.compat;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateResponse;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
@@ -17,7 +18,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -40,7 +40,7 @@ public class LegacyBookmarkCompatController {
     public ResponseEntity<PlaceListResponse> listBookmarks(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.BOOKMARK_LIST);
         if (user == null) {
@@ -53,7 +53,7 @@ public class LegacyBookmarkCompatController {
     @PostMapping("/map/bookmarks")
     public ResponseEntity<BookmarkCreateResponse> createBookmark(
             @Valid @RequestBody BookmarkCreateRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.BOOKMARK_CREATE);
         BookmarkCreateResponse response = mapBookmarkService.createBookmark(request, authenticatedUserId(user));
@@ -64,7 +64,7 @@ public class LegacyBookmarkCompatController {
     @DeleteMapping("/map/bookmarks")
     public ResponseEntity<BookmarkRemoveResponse> removeBookmark(
             @RequestParam Long placeId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.BOOKMARK_DELETE);
         BookmarkRemoveResponse response = mapBookmarkService.removeBookmark(placeId, authenticatedUserId(user));

@@ -1,12 +1,12 @@
 package com.typenull.pingdom.moderation.api.report;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.storage.AdminS3OrphanObjectReportResponse;
 import com.typenull.pingdom.moderation.application.query.storage.AdminS3ObjectReportService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/s3")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminS3ObjectReportController {
 

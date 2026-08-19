@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.recommendation;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.explanation.AdminPlaceRecommendationExplanationResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.metric.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.metric.AdminPlaceRecommendationMetricsResponse;
@@ -25,8 +27,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -40,7 +40,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @Slf4j
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceRecommendationController {
 
@@ -154,7 +154,7 @@ public class AdminPlaceRecommendationController {
     )
     public ResponseEntity<AdminPlaceRecommendationTrafficUpdateResponse> updateRecommendationTraffic(
             @Valid @RequestBody AdminPlaceRecommendationTrafficUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceRecommendationPolicyService.updateRecommendationTraffic(adminUserId, request));
@@ -189,7 +189,7 @@ public class AdminPlaceRecommendationController {
             )
     })
     public ResponseEntity<AdminPlaceRecommendationSnapshotResyncResponse> resyncRecommendationSnapshots(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         String adminUserId = adminUser == null ? "unknown" : String.valueOf(adminUser.userId());
         PlaceRecommendationSnapshotResyncService.SnapshotResyncResult result;

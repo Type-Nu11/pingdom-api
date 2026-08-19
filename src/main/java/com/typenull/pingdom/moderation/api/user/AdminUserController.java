@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.user;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.moderation.api.dto.ban.BanRequest;
 import com.typenull.pingdom.moderation.api.dto.ban.BanResponse;
@@ -30,8 +32,6 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.Sort;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminUserController {
 
@@ -417,7 +417,7 @@ public class AdminUserController {
     public BanResponse banUser(
             @Parameter(description = "밴 처리할 사용자 ID", example = "7") @PathVariable Long userId,
             @Valid @RequestBody(required = false) BanRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return adminUserService.banUser(userId, request, adminUserId);
@@ -498,7 +498,7 @@ public class AdminUserController {
     public UnbanResponse unbanUser(
             @Parameter(description = "밴 해제할 사용자 ID", example = "7") @PathVariable Long userId,
             @Valid @RequestBody(required = false) UnbanRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return adminUserService.unbanUser(userId, request, adminUserId);

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.privacy.api;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.privacy.api.dto.PrivacyProcessingHistoryResponse;
 
 import com.typenull.pingdom.privacy.application.PrivacyProcessingHistoryQueryService;
@@ -10,7 +11,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/privacy-processing-histories")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPrivacyProcessingHistoryController {
 

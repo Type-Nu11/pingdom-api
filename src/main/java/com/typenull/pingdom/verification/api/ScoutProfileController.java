@@ -1,11 +1,12 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.verification.api.dto.ScoutProfileRequest;
 import com.typenull.pingdom.verification.api.dto.ScoutProfileResponse;
 import com.typenull.pingdom.verification.application.ScoutProfileService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -14,8 +15,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
@@ -26,7 +25,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users/me/scout-profile")
 @RequiredArgsConstructor
-@PreAuthorize("isAuthenticated()")
+@AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 public class ScoutProfileController {
@@ -42,7 +41,7 @@ public class ScoutProfileController {
     })
     public ResponseEntity<ScoutProfileResponse> apply(
             @Valid @RequestBody ScoutProfileRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.apply(user.userId(), request));
     }
@@ -50,7 +49,7 @@ public class ScoutProfileController {
     @GetMapping
     @Operation(summary = "내 Scout 프로필 및 활동 자격 조회")
     public ScoutProfileResponse get(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return service.get(user.userId());
     }
@@ -63,7 +62,7 @@ public class ScoutProfileController {
     })
     public ScoutProfileResponse update(
             @Valid @RequestBody ScoutProfileRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return service.update(user.userId(), request);
     }

@@ -27,7 +27,7 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 import org.springframework.web.context.request.NativeWebRequest;
 import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 
 @ExtendWith(MockitoExtension.class)
 class AdminRoleAssignmentControllerTest {
@@ -42,7 +42,7 @@ class AdminRoleAssignmentControllerTest {
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
-                        return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+                        return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
                     @Override

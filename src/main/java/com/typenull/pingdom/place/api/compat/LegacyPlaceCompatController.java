@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api.compat;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRequest;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
@@ -29,7 +30,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -92,7 +92,7 @@ public class LegacyPlaceCompatController {
             @RequestParam(defaultValue = "10") int limit,
             @RequestParam(defaultValue = "5.0") double radiusKm,
             @RequestParam(required = false) String recommendationVersion,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(
@@ -112,7 +112,7 @@ public class LegacyPlaceCompatController {
     @RateLimited(RateLimitAction.RECOMMENDATION_CLICK)
     public ResponseEntity<PlaceRecommendationClickResponse> recordRecommendationClick(
             @Valid @RequestBody PlaceRecommendationClickRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         Long userId = authenticatedUserId(user);
         placeRecommendationClickService.recordClick(
@@ -129,7 +129,7 @@ public class LegacyPlaceCompatController {
     @GetMapping("/place/recommendations/{requestId}/explanation")
     public ResponseEntity<PlaceRecommendationExplanationResponse> getRecommendationExplanation(
             @PathVariable String requestId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(
                 authenticatedUserId(user),
@@ -141,7 +141,7 @@ public class LegacyPlaceCompatController {
     @PostMapping("/map/places/coordinates")
     public ResponseEntity<PlaceCoordinateCreateResponse> createCoordinates(
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE);
         PlaceCoordinateCreateResponse response = mapPlaceService.createCoordinateToken(
@@ -157,7 +157,7 @@ public class LegacyPlaceCompatController {
     @PostMapping("/map/places/upload")
     public ResponseEntity<PlaceCreateResponse> upload(
             @Valid @RequestBody PlaceUploadRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_UPLOAD);
         PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
@@ -182,7 +182,7 @@ public class LegacyPlaceCompatController {
     @DeleteMapping("/map/places/{id}/delete")
     public ResponseEntity<String> deletePlace(
             @PathVariable("id") Long placeId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_DELETE);
         mapPlaceService.deletePlace(placeId, authenticatedUserId(user));

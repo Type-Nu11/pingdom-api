@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.ad;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateRequest;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdCreateResponse;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListResponse;
@@ -19,8 +21,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/ad")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminAdController {
 
@@ -141,7 +141,7 @@ public class AdminAdController {
     })
     public ResponseEntity<AdminAdCreateResponse> createAd(
             @Valid @RequestBody AdminAdCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.status(HttpStatus.CREATED)
@@ -204,7 +204,7 @@ public class AdminAdController {
     public ResponseEntity<Void> deleteAd(
             @Parameter(description = "삭제할 이벤트/광고 ID", example = "1")
             @PathVariable("adId") Long adId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         adminAdService.delete(adId, adminUserId);

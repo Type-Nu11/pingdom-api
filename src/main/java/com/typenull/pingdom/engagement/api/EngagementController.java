@@ -1,5 +1,6 @@
 package com.typenull.pingdom.engagement.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.engagement.api.dto.like.MapImageLikeRequest;
 import com.typenull.pingdom.engagement.api.dto.like.MapImageLikeResponse;
 import com.typenull.pingdom.engagement.api.dto.report.MyPostReportResponse;
@@ -28,7 +29,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -127,7 +127,7 @@ public class EngagementController {
     public ResponseEntity<String> report(
             @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Valid @RequestBody PostReportRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_REPORT);
         return reportInternal(imageId, request, user);
@@ -144,7 +144,7 @@ public class EngagementController {
     public ResponseEntity<String> reportLegacy(
             @Parameter(description = "신고할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
             @Valid @RequestBody PostReportRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return reportInternal(imageId, request, user);
     }
@@ -180,7 +180,7 @@ public class EngagementController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -192,7 +192,7 @@ public class EngagementController {
     @RateLimited(RateLimitAction.MAP_IMAGE_LIKE)
     public ResponseEntity<MapImageLikeResponse> like(
             @Valid @RequestBody MapImageLikeRequest request,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -205,7 +205,7 @@ public class EngagementController {
     @RateLimited(RateLimitAction.MAP_IMAGE_LIKE)
     public ResponseEntity<MapImageLikeResponse> likeClear(
             @PathVariable("postId") Long postId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
@@ -218,7 +218,7 @@ public class EngagementController {
     public ResponseEntity<String> likeReturn(
             @PathVariable("postId") Long postId,
             @PathVariable("notificationsId") Long notificationsId,
-            @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);

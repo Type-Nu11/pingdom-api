@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.post;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.moderation.api.dto.report.AdminPostReportBulkActionResponse;
 import com.typenull.pingdom.moderation.domain.AdminPostReviewStatus;
@@ -26,8 +28,6 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -41,7 +41,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPostController {
 
@@ -210,7 +210,7 @@ public class AdminPostController {
     public AdminPostReportBulkActionResponse acceptPostReports(
             @Parameter(description = "신고를 일괄 수락할 게시글 ID", example = "10")
             @PathVariable Long postId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return adminReportService.acceptPostReports(postId, adminUserId);
@@ -246,7 +246,7 @@ public class AdminPostController {
     public AdminPostReportBulkActionResponse declinePostReports(
             @Parameter(description = "신고를 일괄 거절할 게시글 ID", example = "10")
             @PathVariable Long postId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return adminReportService.declinePostReports(postId, adminUserId);
@@ -307,7 +307,7 @@ public class AdminPostController {
     })
     public ResponseEntity<Void> deletePost(
             @Parameter(description = "삭제할 게시글 ID", example = "10") @PathVariable("id") Long id,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         adminPostService.deletePost(id, adminUserId);

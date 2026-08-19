@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.appeal;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.appeal.AdminReportAppealActionRequest;
 import com.typenull.pingdom.moderation.api.dto.appeal.AdminReportAppealActionResponse;
 import com.typenull.pingdom.moderation.api.dto.appeal.AdminReportAppealResponse;
@@ -11,8 +13,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/report-appeals")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminReportAppealController {
 
@@ -48,7 +48,7 @@ public class AdminReportAppealController {
     public AdminReportAppealActionResponse approve(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) AdminReportAppealActionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         String reason = request == null ? null : request.reason();
@@ -60,7 +60,7 @@ public class AdminReportAppealController {
     public AdminReportAppealActionResponse reject(
             @PathVariable Long id,
             @Valid @RequestBody(required = false) AdminReportAppealActionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         String reason = request == null ? null : request.reason();

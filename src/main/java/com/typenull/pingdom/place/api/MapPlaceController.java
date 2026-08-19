@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateRequest;
 import com.typenull.pingdom.place.api.dto.coordinate.PlaceCoordinateCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
@@ -21,7 +22,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.*;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
@@ -76,7 +76,7 @@ public class MapPlaceController {
     })
     public ResponseEntity<PlaceCoordinateCreateResponse> createCoordinates(
             @Valid @RequestBody PlaceCoordinateCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE_PUBLIC);
         PlaceCoordinateCreateResponse response =
@@ -149,7 +149,7 @@ public class MapPlaceController {
     })
     public ResponseEntity<PlaceCreateResponse> upload(
             @Valid @RequestBody PlaceUploadRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_UPLOAD_PUBLIC);
         PlaceCreateResponse response = mapPlaceService.uploadPlaceByToken(
@@ -226,7 +226,7 @@ public class MapPlaceController {
     })
     public ResponseEntity<String> delete(
             @Parameter(description = "삭제할 장소 ID", example = "1") @PathVariable("id") Long placeId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         mapPlaceService.deletePlace(placeId, user.userId());
         return ResponseEntity.ok("장소를 삭제했습니다.");

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.travel;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentResponse;
 import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.travel.TravelScheduleCreateRequest;
@@ -11,7 +12,6 @@ import com.typenull.pingdom.identity.application.service.travel.TravelScheduleSe
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -23,7 +23,6 @@ import java.time.LocalDate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -50,7 +49,7 @@ public class UserTravelController {
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<TravelScheduleListResponse> getTravelSchedules(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         Long userId = authenticatedUserId(user);
         LocalDate today = travelScheduleService.today();
@@ -78,7 +77,7 @@ public class UserTravelController {
     })
     public ResponseEntity<TravelScheduleResponse> createTravelSchedule(
             @Valid @RequestBody TravelScheduleCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         var schedule = travelScheduleService.create(
                 authenticatedUserId(user),
@@ -112,7 +111,7 @@ public class UserTravelController {
     public ResponseEntity<TravelScheduleResponse> updateTravelSchedule(
             @PathVariable Long scheduleId,
             @Valid @RequestBody TravelScheduleUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         var schedule = travelScheduleService.update(
                 authenticatedUserId(user),
@@ -133,7 +132,7 @@ public class UserTravelController {
     })
     public ResponseEntity<TravelScheduleResponse> cancelTravelSchedule(
             @PathVariable Long scheduleId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         var schedule = travelScheduleService.cancel(authenticatedUserId(user), scheduleId);
         return ResponseEntity.ok(TravelScheduleResponse.from(schedule, travelScheduleService.today()));
@@ -146,7 +145,7 @@ public class UserTravelController {
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<CurrentActivityIntentResponse> getCurrentActivityIntent(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(CurrentActivityIntentResponse.from(
                 currentActivityIntentService.getCurrentIntent(authenticatedUserId(user))
@@ -162,7 +161,7 @@ public class UserTravelController {
     })
     public ResponseEntity<CurrentActivityIntentResponse> replaceCurrentActivityIntent(
             @Valid @RequestBody CurrentActivityIntentUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok(CurrentActivityIntentResponse.from(
                 currentActivityIntentService.replace(authenticatedUserId(user), request.intent())
@@ -176,7 +175,7 @@ public class UserTravelController {
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<Void> clearCurrentActivityIntent(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         currentActivityIntentService.clear(authenticatedUserId(user));
         return ResponseEntity.noContent().build();

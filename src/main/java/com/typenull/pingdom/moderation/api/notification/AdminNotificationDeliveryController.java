@@ -1,5 +1,6 @@
 package com.typenull.pingdom.moderation.api.notification;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationDeliveryResponse;
 import com.typenull.pingdom.moderation.application.query.notification.AdminNotificationDeliveryQueryService;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryChannel;
@@ -12,7 +13,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/notification-deliveries")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminNotificationDeliveryController {
 
