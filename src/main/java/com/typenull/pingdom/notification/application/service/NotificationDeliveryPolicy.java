@@ -15,6 +15,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** 알림 유형과 사용자 설정을 대조해 전달 가능 채널을 결정합니다. */
 public class NotificationDeliveryPolicy {
 
     private final NotificationSettingRepository notificationSettingRepository;
