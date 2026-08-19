@@ -46,9 +46,9 @@ jobs:
       - name: Run core test gate
         run: |
           ./gradlew --no-daemon --build-cache --configuration-cache test \
-            --tests com.typenull.pingdom.auth.AuthControllerTest \
-            --tests com.typenull.pingdom.admin.AdminSecurityTest \
-            --tests com.typenull.pingdom.swagger.SwaggerSecurityTest
+            --tests com.typenull.pingdom.integration.auth.AuthControllerTest \
+            --tests com.typenull.pingdom.integration.admin.AdminSecurityTest \
+            --tests com.typenull.pingdom.integration.swagger.SwaggerSecurityTest
 
       - name: Run migration test gate
         if: github.event_name == 'push' && github.ref == 'refs/heads/release'
