@@ -41,10 +41,12 @@ public class LocationAnalysisPromptFactory {
 
                 [MCP 사용 지시]
                 Pingdom MCP 서버 주소와 필요한 인증정보는 실행환경에 이미 설정되어 있다. 사용자에게 서버 주소를
-                다시 요청하지 말고, 현재 대화에 연결된 Pingdom MCP 서버의 읽기 전용 도구를 반드시 사용해 위 입력 지역과 업종에 대한
+                다시 요청하지 말고, Backend가 연결한 Pingdom MCP 서버의 읽기 전용 도구를 반드시 사용해 위 입력 지역과 업종에 대한
                 장소·유동인구·주변 시설 데이터를 조회한 뒤 분석한다. MCP 도구가 여러 개면 필요한 도구를
                 순서대로 호출하고, 조회 결과에 없는 값은 만들지 않는다. MCP 서버가 연결되지 않거나 결과가
                 없으면 해당 항목을 "데이터 없음"으로 표시하고 보고서를 계속 작성한다.
+                recommend_location 도구를 호출할 때 region은 요청 지역으로, age_min·age_max·gender는
+                targetCustomerGroup과 조회 데이터에 근거해 결정하고, radius_m은 지역 구체성에 맞춰 지정한다.
 
                 프론트 입력의 고정 필드는 정확히 다음 4개다: category(가게 업종/카테고리),
                 region(희망 지역), targetCustomerGroup(주요 고객층), operatingHours(주요 영업 시간대).

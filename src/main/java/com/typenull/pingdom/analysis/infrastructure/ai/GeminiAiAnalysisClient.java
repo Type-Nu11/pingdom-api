@@ -4,26 +4,52 @@ import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
 import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
+import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
+import java.util.ArrayList;
 import java.util.List;
-import lombok.RequiredArgsConstructor;
+import java.util.Map;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
-/** Google Gemini Developer API의 단일 JSON 생성 요청을 분석 포트에 연결한다. */
-@RequiredArgsConstructor
+/** Gemini tool call과 Pingdom MCP tool 실행을 중계하는 클라이언트다. */
 public class GeminiAiAnalysisClient implements AiAnalysisClient {
+
+    private static final int MAX_TOOL_CALLS = 3;
 
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
     private final ObjectMapper objectMapper;
+    private final McpAnalysisClient mcpAnalysisClient;
+
+    public GeminiAiAnalysisClient(
+            RestClient restClient,
+            AiAnalysisProperties properties,
+            ObjectMapper objectMapper
+    ) {
+        this(restClient, properties, objectMapper, new DisabledMcpAnalysisClient());
+    }
+
+    public GeminiAiAnalysisClient(
+            RestClient restClient,
+            AiAnalysisProperties properties,
+            ObjectMapper objectMapper,
+            McpAnalysisClient mcpAnalysisClient
+    ) {
+        this.restClient = restClient;
+        this.properties = properties;
+        this.objectMapper = objectMapper;
+        this.mcpAnalysisClient = mcpAnalysisClient;
+    }
 
     @Override
     public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
@@ -31,28 +57,105 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, null);
         }
 
-        JsonNode response;
+        List<McpAnalysisClient.McpTool> mcpTools = mcpAnalysisClient.listTools();
+        ArrayNode contents = objectMapper.createArrayNode();
+        contents.addObject()
+                .put("role", "user")
+                .putArray("parts")
+                .addObject()
+                .put("text", prompt.content());
+
+        for (int toolCallCount = 0; toolCallCount <= MAX_TOOL_CALLS; toolCallCount++) {
+            JsonNode response = generateContent(contents, mcpTools);
+            JsonNode modelContent = response.path("candidates").path(0).path("content");
+            JsonNode functionCall = findFunctionCall(modelContent);
+            if (functionCall == null) {
+                return parseFinalResponse(extractText(response), prompt);
+            }
+            if (toolCallCount == MAX_TOOL_CALLS) {
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+
+            String name = functionCall.path("name").asText(null);
+            Map<String, Object> arguments = objectMapper.convertValue(
+                    functionCall.path("args"), Map.class
+            );
+            if (!StringUtils.hasText(name)) {
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+
+            contents.add(modelContent.deepCopy());
+            McpAnalysisClient.McpToolResult toolResult = mcpAnalysisClient.callTool(name, arguments);
+            appendFunctionResponse(contents, toolResult);
+        }
+        throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+    }
+
+    private JsonNode generateContent(ArrayNode contents, List<McpAnalysisClient.McpTool> mcpTools) {
+        ObjectNode body = objectMapper.createObjectNode();
+        body.set("contents", contents);
+        if (!mcpTools.isEmpty()) {
+            ArrayNode declarations = body.putArray("tools").addObject().putArray("functionDeclarations");
+            for (McpAnalysisClient.McpTool tool : mcpTools) {
+                ObjectNode declaration = declarations.addObject();
+                declaration.put("name", tool.name());
+                declaration.put("description", tool.description());
+                declaration.set("parameters", objectMapper.valueToTree(tool.inputSchema()));
+            }
+        }
+        ObjectNode generationConfig = body.putObject("generationConfig");
+        generationConfig.put("responseMimeType", "application/json");
+        generationConfig.put("temperature", 0.2);
+
         try {
-            response = restClient.post()
+            JsonNode response = restClient.post()
                     .uri("models/{model}:generateContent", properties.model())
                     .header("x-goog-api-key", properties.apiKey())
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(new GeminiGenerateRequest(
-                            List.of(new GeminiContent(List.of(new GeminiPart(prompt.content())))),
-                            new GeminiGenerationConfig("application/json", 0.2)
-                    ))
+                    .body(body)
                     .retrieve()
                     .body(JsonNode.class);
+            if (response == null) {
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+            return response;
         } catch (RestClientException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, exception);
         }
+    }
 
-        String json = extractText(response);
-        if (!StringUtils.hasText(json)) {
+    private JsonNode findFunctionCall(JsonNode modelContent) {
+        for (JsonNode part : modelContent.path("parts")) {
+            if (part.path("functionCall").isObject()) {
+                return part.path("functionCall");
+            }
+        }
+        return null;
+    }
+
+    private void appendFunctionResponse(
+            ArrayNode contents,
+            McpAnalysisClient.McpToolResult toolResult
+    ) {
+        ObjectNode content = contents.addObject().put("role", "user");
+        ObjectNode part = content.putArray("parts").addObject();
+        ObjectNode functionResponse = part.putObject("functionResponse");
+        functionResponse.put("name", toolResult.name());
+        ObjectNode response = functionResponse.putObject("response");
+        try {
+            response.set("result", objectMapper.readTree(toolResult.content()));
+        } catch (JsonProcessingException exception) {
+            response.put("result", toolResult.content());
+        }
+        response.put("isError", toolResult.isError());
+    }
+
+    private AiAnalysisResponse parseFinalResponse(String content, AiAnalysisPrompt prompt) {
+        if (!StringUtils.hasText(content)) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
         }
         try {
-            String normalizedJson = normalizeJson(json);
+            String normalizedJson = normalizeJson(content);
             JsonNode payload = objectMapper.readTree(normalizedJson);
             if (payload.has("html")) {
                 return new AiAnalysisResponse(
@@ -61,11 +164,11 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                         prompt.analysisBasisDate()
                 );
             }
-            LocationAnalysisContent content = objectMapper.reader()
+            LocationAnalysisContent structured = objectMapper.reader()
                     .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
                     .forType(LocationAnalysisContent.class)
                     .readValue(normalizedJson);
-            return new AiAnalysisResponse(content, prompt.analysisBasisDate());
+            return new AiAnalysisResponse(structured, prompt.analysisBasisDate());
         } catch (JsonProcessingException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
         }
@@ -78,7 +181,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         StringBuilder content = new StringBuilder();
         for (JsonNode part : response.path("candidates").path(0).path("content").path("parts")) {
             if (part.path("text").isTextual()) {
-                content.append(part.get("text").asText());
+                content.append(part.path("text").asText());
             }
         }
         return content.toString();
@@ -95,21 +198,16 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         return normalized;
     }
 
-    private record GeminiGenerateRequest(
-            List<GeminiContent> contents,
-            GeminiGenerationConfig generationConfig
-    ) {
-    }
+    private static final class DisabledMcpAnalysisClient implements McpAnalysisClient {
 
-    private record GeminiContent(List<GeminiPart> parts) {
-    }
+        @Override
+        public List<McpTool> listTools() {
+            return List.of();
+        }
 
-    private record GeminiPart(String text) {
-    }
-
-    private record GeminiGenerationConfig(
-            String responseMimeType,
-            double temperature
-    ) {
+        @Override
+        public McpToolResult callTool(String name, Map<String, Object> arguments) {
+            throw new AnalysisReportException(AnalysisReportErrorCode.MCP_SERVICE_UNAVAILABLE, null);
+        }
     }
 }

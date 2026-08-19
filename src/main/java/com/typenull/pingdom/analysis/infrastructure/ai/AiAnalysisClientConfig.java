@@ -2,6 +2,7 @@ package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
+import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnMissingBean;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.context.annotation.Bean;
@@ -27,7 +28,11 @@ public class AiAnalysisClientConfig {
 
     @Bean
     @ConditionalOnProperty(prefix = "analysis.ai", name = "provider", havingValue = "gemini")
-    public AiAnalysisClient geminiAiAnalysisClient(AiAnalysisProperties properties, ObjectMapper objectMapper) {
+    public AiAnalysisClient geminiAiAnalysisClient(
+            AiAnalysisProperties properties,
+            ObjectMapper objectMapper,
+            McpAnalysisClient mcpAnalysisClient
+    ) {
         SimpleClientHttpRequestFactory requestFactory = new SimpleClientHttpRequestFactory();
         requestFactory.setConnectTimeout(properties.connectTimeout());
         requestFactory.setReadTimeout(properties.readTimeout());
@@ -35,7 +40,7 @@ public class AiAnalysisClientConfig {
                 .baseUrl(withTrailingSlash(properties.baseUrl()))
                 .requestFactory(requestFactory)
                 .build();
-        return new GeminiAiAnalysisClient(restClient, properties, objectMapper);
+        return new GeminiAiAnalysisClient(restClient, properties, objectMapper, mcpAnalysisClient);
     }
 
     private String withTrailingSlash(String baseUrl) {
