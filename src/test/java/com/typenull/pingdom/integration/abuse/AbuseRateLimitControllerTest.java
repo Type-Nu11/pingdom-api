@@ -1,4 +1,4 @@
-package com.typenull.pingdom.abuse;
+package com.typenull.pingdom.integration.abuse;
 
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyString;
