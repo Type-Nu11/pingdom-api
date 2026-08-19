@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationReviewRequest;
@@ -11,6 +12,8 @@ import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthoriz
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
@@ -18,6 +21,9 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -44,6 +50,7 @@ class MerchantVerificationAdminServiceTest {
     @Mock private TouristOfferRepository touristOfferRepository;
     @Mock private Clock clock;
     @Mock private AdminRoleAuthorizationService authorizationService;
+    @Mock private PlaceRegistrationApplicationRepository applicationRepository;
 
     @InjectMocks
     private MerchantVerificationAdminService adminService;
@@ -169,6 +176,26 @@ class MerchantVerificationAdminServiceTest {
                 Map.of(),
                 Map.of()
         );
+    }
+
+    @Test
+    void pendingUnifiedApplicationCannotBeReviewedThroughLegacyVerificationApi() {
+        Long userId = 1L;
+        when(applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        )).thenReturn(true);
+
+        org.assertj.core.api.Assertions.assertThatThrownBy(() -> adminService.review(
+                99L,
+                userId,
+                new MerchantVerificationReviewRequest(true, true, "확인")
+        )).isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED)
+        );
+
+        verify(profileRepository, never()).findByUserIdForUpdate(userId);
     }
 
     private MerchantOwnerProfile profile(Long userId) {

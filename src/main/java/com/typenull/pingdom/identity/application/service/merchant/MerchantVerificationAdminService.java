@@ -18,6 +18,9 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -39,6 +42,7 @@ public class MerchantVerificationAdminService {
     private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
     private final AdminRoleAuthorizationService authorizationService;
+    private final PlaceRegistrationApplicationRepository applicationRepository;
 
     @Transactional(readOnly = true)
     public AdminMerchantVerificationPageResponse list(
@@ -105,6 +109,7 @@ public class MerchantVerificationAdminService {
             MerchantVerificationReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        requireNoPendingUnifiedApplication(userId);
         MerchantOwnerProfile profile = profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
         MerchantVerification verification = verificationRepository.findByUserIdForUpdate(userId)
@@ -157,5 +162,15 @@ public class MerchantVerificationAdminService {
 
     private String decryptRegistrationNumber(MerchantVerification verification) {
         return verificationCipher.decrypt(verification.getEncryptedBusinessRegistrationNumber());
+    }
+
+    private void requireNoPendingUnifiedApplication(Long userId) {
+        if (applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        )) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED);
+        }
     }
 }
