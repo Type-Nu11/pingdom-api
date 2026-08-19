@@ -6,7 +6,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 
 @Schema(description = "관리자 대시보드 처리 필요 항목")
 public record AdminDashboardPendingItem(
-        @Schema(description = "처리 대상 유형. 현재 POST_REPORT만 허용", example = "POST_REPORT", allowableValues = {"POST_REPORT"})
+        @Schema(description = "처리 대상 유형", example = "POST_REPORT", allowableValues = {"POST_REPORT", "MERCHANT_PLACE_APPLICATION"})
         AdminDashboardPendingItemType type,
         @Schema(description = "처리 항목 ID. POST_REPORT에서는 신고 ID와 동일", example = "30")
         Long targetId,
@@ -19,6 +19,8 @@ public record AdminDashboardPendingItem(
         @Schema(description = "처리 대상 상태", example = "PENDING")
         String status,
         @Schema(description = "생성일", example = "2026-07-21T15:30:00")
-        LocalDateTime createdAt
+        LocalDateTime createdAt,
+        @Schema(description = "관리자 화면 이동 경로. 통합 신청 항목에서만 제공", example = "/admin/merchant-place-applications/12", nullable = true)
+        String navigationPath
 ) {
 }

@@ -4,8 +4,11 @@ import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationP
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationListItemResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationReviewRequest;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
@@ -13,11 +16,15 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.Map;
@@ -39,6 +46,8 @@ public class MerchantVerificationAdminService {
     private final TouristOfferRepository touristOfferRepository;
     private final Clock clock;
     private final AdminRoleAuthorizationService authorizationService;
+    private final PlaceRegistrationApplicationRepository applicationRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public AdminMerchantVerificationPageResponse list(
@@ -105,6 +114,8 @@ public class MerchantVerificationAdminService {
             MerchantVerificationReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        requireUserForUpdate(userId);
+        requireNoPendingUnifiedApplication(userId);
         MerchantOwnerProfile profile = profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
         MerchantVerification verification = verificationRepository.findByUserIdForUpdate(userId)
@@ -157,5 +168,20 @@ public class MerchantVerificationAdminService {
 
     private String decryptRegistrationNumber(MerchantVerification verification) {
         return verificationCipher.decrypt(verification.getEncryptedBusinessRegistrationNumber());
+    }
+
+    private void requireNoPendingUnifiedApplication(Long userId) {
+        if (applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        )) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED);
+        }
+    }
+
+    private User requireUserForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
     }
 }

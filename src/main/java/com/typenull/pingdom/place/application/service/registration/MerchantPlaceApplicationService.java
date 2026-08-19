@@ -23,6 +23,10 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationAttachmentResponse;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationListItemResponse;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationPageResponse;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationRequest;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationResponse;
@@ -39,7 +43,9 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmen
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationCategory;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
@@ -61,6 +67,7 @@ import org.springframework.transaction.annotation.Transactional;
 public class MerchantPlaceApplicationService {
 
     private final PlaceRegistrationApplicationRepository applicationRepository;
+    private final PlaceRegistrationAttachmentRepository attachmentRepository;
     private final MapPlaceRepository placeRepository;
     private final PlaceRegistrationService legacyPlaceRegistrationService;
     private final MerchantOwnerProfileRepository profileRepository;
@@ -73,6 +80,7 @@ public class MerchantPlaceApplicationService {
     private final AdminRoleAuthorizationService authorizationService;
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
+    private final S3ObjectStorage storage;
     private final Clock clock;
 
     @Transactional
@@ -102,6 +110,28 @@ public class MerchantPlaceApplicationService {
     }
 
     @Transactional(readOnly = true)
+    public AdminMerchantPlaceApplicationPageResponse listForAdmin(Long adminUserId, int page, int limit) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        Page<PlaceRegistrationApplication> result = applicationRepository.findAllByApplicationTypeNot(
+                MerchantPlaceApplicationType.LEGACY,
+                pageable(page, limit)
+        );
+        return new AdminMerchantPlaceApplicationPageResponse(
+                result.getContent().stream()
+                        .map(application -> AdminMerchantPlaceApplicationListItemResponse.from(
+                                application,
+                                decryptRegistrationNumber(application)
+                        ))
+                        .toList(),
+                result.getNumber() + 1,
+                result.getSize(),
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.hasNext()
+        );
+    }
+
+    @Transactional(readOnly = true)
     public MerchantPlaceApplicationResponse get(Long userId, Long id) {
         PlaceRegistrationApplication application = applicationRepository.findByIdAndApplicantUserId(id, userId)
                 .orElseThrow(this::notFound);
@@ -114,6 +144,62 @@ public class MerchantPlaceApplicationService {
         PlaceRegistrationApplication application = applicationRepository.findById(id).orElseThrow(this::notFound);
         requireUnified(application);
         return response(application);
+    }
+
+    @Transactional
+    public AdminMerchantPlaceApplicationResponse getForAdmin(Long adminUserId, Long id) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        PlaceRegistrationApplication application = unified(id);
+        auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_PLACE_APPLICATION_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION,
+                application.getId(),
+                "통합 신청 민감정보 상세 조회",
+                Map.of(),
+                Map.of()
+        );
+        List<AdminMerchantPlaceApplicationAttachmentResponse> attachments = attachments(application);
+        recordAttachmentMetadataViews(adminUserId, application.getId(), attachments);
+        return AdminMerchantPlaceApplicationResponse.from(
+                application,
+                decryptRegistrationNumber(application),
+                attachments
+        );
+    }
+
+    @Transactional
+    public List<AdminMerchantPlaceApplicationAttachmentResponse> listAttachmentsForAdmin(Long adminUserId, Long id) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        PlaceRegistrationApplication application = unified(id);
+        List<AdminMerchantPlaceApplicationAttachmentResponse> attachments = attachments(application);
+        recordAttachmentMetadataViews(adminUserId, application.getId(), attachments);
+        return attachments;
+    }
+
+    @Transactional
+    public DownloadedAttachment downloadAttachmentForAdmin(Long adminUserId, Long applicationId, Long attachmentId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        PlaceRegistrationApplication application = unified(applicationId);
+        PlaceRegistrationAttachment attachment = attachmentRepository.findByIdAndApplicationId(attachmentId, application.getId())
+                .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ATTACHMENT_NOT_FOUND));
+        if (!attachment.isActive()) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.ATTACHMENT_NOT_FOUND);
+        }
+        if (attachment.isRetentionExpired(now())) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.ATTACHMENT_RETENTION_EXPIRED);
+        }
+        byte[] bytes = storage.getBytes(attachment.getStorageKey());
+        auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_PLACE_APPLICATION_ATTACHMENT_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION_ATTACHMENT,
+                attachment.getId(),
+                "통합 신청 민감 첨부 관리자 열람: " + attachment.getDocumentType().name(),
+                Map.of(),
+                Map.of("applicationId", application.getId())
+        );
+        return new DownloadedAttachment(bytes, attachment.getContentType());
     }
 
     @Transactional
@@ -140,6 +226,8 @@ public class MerchantPlaceApplicationService {
 
     @Transactional
     public MerchantPlaceApplicationResponse submit(Long userId, Long id) {
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED));
         PlaceRegistrationApplication application = mine(userId, id);
         requireMerchantData(application);
         if (application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
@@ -386,6 +474,12 @@ public class MerchantPlaceApplicationService {
         return application;
     }
 
+    private PlaceRegistrationApplication unified(Long id) {
+        PlaceRegistrationApplication application = applicationRepository.findById(id).orElseThrow(this::notFound);
+        requireUnified(application);
+        return application;
+    }
+
     private PlaceRegistrationApplication locked(Long id) {
         return applicationRepository.findByIdForUpdate(id).orElseThrow(this::notFound);
     }
@@ -410,6 +504,35 @@ public class MerchantPlaceApplicationService {
 
     private MerchantPlaceApplicationResponse response(PlaceRegistrationApplication application) {
         return MerchantPlaceApplicationResponse.from(application);
+    }
+
+    private List<AdminMerchantPlaceApplicationAttachmentResponse> attachments(PlaceRegistrationApplication application) {
+        return attachmentRepository.findAllByApplicationIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(application.getId())
+                .stream()
+                .filter(PlaceRegistrationAttachment::isActive)
+                .filter(attachment -> !attachment.isRetentionExpired(now()))
+                .map(AdminMerchantPlaceApplicationAttachmentResponse::from)
+                .toList();
+    }
+
+    private void recordAttachmentMetadataViews(
+            Long adminUserId,
+            Long applicationId,
+            List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
+    ) {
+        attachments.forEach(attachment -> auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_PLACE_APPLICATION_ATTACHMENT_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION_ATTACHMENT,
+                attachment.id(),
+                "통합 신청 민감 첨부 메타데이터 조회: " + attachment.documentType().name(),
+                Map.of(),
+                Map.of("applicationId", applicationId)
+        ));
+    }
+
+    private String decryptRegistrationNumber(PlaceRegistrationApplication application) {
+        return verificationCipher.decrypt(application.getEncryptedBusinessRegistrationNumber());
     }
 
     private MerchantPlaceApplicationPageResponse page(Page<PlaceRegistrationApplication> result) {
@@ -462,5 +585,8 @@ public class MerchantPlaceApplicationService {
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
+    }
+
+    public record DownloadedAttachment(byte[] bytes, String contentType) {
     }
 }
