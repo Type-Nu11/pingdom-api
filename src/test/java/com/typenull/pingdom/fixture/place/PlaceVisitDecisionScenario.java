@@ -1,4 +1,4 @@
-package com.typenull.pingdom.place.fixture;
+package com.typenull.pingdom.fixture.place;
 
 public record PlaceVisitDecisionScenario(
         String name,
