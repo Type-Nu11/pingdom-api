@@ -34,29 +34,31 @@ public record AdminMapPlaceItem(
                 nullable = true,
                 example = "OTHER",
                 allowableValues = {
-                        PlaceCategoryPolicy.CAFE,
                         PlaceCategoryPolicy.RESTAURANT,
-                        PlaceCategoryPolicy.TOURISM,
-                        PlaceCategoryPolicy.SCENERY,
-                        PlaceCategoryPolicy.CULTURE,
-                        PlaceCategoryPolicy.SHOPPING,
-                        PlaceCategoryPolicy.ACCOMMODATION,
-                        PlaceCategoryPolicy.EXPERIENCE
+                        PlaceCategoryPolicy.MUSIC,
+                        PlaceCategoryPolicy.POP_UP,
+                        PlaceCategoryPolicy.FASHION,
+                        PlaceCategoryPolicy.BEAUTY,
+                        PlaceCategoryPolicy.EXHIBITION,
+                        PlaceCategoryPolicy.CAFE,
+                        PlaceCategoryPolicy.CULTURAL_HERITAGE,
+                        PlaceCategoryPolicy.OTHER
                 }
         )
         String category,
         @Schema(
                 description = "화면 표시용 일반 장소 카테고리명. category가 없으면 미분류입니다.",
-                example = "OTHER",
+                example = "기타",
                 allowableValues = {
-                        PlaceCategoryPolicy.CAFE,
-                        PlaceCategoryPolicy.RESTAURANT,
-                        PlaceCategoryPolicy.TOURISM,
-                        PlaceCategoryPolicy.SCENERY,
-                        PlaceCategoryPolicy.CULTURE,
-                        PlaceCategoryPolicy.SHOPPING,
-                        PlaceCategoryPolicy.ACCOMMODATION,
-                        PlaceCategoryPolicy.EXPERIENCE,
+                        "음식점",
+                        "음악",
+                        "팝업",
+                        "패션",
+                        "뷰티",
+                        "전시",
+                        "카페",
+                        "문화재",
+                        "기타",
                         "미분류"
                 }
         )
@@ -71,6 +73,13 @@ public record AdminMapPlaceItem(
         Double longitude,
         Long userId,
         String registrant,
+        @Schema(
+                description = "장소 성장 레벨. 10 이상이면 관리자 지도에서 불꽃 마커로 표시할 수 있습니다.",
+                example = "5",
+                minimum = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        int level,
         PlaceGrowthSnapshot placeGrowth
 ) {
 }
