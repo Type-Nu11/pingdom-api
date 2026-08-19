@@ -1,3 +1,4 @@
+// 빌드, 테스트, OpenAPI 검증에 필요한 Gradle 플러그인과 실행 환경을 정의합니다.
 plugins {
     id 'java'
     id 'org.springframework.boot' version '3.3.5'

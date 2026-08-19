@@ -16,6 +16,7 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Lock;
 
+/** Entity와 Repository의 위치·명명 규칙을 정적 소스 검사로 검증합니다. */
 class EntityRepositoryConventionTest {
 
     private static final Path JAVA_SOURCE_ROOT = Path.of("src/main/java");

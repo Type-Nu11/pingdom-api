@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.*;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
+/** 결제 성공·실패·환불 상태 전이의 도메인 경계를 검증합니다. */
 class PaymentTransactionTest {
     private final LocalDateTime now = LocalDateTime.of(2026, 7, 26, 12, 0);
 

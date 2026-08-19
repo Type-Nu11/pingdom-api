@@ -21,6 +21,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
+/** 위치·반경·중복 조건을 포함한 방문 인증 서비스 시나리오를 검증합니다. */
 class LocationCheckInServiceTest {
     private static final Instant NOW = Instant.parse("2026-07-20T06:00:00Z");
     private final LocationCheckInRepository checkInRepository = mock(LocationCheckInRepository.class);
