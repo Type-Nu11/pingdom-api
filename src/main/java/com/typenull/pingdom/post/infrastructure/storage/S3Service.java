@@ -41,6 +41,7 @@ import java.util.Objects;
 @Service
 @RequiredArgsConstructor
 @Slf4j
+/** 게시글 이미지의 업로드·교체·삭제와 S3 객체 URL 변환을 조정합니다. */
 public class S3Service {
 
     private final S3ObjectStorage s3ObjectStorage;
