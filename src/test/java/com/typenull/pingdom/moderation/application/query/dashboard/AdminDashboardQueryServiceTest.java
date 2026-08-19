@@ -17,6 +17,9 @@ import com.typenull.pingdom.moderation.application.support.AdminPlaceDuplicateRe
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Clock;
 import java.time.Instant;
@@ -28,6 +31,7 @@ import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
 
 @ExtendWith(MockitoExtension.class)
 class AdminDashboardQueryServiceTest {
@@ -49,6 +53,8 @@ class AdminDashboardQueryServiceTest {
     private UserSanctionHistoryRepository userSanctionHistoryRepository;
     @Mock
     private MapPlaceDuplicateQueryRepository mapPlaceDuplicateQueryRepository;
+    @Mock
+    private PlaceRegistrationApplicationRepository applicationRepository;
 
     private AdminDashboardQueryService service;
 
@@ -62,6 +68,7 @@ class AdminDashboardQueryServiceTest {
                 userSanctionHistoryRepository,
                 mapPlaceDuplicateQueryRepository,
                 new AdminPlaceDuplicateResolver(),
+                applicationRepository,
                 FIXED_CLOCK
         );
     }
@@ -159,6 +166,12 @@ class AdminDashboardQueryServiceTest {
                 org.mockito.ArgumentMatchers.eq(PostReportStatus.PENDING),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(List.of(report));
+        when(applicationRepository.findAllByApplicationTypeNotAndStatus(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(PlaceRegistrationStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(new PageImpl<>(List.of()));
+        when(postReportRepository.countByStatus(PostReportStatus.PENDING)).thenReturn(1L);
 
         AdminDashboardPendingItemsResponse response = service.getPendingItems(10);
 
@@ -167,5 +180,36 @@ class AdminDashboardQueryServiceTest {
         assertEquals(30L, response.items().get(0).targetId());
         assertEquals(30L, response.items().get(0).reportId());
         assertEquals(22L, response.items().get(0).postId());
+        assertEquals(1L, response.totalCount());
+    }
+
+    @Test
+    void pendingMerchantPlaceApplicationProvidesDetailNavigationPath() {
+        PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
+        when(application.getId()).thenReturn(12L);
+        when(application.getBusinessName()).thenReturn("핑덤 카페");
+        when(application.getPlaceName()).thenReturn("시청점");
+        when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
+        when(application.getCreatedAt()).thenReturn(LocalDateTime.of(2026, 7, 21, 15, 50));
+        when(postReportRepository.findRecentByStatus(
+                org.mockito.ArgumentMatchers.eq(PostReportStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(List.of());
+        when(applicationRepository.findAllByApplicationTypeNotAndStatus(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(PlaceRegistrationStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(new PageImpl<>(List.of(application)));
+        when(applicationRepository.countByApplicationTypeNotAndStatus(
+                org.mockito.ArgumentMatchers.any(),
+                org.mockito.ArgumentMatchers.eq(PlaceRegistrationStatus.PENDING)
+        )).thenReturn(1L);
+
+        AdminDashboardPendingItemsResponse response = service.getPendingItems(10);
+
+        assertEquals(1, response.items().size());
+        assertEquals(AdminDashboardPendingItemType.MERCHANT_PLACE_APPLICATION, response.items().get(0).type());
+        assertEquals("/admin/merchant-place-applications/12", response.items().get(0).navigationPath());
+        assertEquals(1L, response.totalCount());
     }
 }

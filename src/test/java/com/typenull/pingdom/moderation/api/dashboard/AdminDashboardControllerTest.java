@@ -107,8 +107,10 @@ class AdminDashboardControllerTest {
                                 22L,
                                 "야경이 좋은 장소",
                                 "PENDING",
-                        java.time.LocalDateTime.of(2026, 7, 21, 15, 40)
-                        ))
+                                java.time.LocalDateTime.of(2026, 7, 21, 15, 40),
+                                null
+                        )),
+                        1L
                 ));
 
         mockMvc.perform(get("/admin/dashboard/pending-items").param("limit", "5"))
@@ -118,13 +120,14 @@ class AdminDashboardControllerTest {
                 .andExpect(jsonPath("$.items[0].reportId").value(30))
                 .andExpect(jsonPath("$.items[0].postId").value(22))
                 .andExpect(jsonPath("$.items[0].title").value("야경이 좋은 장소"))
-                .andExpect(jsonPath("$.items[0].status").value("PENDING"));
+                .andExpect(jsonPath("$.items[0].status").value("PENDING"))
+                .andExpect(jsonPath("$.totalCount").value(1));
     }
 
     @Test
     void getPendingItemsReturnsEmptyArrayWhenNothingNeedsProcessing() throws Exception {
         when(adminDashboardQueryService.getPendingItems(5))
-                .thenReturn(new AdminDashboardPendingItemsResponse(List.of()));
+                .thenReturn(new AdminDashboardPendingItemsResponse(List.of(), 0L));
 
         mockMvc.perform(get("/admin/dashboard/pending-items").param("limit", "5"))
                 .andExpect(status().isOk())
