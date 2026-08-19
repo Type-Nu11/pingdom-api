@@ -90,6 +90,46 @@ public final class OpenApiCompatibilityFixtures {
                         List.of("재시도 가능한 계약", "동일 응답 schema", "토큰 회전 필드")
                 ),
                 new OpenApiCompatibilityScenario(
+                        "consulting-intro-normal",
+                        OpenApiCompatibilityDomain.CONSULTING,
+                        OpenApiCompatibilityScenarioType.NORMAL,
+                        "/consultations/intro",
+                        "POST",
+                        200,
+                        null,
+                        List.of("첫 상담 안내 응답", "Gemini 응답", "fallback source")
+                ),
+                new OpenApiCompatibilityScenario(
+                        "consulting-intro-validation-boundary",
+                        OpenApiCompatibilityDomain.CONSULTING,
+                        OpenApiCompatibilityScenarioType.BOUNDARY,
+                        "/consultations/intro",
+                        "POST",
+                        400,
+                        null,
+                        List.of("message 필수값", "최대 길이 경계", "입력값 검증")
+                ),
+                new OpenApiCompatibilityScenario(
+                        "consulting-intro-rate-limit-failure",
+                        OpenApiCompatibilityDomain.CONSULTING,
+                        OpenApiCompatibilityScenarioType.FAILURE,
+                        "/consultations/intro",
+                        "POST",
+                        429,
+                        null,
+                        List.of("IP 요청 제한 오류", "429 응답", "요청 제한 정책")
+                ),
+                new OpenApiCompatibilityScenario(
+                        "consulting-intro-retry",
+                        OpenApiCompatibilityDomain.CONSULTING,
+                        OpenApiCompatibilityScenarioType.RETRY,
+                        "/consultations/intro",
+                        "POST",
+                        200,
+                        null,
+                        List.of("동일 요청 재시도", "fallback 응답", "계약 유지")
+                ),
+                new OpenApiCompatibilityScenario(
                         "web-dashboard-normal",
                         OpenApiCompatibilityDomain.WEB,
                         OpenApiCompatibilityScenarioType.NORMAL,
