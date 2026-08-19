@@ -29,6 +29,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceR
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.time.Clock;
 import java.time.Instant;
+import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
@@ -116,6 +117,41 @@ class MerchantPlaceApplicationAdminServiceTest {
                 eq("통합 신청 민감 첨부 관리자 열람: BUSINESS_REGISTRATION"),
                 eq(Map.of()),
                 eq(Map.of("applicationId", 12L))
+        );
+    }
+
+    @Test
+    void attachmentMetadataLookupRecordsAuditLogForEachVisibleAttachment() {
+        PlaceRegistrationApplication application = application(12L);
+        PlaceRegistrationAttachment attachment = org.mockito.Mockito.mock(PlaceRegistrationAttachment.class);
+        when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
+        when(attachmentRepository.findAllByApplicationIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(12L))
+                .thenReturn(List.of(attachment));
+        when(attachment.isActive()).thenReturn(true);
+        when(attachment.isRetentionExpired(org.mockito.ArgumentMatchers.any())).thenReturn(false);
+        when(attachment.getId()).thenReturn(44L);
+        when(attachment.getDocumentType()).thenReturn(
+                com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION
+        );
+        when(attachment.getOriginalFilename()).thenReturn("license.pdf");
+        when(attachment.getContentType()).thenReturn("application/pdf");
+        when(attachment.getFileSize()).thenReturn(10L);
+        when(attachment.getUploadedAt()).thenReturn(LocalDateTime.of(2026, 8, 19, 0, 0));
+        when(attachment.getDisplayOrder()).thenReturn(0);
+        when(clock.instant()).thenReturn(Instant.parse("2026-08-19T00:00:00Z"));
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+
+        var attachments = service.listAttachmentsForAdmin(99L, 12L);
+
+        assertThat(attachments).hasSize(1);
+        verify(auditLogService).record(
+                99L,
+                AdminAuditAction.MERCHANT_PLACE_APPLICATION_ATTACHMENT_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION_ATTACHMENT,
+                44L,
+                "통합 신청 민감 첨부 메타데이터 조회: BUSINESS_REGISTRATION",
+                Map.of(),
+                Map.of("applicationId", 12L)
         );
     }
 

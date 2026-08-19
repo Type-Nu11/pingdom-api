@@ -159,17 +159,22 @@ public class MerchantPlaceApplicationService {
                 Map.of(),
                 Map.of()
         );
+        List<AdminMerchantPlaceApplicationAttachmentResponse> attachments = attachments(application);
+        recordAttachmentMetadataViews(adminUserId, application.getId(), attachments);
         return AdminMerchantPlaceApplicationResponse.from(
                 application,
                 decryptRegistrationNumber(application),
-                attachments(application)
+                attachments
         );
     }
 
-    @Transactional(readOnly = true)
+    @Transactional
     public List<AdminMerchantPlaceApplicationAttachmentResponse> listAttachmentsForAdmin(Long adminUserId, Long id) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        return attachments(unified(id));
+        PlaceRegistrationApplication application = unified(id);
+        List<AdminMerchantPlaceApplicationAttachmentResponse> attachments = attachments(application);
+        recordAttachmentMetadataViews(adminUserId, application.getId(), attachments);
+        return attachments;
     }
 
     @Transactional
@@ -508,6 +513,22 @@ public class MerchantPlaceApplicationService {
                 .filter(attachment -> !attachment.isRetentionExpired(now()))
                 .map(AdminMerchantPlaceApplicationAttachmentResponse::from)
                 .toList();
+    }
+
+    private void recordAttachmentMetadataViews(
+            Long adminUserId,
+            Long applicationId,
+            List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
+    ) {
+        attachments.forEach(attachment -> auditLogService.record(
+                adminUserId,
+                AdminAuditAction.MERCHANT_PLACE_APPLICATION_ATTACHMENT_VIEWED,
+                AdminAuditTargetType.MERCHANT_PLACE_APPLICATION_ATTACHMENT,
+                attachment.id(),
+                "통합 신청 민감 첨부 메타데이터 조회: " + attachment.documentType().name(),
+                Map.of(),
+                Map.of("applicationId", applicationId)
+        ));
     }
 
     private String decryptRegistrationNumber(PlaceRegistrationApplication application) {
