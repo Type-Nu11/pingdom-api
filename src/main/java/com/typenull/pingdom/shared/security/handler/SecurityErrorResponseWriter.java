@@ -19,6 +19,7 @@ public class SecurityErrorResponseWriter {
     private final ObjectMapper objectMapper;
     private final CorsErrorResponseHeaderWriter corsErrorResponseHeaderWriter;
 
+    /** CORS 헤더와 표준 JSON 오류 본문을 설정해 Spring Security 오류를 응답합니다. */
     public void write(HttpServletRequest request, HttpServletResponse response, ErrorCode errorCode)
             throws IOException {
         corsErrorResponseHeaderWriter.apply(request, response);
