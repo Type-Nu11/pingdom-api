@@ -30,7 +30,7 @@ public record MerchantPlaceApplicationResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         long submissionVersion,
-        List<PlaceRegistrationAttachmentResponse> attachments
+        List<MerchantPlaceApplicationAttachmentResponse> attachments
 ) {
     public static MerchantPlaceApplicationResponse from(PlaceRegistrationApplication application) {
         Long placeId = application.getCompletedPlaceId() != null
@@ -43,7 +43,7 @@ public record MerchantPlaceApplicationResponse(
                 application.getPlaceName(), application.getExistingPlaceId(), application.getClaimReason(), application.getReviewReason(), placeId,
                 application.getSubmittedAt(), application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(),
                 application.getCreatedAt(), application.getUpdatedAt(), application.getSubmissionVersion(),
-                application.getAttachments().stream().map(PlaceRegistrationAttachmentResponse::from).toList()
+                application.getAttachments().stream().map(MerchantPlaceApplicationAttachmentResponse::from).toList()
         );
     }
 }
