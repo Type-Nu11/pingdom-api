@@ -1,4 +1,4 @@
-package com.typenull.pingdom.moderation.place;
+package com.typenull.pingdom.fixture.moderation.place;
 
 import java.util.List;
 
