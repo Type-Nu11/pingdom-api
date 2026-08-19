@@ -1,5 +1,7 @@
 package com.typenull.pingdom.shared.config.swagger;
 
+import io.swagger.v3.oas.annotations.tags.Tag;
+import java.lang.reflect.Method;
 import org.springdoc.core.models.GroupedOpenApi;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -16,54 +18,37 @@ public class SpringdocGroupsConfig {
             @Qualifier("placeExplorationNullableReferenceCustomizer")
             OpenApiCustomizer placeExplorationNullableReferenceCustomizer
     ) {
-        return GroupedOpenApi.builder()
-                .group("app")
+        return apiGroup("App")
                 .addOpenApiCustomizer(placeExplorationNullableReferenceCustomizer)
-                .pathsToMatch(
-                        "/users/**",
-                        "/merchant-owner/**",
-                        "/map/**",
-                        "/places",
-                        "/places/**",
-                        "/events",
-                        "/events/**",
-                        "/offers",
-                        "/offers/**",
-                        "/coupons",
-                        "/coupons/**",
-                        "/place",
-                        "/place/**",
-                        "/notifications/**",
-                        "/visitor-verification-reports",
-                        "/visitor-verification-reports/**",
-                        "/scout-field-reports",
-                        "/scout-field-reports/**",
-                        "/location-check-ins",
-                        "/location-check-ins/**",
-                        "/firebase/**"
-                )
-                .pathsToExclude("/admin/**")
                 .build();
     }
 
     @Bean
     public GroupedOpenApi webApi() {
-        return GroupedOpenApi.builder()
-                .group("web")
-                .pathsToMatch(
-                        "/admin/**"
-                )
+        return apiGroup("Web")
                 .build();
     }
 
     @Bean
     public GroupedOpenApi commonApi() {
-        return GroupedOpenApi.builder()
-                .group("common")
-                .pathsToMatch(
-                        "/",
-                        "/auth/**"
-                )
+        return apiGroup("Common")
                 .build();
+    }
+
+    @Bean
+    public GroupedOpenApi consultingApi() {
+        return apiGroup("Consulting")
+                .build();
+    }
+
+    private GroupedOpenApi.Builder apiGroup(String tagName) {
+        return GroupedOpenApi.builder()
+                .group(tagName.toLowerCase())
+                .addOpenApiMethodFilter(method -> hasTag(method, tagName));
+    }
+
+    private boolean hasTag(Method method, String tagName) {
+        Tag tag = method.getDeclaringClass().getAnnotation(Tag.class);
+        return tag != null && tagName.equals(tag.name());
     }
 }
