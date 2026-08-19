@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.event;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventActionRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventRequest;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventResponse;
@@ -9,7 +11,6 @@ import com.typenull.pingdom.moderation.application.service.place.event.AdminPlac
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -19,8 +20,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -37,7 +36,7 @@ import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
 @RestController
 @RequestMapping("/admin/place-events")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceEventController {
 
@@ -71,7 +70,7 @@ public class AdminPlaceEventController {
     })
     public ResponseEntity<AdminPlaceEventResponse> createEvent(
             @Valid @RequestBody AdminPlaceEventRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(adminPlaceEventService.create(adminUserId(adminUser), request));
     }
@@ -87,7 +86,7 @@ public class AdminPlaceEventController {
     public ResponseEntity<AdminPlaceEventResponse> updateEvent(
             @PathVariable Long eventId,
             @Valid @RequestBody AdminPlaceEventRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.ok(adminPlaceEventService.update(adminUserId(adminUser), eventId, request));
     }
@@ -102,7 +101,7 @@ public class AdminPlaceEventController {
     public ResponseEntity<AdminPlaceEventResponse> publishEvent(
             @PathVariable Long eventId,
             @Valid @RequestBody AdminPlaceEventActionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.ok(adminPlaceEventService.publish(adminUserId(adminUser), eventId, request));
     }
@@ -117,7 +116,7 @@ public class AdminPlaceEventController {
     public ResponseEntity<AdminPlaceEventResponse> cancelEvent(
             @PathVariable Long eventId,
             @Valid @RequestBody AdminPlaceEventActionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return ResponseEntity.ok(adminPlaceEventService.cancel(adminUserId(adminUser), eventId, request));
     }

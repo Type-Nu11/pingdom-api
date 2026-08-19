@@ -1,5 +1,6 @@
 package com.typenull.pingdom.boost.api;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductCreateRequest;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductPageResponse;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductResponse;
@@ -9,7 +10,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/verified-boost-products")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminVerifiedBoostProductController {
 

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.notification.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.notification.api.dto.fcm.FcmTokenRequest;
 
 import com.typenull.pingdom.notification.application.service.FcmDeviceTokenService;
@@ -7,7 +8,6 @@ import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
 import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -17,7 +17,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -60,7 +59,7 @@ public class FcmController {
     })
     @PatchMapping("/fcm-token")
     public ResponseEntity<Void> updateFcmToken(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @CurrentUser JwtAuthenticatedUser user,
             @io.swagger.v3.oas.annotations.parameters.RequestBody(
                     description = "최신 FCM 기기 토큰",
                     required = true,
@@ -75,7 +74,7 @@ public class FcmController {
     @Operation(summary = "FCM 토큰 등록", description = "현재 기기의 FCM 토큰을 사용자에게 등록하거나 재등록합니다.")
     @PostMapping("/fcm-tokens")
     public ResponseEntity<Void> registerFcmToken(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @CurrentUser JwtAuthenticatedUser user,
             @Valid @RequestBody FcmTokenRequest request
     ) {
         fcmDeviceTokenService.registerToken(user.userId(), request.token());
@@ -85,7 +84,7 @@ public class FcmController {
     @Operation(summary = "FCM 토큰 삭제", description = "로그아웃 또는 토큰 폐기 시 현재 기기의 FCM 토큰을 삭제합니다.")
     @DeleteMapping("/fcm-tokens")
     public ResponseEntity<Void> deleteFcmToken(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @CurrentUser JwtAuthenticatedUser user,
             @Valid @RequestBody FcmTokenRequest request
     ) {
         fcmDeviceTokenService.deleteToken(user.userId(), request.token());

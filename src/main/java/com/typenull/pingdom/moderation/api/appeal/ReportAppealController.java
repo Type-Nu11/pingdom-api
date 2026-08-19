@@ -1,5 +1,6 @@
 package com.typenull.pingdom.moderation.api.appeal;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.api.dto.appeal.ReportAppealCreateRequest;
@@ -7,12 +8,10 @@ import com.typenull.pingdom.moderation.api.dto.appeal.ReportAppealCreateResponse
 import com.typenull.pingdom.moderation.application.service.appeal.ReportAppealService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -35,7 +34,7 @@ public class ReportAppealController {
     )
     public ReportAppealCreateResponse submit(
             @Valid @RequestBody ReportAppealCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);

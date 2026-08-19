@@ -1,16 +1,15 @@
 package com.typenull.pingdom.identity.api.user;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.identity.application.service.auth.AuthService;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
@@ -65,7 +64,7 @@ public class UserController {
             )
     })
     public ResponseEntity<Void> withdraw(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser authenticatedUser
+            @CurrentUser JwtAuthenticatedUser authenticatedUser
     ) {
         authService.withdraw(authenticatedUser.userId());
         return ResponseEntity.noContent().build();

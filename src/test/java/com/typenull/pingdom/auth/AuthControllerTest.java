@@ -40,6 +40,7 @@ import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
+import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import java.nio.charset.StandardCharsets;
 import java.security.MessageDigest;
@@ -135,6 +136,9 @@ class AuthControllerTest {
 
     @Autowired
     private OutboxEventRepository outboxEventRepository;
+
+    @Autowired
+    private JwtTokenProvider jwtTokenProvider;
 
     @BeforeEach
     void setUp() {
@@ -561,6 +565,16 @@ class AuthControllerTest {
                 refreshResult.getResponse().getHeader(HttpHeaders.SET_COOKIE).contains("PINGDOM_REFRESH_TOKEN=")
         );
         org.junit.jupiter.api.Assertions.assertNotEquals(refreshToken, refreshTokenOf("refreshuser"));
+    }
+
+    @Test
+    void refreshEndpointRejectsAccessTokenCookie() throws Exception {
+        String accessToken = jwtTokenProvider.generateAccessToken(1L, "tester", "USER");
+
+        mockMvc.perform(post("/auth/token/refresh")
+                        .cookie(refreshTokenCookie(accessToken)))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test

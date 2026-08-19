@@ -1,15 +1,14 @@
 package com.typenull.pingdom.moderation.api.place;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationResponse;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationReviewRequest;
 import com.typenull.pingdom.place.application.service.registration.PlaceRegistrationService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
-import io.swagger.v3.oas.annotations.Parameter;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -21,7 +20,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/admin/place-registration-applications")
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 public class AdminPlaceRegistrationController {
     private final PlaceRegistrationService service;
     @GetMapping
@@ -29,7 +28,7 @@ public class AdminPlaceRegistrationController {
     @GetMapping("/{id}")
     public PlaceRegistrationResponse get(@PathVariable Long id) { return service.getAny(id); }
     @PostMapping("/{id}/approve")
-    public PlaceRegistrationResponse approve(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationReviewRequest request, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin) { return service.approve(admin.userId(), id, request); }
+    public PlaceRegistrationResponse approve(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationReviewRequest request, @CurrentUser JwtAuthenticatedUser admin) { return service.approve(admin.userId(), id, request); }
     @PostMapping("/{id}/reject")
-    public PlaceRegistrationResponse reject(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationReviewRequest request, @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser admin) { return service.reject(admin.userId(), id, request); }
+    public PlaceRegistrationResponse reject(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationReviewRequest request, @CurrentUser JwtAuthenticatedUser admin) { return service.reject(admin.userId(), id, request); }
 }

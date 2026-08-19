@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.place.duplicate;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceMergeRequest;
@@ -20,8 +22,6 @@ import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -34,7 +34,7 @@ import jakarta.validation.Valid;
 @RestController
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminPlaceDuplicateController {
 
@@ -61,7 +61,7 @@ public class AdminPlaceDuplicateController {
     public AdminPlaceDuplicateCandidateResponse confirmDuplicateCandidate(
             @PathVariable Long candidateId,
             @Valid @RequestBody AdminPlaceDuplicateDecisionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminPlaceDuplicateService.confirm(adminUser.userId(), candidateId, request.reviewNote());
     }
@@ -71,7 +71,7 @@ public class AdminPlaceDuplicateController {
     public AdminPlaceDuplicateCandidateResponse rejectDuplicateCandidate(
             @PathVariable Long candidateId,
             @Valid @RequestBody AdminPlaceDuplicateDecisionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminPlaceDuplicateService.reject(adminUser.userId(), candidateId, request.reviewNote());
     }
@@ -81,7 +81,7 @@ public class AdminPlaceDuplicateController {
     public AdminMapPlaceMergeResponse mergeDuplicateCandidate(
             @PathVariable Long candidateId,
             @Valid @RequestBody AdminPlaceDuplicateMergeRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminPlaceDuplicateService.merge(adminUser.userId(), candidateId, request.targetPlaceId());
     }
@@ -114,7 +114,7 @@ public class AdminPlaceDuplicateController {
     )
     public ResponseEntity<AdminMapPlaceMergeResponse> mergePlaces(
             @Valid @RequestBody AdminMapPlaceMergeRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         AdminMapPlaceMergeResponse response = adminPlaceMergeService.mergePlaces(adminUserId, request);
@@ -137,7 +137,7 @@ public class AdminPlaceDuplicateController {
     )
     public ResponseEntity<AdminPlaceMergeRestoreResponse> restoreMerge(
             @PathVariable Long historyId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Long adminUserId = adminUser == null ? null : adminUser.userId();
         return ResponseEntity.ok(adminPlaceMergeService.restoreMerge(adminUserId, historyId));

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.conversion.MapLinkConversionRequest;
 import com.typenull.pingdom.place.application.service.conversion.MapLinkConversionEventService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -17,7 +18,6 @@ import jakarta.validation.constraints.Min;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.validation.annotation.Validated;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -57,7 +57,7 @@ public class MapLinkConversionController {
             @Min(value = 1, message = "placeId는 1 이상이어야 합니다.")
             @PathVariable long placeId,
             @Valid @RequestBody MapLinkConversionRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         service.record(
                 user.userId(),

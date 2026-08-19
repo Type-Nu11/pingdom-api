@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.oauth;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountDisconnectRequest;
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountLinkStartResponse;
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountResponse;
@@ -9,7 +10,6 @@ import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2LinkCookieServic
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2LinkTokenService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -22,7 +22,6 @@ import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
@@ -69,7 +68,7 @@ public class OAuthAccountController {
             )
     })
     public ResponseEntity<OAuthAccountLinkStartResponse> startGoogleLink(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser authenticatedUser,
+            @CurrentUser JwtAuthenticatedUser authenticatedUser,
             HttpServletRequest request,
             HttpServletResponse response
     ) {
@@ -119,7 +118,7 @@ public class OAuthAccountController {
             )
     })
     public ResponseEntity<OAuthAccountResponse> unlinkGoogle(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser authenticatedUser,
+            @CurrentUser JwtAuthenticatedUser authenticatedUser,
             @Valid @RequestBody(required = false) OAuthAccountDisconnectRequest request
     ) {
         String currentPassword = request == null ? null : request.currentPassword();

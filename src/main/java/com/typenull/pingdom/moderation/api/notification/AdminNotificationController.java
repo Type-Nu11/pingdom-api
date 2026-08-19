@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.api.notification;
 
+import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationReadAllResponse;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationReadResponse;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationResponse;
@@ -21,8 +23,6 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.format.annotation.DateTimeFormat;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -33,7 +33,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/admin/notifications")
 @RequiredArgsConstructor
-@PreAuthorize("hasRole('ADMIN')")
+@AdminOnly
 @Tag(name = "Web", description = "웹(관리자) 전용 API")
 public class AdminNotificationController {
 
@@ -115,7 +115,7 @@ public class AdminNotificationController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         if (userId != null && !userId.equals(adminUser.userId())) {
             throw new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED);
@@ -153,7 +153,7 @@ public class AdminNotificationController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminNotificationUnreadCountResponse countUnread(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminNotificationQueryService.countUnread(adminUser.userId());
     }
@@ -196,7 +196,7 @@ public class AdminNotificationController {
     public AdminNotificationReadResponse markAsRead(
             @Parameter(description = "알림 ID", example = "1")
             @PathVariable Long notificationId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminNotificationCommandService.markAsRead(notificationId, adminUser.userId());
     }
@@ -224,7 +224,7 @@ public class AdminNotificationController {
             @ApiResponse(responseCode = "403", description = "관리자 권한 없음")
     })
     public AdminNotificationReadAllResponse markAllAsRead(
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser adminUser
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminNotificationCommandService.markAllAsRead(adminUser.userId());
     }

@@ -77,6 +77,16 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    @Test
+    void protectedApiRejectsRefreshTokenInAuthorizationHeader() throws Exception {
+        String refreshToken = jwtTokenProvider.generateRefreshToken(1L);
+
+        mockMvc.perform(get("/users/me")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + refreshToken))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+    }
+
     @ParameterizedTest(name = "{0} accepts valid token")
     @MethodSource("protectedGetEndpoints")
     void protectedApiAcceptsValidToken(String endpoint) throws Exception {

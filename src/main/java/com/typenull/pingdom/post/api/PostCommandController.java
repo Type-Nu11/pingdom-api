@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.api;
 
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.post.api.dto.image.PostResponse;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateRequest;
 import com.typenull.pingdom.post.api.dto.image.PostUpdateResponse;
@@ -25,7 +26,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.ModelAttribute;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -144,7 +144,7 @@ public class PostCommandController {
     @RateLimited(RateLimitAction.IMAGE_UPLOAD)
     public ResponseEntity<PostResponse> uploadPost(
             @Valid @ModelAttribute PostUploadRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_CREATE);
         recordCoordinatePlaceCreationAttempt(request);
@@ -161,7 +161,7 @@ public class PostCommandController {
     @RateLimited(RateLimitAction.IMAGE_UPLOAD)
     public ResponseEntity<PostResponse> uploadPostLegacy(
             @Valid @ModelAttribute PostUploadRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_CREATE);
         recordCoordinatePlaceCreationAttempt(request);
@@ -171,7 +171,7 @@ public class PostCommandController {
     @PostMapping("/posts/{id}")
     public ResponseEntity<PostUpdateResponse> updatePost(
             @Valid @ModelAttribute PostUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @CurrentUser JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_UPDATE);
@@ -187,7 +187,7 @@ public class PostCommandController {
     )
     public ResponseEntity<PostUpdateResponse> updatePostLegacy(
             @Valid @ModelAttribute PostUpdateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user,
+            @CurrentUser JwtAuthenticatedUser user,
             @Parameter(description = "수정할 게시글 ID", example = "1") @PathVariable("id") Long imageId
     ) {
         return updatePostInternal(request, user, imageId);
@@ -253,7 +253,7 @@ public class PostCommandController {
     })
     public ResponseEntity<String> delete(
             @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_DELETE);
         return deleteInternal(imageId, user);
@@ -268,7 +268,7 @@ public class PostCommandController {
     )
     public ResponseEntity<String> deleteLegacy(
             @Parameter(description = "삭제할 게시글 ID", example = "1") @PathVariable("id") Long imageId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return deleteInternal(imageId, user);
     }

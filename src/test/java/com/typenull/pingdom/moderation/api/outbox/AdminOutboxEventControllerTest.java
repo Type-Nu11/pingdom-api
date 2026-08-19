@@ -23,7 +23,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.core.MethodParameter;
 import org.springframework.http.MediaType;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
 import org.springframework.web.bind.support.WebDataBinderFactory;
@@ -45,7 +45,7 @@ class AdminOutboxEventControllerTest {
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
-                        return parameter.hasParameterAnnotation(AuthenticationPrincipal.class);
+                        return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
                     @Override

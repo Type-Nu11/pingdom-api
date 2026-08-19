@@ -1,5 +1,7 @@
 package com.typenull.pingdom.campaign.api;
 
+import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.campaign.api.dto.BrandCreateRequest;
 import com.typenull.pingdom.campaign.api.dto.BrandPageResponse;
 import com.typenull.pingdom.campaign.api.dto.BrandResponse;
@@ -10,7 +12,6 @@ import com.typenull.pingdom.campaign.application.MerchantCampaignService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -21,8 +22,6 @@ import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PatchMapping;
@@ -35,7 +34,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/merchant-owner/campaigns")
 @RequiredArgsConstructor
-@PreAuthorize("@merchantOwnerAuthorization.isActive(authentication)")
+@ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 public class MerchantCampaignController {
@@ -50,7 +49,7 @@ public class MerchantCampaignController {
     })
     public ResponseEntity<BrandResponse> createBrand(
             @Valid @RequestBody BrandCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(campaignService.createBrand(user.userId(), request));
     }
@@ -60,7 +59,7 @@ public class MerchantCampaignController {
     public BrandPageResponse listBrands(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return campaignService.listBrands(user.userId(), page, limit);
     }
@@ -70,7 +69,7 @@ public class MerchantCampaignController {
     public BrandResponse updateBrand(
             @PathVariable Long brandId,
             @Valid @RequestBody BrandCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return campaignService.updateBrand(user.userId(), brandId, request);
     }
@@ -84,7 +83,7 @@ public class MerchantCampaignController {
     })
     public ResponseEntity<PopupCampaignResponse> createCampaign(
             @Valid @RequestBody PopupCampaignCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.status(HttpStatus.CREATED).body(campaignService.createCampaign(user.userId(), request));
     }
@@ -94,7 +93,7 @@ public class MerchantCampaignController {
     public PopupCampaignPageResponse listCampaigns(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return campaignService.listCampaigns(user.userId(), page, limit);
     }
@@ -104,7 +103,7 @@ public class MerchantCampaignController {
     public PopupCampaignResponse updateCampaign(
             @PathVariable Long campaignId,
             @Valid @RequestBody PopupCampaignCreateRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return campaignService.updateCampaign(user.userId(), campaignId, request);
     }
@@ -113,7 +112,7 @@ public class MerchantCampaignController {
     @Operation(summary = "팝업 캠페인 공개")
     public PopupCampaignResponse publish(
             @PathVariable Long campaignId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return campaignService.publish(user.userId(), campaignId);
     }
@@ -122,7 +121,7 @@ public class MerchantCampaignController {
     @Operation(summary = "팝업 캠페인 종료")
     public PopupCampaignResponse close(
             @PathVariable Long campaignId,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return campaignService.close(user.userId(), campaignId);
     }
