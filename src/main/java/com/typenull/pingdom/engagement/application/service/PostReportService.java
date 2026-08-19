@@ -17,6 +17,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 게시글 신고 중복·권한 정책을 검증하고 신고 상태를 생성합니다. */
 public class PostReportService {
 
     private final MapImageRepository mapImageRepository;

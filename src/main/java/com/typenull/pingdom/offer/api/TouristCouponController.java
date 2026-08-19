@@ -23,6 +23,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
+/** 관광 쿠폰 발급·조회·사용 요청의 API 진입점입니다. */
 public class TouristCouponController {
 
     private final TouristOfferService offerService;

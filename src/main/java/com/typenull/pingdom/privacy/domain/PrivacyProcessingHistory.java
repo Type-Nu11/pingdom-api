@@ -30,6 +30,7 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
+/** 개인정보 처리 주체·행위·대상과 처리 시점을 감사 이력으로 보존합니다. */
 public class PrivacyProcessingHistory {
 
     @Id

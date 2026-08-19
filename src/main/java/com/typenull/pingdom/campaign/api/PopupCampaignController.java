@@ -21,6 +21,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/popup-campaigns")
 @RequiredArgsConstructor
 @Tag(name = "App", description = "앱 전용 API")
+/** 노출 가능한 팝업 캠페인을 조회하는 API 진입점입니다. */
 public class PopupCampaignController {
 
     private final PopupCampaignQueryService queryService;

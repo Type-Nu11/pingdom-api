@@ -19,6 +19,7 @@ import lombok.NoArgsConstructor;
 @Getter
 @Table(name = "tourist_coupon")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
+/** 발급된 관광 쿠폰의 유효 기간, 사용 주체와 사용 상태를 관리합니다. */
 public class TouristCoupon {
 
     @Id
@@ -82,6 +83,7 @@ public class TouristCoupon {
         return new TouristCoupon(offerId, userId, code, issuedAt, expiresAt);
     }
 
+    /** 유효 기간과 사용 권한을 확인한 뒤 쿠폰을 사용 완료 상태로 전환합니다. */
     public void redeem(Long merchantOwnerUserId, LocalDateTime now) {
         Objects.requireNonNull(merchantOwnerUserId);
         if (status != CouponStatus.ISSUED || !now.isBefore(expiresAt)) {
