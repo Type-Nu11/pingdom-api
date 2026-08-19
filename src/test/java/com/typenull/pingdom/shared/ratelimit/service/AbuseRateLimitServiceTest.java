@@ -64,6 +64,7 @@ class AbuseRateLimitServiceTest {
                 new WindowPolicy(100, Duration.ofMinutes(1)),
                 new WindowPolicy(1, Duration.ofHours(1)),
                 new WindowPolicy(100, Duration.ofHours(1)),
+                new WindowPolicy(2, Duration.ofMinutes(1)),
                 "test:rate-limit:",
                 true
         );
@@ -93,6 +94,17 @@ class AbuseRateLimitServiceTest {
         clock.advance(Duration.ofMinutes(1));
 
         assertDoesNotThrow(() -> abuseRateLimitService.checkLogin("rateuser", "203.0.113.13"));
+    }
+
+    @Test
+    void consultationIntroLimitUsesOnlyClientIpWindow() {
+        abuseRateLimitService.checkConsultationIntro("203.0.113.90");
+        abuseRateLimitService.checkConsultationIntro("203.0.113.90");
+
+        assertThrows(RateLimitException.class, () ->
+                abuseRateLimitService.checkConsultationIntro("203.0.113.90")
+        );
+        assertDoesNotThrow(() -> abuseRateLimitService.checkConsultationIntro("203.0.113.91"));
     }
 
     @Test
