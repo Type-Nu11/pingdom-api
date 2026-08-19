@@ -1,4 +1,4 @@
-package com.typenull.pingdom.merchant.team;
+package com.typenull.pingdom.fixture.merchantteam;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
