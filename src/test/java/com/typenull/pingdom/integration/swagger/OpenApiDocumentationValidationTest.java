@@ -455,6 +455,8 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications/{userId}/review")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-place-claims")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-place-claims/{claimId}/review")).isTrue();
+        assertThat(webDocument.path("paths")
+                .has("/admin/place-registration-applications/{claimId}/review")).isFalse();
         assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
