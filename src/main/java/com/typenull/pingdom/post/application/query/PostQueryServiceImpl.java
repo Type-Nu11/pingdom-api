@@ -25,6 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 게시글 목록·상세 조회와 좋아요·북마크 상태를 배치 조회 결과로 조합합니다. */
 public class PostQueryServiceImpl implements PostQueryService {
 
     private static final int MIN_PAGE = 1;
@@ -38,6 +39,7 @@ public class PostQueryServiceImpl implements PostQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    /** 페이지 조건을 보정하고 공개 게시글에 사용자별 상호작용 상태를 결합합니다. */
     public PostListResponse listPosts(int page, int limit, Long userId) {
         int safePage = Math.max(page, MIN_PAGE);
         int safeLimit = Math.max(MIN_LIMIT, Math.min(limit, MAX_LIMIT));
@@ -203,6 +205,7 @@ public class PostQueryServiceImpl implements PostQueryService {
 
     @Override
     @Transactional(readOnly = true)
+    /** 게시글 상세와 장소·상호작용 정보를 조회해 응답으로 변환합니다. */
     public PostDetailResponse getPost(Long postId, Long userId) {
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
