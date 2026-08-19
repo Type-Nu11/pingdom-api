@@ -27,6 +27,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 예약 생성·조회·확정·취소를 가용성, 상품, 결제 정책과 연결합니다. */
 public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final PlaceAvailabilityRepository availabilityRepository;
