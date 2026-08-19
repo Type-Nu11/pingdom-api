@@ -57,6 +57,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
+/** 장소 등록 신청의 초안, 제출, 심사, 취소·재개·완료 상태 전이를 관리합니다. */
 public class PlaceRegistrationService {
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
     private final PlaceRegistrationApplicationRepository repository;
@@ -70,6 +71,7 @@ public class PlaceRegistrationService {
     private final ObjectMapper objectMapper;
 
     @Transactional
+    /** 등록 신청과 첨부파일·운영시간 초안을 함께 저장합니다. */
     public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
         LocalDateTime now = now();
         PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
@@ -123,6 +125,7 @@ public class PlaceRegistrationService {
     }
 
     @Transactional
+    /** 제출 가능한 초안인지 검증한 뒤 심사 대기 상태로 전환합니다. */
     public PlaceRegistrationResponse submit(Long userId, Long id) {
         PlaceRegistrationApplication a = mine(userId, id);
         try { a.submit(now(), contentHash(a)); } catch (IllegalStateException e) {

@@ -38,6 +38,7 @@ import org.springframework.util.StringUtils;
 @RequestMapping("/map")
 @RequiredArgsConstructor
 @Tag(name = "App", description = "앱 전용 API")
+/** 게시글 업로드·수정·삭제 요청을 검증하고 이미지 처리 흐름으로 전달합니다. */
 public class PostCommandController {
 
     private final S3Service s3Service;
@@ -142,6 +143,7 @@ public class PostCommandController {
             )
     })
     @RateLimited(RateLimitAction.IMAGE_UPLOAD)
+    /** 장소 참조 방식에 따라 게시글 업로드 또는 승인된 장소 등록 흐름을 선택합니다. */
     public ResponseEntity<PostResponse> uploadPost(
             @Valid @ModelAttribute PostUploadRequest request,
             @CurrentUser JwtAuthenticatedUser user

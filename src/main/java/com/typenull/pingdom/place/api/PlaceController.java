@@ -59,6 +59,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Validated
 @Tag(name = "App", description = "앱 전용 API")
+/** 장소 조회, 추천, 방문 판단, 운영 공지 및 장소 미디어 API의 진입점입니다. */
 public class PlaceController {
 
     private final PlaceQueryService placeQueryService;
