@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@Tag(name = "FCM/Notification", description = "푸시 알림 및 기기 토큰 관리 API")
+@Tag(name = "App", description = "앱 전용 API")
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/notifications/settings")
