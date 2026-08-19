@@ -56,7 +56,7 @@ public class S3Service {
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final ImageUploadProcessor imageUploadProcessor;
 
-    /** 장소를 확인하고 이미지를 변환·업로드한 뒤 게시글과 장소 집계를 저장합니다. */
+    // 장소를 확인하고 이미지를 변환·업로드한 뒤 게시글과 장소 집계를 저장합니다.
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request, userId);
 
@@ -81,7 +81,7 @@ public class S3Service {
         }
     }
 
-    /** Kakao 장소 ID 또는 등록된 장소 ID를 실제 장소 식별자로 해석합니다. */
+    // Kakao 장소 ID 또는 등록된 장소 ID를 실제 장소 식별자로 해석합니다.
     private Long resolvePlaceId(PostUploadRequest request, long userId) {
         String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
         if (kakaoPlaceId != null) {
@@ -100,12 +100,12 @@ public class S3Service {
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
     }
 
-    /** 공백 문자열인 Kakao 장소 ID를 null로 정규화합니다. */
+    // 공백 문자열인 Kakao 장소 ID를 null로 정규화합니다.
     private String normalizeKakaoPlaceId(String value) {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
-    /** 소유권을 확인하고 새 이미지 저장 후 기존 S3 객체 삭제를 outbox에 등록합니다. */
+    // 소유권을 확인하고 새 이미지 저장 후 기존 S3 객체 삭제를 outbox에 등록합니다.
     public PostUpdateResponse updateImage(PostUpdateRequest request, Long userId, Long imageId) {
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
                 .orElseThrow(() -> new MapException(MapErrorCode.IMAGE_NOT_FOUND));
@@ -146,7 +146,7 @@ public class S3Service {
         return response;
     }
 
-    /** 이미지 소유권을 확인하고 게시글·집계·S3 삭제를 하나의 흐름으로 처리합니다. */
+    // 이미지 소유권을 확인하고 게시글·집계·S3 삭제를 하나의 흐름으로 처리합니다.
     public PostResponse deleteImage(Long imageId, Long userId) {
         // 지우려는 이미지가 있는지
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(imageId)
@@ -163,7 +163,7 @@ public class S3Service {
         Long placeId = mapImage.getMapPlace() != null ? mapImage.getMapPlace().getId() : null;
         return new PostResponse(imageId, imageId, placeId, "게시글을 삭제했습니다", placeGrowth);
     }
-    /** 업로드된 객체를 게시글로 저장하고 미디어 검증 및 장소 집계를 갱신합니다. */
+    // 업로드된 객체를 게시글로 저장하고 미디어 검증 및 장소 집계를 갱신합니다.
     private PostResponse savePost(
             PostUploadRequest request,
             long userId,
@@ -196,7 +196,7 @@ public class S3Service {
         });
     }
 
-    /** 게시글과 신고 연결을 삭제하고 장소 집계를 감소시킨 뒤 객체 삭제를 예약합니다. */
+    // 게시글과 신고 연결을 삭제하고 장소 집계를 감소시킨 뒤 객체 삭제를 예약합니다.
     private PlaceGrowthSnapshot deletePostRecord(MapImage mapImage, String s3Key) {
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         return transactionTemplate.execute(status -> {
@@ -216,7 +216,7 @@ public class S3Service {
         });
     }
 
-    /** 원본과 썸네일을 생성해 S3에 저장하며 부분 업로드를 정리합니다. */
+    // 원본과 썸네일을 생성해 S3에 저장하며 부분 업로드를 정리합니다.
     private StoredImageObjects uploadProcessedImage(org.springframework.web.multipart.MultipartFile file) {
         ProcessedImageUpload processedImage = imageUploadProcessor.process(file);
         S3ObjectStorage.S3PutResult original = null;
@@ -243,7 +243,7 @@ public class S3Service {
         }
     }
 
-    /** 후속 업로드 실패 시 이미 저장된 단일 S3 객체를 best-effort로 삭제합니다. */
+    // 후속 업로드 실패 시 이미 저장된 단일 S3 객체를 best-effort로 삭제합니다.
     private void cleanupUploadedObject(S3ObjectStorage.S3PutResult putResult) {
         if (putResult == null || !StringUtils.hasText(putResult.key())) {
             return;
@@ -255,7 +255,7 @@ public class S3Service {
         }
     }
 
-    /** 트랜잭션 롤백 시 새로 업로드된 S3 객체를 삭제하도록 동기화를 등록합니다. */
+    // 트랜잭션 롤백 시 새로 업로드된 S3 객체를 삭제하도록 동기화를 등록합니다.
     private void registerRollbackCleanup(List<String> uploadedS3Keys) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {
             return;
@@ -285,7 +285,7 @@ public class S3Service {
         });
     }
 
-    /** 저장소 예외를 API 계층의 지도 도메인 예외로 변환합니다. */
+    // 저장소 예외를 API 계층의 지도 도메인 예외로 변환합니다.
     private MapException toMapException(S3StorageException exception) {
         S3StorageError error = exception.getError();
         if (error == S3StorageError.NOT_CONFIGURED) {
@@ -297,7 +297,7 @@ public class S3Service {
         return new MapException(MapErrorCode.UPLOAD_ERROR);
     }
 
-    /** 실제 트랜잭션 커밋 이후 S3 객체 삭제 이벤트를 발행합니다. */
+    // 실제 트랜잭션 커밋 이후 S3 객체 삭제 이벤트를 발행합니다.
     private void publishS3Delete(String s3Key, Long mapImageId, String reason) {
         if (!StringUtils.hasText(s3Key)) {
             return;
