@@ -25,7 +25,7 @@ public class RestMcpAnalysisDataProvider implements McpAnalysisDataProvider {
             return null;
         }
         Map<String, Object> payload = new LinkedHashMap<>();
-        payload.put("business", criteria.get("desiredIndustry"));
+        payload.put("business", criteria.get("category"));
         payload.put("region", criteria.get("region"));
         payload.put("message", buildMessage(criteria));
         try {
@@ -45,12 +45,12 @@ public class RestMcpAnalysisDataProvider implements McpAnalysisDataProvider {
     }
 
     private String buildMessage(Map<String, Object> criteria) {
-        return "업종: %s\n지역: %s\n타깃 연령: %s\n타깃 성별: %s"
+        return "업종: %s\n지역: %s\n주요 고객층: %s\n주요 영업 시간대: %s"
                 .formatted(
-                        value(criteria.get("desiredIndustry")),
+                        value(criteria.get("category")),
                         value(criteria.get("region")),
-                        value(criteria.get("targetAge")),
-                        value(criteria.get("targetGender"))
+                        value(criteria.get("targetCustomerGroup")),
+                        value(criteria.get("operatingHours"))
                 );
     }
 

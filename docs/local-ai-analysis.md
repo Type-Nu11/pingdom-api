@@ -35,7 +35,7 @@ AI_MODEL=qwen2.5:7b \
 
 `POST /analysis/reports/location` 요청이 들어오면 서버는 다음 순서로 처리합니다.
 
-1. 프론트 입력(`region`, `desiredIndustry`)을 프롬프트에 삽입합니다.
+1. 프론트 입력(`category`, `region`, `targetCustomerGroup`, `operatingHours`)을 프롬프트에 삽입합니다.
 2. `MCP_ENABLED=true`이면 pingdom-mcp의 `/recommend`를 조회합니다.
 3. MCP 결과를 별도 구분자로 감싼 하나의 프롬프트에 포함합니다.
 4. Gemini 또는 Ollama에서 JSON 응답을 받습니다.

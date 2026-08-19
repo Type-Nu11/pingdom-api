@@ -31,6 +31,7 @@ class LocationAnalysisControllerTest {
                 .build();
         LocationAnalysisRequest request = new LocationAnalysisRequest();
         request.setRegion("서울 강남구");
+        request.setCategory("카페");
 
         mockMvc.perform(post("/analysis/reports/location")
                         .contentType(MediaType.APPLICATION_JSON)
