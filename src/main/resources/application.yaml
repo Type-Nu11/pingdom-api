@@ -235,6 +235,13 @@ abuse:
       limit: 100
       window: PT1H
 
+gemini:
+  enabled: ${GEMINI_ENABLED:false}
+  api-key: ${GEMINI_API_KEY:}
+  model: ${GEMINI_MODEL:gemini-3.1-flash-lite}
+  connect-timeout: ${GEMINI_CONNECT_TIMEOUT:PT2S}
+  read-timeout: ${GEMINI_READ_TIMEOUT:PT5S}
+
 place:
   recommendation:
     verified-boost:
