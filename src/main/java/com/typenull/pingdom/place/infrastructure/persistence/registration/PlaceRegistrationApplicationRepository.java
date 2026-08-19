@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.infrastructure.persistence.registration;
 
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
@@ -13,6 +14,14 @@ import org.springframework.data.repository.query.Param;
 
 public interface PlaceRegistrationApplicationRepository extends JpaRepository<PlaceRegistrationApplication, Long> {
     Page<PlaceRegistrationApplication> findAllByApplicantUserId(Long userId, Pageable pageable);
+    Page<PlaceRegistrationApplication> findAllByApplicantUserIdAndApplicationType(
+            Long userId, MerchantPlaceApplicationType applicationType, Pageable pageable);
+    Page<PlaceRegistrationApplication> findAllByApplicationType(
+            MerchantPlaceApplicationType applicationType, Pageable pageable);
+    Page<PlaceRegistrationApplication> findAllByApplicantUserIdAndApplicationTypeNot(
+            Long userId, MerchantPlaceApplicationType applicationType, Pageable pageable);
+    Page<PlaceRegistrationApplication> findAllByApplicationTypeNot(
+            MerchantPlaceApplicationType applicationType, Pageable pageable);
     Page<PlaceRegistrationApplication> findAllByStatus(PlaceRegistrationStatus status, Pageable pageable);
     Optional<PlaceRegistrationApplication> findByIdAndApplicantUserId(Long id, Long userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
