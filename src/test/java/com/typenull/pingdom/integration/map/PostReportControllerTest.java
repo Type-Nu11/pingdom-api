@@ -100,7 +100,7 @@ class PostReportControllerTest {
     }
 
     @Test
-    void reportLegacyAliasStillWorks() throws Exception {
+    void reportLegacyRouteIsNotMapped() throws Exception {
         String accessToken = signupAndLogin("reporter-legacy");
         MapImage mapImage = createMapImage(106L);
 
@@ -112,7 +112,7 @@ class PostReportControllerTest {
                                   "reason": "레거시 신고 경로 테스트"
                                 }
                                 """))
-                .andExpect(status().isCreated());
+                .andExpect(status().isNotFound());
     }
 
     @Test

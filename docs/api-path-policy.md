@@ -122,12 +122,8 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 
 ## v1 레거시 예외
 
-아래 경로는 현재 규칙상 완전한 이상형은 아니어도 하위 호환을 위해 유지한다.
+현재 유지하는 레거시 경로는 별도 호환 필요성이 확인된 항목으로 제한한다. 이미 대체 계약으로 전환된 게시글 생성·수정·삭제와 FCM 토큰 갱신 경로는 runtime에서 제거했으므로 신규 endpoint에서 복제하지 않는다.
 
-- `/map/post/create`
-- `/map/post/{id}/update`
-- `/map/post/{id}/delete`
 - `/admin/ad`
-- `/firebase/fcm-token`
 
 신규 endpoint에서는 위 패턴을 그대로 복제하지 않고, 가능하면 복수형 resource와 HTTP Method 중심으로 설계한다.
