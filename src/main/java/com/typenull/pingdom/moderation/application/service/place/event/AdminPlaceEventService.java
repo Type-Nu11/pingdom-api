@@ -44,13 +44,21 @@ public class AdminPlaceEventService {
             int page, int limit) {
         int safePage = Math.max(1, Math.min(page, 10_000));
         int safeLimit = Math.max(1, Math.min(limit, 100));
+        String normalizedKeyword = keyword == null || keyword.isBlank() ? null : keyword.trim();
         LocalDateTime now = now();
         Page<PlaceEvent> result = placeEventRepository.findAdminEvents(
-                keyword == null || keyword.isBlank() ? null : keyword.trim(), placeId, eventType,
-                publicationStatus, scheduleStatus, now,
+                normalizedKeyword != null, normalizedKeyword,
+                placeId != null, placeId,
+                eventType != null, eventType,
+                publicationStatus != null, publicationStatus,
+                scheduleStatus != null,
+                scheduleStatus == PlaceEventScheduleStatus.UPCOMING,
+                scheduleStatus == PlaceEventScheduleStatus.ONGOING,
+                scheduleStatus == PlaceEventScheduleStatus.ENDED,
+                now,
                 PageRequest.of(safePage - 1, safeLimit, Sort.by("createdAt").descending().and(Sort.by("id").descending())));
         return new AdminPlaceEventListResponse(result.getContent().stream().map(event -> toListItem(event, now)).toList(),
-                safePage, safeLimit, result.getTotalElements(), result.getTotalPages(), result.hasNext());
+                safePage, safeLimit, result.getTotalElements(), Math.max(result.getTotalPages(), 1), result.hasNext());
     }
 
     @Transactional(readOnly = true)

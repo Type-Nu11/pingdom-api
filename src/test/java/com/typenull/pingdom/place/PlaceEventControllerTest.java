@@ -1,6 +1,8 @@
 package com.typenull.pingdom.place;
 
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.event.PlaceEvent;
+import com.typenull.pingdom.place.domain.event.PlaceEventType;
 import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 
@@ -180,6 +182,43 @@ class PlaceEventControllerTest {
                         .param("page", String.valueOf(Integer.MAX_VALUE)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(10_000));
+    }
+
+    @Test
+    void adminListsEventsAndReturnsNormalizedEmptyPage() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/place-events")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events").isEmpty())
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+
+        placeEventRepository.saveAndFlush(PlaceEvent.create(
+                place,
+                "진주 여름 빛 축제",
+                "남강 야간 전시와 공연",
+                PlaceEventType.EXHIBITION,
+                LocalDateTime.now().plusDays(1).withNano(0),
+                LocalDateTime.now().plusDays(8).withNano(0),
+                LocalDateTime.now().withNano(0)
+        ));
+
+        mockMvc.perform(get("/admin/place-events")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.events[0].title").value("진주 여름 빛 축제"))
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     private long createAndPublish(String accessToken, LocalDateTime startAt, LocalDateTime endAt) throws Exception {
