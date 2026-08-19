@@ -28,6 +28,7 @@ import org.springframework.transaction.annotation.Transactional;
 @Service
 @RequiredArgsConstructor
 @Transactional
+/** 신고자의 빈도·제재·신뢰도 정책을 평가해 신고 가능 여부와 후속 상태를 관리합니다. */
 public class ReportPolicyService {
 
     private static final int AUTO_HIDE_WEIGHT_THRESHOLD = 3;
