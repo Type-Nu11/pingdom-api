@@ -28,6 +28,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 @Service
 @RequiredArgsConstructor
+/** 장소별 Merchant 팀원 초대·역할 변경·수락·철회를 권한 정책과 함께 처리합니다. */
 public class MerchantTeamService {
     private final MerchantPlaceMemberRepository memberRepository;
     private final MerchantPlaceInvitationRepository invitationRepository;
