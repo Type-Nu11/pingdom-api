@@ -34,13 +34,13 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(CampaignException.class)
     public ResponseEntity<Map<String, String>> handleCampaignException(CampaignException exception) {
         return ResponseEntity.status(exception.getStatus())
-                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+                .body(Map.of("message", exception.getMessage(), "code", String.valueOf(exception.getErrorCode())));
     }
 
     @ExceptionHandler(AnalysisReportException.class)
     public ResponseEntity<Map<String, String>> handleAnalysisReportException(AnalysisReportException exception) {
         return ResponseEntity.status(exception.getErrorCode().getStatus())
-                .body(Map.of("message", exception.getMessage(), "code", exception.getErrorCode().name()));
+                .body(Map.of("message", exception.getMessage(), "code", String.valueOf(exception.getErrorCode())));
     }
 
     private final AuthMetrics authMetrics;
