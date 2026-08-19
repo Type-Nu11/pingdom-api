@@ -1,4 +1,4 @@
-package com.typenull.pingdom.auth;
+package com.typenull.pingdom.integration.auth;
 
 import java.util.List;
 

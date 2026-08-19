@@ -1,4 +1,4 @@
-package com.typenull.pingdom.auth;
+package com.typenull.pingdom.integration.auth;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
