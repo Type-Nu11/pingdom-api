@@ -154,7 +154,7 @@ public class AdminDashboardController {
     @GetMapping("/pending-items")
     @Operation(
             summary = "관리자 대시보드 처리 필요 항목 조회",
-            description = "우선 처리해야 하는 PENDING 신고 목록을 조회합니다. POST_REPORT의 targetId와 reportId는 신고 ID이며, postId는 신고 대상 게시글 ID입니다. type은 현재 POST_REPORT만 허용합니다. limit 값은 내부적으로 1~50 범위로 보정됩니다."
+            description = "우선 처리해야 하는 PENDING 신고와 통합 사업자·장소 신청 목록을 조회합니다. 통합 신청은 navigationPath로 관리자 심사 상세 화면 이동 경로를 제공합니다. limit 값은 내부적으로 1~50 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -172,9 +172,11 @@ public class AdminDashboardController {
                                           "postId": 22,
                                           "title": "야경이 좋은 장소",
                                           "status": "PENDING",
-                                          "createdAt": "2026-07-21T15:40:00"
+                                          "createdAt": "2026-07-21T15:40:00",
+                                          "navigationPath": null
                                         }
-                                      ]
+                                      ],
+                                      "totalCount": 1
                                     }
                                     """)
                     )

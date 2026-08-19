@@ -1,6 +1,8 @@
 package com.typenull.pingdom.moderation.api.place;
 
-import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationPageResponse;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationAttachmentResponse;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationPageResponse;
+import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest;
 import com.typenull.pingdom.place.application.service.registration.MerchantPlaceApplicationService;
@@ -8,8 +10,12 @@ import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.InvalidMediaTypeException;
+import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
@@ -28,16 +34,49 @@ public class AdminMerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 
     @GetMapping
-    public MerchantPlaceApplicationPageResponse list(
+    public AdminMerchantPlaceApplicationPageResponse list(
             @RequestParam(defaultValue = "1") int page,
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @CurrentUser JwtAuthenticatedUser admin
     ) {
-        return service.listAll(page, limit);
+        return service.listForAdmin(admin.userId(), page, limit);
     }
 
     @GetMapping("/{id}")
-    public MerchantPlaceApplicationResponse get(@PathVariable Long id) {
-        return service.getAny(id);
+    public AdminMerchantPlaceApplicationResponse get(
+            @PathVariable Long id,
+            @CurrentUser JwtAuthenticatedUser admin
+    ) {
+        return service.getForAdmin(admin.userId(), id);
+    }
+
+    @GetMapping("/{id}/attachments")
+    public List<AdminMerchantPlaceApplicationAttachmentResponse> listAttachments(
+            @PathVariable Long id,
+            @CurrentUser JwtAuthenticatedUser admin
+    ) {
+        return service.listAttachmentsForAdmin(admin.userId(), id);
+    }
+
+    @GetMapping("/{id}/attachments/{attachmentId}/content")
+    public ResponseEntity<byte[]> attachmentContent(
+            @PathVariable Long id,
+            @PathVariable Long attachmentId,
+            @CurrentUser JwtAuthenticatedUser admin
+    ) {
+        MerchantPlaceApplicationService.DownloadedAttachment attachment =
+                service.downloadAttachmentForAdmin(admin.userId(), id, attachmentId);
+        return ResponseEntity.ok()
+                .contentType(resolveContentType(attachment.contentType()))
+                .body(attachment.bytes());
+    }
+
+    private MediaType resolveContentType(String contentType) {
+        try {
+            return MediaType.parseMediaType(contentType);
+        } catch (InvalidMediaTypeException exception) {
+            return MediaType.APPLICATION_OCTET_STREAM;
+        }
     }
 
     @PostMapping("/{id}/approve")

@@ -22,6 +22,12 @@ public interface PlaceRegistrationApplicationRepository extends JpaRepository<Pl
             Long userId, MerchantPlaceApplicationType applicationType, Pageable pageable);
     Page<PlaceRegistrationApplication> findAllByApplicationTypeNot(
             MerchantPlaceApplicationType applicationType, Pageable pageable);
+    Page<PlaceRegistrationApplication> findAllByApplicationTypeNotAndStatus(
+            MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status, Pageable pageable);
+    long countByApplicationTypeNotAndStatus(
+            MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
+    boolean existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+            Long applicantUserId, MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
     Page<PlaceRegistrationApplication> findAllByStatus(PlaceRegistrationStatus status, Pageable pageable);
     Optional<PlaceRegistrationApplication> findByIdAndApplicantUserId(Long id, Long userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

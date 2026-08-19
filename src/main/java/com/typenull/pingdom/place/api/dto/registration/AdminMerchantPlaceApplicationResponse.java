@@ -6,14 +6,15 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 민감한 사업자등록번호를 제외한 통합 신청 조회 응답입니다. */
-public record MerchantPlaceApplicationResponse(
+/** MERCHANT_REVIEW 권한과 감사 로그를 거친 관리자 통합 신청 상세 응답입니다. */
+public record AdminMerchantPlaceApplicationResponse(
         Long id,
         Long applicantUserId,
         MerchantPlaceApplicationType applicationType,
         PlaceRegistrationStatus status,
         String legalName,
         String businessName,
+        String businessRegistrationNumber,
         String merchantDisplayName,
         String merchantContactEmail,
         String merchantDescription,
@@ -30,20 +31,24 @@ public record MerchantPlaceApplicationResponse(
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         long submissionVersion,
-        List<MerchantPlaceApplicationAttachmentResponse> attachments
+        List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
 ) {
-    public static MerchantPlaceApplicationResponse from(PlaceRegistrationApplication application) {
+    public static AdminMerchantPlaceApplicationResponse from(
+            PlaceRegistrationApplication application,
+            String businessRegistrationNumber,
+            List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
+    ) {
         Long placeId = application.getCompletedPlaceId() != null
                 ? application.getCompletedPlaceId()
                 : application.getRegisteredPlaceId();
-        return new MerchantPlaceApplicationResponse(
+        return new AdminMerchantPlaceApplicationResponse(
                 application.getId(), application.getApplicantUserId(), application.getApplicationType(), application.getStatus(),
-                application.getLegalName(), application.getBusinessName(), application.getMerchantDisplayName(),
-                application.getMerchantContactEmail(), application.getMerchantDescription(), application.getMerchantContactPhone(),
-                application.getPlaceName(), application.getExistingPlaceId(), application.getClaimReason(), application.getReviewReason(), placeId,
-                application.getSubmittedAt(), application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(),
-                application.getCreatedAt(), application.getUpdatedAt(), application.getSubmissionVersion(),
-                application.getAttachments().stream().map(MerchantPlaceApplicationAttachmentResponse::from).toList()
+                application.getLegalName(), application.getBusinessName(), businessRegistrationNumber,
+                application.getMerchantDisplayName(), application.getMerchantContactEmail(), application.getMerchantDescription(),
+                application.getMerchantContactPhone(), application.getPlaceName(), application.getExistingPlaceId(),
+                application.getClaimReason(), application.getReviewReason(), placeId, application.getSubmittedAt(),
+                application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(), application.getCreatedAt(),
+                application.getUpdatedAt(), application.getSubmissionVersion(), attachments
         );
     }
 }
