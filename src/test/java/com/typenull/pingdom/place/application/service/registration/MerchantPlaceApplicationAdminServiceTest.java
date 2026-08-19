@@ -1,11 +1,13 @@
 package com.typenull.pingdom.place.application.service.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
@@ -115,6 +117,21 @@ class MerchantPlaceApplicationAdminServiceTest {
                 eq(Map.of()),
                 eq(Map.of("applicationId", 12L))
         );
+    }
+
+    @Test
+    void submitLocksApplicantBeforeLoadingApplication() {
+        PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(User.builder().id(1L).build()));
+        when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
+        when(application.getApplicantUserId()).thenReturn(1L);
+
+        assertThatThrownBy(() -> service.submit(1L, 12L))
+                .isInstanceOf(com.typenull.pingdom.place.domain.exception.PlaceRegistrationException.class);
+
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRepository, applicationRepository);
+        inOrder.verify(userRepository).findByIdForUpdate(1L);
+        inOrder.verify(applicationRepository).findByIdForUpdate(12L);
     }
 
     private PlaceRegistrationApplication application(Long id) {

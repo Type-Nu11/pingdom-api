@@ -4,8 +4,11 @@ import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationP
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationListItemResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantVerificationResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationReviewRequest;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
+import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
+import com.typenull.pingdom.identity.domain.exception.UsersException;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
@@ -13,6 +16,7 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -43,6 +47,7 @@ public class MerchantVerificationAdminService {
     private final Clock clock;
     private final AdminRoleAuthorizationService authorizationService;
     private final PlaceRegistrationApplicationRepository applicationRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public AdminMerchantVerificationPageResponse list(
@@ -109,6 +114,7 @@ public class MerchantVerificationAdminService {
             MerchantVerificationReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        requireUserForUpdate(userId);
         requireNoPendingUnifiedApplication(userId);
         MerchantOwnerProfile profile = profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
@@ -172,5 +178,10 @@ public class MerchantVerificationAdminService {
         )) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED);
         }
+    }
+
+    private User requireUserForUpdate(Long userId) {
+        return userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
     }
 }

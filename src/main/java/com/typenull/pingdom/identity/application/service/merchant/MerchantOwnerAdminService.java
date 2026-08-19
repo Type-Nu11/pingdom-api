@@ -111,8 +111,8 @@ public class MerchantOwnerAdminService {
             MerchantOwnerReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        requireNoPendingUnifiedApplication(userId);
         User user = requireUserForUpdate(userId);
+        requireNoPendingUnifiedApplication(userId);
         LocalDateTime now = LocalDateTime.now(clock);
         if (user.isWithdrawn() || user.isCurrentlyBanned(now)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE);
@@ -148,8 +148,8 @@ public class MerchantOwnerAdminService {
             MerchantOwnerReviewRequest request
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        requireNoPendingUnifiedApplication(userId);
         User user = requireUserForUpdate(userId);
+        requireNoPendingUnifiedApplication(userId);
         MerchantOwnerProfile profile = requireProfileForUpdate(userId);
         MerchantOwnerStatus beforeStatus = profile.getStatus();
         LocalDateTime now = LocalDateTime.now(clock);

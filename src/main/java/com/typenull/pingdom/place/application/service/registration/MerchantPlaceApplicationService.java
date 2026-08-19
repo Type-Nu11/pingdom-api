@@ -221,6 +221,8 @@ public class MerchantPlaceApplicationService {
 
     @Transactional
     public MerchantPlaceApplicationResponse submit(Long userId, Long id) {
+        userRepository.findByIdForUpdate(userId)
+                .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED));
         PlaceRegistrationApplication application = mine(userId, id);
         requireMerchantData(application);
         if (application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE) {

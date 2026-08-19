@@ -114,6 +114,7 @@ class MerchantOwnerAdminServiceTest {
     @Test
     void pendingUnifiedApplicationCannotBeApprovedThroughMerchantOwnerApi() {
         Long userId = 1L;
+        when(userRepository.findByIdForUpdate(userId)).thenReturn(Optional.of(User.builder().id(userId).build()));
         when(applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
                 userId,
                 MerchantPlaceApplicationType.LEGACY,
@@ -128,7 +129,13 @@ class MerchantOwnerAdminServiceTest {
                 assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED)
         );
 
-        verify(userRepository, never()).findByIdForUpdate(userId);
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRepository, applicationRepository);
+        inOrder.verify(userRepository).findByIdForUpdate(userId);
+        inOrder.verify(applicationRepository).existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        );
     }
 
     @Test

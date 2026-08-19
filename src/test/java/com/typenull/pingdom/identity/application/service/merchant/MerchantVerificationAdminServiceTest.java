@@ -2,20 +2,24 @@ package com.typenull.pingdom.identity.application.service.merchant;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationReviewRequest;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -32,6 +36,7 @@ import java.util.Map;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
@@ -51,9 +56,15 @@ class MerchantVerificationAdminServiceTest {
     @Mock private Clock clock;
     @Mock private AdminRoleAuthorizationService authorizationService;
     @Mock private PlaceRegistrationApplicationRepository applicationRepository;
+    @Mock private UserRepository userRepository;
 
     @InjectMocks
     private MerchantVerificationAdminService adminService;
+
+    @BeforeEach
+    void lockUserForReview() {
+        lenient().when(userRepository.findByIdForUpdate(anyLong())).thenReturn(Optional.of(User.builder().id(1L).build()));
+    }
 
     @Test
     void manualReviewRecordsBothResultsAndAuditLog() {
@@ -196,6 +207,13 @@ class MerchantVerificationAdminServiceTest {
         );
 
         verify(profileRepository, never()).findByUserIdForUpdate(userId);
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(userRepository, applicationRepository);
+        inOrder.verify(userRepository).findByIdForUpdate(userId);
+        inOrder.verify(applicationRepository).existsByApplicantUserIdAndApplicationTypeNotAndStatus(
+                userId,
+                MerchantPlaceApplicationType.LEGACY,
+                PlaceRegistrationStatus.PENDING
+        );
     }
 
     private MerchantOwnerProfile profile(Long userId) {
