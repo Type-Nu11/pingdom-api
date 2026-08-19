@@ -22,7 +22,11 @@ class LocationAnalysisPromptFactoryTest {
 
         AiAnalysisPrompt prompt = factory.create(request, LocalDate.of(2026, 8, 18));
 
-        assertThat(prompt.content()).contains("Pingdom MCP 서버", "읽기 전용 도구");
+        assertThat(prompt.content()).contains(
+                "Pingdom MCP 서버",
+                "실행환경에 이미 설정되어 있다",
+                "읽기 전용 도구"
+        );
         assertThat(prompt.content()).contains("서울 강남구", "카페", "20-39 여성", "18:00-22:00");
         assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설", "분석 범위", "데이터 출처");
         assertThat(prompt.content()).contains(
