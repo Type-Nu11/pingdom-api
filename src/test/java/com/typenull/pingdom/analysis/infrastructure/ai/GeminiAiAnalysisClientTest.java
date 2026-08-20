@@ -98,6 +98,46 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    @Test
+    void requestsFinalJsonWithoutToolsWhenToolCallLimitIsReached() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        for (int i = 0; i < 4; i++) {
+            server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                    .andRespond(withSuccess(toolCallResponse(), MediaType.APPLICATION_JSON));
+        }
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                .andRespond(withSuccess(responseJson(), MediaType.APPLICATION_JSON));
+
+        AiAnalysisProperties properties = new AiAnalysisProperties(
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
+                Duration.ofSeconds(1), Duration.ofSeconds(2)
+        );
+        McpAnalysisClient mcpClient = new McpAnalysisClient() {
+            @Override
+            public List<McpTool> listTools() {
+                return List.of(new McpTool(
+                        "recommend_location", "추천 장소 조회", Map.of("type", "object")
+                ));
+            }
+
+            @Override
+            public McpToolResult callTool(String name, Map<String, Object> arguments) {
+                return new McpToolResult(name, "{\"recommendations\":[]}", false);
+            }
+        };
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties, new ObjectMapper(), mcpClient
+        );
+
+        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
+                "prompt", LocalDate.of(2026, 8, 18)
+        ));
+
+        assertThat(response.reportName()).isEqualTo("입지 분석");
+        server.verify();
+    }
+
     private String responseJson() {
         try {
             String content = new ObjectMapper().writeValueAsString(Map.of(
@@ -112,5 +152,9 @@ class GeminiAiAnalysisClientTest {
         } catch (Exception exception) {
             throw new AssertionError(exception);
         }
+    }
+
+    private String toolCallResponse() {
+        return "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"recommend_location\",\"args\":{\"region\":\"대구 북구\",\"age_min\":20,\"age_max\":39,\"gender\":\"ANY\"}}}]}}]}";
     }
 }

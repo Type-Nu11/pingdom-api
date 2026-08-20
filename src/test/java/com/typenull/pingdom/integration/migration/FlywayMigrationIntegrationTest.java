@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "104";
+    private static final String LATEST_MIGRATION_VERSION = "105";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,13 +72,13 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(104);
+        assertThat(result.migrationsExecuted).isEqualTo(105);
 
         assertPostMigrationSchema();
     }
 
     @Test
-    void createsMcpSpatialRawDataWithGeneratedGeometry() throws Exception {
+    void createsMcpSpatialMovementHistoryWithGeneratedGeometry() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -88,8 +88,16 @@ class FlywayMigrationIntegrationTest {
                         account_id, birth_year, gender, longitude, latitude
                     ) VALUES (
                         'mcp-account-1', 1995, 'FEMALE', 127.0276, 37.4979
+                    ), (
+                        'mcp-account-1', 1995, 'FEMALE', 127.0280, 37.4982
                     )
                     """);
+
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM mcp_spatial_raw_data
+                    WHERE account_id = 'mcp-account-1'
+                    """)).isTrue();
 
             assertThat(queryBoolean(statement, """
                     SELECT ST_SRID(geom) = 4326
@@ -97,13 +105,19 @@ class FlywayMigrationIntegrationTest {
                        AND ST_Y(geom) = latitude
                     FROM mcp_spatial_raw_data
                     WHERE account_id = 'mcp-account-1'
+                    ORDER BY id
+                    LIMIT 1
                     """)).isTrue();
 
             statement.executeUpdate("""
                     UPDATE mcp_spatial_raw_data
                     SET longitude = 128.1078,
                         latitude = 35.1801
-                    WHERE account_id = 'mcp-account-1'
+                    WHERE id = (
+                        SELECT MIN(id)
+                        FROM mcp_spatial_raw_data
+                        WHERE account_id = 'mcp-account-1'
+                    )
                     """);
 
             assertThat(queryBoolean(statement, """
@@ -112,7 +126,11 @@ class FlywayMigrationIntegrationTest {
                         ST_SetSRID(ST_MakePoint(128.1078, 35.1801), 4326)
                     )
                     FROM mcp_spatial_raw_data
-                    WHERE account_id = 'mcp-account-1'
+                    WHERE id = (
+                        SELECT MIN(id)
+                        FROM mcp_spatial_raw_data
+                        WHERE account_id = 'mcp-account-1'
+                    )
                     """)).isTrue();
 
             assertThat(queryBoolean(statement, """
@@ -152,7 +170,9 @@ class FlywayMigrationIntegrationTest {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
-                    SELECT created_at IS NOT NULL
+                    SELECT id IS NOT NULL
+                       AND created_at IS NOT NULL
+                       AND observed_at IS NOT NULL
                     FROM mcp_spatial_raw_data
                     WHERE account_id = 'mcp-existing-account'
                     """)).isTrue();
@@ -227,7 +247,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(15);
+        assertThat(result.migrationsExecuted).isEqualTo(16);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -328,7 +348,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(102);
+        assertThat(result.migrationsExecuted).isEqualTo(103);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -442,7 +462,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(77);
+        assertThat(result.migrationsExecuted).isEqualTo(78);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -693,7 +713,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(49);
+        assertThat(result.migrationsExecuted).isEqualTo(50);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1146,19 +1166,28 @@ class FlywayMigrationIntegrationTest {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 7
+                    SELECT COUNT(*) = 9
                     FROM information_schema.columns
                     WHERE table_schema = 'public'
                       AND table_name = 'mcp_spatial_raw_data'
                       AND column_name IN (
+                          'id',
                           'account_id',
                           'birth_year',
                           'gender',
                           'longitude',
                           'latitude',
                           'geom',
-                          'created_at'
+                          'created_at',
+                          'observed_at'
                       )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT constraint_name = 'pk_mcp_spatial_raw_data'
+                    FROM information_schema.table_constraints
+                    WHERE table_schema = 'public'
+                      AND table_name = 'mcp_spatial_raw_data'
+                      AND constraint_type = 'PRIMARY KEY'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT postgis_typmod_type(attribute.atttypmod) = 'Point'
@@ -1183,22 +1212,23 @@ class FlywayMigrationIntegrationTest {
                       AND convalidated = true
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_indexes
-                        WHERE schemaname = 'public'
-                          AND tablename = 'mcp_spatial_raw_data'
-                          AND indexname = 'idx_mcp_spatial_raw_data_geom_gist'
-                    )
+                    SELECT COUNT(*) = 4
+                    FROM pg_indexes
+                    WHERE schemaname = 'public'
+                      AND tablename = 'mcp_spatial_raw_data'
+                      AND indexname IN (
+                          'idx_mcp_spatial_raw_data_geom_gist',
+                          'idx_mcp_spatial_raw_data_account_observed_at',
+                          'idx_mcp_spatial_raw_data_observed_at',
+                          'idx_mcp_spatial_raw_data_created_at'
+                      )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_indexes
-                        WHERE schemaname = 'public'
-                          AND tablename = 'mcp_spatial_raw_data'
-                          AND indexname = 'idx_mcp_spatial_raw_data_created_at'
-                    )
+                    SELECT is_nullable = 'NO'
+                    FROM information_schema.columns
+                    WHERE table_schema = 'public'
+                      AND table_name = 'mcp_spatial_raw_data'
+                      AND column_name = 'observed_at'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 3
