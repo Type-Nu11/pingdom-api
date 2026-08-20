@@ -105,9 +105,13 @@ public class LocationAnalysisPromptFactory {
                 반드시 아래 두 필드만 가진 JSON 객체를 반환한다. Markdown, 설명 문장, 코드 블록은 반환하지 않는다.
                 {
                   "reportName": "보고서명",
-                  "html": "<!doctype html><html lang=ko><head>고정 스타일</head><body>보고서 본문</body></html>"
+                  "html": "<!DOCTYPE html><html lang='ko'><head><meta charset='UTF-8'/></head><body>보고서 본문<br/></body></html>"
                 }
-                html은 완성된 단일 HTML 문서여야 하며 외부 이미지·스크립트·iframe·javascript URL을 사용하지 않는다.
+                html은 OpenHTMLToPDF가 읽을 수 있는 완성된 단일 XHTML 문서여야 한다.
+                반드시 XML 문법을 준수하고, 문서 첫 줄은 정확히 <!DOCTYPE html>로 시작한다.
+                html 태그에는 lang 속성을 지정하며, meta·br·hr·img·link 등 void element는 반드시 />로 닫는다.
+                모든 태그는 올바르게 중첩하고 닫아야 하며, HTML 바깥의 설명·Markdown·```html 코드펜스는 포함하지 않는다.
+                외부 이미지·스크립트·iframe·javascript URL을 사용하지 않으며, 고정 스타일은 인라인 CSS로 작성한다.
                 HTML의 섹션 순서는 다음과 같이 고정한다: 보고서 제목/기준일, 종합 입지 평가,
                 추천 장소, 타깃 인구 분석, 유동 인구 분석, 주변 시설, 분석 범위, 데이터 출처, 제한사항.
                 제목·색상·표·카드 스타일은 매 요청 동일한 인라인 CSS 디자인을 사용한다.
