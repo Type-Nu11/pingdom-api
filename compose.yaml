@@ -34,7 +34,7 @@ services:
       start_period: 5s
 
   app:
-    image: yongin1212/pingdom:latest
+    image: ${PINGDOM_APP_IMAGE:?PINGDOM_APP_IMAGE is required}
     ports:
       - '8080:8080'
     env_file:
