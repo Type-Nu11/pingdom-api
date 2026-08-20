@@ -1,5 +1,7 @@
 package com.typenull.pingdom.place.application.service.place.operating;
 
+import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapability;
+import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapabilityPolicy;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -42,6 +44,7 @@ public class PlaceOperatingNoticeService {
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceOperatingNoticeRepository placeOperatingNoticeRepository;
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+    private final MerchantPlaceCapabilityPolicy merchantPlaceCapabilityPolicy;
     private final OutboxEventPublisher outboxEventPublisher;
     private final AdminAuditLogService adminAuditLogService;
     private final PlaceOperatingNoticeMetrics placeOperatingNoticeMetrics;
@@ -57,6 +60,25 @@ public class PlaceOperatingNoticeService {
                 .findAllByPlace_IdAndStatusInOrderByStartsAtAscIdAsc(placeId, NON_TERMINAL_STATUSES)
                 .stream()
                 .filter(notice -> notice.isVisibleAt(checkedAt))
+                .map(notice -> PlaceOperatingNoticeResponse.from(notice, checkedAt))
+                .toList();
+        return new PlaceOperatingNoticeListResponse(
+                placeId,
+                operatingState.currentlyOperating(),
+                checkedAt,
+                notices
+        );
+    }
+
+    @Transactional(readOnly = true)
+    public PlaceOperatingNoticeListResponse listByMerchant(Long userId, Long placeId) {
+        MapPlace place = findPlace(placeId);
+        merchantPlaceCapabilityPolicy.require(userId, placeId, MerchantPlaceCapability.OPERATING_NOTICE_MANAGE);
+        PlaceCurrentOperatingState operatingState = operatingHoursEvaluator.evaluate(place);
+        LocalDateTime checkedAt = operatingState.checkedAt();
+        List<PlaceOperatingNoticeResponse> notices = placeOperatingNoticeRepository
+                .findAllByPlace_IdOrderByStartsAtAscIdAsc(placeId)
+                .stream()
                 .map(notice -> PlaceOperatingNoticeResponse.from(notice, checkedAt))
                 .toList();
         return new PlaceOperatingNoticeListResponse(
