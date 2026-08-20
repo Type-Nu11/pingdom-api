@@ -3,6 +3,7 @@ package com.typenull.pingdom.analysis.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
@@ -48,6 +49,7 @@ class LocationAnalysisReportServiceTest {
 
         assertThat(result.content()).startsWith(new byte[]{'%', 'P', 'D', 'F', '-'});
         assertThat(result.reportName()).isEqualTo("입지 분석");
+        verify(pdfConverter).convert(html);
     }
 
     @Test
@@ -95,5 +97,6 @@ class LocationAnalysisReportServiceTest {
 
         assertThat(result.content()).startsWith(new byte[]{'%', 'P', 'D', 'F', '-'});
         assertThat(result.reportName()).isEqualTo("입지 분석");
+        verify(pdfConverter).convert("<html/> ");
     }
 }

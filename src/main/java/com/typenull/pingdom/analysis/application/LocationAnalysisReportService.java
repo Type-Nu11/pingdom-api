@@ -9,9 +9,11 @@ import com.typenull.pingdom.analysis.application.pdf.HtmlToPdfConverter;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.util.UUID;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
 @Service
+@Slf4j
 public class LocationAnalysisReportService {
 
     private final LocationAnalysisPromptFactory promptFactory;
@@ -58,6 +60,7 @@ public class LocationAnalysisReportService {
                         aiResponse.analysisBasisDate(),
                         aiResponse.content()
                 );
+        log.info("입지 분석 PDF 변환 전 HTML 원본입니다. reportId={}\n{}", reportId, html);
         byte[] pdf = htmlToPdfConverter.convert(html);
         return new LocationAnalysisPdf(pdf, reportId, aiResponse.reportName());
     }
