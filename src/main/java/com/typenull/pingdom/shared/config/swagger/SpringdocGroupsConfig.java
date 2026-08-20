@@ -43,8 +43,14 @@ public class SpringdocGroupsConfig {
     }
 
     @Bean
-    public GroupedOpenApi webApi() {
-        return apiGroup("Web")
+    public GroupedOpenApi adminApi() {
+        return apiGroup("Admin")
+                .build();
+    }
+
+    @Bean
+    public GroupedOpenApi merchantApi() {
+        return apiGroup("Merchant")
                 .build();
     }
 

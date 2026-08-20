@@ -28,7 +28,7 @@ class ScoutProfileOpenApiContractTest {
     @Test
     void exposesScoutProfileContractInTheCorrectApiGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
-        JsonNode webDocument = readApiDocs("/v3/api-docs/web");
+        JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
         assertThat(appDocument.path("paths").has("/users/me/scout-profile")).isTrue();
         assertThat(webDocument.path("paths").has("/users/me/scout-profile")).isFalse();

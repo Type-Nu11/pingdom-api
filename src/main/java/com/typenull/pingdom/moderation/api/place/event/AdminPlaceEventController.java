@@ -37,7 +37,7 @@ import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
 @RequestMapping("/admin/place-events")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminPlaceEventController {
 
     private final AdminPlaceEventService adminPlaceEventService;

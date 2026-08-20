@@ -41,7 +41,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Slf4j
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminPlaceRecommendationController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;

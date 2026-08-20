@@ -15,7 +15,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/merchant-place-claims/{claimId}/attachments")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminMerchantPlaceClaimAttachmentMetadataController {
     private final MerchantPlaceClaimAttachmentService service;
 

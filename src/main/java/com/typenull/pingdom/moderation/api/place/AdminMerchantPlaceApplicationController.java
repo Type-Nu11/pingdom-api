@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @AdminOnly
 @RequestMapping("/admin/merchant-place-applications")
-@Tag(name = "Web", description = "웹 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminMerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 

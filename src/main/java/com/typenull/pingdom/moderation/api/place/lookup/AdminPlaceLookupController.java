@@ -26,7 +26,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminPlaceLookupController {
 
     private final AdminMapPlaceLookupQueryService adminMapPlaceLookupQueryService;

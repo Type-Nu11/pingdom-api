@@ -44,7 +44,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 /** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리합니다. */
 public class AdminUserController {
 
