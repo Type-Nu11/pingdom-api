@@ -32,6 +32,10 @@ public record PlaceOperatingNoticeResponse(
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String cancelReason,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+        LocalDateTime createdAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+        LocalDateTime updatedAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean visibleNow
 ) {
 
@@ -48,6 +52,8 @@ public record PlaceOperatingNoticeResponse(
                 notice.getExpiredAt(),
                 notice.getCanceledAt(),
                 notice.getCancelReason(),
+                notice.getCreatedAt(),
+                notice.getUpdatedAt(),
                 notice.isVisibleAt(checkedAt)
         );
     }
