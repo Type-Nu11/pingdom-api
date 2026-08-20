@@ -73,7 +73,13 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                 return parseFinalResponse(extractText(response), prompt);
             }
             if (toolCallCount == MAX_TOOL_CALLS) {
-                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+                contents.addObject()
+                        .put("role", "user")
+                        .putArray("parts")
+                        .addObject()
+                        .put("text", "도구 호출을 중단하고 지금까지 조회된 결과만 사용해 최종 JSON 보고서를 반환하라. 추가 도구를 호출하지 마라.");
+                JsonNode finalResponse = generateContent(contents, List.of());
+                return parseFinalResponse(extractText(finalResponse), prompt);
             }
 
             String name = functionCall.path("name").asText(null);
@@ -194,6 +200,14 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             normalized = firstLineEnd < 0
                     ? normalized.substring(3, normalized.length() - 3).trim()
                     : normalized.substring(firstLineEnd + 1, normalized.length() - 3).trim();
+        }
+        int objectStart = normalized.indexOf('{');
+        int objectEnd = normalized.lastIndexOf('}');
+        if (objectStart > 0 || (objectEnd >= 0 && objectEnd < normalized.length() - 1)) {
+            if (objectStart < 0 || objectEnd < objectStart) {
+                return normalized;
+            }
+            normalized = normalized.substring(objectStart, objectEnd + 1);
         }
         return normalized;
     }
