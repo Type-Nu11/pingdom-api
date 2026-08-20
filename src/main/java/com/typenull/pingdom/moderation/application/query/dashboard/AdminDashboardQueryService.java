@@ -22,13 +22,19 @@ import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Comparator;
+import java.util.stream.Stream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
@@ -46,6 +52,7 @@ public class AdminDashboardQueryService {
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;
     private final MapPlaceDuplicateQueryRepository mapPlaceDuplicateQueryRepository;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
+    private final PlaceRegistrationApplicationRepository applicationRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -150,16 +157,39 @@ public class AdminDashboardQueryService {
     @Transactional(readOnly = true)
     public AdminDashboardPendingItemsResponse getPendingItems(int limit) {
         int safeLimit = normalizeLimit(limit);
-        List<AdminDashboardPendingItem> items = postReportRepository
+        PageRequest pageable = PageRequest.of(0, safeLimit, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
+        List<AdminDashboardPendingItem> reportItems = postReportRepository
                 .findRecentByStatus(
                         PostReportStatus.PENDING,
-                        PageRequest.of(0, safeLimit, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
+                        pageable
                 )
                 .stream()
                 .map(this::toPendingItem)
                 .toList();
+        List<AdminDashboardPendingItem> applicationItems = applicationRepository
+                .findAllByApplicationTypeNotAndStatus(
+                        MerchantPlaceApplicationType.LEGACY,
+                        PlaceRegistrationStatus.PENDING,
+                        pageable
+                )
+                .getContent()
+                .stream()
+                .map(this::toPendingItem)
+                .toList();
+        List<AdminDashboardPendingItem> items = Stream.concat(reportItems.stream(), applicationItems.stream())
+                .sorted(Comparator.comparing(AdminDashboardPendingItem::createdAt).reversed()
+                        .thenComparing(AdminDashboardPendingItem::targetId, Comparator.reverseOrder()))
+                .limit(safeLimit)
+                .toList();
 
-        return new AdminDashboardPendingItemsResponse(items);
+        return new AdminDashboardPendingItemsResponse(
+                items,
+                postReportRepository.countByStatus(PostReportStatus.PENDING)
+                        + applicationRepository.countByApplicationTypeNotAndStatus(
+                                MerchantPlaceApplicationType.LEGACY,
+                                PlaceRegistrationStatus.PENDING
+                        )
+        );
     }
 
     private int normalizeLimit(int limit) {
@@ -221,7 +251,21 @@ public class AdminDashboardQueryService {
                 report.getReportedImageId(),
                 reportTitle(report),
                 report.getStatus().name(),
-                report.getCreatedAt()
+                report.getCreatedAt(),
+                null
+        );
+    }
+
+    private AdminDashboardPendingItem toPendingItem(PlaceRegistrationApplication application) {
+        return new AdminDashboardPendingItem(
+                AdminDashboardPendingItemType.MERCHANT_PLACE_APPLICATION,
+                application.getId(),
+                null,
+                null,
+                application.getBusinessName() + " · " + application.getPlaceName(),
+                application.getStatus().name(),
+                application.getCreatedAt(),
+                "/admin/merchant-place-applications/" + application.getId()
         );
     }
 

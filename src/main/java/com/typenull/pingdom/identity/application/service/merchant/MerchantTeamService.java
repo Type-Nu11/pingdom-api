@@ -47,6 +47,7 @@ public class MerchantTeamService {
     @Transactional
     // 초대 대상과 역할을 검증한 뒤 만료 시각이 있는 팀 초대를 생성합니다.
     public MerchantTeamInvitationResponse invite(Long actorId, Long placeId, MerchantTeamInviteRequest request) {
+        lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
         if (request.role() == MerchantPlaceMemberRole.OWNER) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
@@ -82,6 +83,7 @@ public class MerchantTeamService {
     // 장소 팀원의 역할 변경 권한과 도메인 상태를 검증합니다.
     public MerchantTeamMemberResponse updateRole(Long actorId, Long placeId, Long memberId,
                                                   MerchantTeamRoleUpdateRequest request) {
+        lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
         MerchantPlaceMember member = memberRepository.findById(memberId)
                 .filter(candidate -> candidate.getPlaceId().equals(placeId))
@@ -99,6 +101,9 @@ public class MerchantTeamService {
     @Transactional
     // 초대 수신자 본인인지와 계정 상태를 확인한 뒤 초대를 수락합니다.
     public MerchantTeamMemberResponse acceptInvitation(Long actorId, Long invitationId) {
+        MerchantPlaceInvitation invitationSnapshot = invitationRepository.findById(invitationId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
+        lockPlaceOwnership(invitationSnapshot.getPlaceId());
         MerchantPlaceInvitation invitation = invitationRepository.findByIdForUpdate(invitationId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
         if (!invitation.getInviteeUserId().equals(actorId)) {
@@ -136,6 +141,7 @@ public class MerchantTeamService {
     @Transactional
     // 관리자가 소유자가 아닌 팀원을 비활성화합니다.
     public void revoke(Long actorId, Long placeId, Long memberId) {
+        lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
         MerchantPlaceMember member = memberRepository.findById(memberId)
                 .filter(candidate -> candidate.getPlaceId().equals(placeId))
@@ -157,5 +163,10 @@ public class MerchantTeamService {
                 || (member.getRole() != MerchantPlaceMemberRole.OWNER && member.getRole() != MerchantPlaceMemberRole.MANAGER)) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED);
         }
+    }
+
+    private void lockPlaceOwnership(Long placeId) {
+        ownerPlaceRepository.findByPlaceIdForUpdate(placeId)
+                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED));
     }
 }

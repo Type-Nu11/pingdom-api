@@ -195,11 +195,15 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("components").path("schemas").has("AdminDashboardRecentUserSanctionItem")).isTrue();
         assertThat(schemas.has("AdminDashboardPendingItem")).isTrue();
         assertThat(schemas.at("/AdminDashboardPendingItem/properties/type/enum").toString())
-                .contains("POST_REPORT");
+                .contains("POST_REPORT", "MERCHANT_PLACE_APPLICATION");
         assertThat(schemas.at("/AdminDashboardPendingItem/properties/reportId").path("type").asText())
                 .isEqualTo("integer");
         assertThat(schemas.at("/AdminDashboardPendingItem/properties/postId").path("nullable").asBoolean())
                 .isTrue();
+        assertThat(schemas.at("/AdminDashboardPendingItem/properties/navigationPath").path("nullable").asBoolean())
+                .isTrue();
+        assertThat(schemas.at("/AdminDashboardPendingItemsResponse/properties/totalCount").path("type").asText())
+                .isEqualTo("integer");
     }
 
     @Test
@@ -430,12 +434,21 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void merchantOwnerApisAreSeparatedIntoAppAndWebGroups() throws Exception {
+    void merchantOwnerAndPlaceRegistrationApisAreExposedInWebGroup() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/web");
 
-        assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
-        assertThat(appDocument.path("paths").has("/users/me/merchant-verification")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/merchant-owner-profile")).isFalse();
+        assertThat(appDocument.path("paths").has("/users/me/merchant-verification")).isFalse();
+        assertThat(appDocument.path("paths").has("/users/me/place-registration-applications")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/place-registration-applications")).isFalse();
+        assertThat(appDocument.path("paths").has("/users/me/merchant-place-applications")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-place-applications")).isFalse();
+        assertThat(appDocument.path("paths").has("/places/coordinates")).isFalse();
+        assertThat(appDocument.path("paths").has("/places/upload")).isFalse();
+        assertThat(appDocument.path("paths").path("/map/posts").has("post")).isFalse();
+        assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/attachments")).isFalse();
+        assertThat(appDocument.path("paths").has("/admin/merchant-place-claims/{claimId}/attachments")).isFalse();
         assertThat(appDocument.path("paths").has("/merchant-owner/me")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims")).isTrue();
         assertThat(appDocument.path("paths").has("/merchant-owner/place-claims/{claimId}")).isTrue();
@@ -448,17 +461,31 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/admin/merchant-verifications")).isFalse();
         assertThat(appDocument.path("paths").has("/admin/merchant-place-claims")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners")).isTrue();
+        assertThat(webDocument.path("paths").has("/users/me/merchant-owner-profile")).isTrue();
+        assertThat(webDocument.path("paths").has("/users/me/merchant-verification")).isTrue();
+        assertThat(webDocument.path("paths").has("/users/me/place-registration-applications")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/place-registration-applications")).isTrue();
+        assertThat(webDocument.path("paths").has("/users/me/merchant-place-applications")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-applications")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-applications/{id}/attachments")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-applications/{id}/attachments/{attachmentId}/content")).isTrue();
+        assertThat(webDocument.path("paths").has("/places/coordinates")).isTrue();
+        assertThat(webDocument.path("paths").has("/places/upload")).isTrue();
+        assertThat(webDocument.path("paths").path("/map/posts").has("post")).isTrue();
+        assertThat(webDocument.path("paths").has("/merchant-owner/place-claims/{claimId}/attachments")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/merchant-place-claims/{claimId}/attachments")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/approve")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/onboarding")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-owners/{userId}/places/{placeId}/quality")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-verifications/{userId}/review")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/merchant-place-claims")).isTrue();
+        assertThat(webDocument.path("paths").has("/admin/place-registration-applications/{claimId}")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/merchant-place-claims/{claimId}/review")).isTrue();
         assertThat(webDocument.path("paths")
                 .has("/admin/place-registration-applications/{claimId}/review")).isFalse();
-        assertThat(appDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
-        assertThat(appDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerProfileResponse")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("MerchantVerificationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceClaimResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceInformationResponse")).isTrue();
         assertThat(appDocument.path("components").path("schemas").has("MerchantPlaceInformationUpdateRequest")).isTrue();
@@ -466,6 +493,13 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceQualityUpdateRequest")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("MerchantOwnerPlaceResponse")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceClaimResponse")).isTrue();
+        assertThat(webDocument.path("components").path("schemas").has("AdminMerchantPlaceApplicationResponse")).isTrue();
+        assertThat(webDocument.at("/components/schemas/AdminMerchantPlaceApplicationResponse/properties/businessRegistrationNumber")
+                .path("type").asText()).isEqualTo("string");
+        assertThat(webDocument.at("/components/schemas/AdminMerchantPlaceApplicationAttachmentResponse/properties")
+                .has("storageKey")).isFalse();
+        assertThat(webDocument.at("/components/schemas/MerchantPlaceApplicationAttachmentResponse/properties")
+                .has("storageKey")).isFalse();
         assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles")).isTrue();
         assertThat(webDocument.path("paths").has("/admin/users/{userId}/roles/{role}")).isTrue();
         assertThat(webDocument.path("components").path("schemas").has("AdminRoleAssignmentRequest")).isTrue();

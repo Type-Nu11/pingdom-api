@@ -27,10 +27,7 @@ public class AdminMerchantPlaceClaimController {
 
     private final MerchantPlaceClaimAdminService claimAdminService;
 
-    @GetMapping({
-            "/admin/merchant-place-claims",
-            "/admin/place-registration-applications"
-    })
+    @GetMapping("/admin/merchant-place-claims")
     @Operation(summary = "상점 장소 Claim 요청 목록 조회")
     public AdminMerchantPlaceClaimPageResponse list(
             @RequestParam(required = false) MerchantPlaceClaimStatus status,
@@ -40,10 +37,7 @@ public class AdminMerchantPlaceClaimController {
         return claimAdminService.list(status, page, limit);
     }
 
-    @GetMapping({
-            "/admin/merchant-place-claims/{claimId}",
-            "/admin/place-registration-applications/{claimId}"
-    })
+    @GetMapping("/admin/merchant-place-claims/{claimId}")
     @Operation(summary = "상점 장소 Claim 요청 상세 조회")
     public AdminMerchantPlaceClaimResponse get(@PathVariable Long claimId) {
         return claimAdminService.get(claimId);

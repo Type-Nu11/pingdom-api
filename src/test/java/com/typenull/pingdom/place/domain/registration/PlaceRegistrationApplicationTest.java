@@ -113,6 +113,24 @@ class PlaceRegistrationApplicationTest {
         assertThatThrownBy(() -> draft().reopen(NOW)).isInstanceOf(IllegalStateException.class);
     }
 
+    @Test
+    void completesExistingPlaceClaimWithoutCreatingAnotherPlaceRegistration() {
+        PlaceRegistrationApplication application = draft();
+        application.configureMerchantSubmission(
+                MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM,
+                "홍길동", "핑덤카페", "encrypted-registration-number", "핑덤카페",
+                "owner@pingdom.test", "사업자 소개", "+821012345678", 30L, 20L, "운영권 이전", NOW
+        );
+        application.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        application.submit(NOW);
+        application.approve(99L, "확인 완료", NOW);
+        application.complete(30L, NOW);
+
+        assertThat(application.getStatus()).isEqualTo(PlaceRegistrationStatus.COMPLETED);
+        assertThat(application.getCompletedPlaceId()).isEqualTo(30L);
+        assertThat(application.getRegisteredPlaceId()).isNull();
+    }
+
     private PlaceRegistrationAttachment attachment(PlaceRegistrationApplication application,
                                                    PlaceRegistrationAttachmentType type, String key) {
         return PlaceRegistrationAttachment.create(application, key, type, "registration/" + key,
