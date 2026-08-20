@@ -111,11 +111,13 @@ public class AdminTrustScoreController {
     }
 
     @PostMapping("/batch/recalculate")
+    @Operation(summary = "관리자 Trust Score 일괄 재계산")
     public ResponseEntity<AdminTrustScoreBatchResponse> recalculateTrustScores() {
         return ResponseEntity.ok(trustScoreBatchService.recalculate());
     }
 
     @GetMapping("/reporters/{reporterUserId}/history")
+    @Operation(summary = "신고자 Trust Score 변경 이력 조회")
     public List<AdminTrustScoreChangeHistoryItem> listTrustScoreHistory(@PathVariable Long reporterUserId) {
         return trustScoreBatchService.listHistory(reporterUserId);
     }

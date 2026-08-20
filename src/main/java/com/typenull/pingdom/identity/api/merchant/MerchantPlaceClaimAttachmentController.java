@@ -7,6 +7,7 @@ import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceC
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimAttachmentType;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -30,6 +31,7 @@ public class MerchantPlaceClaimAttachmentController {
     private final MerchantPlaceClaimAttachmentService service;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "Merchant 장소 Claim 첨부파일 업로드")
     public MerchantPlaceClaimAttachmentResponse upload(@PathVariable Long claimId,
             @RequestParam MerchantPlaceClaimAttachmentType documentType,
             @RequestParam MultipartFile file,
@@ -38,12 +40,14 @@ public class MerchantPlaceClaimAttachmentController {
     }
 
     @GetMapping
+    @Operation(summary = "Merchant 장소 Claim 첨부파일 목록 조회")
     public List<MerchantPlaceClaimAttachmentResponse> list(@PathVariable Long claimId,
             @CurrentUser JwtAuthenticatedUser user) {
         return service.list(user.userId(), claimId);
     }
 
     @DeleteMapping("/{attachmentId}")
+    @Operation(summary = "Merchant 장소 Claim 첨부파일 삭제")
     @ResponseStatus(HttpStatus.NO_CONTENT)
     public void delete(@PathVariable Long claimId, @PathVariable Long attachmentId,
             @CurrentUser JwtAuthenticatedUser user) {
@@ -51,6 +55,7 @@ public class MerchantPlaceClaimAttachmentController {
     }
 
     @PostMapping("/reorder")
+    @Operation(summary = "Merchant 장소 Claim 첨부파일 순서 변경")
     public void reorder(@PathVariable Long claimId, @RequestParam List<Long> attachmentIds,
             @CurrentUser JwtAuthenticatedUser user) {
         service.reorder(user.userId(), claimId, attachmentIds);

@@ -8,6 +8,7 @@ import com.typenull.pingdom.boost.api.dto.VerifiedBoostSelectionResponse;
 import com.typenull.pingdom.boost.application.MerchantVerifiedBoostSelectionService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
+import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -31,6 +32,7 @@ public class MerchantVerifiedBoostSelectionController {
     private final MerchantVerifiedBoostSelectionService service;
 
     @PostMapping
+    @Operation(summary = "Verified Boost 상품 선택")
     public ResponseEntity<VerifiedBoostSelectionResponse> select(
             @Valid @RequestBody VerifiedBoostSelectionCreateRequest request,
             @CurrentUser JwtAuthenticatedUser user) {
@@ -38,6 +40,7 @@ public class MerchantVerifiedBoostSelectionController {
     }
 
     @GetMapping
+    @Operation(summary = "내 Verified Boost 선택 목록 조회")
     public VerifiedBoostSelectionPageResponse list(@RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
             @CurrentUser JwtAuthenticatedUser user) {

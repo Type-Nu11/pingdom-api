@@ -169,6 +169,7 @@ public class EngagementController {
     }
 
     @PostMapping("/like")
+    @Operation(summary = "지도 게시글 좋아요 추가")
     @RateLimited(RateLimitAction.MAP_IMAGE_LIKE)
     public ResponseEntity<MapImageLikeResponse> like(
             @Valid @RequestBody MapImageLikeRequest request,
@@ -182,6 +183,7 @@ public class EngagementController {
     }
 
     @DeleteMapping("/like/{postId}")
+    @Operation(summary = "지도 게시글 좋아요 취소")
     @RateLimited(RateLimitAction.MAP_IMAGE_LIKE)
     public ResponseEntity<MapImageLikeResponse> likeClear(
             @PathVariable("postId") Long postId,
@@ -195,6 +197,7 @@ public class EngagementController {
     }
 
     @PostMapping("/like/return/{postId}/{notificationsId}")
+    @Operation(summary = "지도 게시글 좋아요 알림 반환 처리")
     public ResponseEntity<String> likeReturn(
             @PathVariable("postId") Long postId,
             @PathVariable("notificationsId") Long notificationsId,
