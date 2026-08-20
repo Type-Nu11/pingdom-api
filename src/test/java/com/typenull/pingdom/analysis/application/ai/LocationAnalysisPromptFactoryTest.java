@@ -34,7 +34,8 @@ class LocationAnalysisPromptFactoryTest {
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
                 "\"html\"",
-                "additionalCriteria", "고정 스타일"
+                "additionalCriteria", "고정 스타일",
+                "완성된 단일 XHTML 문서", "<!DOCTYPE html>", "void element는 반드시 />로 닫는다"
         );
     }
 
