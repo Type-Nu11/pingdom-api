@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.api.oauth;
 
 import jakarta.servlet.http.Cookie;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.LinkedHashMap;
@@ -18,6 +19,7 @@ public class OAuth2TokenController {
     private static final String ACCESS_COOKIE = "OAUTH2_ACCESS_TOKEN";
 
     @GetMapping("/auth/oauth2/success")
+    @Operation(summary = "OAuth2 로그인 성공 토큰 교환")
     public ResponseEntity<?> oauth2Success(HttpServletRequest request, HttpServletResponse response) {
         boolean secureCookie = request.isSecure();
         String accessToken = readCookie(request, ACCESS_COOKIE);

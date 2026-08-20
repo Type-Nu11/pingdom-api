@@ -35,7 +35,7 @@ import jakarta.validation.Valid;
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 /** 중복 장소 후보의 판정·병합·복구 관리 요청을 관리자 서비스로 전달합니다. */
 public class AdminPlaceDuplicateController {
 

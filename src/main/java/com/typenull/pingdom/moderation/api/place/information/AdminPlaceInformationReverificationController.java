@@ -21,7 +21,7 @@ import org.springframework.validation.annotation.Validated;
 @RequiredArgsConstructor
 @AdminOnly
 @Validated
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminPlaceInformationReverificationController {
 
     private final PlaceInformationReverificationService service;

@@ -35,7 +35,7 @@ public class MapPlaceController {
     private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping("/coordinates")
-    @Tag(name = "Web", description = "웹 전용 API")
+    @Tag(name = "App", description = "앱 전용 API")
     @Operation(summary = "장소 좌표 토큰 발급", description = "장소 등록 신청에서 사용할 임시 좌표 토큰만 발급합니다. 이 API는 장소를 생성하지 않습니다.")
     @ApiResponses({
             @ApiResponse(
@@ -90,7 +90,7 @@ public class MapPlaceController {
     }
 
     @PostMapping("/upload")
-    @Tag(name = "Web", description = "웹 전용 API")
+    @Tag(name = "App", description = "앱 전용 API")
     @Operation(
             summary = "장소 업로드(승인 전환 중)",
             description = "레거시 장소 생성 경로입니다. 승인된 장소 등록 신청의 최종 등록 API가 제공되기 전까지 일반 사용자의 직접 생성을 차단합니다.",

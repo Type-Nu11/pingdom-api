@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantPlaceInformationController {
 
     private final MerchantPlaceInformationService informationService;

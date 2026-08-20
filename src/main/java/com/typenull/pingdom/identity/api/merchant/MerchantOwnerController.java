@@ -16,7 +16,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/merchant-owner")
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantOwnerController {
 
     private final MerchantOwnerProfileService profileService;
