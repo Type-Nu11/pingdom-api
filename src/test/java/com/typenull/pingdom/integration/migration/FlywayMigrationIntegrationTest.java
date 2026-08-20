@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "105";
+    private static final String LATEST_MIGRATION_VERSION = "106";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(105);
+        assertThat(result.migrationsExecuted).isEqualTo(106);
 
         assertPostMigrationSchema();
     }
@@ -147,6 +147,46 @@ class FlywayMigrationIntegrationTest {
                     )
                     """))
                     .isInstanceOf(java.sql.SQLException.class);
+        }
+    }
+
+    @Test
+    void acceptsE164ContactPhonesForPlaceRegistrationApplications() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES (
+                        990106, 'phone-constraint-user', 'phone-constraint-user@example.com', true, 'password', 1990,
+                        'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'USER', false
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO place_registration_application (
+                        applicant_user_id, status, place_name, category, latitude, longitude,
+                        road_address, jibun_address, postal_code, description,
+                        business_contact_phone, applicant_contact_phone, merchant_contact_phone,
+                        created_at, updated_at, version
+                    ) VALUES (
+                        990106, 'DRAFT', '전화번호 제약 검증 장소', 'CAFE', 37.4979, 127.0276,
+                        '서울특별시 강남구 테헤란로 123', '서울특별시 강남구 역삼동 123-45', '06133', '전화번호 제약 검증',
+                        '+821012345678', '+821012345678', '+821012345678',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0
+                    )
+                    """);
+
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM place_registration_application
+                    WHERE applicant_user_id = 990106
+                      AND business_contact_phone = '+821012345678'
+                      AND applicant_contact_phone = '+821012345678'
+                      AND merchant_contact_phone = '+821012345678'
+                    """)).isTrue();
         }
     }
 
@@ -247,7 +287,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(16);
+        assertThat(result.migrationsExecuted).isEqualTo(17);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -348,7 +388,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(103);
+        assertThat(result.migrationsExecuted).isEqualTo(104);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -462,7 +502,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(78);
+        assertThat(result.migrationsExecuted).isEqualTo(79);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -713,7 +753,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(50);
+        assertThat(result.migrationsExecuted).isEqualTo(51);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
