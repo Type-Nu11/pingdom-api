@@ -42,6 +42,8 @@ public enum MapErrorCode implements ErrorCode {
     PLACE_OPERATING_NOTICE_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 상점 운영 상태 공지를 관리할 권한이 없습니다."),
     PLACE_OPERATING_NOTICE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "상점 운영 상태 공지 요청이 올바르지 않습니다."),
     PLACE_OPERATING_NOTICE_ALREADY_ACTIVE(HttpStatus.CONFLICT, "이미 활성 또는 예약된 상점 운영 상태 공지가 있습니다."),
+    PLACE_OPERATING_SCHEDULE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 영업시간 요청이 올바르지 않습니다."),
+    PLACE_MEDIA_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 미디어 요청이 올바르지 않습니다."),
     RECOMMENDATION_EXPLANATION_NOT_FOUND(HttpStatus.NOT_FOUND, "추천 설명 정보를 찾을 수 없습니다."),
     PLACE_ID_REQUIRED(HttpStatus.BAD_REQUEST, "장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다."),
     PLACE_SEARCH_CONDITION_INVALID(HttpStatus.BAD_REQUEST, "장소 검색 필터 조건이 올바르지 않습니다."),

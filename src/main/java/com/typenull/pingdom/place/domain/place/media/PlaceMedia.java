@@ -138,6 +138,11 @@ public class PlaceMedia {
         );
     }
 
+    public void updateDisplayOrder(int displayOrder) {
+        this.displayOrder = Math.max(0, displayOrder);
+        this.updatedAt = LocalDateTime.now();
+    }
+
     private void validateSourceMapImage(PlaceMediaPurpose purpose, Long sourceMapImageId) {
         if (purpose == PlaceMediaPurpose.VERIFICATION && sourceMapImageId == null) {
             throw new IllegalArgumentException("sourceMapImageId must not be null for verification media");
