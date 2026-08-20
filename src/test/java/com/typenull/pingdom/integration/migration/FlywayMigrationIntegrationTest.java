@@ -93,11 +93,11 @@ class FlywayMigrationIntegrationTest {
                     )
                     """);
 
-            assertThat(queryLong(statement, """
-                    SELECT COUNT(*)
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
                     FROM mcp_spatial_raw_data
                     WHERE account_id = 'mcp-account-1'
-                    """)).isEqualTo(2L);
+                    """)).isTrue();
 
             assertThat(queryBoolean(statement, """
                     SELECT ST_SRID(geom) = 4326
