@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "102";
+    private static final String LATEST_MIGRATION_VERSION = "103";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(102);
+        assertThat(result.migrationsExecuted).isEqualTo(103);
 
         assertPostMigrationSchema();
     }
@@ -115,6 +115,12 @@ class FlywayMigrationIntegrationTest {
                     WHERE account_id = 'mcp-account-1'
                     """)).isTrue();
 
+            assertThat(queryBoolean(statement, """
+                    SELECT created_at IS NOT NULL
+                    FROM mcp_spatial_raw_data
+                    WHERE account_id = 'mcp-account-1'
+                    """)).isTrue();
+
             assertThatThrownBy(() -> statement.executeUpdate("""
                     INSERT INTO mcp_spatial_raw_data (
                         account_id, birth_year, gender, longitude, latitude
@@ -123,6 +129,33 @@ class FlywayMigrationIntegrationTest {
                     )
                     """))
                     .isInstanceOf(java.sql.SQLException.class);
+        }
+    }
+
+    @Test
+    void addsCreatedAtToExistingMcpSpatialRawData() throws Exception {
+        migrateTo("102");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO mcp_spatial_raw_data (
+                        account_id, birth_year, gender, longitude, latitude
+                    ) VALUES (
+                        'mcp-existing-account', 1995, 'FEMALE', 127.0276, 37.4979
+                    )
+                    """);
+        }
+
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT created_at IS NOT NULL
+                    FROM mcp_spatial_raw_data
+                    WHERE account_id = 'mcp-existing-account'
+                    """)).isTrue();
         }
     }
 
@@ -1113,7 +1146,7 @@ class FlywayMigrationIntegrationTest {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 6
+                    SELECT COUNT(*) = 7
                     FROM information_schema.columns
                     WHERE table_schema = 'public'
                       AND table_name = 'mcp_spatial_raw_data'
@@ -1123,7 +1156,8 @@ class FlywayMigrationIntegrationTest {
                           'gender',
                           'longitude',
                           'latitude',
-                          'geom'
+                          'geom',
+                          'created_at'
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -1155,6 +1189,15 @@ class FlywayMigrationIntegrationTest {
                         WHERE schemaname = 'public'
                           AND tablename = 'mcp_spatial_raw_data'
                           AND indexname = 'idx_mcp_spatial_raw_data_geom_gist'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE schemaname = 'public'
+                          AND tablename = 'mcp_spatial_raw_data'
+                          AND indexname = 'idx_mcp_spatial_raw_data_created_at'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
