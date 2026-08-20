@@ -25,7 +25,7 @@ import org.springframework.web.multipart.MultipartFile;
 @RequestMapping("/merchant-owner/place-claims/{claimId}/attachments")
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
-@Tag(name = "Web", description = "웹 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantPlaceClaimAttachmentController {
     private final MerchantPlaceClaimAttachmentService service;
 

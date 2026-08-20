@@ -42,7 +42,7 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminPostController {
 
     private final AdminPostService adminPostService;

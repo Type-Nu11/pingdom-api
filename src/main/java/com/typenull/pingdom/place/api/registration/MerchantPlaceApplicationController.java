@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications")
-@Tag(name = "Web", description = "웹 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 

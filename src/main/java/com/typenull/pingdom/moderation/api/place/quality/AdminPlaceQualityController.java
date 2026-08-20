@@ -51,7 +51,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Slf4j
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 /** 관리자 장소의 좌표·식별자·운영·관광·검증 품질을 수정하는 API 진입점입니다. */
 public class AdminPlaceQualityController {
 

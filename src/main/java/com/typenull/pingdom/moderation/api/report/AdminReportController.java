@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping("/admin/reports")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 /** 신고 승인·반려와 신고 사용자 조회 요청을 관리자 서비스로 전달합니다. */
 public class AdminReportController {
 
