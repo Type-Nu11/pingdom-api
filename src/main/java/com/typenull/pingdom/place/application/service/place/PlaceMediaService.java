@@ -8,22 +8,42 @@ import com.typenull.pingdom.place.domain.place.media.PlaceMedia;
 import com.typenull.pingdom.place.domain.place.media.PlaceMediaPurpose;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceMediaRepository;
+import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapability;
+import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapabilityPolicy;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Objects;
-import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
-@RequiredArgsConstructor
 public class PlaceMediaService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceMediaRepository placeMediaRepository;
+    private final MerchantPlaceCapabilityPolicy merchantPlaceCapabilityPolicy;
+
+    @Autowired
+    public PlaceMediaService(
+            MapPlaceRepository mapPlaceRepository,
+            PlaceMediaRepository placeMediaRepository,
+            MerchantPlaceCapabilityPolicy merchantPlaceCapabilityPolicy
+    ) {
+        this.mapPlaceRepository = mapPlaceRepository;
+        this.placeMediaRepository = placeMediaRepository;
+        this.merchantPlaceCapabilityPolicy = merchantPlaceCapabilityPolicy;
+    }
+
+    public PlaceMediaService(
+            MapPlaceRepository mapPlaceRepository,
+            PlaceMediaRepository placeMediaRepository
+    ) {
+        this(mapPlaceRepository, placeMediaRepository, null);
+    }
 
     @Transactional
     public PlaceMediaItem createExplorationMedia(Long placeId, Long userId, PlaceMediaCreateRequest request) {
@@ -94,7 +114,11 @@ public class PlaceMediaService {
         MapPlace place = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
         if (!Objects.equals(place.getUserId(), userId)) {
-            throw new MapException(MapErrorCode.OTHERS_PLACE_MEDIA_NOT_MANAGED);
+            try {
+                merchantPlaceCapabilityPolicy.require(userId, placeId, MerchantPlaceCapability.PLACE_INFO_EDIT);
+            } catch (RuntimeException exception) {
+                throw new MapException(MapErrorCode.OTHERS_PLACE_MEDIA_NOT_MANAGED);
+            }
         }
         return place;
     }
