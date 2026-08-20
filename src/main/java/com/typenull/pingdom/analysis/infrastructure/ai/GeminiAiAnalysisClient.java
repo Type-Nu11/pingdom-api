@@ -24,7 +24,8 @@ import org.springframework.web.client.RestClientException;
 /** Gemini tool call과 Pingdom MCP tool 실행을 중계하는 클라이언트다. */
 public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
-    private static final int MAX_TOOL_CALLS = 3;
+    /** 지역 정규화부터 후보·유동·시설·추천 조회까지 읽기 전용 분석 흐름을 허용한다. */
+    private static final int MAX_TOOL_CALLS = 6;
 
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
