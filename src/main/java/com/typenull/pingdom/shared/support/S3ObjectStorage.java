@@ -5,6 +5,9 @@ import java.io.IOException;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
+import java.time.Duration;
+import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.ObjectProvider;
@@ -22,6 +25,7 @@ import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Component
 @RequiredArgsConstructor
@@ -29,6 +33,7 @@ import software.amazon.awssdk.services.s3.model.S3Exception;
 public class S3ObjectStorage {
 
     private final ObjectProvider<S3Client> s3ClientProvider;
+    private final ObjectProvider<S3Presigner> s3PresignerProvider;
 
     @Value("${spring.cloud.aws.s3.bucket:}")
     private String bucket;
@@ -68,6 +73,27 @@ public class S3ObjectStorage {
             throw new IllegalArgumentException("파일이 비어있거나 존재하지 않습니다.");
         }
         return put(new java.io.ByteArrayInputStream(content), content.length, null, contentType, keyPrefix);
+    }
+
+    public PresignedPutResult presignedPut(String key, String contentType) {
+        S3Presigner presigner = s3PresignerProvider.getIfAvailable();
+        if (presigner == null || !StringUtils.hasText(bucket)) {
+            throw new S3StorageException(S3StorageError.NOT_CONFIGURED, "S3 presigner is not configured.", null);
+        }
+        LocalDateTime expiresAt = LocalDateTime.now(ZoneOffset.UTC).plusMinutes(10);
+        PutObjectRequest request = PutObjectRequest.builder()
+                .bucket(bucket)
+                .key(key)
+                .contentType(contentType)
+                .build();
+        String uploadUrl = presigner.presignPutObject(builder -> builder
+                .signatureDuration(Duration.ofMinutes(10))
+                .putObjectRequest(request)
+        ).url().toExternalForm();
+        String imageUrl = s3Client().utilities()
+                .getUrl(GetUrlRequest.builder().bucket(bucket).key(key).build())
+                .toExternalForm();
+        return new PresignedPutResult(key, uploadUrl, imageUrl, expiresAt);
     }
 
     private S3PutResult put(
@@ -257,6 +283,9 @@ public class S3ObjectStorage {
     }
 
     public record S3PutResult(String key, String url) {
+    }
+
+    public record PresignedPutResult(String key, String uploadUrl, String imageUrl, LocalDateTime expiresAt) {
     }
 
     public record S3ListResult(List<String> keys, boolean truncated) {

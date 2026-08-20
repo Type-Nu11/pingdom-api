@@ -81,6 +81,14 @@ class SwaggerSecurityTest {
     }
 
     @Test
+    void locationAnalysisApiDoesNotRequireAuthentication() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/app"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.paths['/analysis/reports/location'].post").exists())
+                .andExpect(jsonPath("$.paths['/analysis/reports/location'].post.security").doesNotExist());
+    }
+
+    @Test
     void consultingGroupDocsContainOnlyConsultationIntroApi() throws Exception {
         mockMvc.perform(get("/v3/api-docs/consulting"))
                 .andExpect(status().isOk())

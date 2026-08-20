@@ -314,6 +314,10 @@ public class MapPlace {
         this.kakaoPlaceId = kakaoPlaceId;
     }
 
+    public void updateImageUrl(String imageUrl) {
+        this.imageUrl = imageUrl;
+    }
+
     public boolean isOperating() {
         return operatingStatus == PlaceOperatingStatus.OPERATING;
     }

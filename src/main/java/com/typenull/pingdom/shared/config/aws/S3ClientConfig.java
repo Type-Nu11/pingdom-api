@@ -7,6 +7,7 @@ import org.springframework.util.StringUtils;
 import software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider;
 import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
 @Configuration
 public class S3ClientConfig {
@@ -19,6 +20,18 @@ public class S3ClientConfig {
                 : "ap-northeast-2";
 
         return S3Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    @Bean
+    @ConditionalOnProperty(name = "spring.cloud.aws.s3.bucket")
+    public S3Presigner s3Presigner(AwsRegionProperties awsRegionProperties) {
+        String region = StringUtils.hasText(awsRegionProperties.region())
+                ? awsRegionProperties.region()
+                : "ap-northeast-2";
+        return S3Presigner.builder()
                 .region(Region.of(region))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();

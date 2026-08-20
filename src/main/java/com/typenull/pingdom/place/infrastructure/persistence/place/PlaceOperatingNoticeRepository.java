@@ -29,6 +29,8 @@ public interface PlaceOperatingNoticeRepository extends JpaRepository<PlaceOpera
             Collection<PlaceOperatingNoticeStatus> statuses
     );
 
+    List<PlaceOperatingNotice> findAllByPlace_IdOrderByStartsAtAscIdAsc(Long placeId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT notice

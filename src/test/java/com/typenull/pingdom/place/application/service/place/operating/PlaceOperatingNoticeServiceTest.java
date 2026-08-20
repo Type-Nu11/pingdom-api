@@ -3,13 +3,19 @@ package com.typenull.pingdom.place.application.service.place.operating;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.Mockito.doThrow;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapability;
+import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapabilityPolicy;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerErrorCode;
+import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeCreateRequest;
+import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeResponse;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.operating.notice.PlaceOperatingNotice;
 import com.typenull.pingdom.place.domain.place.operating.notice.PlaceOperatingNoticeSeverity;
@@ -25,6 +31,7 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -40,6 +47,7 @@ class PlaceOperatingNoticeServiceTest {
     @Mock private MapPlaceRepository placeRepository;
     @Mock private PlaceOperatingNoticeRepository noticeRepository;
     @Mock private MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
+    @Mock private MerchantPlaceCapabilityPolicy merchantPlaceCapabilityPolicy;
     @Mock private OutboxEventPublisher outboxEventPublisher;
     @Mock private AdminAuditLogService adminAuditLogService;
     @Mock private PlaceOperatingNoticeMetrics metrics;
@@ -102,6 +110,56 @@ class PlaceOperatingNoticeServiceTest {
         assertThat(expiring.getStatus()).as("만료 시각에 도달한 공지는 EXPIRED로 전환되어야 한다").isEqualTo(PlaceOperatingNoticeStatus.EXPIRED);
         assertThat(expiredCount).isEqualTo(1);
         verify(outboxEventPublisher, org.mockito.Mockito.times(2)).publish(any(), any(), any(), any(), any());
+    }
+
+    @Test
+    void merchantCanListAllNoticeStatusesWithTimestamps() {
+        MapPlace place = place();
+        PlaceOperatingNotice active = PlaceOperatingNotice.create(
+                place, PlaceOperatingNoticeType.GENERAL, PlaceOperatingNoticeSeverity.INFO,
+                "현재 운영 안내", NOW.minusHours(1), NOW.plusHours(1), 1L, NOW.minusHours(1));
+        PlaceOperatingNotice scheduled = PlaceOperatingNotice.create(
+                place, PlaceOperatingNoticeType.GENERAL, PlaceOperatingNoticeSeverity.INFO,
+                "예약 운영 안내", NOW.plusHours(1), NOW.plusHours(2), 1L, NOW);
+        PlaceOperatingNotice expired = PlaceOperatingNotice.create(
+                place, PlaceOperatingNoticeType.GENERAL, PlaceOperatingNoticeSeverity.INFO,
+                "종료 운영 안내", NOW.minusHours(2), NOW.minusHours(1), 1L, NOW.minusHours(2));
+        expired.expire(NOW);
+        PlaceOperatingNotice canceled = PlaceOperatingNotice.create(
+                place, PlaceOperatingNoticeType.GENERAL, PlaceOperatingNoticeSeverity.INFO,
+                "취소 운영 안내", NOW, NOW.plusHours(1), 1L, NOW);
+        canceled.cancel(1L, "일정 변경", NOW.plusMinutes(1));
+        when(placeRepository.findById(10L)).thenReturn(Optional.of(place));
+        when(noticeRepository.findAllByPlace_IdOrderByStartsAtAscIdAsc(10L))
+                .thenReturn(List.of(active, scheduled, expired, canceled));
+        when(hoursEvaluator.evaluate(place)).thenReturn(new PlaceCurrentOperatingState(true, NOW));
+
+        var response = service.listByMerchant(1L, 10L);
+
+        assertThat(response.notices()).hasSize(4);
+        assertThat(response.notices()).extracting(PlaceOperatingNoticeResponse::status)
+                .containsExactly(
+                        PlaceOperatingNoticeStatus.ACTIVE,
+                        PlaceOperatingNoticeStatus.SCHEDULED,
+                        PlaceOperatingNoticeStatus.EXPIRED,
+                        PlaceOperatingNoticeStatus.CANCELED
+                );
+        assertThat(response.notices().get(0).createdAt()).isEqualTo(NOW.minusHours(1));
+        assertThat(response.notices().get(0).updatedAt()).isEqualTo(NOW.minusHours(1));
+        verify(merchantPlaceCapabilityPolicy).require(1L, 10L, MerchantPlaceCapability.OPERATING_NOTICE_MANAGE);
+    }
+
+    @Test
+    void merchantWithoutNoticePermissionCannotListNotices() {
+        MapPlace place = place();
+        when(placeRepository.findById(10L)).thenReturn(Optional.of(place));
+        doThrow(new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED))
+                .when(merchantPlaceCapabilityPolicy)
+                .require(99L, 10L, MerchantPlaceCapability.OPERATING_NOTICE_MANAGE);
+
+        assertThatThrownBy(() -> service.listByMerchant(99L, 10L))
+                .isInstanceOf(MerchantOwnerException.class);
+        verify(noticeRepository, never()).findAllByPlace_IdOrderByStartsAtAscIdAsc(10L);
     }
 
     private PlaceOperatingNoticeCreateRequest request() {
