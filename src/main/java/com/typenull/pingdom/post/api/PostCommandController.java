@@ -154,6 +154,7 @@ public class PostCommandController {
     }
 
     @PostMapping("/posts/{id}")
+    @Operation(summary = "게시글 수정")
     public ResponseEntity<PostUpdateResponse> updatePost(
             @Valid @ModelAttribute PostUpdateRequest request,
             @CurrentUser JwtAuthenticatedUser user,

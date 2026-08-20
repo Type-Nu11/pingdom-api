@@ -8,6 +8,7 @@ import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationReviewRe
 import com.typenull.pingdom.place.application.service.registration.PlaceRegistrationService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -26,11 +27,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminPlaceRegistrationController {
     private final PlaceRegistrationService service;
     @GetMapping
+    @Operation(summary = "관리자 장소 등록 신청 목록 조회")
     public PlaceRegistrationPageResponse list(@RequestParam(defaultValue = "1") int page, @RequestParam(defaultValue = "20") int limit) { return service.listAll(page, limit); }
     @GetMapping("/{id}")
+    @Operation(summary = "관리자 장소 등록 신청 상세 조회")
     public PlaceRegistrationResponse get(@PathVariable Long id) { return service.getAny(id); }
     @PostMapping("/{id}/approve")
+    @Operation(summary = "관리자 장소 등록 신청 승인")
     public PlaceRegistrationResponse approve(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationReviewRequest request, @CurrentUser JwtAuthenticatedUser admin) { return service.approve(admin.userId(), id, request); }
     @PostMapping("/{id}/reject")
+    @Operation(summary = "관리자 장소 등록 신청 반려")
     public PlaceRegistrationResponse reject(@PathVariable Long id, @Valid @RequestBody PlaceRegistrationReviewRequest request, @CurrentUser JwtAuthenticatedUser admin) { return service.reject(admin.userId(), id, request); }
 }
