@@ -102,7 +102,7 @@ class GeminiAiAnalysisClientTest {
     void requestsFinalJsonWithoutToolsWhenToolCallLimitIsReached() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        for (int i = 0; i < 4; i++) {
+        for (int i = 0; i < 7; i++) {
             server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
                     .andRespond(withSuccess(toolCallResponse(), MediaType.APPLICATION_JSON));
         }

@@ -23,8 +23,8 @@ class LocationAnalysisPromptFactoryTest {
         AiAnalysisPrompt prompt = factory.create(request, LocalDate.of(2026, 8, 18));
 
         assertThat(prompt.content()).contains(
-                "Pingdom MCP 서버",
-                "실행환경에 이미 설정되어 있다",
+                "Pingdom MCP 주소",
+                "실행환경에 설정되어 있다",
                 "읽기 전용 도구"
         );
         assertThat(prompt.content()).contains("서울 강남구", "카페", "20-39 여성", "18:00-22:00");
@@ -34,8 +34,9 @@ class LocationAnalysisPromptFactoryTest {
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
                 "\"html\"",
-                "additionalCriteria", "고정 스타일",
-                "완성된 단일 XHTML 문서", "<!DOCTYPE html>", "void element는 반드시 />로 닫는다"
+                "additionalCriteria", "고정된 인라인 CSS",
+                "완전한 단일 XHTML 문서", "<!DOCTYPE html>", "void element는 반드시 />로 닫는다",
+                "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자"
         );
     }
 
