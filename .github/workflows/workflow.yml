@@ -104,75 +104,8 @@ jobs:
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
           script: |
-            set -eu
             cd ~/Pingdom_Backend
-
-            deployment_env="$HOME/.pingdom-deploy.env"
-            if [ -f "$deployment_env" ]; then
-              set -a
-              . "$deployment_env"
-              set +a
-            fi
-
-            previous_app_container_id="$(docker compose ps -q app 2>/dev/null || true)"
-            previous_image=""
-            if [ -n "$previous_app_container_id" ]; then
-              previous_image="$(docker inspect --format='{{.Config.Image}}' "$previous_app_container_id")"
-            fi
-
             git pull origin release
-
-            expected_image="${{ secrets.DOCKER_USERNAME }}/pingdom:${{ github.sha }}"
-            export PINGDOM_APP_IMAGE="$expected_image"
-
-            persist_deployment_image() {
-              umask 077
-              printf 'PINGDOM_APP_IMAGE=%s\n' "$1" > "$deployment_env"
-            }
-
-            rollback_app() {
-              if [ -z "$previous_image" ]; then
-                echo "No previous app image is available for rollback."
-                return 0
-              fi
-
-              echo "Rolling back app to $previous_image"
-              export PINGDOM_APP_IMAGE="$previous_image"
-              docker compose up -d --force-recreate app
-              persist_deployment_image "$previous_image"
-            }
-
-            docker compose pull app
-            if ! docker compose up -d --force-recreate app; then
-              rollback_app
-              exit 1
-            fi
-
-            app_container_id="$(docker compose ps -q app)"
-            if [ -z "$app_container_id" ]; then
-              echo "App container was not created."
-              rollback_app
-              exit 1
-            fi
-
-            running_image="$(docker inspect --format='{{.Config.Image}}' "$app_container_id")"
-            if [ "$running_image" != "$expected_image" ]; then
-              echo "Unexpected app image: $running_image"
-              rollback_app
-              exit 1
-            fi
-
-            attempt=1
-            until curl --fail --silent --show-error http://127.0.0.1:8080/actuator/health/liveness; do
-              if [ "$attempt" -ge 12 ]; then
-                docker compose logs --tail=100 app
-                rollback_app
-                exit 1
-              fi
-
-              attempt=$((attempt + 1))
-              sleep 5
-            done
-
-            persist_deployment_image "$expected_image"
+            docker compose pull
+            docker compose up -d --force-recreate
             docker image prune -f

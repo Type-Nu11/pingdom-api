@@ -3,12 +3,9 @@ package com.typenull.pingdom.analysis.api;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
-import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -25,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/analysis/reports")
 @RequiredArgsConstructor
-@SecurityRequirement(name = "bearerAuth")
 @Tag(name = "App", description = "앱 전용 API")
 public class LocationAnalysisController {
 
@@ -36,12 +32,10 @@ public class LocationAnalysisController {
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "PDF 보고서 생성 성공"),
             @ApiResponse(responseCode = "400", description = "지역 누락 또는 입력값 검증 실패", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "502", description = "AI 분석 응답 처리 실패", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<byte[]> generate(
-            @Valid @RequestBody LocationAnalysisRequest request,
-            @Parameter(hidden = true) @AuthenticationPrincipal JwtAuthenticatedUser user
+            @Valid @RequestBody LocationAnalysisRequest request
     ) {
         LocationAnalysisReportService.LocationAnalysisPdf report = reportService.generate(request);
         String filename = "location-analysis-%s.pdf".formatted(report.reportId());
