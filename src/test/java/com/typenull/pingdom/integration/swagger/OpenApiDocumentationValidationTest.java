@@ -463,7 +463,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void legacyApiDocumentationStatesStayFixedUntilRemovalGateCompletes() throws Exception {
+    void removedLegacyApiDocumentationDoesNotAppear() throws Exception {
         JsonNode defaultDocument = readApiDocs("/v3/api-docs");
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
@@ -480,18 +480,19 @@ class OpenApiDocumentationValidationTest {
                     .isFalse();
         }
 
-        assertThat(appDocument.path("paths").path("/map/like").has("get")).isTrue();
+        assertThat(appDocument.path("paths").path("/map/like").has("get")).isFalse();
+        assertThat(appDocument.path("paths").path("/map/like").has("post")).isTrue();
+        assertThat(appDocument.path("paths").path("/map/like/{postId}").has("delete")).isTrue();
         assertThat(appDocument.path("paths").path("/map/likes").has("get")).isTrue();
         assertThat(defaultDocument.path("paths").has("/auth/google")).isFalse();
-        assertThat(adminDocument.path("paths").path("/admin/ad").has("get")).isTrue();
+        assertThat(adminDocument.path("paths").has("/admin/ad")).isFalse();
         assertThat(parameter(adminDocument.at("/paths/~1admin~1notifications/get"), "userId")
-                .path("deprecated").asBoolean()).isTrue();
+                .isMissingNode()).isTrue();
 
         JsonNode bannedUsersOperation = adminDocument.at("/paths/~1admin~1users~1banned/get");
         for (String legacyParameterName : List.of("bannedFrom", "bannedTo")) {
             JsonNode legacyParameter = parameter(bannedUsersOperation, legacyParameterName);
-            assertThat(legacyParameter.isMissingNode()).isFalse();
-            assertThat(legacyParameter.has("deprecated")).isFalse();
+            assertThat(legacyParameter.isMissingNode()).isTrue();
         }
     }
 
