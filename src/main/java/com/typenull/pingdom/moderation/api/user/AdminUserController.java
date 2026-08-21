@@ -16,8 +16,6 @@ import com.typenull.pingdom.moderation.application.AdminUserService;
 import com.typenull.pingdom.moderation.domain.user.AdminBannedUserSortBy;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
-import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
-import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -51,12 +49,11 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
-    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @GetMapping("/users/banned")
     @Operation(
             summary = "밴 유저 목록 조회",
-            description = "관리자가 현재 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. keyword는 숫자만 입력하면 userId 정확히 일치로 검색하고, 그 외에는 username 부분 일치로 검색합니다. counts는 현재 밴 중인 사용자 기준이며, keyword 검색어가 있으면 검색 결과 기준으로 계산됩니다. 기간 필터는 from과 to를 사용하며, 기존 bannedFrom과 bannedTo도 호환을 위해 지원합니다. 같은 조건을 함께 전달하면 from과 to가 우선합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
+            description = "관리자가 현재 밴 처리된 사용자 목록을 페이지 단위로 조회합니다. keyword는 숫자만 입력하면 userId 정확히 일치로 검색하고, 그 외에는 username 부분 일치로 검색합니다. counts는 현재 밴 중인 사용자 기준이며, keyword 검색어가 있으면 검색 결과 기준으로 계산됩니다. 기간 필터는 from과 to를 사용합니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -136,28 +133,18 @@ public class AdminUserController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
             @Parameter(description = "밴 처리 종료 시각 이하", example = "2026-06-30T23:59:59")
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
-            @Parameter(description = "from의 이전 호환 파라미터입니다. from이 함께 전달되면 from이 우선합니다.", example = "2026-06-01T00:00:00")
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bannedFrom,
-            @Parameter(description = "to의 이전 호환 파라미터입니다. to가 함께 전달되면 to가 우선합니다.", example = "2026-06-30T23:59:59")
-            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bannedTo,
             @Parameter(description = "정렬 기준", example = "BANNED_AT")
             @RequestParam(defaultValue = "BANNED_AT") AdminBannedUserSortBy sortBy,
             @Parameter(description = "정렬 방향", example = "DESC")
             @RequestParam(defaultValue = "DESC") Sort.Direction sortDirection
     ) {
-        if (bannedFrom != null) {
-            legacyApiUsageMetrics.record(LegacyApiEndpoint.ADMIN_BANNED_USERS_BANNED_FROM_GET);
-        }
-        if (bannedTo != null) {
-            legacyApiUsageMetrics.record(LegacyApiEndpoint.ADMIN_BANNED_USERS_BANNED_TO_GET);
-        }
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
         return adminUserService.listBannedUsers(
                 new AdminBannedUserSearchCondition(
                         keyword,
                         banType,
-                        from != null ? from : bannedFrom,
-                        to != null ? to : bannedTo,
+                        from,
+                        to,
                         sortBy,
                         sortDirection
                 ),
