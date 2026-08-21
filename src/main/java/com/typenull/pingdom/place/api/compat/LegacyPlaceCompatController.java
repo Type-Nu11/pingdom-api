@@ -11,6 +11,8 @@ import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationClickService;
 import com.typenull.pingdom.place.application.service.recommendation.explanation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -34,6 +36,7 @@ public class LegacyPlaceCompatController {
     private final PlaceRecommendationQueryService placeRecommendationQueryService;
     private final PlaceRecommendationClickService placeRecommendationClickService;
     private final PlaceRecommendationExplanationQueryService placeRecommendationExplanationQueryService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @Deprecated
     @GetMapping("/place/recommendations")
@@ -45,6 +48,7 @@ public class LegacyPlaceCompatController {
             @RequestParam(required = false) String recommendationVersion,
             @CurrentUser JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_RECOMMENDATIONS_GET);
         Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(
                 placeRecommendationQueryService.recommendPlaces(
@@ -65,6 +69,7 @@ public class LegacyPlaceCompatController {
             @Valid @RequestBody PlaceRecommendationClickRequest request,
             @CurrentUser JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_RECOMMENDATIONS_CLICK);
         Long userId = authenticatedUserId(user);
         placeRecommendationClickService.recordClick(
                 userId,
@@ -82,6 +87,7 @@ public class LegacyPlaceCompatController {
             @PathVariable String requestId,
             @CurrentUser JwtAuthenticatedUser user
     ) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.PLACE_RECOMMENDATION_EXPLANATION_GET);
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(
                 authenticatedUserId(user),
                 requestId

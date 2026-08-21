@@ -8,6 +8,8 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.post.application.query.PostQueryService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -17,6 +19,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.servlet.http.HttpServletRequest;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -36,6 +39,7 @@ public class PostQueryController {
 
     private final PostQueryService postQueryService;
     private final PlaceRankingQueryService placeRankingQueryService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @GetMapping("/place-rankings")
     @Operation(summary = "장소 핫플·트렌드 랭킹 조회")
@@ -167,8 +171,12 @@ public class PostQueryController {
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
             @RequestParam(defaultValue = "20") int limit,
-            @CurrentUser JwtAuthenticatedUser user
+            @CurrentUser JwtAuthenticatedUser user,
+            HttpServletRequest request
     ) {
+        if (request.getRequestURI().equals(request.getContextPath() + "/map/like")) {
+            legacyApiUsageMetrics.record(LegacyApiEndpoint.MAP_LIKED_POSTS_GET);
+        }
         if (user == null) {
             throw new AuthException(AuthErrorCode.INVALID_TOKEN);
         }

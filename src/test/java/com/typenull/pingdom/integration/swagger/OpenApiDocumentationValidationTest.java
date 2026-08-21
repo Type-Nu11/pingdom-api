@@ -142,18 +142,6 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void defaultDocumentationExcludesAmbiguousLegacyAdminClaimDetailOperation() throws Exception {
-        JsonNode document = readApiDocs("/v3/api-docs");
-
-        assertThat(document.path("paths")
-                .path("/admin/place-registration-applications/{id}")
-                .has("get")).isTrue();
-        assertThat(document.path("paths")
-                .path("/admin/place-registration-applications/{claimId}")
-                .has("get")).isFalse();
-    }
-
-    @Test
     void adminDashboardRecentActivitiesAndPendingItemsAreDocumentedInWebGroup() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
@@ -471,6 +459,39 @@ class OpenApiDocumentationValidationTest {
         )) {
             assertThat(adminDocument.path("paths").has(path)).as("Admin 경로: %s", path).isTrue();
             assertThat(merchantDocument.path("paths").has(path)).as("Merchant에 노출되지 않아야 함: %s", path).isFalse();
+        }
+    }
+
+    @Test
+    void legacyApiDocumentationStatesStayFixedUntilRemovalGateCompletes() throws Exception {
+        JsonNode defaultDocument = readApiDocs("/v3/api-docs");
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
+
+        assertThat(appDocument.at("/paths/~1places~1upload/post/deprecated").asBoolean()).isTrue();
+
+        for (String hiddenPath : List.of(
+                "/place/recommendations",
+                "/place/recommendations/click",
+                "/place/recommendations/{requestId}/explanation"
+        )) {
+            assertThat(defaultDocument.path("paths").has(hiddenPath))
+                    .as("기존 추천 호환 경로는 OpenAPI에서 숨겨져야 함: %s", hiddenPath)
+                    .isFalse();
+        }
+
+        assertThat(appDocument.path("paths").path("/map/like").has("get")).isTrue();
+        assertThat(appDocument.path("paths").path("/map/likes").has("get")).isTrue();
+        assertThat(defaultDocument.path("paths").has("/auth/google")).isFalse();
+        assertThat(adminDocument.path("paths").path("/admin/ad").has("get")).isTrue();
+        assertThat(parameter(adminDocument.at("/paths/~1admin~1notifications/get"), "userId")
+                .path("deprecated").asBoolean()).isTrue();
+
+        JsonNode bannedUsersOperation = adminDocument.at("/paths/~1admin~1users~1banned/get");
+        for (String legacyParameterName : List.of("bannedFrom", "bannedTo")) {
+            JsonNode legacyParameter = parameter(bannedUsersOperation, legacyParameterName);
+            assertThat(legacyParameter.isMissingNode()).isFalse();
+            assertThat(legacyParameter.has("deprecated")).isFalse();
         }
     }
 

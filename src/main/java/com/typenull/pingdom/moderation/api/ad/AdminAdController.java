@@ -8,6 +8,8 @@ import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListResponse;
 import com.typenull.pingdom.moderation.api.dto.ad.AdminAdListItem;
 import com.typenull.pingdom.moderation.domain.ad.AdminAdDisplayStatus;
 import com.typenull.pingdom.moderation.application.AdminAdService;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -40,6 +42,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminAdController {
 
     private final AdminAdService adminAdService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @GetMapping
     @Operation(summary = "관리자 광고 목록 조회")
@@ -49,6 +52,7 @@ public class AdminAdController {
             @RequestParam(required = false) AdminAdDisplayStatus displayStatus,
             @RequestParam(required = false) LocalDateTime startedFrom,
             @RequestParam(required = false) LocalDateTime startedTo) {
+        legacyApiUsageMetrics.record(LegacyApiEndpoint.ADMIN_AD_LIST_GET);
         return adminAdService.list(keyword, displayStatus, startedFrom, startedTo, page, limit);
     }
 

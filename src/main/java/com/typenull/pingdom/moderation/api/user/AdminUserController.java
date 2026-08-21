@@ -16,6 +16,8 @@ import com.typenull.pingdom.moderation.application.AdminUserService;
 import com.typenull.pingdom.moderation.domain.user.AdminBannedUserSortBy;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -49,6 +51,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @GetMapping("/users/banned")
     @Operation(
@@ -142,6 +145,12 @@ public class AdminUserController {
             @Parameter(description = "정렬 방향", example = "DESC")
             @RequestParam(defaultValue = "DESC") Sort.Direction sortDirection
     ) {
+        if (bannedFrom != null) {
+            legacyApiUsageMetrics.record(LegacyApiEndpoint.ADMIN_BANNED_USERS_BANNED_FROM_GET);
+        }
+        if (bannedTo != null) {
+            legacyApiUsageMetrics.record(LegacyApiEndpoint.ADMIN_BANNED_USERS_BANNED_TO_GET);
+        }
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
         return adminUserService.listBannedUsers(
                 new AdminBannedUserSearchCondition(
