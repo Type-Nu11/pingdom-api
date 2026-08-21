@@ -452,37 +452,6 @@ class AbuseRateLimitControllerTest {
     }
 
     @Test
-    void legacyRecommendationClickReturnsTooManyRequestsWhenRequestIdIsReused() throws Exception {
-        User user = createUser("legacyClickUser");
-        String accessToken = accessToken(user);
-        MapPlace firstPlace = createMapPlace("레거시 첫 클릭 장소");
-        MapPlace secondPlace = createMapPlace("레거시 두 번째 클릭 장소");
-
-        mockMvc.perform(post("/place/recommendations/click")
-                        .with(remoteAddress("198.51.100.62"))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "placeId", firstPlace.getId(),
-                                "recommendationVersion", "place-rec-v1",
-                                "requestId", "legacy-recommendation-request-1"
-                        ))))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/place/recommendations/click")
-                        .with(remoteAddress("198.51.100.62"))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "placeId", secondPlace.getId(),
-                                "recommendationVersion", "place-rec-v1",
-                                "requestId", "legacy-recommendation-request-1"
-                        ))))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
-    }
-
-    @Test
     void imageUploadReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
         given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map")))
                 .willReturn(new S3ObjectStorage.S3PutResult("map/first.jpg", "https://example.com/first.jpg"));

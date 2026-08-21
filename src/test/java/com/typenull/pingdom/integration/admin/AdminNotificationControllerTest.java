@@ -86,7 +86,6 @@ class AdminNotificationControllerTest {
 
         mockMvc.perform(get("/admin/notifications")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("userId", String.valueOf(adminUserId))
                         .param("type", NotificationType.ADMIN_REPORT_RECEIVED.name())
                         .param("read", "false")
                         .param("from", "2026-07-21T00:00:00")
@@ -218,17 +217,6 @@ class AdminNotificationControllerTest {
                         .param("to", "2026-07-21T00:00:00"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("INVALID_NOTIFICATION_FILTER_PERIOD"));
-    }
-
-    @Test
-    void listNotificationsRejectsDifferentLegacyUserId() throws Exception {
-        String adminAccessToken = createUserAndLogin("notificationLegacyScopeAdmin", UserRole.ADMIN);
-
-        mockMvc.perform(get("/admin/notifications")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("userId", "999"))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
     @Test

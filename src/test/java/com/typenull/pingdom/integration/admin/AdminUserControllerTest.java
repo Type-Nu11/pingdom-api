@@ -170,7 +170,7 @@ class AdminUserControllerTest {
     }
 
     @Test
-    void listBannedUsersFiltersByBanTypePeriodAndSortWithCanonicalAndLegacyPeriodParams() throws Exception {
+    void listBannedUsersFiltersByBanTypePeriodAndSortWithCanonicalPeriodParams() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now().withNano(0);
 
@@ -213,25 +213,6 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.users[1].userId").value(temporaryUserLate.getId()))
                 .andExpect(jsonPath("$.totalCount").value(2));
 
-        mockMvc.perform(get("/admin/users/banned")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("banType", UserBanType.TEMPORARY.name())
-                        .param("bannedFrom", temporaryUserEarlyBannedAt.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-                        .param("bannedTo", temporaryUserEarlyBannedAt.plusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.users.length()").value(1))
-                .andExpect(jsonPath("$.users[0].userId").value(temporaryUserEarly.getId()));
-
-        mockMvc.perform(get("/admin/users/banned")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
-                        .param("banType", UserBanType.TEMPORARY.name())
-                        .param("from", temporaryUserEarlyBannedAt.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-                        .param("to", temporaryUserEarlyBannedAt.plusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-                        .param("bannedFrom", temporaryUserLateBannedAt.minusDays(1).format(DateTimeFormatter.ISO_LOCAL_DATE_TIME))
-                        .param("bannedTo", now.format(DateTimeFormatter.ISO_LOCAL_DATE_TIME)))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.users.length()").value(1))
-                .andExpect(jsonPath("$.users[0].userId").value(temporaryUserEarly.getId()));
     }
 
     @Test

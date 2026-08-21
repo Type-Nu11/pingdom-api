@@ -12,16 +12,7 @@ class LegacyApiUsageMetricsTest {
     private static final Set<String> EXPECTED_ENDPOINT_TAGS = Set.of(
             "POST /places/coordinates",
             "POST /places/upload",
-            "POST /map/posts (coordinate place creation)",
-            "GET /place/recommendations",
-            "POST /place/recommendations/click",
-            "GET /place/recommendations/{requestId}/explanation",
-            "GET /map/like",
-            "GET /auth/google",
-            "GET /admin/ad",
-            "GET /admin/notifications?userId",
-            "GET /admin/users/banned?bannedFrom",
-            "GET /admin/users/banned?bannedTo"
+            "POST /map/posts (coordinate place creation)"
     );
 
     @Test

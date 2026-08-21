@@ -155,6 +155,12 @@ class AuthControllerTest {
     }
 
     @Test
+    void removedGoogleLoginAliasIsNotMapped() throws Exception {
+        mockMvc.perform(get("/auth/google"))
+                .andExpect(status().isNotFound());
+    }
+
+    @Test
     void signupCreatesUser() throws Exception {
         SignupRequest request = new SignupRequest("tester01", "tester01@example.com", "password123", 1998, null, "ko", "KR");
 
