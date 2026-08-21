@@ -11,6 +11,8 @@ import com.typenull.pingdom.moderation.application.service.notification.AdminNot
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.NotificationType;
+import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
+import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
@@ -39,6 +41,7 @@ public class AdminNotificationController {
 
     private final AdminNotificationQueryService adminNotificationQueryService;
     private final AdminNotificationCommandService adminNotificationCommandService;
+    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @GetMapping
     @Operation(
@@ -117,6 +120,9 @@ public class AdminNotificationController {
             @RequestParam(defaultValue = "20") int limit,
             @CurrentUser JwtAuthenticatedUser adminUser
     ) {
+        if (userId != null) {
+            legacyApiUsageMetrics.record(LegacyApiEndpoint.ADMIN_NOTIFICATIONS_USER_ID_GET);
+        }
         if (userId != null && !userId.equals(adminUser.userId())) {
             throw new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED);
         }
