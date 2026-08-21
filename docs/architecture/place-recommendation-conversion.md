@@ -112,7 +112,7 @@ totalConversionRate = (bookmarkConversionCount + likeConversionCount) / exposure
 
 | 계약 | 현재 기준 | 이번 문서 작업 |
 | --- | --- | --- |
-| App API | `GET /places/recommendations`, `POST /places/recommendations/click`와 v1 호환 경로 | 요청·응답·경로 변경 없음 |
+| App API | `GET /places/recommendations`, `POST /places/recommendations/click` | 요청·응답·경로 변경 없음 |
 | 관리자 API | 추천 성과 조회와 `POST /admin/places/recommendation-snapshots/resync` | 요청·응답 변경 없음 |
 | DB schema | 추천 노출·클릭·전환 원천 테이블과 snapshot | 신규 전환 row에 nullable feature log 참조를 저장하며 기존 row는 변경하지 않음 |
 | OpenAPI baseline | `src/test/resources/openapi-baseline` | 기준 스펙 갱신 없음 |
