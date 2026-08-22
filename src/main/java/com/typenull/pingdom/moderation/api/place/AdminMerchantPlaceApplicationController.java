@@ -10,6 +10,7 @@ import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +30,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @AdminOnly
 @RequestMapping("/admin/merchant-place-applications")
-@Tag(name = "Web", description = "웹 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminMerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 
     @GetMapping
+    @Operation(summary = "관리자 Merchant 장소 신청 목록 조회")
     public AdminMerchantPlaceApplicationPageResponse list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
@@ -43,6 +45,7 @@ public class AdminMerchantPlaceApplicationController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "관리자 Merchant 장소 신청 상세 조회")
     public AdminMerchantPlaceApplicationResponse get(
             @PathVariable Long id,
             @CurrentUser JwtAuthenticatedUser admin
@@ -51,6 +54,7 @@ public class AdminMerchantPlaceApplicationController {
     }
 
     @GetMapping("/{id}/attachments")
+    @Operation(summary = "관리자 Merchant 장소 신청 첨부파일 목록 조회")
     public List<AdminMerchantPlaceApplicationAttachmentResponse> listAttachments(
             @PathVariable Long id,
             @CurrentUser JwtAuthenticatedUser admin
@@ -59,6 +63,7 @@ public class AdminMerchantPlaceApplicationController {
     }
 
     @GetMapping("/{id}/attachments/{attachmentId}/content")
+    @Operation(summary = "관리자 Merchant 장소 신청 첨부파일 다운로드")
     public ResponseEntity<byte[]> attachmentContent(
             @PathVariable Long id,
             @PathVariable Long attachmentId,
@@ -80,6 +85,7 @@ public class AdminMerchantPlaceApplicationController {
     }
 
     @PostMapping("/{id}/approve")
+    @Operation(summary = "관리자 Merchant 장소 신청 승인")
     public MerchantPlaceApplicationResponse approve(
             @PathVariable Long id,
             @Valid @RequestBody MerchantPlaceApplicationReviewRequest request,
@@ -89,6 +95,7 @@ public class AdminMerchantPlaceApplicationController {
     }
 
     @PostMapping("/{id}/reject")
+    @Operation(summary = "관리자 Merchant 장소 신청 반려")
     public MerchantPlaceApplicationResponse reject(
             @PathVariable Long id,
             @Valid @RequestBody MerchantPlaceApplicationReviewRequest request,

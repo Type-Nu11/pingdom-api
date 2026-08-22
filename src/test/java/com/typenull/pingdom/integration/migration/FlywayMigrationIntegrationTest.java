@@ -151,6 +151,46 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void acceptsE164ContactPhonesForPlaceRegistrationApplications() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES (
+                        990106, 'phone-constraint-user', 'phone-constraint-user@example.com', true, 'password', 1990,
+                        'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'USER', false
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO place_registration_application (
+                        applicant_user_id, status, place_name, category, latitude, longitude,
+                        road_address, jibun_address, postal_code, description,
+                        business_contact_phone, applicant_contact_phone, merchant_contact_phone,
+                        created_at, updated_at, version
+                    ) VALUES (
+                        990106, 'DRAFT', '전화번호 제약 검증 장소', 'CAFE', 37.4979, 127.0276,
+                        '서울특별시 강남구 테헤란로 123', '서울특별시 강남구 역삼동 123-45', '06133', '전화번호 제약 검증',
+                        '+821012345678', '+821012345678', '+821012345678',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 0
+                    )
+                    """);
+
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM place_registration_application
+                    WHERE applicant_user_id = 990106
+                      AND business_contact_phone = '+821012345678'
+                      AND applicant_contact_phone = '+821012345678'
+                      AND merchant_contact_phone = '+821012345678'
+                    """)).isTrue();
+        }
+    }
+
+    @Test
     void addsCreatedAtToExistingMcpSpatialRawData() throws Exception {
         migrateTo("102");
 

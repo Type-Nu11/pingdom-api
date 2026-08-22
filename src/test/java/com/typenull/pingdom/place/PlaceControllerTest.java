@@ -2011,23 +2011,26 @@ class PlaceControllerTest {
     }
 
     @Test
-    void legacyRecommendationClickReturnsUnauthorizedWithoutToken() throws Exception {
+    void removedLegacyRecommendationPathsAreNotMapped() throws Exception {
+        String accessToken = signupAndLogin("removedLegacyRecommendation");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
         mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", 1L,
                                 "recommendationVersion", "place-rec-v1",
                                 "requestId", "legacy-unauthorized-test"
                         ))))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
-    }
+                .andExpect(status().isNotFound());
 
-    @Test
-    void legacyRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
-        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "legacy-unauthorized-test"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "legacy-unauthorized-test")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
     }
 
     @Test

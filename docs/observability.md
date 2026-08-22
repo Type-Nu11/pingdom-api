@@ -34,7 +34,7 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 | `pingdom.outbox.manual_retry` | `event_type`, `result` | 관리자 수동 재처리 성공·거절 결과 |
 | `pingdom.auth.failures` | `code`, `source`, `status` | Authentication failure count |
 | `pingdom.auth.refresh_token` | `result`, `reason` | Refresh token success/failure count |
-| `pingdom.api.legacy.requests` | `method`, `path` | 추천을 제외한 레거시 API의 controller 진입 수 |
+| `pingdom.api.legacy.requests` | `method`, `path` | 삭제 전 전환 증거를 확인할 레거시 후보의 controller 진입 수 |
 | `pingdom.recommendation.requests` | `recommendation_version` | Recommendation request count by version |
 | `pingdom.recommendation.result_count` | `recommendation_version` | Recommended item count distribution |
 | `pingdom.recommendation.snapshot_resync` | `result`, `reason` | Snapshot resync success/failure count |
@@ -53,17 +53,31 @@ Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인�
 
 ### Legacy API usage
 
-`pingdom.api.legacy.requests`는 추천 API를 제외한 레거시 경로 13개의 호출 여부를
-확인하기 위한 임시 철거 판단 metric이다. `path`는 실제 ID가 아닌 고정 endpoint
-template만 사용하며, 애플리케이션 시작 시 모든 조합을 `0`으로 등록한다.
+`pingdom.api.legacy.requests`는 공개 API를 삭제하기 전에 호출 여부를 확인하는 임시
+철거 판단 metric이다. `path`는 실제 ID, 사용자 ID, 날짜 같은 요청값이 아닌 고정
+endpoint 또는 query parameter template만 사용하며, 애플리케이션 시작 시 모든 조합을
+`0`으로 등록한다.
+
+현재 고정 인벤토리는 다음과 같다. `POST /map/posts`는 전체 endpoint가 아니라 좌표 기반
+장소 생성 request mode만 집계한다.
+
+| method | path |
+| --- | --- |
+| `POST` | `/places/coordinates` |
+| `POST` | `/places/upload` |
+| `POST` | `/map/posts (coordinate place creation)` |
 
 - 전체 경로 확인: `GET /actuator/metrics/pingdom.api.legacy.requests`
-- 단일 경로 확인: `GET /actuator/metrics/pingdom.api.legacy.requests?tag=method:GET&tag=path:%2Fplace`
+- 단일 경로 확인: `GET /actuator/metrics/pingdom.api.legacy.requests?tag=method:POST&tag=path:%2Fplaces%2Fcoordinates`
 - 보호된 Actuator endpoint이므로 `ADMIN` 권한으로 조회한다.
 - 요청 검증·binding을 통과해 controller에 진입한 호출만 집계한다.
-- 값은 인스턴스 재시작 시 초기화된다. 단일 인스턴스의 짧은 `0` 관측만으로 삭제를
-  결정하지 말고, 운영 중인 모든 인스턴스에서 합의한 관측 기간 동안 확인하거나
-  외부 metric 수집기에 누적한 시계열을 기준으로 판단한다.
+- 값은 인스턴스 재시작 시 `0`으로 초기화된다. 따라서 단일 인스턴스의 짧은 `0` 관측은
+  삭제 근거가 아니다.
+- 삭제 승인 전에는 운영 중인 모든 인스턴스에서 합의한 관측 기간의 호출량을 확인하거나,
+  재시작과 무관하게 누적되는 외부 metric 수집기의 시계열을 확인한다.
+- 관측 기간 동안 대상 호출량이 `0`이고, 지원 대상 클라이언트 전환 배포와 대체 계약을
+  확인했으며, 제거 이슈에 승인 근거가 기록된 경우에만 controller와 계약을
+  삭제한다.
 
 ## Alert Criteria
 

@@ -47,7 +47,8 @@ class SwaggerSecurityTest {
                 "/v3/api-docs/app",
                 "/v3/api-docs/common",
                 "/v3/api-docs/consulting",
-                "/v3/api-docs/web"
+                "/v3/api-docs/admin",
+                "/v3/api-docs/merchant"
         }) {
             mockMvc.perform(get(apiDocsPath))
                     .andExpect(status().isOk());
@@ -65,8 +66,8 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/place/{id}']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/users/bookmarks']").doesNotExist())
                 .andExpect(jsonPath("$.paths['/map/bookmarks']").exists())
-                .andExpect(jsonPath("$.paths['/places/coordinates']").doesNotExist())
-                .andExpect(jsonPath("$.paths['/places/upload']").doesNotExist())
+                .andExpect(jsonPath("$.paths['/places/coordinates']").exists())
+                .andExpect(jsonPath("$.paths['/places/upload']").exists())
                 .andExpect(jsonPath("$.paths['/places/{id}']").exists())
                 .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());
     }
@@ -94,7 +95,7 @@ class SwaggerSecurityTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/consultations/intro'].post").exists());
 
-        mockMvc.perform(get("/v3/api-docs/web"))
+        mockMvc.perform(get("/v3/api-docs/admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/consultations/intro']").doesNotExist());
     }
@@ -123,7 +124,7 @@ class SwaggerSecurityTest {
 
     @Test
     void webGroupDocsContainVisitorVerificationCorrectionApis() throws Exception {
-        mockMvc.perform(get("/v3/api-docs/web"))
+        mockMvc.perform(get("/v3/api-docs/admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports'].get").exists())
                 .andExpect(jsonPath(
@@ -148,7 +149,7 @@ class SwaggerSecurityTest {
 
     @Test
     void webGroupDocsContainScoutFieldReportReviewApis() throws Exception {
-        mockMvc.perform(get("/v3/api-docs/web"))
+        mockMvc.perform(get("/v3/api-docs/admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/admin/scout-field-reports'].get").exists())
                 .andExpect(jsonPath(

@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.application.service.registration.MerchantPlace
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -24,11 +25,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications")
-@Tag(name = "Web", description = "웹 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 
     @PostMapping
+    @Operation(summary = "Merchant 장소 신청 생성")
     public ResponseEntity<MerchantPlaceApplicationResponse> create(
             @Valid @RequestBody MerchantPlaceApplicationRequest request,
             @CurrentUser JwtAuthenticatedUser user
@@ -37,6 +39,7 @@ public class MerchantPlaceApplicationController {
     }
 
     @GetMapping
+    @Operation(summary = "내 Merchant 장소 신청 목록 조회")
     public MerchantPlaceApplicationPageResponse list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
@@ -46,11 +49,13 @@ public class MerchantPlaceApplicationController {
     }
 
     @GetMapping("/{id}")
+    @Operation(summary = "Merchant 장소 신청 상세 조회")
     public MerchantPlaceApplicationResponse get(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) {
         return service.get(user.userId(), id);
     }
 
     @PutMapping("/{id}")
+    @Operation(summary = "Merchant 장소 신청 수정")
     public MerchantPlaceApplicationResponse update(
             @PathVariable Long id,
             @Valid @RequestBody MerchantPlaceApplicationRequest request,
@@ -60,16 +65,19 @@ public class MerchantPlaceApplicationController {
     }
 
     @PostMapping("/{id}/submit")
+    @Operation(summary = "Merchant 장소 신청 제출")
     public MerchantPlaceApplicationResponse submit(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) {
         return service.submit(user.userId(), id);
     }
 
     @PostMapping("/{id}/cancel")
+    @Operation(summary = "Merchant 장소 신청 취소")
     public MerchantPlaceApplicationResponse cancel(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) {
         return service.cancel(user.userId(), id);
     }
 
     @PostMapping("/{id}/reopen")
+    @Operation(summary = "Merchant 장소 신청 재개")
     public MerchantPlaceApplicationResponse reopen(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) {
         return service.reopen(user.userId(), id);
     }

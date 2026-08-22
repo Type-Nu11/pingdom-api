@@ -44,7 +44,7 @@ import java.util.List;
 @RequestMapping("/admin/trust-score")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 /** Trust Score 조회·재계산·이상 징후 및 개입 규칙 관리 API의 진입점입니다. */
 public class AdminTrustScoreController {
 
@@ -111,11 +111,13 @@ public class AdminTrustScoreController {
     }
 
     @PostMapping("/batch/recalculate")
+    @Operation(summary = "관리자 Trust Score 일괄 재계산")
     public ResponseEntity<AdminTrustScoreBatchResponse> recalculateTrustScores() {
         return ResponseEntity.ok(trustScoreBatchService.recalculate());
     }
 
     @GetMapping("/reporters/{reporterUserId}/history")
+    @Operation(summary = "신고자 Trust Score 변경 이력 조회")
     public List<AdminTrustScoreChangeHistoryItem> listTrustScoreHistory(@PathVariable Long reporterUserId) {
         return trustScoreBatchService.listHistory(reporterUserId);
     }

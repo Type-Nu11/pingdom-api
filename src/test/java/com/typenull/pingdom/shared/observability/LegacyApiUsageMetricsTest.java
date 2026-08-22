@@ -4,10 +4,16 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 import io.micrometer.core.instrument.Counter;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
-import java.util.Arrays;
+import java.util.Set;
 import org.junit.jupiter.api.Test;
 
 class LegacyApiUsageMetricsTest {
+
+    private static final Set<String> EXPECTED_ENDPOINT_TAGS = Set.of(
+            "POST /places/coordinates",
+            "POST /places/upload",
+            "POST /map/posts (coordinate place creation)"
+    );
 
     @Test
     void registersAllFixedLegacyEndpointsAndRecordsRequests() {
@@ -15,31 +21,20 @@ class LegacyApiUsageMetricsTest {
         LegacyApiUsageMetrics metrics = new LegacyApiUsageMetrics(registry);
 
         assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME).counters())
-                .hasSize(LegacyApiEndpoint.values().length)
                 .extracting(this::endpointTag)
-                .containsExactlyInAnyOrder(Arrays.stream(LegacyApiEndpoint.values())
-                        .map(endpoint -> endpoint.method() + " " + endpoint.path())
-                        .toArray(String[]::new));
+                .containsExactlyInAnyOrderElementsOf(EXPECTED_ENDPOINT_TAGS);
 
-        metrics.record(LegacyApiEndpoint.PLACE_COORDINATE_CREATE_PUBLIC);
-        metrics.record(LegacyApiEndpoint.PLACE_UPLOAD_PUBLIC);
-        metrics.record(LegacyApiEndpoint.POST_COORDINATE_PLACE_CREATE);
+        for (LegacyApiEndpoint endpoint : LegacyApiEndpoint.values()) {
+            metrics.record(endpoint);
+        }
 
-        assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
-                .tag("method", "POST")
-                .tag("path", "/places/coordinates")
-                .counter()
-                .count()).isEqualTo(1.0d);
-        assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
-                .tag("method", "POST")
-                .tag("path", "/places/upload")
-                .counter()
-                .count()).isEqualTo(1.0d);
-        assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
-                .tag("method", "POST")
-                .tag("path", "/map/posts (coordinate place creation)")
-                .counter()
-                .count()).isEqualTo(1.0d);
+        for (LegacyApiEndpoint endpoint : LegacyApiEndpoint.values()) {
+            assertThat(registry.find(LegacyApiUsageMetrics.METRIC_NAME)
+                    .tag("method", endpoint.method())
+                    .tag("path", endpoint.path())
+                    .counter()
+                    .count()).isEqualTo(1.0d);
+        }
     }
 
     private String endpointTag(Counter counter) {

@@ -5,6 +5,7 @@ import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceClaimAttachmentService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -17,11 +18,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/merchant-place-claims/{claimId}/attachments")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminMerchantPlaceClaimAttachmentController {
     private final MerchantPlaceClaimAttachmentService service;
 
     @GetMapping("/{attachmentId}/content")
+    @Operation(summary = "관리자 Merchant 장소 Claim 첨부파일 다운로드")
     public ResponseEntity<byte[]> content(@PathVariable Long claimId, @PathVariable Long attachmentId,
             @CurrentUser JwtAuthenticatedUser admin) {
         MerchantPlaceClaimAttachmentService.DownloadedAttachment attachment =
