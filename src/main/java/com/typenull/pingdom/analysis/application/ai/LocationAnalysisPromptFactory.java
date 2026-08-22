@@ -21,7 +21,7 @@ public class LocationAnalysisPromptFactory {
             Map<String, Object> criteriaMap = request.toCriteriaMap();
             String criteria = objectMapper.writeValueAsString(criteriaMap);
             return new AiAnalysisPrompt(
-                    buildPrompt(criteria, analysisBasisDate), analysisBasisDate
+                    buildPrompt(criteria, analysisBasisDate), analysisBasisDate, request.getRegion()
             );
         } catch (JsonProcessingException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
@@ -58,9 +58,11 @@ public class LocationAnalysisPromptFactory {
                    최다 관측값만 근거로 정한다. radius_m은 주소·장소 500m, 읍·면·동 1,500m를 기본으로 하고,
                    실제 데이터 범위가 있으면 이를 우선한다. 입력 고객층과 관측값이 충돌하면 임의로 하나를 선택하지
                    말고 제한사항에 기록한다.
-                5. MCP 연결 실패 또는 결과 없음은 "데이터 없음"으로 기록하고 보고서를 계속 작성한다. 배열형 정보는
+                5. recommend_location은 정확히 한 번만 호출한다. 결과가 없더라도 region이나 radius_m을 바꿔
+                   재호출하지 않고, 도구가 자체 확장한 범위와 반환 결과만 사용한다.
+                6. MCP 연결 실패 또는 결과 없음은 "데이터 없음"으로 기록하고 보고서를 계속 작성한다. 배열형 정보는
                    빈 배열로 취급하며 null placeholder 객체를 만들지 않는다.
-                6. 연결된 검색 도구가 있을 때만 외부 검색을 사용한다. 검색을 사용하면 URL, 조회일 또는 발행일,
+                7. 연결된 검색 도구가 있을 때만 외부 검색을 사용한다. 검색을 사용하면 URL, 조회일 또는 발행일,
                    분석 기준일을 데이터 출처에 기록한다.
 
                 [사실성과 분석 범위]

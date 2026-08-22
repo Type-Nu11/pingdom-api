@@ -19,7 +19,7 @@ public class LocationAnalysisRequest {
     @NotBlank(message = "가게 업종은 필수입니다.")
     private String category;
 
-    @Schema(description = "주요 고객층", example = "20~30대 직장인")
+    @Schema(description = "주요 고객층(연령·성별)", example = "20~30대 여성")
     private String targetCustomerGroup;
 
     @Schema(description = "주요 영업 시간대", example = "평일 09:00~22:00")
