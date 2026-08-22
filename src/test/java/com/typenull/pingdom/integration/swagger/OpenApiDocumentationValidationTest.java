@@ -5,12 +5,10 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapP
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
-import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
-import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -430,9 +428,19 @@ class OpenApiDocumentationValidationTest {
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
         assertThat(appDocument.path("paths").has("/users/me/place-registration-applications")).isTrue();
-        assertThat(appDocument.path("paths").has("/places/coordinates")).isTrue();
-        assertThat(appDocument.path("paths").has("/places/upload")).isTrue();
+        assertThat(appDocument.path("paths").has("/places/coordinates")).isFalse();
+        assertThat(appDocument.path("paths").has("/places/upload")).isFalse();
         assertThat(appDocument.path("paths").path("/map/posts").has("post")).isTrue();
+
+        JsonNode postUploadProperties = appDocument.path("components").path("schemas")
+                .path("PostUploadRequest").path("properties");
+        assertThat(postUploadProperties.has("placeId")).isTrue();
+        assertThat(postUploadProperties.has("kakaoPlaceId")).isTrue();
+        for (String removedProperty : List.of("placeName", "address", "category", "coordinateToken")) {
+            assertThat(postUploadProperties.has(removedProperty))
+                    .as("제거된 게시글 업로드 필드: %s", removedProperty)
+                    .isFalse();
+        }
 
         for (String path : List.of(
                 "/users/me/merchant-owner-profile",
@@ -467,8 +475,6 @@ class OpenApiDocumentationValidationTest {
         JsonNode defaultDocument = readApiDocs("/v3/api-docs");
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
-
-        assertThat(appDocument.at("/paths/~1places~1upload/post/deprecated").asBoolean()).isTrue();
 
         for (String hiddenPath : List.of(
                 "/place/recommendations",
