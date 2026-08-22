@@ -475,7 +475,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
     }
 
-    @GetMapping("/{id}")
+    @GetMapping("/{id:\\d+}")
     @Operation(summary = "장소 상세 조회", description = "특정 장소의 상세 정보를 조회합니다.")
     @ApiResponses({
             @ApiResponse(
