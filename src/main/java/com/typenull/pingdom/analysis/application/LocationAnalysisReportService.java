@@ -53,13 +53,15 @@ public class LocationAnalysisReportService {
         }
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
+        LocalDate effectiveAnalysisBasisDate = aiResponse.analysisBasisDate() == null
+                ? analysisBasisDate : aiResponse.analysisBasisDate();
         String html = aiResponse.hasHtmlReport()
                 ? aiResponse.htmlReport()
                 : htmlComposer.compose(
                         reportId,
                         aiResponse.reportName(),
                         publishedDate,
-                        aiResponse.analysisBasisDate(),
+                        effectiveAnalysisBasisDate,
                         aiResponse.content()
                 );
         byte[] pdf = htmlToPdfConverter.convert(html);
@@ -72,14 +74,26 @@ public class LocationAnalysisReportService {
                 html.length(),
                 pdf.length
         );
-        return new LocationAnalysisPdf(pdf, reportId, aiResponse.reportName());
+        return new LocationAnalysisPdf(
+                pdf, reportId, aiResponse.reportName(), html, publishedDate, effectiveAnalysisBasisDate
+        );
     }
 
     private long elapsedMillis(long startedAt, long completedAt) {
         return (completedAt - startedAt) / 1_000_000;
     }
 
-    public record LocationAnalysisPdf(byte[] content, String reportId, String reportName) {
+    public record LocationAnalysisPdf(
+            byte[] content,
+            String reportId,
+            String reportName,
+            String html,
+            LocalDate publishedDate,
+            LocalDate analysisBasisDate
+    ) {
+        public LocationAnalysisPdf(byte[] content, String reportId, String reportName) {
+            this(content, reportId, reportName, null, null, null);
+        }
     }
 
 }

@@ -1,14 +1,10 @@
 package com.typenull.pingdom.analysis.domain.exception;
 
-import lombok.Getter;
+import com.typenull.pingdom.shared.exception.DomainException;
 
-@Getter
-public class AnalysisReportException extends RuntimeException {
-
-    private final AnalysisReportErrorCode errorCode;
+public class AnalysisReportException extends DomainException {
 
     public AnalysisReportException(AnalysisReportErrorCode errorCode, Throwable cause) {
-        super(errorCode.getMessage(), cause);
-        this.errorCode = errorCode;
+        super(errorCode, cause);
     }
 }

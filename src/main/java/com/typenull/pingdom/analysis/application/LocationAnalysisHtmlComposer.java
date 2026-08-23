@@ -22,10 +22,10 @@ public class LocationAnalysisHtmlComposer {
                 <!doctype html>
                 <html lang="ko">
                 <head>
-                  <meta charset="UTF-8">
+                  <meta charset="UTF-8" />
                   <style>
                     @page { size: A4; margin: 18mm 15mm; }
-                    body { font-family: sans-serif; color: #1f2937; line-height: 1.55; }
+                    body { font-family: 'NanumGothic', 'Noto Sans KR', sans-serif; color: #1f2937; line-height: 1.55; }
                     h1 { color: #0f766e; margin-bottom: 4px; }
                     h2 { color: #115e59; border-bottom: 1px solid #99f6e4; padding-bottom: 5px; margin-top: 26px; }
                     h3 { color: #374151; margin-bottom: 4px; }

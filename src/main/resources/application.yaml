@@ -8,6 +8,8 @@ server:
       protocol-header: X-Forwarded-Proto
 
 analysis:
+  pdf:
+    font-path: ${ANALYSIS_PDF_FONT_PATH:/usr/share/fonts/truetype/nanum/NanumGothic.ttf}
   ai:
     provider: ${AI_PROVIDER:gemini}
     base-url: ${AI_BASE_URL:}
