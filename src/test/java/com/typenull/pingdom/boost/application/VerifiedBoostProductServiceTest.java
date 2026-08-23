@@ -3,6 +3,8 @@ package com.typenull.pingdom.boost.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.eq;
+import static org.mockito.Mockito.lenient;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -16,7 +18,9 @@ import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
+import org.springframework.data.domain.PageImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -35,8 +39,8 @@ class VerifiedBoostProductServiceTest {
 
     @BeforeEach
     void setUpClock() {
-        when(clock.instant()).thenReturn(Instant.parse("2026-07-26T12:00:00Z"));
-        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+        lenient().when(clock.instant()).thenReturn(Instant.parse("2026-07-26T12:00:00Z"));
+        lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
     @Test
@@ -66,6 +70,20 @@ class VerifiedBoostProductServiceTest {
         assertThatThrownBy(() -> service.activate(3L))
                 .isInstanceOfSatisfying(VerifiedBoostException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.PRODUCT_NOT_FOUND));
+    }
+
+    @Test
+    void merchantCanListOnlyActiveProducts() {
+        VerifiedBoostProduct active = product();
+        active.activate(NOW);
+        when(repository.findAllByStatus(eq(VerifiedBoostProductStatus.ACTIVE), any()))
+                .thenReturn(new PageImpl<>(List.of(active)));
+
+        var response = service.listActive(1, 20);
+
+        assertThat(response.products()).hasSize(1);
+        assertThat(response.products().getFirst().status()).isEqualTo(VerifiedBoostProductStatus.ACTIVE);
+        verify(repository).findAllByStatus(eq(VerifiedBoostProductStatus.ACTIVE), any());
     }
 
     private VerifiedBoostProduct product() {
