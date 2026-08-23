@@ -34,7 +34,6 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 | `pingdom.outbox.manual_retry` | `event_type`, `result` | 관리자 수동 재처리 성공·거절 결과 |
 | `pingdom.auth.failures` | `code`, `source`, `status` | Authentication failure count |
 | `pingdom.auth.refresh_token` | `result`, `reason` | Refresh token success/failure count |
-| `pingdom.api.legacy.requests` | `method`, `path` | 추천을 제외한 레거시 API의 controller 진입 수 |
 | `pingdom.recommendation.requests` | `recommendation_version` | Recommendation request count by version |
 | `pingdom.recommendation.result_count` | `recommendation_version` | Recommended item count distribution |
 | `pingdom.recommendation.snapshot_resync` | `result`, `reason` | Snapshot resync success/failure count |
@@ -50,20 +49,6 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 Outbox 외 Spring 이벤트에는 현재 공통 처리 metric이 없다. 개인정보 이력과 추천 노출의
 커밋 후 처리 실패는 listener 로그와 원래 요청의 `X-Request-Id`로 추적한다. 동기 신고
 이벤트 실패는 요청 오류와 트랜잭션 결과를 함께 확인한다.
-
-### Legacy API usage
-
-`pingdom.api.legacy.requests`는 추천 API를 제외한 레거시 경로 13개의 호출 여부를
-확인하기 위한 임시 철거 판단 metric이다. `path`는 실제 ID가 아닌 고정 endpoint
-template만 사용하며, 애플리케이션 시작 시 모든 조합을 `0`으로 등록한다.
-
-- 전체 경로 확인: `GET /actuator/metrics/pingdom.api.legacy.requests`
-- 단일 경로 확인: `GET /actuator/metrics/pingdom.api.legacy.requests?tag=method:GET&tag=path:%2Fplace`
-- 보호된 Actuator endpoint이므로 `ADMIN` 권한으로 조회한다.
-- 요청 검증·binding을 통과해 controller에 진입한 호출만 집계한다.
-- 값은 인스턴스 재시작 시 초기화된다. 단일 인스턴스의 짧은 `0` 관측만으로 삭제를
-  결정하지 말고, 운영 중인 모든 인스턴스에서 합의한 관측 기간 동안 확인하거나
-  외부 metric 수집기에 누적한 시계열을 기준으로 판단한다.
 
 ## Alert Criteria
 

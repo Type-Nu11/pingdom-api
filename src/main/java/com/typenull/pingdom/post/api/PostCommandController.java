@@ -9,8 +9,6 @@ import com.typenull.pingdom.post.api.dto.image.PostUploadRequest;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.post.infrastructure.storage.S3Service;
-import com.typenull.pingdom.shared.observability.LegacyApiEndpoint;
-import com.typenull.pingdom.shared.observability.LegacyApiUsageMetrics;
 import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -32,7 +30,6 @@ import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-import org.springframework.util.StringUtils;
 
 @RestController
 @RequestMapping("/map")
@@ -42,13 +39,12 @@ import org.springframework.util.StringUtils;
 public class PostCommandController {
 
     private final S3Service s3Service;
-    private final LegacyApiUsageMetrics legacyApiUsageMetrics;
 
     @PostMapping(value = "/posts", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Tag(name = "Web", description = "웹 전용 API")
+    @Tag(name = "App", description = "앱 전용 API")
     @Operation(
             summary = "게시글 업로드",
-            description = "multipart/form-data로 카카오 장소 ID(권장) 또는 장소 ID(레거시)를 사용해 기존 장소에 게시글을 저장합니다. 장소 참조 없이 좌표 토큰만 전달하는 자동 장소 생성은 승인된 등록 신청 경로가 제공될 때까지 차단됩니다."
+            description = "multipart/form-data로 카카오 장소 ID 또는 장소 ID를 사용해 기존 장소에 게시글을 저장합니다."
     )
     @ApiResponses({
             @ApiResponse(
@@ -67,7 +63,7 @@ public class PostCommandController {
                                                     {
                                                       "message": "입력값을 확인해주세요.",
                                                       "errors": {
-                                                        "placeName": "좌표 기반 업로드 시 장소 이름은 필수입니다.",
+                                                        "validPlace": "장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다.",
                                                         "title": "제목은 필수입니다.",
                                                         "file": "파일은 필수입니다."
                                                       }
@@ -95,20 +91,6 @@ public class PostCommandController {
                                             {
                                               "message": "유효하지 않은 토큰입니다.",
                                               "code": "INVALID_TOKEN"
-                                            }
-                                            """
-                            )
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "403",
-                    description = "승인 없는 좌표 기반 장소 자동 생성 차단",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "승인된 장소 등록 신청을 통해서만 장소를 생성할 수 있습니다.",
-                                              "code": "PLACE_REGISTRATION_APPROVAL_REQUIRED"
                                             }
                                             """
                             )
@@ -144,16 +126,16 @@ public class PostCommandController {
             )
     })
     @RateLimited(RateLimitAction.IMAGE_UPLOAD)
-    /** 장소 참조 방식에 따라 게시글 업로드 또는 승인된 장소 등록 흐름을 선택합니다. */
+    /** 기존 장소 참조를 확인한 뒤 게시글 업로드 흐름으로 전달합니다. */
     public ResponseEntity<PostResponse> uploadPost(
             @Valid @ModelAttribute PostUploadRequest request,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        recordCoordinatePlaceCreationAttempt(request);
         return uploadPostInternal(request, user);
     }
 
     @PostMapping("/posts/{id}")
+    @Operation(summary = "게시글 수정")
     public ResponseEntity<PostUpdateResponse> updatePost(
             @Valid @ModelAttribute PostUpdateRequest request,
             @CurrentUser JwtAuthenticatedUser user,
@@ -230,12 +212,6 @@ public class PostCommandController {
     private ResponseEntity<PostResponse> uploadPostInternal(PostUploadRequest request, JwtAuthenticatedUser user) {
         Long userId = authenticatedUserId(user);
         return ResponseEntity.ok(s3Service.uploadImage(request, userId));
-    }
-
-    private void recordCoordinatePlaceCreationAttempt(PostUploadRequest request) {
-        if (request.placeId() == null && !StringUtils.hasText(request.kakaoPlaceId())) {
-            legacyApiUsageMetrics.record(LegacyApiEndpoint.POST_COORDINATE_PLACE_CREATE);
-        }
     }
 
     private ResponseEntity<PostUpdateResponse> updatePostInternal(

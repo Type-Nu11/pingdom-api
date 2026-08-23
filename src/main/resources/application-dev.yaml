@@ -13,7 +13,7 @@ springdoc:
   swagger-ui:
     enabled: true
     path: /swagger-ui
-    urls-primary-name: web
+    urls-primary-name: admin
     urls:
       - name: app
         url: /v3/api-docs/app
@@ -21,8 +21,10 @@ springdoc:
         url: /v3/api-docs/common
       - name: consulting
         url: /v3/api-docs/consulting
-      - name: web
-        url: /v3/api-docs/web
+      - name: admin
+        url: /v3/api-docs/admin
+      - name: merchant
+        url: /v3/api-docs/merchant
 
 seed:
   admin:

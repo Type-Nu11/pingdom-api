@@ -22,7 +22,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantReservableProductController {
     private final ReservableProductService service;
 

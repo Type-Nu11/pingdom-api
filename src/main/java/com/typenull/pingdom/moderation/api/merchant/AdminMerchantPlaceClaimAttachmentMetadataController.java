@@ -4,6 +4,7 @@ import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.identity.api.dto.merchant.AdminMerchantPlaceClaimAttachmentResponse;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceClaimAttachmentService;
 import io.swagger.v3.oas.annotations.tags.Tag;
+import io.swagger.v3.oas.annotations.Operation;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -15,11 +16,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/merchant-place-claims/{claimId}/attachments")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Web", description = "웹(관리자) 전용 API")
+@Tag(name = "Admin", description = "관리자 전용 API")
 public class AdminMerchantPlaceClaimAttachmentMetadataController {
     private final MerchantPlaceClaimAttachmentService service;
 
     @GetMapping
+    @Operation(summary = "관리자 Merchant 장소 Claim 첨부파일 메타데이터 조회")
     public List<AdminMerchantPlaceClaimAttachmentResponse> list(@PathVariable Long claimId) {
         return service.listForAdmin(claimId);
     }

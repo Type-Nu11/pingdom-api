@@ -35,7 +35,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/merchant-owner/places/{placeId}/operating-notices")
 @RequiredArgsConstructor
 @AuthenticatedOnly
-@Tag(name = "App", description = "앱 전용 API")
+@Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantPlaceOperatingNoticeController {
 
     private final PlaceOperatingNoticeService placeOperatingNoticeService;

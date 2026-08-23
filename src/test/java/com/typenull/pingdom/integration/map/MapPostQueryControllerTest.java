@@ -157,7 +157,7 @@ class MapPostQueryControllerTest {
                 .mapImageId(latestLikedPost.getId())
                 .build());
 
-        mockMvc.perform(get("/map/like")
+        mockMvc.perform(get("/map/likes")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
@@ -176,7 +176,7 @@ class MapPostQueryControllerTest {
     }
 
     @Test
-    void listLikedPostsSupportsLegacyAndNewAliasPaths() throws Exception {
+    void removedLegacyLikedPostsReadPathIsNotMapped() throws Exception {
         String accessToken = signupAndLogin("like-alias-reader");
         Long userId = userRepository.findByUsername("like-alias-reader").orElseThrow().getId();
 
@@ -199,9 +199,7 @@ class MapPostQueryControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("page", "1")
                         .param("limit", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(1))
-                .andExpect(jsonPath("$.posts[0].id").value(likedPost.getId()));
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Test

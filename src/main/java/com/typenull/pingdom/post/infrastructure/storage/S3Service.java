@@ -58,7 +58,7 @@ public class S3Service {
 
     // 장소를 확인하고 이미지를 변환·업로드한 뒤 게시글과 장소 집계를 저장합니다.
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
-        Long placeId = resolvePlaceId(request, userId);
+        Long placeId = resolvePlaceId(request);
 
         if(mapImageRepository.existsByUserIdAndMapPlace_Id(userId, placeId)){
             throw new MapException(MapErrorCode.ALREADY_POSTED);
@@ -82,7 +82,7 @@ public class S3Service {
     }
 
     // Kakao 장소 ID 또는 등록된 장소 ID를 실제 장소 식별자로 해석합니다.
-    private Long resolvePlaceId(PostUploadRequest request, long userId) {
+    private Long resolvePlaceId(PostUploadRequest request) {
         String kakaoPlaceId = normalizeKakaoPlaceId(request.kakaoPlaceId());
         if (kakaoPlaceId != null) {
             return mapPlaceRepository.findByKakaoPlaceId(kakaoPlaceId)
@@ -92,7 +92,7 @@ public class S3Service {
 
         Long placeId = request.placeId();
         if (placeId == null) {
-            throw new MapException(MapErrorCode.PLACE_REGISTRATION_APPROVAL_REQUIRED);
+            throw new MapException(MapErrorCode.PLACE_ID_REQUIRED);
         }
 
         return mapPlaceRepository.findById(placeId)

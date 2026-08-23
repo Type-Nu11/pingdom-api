@@ -45,7 +45,8 @@ public class OpenApiSpecExporter {
                     "app.json", "/v3/api-docs/app",
                     "common.json", "/v3/api-docs/common",
                     "consulting.json", "/v3/api-docs/consulting",
-                    "web.json", "/v3/api-docs/web"
+                    "admin.json", "/v3/api-docs/admin",
+                    "merchant.json", "/v3/api-docs/merchant"
             );
 
             for (Map.Entry<String, String> spec : specs.entrySet()) {
