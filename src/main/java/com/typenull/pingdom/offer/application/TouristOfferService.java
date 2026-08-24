@@ -5,6 +5,7 @@ import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
 import com.typenull.pingdom.offer.api.dto.OfferResponse;
 import com.typenull.pingdom.offer.domain.OfferStatus;
+import com.typenull.pingdom.offer.domain.CouponStatus;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
@@ -15,6 +16,8 @@ import com.typenull.pingdom.place.application.service.conversion.PlaceConversion
 import com.typenull.pingdom.place.domain.conversion.PlaceConversionEventType;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
+import jakarta.persistence.criteria.Predicate;
 import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
@@ -22,6 +25,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -116,10 +120,20 @@ public class TouristOfferService {
     }
 
     @Transactional(readOnly = true)
-    public CouponPageResponse listCoupons(Long userId, int page, int limit) {
+    public CouponPageResponse listCoupons(
+            Long userId,
+            CouponStatus status,
+            LocalDateTime issuedFrom,
+            LocalDateTime issuedTo,
+            int page,
+            int limit
+    ) {
+        if (issuedFrom != null && issuedTo != null && issuedFrom.isAfter(issuedTo)) {
+            throw new OfferException(OfferErrorCode.COUPON_LIST_FILTER_INVALID);
+        }
         LocalDateTime now = LocalDateTime.now(clock);
-        Page<TouristCoupon> result = couponRepository.findAllByUserId(
-                userId,
+        Page<TouristCoupon> result = couponRepository.findAll(
+                couponListSpecification(userId, status, issuedFrom, issuedTo, now),
                 pageRequest(page, limit, "issuedAt", Sort.Direction.DESC)
         );
         return new CouponPageResponse(
@@ -134,6 +148,35 @@ public class TouristOfferService {
 
     private PageRequest pageRequest(int page, int limit, String sortProperty) {
         return pageRequest(page, limit, sortProperty, Sort.Direction.ASC);
+    }
+
+    private Specification<TouristCoupon> couponListSpecification(
+            Long userId,
+            CouponStatus status,
+            LocalDateTime issuedFrom,
+            LocalDateTime issuedTo,
+            LocalDateTime now
+    ) {
+        return (root, query, criteriaBuilder) -> {
+            var predicates = new ArrayList<Predicate>();
+            predicates.add(criteriaBuilder.equal(root.get("userId"), userId));
+            if (issuedFrom != null) {
+                predicates.add(criteriaBuilder.greaterThanOrEqualTo(root.get("issuedAt"), issuedFrom));
+            }
+            if (issuedTo != null) {
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("issuedAt"), issuedTo));
+            }
+            if (status == CouponStatus.ISSUED) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), CouponStatus.ISSUED));
+                predicates.add(criteriaBuilder.greaterThan(root.get("expiresAt"), now));
+            } else if (status == CouponStatus.REDEEMED) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), CouponStatus.REDEEMED));
+            } else if (status == CouponStatus.EXPIRED) {
+                predicates.add(criteriaBuilder.equal(root.get("status"), CouponStatus.ISSUED));
+                predicates.add(criteriaBuilder.lessThanOrEqualTo(root.get("expiresAt"), now));
+            }
+            return criteriaBuilder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private PageRequest pageRequest(int page, int limit, String sortProperty, Sort.Direction direction) {

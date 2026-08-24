@@ -18,7 +18,8 @@ public enum OfferErrorCode implements ErrorCode {
     TOURIST_ELIGIBILITY_REQUIRED(HttpStatus.FORBIDDEN, "진행 중인 여행 일정이 있는 일반 사용자만 쿠폰을 발급할 수 있습니다."),
     COUPON_ALREADY_ISSUED(HttpStatus.CONFLICT, "이미 발급받은 Offer 쿠폰입니다."),
     COUPON_NOT_FOUND(HttpStatus.NOT_FOUND, "쿠폰을 찾을 수 없습니다."),
-    COUPON_NOT_REDEEMABLE(HttpStatus.CONFLICT, "현재 사용할 수 없는 쿠폰입니다.");
+    COUPON_NOT_REDEEMABLE(HttpStatus.CONFLICT, "현재 사용할 수 없는 쿠폰입니다."),
+    COUPON_LIST_FILTER_INVALID(HttpStatus.BAD_REQUEST, "쿠폰 조회 기간 조건이 올바르지 않습니다.");
 
     private final HttpStatus status;
     private final String message;

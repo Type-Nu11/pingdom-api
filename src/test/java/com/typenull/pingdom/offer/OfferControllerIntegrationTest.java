@@ -163,6 +163,52 @@ class OfferControllerIntegrationTest {
     }
 
     @Test
+    void listsCouponsByCalculatedStatusAndIssuedAtRange() throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        User tourist = saveUser("couponListTourist", UserRole.USER);
+
+        couponRepository.saveAndFlush(TouristCoupon.issue(
+                101L,
+                tourist.getId(),
+                "active-coupon",
+                now.minusDays(2),
+                now.plusDays(2)
+        ));
+        couponRepository.saveAndFlush(TouristCoupon.issue(
+                102L,
+                tourist.getId(),
+                "expired-coupon",
+                now.minusDays(1),
+                now.minusMinutes(1)
+        ));
+
+        mockMvc.perform(get("/coupons")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist))
+                        .param("status", "ISSUED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coupons.length()").value(1))
+                .andExpect(jsonPath("$.coupons[0].code").value("active-coupon"))
+                .andExpect(jsonPath("$.coupons[0].status").value("ISSUED"));
+
+        mockMvc.perform(get("/coupons")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist))
+                        .param("status", "EXPIRED")
+                        .param("issuedFrom", now.minusDays(2).minusMinutes(1).toString())
+                        .param("issuedTo", now.minusHours(12).toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coupons.length()").value(1))
+                .andExpect(jsonPath("$.coupons[0].code").value("expired-coupon"))
+                .andExpect(jsonPath("$.coupons[0].status").value("EXPIRED"));
+
+        mockMvc.perform(get("/coupons")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist))
+                        .param("issuedFrom", now.toString())
+                        .param("issuedTo", now.minusDays(1).toString()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("COUPON_LIST_FILTER_INVALID"));
+    }
+
+    @Test
     void userWithoutOngoingTravelScheduleCannotIssueCoupon() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("ineligibleTouristMerchant", UserRole.MERCHANT_OWNER);
