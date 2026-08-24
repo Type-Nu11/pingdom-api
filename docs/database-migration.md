@@ -197,6 +197,32 @@ backfill하므로 기존 JWT의 `ADMIN` 인증과 관리자 API 접근을 중단
 역할에는 활성 할당을 하나만 허용하고, 회수된 역할은 이력으로 보존한다. `assigned_by_user_id`는
 기존 데이터 backfill에서 `NULL`일 수 있으며, 할당자 탈퇴 시에도 역할 이력은 보존된다.
 
+### 세부 권한 강제 배포 전 점검
+
+`ROLE_ADMIN`만으로는 사용자 운영·감사 로그 API를 사용할 수 없다. 활성 역할이 제공하는
+`USER_READ`, `USER_SANCTION`, `AUDIT_READ` 권한을 application service가 별도로 검증한다.
+배포 전에는 아래 읽기 전용 쿼리로 역할이 없는 관리자와 활성 역할을 확인한다.
+
+```sql
+SELECT
+    u.id AS admin_user_id,
+    u.username,
+    ARRAY_AGG(assignment.role ORDER BY assignment.role) FILTER (WHERE assignment.id IS NOT NULL) AS active_roles
+FROM users u
+LEFT JOIN admin_role_assignment assignment
+    ON assignment.admin_user_id = u.id
+   AND assignment.status = 'ACTIVE'
+WHERE u.role = 'ADMIN'
+GROUP BY u.id, u.username
+ORDER BY u.id;
+```
+
+역할이 없는 관리자 또는 운영 업무와 맞지 않는 역할은 배포 전에 `SUPER_ADMIN`이 아닌 최소 역할로
+명시 배정한다. 사용자 조회·제재는 `SUPPORT_OPERATOR`, 감사 로그 조회는 `ANALYST`가 담당하며,
+역할 배정·회수는 기존 `ADMIN_ROLE_MANAGE` 권한과 감사 로그를 통해 수행한다. 배포 후에는
+`SUPPORT_OPERATOR`의 사용자 운영 허용·감사 로그 거부, `ANALYST`의 감사 로그 허용·사용자 운영 거부,
+`SUPER_ADMIN`의 전체 허용을 확인한다.
+
 ## Scout 프로필과 활동 자격
 
 `V87`은 Scout 개인 프로필과 활동 자격을 각각 `scout_profile`과
