@@ -9,21 +9,21 @@ import java.time.LocalDateTime;
 
 @Schema(description = "Scout 프로필 및 활동 자격 응답")
 public record ScoutProfileResponse(
-        Long userId,
-        String displayName,
-        @Schema(nullable = true) String introduction,
-        ScoutProfileStatus profileStatus,
-        @Schema(nullable = true) Long profileReviewedByAdminUserId,
-        @Schema(nullable = true) LocalDateTime profileReviewedAt,
-        @Schema(nullable = true) String profileStatusReason,
-        ScoutActivityEligibilityStatus activityEligibilityStatus,
-        @Schema(nullable = true) LocalDateTime eligibleFrom,
-        @Schema(nullable = true) LocalDateTime eligibleUntil,
-        @Schema(nullable = true) Long eligibilityReviewedByAdminUserId,
-        @Schema(nullable = true) LocalDateTime eligibilityReviewedAt,
-        @Schema(nullable = true) String eligibilityStatusReason,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long userId,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String displayName,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String introduction,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ScoutProfileStatus profileStatus,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) Long profileReviewedByAdminUserId,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime profileReviewedAt,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String profileStatusReason,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ScoutActivityEligibilityStatus activityEligibilityStatus,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime eligibleFrom,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime eligibleUntil,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) Long eligibilityReviewedByAdminUserId,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime eligibilityReviewedAt,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String eligibilityStatusReason,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt
 ) {
 
     public static ScoutProfileResponse from(
