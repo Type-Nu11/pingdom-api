@@ -20,6 +20,7 @@ import java.time.LocalDateTime;
 import java.util.Date;
 import java.util.stream.Stream;
 import javax.crypto.SecretKey;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -29,6 +30,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
+@Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
 class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTestSupport {

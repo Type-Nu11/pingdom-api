@@ -29,6 +29,7 @@ import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import jakarta.servlet.http.Cookie;
 import java.util.List;
 import java.util.Map;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -42,6 +43,7 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
+@Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
 class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
