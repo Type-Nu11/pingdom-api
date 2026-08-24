@@ -30,6 +30,7 @@ public record AdminMerchantPlaceApplicationResponse(
         LocalDateTime canceledAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
+        long version,
         long submissionVersion,
         List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
 ) {
@@ -48,7 +49,7 @@ public record AdminMerchantPlaceApplicationResponse(
                 application.getMerchantContactPhone(), application.getPlaceName(), application.getExistingPlaceId(),
                 application.getClaimReason(), application.getReviewReason(), placeId, application.getSubmittedAt(),
                 application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(), application.getCreatedAt(),
-                application.getUpdatedAt(), application.getSubmissionVersion(), attachments
+                application.getUpdatedAt(), application.getVersion(), application.getSubmissionVersion(), attachments
         );
     }
 }
