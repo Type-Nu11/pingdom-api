@@ -9,10 +9,14 @@ import org.springframework.context.annotation.Profile;
 class SpringdocProfileConfigurationTest {
 
     @Test
-    void localProfileRegistersGroupedOpenApiAndBearerSecurityConfiguration() {
+    void localProfileRegistersGroupedOpenApiConfiguration() {
         assertThat(profilesOf(SpringdocGroupsConfig.class)).contains("local");
-        assertThat(profilesOf(SpringdocSecurityConfig.class)).contains("local");
         assertThat(profilesOf(PlaceExplorationOpenApiConfig.class)).contains("local");
+    }
+
+    @Test
+    void bearerSecurityConfigurationIsNotProfileRestricted() {
+        assertThat(SpringdocSecurityConfig.class.getAnnotation(Profile.class)).isNull();
     }
 
     private String[] profilesOf(Class<?> configurationClass) {
