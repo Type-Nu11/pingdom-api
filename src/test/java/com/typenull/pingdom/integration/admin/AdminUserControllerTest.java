@@ -15,7 +15,10 @@ import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRoleAssignment;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
+import com.typenull.pingdom.identity.domain.repository.AdminRoleAssignmentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.application.service.user.sanction.UserSanctionCommandService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -71,6 +74,9 @@ class AdminUserControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AdminRoleAssignmentRepository adminRoleAssignmentRepository;
+
+    @Autowired
     private UserSanctionHistoryRepository userSanctionHistoryRepository;
 
     @Autowired
@@ -90,7 +96,53 @@ class AdminUserControllerTest {
         outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
         userSanctionHistoryRepository.deleteAllInBatch();
+        adminRoleAssignmentRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void supportOperatorCanReadAndSanctionUsers() throws Exception {
+        String adminAccessToken = createAdminAndLogin("supportOperator", AdminRole.SUPPORT_OPERATOR);
+        User targetUser = createUser("supportOperatorTarget");
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(post("/admin/ban/{userId}", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"운영 제재\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.banned").value(true));
+    }
+
+    @Test
+    void analystCannotReadOrSanctionUsers() throws Exception {
+        String adminAccessToken = createAdminAndLogin("analystOperator", AdminRole.ANALYST);
+        User targetUser = createUser("analystOperatorTarget");
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
+
+        mockMvc.perform(post("/admin/ban/{userId}", targetUser.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"reason\":\"권한 없음\"}"))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
+    }
+
+    @Test
+    void adminWithoutActiveRoleCannotReadUsers() throws Exception {
+        String adminAccessToken = createAdminAndLogin("unassignedAdmin", null);
+
+        mockMvc.perform(get("/admin/users/banned")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + adminAccessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
     @Test
@@ -560,17 +612,26 @@ class AdminUserControllerTest {
     }
 
     private String createAdminAndLogin() throws Exception {
-        userRepository.save(User.builder()
-                .username("adminTester")
-                .email("admin@example.com")
+        return createAdminAndLogin("adminTester", AdminRole.SUPER_ADMIN);
+    }
+
+    private String createAdminAndLogin(String username, AdminRole adminRole) throws Exception {
+        User admin = userRepository.save(User.builder()
+                .username(username)
+                .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
                 .birthYear(1998)
                 .language("ko")
                 .country("KR")
                 .role(UserRole.ADMIN)
                 .build());
+        if (adminRole != null) {
+            adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
+                    admin.getId(), adminRole, admin.getId(), LocalDateTime.now()
+            ));
+        }
 
-        LoginRequest loginRequest = new LoginRequest("adminTester", "password123");
+        LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(loginRequest)))

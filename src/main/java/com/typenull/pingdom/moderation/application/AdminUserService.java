@@ -19,13 +19,18 @@ public interface AdminUserService {
 
     UnbanResponse unbanUser(Long userId, UnbanRequest request, Long adminUserId);
 
-    AdminBannedUserResponse listBannedUsers(AdminBannedUserSearchCondition condition, Pageable pageable);
+    AdminBannedUserResponse listBannedUsers(
+            Long adminUserId,
+            AdminBannedUserSearchCondition condition,
+            Pageable pageable
+    );
 
-    AdminBannedUserDetailResponse getBannedUser(Long userId);
+    AdminBannedUserDetailResponse getBannedUser(Long adminUserId, Long userId);
 
-    AdminUserSanctionStatusResponse getUserSanctionStatus(Long userId);
+    AdminUserSanctionStatusResponse getUserSanctionStatus(Long adminUserId, Long userId);
 
     AdminUserSanctionHistoryResponse listUserSanctionHistories(
+            Long adminUserId,
             Long userId,
             UserBanType banType,
             UserSanctionAction action,

@@ -8,6 +8,7 @@ import java.time.LocalDateTime;
 public interface AdminAuditLogQueryService {
 
     AdminAuditLogResponse listAuditLogs(
+            Long requestingAdminUserId,
             Long actorUserId,
             AdminAuditAction action,
             AdminAuditTargetType targetType,
