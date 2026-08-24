@@ -434,6 +434,10 @@ public class PlaceRegistrationApplication {
         updatedAt = now;
     }
 
+    public boolean matchesVersion(long expectedVersion) {
+        return version == expectedVersion;
+    }
+
     public boolean hasRequiredFiles() {
         return hasRequiredFiles(null);
     }

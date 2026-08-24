@@ -1,5 +1,7 @@
 package com.typenull.pingdom.place.application.service.registration;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.admin.AdminPermission;
@@ -23,6 +25,7 @@ import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogSe
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
+import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationAttachmentResponse;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationListItemResponse;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationPageResponse;
@@ -37,6 +40,7 @@ import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationReviewHistory;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationCategory;
@@ -44,9 +48,11 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.MerchantPlaceApplicationReviewHistoryRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
@@ -81,7 +87,9 @@ public class MerchantPlaceApplicationService {
     private final AdminRoleAuthorizationService authorizationService;
     private final AdminAuditLogService auditLogService;
     private final TouristOfferRepository touristOfferRepository;
+    private final MerchantPlaceApplicationReviewHistoryRepository reviewHistoryRepository;
     private final S3ObjectStorage storage;
+    private final ObjectMapper objectMapper;
     private final Clock clock;
 
     @Transactional
@@ -271,9 +279,18 @@ public class MerchantPlaceApplicationService {
         if (application.getStatus() != PlaceRegistrationStatus.PENDING) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
+        if (!application.matchesVersion(request.reviewedVersion())) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.STALE_REVIEW_VERSION);
+        }
         LocalDateTime now = now();
+        PlaceRegistrationStatus beforeStatus = application.getStatus();
+        String reason = normalizedReason(request);
+        ClaimReviewContext claimReviewContext = application.getApplicationType() == MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM
+                ? captureClaimReviewContext(application)
+                : null;
+        Long previousOwnerUserIdToCloseOffers = null;
         try {
-            application.approve(adminUserId, normalizedReason(request), now);
+            application.approve(adminUserId, reason, now);
             prepareMerchantVerification(application, now);
             if (application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
                 Long placeId = legacyPlaceRegistrationService.createApprovedPlaceForUnifiedApplication(
@@ -281,14 +298,30 @@ public class MerchantPlaceApplicationService {
                 application.complete(placeId, now);
             } else {
                 activateMerchant(application, adminUserId, now);
-                transferExistingPlace(application, now);
+                previousOwnerUserIdToCloseOffers = transferExistingPlace(application, claimReviewContext.currentOwner(), now);
                 application.complete(application.getExistingPlaceId(), now);
             }
             approveVerification(application, adminUserId, now);
+            if (previousOwnerUserIdToCloseOffers != null) {
+                touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(
+                        previousOwnerUserIdToCloseOffers,
+                        Set.of(application.getExistingPlaceId()),
+                        now
+                );
+            }
         } catch (IllegalStateException exception) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
-        audit(adminUserId, application, AdminAuditAction.MERCHANT_PLACE_APPLICATION_APPROVED, normalizedReason(request));
+        audit(adminUserId, application, AdminAuditAction.MERCHANT_PLACE_APPLICATION_APPROVED, reason);
+        saveReviewHistory(
+                application,
+                adminUserId,
+                beforeStatus,
+                request.reviewedVersion(),
+                reason,
+                claimReviewContext == null ? ReviewSnapshots.empty() : claimReviewContext.snapshots(),
+                now
+        );
         return response(application);
     }
 
@@ -297,12 +330,30 @@ public class MerchantPlaceApplicationService {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         PlaceRegistrationApplication application = locked(id);
         requireUnified(application);
+        if (application.getStatus() != PlaceRegistrationStatus.PENDING) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        }
+        if (!application.matchesVersion(request.reviewedVersion())) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.STALE_REVIEW_VERSION);
+        }
+        LocalDateTime now = now();
+        PlaceRegistrationStatus beforeStatus = application.getStatus();
+        String reason = normalizedReason(request);
         try {
-            application.reject(adminUserId, normalizedReason(request), now());
+            application.reject(adminUserId, reason, now);
         } catch (IllegalStateException exception) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
-        audit(adminUserId, application, AdminAuditAction.MERCHANT_PLACE_APPLICATION_REJECTED, normalizedReason(request));
+        audit(adminUserId, application, AdminAuditAction.MERCHANT_PLACE_APPLICATION_REJECTED, reason);
+        saveReviewHistory(
+                application,
+                adminUserId,
+                beforeStatus,
+                request.reviewedVersion(),
+                reason,
+                ReviewSnapshots.empty(),
+                now
+        );
         return response(application);
     }
 
@@ -386,10 +437,12 @@ public class MerchantPlaceApplicationService {
         verification.review(adminUserId, true, true, application.getReviewReason(), now);
     }
 
-    private void transferExistingPlace(PlaceRegistrationApplication application, LocalDateTime now) {
+    private Long transferExistingPlace(
+            PlaceRegistrationApplication application,
+            MerchantOwnerPlace currentOwner,
+            LocalDateTime now
+    ) {
         Long placeId = application.getExistingPlaceId();
-        placeRepository.findByIdForUpdate(placeId).orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND));
-        MerchantOwnerPlace currentOwner = ownerPlaceRepository.findByPlaceIdForUpdate(placeId).orElse(null);
         Long ownerId = currentOwner == null ? null : currentOwner.getMerchantOwnerUserId();
         if (!java.util.Objects.equals(application.getPreviousOwnerUserId(), ownerId)) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
@@ -398,10 +451,11 @@ public class MerchantPlaceApplicationService {
             ownerPlaceRepository.save(MerchantOwnerPlace.builder().placeId(placeId)
                     .merchantOwnerUserId(application.getApplicantUserId()).createdAt(now).build());
             ensureOwnerMember(placeId, application.getApplicantUserId(), now);
+            return null;
         } else {
             synchronizePlaceTeam(placeId, currentOwner.getMerchantOwnerUserId(), application.getApplicantUserId(), now);
             currentOwner.transferOwnership(application.getApplicantUserId());
-            touristOfferRepository.closeAllByMerchantOwnerUserIdAndPlaceIdIn(ownerId, Set.of(placeId), now);
+            return ownerId;
         }
     }
 
@@ -604,10 +658,118 @@ public class MerchantPlaceApplicationService {
                 .orElse(null);
     }
 
+    private ClaimReviewContext captureClaimReviewContext(PlaceRegistrationApplication application) {
+        Long placeId = application.getExistingPlaceId();
+        placeRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND));
+        MerchantOwnerPlace currentOwner = ownerPlaceRepository.findByPlaceIdForUpdate(placeId).orElse(null);
+        Long currentOwnerUserId = currentOwner == null ? null : currentOwner.getMerchantOwnerUserId();
+        if (!Objects.equals(application.getPreviousOwnerUserId(), currentOwnerUserId)) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        }
+
+        List<Map<String, Object>> teamMembers = memberRepository.findAllByPlaceId(placeId).stream()
+                .map(member -> snapshotMap(
+                        "id", member.getId(),
+                        "userId", member.getUserId(),
+                        "role", member.getRole(),
+                        "status", member.getStatus(),
+                        "invitedBy", member.getInvitedBy()
+                ))
+                .toList();
+        List<Map<String, Object>> pendingInvitations = invitationRepository
+                .findAllByPlaceIdAndStatus(placeId, MerchantPlaceInvitationStatus.PENDING)
+                .stream()
+                .map(invitation -> snapshotMap(
+                        "id", invitation.getId(),
+                        "inviteeUserId", invitation.getInviteeUserId(),
+                        "role", invitation.getRole(),
+                        "invitedBy", invitation.getInvitedBy(),
+                        "expiresAt", invitation.getExpiresAt()
+                ))
+                .toList();
+        List<Map<String, Object>> offers = currentOwnerUserId == null ? List.of()
+                : touristOfferRepository.findAllByMerchantOwnerUserIdAndPlaceIdForUpdate(currentOwnerUserId, placeId)
+                .stream()
+                .map(this::offerSnapshot)
+                .toList();
+        ReviewSnapshots snapshots = new ReviewSnapshots(
+                serializeSnapshot(snapshotMap(
+                        "placeId", placeId,
+                        "expectedPreviousOwnerUserId", application.getPreviousOwnerUserId(),
+                        "actualPreviousOwnerUserId", currentOwnerUserId
+                )),
+                serializeSnapshot(snapshotMap(
+                        "members", teamMembers,
+                        "pendingInvitations", pendingInvitations
+                )),
+                serializeSnapshot(snapshotMap("offers", offers))
+        );
+        return new ClaimReviewContext(currentOwner, snapshots);
+    }
+
+    private Map<String, Object> offerSnapshot(TouristOffer offer) {
+        return snapshotMap(
+                "id", offer.getId(),
+                "status", offer.getStatus(),
+                "issuedQuantity", offer.getIssuedQuantity(),
+                "startsAt", offer.getStartsAt(),
+                "endsAt", offer.getEndsAt()
+        );
+    }
+
+    private void saveReviewHistory(
+            PlaceRegistrationApplication application,
+            Long adminUserId,
+            PlaceRegistrationStatus beforeStatus,
+            long reviewedVersion,
+            String reason,
+            ReviewSnapshots snapshots,
+            LocalDateTime now
+    ) {
+        reviewHistoryRepository.save(MerchantPlaceApplicationReviewHistory.create(
+                application.getId(),
+                adminUserId,
+                beforeStatus,
+                application.getStatus(),
+                reviewedVersion,
+                reason,
+                snapshots.previousOwner(),
+                snapshots.team(),
+                snapshots.offers(),
+                now
+        ));
+    }
+
+    private String serializeSnapshot(Object snapshot) {
+        try {
+            return objectMapper.writeValueAsString(snapshot);
+        } catch (JsonProcessingException exception) {
+            throw new IllegalStateException("심사 영향 스냅샷 직렬화에 실패했습니다.", exception);
+        }
+    }
+
+    private Map<String, Object> snapshotMap(Object... entries) {
+        Map<String, Object> snapshot = new LinkedHashMap<>();
+        for (int index = 0; index < entries.length; index += 2) {
+            snapshot.put((String) entries[index], entries[index + 1]);
+        }
+        return snapshot;
+    }
+
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
     }
 
     public record DownloadedAttachment(byte[] bytes, String contentType) {
+    }
+
+    private record ClaimReviewContext(MerchantOwnerPlace currentOwner, ReviewSnapshots snapshots) {
+    }
+
+    private record ReviewSnapshots(String previousOwner, String team, String offers) {
+        private static ReviewSnapshots empty() {
+            return new ReviewSnapshots("{}", "{}", "{}");
+        }
     }
 }
