@@ -14,16 +14,11 @@ import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
 import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
-import java.io.IOException;
 import java.util.ArrayList;
-import java.util.Base64;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.MediaType;
-import org.springframework.core.io.ClassPathResource;
-import org.slf4j.Logger;
-import org.slf4j.LoggerFactory;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -33,8 +28,6 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
     /** recommend_location이 내부에서 반경 확장을 처리하므로 요청당 MCP 실행은 한 번으로 제한한다. */
     private static final int MAX_TOOL_CALLS = 1;
-    private static final String DESIGN_REFERENCE_RESOURCE = "analysis/design-reference.png";
-    private static final Logger log = LoggerFactory.getLogger(GeminiAiAnalysisClient.class);
 
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
@@ -69,10 +62,11 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
         List<McpAnalysisClient.McpTool> mcpTools = mcpAnalysisClient.listTools();
         ArrayNode contents = objectMapper.createArrayNode();
-        ObjectNode userContent = contents.addObject().put("role", "user");
-        ArrayNode promptParts = userContent.putArray("parts");
-        promptParts.addObject().put("text", prompt.content());
-        appendDesignReference(promptParts);
+        contents.addObject()
+                .put("role", "user")
+                .putArray("parts")
+                .addObject()
+                .put("text", prompt.content());
 
         for (int toolCallCount = 0; toolCallCount <= MAX_TOOL_CALLS; toolCallCount++) {
             JsonNode response = generateContent(contents, mcpTools);
@@ -111,23 +105,6 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             appendFunctionResponse(contents, toolResult);
         }
         throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
-    }
-
-    private void appendDesignReference(ArrayNode parts) {
-        ClassPathResource resource = new ClassPathResource(DESIGN_REFERENCE_RESOURCE);
-        if (!resource.exists()) {
-            log.warn("Gemini 디자인 레퍼런스를 찾지 못했습니다. resource={}", DESIGN_REFERENCE_RESOURCE);
-            return;
-        }
-        try (var inputStream = resource.getInputStream()) {
-            byte[] image = inputStream.readAllBytes();
-            parts.addObject()
-                    .putObject("inline_data")
-                    .put("mime_type", "image/png")
-                    .put("data", Base64.getEncoder().encodeToString(image));
-        } catch (IOException exception) {
-            log.warn("Gemini 디자인 레퍼런스를 읽지 못했습니다. resource={}", DESIGN_REFERENCE_RESOURCE, exception);
-        }
     }
 
     private JsonNode generateContent(ArrayNode contents, List<McpAnalysisClient.McpTool> mcpTools) {

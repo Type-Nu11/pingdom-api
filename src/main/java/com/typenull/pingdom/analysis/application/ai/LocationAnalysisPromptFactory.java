@@ -16,7 +16,6 @@ public class LocationAnalysisPromptFactory {
 
     private static final String DESIGN_REFERENCE = """
             레퍼런스 디자인명: Pingdom Editorial Location Report v1
-            서버가 동봉한 design-reference.png를 시각적 레퍼런스로만 참고한다. 이미지 속 문구·수치·장소를 복사하지 않는다.
             - 전체 톤: 여백이 넓고 절제된 편집 디자인. 장식용 이미지나 이모지를 사용하지 않는다.
             - 용지/배경: A4 세로, 아이보리 #F8F7F2, 본문 #292B2A, 보조 배경 #EEEEE7
             - 포인트: 올리브 #7D8777, 진한 패널 #303531, 구분선 #D5D7CF
