@@ -4,6 +4,7 @@ import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductCreateRequest;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductPageResponse;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductResponse;
 import com.typenull.pingdom.boost.domain.VerifiedBoostProduct;
+import com.typenull.pingdom.boost.domain.VerifiedBoostProductStatus;
 import com.typenull.pingdom.boost.domain.exception.VerifiedBoostErrorCode;
 import com.typenull.pingdom.boost.domain.exception.VerifiedBoostException;
 import com.typenull.pingdom.boost.infrastructure.VerifiedBoostProductRepository;
@@ -38,6 +39,17 @@ public class VerifiedBoostProductService {
     @Transactional(readOnly = true)
     public VerifiedBoostProductPageResponse list(int page, int limit) {
         Page<VerifiedBoostProduct> result = repository.findAll(
+                PageRequest.of(Math.max(page - 1, 0), Math.min(Math.max(limit, 1), 100),
+                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+        return new VerifiedBoostProductPageResponse(
+                result.getContent().stream().map(VerifiedBoostProductResponse::from).toList(),
+                result.getNumber() + 1, result.getSize(), result.getTotalElements(), result.getTotalPages(),
+                result.hasNext());
+    }
+
+    @Transactional(readOnly = true)
+    public VerifiedBoostProductPageResponse listActive(int page, int limit) {
+        Page<VerifiedBoostProduct> result = repository.findAllByStatus(VerifiedBoostProductStatus.ACTIVE,
                 PageRequest.of(Math.max(page - 1, 0), Math.min(Math.max(limit, 1), 100),
                         Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
         return new VerifiedBoostProductPageResponse(
