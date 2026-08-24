@@ -50,6 +50,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceR
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.MerchantPlaceApplicationReviewHistoryRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.LinkedHashMap;
@@ -83,6 +84,7 @@ public class MerchantPlaceApplicationService {
     private final MerchantPlaceMemberRepository memberRepository;
     private final MerchantPlaceInvitationRepository invitationRepository;
     private final UserRepository userRepository;
+    private final UserAccessStatusService userAccessStatusService;
     private final MerchantVerificationCipher verificationCipher;
     private final AdminRoleAuthorizationService authorizationService;
     private final AdminAuditLogService auditLogService;
@@ -308,6 +310,9 @@ public class MerchantPlaceApplicationService {
                         Set.of(application.getExistingPlaceId()),
                         now
                 );
+            }
+            if (application.getApplicationType() == MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM) {
+                userAccessStatusService.evict(application.getApplicantUserId());
             }
         } catch (IllegalStateException exception) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);

@@ -1,6 +1,5 @@
 package com.typenull.pingdom.place.application.service.registration;
 
-import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceClaimAttachmentMalwareScanner;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationAttachmentResponse;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
@@ -13,6 +12,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceR
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.MerchantPlaceAttachmentMalwareScanner;
 import java.security.MessageDigest;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -43,7 +43,7 @@ public class MerchantPlaceApplicationAttachmentService {
     private final PlaceRegistrationAttachmentRepository attachmentRepository;
     private final S3ObjectStorage storage;
     private final S3ObjectDeleteOutboxPublisher deletePublisher;
-    private final MerchantPlaceClaimAttachmentMalwareScanner malwareScanner;
+    private final MerchantPlaceAttachmentMalwareScanner malwareScanner;
     private final Clock clock;
 
     @org.springframework.transaction.annotation.Transactional
