@@ -129,6 +129,57 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void authorizationRulesAreReflectedInEveryGroupedOpenApiDocument() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode availability = appDocument.at("/paths/~1places~1{placeId}~1availabilities/get");
+
+        assertThat(availability.at("/security/0/bearerAuth").isArray()).isTrue();
+        assertErrorResponse(availability, "401");
+        assertErrorResponse(availability, "403");
+
+        JsonNode commonDocument = readApiDocs("/v3/api-docs/common");
+        JsonNode reviews = commonDocument.at("/paths/~1places~1{placeId}~1reviews/get");
+
+        assertThat(reviews.at("/security/0/bearerAuth").isArray()).isTrue();
+        assertErrorResponse(reviews, "401");
+
+        JsonNode publicAnalysis = appDocument.at("/paths/~1analysis~1reports~1location/post");
+        assertThat(publicAnalysis.path("security").isMissingNode()).isTrue();
+        assertThat(publicAnalysis.path("responses").has("401")).isFalse();
+
+        JsonNode fcmRegistration = appDocument.at("/paths/~1firebase~1fcm-tokens/post");
+        assertThat(fcmRegistration.path("responses").has("400")).isTrue();
+        assertThat(fcmRegistration.at("/responses/400/content/application~1json/schema/oneOf").toString())
+                .contains("ErrorResponse", "ValidationErrorResponse");
+    }
+
+    @Test
+    void allProtectedOperationsDeclareJwtAndCommonAuthorizationFailures() throws Exception {
+        for (String apiDocPath : API_DOC_PATHS) {
+            JsonNode paths = readApiDocs(apiDocPath).path("paths");
+            for (Iterator<Entry<String, JsonNode>> pathIterator = paths.fields(); pathIterator.hasNext(); ) {
+                Entry<String, JsonNode> pathEntry = pathIterator.next();
+                if (isPublicPath(pathEntry.getKey())) {
+                    continue;
+                }
+
+                for (Iterator<Entry<String, JsonNode>> operationIterator = pathEntry.getValue().fields(); operationIterator.hasNext(); ) {
+                    Entry<String, JsonNode> operationEntry = operationIterator.next();
+                    if (!isHttpMethod(operationEntry.getKey())) {
+                        continue;
+                    }
+
+                    JsonNode operation = operationEntry.getValue();
+                    String location = apiDocPath + " " + operationEntry.getKey().toUpperCase() + " " + pathEntry.getKey();
+                    assertThat(operation.at("/security/0/bearerAuth").isArray()).as(location).isTrue();
+                    assertErrorResponse(operation, "401");
+                    assertErrorResponse(operation, "403");
+                }
+            }
+        }
+    }
+
+    @Test
     void groupedDocumentsMatchSwaggerTagsWithoutOmittingTaggedOperations() throws Exception {
         JsonNode allDocument = readApiDocs("/v3/api-docs");
 
@@ -1294,6 +1345,13 @@ class OpenApiDocumentationValidationTest {
         };
     }
 
+    private boolean isPublicPath(String path) {
+        return "/".equals(path)
+                || path.startsWith("/auth/")
+                || "/consultations/intro".equals(path)
+                || path.startsWith("/analysis/reports/");
+    }
+
     private void assertLimitParameter(JsonNode parameter) {
         assertThat(parameter.path("name").asText()).isEqualTo("limit");
         assertThat(parameter.path("in").asText()).isEqualTo("query");
@@ -1302,6 +1360,17 @@ class OpenApiDocumentationValidationTest {
         assertThat(parameter.path("schema").path("default").asInt()).isEqualTo(10);
         assertThat(parameter.path("schema").path("minimum").asInt()).isEqualTo(1);
         assertThat(parameter.path("schema").path("maximum").asInt()).isEqualTo(50);
+    }
+
+    private void assertErrorResponse(JsonNode operation, String status) {
+        assertThat(operation.path("responses").has(status)).isTrue();
+        JsonNode content = operation.path("responses").path(status).path("content");
+        String schemaReference = content.path("application/json").path("schema").path("$ref").asText();
+        if (schemaReference.isBlank()) {
+            schemaReference = content.path("*/*").path("schema").path("$ref").asText();
+        }
+        assertThat(schemaReference)
+                .isEqualTo("#/components/schemas/ErrorResponse");
     }
 
     private JsonNode resolveSchema(JsonNode document, JsonNode schema) {
