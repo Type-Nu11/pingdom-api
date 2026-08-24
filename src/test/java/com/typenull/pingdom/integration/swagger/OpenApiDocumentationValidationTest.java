@@ -453,7 +453,10 @@ class OpenApiDocumentationValidationTest {
                 "/merchant-owner/place-claims/{claimId}",
                 "/merchant-owner/place-claims/{claimId}/cancel",
                 "/merchant-owner/places/{placeId}/information",
-                "/merchant-owner/place-claims/{claimId}/attachments"
+                "/merchant-owner/place-claims/{claimId}/attachments",
+                "/users/me/merchant-place-applications/{applicationId}/attachments",
+                "/users/me/merchant-place-applications/{applicationId}/attachments/{attachmentId}",
+                "/users/me/merchant-place-applications/{applicationId}/attachments/reorder"
         )) {
             assertThat(merchantDocument.path("paths").has(path)).as("Merchant 경로: %s", path).isTrue();
             assertThat(appDocument.path("paths").has(path)).as("App에 노출되지 않아야 함: %s", path).isFalse();
