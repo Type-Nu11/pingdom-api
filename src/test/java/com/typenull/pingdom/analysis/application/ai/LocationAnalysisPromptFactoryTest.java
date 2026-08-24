@@ -36,7 +36,9 @@ class LocationAnalysisPromptFactoryTest {
                 "totalScore >= 70", "totalScore가 45~69",
                 "additionalCriteria", "고정 디자인 XHTML",
                 "최소 3페이지", "overallLocationEvaluation", "통계 산출 근거",
-                "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자"
+                "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자",
+                "SERVER_DESIGN_REFERENCE_BEGIN", "Pingdom Editorial Location Report v1",
+                "#F8F7F2", "#7D8777", "수평 막대"
         );
         assertThat(prompt.content()).doesNotContain("\"html\"");
     }

@@ -14,6 +14,20 @@ import org.springframework.stereotype.Service;
 @RequiredArgsConstructor
 public class LocationAnalysisPromptFactory {
 
+    private static final String DESIGN_REFERENCE = """
+            레퍼런스 디자인명: Pingdom Editorial Location Report v1
+            - 전체 톤: 여백이 넓고 절제된 편집 디자인. 장식용 이미지나 이모지를 사용하지 않는다.
+            - 용지/배경: A4 세로, 아이보리 #F8F7F2, 본문 #292B2A, 보조 배경 #EEEEE7
+            - 포인트: 올리브 #7D8777, 진한 패널 #303531, 구분선 #D5D7CF
+            - 섹션 구조: 01 표지·종합 입지 평가, 02 추천 장소·타깃/유동인구 통계,
+              03 주변 시설·분석 범위·데이터 출처·제한사항
+            - 공통 요소: 좌측 정렬, 얇은 상단 구분선, 큰 섹션 번호, 카드형 요약 지표,
+              표의 회색 헤더, 통계 비율을 표현하는 수평 막대
+            - 데이터 배치: 긴 설명보다 summary와 실제 수치를 우선하며, 표와 카드에 들어갈 수 있도록
+              문장은 짧고 구체적으로 작성한다. 수치 옆에는 단위와 비율을 반드시 제공한다.
+            - 금지: HTML/CSS/Markdown 반환, 임의 색상·레이아웃·이미지·차트 생성, 확인되지 않은 문구와 수치
+            """;
+
     private final ObjectMapper objectMapper;
 
     public AiAnalysisPrompt create(LocationAnalysisRequest request, LocalDate analysisBasisDate) {
@@ -141,6 +155,10 @@ public class LocationAnalysisPromptFactory {
                 레이아웃을 생략하지 않고 "데이터 없음"과 제한사항을 표시한다. Backend가 사용자 입력과 조회 텍스트를 escape하며,
                 외부 이미지·스크립트·iframe·javascript URL은 사용하지 않는다. HTML 바깥의 설명, Markdown, 코드 블록은 반환하지 않는다.
 
+                [SERVER_DESIGN_REFERENCE_BEGIN]
+                %s
+                [SERVER_DESIGN_REFERENCE_END]
+
                 [최종 반환 계약]
                 도구 조회와 내부 추론을 마친 뒤 아래 필드만 가진 유효한 JSON 객체를 반환한다.
                 {
@@ -158,6 +176,6 @@ public class LocationAnalysisPromptFactory {
                 score, reason, evidenceIds를 모두 포함한다. 데이터가 없으면 배열은 []로 반환한다. reportId, 발행일자,
                 분석 기준일, 저장 경로, 다운로드 URL은 Backend 책임이므로 만들거나 반환하지 않는다. JSON 외의 문자,
                 Markdown, 설명 문장, 코드 블록, html 필드와 추가 필드는 절대 출력하지 않는다.
-                """.formatted(analysisBasisDate, criteria);
+                """.formatted(analysisBasisDate, criteria, DESIGN_REFERENCE);
     }
 }
