@@ -14,6 +14,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRoleAssignment;
+import com.typenull.pingdom.identity.domain.repository.AdminRoleAssignmentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
@@ -57,6 +60,9 @@ class AdminSecurityTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AdminRoleAssignmentRepository adminRoleAssignmentRepository;
+
+    @Autowired
     private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
@@ -71,6 +77,7 @@ class AdminSecurityTest {
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
+        adminRoleAssignmentRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -345,6 +352,9 @@ class AdminSecurityTest {
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
         User admin = createUser("securityAuditAdmin", UserRole.ADMIN);
+        adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
+                admin.getId(), AdminRole.SUPER_ADMIN, admin.getId(), LocalDateTime.now()
+        ));
         User merchantOwner = createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
         User withdrawnAdmin = createUser("securityAuditWithdrawnAdmin", UserRole.ADMIN);
         User targetUser = createUser("securityAuditTarget", UserRole.USER);
