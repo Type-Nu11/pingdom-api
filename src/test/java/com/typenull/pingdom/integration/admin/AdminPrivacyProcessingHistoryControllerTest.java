@@ -16,6 +16,7 @@ import com.typenull.pingdom.privacy.domain.PrivacyProcessingHistory;
 import com.typenull.pingdom.privacy.infrastructure.persistence.PrivacyProcessingHistoryRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,6 +28,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+@Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional

@@ -24,7 +24,7 @@ concurrency:
   cancel-in-progress: ${{ github.event_name == 'pull_request' || github.ref != 'refs/heads/release' }}
 
 jobs:
-  build:
+  fast-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -40,32 +40,102 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Compile main and test sources
-        run: ./gradlew --no-daemon --build-cache --configuration-cache compileJava compileTestJava
+      - name: Run fast test gate
+        run: ./gradlew --no-daemon --build-cache --configuration-cache test
 
-      - name: Run core test gate
+      - name: Verify fast test reports
         run: |
-          ./gradlew --no-daemon --build-cache --configuration-cache test \
-            --tests com.typenull.pingdom.integration.auth.AuthControllerTest \
-            --tests com.typenull.pingdom.integration.admin.AdminSecurityTest \
-            --tests com.typenull.pingdom.integration.swagger.SwaggerSecurityTest
+          test_report_count="$(find build/test-results/test -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
+          test "$test_report_count" -gt 0
+          echo "Fast test report files: $test_report_count"
 
-      - name: Run migration test gate
-        if: github.event_name == 'push' && github.ref == 'refs/heads/release'
-        run: ./gradlew --no-daemon --build-cache --configuration-cache test --tests com.typenull.pingdom.integration.migration.FlywayMigrationIntegrationTest
-
-      - name: Build bootJar
-        run: ./gradlew --no-daemon --build-cache --configuration-cache bootJar -x test
-
-      - name: Upload Gradle diagnostics
+      - name: Upload fast test diagnostics
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: gradle-diagnostics-${{ github.run_id }}
+          name: fast-test-diagnostics-${{ github.run_id }}
           if-no-files-found: ignore
           path: |
-            build/test-results/test/**
-            build/reports/tests/test/**
+            build/test-results/**
+            build/reports/tests/**
+            build/reports/problems/**
+
+  postgres-integration-test:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run PostgreSQL integration smoke gate
+        run: ./gradlew --no-daemon --build-cache --configuration-cache postgresSmokeTest
+
+      - name: Verify PostgreSQL integration smoke reports
+        run: |
+          test_report_count="$(find build/test-results/postgresSmokeTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
+          test "$test_report_count" -gt 0
+          echo "PostgreSQL integration smoke report files: $test_report_count"
+
+      - name: Upload PostgreSQL integration diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: postgres-integration-test-diagnostics-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            build/test-results/**
+            build/reports/tests/**
+            build/reports/problems/**
+
+  build:
+    needs: [fast-test, postgres-integration-test]
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'zulu'
+
+      - name: Set up Gradle
+        uses: gradle/actions/setup-gradle@v6
+
+      - name: Run release migration test gate
+        if: github.event_name == 'push' && github.ref == 'refs/heads/release'
+        run: ./gradlew --no-daemon --build-cache --configuration-cache migrationTest
+
+      - name: Verify release migration test reports
+        if: github.event_name == 'push' && github.ref == 'refs/heads/release'
+        run: |
+          test_report_count="$(find build/test-results/migrationTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
+          test "$test_report_count" -gt 0
+          echo "Migration test report files: $test_report_count"
+
+      - name: Build bootJar
+        run: ./gradlew --no-daemon --build-cache --configuration-cache bootJar
+
+      - name: Upload build diagnostics
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: build-diagnostics-${{ github.run_id }}
+          if-no-files-found: ignore
+          path: |
+            build/test-results/**
+            build/reports/tests/**
             build/reports/problems/**
 
       - name: Docker Hub login

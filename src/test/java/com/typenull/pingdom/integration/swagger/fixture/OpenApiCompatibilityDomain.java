@@ -4,7 +4,7 @@ public enum OpenApiCompatibilityDomain {
     APP("app"),
     COMMON("common"),
     CONSULTING("consulting"),
-    WEB("web");
+    WEB("openapi");
 
     private final String specName;
 
