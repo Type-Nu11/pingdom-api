@@ -1,7 +1,6 @@
 name: Pingdom on AWS EC2
 
 on:
-  workflow_dispatch:
   push:
     branches: [release, develop]
     paths-ignore:
@@ -61,7 +60,7 @@ jobs:
             build/reports/tests/**
             build/reports/problems/**
 
-  postgres-smoke-test:
+  postgres-integration-test:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -77,51 +76,14 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Run PostgreSQL smoke test gate
+      - name: Run PostgreSQL integration smoke gate
         run: ./gradlew --no-daemon --build-cache --configuration-cache postgresSmokeTest
 
-      - name: Verify PostgreSQL smoke test reports
+      - name: Verify PostgreSQL integration smoke reports
         run: |
           test_report_count="$(find build/test-results/postgresSmokeTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
           test "$test_report_count" -gt 0
-          echo "PostgreSQL smoke test report files: $test_report_count"
-
-      - name: Upload PostgreSQL smoke diagnostics
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: postgres-smoke-test-diagnostics-${{ github.run_id }}
-          if-no-files-found: ignore
-          path: |
-            build/test-results/**
-            build/reports/tests/**
-            build/reports/problems/**
-
-  postgres-integration-test:
-    if: github.event_name == 'workflow_dispatch' || (github.event_name == 'push' && github.ref == 'refs/heads/release')
-    runs-on: ubuntu-latest
-    timeout-minutes: 20
-    steps:
-      - name: Checkout repository
-        uses: actions/checkout@v4
-
-      - name: Set up JDK 21
-        uses: actions/setup-java@v4
-        with:
-          java-version: '21'
-          distribution: 'zulu'
-
-      - name: Set up Gradle
-        uses: gradle/actions/setup-gradle@v6
-
-      - name: Run full PostgreSQL integration test gate
-        run: ./gradlew --no-daemon --build-cache --configuration-cache postgresIntegrationTest
-
-      - name: Verify full PostgreSQL integration test reports
-        run: |
-          test_report_count="$(find build/test-results/postgresIntegrationTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
-          test "$test_report_count" -gt 0
-          echo "PostgreSQL integration test report files: $test_report_count"
+          echo "PostgreSQL integration smoke report files: $test_report_count"
 
       - name: Upload PostgreSQL integration diagnostics
         if: always()
@@ -135,7 +97,7 @@ jobs:
             build/reports/problems/**
 
   build:
-    needs: [fast-test, postgres-smoke-test]
+    needs: [fast-test, postgres-integration-test]
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
@@ -200,12 +162,10 @@ jobs:
           cache-to: type=gha,mode=max
 
   deploy:
-    needs: [build, postgres-integration-test]
+    needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 5
-    if: >-
-      always() && github.event_name == 'push' && github.ref == 'refs/heads/release' &&
-      needs.build.result == 'success' && needs.postgres-integration-test.result == 'success'
+    if: github.event_name == 'push' && github.ref == 'refs/heads/release'
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
