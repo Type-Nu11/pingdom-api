@@ -6,9 +6,11 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.admin.AdminPermission;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceInvitationRepository;
@@ -23,7 +25,9 @@ import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.MerchantPlaceApplicationReviewHistoryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
@@ -34,6 +38,7 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
@@ -57,11 +62,19 @@ class MerchantPlaceApplicationAdminServiceTest {
     @Mock private AdminRoleAuthorizationService authorizationService;
     @Mock private AdminAuditLogService auditLogService;
     @Mock private TouristOfferRepository touristOfferRepository;
+    @Mock private MerchantPlaceApplicationReviewHistoryRepository reviewHistoryRepository;
     @Mock private S3ObjectStorage storage;
+    @Mock private ObjectMapper objectMapper;
     @Mock private Clock clock;
 
     @InjectMocks
     private MerchantPlaceApplicationService service;
+
+    @BeforeEach
+    void setUpClock() {
+        org.mockito.Mockito.lenient().when(clock.instant()).thenReturn(Instant.parse("2026-08-24T00:00:00Z"));
+        org.mockito.Mockito.lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+    }
 
     @Test
     void adminDetailDecryptsRegistrationNumberAndRecordsAuditLog() {
@@ -170,9 +183,139 @@ class MerchantPlaceApplicationAdminServiceTest {
         inOrder.verify(applicationRepository).findByIdForUpdate(12L);
     }
 
+    @Test
+    void reviewRejectsStaleVersionBeforeAnyStateChange() {
+        PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
+        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
+        when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
+        when(application.matchesVersion(3L)).thenReturn(false);
+        when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
+
+        assertThatThrownBy(() -> service.reject(99L, 12L,
+                new com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest(3L, "반려")))
+                .isInstanceOf(com.typenull.pingdom.place.domain.exception.PlaceRegistrationException.class)
+                .extracting(exception -> ((com.typenull.pingdom.place.domain.exception.PlaceRegistrationException) exception).getErrorCode())
+                .isEqualTo(com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode.STALE_REVIEW_VERSION);
+
+        verify(authorizationService).requirePermission(99L, AdminPermission.MERCHANT_REVIEW);
+        org.mockito.Mockito.verifyNoInteractions(auditLogService, reviewHistoryRepository);
+    }
+
+    @Test
+    void submitRejectsAnotherPendingClaimForSamePlaceBeforeStateTransition() {
+        PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
+        com.typenull.pingdom.place.domain.place.core.MapPlace place = org.mockito.Mockito.mock(
+                com.typenull.pingdom.place.domain.place.core.MapPlace.class);
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(User.builder().id(1L).build()));
+        when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
+        when(application.getApplicantUserId()).thenReturn(1L);
+        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM);
+        when(application.getExistingPlaceId()).thenReturn(30L);
+        when(application.getLegalName()).thenReturn("홍길동");
+        when(application.getBusinessName()).thenReturn("핑덤");
+        when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted");
+        when(application.getMerchantDisplayName()).thenReturn("핑덤");
+        when(application.getMerchantContactEmail()).thenReturn("owner@pingdom.test");
+        when(application.getMerchantContactPhone()).thenReturn("+821012345678");
+        when(placeRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(place));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(30L)).thenReturn(Optional.empty());
+        when(applicationRepository.existsByExistingPlaceIdAndApplicationTypeAndStatus(
+                30L, MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM, PlaceRegistrationStatus.PENDING
+        )).thenReturn(true);
+
+        assertThatThrownBy(() -> service.submit(1L, 12L))
+                .isInstanceOf(com.typenull.pingdom.place.domain.exception.PlaceRegistrationException.class)
+                .extracting(exception -> ((com.typenull.pingdom.place.domain.exception.PlaceRegistrationException) exception).getErrorCode())
+                .isEqualTo(com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode.DUPLICATE_PLACE);
+
+        verify(application, org.mockito.Mockito.never()).submit(org.mockito.ArgumentMatchers.any());
+    }
+
+    @Test
+    void approvalRejectsOwnershipChangeBeforeMerchantOrTeamStateChanges() {
+        PlaceRegistrationApplication application = application(12L);
+        MerchantOwnerPlace currentOwner = org.mockito.Mockito.mock(MerchantOwnerPlace.class);
+        com.typenull.pingdom.place.domain.place.core.MapPlace place = org.mockito.Mockito.mock(
+                com.typenull.pingdom.place.domain.place.core.MapPlace.class);
+        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM);
+        when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
+        when(application.matchesVersion(4L)).thenReturn(true);
+        when(application.getExistingPlaceId()).thenReturn(30L);
+        when(application.getPreviousOwnerUserId()).thenReturn(20L);
+        when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
+        when(placeRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(place));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(30L)).thenReturn(Optional.of(currentOwner));
+        when(currentOwner.getMerchantOwnerUserId()).thenReturn(21L);
+
+        assertThatThrownBy(() -> service.approve(99L, 12L,
+                new com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest(4L, "승인")))
+                .isInstanceOf(com.typenull.pingdom.place.domain.exception.PlaceRegistrationException.class)
+                .extracting(exception -> ((com.typenull.pingdom.place.domain.exception.PlaceRegistrationException) exception).getErrorCode())
+                .isEqualTo(com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode.INVALID_STATE);
+
+        verify(application, org.mockito.Mockito.never()).approve(org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any(), org.mockito.ArgumentMatchers.any());
+        org.mockito.Mockito.verifyNoInteractions(profileRepository, verificationRepository, memberRepository, invitationRepository,
+                touristOfferRepository, auditLogService, reviewHistoryRepository);
+    }
+
+    @Test
+    void approvalCompletesApplicationBeforeClosingPreviousOwnersOffers() throws Exception {
+        PlaceRegistrationApplication application = application(12L);
+        MerchantOwnerPlace currentOwner = org.mockito.Mockito.mock(MerchantOwnerPlace.class);
+        com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile profile = org.mockito.Mockito.mock(
+                com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile.class);
+        com.typenull.pingdom.identity.domain.merchant.MerchantVerification verification = org.mockito.Mockito.mock(
+                com.typenull.pingdom.identity.domain.merchant.MerchantVerification.class);
+        com.typenull.pingdom.place.domain.place.core.MapPlace place = org.mockito.Mockito.mock(
+                com.typenull.pingdom.place.domain.place.core.MapPlace.class);
+        User applicant = org.mockito.Mockito.mock(User.class);
+
+        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM);
+        when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
+        when(application.matchesVersion(4L)).thenReturn(true);
+        when(application.getApplicantUserId()).thenReturn(10L);
+        when(application.getExistingPlaceId()).thenReturn(30L);
+        when(application.getPreviousOwnerUserId()).thenReturn(20L);
+        when(application.getLegalName()).thenReturn("홍길동");
+        when(application.getBusinessName()).thenReturn("핑덤");
+        when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted");
+        when(application.getMerchantDisplayName()).thenReturn("핑덤");
+        when(application.getMerchantContactEmail()).thenReturn("owner@pingdom.test");
+        when(application.getMerchantDescription()).thenReturn("소개");
+        when(application.getMerchantContactPhone()).thenReturn("+821012345678");
+        when(application.getAttachments()).thenReturn(List.of());
+        when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
+        when(placeRepository.findByIdForUpdate(30L)).thenReturn(Optional.of(place));
+        when(ownerPlaceRepository.findByPlaceIdForUpdate(30L)).thenReturn(Optional.of(currentOwner));
+        when(currentOwner.getMerchantOwnerUserId()).thenReturn(20L);
+        when(memberRepository.findAllByPlaceId(30L)).thenReturn(List.of());
+        when(invitationRepository.findAllByPlaceIdAndStatus(
+                30L, com.typenull.pingdom.identity.domain.merchant.MerchantPlaceInvitationStatus.PENDING
+        )).thenReturn(List.of());
+        when(touristOfferRepository.findAllByMerchantOwnerUserIdAndPlaceIdForUpdate(20L, 30L)).thenReturn(List.of());
+        when(objectMapper.writeValueAsString(org.mockito.ArgumentMatchers.any())).thenReturn("{}");
+        when(profileRepository.findByUserIdForUpdate(10L)).thenReturn(Optional.of(profile));
+        when(profile.getStatus()).thenReturn(com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.PENDING);
+        when(verificationRepository.findByUserIdForUpdate(10L)).thenReturn(Optional.of(verification));
+        when(verification.getIdentityStatus()).thenReturn(
+                com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.PENDING);
+        when(verification.getBusinessStatus()).thenReturn(
+                com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.PENDING);
+        when(userRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(applicant));
+        when(memberRepository.findByPlaceIdAndUserIdForUpdate(30L, 10L)).thenReturn(Optional.empty());
+
+        service.approve(99L, 12L,
+                new com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest(4L, "승인"));
+
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(application, touristOfferRepository);
+        inOrder.verify(application).complete(eq(30L), org.mockito.ArgumentMatchers.any());
+        inOrder.verify(touristOfferRepository).closeAllByMerchantOwnerUserIdAndPlaceIdIn(
+                eq(20L), eq(java.util.Set.of(30L)), org.mockito.ArgumentMatchers.any());
+    }
+
     private PlaceRegistrationApplication application(Long id) {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
-        when(application.getId()).thenReturn(id);
+        org.mockito.Mockito.lenient().when(application.getId()).thenReturn(id);
         when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
         return application;
     }
