@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.infrastructure.persistence.place;
 
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.springframework.data.domain.Pageable;
@@ -8,7 +9,7 @@ import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 /** 장소 랭킹 화면에 필요한 집계 결과만 PostgreSQL에서 조회합니다. */
-public interface PlaceRankingQueryRepository extends Repository<Object, Long> {
+public interface PlaceRankingQueryRepository extends Repository<MapPlace, Long> {
 
     @Query(value = """
             SELECT COUNT(*)
