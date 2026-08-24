@@ -42,7 +42,10 @@ class LocationAnalysisHtmlComposerTest {
         );
 
         assertThat(html).contains("report-1", "강남 카페 입지 분석", "2026-08-17", "종합 입지 평가");
-        assertThat(html).contains("<!doctype html>", "<meta charset=\"UTF-8\" />");
+        assertThat(html).contains("<!DOCTYPE html>", "<meta charset=\"UTF-8\" />");
         assertThat(html).contains("타깃 인구 분석", "유동 인구 분석", "주변 시설");
+        assertThat(html).contains("page-break-after: always", "NanumGothic", "01 / 03", "02 / 03", "03 / 03");
+        assertThat(html).doesNotContain("####", "```", "<script");
+        assertThat(html).contains("데이터 없음");
     }
 }

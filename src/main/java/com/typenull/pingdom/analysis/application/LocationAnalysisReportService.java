@@ -46,24 +46,19 @@ public class LocationAnalysisReportService {
                 promptFactory.create(request, analysisBasisDate)
         );
         long aiCompletedAt = System.nanoTime();
-        if (aiResponse.hasHtmlReport()) {
-            responseValidator.validateHtml(aiResponse);
-        } else {
-            responseValidator.validate(request, aiResponse);
-        }
+        // PDF 디자인과 한글 폰트를 요청마다 동일하게 유지하기 위해 AI가 반환한 HTML은 사용하지 않는다.
+        responseValidator.validate(request, aiResponse);
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
         LocalDate effectiveAnalysisBasisDate = aiResponse.analysisBasisDate() == null
                 ? analysisBasisDate : aiResponse.analysisBasisDate();
-        String html = aiResponse.hasHtmlReport()
-                ? aiResponse.htmlReport()
-                : htmlComposer.compose(
-                        reportId,
-                        aiResponse.reportName(),
-                        publishedDate,
-                        effectiveAnalysisBasisDate,
-                        aiResponse.content()
-                );
+        String html = htmlComposer.compose(
+                reportId,
+                aiResponse.reportName(),
+                publishedDate,
+                effectiveAnalysisBasisDate,
+                aiResponse.content()
+        );
         byte[] pdf = htmlToPdfConverter.convert(html);
         long completedAt = System.nanoTime();
         log.info(
