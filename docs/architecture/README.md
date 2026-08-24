@@ -77,12 +77,20 @@ Pingdom Backend는 이벤트 기반 모듈러 모놀리스를 기본 구조로 �
 - 본 처리 이후에 이어지는 부수효과는 이벤트로 분리해야 한다.
 - 알림, 메일 발송, Projection 갱신, 후속 집계는 이벤트 우선으로 처리한다.
 
-### 4-3. 선택적 CQRS 원칙
+### 4-3. CQS와 선택적 CQRS-lite 원칙
 
-- 조회 화면이 단순하면 CQRS를 적용하지 않는다.
-- 조회 요구사항이 복잡할 때만 Query 모델을 별도로 둔다.
-- Command 모델은 상태 변경과 규칙 검증에 집중한다.
-- Query 모델은 정렬, 조합, 집계, 응답 최적화에 집중한다.
+CQS와 CQRS-lite는 같은 규칙이 아니다.
+
+- CQS는 메서드·유스케이스의 행위 규칙이다. Query는 도메인 상태를 바꾸지 않고, Command는
+  상태 변경과 규칙 검증을 담당한다.
+- 단순 유스케이스는 같은 Service 안에 Query와 Command 메서드를 함께 둘 수 있다. 이때
+  메서드별 트랜잭션을 명확히 선언하며, CQS만으로 별도 클래스나 저장소 모델을 강제하지 않는다.
+- 선택적 CQRS-lite는 조인·정렬·집계·응답 조합이 복잡한 조회에만 Query Service, Query
+  Repository, DTO projection 또는 조회용 snapshot을 별도로 두는 구조 선택이다.
+- Command 모델은 상태 변경과 규칙 검증에 집중하고, CQRS-lite Query 모델은 읽기 모델의
+  조합과 응답 최적화에 집중한다.
+- 현재 구조는 하나의 애플리케이션과 공유 PostgreSQL을 유지한다. 모든 기능을 분리하거나
+  Full CQRS·Event Sourcing을 도입하는 것은 이 원칙의 범위가 아니다.
 
 ### 4-4. 외부 연동 격리 원칙
 
@@ -165,9 +173,9 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 
 `ControllerConventionTest`는 Request DTO Validation과 Entity 직접 반환 여부를 검증한다.
 
-## 7. CQRS 적용 범위
+## 7. 선택적 CQRS-lite 적용 범위
 
-### 7-1. CQRS를 적용해야 하는 영역
+### 7-1. CQRS-lite를 적용해야 하는 영역
 
 - 관리자 게시글 목록 조회
 - 관리자 신고 목록 및 신고 상태 조회
@@ -181,7 +189,7 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - 여러 엔티티 조합과 정렬이 필요하다.
 - 화면 요구사항 때문에 응답 형태가 자주 변한다.
 
-### 7-2. CQRS를 적용하지 않는 영역
+### 7-2. CQRS-lite를 적용하지 않는 영역
 
 - 로그인
 - 회원가입
@@ -196,6 +204,9 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 - 상태 변경 규칙이 핵심이다.
 - 읽기 모델을 따로 분리할 필요가 작다.
 - 단일 트랜잭션과 검증 흐름이 더 중요하다.
+
+이 영역도 CQS를 적용한다. 즉, 같은 Service 안의 조회 메서드는 상태를 바꾸지 않고
+`readOnly` 트랜잭션을 사용하며, 상태 변경 메서드는 별도 쓰기 트랜잭션과 규칙 검증을 가진다.
 
 ## 8. 이벤트 적용 범위
 
@@ -256,13 +267,25 @@ Pingdom Backend는 다음 모듈 구성을 목표로 한다.
 
 ### 9-4. Service 트랜잭션 규칙
 
-- Query Service의 DB 조회는 `@Transactional(readOnly = true)`를 사용한다.
-- 상태 변경과 감사 이력은 Command Service의 쓰기 트랜잭션에서 처리한다.
+- 선택적 CQRS-lite의 Query Service와 Query Repository 기반 공개 조회 메서드는
+  `@Transactional(readOnly = true)`를 사용한다.
+- 단순 CQS Service는 조회와 상태 변경 메서드를 함께 둘 수 있다. 조회 메서드는
+  `readOnly = true`, 상태 변경과 감사 이력은 쓰기 트랜잭션에서 처리한다.
 - `PESSIMISTIC_WRITE` 조회와 후속 상태 변경은 같은 쓰기 트랜잭션에 포함한다.
 - 외부 API나 S3 호출은 DB 트랜잭션을 불필요하게 길게 유지하지 않도록 분리한다.
-- 하나의 Service에 Query와 Command 메서드를 함께 두지 않는다.
+- `PlaceRecommendationQueryService.recommendAndRecordObservations`는 응답 조회에
+  관측성 기록을 함께 수행하는 명시적 예외다. feature logging이 활성화되면 feature log를
+  같은 쓰기 트랜잭션에서 저장하므로 저장 실패는 추천 요청을 실패시킨다. 노출 기록 요청은
+  커밋 후 listener가 executor와 `REQUIRES_NEW` 트랜잭션으로 처리하며, 작업 제출 또는 저장
+  실패는 로그만 남기고 추천 응답을 실패시키지 않는다.
+- 추천 노출은 Outbox가 아니며 자동 재시도를 제공하지 않는다. 원천 노출 row에는 request ID
+  기반 멱등성 제약도 없으므로, 누락된 요청을 임의로 재발행하거나 재생성하지 않는다.
 
-위 규칙은 `ServiceTransactionConventionTest`로 검증한다.
+`ServiceTransactionConventionTest`는 모든 `@Service`를 전수 검사하지 않는다. 직접
+Repository를 보유한 `application.query` Service의 공개 메서드 read-only, 지정된 Command
+Service의 쓰기 트랜잭션, 관리자 알림 Query/Command 분리와 위 추천 관측성 예외를 검증한다.
+전체 혼합 Service의 분류 기준과 현재 목록은
+[Pingdom 2.0 리팩터링 범위와 성공 지표](pingdom-2.0-refactoring.md)를 따른다.
 
 ### 9-5. Entity와 Repository 규칙
 

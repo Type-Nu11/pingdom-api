@@ -105,7 +105,9 @@ OpenAPI 호환성 검증은 아래 명령으로 실행할 수 있습니다.
 ## Architecture
 
 Pingdom Server는 이벤트 기반 모듈러 모놀리스를 기준으로 도메인 책임을 분리합니다. <br>
-조회 요구가 복잡한 관리자 화면, 장소 추천 지표, 게시글 목록 같은 영역에는 선택적으로 Query Service를 분리해 CQRS 성격의 구조를 사용합니다.
+CQS는 한 유스케이스의 Query가 도메인 상태를 바꾸지 않고 Command가 상태 변경과 규칙 검증을 맡는 행위 규칙입니다. 단순 유스케이스는 같은 Service 안에 두 종류의 메서드를 둘 수 있습니다. 조인·정렬·집계·응답 조합이 복잡한 조회만 Query Service, Query Repository, DTO projection 또는 snapshot으로 분리하는 선택적 CQRS-lite를 적용합니다. 이는 하나의 애플리케이션과 공유 PostgreSQL을 유지하는 구조이며 Full CQRS나 Event Sourcing을 뜻하지 않습니다.
+
+장소 추천은 응답 조합 뒤 feature log와 노출 기록을 다루는 명시적 관측성 예외입니다. 내부 유스케이스와 트랜잭션·유실 계약은 [목표 아키텍처](architecture/README.md)와 [Pingdom 2.0 리팩터링 범위와 성공 지표](architecture/pingdom-2.0-refactoring.md)를 따릅니다.
 
 ```text
 src/main/java/com/typenull/pingdom

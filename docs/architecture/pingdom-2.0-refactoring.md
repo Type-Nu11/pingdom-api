@@ -43,7 +43,18 @@ OpenAPI 기준 스펙과 호환성 검증으로, 운영 DB schema는 적용된 F
 | Outbox 이벤트 | DB 트랜잭션 안에서 저장한 뒤 비동기로 외부 부수효과를 처리하는 이벤트 | `shared.outbox` |
 | 공개 계약 | 앱·관리자·운영자가 외부에서 의존하는 API, DB migration, 작업 절차 | OpenAPI, Flyway, 운영 문서 |
 
-### 2.1 출시 전환 용어와 책임
+### 2.1 CQS와 선택적 CQRS-lite
+
+CQS는 메서드·유스케이스 행위 규칙이고, CQRS-lite는 읽기 모델을 별도 구성하는 구조
+선택이다. Query는 도메인 상태를 바꾸지 않고, Command는 상태 변경과 규칙 검증을 담당한다.
+단순 유스케이스는 같은 Service 안에 두 종류의 메서드를 둘 수 있으며, 메서드별
+`readOnly` 또는 쓰기 트랜잭션을 명시한다.
+
+조인·정렬·집계·응답 조합이 복잡한 조회만 Query Service, Query Repository, DTO projection
+또는 snapshot으로 분리한다. Pingdom은 하나의 애플리케이션과 공유 PostgreSQL을 유지하므로
+이 선택을 Full CQRS나 Event Sourcing으로 표현하지 않는다.
+
+### 2.2 출시 전환 용어와 책임
 
 출시 전환 상태는 도메인 Entity의 상태가 아니라 배포 기록의 상태다. 아래 용어는
 [출시 전환·적용·복구 Runbook](../refactoring-rollout-runbook.md)에서 사용하며, 도메인
@@ -125,6 +136,47 @@ deprecation 판단을 [데이터 마이그레이션, 호환 API, 롤백 정책](
 | 이메일 발송, FCM 발송, S3 객체 삭제 | Outbox 저장 후 비동기 처리 | 외부 시스템 지연·실패가 핵심 DB 트랜잭션을 롤백하지 않게 한다. |
 | 추천 노출 기록처럼 후속 기록이 실패해도 조회 응답을 막지 않는 처리 | 커밋 후 이벤트 또는 별도 비동기 처리 | 사용자 응답과 후속 기록을 분리한다. |
 | 관리자 목록·지표·설명 조회 | read-only Query | 조인·정렬·집계 요구를 상태 변경과 분리한다. |
+
+### 3.4 CQS/CQRS-lite 현행 분류
+
+아래 목록은 2026-08-24 기준 `@Service`이면서 `@Transactional(readOnly = true)`와 쓰기
+`@Transactional`을 함께 가진 57개 후보의 분류다. `@Transactional` 공존은 위반 개수가 아니라
+검토 시작점이며, 새 기능에서 같은 패턴을 추가할 때도 이 기준으로 판단한다.
+
+| 모듈 | 수 | 대상 | 분류와 처리 |
+| --- | ---: | --- | --- |
+| `analysis` | 1 | `LocationAnalysisReportArchiveService` | 단순 CQS 공존. 보고서 보관·수정·삭제와 소유자 조회는 같은 유스케이스 경계에 유지한다. |
+| `availability` | 1 | `PlaceAvailabilityService` | 단순 CQS 공존. 재고 상태 변경과 소유자·공개 조회를 메서드 트랜잭션으로 구분한다. |
+| `boost` | 3 | `MerchantVerifiedBoostSelectionService`, `VerifiedBoostExecutionService`, `VerifiedBoostProductService` | 단순 CQS 공존. 집행·상품 상태 전이와 조회를 분리된 메서드로 유지한다. |
+| `campaign` | 1 | `MerchantCampaignService` | 단순 CQS 공존. Brand·Campaign의 생성·발행·종료와 목록 조회를 같은 도메인 흐름으로 유지한다. |
+| `identity` | 14 | `AdminRoleAssignmentService`, `CurrentActivityIntentService`, `MerchantOwnerAdminService`, `MerchantOwnerPlaceManagementService`, `MerchantOwnerProfileService`, `MerchantPlaceClaimAdminService`, `MerchantPlaceClaimAttachmentService`, `MerchantPlaceClaimService`, `MerchantPlaceInformationService`, `MerchantTeamService`, `MerchantVerificationAdminService`, `MerchantVerificationService`, `TravelPurposePreferenceService`, `TravelScheduleService` | 단순 CQS 공존. 계정·사업자·여행 상태 전이와 권한 있는 단건·목록 조회는 메서드 단위 트랜잭션으로 유지한다. |
+| `moderation` | 9 | `AdminAdServiceImpl`, `AdminPlaceDuplicateService`, `AdminPlaceEventService`, `AdminPlaceMergeService`, `AdminPlaceQualityService`, `AdminReportServiceImpl`, `AdminTrustScoreService`, `ReportAppealService`, `TrustScoreBatchService` | 단순 CQS 공존. 운영 조치와 해당 조치의 단건·목록 조회를 같은 도메인 Service에 둔다. 여러 모델의 조합·집계가 필요한 신규 화면은 별도 `application.query`로 판단한다. |
+| `notification` | 2 | `FcmDeviceTokenService`, `NotificationSettingService` | 단순 CQS 공존. 설정·토큰 상태 변경과 사용자 설정 조회를 메서드별로 분리한다. |
+| `offer` | 2 | `MerchantOfferService`, `TouristOfferService` | 단순 CQS 공존. Offer 관리·쿠폰 발급과 소비자·사업자 조회를 메서드별로 분리한다. |
+| `payment` | 1 | `PaymentLedgerWriter` | 단순 CQS 공존. 원장 기록과 조회 보조 흐름을 같은 결제 유스케이스 경계에 유지한다. |
+| `place` | 13 | `MapBookmarkService`, `MerchantPlaceApplicationService`, `PlaceInformationReportService`, `PlaceInformationReverificationService`, `PlaceMediaService`, `PlaceOperatingNoticeService`, `PlaceRegistrationService`, `PlaceRecommendationClickService`, `PlaceRecommendationConversionService`, `PlaceRecommendationExposureService`, `PlaceRecommendationFeatureLogService`, `PlaceRecommendationPolicyService`, `PlaceReviewService` | 단순 CQS 공존. 장소 상태·추천 피드백·운영 설정과 그 조회를 메서드별로 분리한다. |
+| `place` | 1 | `PlaceRecommendationQueryServiceImpl` | 관측성 예외. `recommendAndRecordObservations`는 추천 응답을 조합하고 feature log를 동기 저장한 뒤 커밋 후 노출 기록을 요청한다. 별도 CQRS 분리나 Outbox 전환은 이 이슈에서 수행하지 않는다. |
+| `product` | 1 | `ReservableProductService` | 단순 CQS 공존. 상품 상태 변경과 조회를 메서드별로 분리한다. |
+| `reservation` | 1 | `ReservationService` | 단순 CQS 공존. 예약 상태 전이와 소유자·사용자 조회를 메서드별로 분리한다. |
+| `shared` | 1 | `OutboxEventStateService` | 단순 CQS 공존. Outbox 상태 전이와 worker 조회는 같은 기술 유스케이스 경계에 유지한다. |
+| `verification` | 6 | `LocationCheckInService`, `ScoutFieldReportService`, `ScoutProfileService`, `VisitEvidencePersistenceService`, `VisitorVerificationReportCorrectionService`, `VisitorVerificationReportService` | 단순 CQS 공존. 검증 기록·자격 상태 전이와 사용자·관리자 조회를 메서드별로 분리한다. |
+
+기존 `application.query`의 Query Service는 위 57개 후보와 별도로 CQRS-lite 읽기 모델로
+유지한다. 새 조회가 다중 엔티티 조합, 정렬·집계, 화면 전용 응답 또는 snapshot을 필요로
+하면 해당 구조를 우선 검토한다. 단순 CQS Service를 기계적으로 분리하지 않는다.
+
+추천 관측성 예외의 현재 계약은 다음과 같다.
+
+1. `recommendAndRecordObservations`는 feature logging이 활성화된 경우 feature log를 응답
+   생성과 같은 쓰기 트랜잭션에서 저장한다. 이 저장 실패는 요청 실패와 rollback으로 이어진다.
+2. `PlaceRecommendationExposureRecordRequestedEvent`는 원래 트랜잭션 커밋 후 listener가
+   executor에 위임하고, `PlaceRecommendationExposureService`가 `REQUIRES_NEW`로 저장한다.
+3. executor 작업 제출 또는 노출 저장 예외는 로그만 남기고 추천 응답을 실패시키지 않는다.
+   자동 재시도, 원천 로그 재생성, request ID 기반 멱등성은 제공하지 않는다.
+
+전달 보장과 누락된 원천 로그의 운영 판단은
+[Pingdom 2.0 목표 아키텍처와 도메인 이벤트](pingdom-2.0-domain-events.md) 및
+[장소 추천 행동 전환 도메인 기준](place-recommendation-conversion.md)을 따른다.
 
 ## 4. 상태 전이 기준
 
@@ -234,6 +286,7 @@ OpenAPI baseline, migration, 배포 설정 중 하나가 함께 변경될 때만
 | 2026-07-10 | #542, #543, #544, #545 | 도메인 이벤트·Outbox 책임, 전달 보장, 운영·복구 기준을 문서화 | 완료 |
 | 2026-07-10 | #845, #846, #847 | 출시 전환 용어·책임·상태와 단계별 rollout, 계약 대조·변경 이력 기준을 보강 | 완료 |
 | 2026-07-10 | #554, #555, #556, #557 | 데이터 migration, 호환 API, 단계적 배포와 rollback 판단 기준을 문서화 | 완료 |
+| 2026-08-24 | #1316 | CQS와 선택적 CQRS-lite의 적용 단위, 혼합 Service 57개 분류, 추천 관측성 예외와 아키텍처 테스트 범위를 정렬 | 완료 |
 
 이 문서 변경은 다음 순서로 검토한다.
 
