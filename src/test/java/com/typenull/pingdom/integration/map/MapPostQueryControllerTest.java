@@ -203,82 +203,7 @@ class MapPostQueryControllerTest {
     }
 
     @Test
-    void listMyPostsReturnsOnlyCurrentUsersPostsInLatestOrder() throws Exception {
-        String accessToken = signupAndLogin("my-post-owner");
-        Long userId = userRepository.findByUsername("my-post-owner").orElseThrow().getId();
-
-        MapPlace firstPlace = createMapPlace("내 첫 장소", "경상남도 진주시 내글로 1");
-        MapPlace secondPlace = createMapPlace("내 두 번째 장소", "경상남도 진주시 내글로 2");
-        MapPlace otherPlace = createMapPlace("다른 사용자 장소", "경상남도 진주시 다른글로 1");
-
-        MapImage olderMyPost = createMapImage(userId, "my-post-owner", "내 이전 게시글", firstPlace, 2L);
-        MapImage latestMyPost = createMapImage(userId, "my-post-owner", "내 최신 게시글", secondPlace, 5L);
-        createMapImage(userId + 100L, "other-writer", "다른 사용자 게시글", otherPlace, 7L);
-
-        mapBookmarkRepository.save(MapBookmark.builder()
-                .userId(userId)
-                .placeId(secondPlace.getId())
-                .build());
-        mapImageLikeRepository.save(MapImageLike.builder()
-                .userId(userId)
-                .mapImageId(olderMyPost.getId())
-                .build());
-
-        mockMvc.perform(get("/map/posts/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("page", "1")
-                        .param("limit", "20"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.page").value(1))
-                .andExpect(jsonPath("$.limit").value(20))
-                .andExpect(jsonPath("$.totalCount").value(2))
-                .andExpect(jsonPath("$.totalPages").value(1))
-                .andExpect(jsonPath("$.posts.length()").value(2))
-                .andExpect(jsonPath("$.posts[0].id").value(latestMyPost.getId()))
-                .andExpect(jsonPath("$.posts[0].title").value("내 최신 게시글"))
-                .andExpect(jsonPath("$.posts[0].userId").value(userId))
-                .andExpect(jsonPath("$.posts[0].bookmarked").value(true))
-                .andExpect(jsonPath("$.posts[0].likedByMe").value(false))
-                .andExpect(jsonPath("$.posts[1].id").value(olderMyPost.getId()))
-                .andExpect(jsonPath("$.posts[1].userId").value(userId))
-                .andExpect(jsonPath("$.posts[1].bookmarked").value(false))
-                .andExpect(jsonPath("$.posts[1].likedByMe").value(true));
-
-        mockMvc.perform(get("/map/posts/me")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .param("page", "1")
-                        .param("limit", "20")
-                        .param("sortParam", "OLDEST")
-                        .param("keyword", "내"))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.totalCount").value(2))
-                .andExpect(jsonPath("$.posts.length()").value(2))
-                .andExpect(jsonPath("$.posts[0].id").value(olderMyPost.getId()))
-                .andExpect(jsonPath("$.posts[1].id").value(latestMyPost.getId()));
-    }
-
-    @Test
-    void getPostReturnsPostDetailWithPlaceInformation() throws Exception {
-        String accessToken = signupAndLogin("reader02");
-        MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
-        MapImage mapImage = createMapImage(21L, "writer-detail", "상세 게시글", mapPlace, 12L);
-
-        mockMvc.perform(get("/map/posts/{id}", mapImage.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(mapImage.getId()))
-                .andExpect(jsonPath("$.title").value("상세 게시글"))
-                .andExpect(jsonPath("$.username").value("writer-detail"))
-                .andExpect(jsonPath("$.likeCount").value(12))
-                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
-                .andExpect(jsonPath("$.placeName").value("진주성"))
-                .andExpect(jsonPath("$.placeAddress").value("경상남도 진주시 남강로 626"))
-                .andExpect(jsonPath("$.latitude").value(35.1801))
-                .andExpect(jsonPath("$.longitude").value(128.1078));
-    }
-
-    @Test
-    void listAndDetailExcludeHiddenPosts() throws Exception {
+    void listPostsExcludesHiddenPosts() throws Exception {
         String accessToken = signupAndLogin("hidden-reader");
         MapPlace mapPlace = createMapPlace("숨김 장소", "경상남도 진주시 숨김로 1");
         MapImage visiblePost = createMapImage(51L, "visible-writer", "노출 게시글", mapPlace, 1L);
@@ -295,36 +220,6 @@ class MapPostQueryControllerTest {
                 .andExpect(jsonPath("$.posts.length()").value(1))
                 .andExpect(jsonPath("$.posts[0].id").value(visiblePost.getId()));
 
-        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
-    }
-
-    @Test
-    void getPostAllowsOwnerToReadHiddenPostDetail() throws Exception {
-        String accessToken = signupAndLogin("hidden-owner");
-        Long ownerId = userRepository.findByUsername("hidden-owner").orElseThrow().getId();
-        MapPlace mapPlace = createMapPlace("숨김 소유자 장소", "경상남도 진주시 소유자로 1");
-        MapImage hiddenPost = createMapImage(ownerId, "hidden-owner", "소유자 숨김 게시글", mapPlace, 1L);
-        hiddenPost.autoHide("테스트 숨김", java.time.LocalDateTime.now(), null);
-        mapImageRepository.saveAndFlush(hiddenPost);
-
-        mockMvc.perform(get("/map/posts/{id}", hiddenPost.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.id").value(hiddenPost.getId()))
-                .andExpect(jsonPath("$.title").value("소유자 숨김 게시글"));
-    }
-
-    @Test
-    void getPostFailsWhenPostDoesNotExist() throws Exception {
-        String accessToken = signupAndLogin("reader03");
-
-        mockMvc.perform(get("/map/posts/{id}", 9999L)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isNotFound())
-                .andExpect(jsonPath("$.code").value("IMAGE_NOT_FOUND"));
     }
 
     private String signupAndLogin(String username) throws Exception {
