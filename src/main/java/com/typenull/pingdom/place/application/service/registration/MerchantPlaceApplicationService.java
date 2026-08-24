@@ -31,7 +31,6 @@ import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationP
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationRequest;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest;
-import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationAttachmentRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationRequest;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
@@ -50,11 +49,13 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
+import java.util.Objects;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -91,6 +92,7 @@ public class MerchantPlaceApplicationService {
             Long id = legacyPlaceRegistrationService.create(userId, newPlace).id();
             application = locked(id);
         } else {
+            rejectClientClaimAttachments(request);
             application = createClaimDraft(userId, request, now());
             applicationRepository.save(application);
         }
@@ -212,8 +214,8 @@ public class MerchantPlaceApplicationService {
             if (request.applicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
                 legacyPlaceRegistrationService.updateForUnifiedApplication(userId, id, requireNewPlace(request));
             } else {
+                rejectClientClaimAttachments(request);
                 refreshClaimSnapshot(application, request, now());
-                applyClaimAttachments(application, userId, request.attachments(), now());
             }
             applyMerchantData(application, request, now());
         } catch (IllegalArgumentException exception) {
@@ -233,12 +235,7 @@ public class MerchantPlaceApplicationService {
         if (application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
             legacyPlaceRegistrationService.submitForUnifiedApplication(userId, id);
         } else {
-            try {
-                application.submit(now());
-            } catch (IllegalStateException exception) {
-                throw new PlaceRegistrationException(application.hasRequiredFiles()
-                        ? PlaceRegistrationErrorCode.INVALID_STATE : PlaceRegistrationErrorCode.REQUIRED_FILES_MISSING);
-            }
+            submitExistingPlaceClaim(application);
         }
         return response(application);
     }
@@ -317,7 +314,6 @@ public class MerchantPlaceApplicationService {
                 textOr(place.getPostalCode(), "UNKNOWN"), textOr(request.claimReason(), "기존 장소 소유권 신청"), now
         );
         application.updateContactPhones(normalizePhone(request.merchantContactPhone()), normalizePhone(request.merchantContactPhone()));
-        applyClaimAttachments(application, userId, request.attachments(), now);
         return application;
     }
 
@@ -336,18 +332,6 @@ public class MerchantPlaceApplicationService {
                 request.merchantDisplayName(), request.merchantContactEmail(), request.merchantDescription(),
                 normalizePhone(request.merchantContactPhone()), request.existingPlaceId(),
                 ownershipSnapshot(request), request.claimReason(), now);
-    }
-
-    private void applyClaimAttachments(PlaceRegistrationApplication application, Long userId,
-                                       List<PlaceRegistrationAttachmentRequest> requests, LocalDateTime now) {
-        List<PlaceRegistrationAttachment> attachments = requests == null ? List.of() : requests.stream()
-                .map(request -> PlaceRegistrationAttachment.create(application, request.fileId(), request.documentType(),
-                        request.storageKey(), request.originalFilename(), request.contentType(), request.fileSize(),
-                        request.fileHash(), userId, now,
-                        request.retentionDays() == null ? null : now.plusDays(request.retentionDays()),
-                        request.resolvedDisplayOrder()))
-                .toList();
-        application.replaceAttachments(attachments, now);
     }
 
     private void prepareMerchantVerification(PlaceRegistrationApplication application, LocalDateTime now) {
@@ -448,6 +432,43 @@ public class MerchantPlaceApplicationService {
                 || application.getEncryptedBusinessRegistrationNumber() == null || application.getMerchantDisplayName() == null
                 || application.getMerchantContactEmail() == null || application.getMerchantContactPhone() == null) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
+        }
+    }
+
+    private void submitExistingPlaceClaim(PlaceRegistrationApplication application) {
+        Long placeId = application.getExistingPlaceId();
+        placeRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND));
+        MerchantOwnerPlace currentOwner = ownerPlaceRepository.findByPlaceIdForUpdate(placeId).orElse(null);
+        Long currentOwnerUserId = currentOwner == null ? null : currentOwner.getMerchantOwnerUserId();
+        if (Objects.equals(currentOwnerUserId, application.getApplicantUserId())) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.DUPLICATE_PLACE);
+        }
+        if (applicationRepository.existsByExistingPlaceIdAndApplicationTypeAndStatus(
+                placeId,
+                MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM,
+                PlaceRegistrationStatus.PENDING
+        )) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.DUPLICATE_PLACE);
+        }
+        LocalDateTime now = now();
+        application.refreshClaimOwnershipSnapshot(currentOwnerUserId, now);
+        try {
+            application.submit(now);
+        } catch (IllegalStateException exception) {
+            throw new PlaceRegistrationException(application.hasRequiredFiles(now)
+                    ? PlaceRegistrationErrorCode.INVALID_STATE : PlaceRegistrationErrorCode.REQUIRED_FILES_MISSING);
+        }
+        try {
+            applicationRepository.flush();
+        } catch (DataIntegrityViolationException exception) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.DUPLICATE_PLACE);
+        }
+    }
+
+    private void rejectClientClaimAttachments(MerchantPlaceApplicationRequest request) {
+        if (request.attachments() != null && !request.attachments().isEmpty()) {
+            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
         }
     }
 

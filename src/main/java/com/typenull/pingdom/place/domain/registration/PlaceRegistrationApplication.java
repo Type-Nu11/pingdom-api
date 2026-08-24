@@ -349,8 +349,22 @@ public class PlaceRegistrationApplication {
         submit(now, null);
     }
 
+    /**
+     * Claim 제출 직전에 현재 소유자를 다시 기록합니다.
+     * 심사 시점에는 이 값과 잠금으로 읽은 실제 소유자를 비교해 중간 소유권 변경을 차단합니다.
+     */
+    public void refreshClaimOwnershipSnapshot(Long previousOwnerUserId, LocalDateTime now) {
+        if (status != PlaceRegistrationStatus.DRAFT
+                || applicationType != MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM
+                || existingPlaceId == null) {
+            throw new IllegalStateException("기존 장소 소유권 신청 초안만 소유자 스냅샷을 갱신할 수 있습니다.");
+        }
+        this.previousOwnerUserId = previousOwnerUserId;
+        this.updatedAt = now;
+    }
+
     public void submit(LocalDateTime now, String contentHash) {
-        if (status != PlaceRegistrationStatus.DRAFT || !hasRequiredFiles()) {
+        if (status != PlaceRegistrationStatus.DRAFT || !hasRequiredFiles(now)) {
             throw new IllegalStateException("필수 장소 정보와 파일이 있는 초안만 제출할 수 있습니다.");
         }
         status = PlaceRegistrationStatus.PENDING;
@@ -421,8 +435,12 @@ public class PlaceRegistrationApplication {
     }
 
     public boolean hasRequiredFiles() {
+        return hasRequiredFiles(null);
+    }
+
+    public boolean hasRequiredFiles(LocalDateTime now) {
         if (!attachments.isEmpty()) {
-            return hasRequiredAttachments();
+            return hasRequiredAttachments(now);
         }
         return businessRegistrationFileId != null && !businessRegistrationFileId.isBlank()
                 && identityDocumentFileId != null && !identityDocumentFileId.isBlank()
@@ -430,11 +448,18 @@ public class PlaceRegistrationApplication {
     }
 
     public boolean hasRequiredAttachments() {
+        return hasRequiredAttachments(null);
+    }
+
+    public boolean hasRequiredAttachments(LocalDateTime now) {
         long businessRegistrationCount = attachments.stream().filter(PlaceRegistrationAttachment::isActive)
+                .filter(attachment -> now == null || !attachment.isRetentionExpired(now))
                 .filter(attachment -> attachment.getDocumentType() == PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION).count();
         long identityDocumentCount = attachments.stream().filter(PlaceRegistrationAttachment::isActive)
+                .filter(attachment -> now == null || !attachment.isRetentionExpired(now))
                 .filter(attachment -> attachment.getDocumentType() == PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT).count();
         long representativeImageCount = attachments.stream().filter(PlaceRegistrationAttachment::isActive)
+                .filter(attachment -> now == null || !attachment.isRetentionExpired(now))
                 .filter(attachment -> attachment.getDocumentType() == PlaceRegistrationAttachmentType.REPRESENTATIVE_IMAGE).count();
         return businessRegistrationCount == 1 && identityDocumentCount == 1 && representativeImageCount >= 1;
     }
