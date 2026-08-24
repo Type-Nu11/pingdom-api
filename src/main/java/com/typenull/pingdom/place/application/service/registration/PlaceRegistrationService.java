@@ -8,6 +8,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMemberReposi
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
+import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationAttachmentRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationRequest;
@@ -68,6 +69,7 @@ public class PlaceRegistrationService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final MerchantPlaceMemberRepository memberRepository;
     private final UserRepository userRepository;
+    private final UserAccessStatusService userAccessStatusService;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
@@ -215,6 +217,7 @@ public class PlaceRegistrationService {
         try { profile.approve(a.getReviewerUserId(), now); user.activateMerchantOwnerRole(); } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.MERCHANT_PROFILE_REQUIRED);
         }
+        userAccessStatusService.evict(userId);
         MapPlace place = placeRepository.save(MapPlace.builder().name(a.getPlaceName()).address(a.getRoadAddress())
                 .roadAddress(a.getRoadAddress()).jibunAddress(a.getJibunAddress()).postalCode(a.getPostalCode())
                 .category(a.getCategory().name()).latitude(a.getLatitude()).longitude(a.getLongitude())
