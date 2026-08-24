@@ -121,6 +121,13 @@ public class PlaceRegistrationAttachment {
         return retentionExpiresAt != null && !retentionExpiresAt.isAfter(now);
     }
 
+    public void changeDisplayOrder(int displayOrder) {
+        if (documentType != PlaceRegistrationAttachmentType.REPRESENTATIVE_IMAGE || displayOrder < 0) {
+            throw new IllegalArgumentException("대표 이미지의 0 이상 정렬 순서만 변경할 수 있습니다.");
+        }
+        this.displayOrder = displayOrder;
+    }
+
     private static String requireText(String value, String message) {
         String normalized = trimToNull(value);
         if (normalized == null) {
