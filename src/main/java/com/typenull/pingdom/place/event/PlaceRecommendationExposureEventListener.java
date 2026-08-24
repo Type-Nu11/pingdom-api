@@ -20,7 +20,17 @@ public class PlaceRecommendationExposureEventListener {
 
     @TransactionalEventListener(phase = TransactionPhase.AFTER_COMMIT)
     public void handle(PlaceRecommendationExposureRecordRequestedEvent event) {
-        outboxExecutor.execute(() -> recordExposuresSafely(event));
+        try {
+            outboxExecutor.execute(() -> recordExposuresSafely(event));
+        } catch (RuntimeException exception) {
+            log.error(
+                    "추천 노출 로그 비동기 작업 제출에 실패했습니다. requestId={}, recommendationVersion={}, placeCount={}",
+                    event.requestId(),
+                    event.recommendationVersion(),
+                    event.placeIds().size(),
+                    exception
+            );
+        }
     }
 
     private void recordExposuresSafely(PlaceRecommendationExposureRecordRequestedEvent event) {

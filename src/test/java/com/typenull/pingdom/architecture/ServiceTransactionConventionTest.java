@@ -6,6 +6,9 @@ import static org.junit.jupiter.api.Assertions.assertTrue;
 import com.typenull.pingdom.engagement.application.service.ReportPolicyService;
 import com.typenull.pingdom.moderation.application.query.notification.AdminNotificationQueryService;
 import com.typenull.pingdom.moderation.application.service.notification.AdminNotificationCommandService;
+import com.typenull.pingdom.place.application.service.recommendation.feature.PlaceRecommendationFeatureLogService;
+import com.typenull.pingdom.place.application.service.recommendation.query.PlaceRecommendationQueryServiceImpl;
+import com.typenull.pingdom.place.support.PlaceRecommendationProperties.RecommendationStage;
 import java.lang.reflect.Method;
 import java.lang.reflect.Modifier;
 import java.util.ArrayList;
@@ -25,14 +28,15 @@ import org.springframework.transaction.annotation.Transactional;
 class ServiceTransactionConventionTest {
 
     private static final String BASE_PACKAGE = "com.typenull.pingdom";
+    private static final String APPLICATION_QUERY_PACKAGE = ".application.query.";
 
     @Test
-    @DisplayName("Repository를 사용하는 Query Service는 조회 전용 트랜잭션을 사용한다")
+    @DisplayName("Repository를 직접 보유한 application.query Service는 조회 전용 트랜잭션을 사용한다")
     void repositoryQueryServicesUseReadOnlyTransactions() throws ClassNotFoundException {
         List<String> violations = new ArrayList<>();
 
         for (Class<?> service : serviceClasses()) {
-            if (!isRepositoryQueryService(service)) {
+            if (!isRepositoryBackedApplicationQueryService(service)) {
                 continue;
             }
 
@@ -76,6 +80,30 @@ class ServiceTransactionConventionTest {
         assertThat(commandMethods).containsExactlyInAnyOrder("markAsRead", "markAllAsRead");
     }
 
+    @Test
+    @DisplayName("추천 응답과 관측 기록 유스케이스는 명시적 쓰기 트랜잭션 예외로 둔다")
+    void recommendationObservationUseCaseUsesWriteTransaction() throws NoSuchMethodException {
+        assertWriteTransaction(
+                PlaceRecommendationQueryServiceImpl.class,
+                "recommendAndRecordObservations",
+                Long.class,
+                double.class,
+                double.class,
+                int.class,
+                double.class,
+                String.class
+        );
+        assertWriteTransaction(
+                PlaceRecommendationFeatureLogService.class,
+                "recordShownCandidates",
+                String.class,
+                Long.class,
+                String.class,
+                RecommendationStage.class,
+                List.class
+        );
+    }
+
     private List<Class<?>> serviceClasses() throws ClassNotFoundException {
         ClassPathScanningCandidateComponentProvider scanner =
                 new ClassPathScanningCandidateComponentProvider(false);
@@ -88,8 +116,8 @@ class ServiceTransactionConventionTest {
         return services;
     }
 
-    private boolean isRepositoryQueryService(Class<?> service) {
-        if (!service.getPackageName().contains(".application.query.")) {
+    private boolean isRepositoryBackedApplicationQueryService(Class<?> service) {
+        if (!service.getPackageName().contains(APPLICATION_QUERY_PACKAGE)) {
             return false;
         }
         return Arrays.stream(service.getDeclaredFields())
@@ -113,6 +141,19 @@ class ServiceTransactionConventionTest {
                 .isNotNull();
         assertThat(transactional.readOnly())
                 .as("%s의 readOnly", service.getSimpleName())
+                .isFalse();
+    }
+
+    private void assertWriteTransaction(Class<?> service, String methodName, Class<?>... parameterTypes)
+            throws NoSuchMethodException {
+        Method method = service.getDeclaredMethod(methodName, parameterTypes);
+        Transactional transactional = effectiveTransaction(service, method);
+
+        assertThat(transactional)
+                .as("%s.%s의 transaction", service.getSimpleName(), methodName)
+                .isNotNull();
+        assertThat(transactional.readOnly())
+                .as("%s.%s의 readOnly", service.getSimpleName(), methodName)
                 .isFalse();
     }
 }

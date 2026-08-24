@@ -3,7 +3,7 @@ package com.typenull.pingdom.place.application.service.recommendation.query;
 import com.typenull.pingdom.place.api.dto.recommendation.PlaceRecommendationResponse;
 
 public interface PlaceRecommendationQueryService {
-    PlaceRecommendationResponse recommendPlaces(
+    PlaceRecommendationResponse recommendAndRecordObservations(
             Long userId,
             double latitude,
             double longitude,
