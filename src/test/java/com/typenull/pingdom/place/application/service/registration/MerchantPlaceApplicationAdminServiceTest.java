@@ -31,6 +31,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.Mercha
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -58,6 +59,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     @Mock private MerchantPlaceMemberRepository memberRepository;
     @Mock private MerchantPlaceInvitationRepository invitationRepository;
     @Mock private UserRepository userRepository;
+    @Mock private UserAccessStatusService userAccessStatusService;
     @Mock private MerchantVerificationCipher verificationCipher;
     @Mock private AdminRoleAuthorizationService authorizationService;
     @Mock private AdminAuditLogService auditLogService;
@@ -311,6 +313,9 @@ class MerchantPlaceApplicationAdminServiceTest {
         inOrder.verify(application).complete(eq(30L), org.mockito.ArgumentMatchers.any());
         inOrder.verify(touristOfferRepository).closeAllByMerchantOwnerUserIdAndPlaceIdIn(
                 eq(20L), eq(java.util.Set.of(30L)), org.mockito.ArgumentMatchers.any());
+        org.mockito.InOrder roleActivationOrder = org.mockito.Mockito.inOrder(applicant, userAccessStatusService);
+        roleActivationOrder.verify(applicant).activateMerchantOwnerRole();
+        roleActivationOrder.verify(userAccessStatusService).evict(10L);
     }
 
     private PlaceRegistrationApplication application(Long id) {
