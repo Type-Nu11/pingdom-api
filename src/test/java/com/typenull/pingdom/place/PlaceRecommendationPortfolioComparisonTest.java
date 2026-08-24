@@ -182,7 +182,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             int limit,
             double radiusKm
     ) {
-        PlaceRecommendationResponse response = placeRecommendationQueryService.recommendPlaces(
+        PlaceRecommendationResponse response = placeRecommendationQueryService.recommendAndRecordObservations(
                 userId,
                 latitude,
                 longitude,

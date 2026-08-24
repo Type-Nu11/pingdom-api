@@ -46,10 +46,13 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.anyDouble;
 import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.ArgumentMatchers.argThat;
+import static org.mockito.Mockito.doThrow;
+import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.timeout;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -236,7 +239,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     @Test
-    void recommendPlaces는_노출_로그_기록_이벤트를_발행한다() {
+    void recommendAndRecordObservations는_노출_로그_기록_이벤트를_발행한다() {
         Long userId = 7L;
         MapPlace candidate = createPlace(201L, "candidate", 35.1800d, 128.1070d);
 
@@ -268,7 +271,7 @@ class PlaceRecommendationQueryServiceImplTest {
                         null
                 ));
 
-        placeRecommendationQueryService.recommendPlaces(userId, 35.1800d, 128.1070d, 1, 5.0d, null);
+        placeRecommendationQueryService.recommendAndRecordObservations(userId, 35.1800d, 128.1070d, 1, 5.0d, null);
 
         verify(eventPublisher, timeout(1000)).publishEvent(argThat((Object event) -> {
             if (!(event instanceof PlaceRecommendationExposureRecordRequestedEvent exposureEvent)) {
@@ -281,7 +284,28 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     @Test
-    void recommendPlaces는_Boost_적용_여부를_응답한다() {
+    void recommendAndRecordObservations는_feature_log_저장_실패를_요청_실패로_전파한다() {
+        MapPlace candidate = createPlace(225L, "feature-log", 35.1800d, 128.1070d);
+        when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
+                anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
+                any(PlaceOperatingStatus.class), any(PlaceDiscoveryStatus.class), any(Pageable.class)
+        )).thenReturn(List.of(candidate));
+        when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
+                .thenReturn(stablePolicy(true));
+        doThrow(new IllegalStateException("feature log persistence failed"))
+                .when(placeRecommendationFeatureLogService)
+                .recordShownCandidates(any(), any(), any(), any(), any());
+
+        assertThatThrownBy(() -> placeRecommendationQueryService.recommendAndRecordObservations(
+                null, 35.1800d, 128.1070d, 1, 5.0d, null
+        )).isInstanceOf(IllegalStateException.class)
+                .hasMessage("feature log persistence failed");
+
+        verify(eventPublisher, never()).publishEvent(any());
+    }
+
+    @Test
+    void recommendAndRecordObservations는_Boost_적용_여부를_응답한다() {
         MapPlace candidate = createPlace(250L, "boosted", 35.1800d, 128.1070d);
         when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
@@ -296,7 +320,7 @@ class PlaceRecommendationQueryServiceImplTest {
                     Set.of(candidate.getId()));
         });
 
-        var response = placeRecommendationQueryService.recommendPlaces(
+        var response = placeRecommendationQueryService.recommendAndRecordObservations(
                 null, 35.1800d, 128.1070d, 1, 5.0d, null);
 
         assertThat(response.places()).singleElement().satisfies(place -> {
@@ -306,7 +330,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     @Test
-    void recommendPlaces는_현재_영업중인_후보를_영업외_후보보다_우선한다() {
+    void recommendAndRecordObservations는_현재_영업중인_후보를_영업외_후보보다_우선한다() {
         MapPlace closedCandidate = createPlace(301L, "closed", 35.1800d, 128.1070d);
         closedCandidate.replaceOperatingSchedule(Set.of(
                 PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))
@@ -330,7 +354,7 @@ class PlaceRecommendationQueryServiceImplTest {
         when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
                 .thenReturn(stablePolicy(true));
 
-        var response = placeRecommendationQueryService.recommendPlaces(
+        var response = placeRecommendationQueryService.recommendAndRecordObservations(
                 null,
                 35.1800d,
                 128.1070d,
@@ -360,7 +384,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     @Test
-    void recommendPlaces는_limit이_부족해도_영업중_후보를_먼저_선택한다() {
+    void recommendAndRecordObservations는_limit이_부족해도_영업중_후보를_먼저_선택한다() {
         MapPlace closedCandidate = createPlace(401L, "high-score-closed", 35.1800d, 128.1070d);
         closedCandidate.replaceOperatingSchedule(Set.of(
                 PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))
@@ -377,7 +401,7 @@ class PlaceRecommendationQueryServiceImplTest {
         when(placeRecommendationPolicyService.resolve(any(), anyDouble(), anyDouble(), any()))
                 .thenReturn(stablePolicy(false));
 
-        var response = placeRecommendationQueryService.recommendPlaces(
+        var response = placeRecommendationQueryService.recommendAndRecordObservations(
                 null, 35.1800d, 128.1070d, 1, 5.0d, null
         );
 
