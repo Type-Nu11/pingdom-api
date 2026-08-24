@@ -65,6 +65,24 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/location-check-ins/{checkInId}/evidence/file", 1L))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visitor-verification-reports"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visitor-verification-reports/{reportId}", 1L))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visitor-verification-reports/{reportId}/corrections", 1L))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void visitorVerificationListValidationReturnsStableErrorCode() throws Exception {
+        User tourist = userRepository.saveAndFlush(user("reportValidationTourist", UserRole.USER));
+
+        mockMvc.perform(get("/visitor-verification-reports")
+                        .param("page", "0")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors").isNotEmpty());
     }
 
     @Test
