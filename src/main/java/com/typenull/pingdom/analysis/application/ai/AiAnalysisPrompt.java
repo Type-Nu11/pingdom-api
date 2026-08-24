@@ -4,6 +4,10 @@ import java.time.LocalDate;
 
 public record AiAnalysisPrompt(
         String content,
-        LocalDate analysisBasisDate
+        LocalDate analysisBasisDate,
+        String requestedRegion
 ) {
+    public AiAnalysisPrompt(String content, LocalDate analysisBasisDate) {
+        this(content, analysisBasisDate, null);
+    }
 }

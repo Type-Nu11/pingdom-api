@@ -16,7 +16,6 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
-import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import javax.imageio.ImageIO;
@@ -160,16 +159,8 @@ class MapPostUploadControllerTest {
     }
 
     @Test
-    void uploadPostRejectsCoordinateBasedPlaceCreationWithoutApproval() throws Exception {
-        givenSuccessfulImageUpload(
-                "map/test-key-pin.jpg",
-                "https://example.com/test-key-pin.jpg",
-                "map/thumbnails/test-key-pin-thumbnail.jpg",
-                "https://example.com/test-key-pin-thumbnail.jpg"
-        );
-
+    void uploadPostRejectsCoordinateOnlyPayload() throws Exception {
         String accessToken = signupAndLogin("writer-pin-01");
-        String coordinateToken = createCoordinateToken(accessToken, null, 35.1804, 128.1081);
         MockMultipartFile file = imageFile("post.jpg");
 
         mockMvc.perform(multipart("/map/posts")
@@ -179,29 +170,11 @@ class MapPostUploadControllerTest {
                         .param("placeName", "핀 좌표 생성 장소")
                         .param("address", "경상남도 진주시 핀좌표로 10")
                         .param("category", "풍경")
-                        .param("coordinateToken", coordinateToken)
+                        .param("coordinateToken", "removed-coordinate-token")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
-
-        assertEquals(0L, mapPlaceRepository.count());
-        assertEquals(0L, mapImageRepository.count());
-    }
-
-    @Test
-    void uploadPostLegacyRouteIsNotMappedForCoordinateBasedRequest() throws Exception {
-        String accessToken = signupAndLogin("writer-pin-legacy-01");
-        String coordinateToken = createCoordinateToken(accessToken, null, 35.1805, 128.1082);
-
-        mockMvc.perform(multipart("/map/post/create")
-                        .file(imageFile("legacy-pin-post.jpg"))
-                        .param("title", "레거시 좌표 게시글")
-                        .param("placeName", "레거시 좌표 장소")
-                        .param("address", "경상남도 진주시 레거시좌표로 10")
-                        .param("category", "풍경")
-                        .param("coordinateToken", coordinateToken)
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isNotFound());
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.validPlace")
+                        .value("장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다."));
 
         assertEquals(0L, mapPlaceRepository.count());
         assertEquals(0L, mapImageRepository.count());
@@ -236,12 +209,12 @@ class MapPostUploadControllerTest {
                 "image-bytes".getBytes()
         );
 
-                mockMvc.perform(multipart("/map/posts")
-                                .file(file)
-                                .param("title", "카카오 장소 업로드")
-                                .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                        .andExpect(status().isBadRequest())
-                        .andExpect(jsonPath("$.errors.validPlace").value("장소 ID, 카카오 장소 ID 또는 좌표 기반 장소 정보는 필수입니다."));
+        mockMvc.perform(multipart("/map/posts")
+                        .file(file)
+                        .param("title", "카카오 장소 업로드")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.validPlace").value("장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다."));
     }
 
     @Test
@@ -465,26 +438,6 @@ class MapPostUploadControllerTest {
 
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
-                .textValue();
-    }
-
-    private String createCoordinateToken(String accessToken, String kakaoPlaceId, double latitude, double longitude) throws Exception {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("baseLatitude", latitude);
-        payload.put("baseLongitude", longitude);
-        if (kakaoPlaceId != null) {
-            payload.put("kakaoPlaceId", kakaoPlaceId);
-        }
-
-        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(org.springframework.http.MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
-                .get("coordinateToken")
                 .textValue();
     }
 

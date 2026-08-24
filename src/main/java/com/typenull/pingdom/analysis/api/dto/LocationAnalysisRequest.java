@@ -3,6 +3,9 @@ package com.typenull.pingdom.analysis.api.dto;
 import com.fasterxml.jackson.annotation.JsonAnySetter;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.validation.constraints.NotBlank;
+import jakarta.validation.constraints.Email;
+import jakarta.validation.constraints.NotNull;
+import jakarta.validation.constraints.AssertTrue;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Collections;
 import java.util.LinkedHashMap;
@@ -19,11 +22,21 @@ public class LocationAnalysisRequest {
     @NotBlank(message = "가게 업종은 필수입니다.")
     private String category;
 
-    @Schema(description = "주요 고객층", example = "20~30대 직장인")
+    @Schema(description = "주요 고객층(연령·성별)", example = "20~30대 여성")
     private String targetCustomerGroup;
 
     @Schema(description = "주요 영업 시간대", example = "평일 09:00~22:00")
     private String operatingHours;
+
+    @Schema(description = "보고서 보관을 위한 이메일", example = "owner@example.com", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotBlank(message = "이메일은 필수입니다.")
+    @Email(message = "이메일 형식이 올바르지 않습니다.")
+    private String email;
+
+    @Schema(description = "개인정보 수집·이용 동의 여부", example = "true", requiredMode = Schema.RequiredMode.REQUIRED)
+    @NotNull(message = "개인정보 동의 여부는 필수입니다.")
+    @AssertTrue(message = "보고서 보관을 위해 개인정보 수집·이용에 동의해야 합니다.")
+    private Boolean privacyConsent;
 
     @JsonIgnore
     private final Map<String, Object> additionalCriteria = new LinkedHashMap<>();
@@ -58,6 +71,22 @@ public class LocationAnalysisRequest {
 
     public void setOperatingHours(String operatingHours) {
         this.operatingHours = operatingHours;
+    }
+
+    public String getEmail() {
+        return email;
+    }
+
+    public void setEmail(String email) {
+        this.email = email;
+    }
+
+    public Boolean getPrivacyConsent() {
+        return privacyConsent;
+    }
+
+    public void setPrivacyConsent(Boolean privacyConsent) {
+        this.privacyConsent = privacyConsent;
     }
 
     @JsonAnySetter

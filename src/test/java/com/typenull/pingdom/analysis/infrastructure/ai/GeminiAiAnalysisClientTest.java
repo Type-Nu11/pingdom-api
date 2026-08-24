@@ -15,6 +15,8 @@ import java.time.Duration;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
+import java.util.concurrent.atomic.AtomicInteger;
+import java.util.concurrent.atomic.AtomicReference;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -73,6 +75,7 @@ class GeminiAiAnalysisClientTest {
                 "gemini", "http://gemini.test/v1beta", null, "test-key",
                 Duration.ofSeconds(1), Duration.ofSeconds(2)
         );
+        AtomicReference<Map<String, Object>> calledArguments = new AtomicReference<>();
         McpAnalysisClient mcpClient = new McpAnalysisClient() {
             @Override
             public List<McpTool> listTools() {
@@ -83,6 +86,7 @@ class GeminiAiAnalysisClientTest {
 
             @Override
             public McpToolResult callTool(String name, Map<String, Object> arguments) {
+                calledArguments.set(arguments);
                 return new McpToolResult(name, "{\"recommendations\":[]}", false);
             }
         };
@@ -91,10 +95,11 @@ class GeminiAiAnalysisClientTest {
         );
 
         AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18)
+                "prompt", LocalDate.of(2026, 8, 18), "대구광역시 북구 서변동"
         ));
 
         assertThat(response.reportName()).isEqualTo("입지 분석");
+        assertThat(calledArguments.get()).containsEntry("region", "대구광역시 북구 서변동");
         server.verify();
     }
 
@@ -102,7 +107,7 @@ class GeminiAiAnalysisClientTest {
     void requestsFinalJsonWithoutToolsWhenToolCallLimitIsReached() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        for (int i = 0; i < 7; i++) {
+        for (int i = 0; i < 2; i++) {
             server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
                     .andRespond(withSuccess(toolCallResponse(), MediaType.APPLICATION_JSON));
         }
@@ -113,6 +118,7 @@ class GeminiAiAnalysisClientTest {
                 "gemini", "http://gemini.test/v1beta", null, "test-key",
                 Duration.ofSeconds(1), Duration.ofSeconds(2)
         );
+        AtomicInteger toolCalls = new AtomicInteger();
         McpAnalysisClient mcpClient = new McpAnalysisClient() {
             @Override
             public List<McpTool> listTools() {
@@ -123,6 +129,7 @@ class GeminiAiAnalysisClientTest {
 
             @Override
             public McpToolResult callTool(String name, Map<String, Object> arguments) {
+                toolCalls.incrementAndGet();
                 return new McpToolResult(name, "{\"recommendations\":[]}", false);
             }
         };
@@ -135,6 +142,7 @@ class GeminiAiAnalysisClientTest {
         ));
 
         assertThat(response.reportName()).isEqualTo("입지 분석");
+        assertThat(toolCalls).hasValue(1);
         server.verify();
     }
 

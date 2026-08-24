@@ -40,10 +40,12 @@ public class LocationAnalysisReportService {
     }
 
     public LocationAnalysisPdf generate(LocationAnalysisRequest request) {
+        long startedAt = System.nanoTime();
         LocalDate analysisBasisDate = LocalDate.now(clock);
         AiAnalysisResponse aiResponse = aiAnalysisClient.analyze(
                 promptFactory.create(request, analysisBasisDate)
         );
+        long aiCompletedAt = System.nanoTime();
         if (aiResponse.hasHtmlReport()) {
             responseValidator.validateHtml(aiResponse);
         } else {
@@ -51,21 +53,47 @@ public class LocationAnalysisReportService {
         }
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
+        LocalDate effectiveAnalysisBasisDate = aiResponse.analysisBasisDate() == null
+                ? analysisBasisDate : aiResponse.analysisBasisDate();
         String html = aiResponse.hasHtmlReport()
                 ? aiResponse.htmlReport()
                 : htmlComposer.compose(
                         reportId,
                         aiResponse.reportName(),
                         publishedDate,
-                        aiResponse.analysisBasisDate(),
+                        effectiveAnalysisBasisDate,
                         aiResponse.content()
                 );
-        log.info("입지 분석 PDF 변환 전 HTML 원본입니다. reportId={}\n{}", reportId, html);
         byte[] pdf = htmlToPdfConverter.convert(html);
-        return new LocationAnalysisPdf(pdf, reportId, aiResponse.reportName());
+        long completedAt = System.nanoTime();
+        log.info(
+                "입지 분석 보고서 생성 완료. reportId={}, aiMs={}, pdfMs={}, htmlLength={}, pdfBytes={}",
+                reportId,
+                elapsedMillis(startedAt, aiCompletedAt),
+                elapsedMillis(aiCompletedAt, completedAt),
+                html.length(),
+                pdf.length
+        );
+        return new LocationAnalysisPdf(
+                pdf, reportId, aiResponse.reportName(), html, publishedDate, effectiveAnalysisBasisDate
+        );
     }
 
-    public record LocationAnalysisPdf(byte[] content, String reportId, String reportName) {
+    private long elapsedMillis(long startedAt, long completedAt) {
+        return (completedAt - startedAt) / 1_000_000;
+    }
+
+    public record LocationAnalysisPdf(
+            byte[] content,
+            String reportId,
+            String reportName,
+            String html,
+            LocalDate publishedDate,
+            LocalDate analysisBasisDate
+    ) {
+        public LocationAnalysisPdf(byte[] content, String reportId, String reportName) {
+            this(content, reportId, reportName, null, null, null);
+        }
     }
 
 }

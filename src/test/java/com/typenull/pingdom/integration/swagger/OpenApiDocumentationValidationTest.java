@@ -5,12 +5,10 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapP
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteItem;
-import com.typenull.pingdom.place.api.dto.place.create.PlaceCreateResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
-import com.typenull.pingdom.place.api.dto.place.upload.PlaceUploadRequest;
 import com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicy;
 
 import static org.assertj.core.api.Assertions.assertThat;
@@ -139,18 +137,6 @@ class OpenApiDocumentationValidationTest {
             assertGroupedDocumentContainsOnlyTag(groupDocument, group.getValue(), group.getKey());
             assertAllTaggedOperationsAreIncluded(allDocument, groupDocument, group.getValue(), group.getKey());
         }
-    }
-
-    @Test
-    void defaultDocumentationExcludesAmbiguousLegacyAdminClaimDetailOperation() throws Exception {
-        JsonNode document = readApiDocs("/v3/api-docs");
-
-        assertThat(document.path("paths")
-                .path("/admin/place-registration-applications/{id}")
-                .has("get")).isTrue();
-        assertThat(document.path("paths")
-                .path("/admin/place-registration-applications/{claimId}")
-                .has("get")).isFalse();
     }
 
     @Test
@@ -442,9 +428,21 @@ class OpenApiDocumentationValidationTest {
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
         assertThat(appDocument.path("paths").has("/users/me/place-registration-applications")).isTrue();
-        assertThat(appDocument.path("paths").has("/places/coordinates")).isTrue();
-        assertThat(appDocument.path("paths").has("/places/upload")).isTrue();
+        assertThat(appDocument.path("paths").has("/places/coordinates")).isFalse();
+        assertThat(appDocument.path("paths").has("/places/upload")).isFalse();
         assertThat(appDocument.path("paths").path("/map/posts").has("post")).isTrue();
+        assertThat(appDocument.path("paths").has("/map/posts/me")).isFalse();
+        assertThat(appDocument.path("paths").path("/map/posts/{id}").has("get")).isFalse();
+
+        JsonNode postUploadProperties = appDocument.path("components").path("schemas")
+                .path("PostUploadRequest").path("properties");
+        assertThat(postUploadProperties.has("placeId")).isTrue();
+        assertThat(postUploadProperties.has("kakaoPlaceId")).isTrue();
+        for (String removedProperty : List.of("placeName", "address", "category", "coordinateToken")) {
+            assertThat(postUploadProperties.has(removedProperty))
+                    .as("제거된 게시글 업로드 필드: %s", removedProperty)
+                    .isFalse();
+        }
 
         for (String path : List.of(
                 "/users/me/merchant-owner-profile",
@@ -471,6 +469,38 @@ class OpenApiDocumentationValidationTest {
         )) {
             assertThat(adminDocument.path("paths").has(path)).as("Admin 경로: %s", path).isTrue();
             assertThat(merchantDocument.path("paths").has(path)).as("Merchant에 노출되지 않아야 함: %s", path).isFalse();
+        }
+    }
+
+    @Test
+    void removedLegacyApiDocumentationDoesNotAppear() throws Exception {
+        JsonNode defaultDocument = readApiDocs("/v3/api-docs");
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
+
+        for (String hiddenPath : List.of(
+                "/place/recommendations",
+                "/place/recommendations/click",
+                "/place/recommendations/{requestId}/explanation"
+        )) {
+            assertThat(defaultDocument.path("paths").has(hiddenPath))
+                    .as("기존 추천 호환 경로는 OpenAPI에서 숨겨져야 함: %s", hiddenPath)
+                    .isFalse();
+        }
+
+        assertThat(appDocument.path("paths").path("/map/like").has("get")).isFalse();
+        assertThat(appDocument.path("paths").path("/map/like").has("post")).isTrue();
+        assertThat(appDocument.path("paths").path("/map/like/{postId}").has("delete")).isTrue();
+        assertThat(appDocument.path("paths").path("/map/likes").has("get")).isTrue();
+        assertThat(defaultDocument.path("paths").has("/auth/google")).isFalse();
+        assertThat(adminDocument.path("paths").has("/admin/ad")).isFalse();
+        assertThat(parameter(adminDocument.at("/paths/~1admin~1notifications/get"), "userId")
+                .isMissingNode()).isTrue();
+
+        JsonNode bannedUsersOperation = adminDocument.at("/paths/~1admin~1users~1banned/get");
+        for (String legacyParameterName : List.of("bannedFrom", "bannedTo")) {
+            JsonNode legacyParameter = parameter(bannedUsersOperation, legacyParameterName);
+            assertThat(legacyParameter.isMissingNode()).isTrue();
         }
     }
 

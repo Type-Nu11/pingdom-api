@@ -39,7 +39,7 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 | 단건 조회 | `/place/{placeId}`, `/map/posts/{postId}`, `/admin/places/{placeId}` |
 | 내 resource | `/users/me`, `/users/me/export`, `/users/me/oauth-accounts/google` |
 | 개인정보 처리 | `DELETE /users/me`, `GET /admin/privacy-processing-histories` |
-| 하위 resource | `/admin/reports/reported-users/{userId}`, `/place/recommendations/{requestId}/explanation` |
+| 하위 resource | `/admin/reports/reported-users/{userId}`, `/places/recommendations/{requestId}/explanation` |
 
 ## resource naming 규칙
 
@@ -120,10 +120,12 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 2. Swagger 및 문서에 deprecate 표기
 3. 클라이언트 전환 완료 후 구버전 제거
 
-## v1 레거시 예외
+## 레거시 제거 후보 판단 제외
 
-현재 유지하는 레거시 경로는 별도 호환 필요성이 확인된 항목으로 제한한다. 이미 대체 계약으로 전환된 게시글 생성·수정·삭제와 FCM 토큰 갱신 경로는 runtime에서 제거했으므로 신규 endpoint에서 복제하지 않는다.
+다음 항목은 V1 기원, `LEGACY` 문자열, 또는 유사한 path 형태만으로 삭제 후보로 분류하지
+않는다. 삭제하려면 별도의 대체 계약과 호출자·데이터 전환 근거가 필요하다.
 
-- `/admin/ad`
-
-신규 endpoint에서는 위 패턴을 그대로 복제하지 않고, 가능하면 복수형 resource와 HTTP Method 중심으로 설계한다.
+- `POST`·`DELETE /map/like`, `GET /map/bookmarks`, 대체 계약이 없는 `DELETE /places/{id}`
+- 내부 maintenance API
+- 신고 ID 단건 심사와 post ID 기준 일괄 심사처럼 목적이 다른 API
+- `place-rec-v1`, `GeocodingSource.LEGACY`, 암호문 `v1:` prefix 등 현행 정책 또는 역사 데이터 표식

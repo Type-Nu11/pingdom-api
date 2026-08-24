@@ -999,76 +999,20 @@ class PlaceControllerTest {
     }
 
     @Test
-    void uploadPlaceRequiresApprovedRegistration() throws Exception {
-        String accessToken = signupAndLogin("placeUploader01");
-        String coordinateToken = createCoordinateToken(accessToken, "27414316", 35.1801, 128.1078);
+    void removedDirectPlaceCreationRoutesAreNotMappedAndNumericPathRejectsUnsupportedMethod() throws Exception {
+        String accessToken = signupAndLogin("removedDirectPlaceCreation");
+
+        mockMvc.perform(post("/places/coordinates")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "kakaoPlaceId", "27414316",
-                                "name", "이미지 포함 장소",
-                                "address", "경상남도 진주시 이미지로 1",
-                                "category", "카페",
-                                "imageUrl", "https://example.com/images/place-upload.jpg",
-                                "coordinateToken", coordinateToken
-                ))))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
-        assertTrue(mapPlaceRepository.findByKakaoPlaceId("27414316").isEmpty());
-        assertTrue(meterRegistry.find("pingdom.api.legacy.requests")
-                .tag("method", "POST")
-                .tag("path", "/places/upload")
-                .counter()
-                .count() >= 1.0d);
-    }
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
 
-    @Test
-    void uploadPlaceDoesNotCreateTouristInformationBeforeApproval() throws Exception {
-        String accessToken = signupAndLogin("placeTourist" + Long.toUnsignedString(System.nanoTime()));
-        String coordinateToken = createCoordinateToken(accessToken, "27414320", 35.1805, 128.1082);
-
-        mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.ofEntries(
-                                Map.entry("kakaoPlaceId", "27414320"),
-                                Map.entry("name", "관광 정보 장소"),
-                                Map.entry("address", "경상남도 진주시 관광로 1"),
-                                Map.entry("roadAddress", "경상남도 진주시 관광로 1"),
-                                Map.entry("jibunAddress", "경상남도 진주시 관광동 10"),
-                                Map.entry("postalCode", "52692"),
-                                Map.entry("category", "관광"),
-                                Map.entry("englishName", "  Jinju Tourist Place  "),
-                                Map.entry("touristSummary", "  외국인 관광객을 위한 장소 요약입니다.  "),
-                                Map.entry("touristCategories", List.of("K_POP", "EXHIBITION")),
-                                Map.entry("coordinateToken", coordinateToken)
-                        ))))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
-        assertTrue(mapPlaceRepository.findByKakaoPlaceId("27414320").isEmpty());
-    }
-
-    @Test
-    void uploadPlaceRejectsNullTouristCategoryElement() throws Exception {
-        String accessToken = signupAndLogin("placeUploaderTourist02");
-        String coordinateToken = createCoordinateToken(accessToken, "27414321", 35.1806, 128.1083);
-
-        mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "kakaoPlaceId": "27414321",
-                                  "name": "잘못된 관광 정보 장소",
-                                  "address": "경상남도 진주시 관광로 2",
-                                  "category": "관광",
-                                  "touristCategories": ["CAFE", null],
-                                  "coordinateToken": "%s"
-                                }
-                                """.formatted(coordinateToken)))
-                .andExpect(status().isBadRequest());
+        mockMvc.perform(post("/places/{id}", 1L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isMethodNotAllowed());
     }
 
     @Test
@@ -1184,71 +1128,6 @@ class PlaceControllerTest {
     }
 
     @Test
-    void createCoordinatesAllowsMissingKakaoPlaceId() throws Exception {
-        String accessToken = signupAndLogin("placeUploaderNoKakao01");
-
-        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "baseLatitude", 35.1811,
-                                "baseLongitude", 128.1081
-                        ))))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        assertNotNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("coordinateToken").textValue());
-        assertNull(objectMapper.readTree(coordinateResult.getResponse().getContentAsString()).get("kakaoPlaceId").textValue());
-        assertEquals(0L, mapPlaceRepository.count());
-        assertTrue(meterRegistry.find("pingdom.api.legacy.requests")
-                .tag("method", "POST")
-                .tag("path", "/places/coordinates")
-                .counter()
-                .count() >= 1.0d);
-    }
-
-    @Test
-    void uploadPlaceWithoutKakaoPlaceIdRequiresApprovedRegistration() throws Exception {
-        String accessToken = signupAndLogin("placeUploaderNoKakao02");
-        String coordinateToken = createCoordinateToken(accessToken, null, 35.1812, 128.1082);
-
-        mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "핀 좌표 장소",
-                                "address", "경상남도 진주시 핀좌표로 2",
-                                "category", "풍경",
-                                "imageUrl", "https://example.com/images/pin-place.jpg",
-                                "coordinateToken", coordinateToken
-                        ))))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
-        assertTrue(mapPlaceRepository.findAll().stream()
-                .noneMatch(place -> "핀 좌표 장소".equals(place.getName())));
-    }
-
-    @Test
-    void uploadPlaceCategoryNormalizationWaitsForApprovedRegistration() throws Exception {
-        String accessToken = signupAndLogin("placeUploaderCategory01");
-        String coordinateToken = createCoordinateToken(accessToken, "27414319", 35.1804, 128.1081);
-
-        mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "kakaoPlaceId", "27414319",
-                                "name", "카테고리 표준화 장소",
-                                "address", "경상남도 진주시 표준화로 1",
-                                "category", "  커피  ",
-                                "coordinateToken", coordinateToken
-                        ))))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
-        assertTrue(mapPlaceRepository.findByKakaoPlaceId("27414319").isEmpty());
-    }
-
-    @Test
     void listPlacesSearchesByStandardizedCategoryAlias() throws Exception {
         String accessToken = signupAndLogin("readerSearchCategory01");
         MapPlace matchingPlace = createMapPlace(
@@ -1267,51 +1146,6 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places.length()").value(1))
                 .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
                 .andExpect(jsonPath("$.places[0].category").value("카페"));
-    }
-
-    @Test
-    void uploadPlaceWithBlankImageUrlStillRequiresApprovedRegistration() throws Exception {
-        String accessToken = signupAndLogin("placeUploader02");
-        String coordinateToken = createCoordinateToken(accessToken, "27414317", 35.1802, 128.1079);
-
-        mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "kakaoPlaceId", "27414317",
-                                "name", "이미지 없는 장소",
-                                "address", "경상남도 진주시 이미지로 2",
-                                "category", "식당",
-                                "imageUrl", "   ",
-                                "englishName", "   ",
-                                "touristSummary", "   ",
-                                "touristCategories", List.of(),
-                                "coordinateToken", coordinateToken
-                        ))))
-                .andExpect(status().isForbidden())
-                .andExpect(jsonPath("$.code").value("PLACE_REGISTRATION_APPROVAL_REQUIRED"));
-
-        assertTrue(mapPlaceRepository.findByKakaoPlaceId("27414317").isEmpty());
-    }
-
-    @Test
-    void uploadPlaceReturnsBadRequestWhenCategoryIsBlank() throws Exception {
-        String accessToken = signupAndLogin("placeUploader03");
-        String coordinateToken = createCoordinateToken(accessToken, "27414318", 35.1803, 128.1080);
-
-        mockMvc.perform(post("/places/upload")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "kakaoPlaceId", "27414318",
-                                "name", "카테고리 없는 장소",
-                                "address", "경상남도 진주시 이미지로 3",
-                                "category", "   ",
-                                "imageUrl", "https://example.com/images/place-upload-blank-category.jpg",
-                                "coordinateToken", coordinateToken
-                        ))))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.category").value("카테고리는 필수입니다."));
     }
 
     @Test
@@ -2011,23 +1845,26 @@ class PlaceControllerTest {
     }
 
     @Test
-    void legacyRecommendationClickReturnsUnauthorizedWithoutToken() throws Exception {
+    void removedLegacyRecommendationPathsAreNotMapped() throws Exception {
+        String accessToken = signupAndLogin("removedLegacyRecommendation");
+
+        mockMvc.perform(get("/place/recommendations")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
+
         mockMvc.perform(post("/place/recommendations/click")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(java.util.Map.of(
                                 "placeId", 1L,
                                 "recommendationVersion", "place-rec-v1",
                                 "requestId", "legacy-unauthorized-test"
                         ))))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
-    }
+                .andExpect(status().isNotFound());
 
-    @Test
-    void legacyRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
-        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "legacy-unauthorized-test"))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
+        mockMvc.perform(get("/place/recommendations/{requestId}/explanation", "legacy-unauthorized-test")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2059,21 +1896,6 @@ class PlaceControllerTest {
                                 "coordinateToken", "invalid-token"
                         ))))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void publicPlaceUploadReturnsUnauthorizedWithoutToken() throws Exception {
-        mockMvc.perform(post("/places/upload")
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of(
-                                "name", "무인증 공개 장소",
-                                "address", "경상남도 진주시 테스트로 2",
-                                "category", "풍경",
-                                "imageUrl", "https://example.com/images/public-place.jpg",
-                                "coordinateToken", "invalid-token"
-                        ))))
-                .andExpect(status().isUnauthorized())
-                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
     @Test
@@ -2432,26 +2254,6 @@ class PlaceControllerTest {
 
         return objectMapper.readTree(loginResult.getResponse().getContentAsString())
                 .get("accessToken")
-                .textValue();
-    }
-
-    private String createCoordinateToken(String accessToken, String kakaoPlaceId, double latitude, double longitude) throws Exception {
-        Map<String, Object> payload = new HashMap<>();
-        payload.put("baseLatitude", latitude);
-        payload.put("baseLongitude", longitude);
-        if (kakaoPlaceId != null) {
-            payload.put("kakaoPlaceId", kakaoPlaceId);
-        }
-
-        MvcResult coordinateResult = mockMvc.perform(post("/places/coordinates")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(payload)))
-                .andExpect(status().isCreated())
-                .andReturn();
-
-        return objectMapper.readTree(coordinateResult.getResponse().getContentAsString())
-                .get("coordinateToken")
                 .textValue();
     }
 

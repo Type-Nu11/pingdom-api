@@ -8,8 +8,6 @@ import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationRes
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationUnreadCountResponse;
 import com.typenull.pingdom.moderation.application.query.notification.AdminNotificationQueryService;
 import com.typenull.pingdom.moderation.application.service.notification.AdminNotificationCommandService;
-import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
-import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -92,12 +90,6 @@ public class AdminNotificationController {
     })
     public AdminNotificationResponse listNotifications(
             @Parameter(
-                    description = "하위 호환용 수신 관리자 ID. 생략을 권장하며 인증 관리자 ID와 같아야 합니다.",
-                    example = "10",
-                    deprecated = true
-            )
-            @RequestParam(required = false) Long userId,
-            @Parameter(
                     description = "관리자 알림 유형: ADMIN_REPORT_RECEIVED, ADMIN_REPORT_PROCESSED, "
                             + "ADMIN_DUPLICATE_PLACE_DETECTED, ADMIN_USER_SANCTION",
                     example = "ADMIN_REPORT_RECEIVED"
@@ -117,9 +109,6 @@ public class AdminNotificationController {
             @RequestParam(defaultValue = "20") int limit,
             @CurrentUser JwtAuthenticatedUser adminUser
     ) {
-        if (userId != null && !userId.equals(adminUser.userId())) {
-            throw new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED);
-        }
         return adminNotificationQueryService.listNotifications(
                 adminUser.userId(),
                 type,

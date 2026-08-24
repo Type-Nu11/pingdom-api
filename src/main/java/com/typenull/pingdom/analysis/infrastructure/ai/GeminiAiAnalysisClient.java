@@ -1,6 +1,7 @@
 package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.DeserializationFeature;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
@@ -14,6 +15,7 @@ import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import java.util.ArrayList;
+import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import org.springframework.http.MediaType;
@@ -24,8 +26,8 @@ import org.springframework.web.client.RestClientException;
 /** Gemini tool call과 Pingdom MCP tool 실행을 중계하는 클라이언트다. */
 public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
-    /** 지역 정규화부터 후보·유동·시설·추천 조회까지 읽기 전용 분석 흐름을 허용한다. */
-    private static final int MAX_TOOL_CALLS = 6;
+    /** recommend_location이 내부에서 반경 확장을 처리하므로 요청당 MCP 실행은 한 번으로 제한한다. */
+    private static final int MAX_TOOL_CALLS = 1;
 
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
@@ -84,11 +86,18 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             }
 
             String name = functionCall.path("name").asText(null);
-            Map<String, Object> arguments = objectMapper.convertValue(
-                    functionCall.path("args"), Map.class
+            Map<String, Object> convertedArguments = objectMapper.convertValue(
+                    functionCall.path("args"), new TypeReference<>() {
+                    }
             );
+            Map<String, Object> arguments = convertedArguments == null
+                    ? new LinkedHashMap<>()
+                    : new LinkedHashMap<>(convertedArguments);
             if (!StringUtils.hasText(name)) {
                 throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
+            }
+            if ("recommend_location".equals(name) && StringUtils.hasText(prompt.requestedRegion())) {
+                arguments.put("region", prompt.requestedRegion());
             }
 
             contents.add(modelContent.deepCopy());
