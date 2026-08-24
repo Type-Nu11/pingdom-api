@@ -74,6 +74,8 @@ def postgresqlIntegrationTag = 'postgres-integration'
 def migrationTag = 'migration'
 
 tasks.named('test') {
+    // 여러 Spring Context를 순차로 적재하는 전체 빠른 테스트에서 worker OOM을 방지한다.
+    maxHeapSize = '2g'
     useJUnitPlatform {
         excludeTags(postgresqlIntegrationTag)
     }
@@ -88,6 +90,7 @@ tasks.register('postgresIntegrationTest', Test) {
     description = 'Runs PostgreSQL Testcontainers tests except Flyway migration tests.'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
     shouldRunAfter tasks.named('test')
     useJUnitPlatform {
         includeTags(postgresqlIntegrationTag)
@@ -104,6 +107,7 @@ tasks.register('migrationTest', Test) {
     description = 'Runs PostgreSQL Flyway migration tests.'
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
     shouldRunAfter tasks.named('postgresIntegrationTest')
     useJUnitPlatform {
         includeTags(migrationTag)
