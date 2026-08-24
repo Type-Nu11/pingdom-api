@@ -24,7 +24,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "109";
+    private static final String LATEST_MIGRATION_VERSION = "110";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -72,7 +72,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(109);
+        assertThat(result.migrationsExecuted).isEqualTo(110);
 
         assertPostMigrationSchema();
     }
@@ -287,7 +287,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(20);
+        assertThat(result.migrationsExecuted).isEqualTo(21);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -388,7 +388,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(107);
+        assertThat(result.migrationsExecuted).isEqualTo(108);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -502,7 +502,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(82);
+        assertThat(result.migrationsExecuted).isEqualTo(83);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -765,7 +765,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(54);
+        assertThat(result.migrationsExecuted).isEqualTo(55);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1309,6 +1309,48 @@ class FlywayMigrationIntegrationTest {
                       AND conname = 'ck_place_registration_application_timestamps'
                       AND contype = 'c'
                       AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_index index_definition
+                        JOIN pg_class index_class ON index_class.oid = index_definition.indexrelid
+                        WHERE index_class.relname = 'uq_place_registration_application_pending_existing_claim'
+                          AND index_definition.indisunique
+                          AND pg_get_expr(index_definition.indpred, index_definition.indrelid)
+                              LIKE '%application_type%'
+                          AND pg_get_expr(index_definition.indpred, index_definition.indrelid)
+                              LIKE '%EXISTING_PLACE_CLAIM%'
+                          AND pg_get_expr(index_definition.indpred, index_definition.indrelid)
+                              LIKE '%status%'
+                          AND pg_get_expr(index_definition.indpred, index_definition.indrelid)
+                              LIKE '%PENDING%'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM information_schema.tables
+                    WHERE table_schema = 'public'
+                      AND table_name = 'merchant_place_application_review_history'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 10
+                    FROM information_schema.columns
+                    WHERE table_name = 'merchant_place_application_review_history'
+                      AND column_name IN (
+                          'application_id', 'admin_user_id', 'before_status', 'after_status',
+                          'reviewed_version', 'reason', 'previous_owner_snapshot',
+                          'team_snapshot', 'offer_snapshot', 'created_at'
+                      )
+                      AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_indexes
+                        WHERE tablename = 'merchant_place_application_review_history'
+                          AND indexname = 'idx_merchant_place_application_review_history_application_created'
+                    )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 2

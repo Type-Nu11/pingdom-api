@@ -29,6 +29,7 @@ public record MerchantPlaceApplicationResponse(
         LocalDateTime canceledAt,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
+        long version,
         long submissionVersion,
         List<MerchantPlaceApplicationAttachmentResponse> attachments
 ) {
@@ -42,7 +43,7 @@ public record MerchantPlaceApplicationResponse(
                 application.getMerchantContactEmail(), application.getMerchantDescription(), application.getMerchantContactPhone(),
                 application.getPlaceName(), application.getExistingPlaceId(), application.getClaimReason(), application.getReviewReason(), placeId,
                 application.getSubmittedAt(), application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(),
-                application.getCreatedAt(), application.getUpdatedAt(), application.getSubmissionVersion(),
+                application.getCreatedAt(), application.getUpdatedAt(), application.getVersion(), application.getSubmissionVersion(),
                 application.getAttachments().stream().map(MerchantPlaceApplicationAttachmentResponse::from).toList()
         );
     }
