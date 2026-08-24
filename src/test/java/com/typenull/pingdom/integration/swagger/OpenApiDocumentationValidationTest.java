@@ -431,6 +431,8 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/places/coordinates")).isFalse();
         assertThat(appDocument.path("paths").has("/places/upload")).isFalse();
         assertThat(appDocument.path("paths").path("/map/posts").has("post")).isTrue();
+        assertThat(appDocument.path("paths").has("/map/posts/me")).isFalse();
+        assertThat(appDocument.path("paths").path("/map/posts/{id}").has("get")).isFalse();
 
         JsonNode postUploadProperties = appDocument.path("components").path("schemas")
                 .path("PostUploadRequest").path("properties");
