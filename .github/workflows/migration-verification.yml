@@ -43,7 +43,13 @@ jobs:
         uses: gradle/actions/setup-gradle@v6
 
       - name: Run Flyway migration verification
-        run: ./gradlew --no-daemon --build-cache --configuration-cache test --tests com.typenull.pingdom.integration.migration.FlywayMigrationIntegrationTest
+        run: ./gradlew --no-daemon --build-cache --configuration-cache migrationTest --tests com.typenull.pingdom.integration.migration.FlywayMigrationIntegrationTest
+
+      - name: Verify Flyway migration test reports
+        run: |
+          test_report_count="$(find build/test-results/migrationTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
+          test "$test_report_count" -gt 0
+          echo "Flyway migration test report files: $test_report_count"
 
       - name: Upload migration diagnostics
         if: always()
@@ -52,6 +58,6 @@ jobs:
           name: migration-diagnostics-${{ github.run_id }}
           if-no-files-found: ignore
           path: |
-            build/test-results/test/**
-            build/reports/tests/test/**
+            build/test-results/**
+            build/reports/tests/**
             build/reports/problems/**
