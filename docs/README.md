@@ -100,7 +100,9 @@ OpenAPI 호환성 검증은 아래 명령으로 실행할 수 있습니다.
 - `openapi.json`
 - `app.json`
 - `common.json`
-- `web.json`
+- `consulting.json`
+- `admin.json`
+- `merchant.json`
 
 ## Architecture
 
