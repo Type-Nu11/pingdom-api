@@ -25,6 +25,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 @Tag("postgres-integration")
+@Tag("postgres-smoke")
 @SpringBootTest(properties = "spring.docker.compose.enabled=false")
 @AutoConfigureMockMvc
 class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSupport {

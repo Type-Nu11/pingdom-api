@@ -21,6 +21,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 @Tag("postgres-integration")
+@Tag("postgres-smoke")
 @Testcontainers
 @SpringBootTest(properties = {
         "spring.docker.compose.enabled=false",

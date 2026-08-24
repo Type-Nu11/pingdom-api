@@ -71,13 +71,48 @@ dependencies {
 }
 
 def postgresqlIntegrationTag = 'postgres-integration'
+def postgresqlSmokeTag = 'postgres-smoke'
+def integrationTag = 'integration'
 def migrationTag = 'migration'
 
 tasks.named('test') {
-    // 여러 Spring Context를 순차로 적재하는 전체 빠른 테스트에서 worker OOM을 방지한다.
-    maxHeapSize = '2g'
+    // PR 게이트는 Spring Context와 Testcontainers를 제외한 단위 테스트만 실행한다.
+    maxHeapSize = '1g'
     useJUnitPlatform {
+        excludeTags(integrationTag, postgresqlIntegrationTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('integrationTest', Test) {
+    group = 'verification'
+    description = 'Runs Spring-based integration tests without Testcontainers PostgreSQL tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('test')
+    useJUnitPlatform {
+        includeTags(integrationTag)
         excludeTags(postgresqlIntegrationTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('postgresSmokeTest', Test) {
+    group = 'verification'
+    description = 'Runs the critical PostgreSQL repository and lock smoke tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('test')
+    useJUnitPlatform {
+        includeTags(postgresqlSmokeTag)
     }
     testLogging {
         events 'failed'
@@ -91,7 +126,7 @@ tasks.register('postgresIntegrationTest', Test) {
     testClassesDirs = sourceSets.test.output.classesDirs
     classpath = sourceSets.test.runtimeClasspath
     maxHeapSize = '2g'
-    shouldRunAfter tasks.named('test')
+    shouldRunAfter tasks.named('postgresSmokeTest')
     useJUnitPlatform {
         includeTags(postgresqlIntegrationTag)
         excludeTags(migrationTag)
