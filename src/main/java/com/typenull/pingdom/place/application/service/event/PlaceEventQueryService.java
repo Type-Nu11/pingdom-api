@@ -11,6 +11,7 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.time.ZoneOffset;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
@@ -82,9 +83,9 @@ public class PlaceEventQueryService {
                 event.getTitle(),
                 event.getDescription(),
                 event.getEventType(),
-                event.getStartAt(),
-                event.getEndAt(),
-                event.scheduleStatusAt(now)
+                event.getStartAt().atOffset(ZoneOffset.UTC),
+                event.getEndAt().atOffset(ZoneOffset.UTC),
+                event.scheduleStatusAt(now).name()
         );
     }
 
@@ -95,9 +96,9 @@ public class PlaceEventQueryService {
                 event.getPlace().getName(),
                 event.getTitle(),
                 event.getEventType(),
-                event.getStartAt(),
-                event.getEndAt(),
-                event.scheduleStatusAt(now)
+                event.getStartAt().atOffset(ZoneOffset.UTC),
+                event.getEndAt().atOffset(ZoneOffset.UTC),
+                event.scheduleStatusAt(now).name()
         );
     }
 }

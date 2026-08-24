@@ -1,7 +1,7 @@
 package com.typenull.pingdom.campaign.application;
 
-import com.typenull.pingdom.campaign.api.dto.PopupCampaignPageResponse;
-import com.typenull.pingdom.campaign.api.dto.PopupCampaignResponse;
+import com.typenull.pingdom.campaign.api.dto.PublicPopupCampaignPageResponse;
+import com.typenull.pingdom.campaign.api.dto.PublicPopupCampaignResponse;
 import com.typenull.pingdom.campaign.domain.MerchantBrand;
 import com.typenull.pingdom.campaign.domain.PopupCampaign;
 import com.typenull.pingdom.campaign.domain.PopupCampaignStatus;
@@ -25,20 +25,24 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class PopupCampaignQueryService {
 
+    private static final int MAX_PAGE = 10_000;
+
     private final PopupCampaignRepository campaignRepository;
     private final MerchantBrandRepository brandRepository;
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    public PopupCampaignPageResponse list(Long placeId, int page, int limit) {
+    public PublicPopupCampaignPageResponse list(Long placeId, int page, int limit) {
         LocalDateTime now = LocalDateTime.now(clock);
+        int safePage = Math.max(1, Math.min(page, MAX_PAGE));
+        int safeLimit = Math.max(1, Math.min(limit, 100));
         Page<PopupCampaign> result = campaignRepository.findDiscoverable(
                 PopupCampaignStatus.PUBLISHED,
                 now,
                 placeId,
                 PageRequest.of(
-                        Math.max(page - 1, 0),
-                        Math.min(Math.max(limit, 1), 100),
+                        safePage - 1,
+                        safeLimit,
                         Sort.by(Sort.Order.asc("endsAt"), Sort.Order.desc("id"))
                 )
         );
@@ -46,9 +50,9 @@ public class PopupCampaignQueryService {
                         result.getContent().stream().map(PopupCampaign::getBrandId).collect(Collectors.toSet())
                 ).stream()
                 .collect(Collectors.toMap(MerchantBrand::getId, Function.identity()));
-        return new PopupCampaignPageResponse(
+        return new PublicPopupCampaignPageResponse(
                 result.getContent().stream()
-                        .map(campaign -> PopupCampaignResponse.from(campaign, brands.get(campaign.getBrandId())))
+                        .map(campaign -> PublicPopupCampaignResponse.from(campaign, brands.get(campaign.getBrandId())))
                         .toList(),
                 result.getNumber() + 1,
                 result.getSize(),
@@ -59,7 +63,7 @@ public class PopupCampaignQueryService {
     }
 
     @Transactional(readOnly = true)
-    public PopupCampaignResponse get(Long campaignId) {
+    public PublicPopupCampaignResponse get(Long campaignId) {
         LocalDateTime now = LocalDateTime.now(clock);
         PopupCampaign campaign = campaignRepository
                 .findDiscoverableById(
@@ -70,6 +74,6 @@ public class PopupCampaignQueryService {
                 .orElseThrow(() -> new CampaignException(CampaignErrorCode.CAMPAIGN_NOT_FOUND));
         MerchantBrand brand = brandRepository.findById(campaign.getBrandId())
                 .orElseThrow(() -> new CampaignException(CampaignErrorCode.CAMPAIGN_NOT_FOUND));
-        return PopupCampaignResponse.from(campaign, brand);
+        return PublicPopupCampaignResponse.from(campaign, brand);
     }
 }

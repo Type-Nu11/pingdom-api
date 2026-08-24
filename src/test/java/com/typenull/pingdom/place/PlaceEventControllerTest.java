@@ -122,7 +122,9 @@ class PlaceEventControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.placeId").value(place.getId()))
-                .andExpect(jsonPath("$.description").value("남강 야간 전시와 공연"));
+                .andExpect(jsonPath("$.description").value("남강 야간 전시와 공연"))
+                .andExpect(jsonPath("$.startAt").value(startAt + "Z"))
+                .andExpect(jsonPath("$.endAt").value(endAt + "Z"));
 
         assertThat(adminAuditLogRepository.findAll())
                 .extracting(log -> log.getAction())
@@ -182,6 +184,24 @@ class PlaceEventControllerTest {
                         .param("page", String.valueOf(Integer.MAX_VALUE)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.page").value(10_000));
+    }
+
+    @Test
+    void rejectsInvalidPublicEventSearchConditionWithStableErrorCode() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/events")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("fromAt", "2026-08-02T00:00:00Z")
+                        .param("toAt", "2026-08-01T00:00:00Z"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_EVENT_SEARCH_CONDITION_INVALID"));
+
+        mockMvc.perform(get("/events")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("eventType", "UNKNOWN"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("PLACE_EVENT_SEARCH_CONDITION_INVALID"));
     }
 
     @Test
