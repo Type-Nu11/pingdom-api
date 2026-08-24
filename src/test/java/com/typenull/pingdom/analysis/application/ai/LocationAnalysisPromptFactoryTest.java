@@ -34,11 +34,11 @@ class LocationAnalysisPromptFactoryTest {
                 "recommendedPlaces", "derivedFromPlace", "반경",
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
-                "\"html\"",
-                "additionalCriteria", "고정된 인라인 CSS",
-                "완전한 단일 XHTML 문서", "<!DOCTYPE html>", "void element는 반드시 />로 닫는다",
+                "additionalCriteria", "고정 디자인 XHTML",
+                "최소 3페이지", "overallLocationEvaluation", "통계 산출 근거",
                 "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자"
         );
+        assertThat(prompt.content()).doesNotContain("\"html\"");
     }
 
     @Test

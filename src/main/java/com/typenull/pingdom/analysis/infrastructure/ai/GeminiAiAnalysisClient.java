@@ -174,11 +174,9 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             String normalizedJson = normalizeJson(content);
             JsonNode payload = objectMapper.readTree(normalizedJson);
             if (payload.has("html")) {
-                return new AiAnalysisResponse(
-                        payload.path("reportName").asText(null),
-                        payload.path("html").asText(null),
-                        prompt.analysisBasisDate()
-                );
+                // AI가 임의 HTML을 반환하면 보고서마다 디자인과 한글 폰트가 달라질 수 있으므로
+                // 고정 XHTML 템플릿이 사용할 구조화 JSON만 허용한다.
+                throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
             }
             LocationAnalysisContent structured = objectMapper.reader()
                     .with(DeserializationFeature.FAIL_ON_UNKNOWN_PROPERTIES)
