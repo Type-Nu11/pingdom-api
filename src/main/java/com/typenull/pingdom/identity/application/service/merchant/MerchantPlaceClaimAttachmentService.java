@@ -12,6 +12,7 @@ import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachm
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.MerchantPlaceAttachmentMalwareScanner;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -36,7 +37,7 @@ public class MerchantPlaceClaimAttachmentService {
     private final S3ObjectDeleteOutboxPublisher deletePublisher;
     private final Clock clock;
     private final AdminAuditLogService auditLogService;
-    private final MerchantPlaceClaimAttachmentMalwareScanner malwareScanner;
+    private final MerchantPlaceAttachmentMalwareScanner malwareScanner;
 
     @Transactional
     public MerchantPlaceClaimAttachmentResponse upload(Long userId, Long claimId,

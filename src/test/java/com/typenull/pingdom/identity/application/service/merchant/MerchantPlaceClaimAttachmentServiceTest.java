@@ -16,6 +16,7 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimAttachmen
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.shared.support.MerchantPlaceAttachmentMalwareScanner;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.time.Clock;
@@ -43,7 +44,7 @@ class MerchantPlaceClaimAttachmentServiceTest {
     @Mock private S3ObjectStorage storage;
     @Mock private S3ObjectDeleteOutboxPublisher deletePublisher;
     @Mock private AdminAuditLogService auditLogService;
-    @Mock private MerchantPlaceClaimAttachmentMalwareScanner malwareScanner;
+    @Mock private MerchantPlaceAttachmentMalwareScanner malwareScanner;
     private MerchantPlaceClaimAttachmentService service;
     private MerchantPlaceClaim claim;
 

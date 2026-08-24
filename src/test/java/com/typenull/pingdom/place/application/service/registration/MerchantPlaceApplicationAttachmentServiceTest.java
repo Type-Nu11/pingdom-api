@@ -9,7 +9,6 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 import static org.mockito.Mockito.lenient;
 
-import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceClaimAttachmentMalwareScanner;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
@@ -21,6 +20,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceR
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationAttachmentRepository;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.MerchantPlaceAttachmentMalwareScanner;
 import java.time.Clock;
 import java.time.Instant;
 import java.time.LocalDateTime;
@@ -47,7 +47,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     @Mock private PlaceRegistrationAttachmentRepository attachmentRepository;
     @Mock private S3ObjectStorage storage;
     @Mock private S3ObjectDeleteOutboxPublisher deletePublisher;
-    @Mock private MerchantPlaceClaimAttachmentMalwareScanner malwareScanner;
+    @Mock private MerchantPlaceAttachmentMalwareScanner malwareScanner;
     @Mock private PlaceRegistrationApplication application;
 
     private MerchantPlaceApplicationAttachmentService service;
