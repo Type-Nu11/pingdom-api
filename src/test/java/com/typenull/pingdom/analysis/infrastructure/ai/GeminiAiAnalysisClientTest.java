@@ -33,6 +33,8 @@ class GeminiAiAnalysisClientTest {
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("x-goog-api-key", "test-key"))
                 .andExpect(jsonPath("$.contents[0].parts[0].text").value("prompt"))
+                .andExpect(jsonPath("$.contents[0].parts[1].inline_data.mime_type").value("image/png"))
+                .andExpect(jsonPath("$.contents[0].parts[1].inline_data.data").isNotEmpty())
                 .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
                 .andRespond(withSuccess(
                         responseJson(),
