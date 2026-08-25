@@ -82,6 +82,37 @@ class LocationAnalysisResponseValidatorTest {
         validator.validate(request(), new AiAnalysisResponse(content, LocalDate.of(2026, 8, 18)));
     }
 
+    @Test
+    void acceptsConditionalGradeWhenMcpProvidesTrafficButNotAgeOrGenderDistribution() {
+        LocationAnalysisContent content = new LocationAnalysisContent(
+                "입지 분석",
+                new LocationAnalysisContent.OverallLocationEvaluation(
+                        LocationAnalysisContent.Grade.CONDITIONAL, "확장 반경의 참고 분석 결과", List.of(), List.of(), List.of()
+                ),
+                commercialArea(),
+                new LocationAnalysisContent.TargetPopulationAnalysis(
+                        "타깃 일치 수만 제공됨", "추천 장소 A", List.of(), List.of(), List.of(), List.of()
+                ),
+                new LocationAnalysisContent.FootTrafficAnalysis(
+                        "MCP 유동인구 집계", 2328d, List.of(), List.of(), List.of(), "데이터 없음", null, List.of()
+                ),
+                new LocationAnalysisContent.NearbyFacilities(List.of(), List.of(), List.of(), List.of()),
+                competition(),
+                businessPerformance(),
+                dataQuality(),
+                List.of(new LocationAnalysisContent.RecommendedPlace(
+                        1, "추천 장소 A", "서울특별시 송파구", 1d, "유동인구 2,328명", List.of()
+                )),
+                new LocationAnalysisContent.AnalysisScope(
+                        "대구광역시 북구", "대구광역시 북구", LocationAnalysisContent.ScopeLevel.DISTRICT,
+                        "자동 확장된 참고 분석 범위", 15000d
+                ),
+                List.of(), List.of("요청 지역 밖 확장 반경 결과")
+        );
+
+        validator.validate(request(), new AiAnalysisResponse(content, LocalDate.of(2026, 8, 18)));
+    }
+
     private LocationAnalysisContent.Metric metric(String label) {
         return new LocationAnalysisContent.Metric(label, 10d, "PEOPLE", 10d);
     }

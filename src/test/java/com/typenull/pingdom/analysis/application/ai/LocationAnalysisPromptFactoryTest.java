@@ -41,7 +41,8 @@ class LocationAnalysisPromptFactoryTest {
                 "SERVER_DESIGN_REFERENCE_BEGIN", "Pingdom Editorial Location Report v1",
                 "#F8F7F2", "#7D8777", "수평 막대",
                 "결과를 임의로 0, 빈 배열, \"데이터 없음\"으로 바꾸거나 무시하지 않는다",
-                "자동 확장된 참고 분석 범위", "metrics.total_foot는 footTrafficAnalysis.total"
+                "자동 확장된 참고 분석 범위", "metrics.total_foot는 footTrafficAnalysis.total",
+                "Evidence 객체 계약", "문자열이 아닌 아래 JSON 객체", "GEOCODE_FAILED: ..."
         );
         assertThat(prompt.content()).doesNotContain("\"html\"");
     }

@@ -160,6 +160,15 @@ public class LocationAnalysisPromptFactory {
                 keyCompetitors, performanceIndicators 배열은 실제 관측값이 없을 때 반드시 []로 반환한다.
                 데이터가 없을 때 null placeholder 객체나 0을 만들어내지 않는다. 문자열 설명에는 "데이터 없음"을 쓴다.
 
+                [Evidence 객체 계약]
+                모든 evidences 배열의 원소는 문자열이 아닌 아래 JSON 객체여야 한다.
+                {"id":"evidence-1","type":"MCP","source":"Pingdom MCP","reference":"recommend_location",
+                 "basisDate":"%s","description":"검증된 수치 또는 사실","formula":"",
+                 "sourceValues":[{"name":"total_foot","value":"2328","unit":"명"}]}
+                type은 DB, MCP, SEARCH, CALCULATION 중 하나만 사용한다. CALCULATION이면 formula는 비어 있지 않아야 하고
+                sourceValues에 계산 근거를 하나 이상 넣는다. 문자열 "GEOCODE_FAILED: ..." 같은 실패 사유는 evidences에 넣지
+                말고 limitations에 문자열로 넣는다. evidences를 만들 근거가 없으면 []를 반환한다.
+
                 [통계 계산 및 보고서 분량]
                 MCP recommendations의 metrics.total_foot는 footTrafficAnalysis.total 또는 후보 비교 지표에 반드시
                 반영한다. metrics.age_match와 metrics.gender_match는 타깃 일치 통계에, metrics.avg_hour는
@@ -207,6 +216,6 @@ public class LocationAnalysisPromptFactory {
                 score, reason, evidenceIds를 모두 포함한다. 데이터가 없으면 배열은 []로 반환한다. reportId, 발행일자,
                 분석 기준일, 저장 경로, 다운로드 URL은 Backend 책임이므로 만들거나 반환하지 않는다. JSON 외의 문자,
                 Markdown, 설명 문장, 코드 블록, html 필드와 추가 필드는 절대 출력하지 않는다.
-                """.formatted(analysisBasisDate, criteria, DESIGN_REFERENCE);
+                """.formatted(analysisBasisDate, criteria, analysisBasisDate, DESIGN_REFERENCE);
     }
 }

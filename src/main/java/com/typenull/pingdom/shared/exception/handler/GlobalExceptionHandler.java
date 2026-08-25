@@ -18,6 +18,7 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.validation.FieldError;
 import org.springframework.web.HttpRequestMethodNotSupportedException;
@@ -38,9 +39,12 @@ public class GlobalExceptionHandler {
     }
 
     @ExceptionHandler(AnalysisReportException.class)
-    public ResponseEntity<Map<String, String>> handleAnalysisReportException(AnalysisReportException exception) {
+    public ResponseEntity<ErrorResponse> handleAnalysisReportException(AnalysisReportException exception) {
+        // PDF 응답 요청이라도 분석 실패는 항상 JSON 오류 계약으로 반환한다.
+        // Content-Type을 명시하지 않으면 Accept: application/pdf와 협상 충돌해 502가 500으로 변질될 수 있다.
         return ResponseEntity.status(exception.getErrorCode().getStatus())
-                .body(Map.of("message", exception.getMessage(), "code", String.valueOf(exception.getErrorCode())));
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(ErrorResponse.from(exception.getErrorCode()));
     }
 
     private final AuthMetrics authMetrics;
