@@ -2,15 +2,9 @@ package com.typenull.pingdom.moderation.api.post;
 
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
-import com.typenull.pingdom.engagement.domain.PostReportStatus;
 import com.typenull.pingdom.moderation.api.dto.report.AdminPostReportBulkActionResponse;
-import com.typenull.pingdom.moderation.domain.AdminPostReviewStatus;
-import com.typenull.pingdom.moderation.domain.SortParam;
-import com.typenull.pingdom.moderation.api.dto.post.AdminPostItem;
-import com.typenull.pingdom.moderation.api.dto.post.AdminPostResponse;
 import com.typenull.pingdom.moderation.application.AdminPostService;
 import com.typenull.pingdom.moderation.application.AdminReportService;
-import com.typenull.pingdom.moderation.application.query.post.AdminPostQueryService;
 import com.typenull.pingdom.post.infrastructure.storage.MapImageS3OrphanReportService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import jakarta.validation.Valid;
@@ -47,138 +41,7 @@ public class AdminPostController {
 
     private final AdminPostService adminPostService;
     private final AdminReportService adminReportService;
-    private final AdminPostQueryService adminPostQueryService;
     private final MapImageS3OrphanReportService mapImageS3OrphanReportService;
-
-    @GetMapping("/posts")
-    @Operation(
-            summary = "관리자 게시글 목록 조회",
-            description = "관리자가 최근 게시글 목록을 조회합니다. 각 게시글에는 연결된 신고 목록이 함께 포함됩니다. limit 값은 내부적으로 1~100 범위로 보정됩니다."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "게시글 목록 조회 성공",
-                    content = @Content(schema = @Schema(implementation = AdminPostResponse.class),
-                            examples = @ExampleObject(value = """
-                        {
-                          "posts": [
-                            {
-                              "id": 1,
-                              "imageUrl": "https://example.com/original.jpg",
-                              "userId": 1,
-                              "username": "pingdom_user",
-                              "createdAt": "2026-05-21T11:37:53.336Z",
-                              "reports": [
-                                {
-                                  "reportId": 10,
-                                  "reporterUserId": 3,
-                                  "reporterUsername": "reporter01",
-                                  "reason": "부적절한 게시글입니다.",
-                                  "status": "PENDING",
-                                  "createdAt": "2026-05-21T11:50:00",
-                                  "processedAt": null
-                                }
-                              ]
-                            }
-                          ],
-                          "page": 1,
-                          "limit": 20,
-                          "totalCount": 123,
-                          "totalPages": 7,
-                          "hasNext": true,
-                          "counts": {
-                            "all": 123,
-                            "pending": 11,
-                            "processed": 43,
-                            "normal": 69
-                          }
-                        }
-                        """)
-                    )
-            ),
-            @ApiResponse(responseCode = "400", description = "reportStatus와 reviewStatus 동시 사용 불가"),
-    })
-    public AdminPostResponse listPosts(
-            @Parameter(description = "조회할 페이지 번호. 1 이상으로 보정됩니다.", example = "1")
-            @RequestParam(defaultValue =  "1") int page,
-            @Parameter(description = "조회할 최대 개수. 1~100 범위로 보정됩니다.", example = "20")
-            @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "정렬 기준", example = "latest")
-            @RequestParam(defaultValue = "LATEST") SortParam sortParam,
-            @Parameter(description = "게시글 검색 키워드. 게시글 ID, 제목, 작성자명, 작성자 ID, 연결 장소명, 설명으로 검색합니다.", example = "용인")
-            @RequestParam(required = false, defaultValue = "") String keyword,
-            @Parameter(description = "게시글 단위 검수 상태 필터. ALL, PENDING, PROCESSED, NORMAL", example = "PENDING")
-            @RequestParam(defaultValue = "ALL") AdminPostReviewStatus reviewStatus,
-            @Parameter(description = "신고 상태 필터. 예: PENDING", example = "PENDING")
-            @RequestParam(required = false) PostReportStatus reportStatus
-    ) {
-        validateExclusiveReportFilters(reportStatus, reviewStatus);
-        return adminPostQueryService.listPosts(page, limit, sortParam, keyword, reviewStatus, reportStatus);
-    }
-
-    private void validateExclusiveReportFilters(PostReportStatus reportStatus, AdminPostReviewStatus reviewStatus) {
-        if (reportStatus != null && reviewStatus != AdminPostReviewStatus.ALL) {
-            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, "reportStatus와 reviewStatus는 동시에 사용할 수 없습니다.");
-        }
-    }
-
-    @GetMapping("/posts/{id}")
-    @Operation(
-            summary = "관리자 게시글 상세 조회",
-            description = "관리자가 게시글 상세 정보와 연결된 신고 목록을 조회합니다."
-    )
-    @ApiResponses({
-            @ApiResponse(
-                    responseCode = "200",
-                    description = "게시글 상세 조회 성공",
-                    content = @Content(schema = @Schema(implementation = AdminPostItem.class),
-                            examples = @ExampleObject(value = """
-                        {
-                          "id": 1,
-                          "name": "신고 대상 제목",
-                          "imageUrl": "https://example.com/original.jpg",
-                          "userId": 1,
-                          "username": "pingdom_user",
-                          "createdAt": "2026-05-21T11:37:53.336Z",
-                          "description": "신고 대상 설명",
-                          "likeCount": 10,
-                          "placeName": "대구소프트웨어마이스터고등학교",
-                          "reports": [
-                            {
-                              "reportId": 10,
-                              "reporterUserId": 3,
-                              "reporterUsername": "reporter01",
-                              "reason": "부적절한 게시글입니다.",
-                              "status": "PENDING",
-                              "createdAt": "2026-05-21T11:50:00",
-                              "processedAt": null
-                            }
-                          ]
-                        }
-                        """)
-                    )
-            ),
-            @ApiResponse(
-                    responseCode = "404",
-                    description = "게시글을 찾을 수 없음",
-                    content = @Content(
-                            examples = @ExampleObject(
-                                    value = """
-                                            {
-                                              "message": "게시글을 찾을 수 없습니다.",
-                                              "code": "POST_NOT_FOUND"
-                                            }
-                                            """
-                            )
-                    )
-            )
-    })
-    public AdminPostItem getPost(
-            @Parameter(description = "조회할 게시글 ID", example = "10") @PathVariable("id") Long id
-    ) {
-        return adminPostQueryService.getPost(id);
-    }
 
     @PostMapping("/posts/{postId}/reports/accept")
     @Operation(
