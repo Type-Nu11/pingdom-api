@@ -55,7 +55,6 @@ class FlywayHibernateSchemaValidationIntegrationTest {
     }
 
     @Test
-    @Tag("migration-smoke")
     void contextLoadsWithFlywayMigratedSchemaAndHibernateValidation() {
     }
 
