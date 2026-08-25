@@ -75,9 +75,13 @@ public class LocationAnalysisPromptFactory {
                    말고 제한사항에 기록한다.
                 5. recommend_location은 정확히 한 번만 호출한다. 결과가 없더라도 region이나 radius_m을 바꿔
                    재호출하지 않고, 도구가 자체 확장한 범위와 반환 결과만 사용한다.
-                6. MCP 연결 실패 또는 결과 없음은 "데이터 없음"으로 기록하고 보고서를 계속 작성한다. 배열형 정보는
+                6. isError가 false이고 recommendations가 하나 이상이면 그 결과는 검증된 분석 사실이다.
+                   각 recommendation의 rank, address, score, metrics.total_foot, metrics.age_match,
+                   metrics.gender_match, metrics.avg_hour, searched_radius_m을 보고서에 반드시 사용한다.
+                   결과를 임의로 0, 빈 배열, "데이터 없음"으로 바꾸거나 무시하지 않는다.
+                7. MCP 연결 실패 또는 recommendations가 빈 배열일 때만 "데이터 없음"으로 기록하고 보고서를 계속 작성한다. 배열형 정보는
                    빈 배열로 취급하며 null placeholder 객체를 만들지 않는다.
-                7. 연결된 검색 도구가 있을 때만 외부 검색을 사용한다. 검색을 사용하면 URL, 조회일 또는 발행일,
+                8. 연결된 검색 도구가 있을 때만 외부 검색을 사용한다. 검색을 사용하면 URL, 조회일 또는 발행일,
                    분석 기준일을 데이터 출처에 기록한다.
 
                 [사실성과 분석 범위]
@@ -87,23 +91,28 @@ public class LocationAnalysisPromptFactory {
                 3. region을 행정구역 기준으로 정규화해 analysisScope에 원본 지역·정규화 지역·적용 범위·반경·실제
                    데이터 범위를 기록한다. 시·도·광역시는 전체 행정구역, 구·군은 전체 구·군을 기본으로 사용한다.
                    읍·면·동은 해당 경계와 인접 생활권을 사용한다.
-                4. 지역명이 모호하면 임의의 후보를 고르지 말고 후보와 확인 필요 사유를 limitations에 기록한다.
-                   이 경우 등급은 INSUFFICIENT_DATA다. 모든 수치와 시설은 확정된 analysisScope 안의 값만 사용한다.
-                5. 확정 범위와 category에서 조회된 후보만 추천한다. 후보가 없으면 추천 장소는 "데이터 없음"이다.
-                   동점은 임의로 순서를 바꾸지 말고 동점이라고 표시한다.
+                4. MCP가 searched_radius_m을 반환해 기본 반경보다 넓게 검색했다면, 반환 후보는 확장 분석 범위 안의
+                   검증된 후보로 취급한다. analysisScope.radiusMeters에는 searched_radius_m을, scopeDescription에는
+                   "자동 확장된 참고 분석 범위"를 기록한다. 원래 요청지와 후보가 멀 수 있다는 사실은 limitations와
+                   risks에 기록하되, 그 이유만으로 반환된 수치와 후보를 버리지 않는다.
+                5. 지역명이 모호하고 MCP도 후보를 반환하지 않을 때만 INSUFFICIENT_DATA다. MCP가 반환한 후보와 수치는
+                   확정된 analysisScope의 사실로 사용한다. 후보가 없으면 추천 장소는 "데이터 없음"이다. 동점은
+                   임의로 순서를 바꾸지 말고 동점이라고 표시한다.
 
                 [추천·타깃 산출]
-                1. 후보별 실제 데이터가 충분한 경우에만 추천 장소를 점수 순으로 제시한다. 장소명, 확인된 위치,
-                   적용 반경, 추천 근거, 점수와 근거를 표시한다. 주소가 없으면 추정하지 않는다.
-                2. 추천 장소 유동인구에서 실제 관측 건수가 가장 큰 연령대와 성별을 선택한다. derivedFromPlace에는
-                   산출에 사용한 추천 장소명을 기록하며 복수면 쉼표로 연결한다.
+                1. MCP가 반환한 모든 recommendation을 rank 순서 그대로 recommendedPlaces에 넣는다. 장소명은 address에서
+                   확인 가능한 명칭만 사용하고, 주소·점수는 원본값을 변경하지 않는다. reason에는 total_foot, age_match,
+                   gender_match, avg_hour 중 실제 반환된 수치만 근거로 짧게 작성한다. 주소가 없으면 추정하지 않는다.
+                2. 추천 장소 유동인구에서 실제 관측된 age_match와 gender_match를 타깃 일치 통계로 사용한다.
+                   연령·성별 분포 원본이 없으면 age와 gender는 []로 두고, derivedFromPlace에는 산출에 사용한 추천 장소명을
+                   기록한다. 존재하지 않는 세부 연령대나 성별 비율을 만들지 않는다.
                 3. targetCustomerGroup과 operatingHours의 적합성은 입력 조건과 동일 기간·범위의 DB 유동인구를
                    비교한 결과만 사용한다.
 
                 [점수와 등급]
-                핵심 데이터는 추천 후보 또는 추천 장소, 추천 장소의 유동인구와 연령·성별, 확정된 analysisScope와
-                데이터 출처다. 하나라도 없거나 장소·기간·범위가 모순되면 다른 등급을 사용하지 말고 반드시
-                INSUFFICIENT_DATA로 설정한다.
+                핵심 데이터는 MCP가 성공적으로 반환한 추천 후보와 추천 장소의 유동인구다. recommendations가 비어 있거나
+                MCP 오류일 때만 INSUFFICIENT_DATA로 설정한다. 시간대·요일·월별·경쟁·시설처럼 MCP가 제공하지 않은
+                보조 데이터가 없다는 이유로 전체 보고서나 이미 반환된 유동인구 통계를 비우지 않는다.
 
                 점수는 실제 원본 값·분모·비교 집합이 같은 기간·반경·집계 단위로 확인될 때만 0~100으로 계산한다.
                 비교 기준이 없으면 점수를 추정하지 않는다.
@@ -117,9 +126,9 @@ public class LocationAnalysisPromptFactory {
                 totalScore = targetMatch * 0.4 + footTraffic * 0.3 + facilityCompetition * 0.2 + dataReliability * 0.1
 
                 각 세부 점수와 totalScore는 CALCULATION evidence에 formula, sourceValues, 대상 장소, 데이터 기간과
-                범위를 기록한다. targetCustomerGroup과 operatingHours를 모두 해석할 수 없어 targetMatch를 계산할 수 없으나
-                핵심 데이터가 충족되면 totalScore를 만들지 않고 CONDITIONAL로 판정하며 확인 필요 사유를 risks와
-                limitations에 적는다. 판정 우선순위는 데이터 부족·모순 > 확인된 치명적 위험 > 점수다.
+                범위를 기록한다. targetCustomerGroup과 operatingHours를 모두 해석할 수 없어 targetMatch를 계산할 수 없거나,
+                MCP가 검색 반경을 확장했다면 totalScore를 만들지 않고 CONDITIONAL로 판정하며 확인 필요 사유를 risks와
+                limitations에 적는다. 판정 우선순위는 MCP 오류·후보 없음 > 확인된 치명적 위험 > 점수다.
                 SUITABLE: totalScore >= 70이고 확인된 치명적 위험이 없을 때.
                 CONDITIONAL: totalScore가 45~69, 개선 가능한 중대 위험, 또는 비핵심 입력 누락으로 점수를 계산할 수 없을 때.
                 UNSUITABLE: totalScore < 45 또는 확인된 회피 불가능 치명적 위험이 있을 때.
@@ -152,10 +161,13 @@ public class LocationAnalysisPromptFactory {
                 데이터가 없을 때 null placeholder 객체나 0을 만들어내지 않는다. 문자열 설명에는 "데이터 없음"을 쓴다.
 
                 [통계 계산 및 보고서 분량]
-                추천 장소마다 MCP가 반환한 원본 유동인구를 빠짐없이 집계해 total, 시간대별, 요일별, 월별, 연령대별,
-                성별 지표를 만든다. 체류 시간·재방문율·소비력·경쟁도·매출 잠재력·임대료·공실률은 해당 MCP/DB 데이터가
-                실제로 존재할 때만 behaviorIndicators, demandIndicators, performanceIndicators에 넣는다.
-                가능한 모든 후보를 비교 집합에 포함하고 상위 추천 장소만 잘라서 근거를 잃지 않는다.
+                MCP recommendations의 metrics.total_foot는 footTrafficAnalysis.total 또는 후보 비교 지표에 반드시
+                반영한다. metrics.age_match와 metrics.gender_match는 타깃 일치 통계에, metrics.avg_hour는
+                behaviorIndicators의 "평균 활동 시간"에 반드시 반영한다. 시간대별·요일별·월별 분포 원본이 없으면
+                byTime, byDay, byMonth는 []로 둔다. 체류 시간·재방문율·소비력·경쟁도·매출 잠재력·임대료·공실률은
+                해당 MCP/DB 데이터가 실제로 존재할 때만 behaviorIndicators, demandIndicators,
+                performanceIndicators에 넣는다. 가능한 모든 반환 후보를 비교 집합에 포함하고 상위 추천 장소만
+                잘라서 근거를 잃지 않는다.
                 총량·평균·최대·비율은 같은 기간·반경·집계 단위끼리만 계산한다. 비율은 분모와 formula를 CALCULATION
                 evidence에 기록한다. 결과는 최소 3개 추천 장소 또는 데이터가 부족한 이유를 명시하며, 장소가 1개뿐이면
                 확인된 1개만 사용하고 부족한 비교 집합을 limitations에 기록한다. Backend PDF는 표·지표·막대형 통계 카드로
