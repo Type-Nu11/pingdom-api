@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.Mockito.verify;
 
 import com.typenull.pingdom.notification.domain.NotificationType;
+import com.typenull.pingdom.notification.domain.NotificationDeliveryStatus;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -58,5 +59,27 @@ class NotificationDeliveryRecorderTest {
         verify(writer).record(captor.capture());
 
         assertThat(captor.getValue().outboxEventType()).isNull();
+    }
+
+    @Test
+    void recordRetryableFcmFailureSchedulesDeliveryRetry() {
+        recorder.recordFcmFailure(
+                1L,
+                10L,
+                NotificationType.NEW_LIKE,
+                "outbox-event-id",
+                "token",
+                "UNAVAILABLE",
+                NotificationDeliveryRecorder.ERROR_FCM_SEND_FAILED,
+                "temporary",
+                true
+        );
+
+        ArgumentCaptor<NotificationDeliveryRecordRequest> captor =
+                ArgumentCaptor.forClass(NotificationDeliveryRecordRequest.class);
+        verify(writer).record(captor.capture());
+
+        assertThat(captor.getValue().status()).isEqualTo(NotificationDeliveryStatus.RETRY_SCHEDULED);
+        assertThat(captor.getValue().retryable()).isTrue();
     }
 }
