@@ -99,8 +99,6 @@ public class LocationAnalysisResponseValidator {
         if (content.overallLocationEvaluation().grade()
                 != LocationAnalysisContent.Grade.INSUFFICIENT_DATA
                 && (content.recommendedPlaces().isEmpty()
-                || content.targetPopulationAnalysis().age().isEmpty()
-                || content.targetPopulationAnalysis().gender().isEmpty()
                 || (content.footTrafficAnalysis().total() == null
                 && content.footTrafficAnalysis().byTime().isEmpty()
                 && content.footTrafficAnalysis().byDay().isEmpty())
