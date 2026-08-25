@@ -18,6 +18,9 @@ public class PlaceholderAiAnalysisClient implements AiAnalysisClient {
                         "AI/MCP 연결 전 단계의 임시 응답입니다.",
                         List.of(), List.of(), List.of()
                 ),
+                new LocationAnalysisContent.CommercialAreaAnalysis(
+                        "데이터 없음", "데이터 없음", "상권 데이터 없음", List.of(), List.of()
+                ),
                 new LocationAnalysisContent.TargetPopulationAnalysis(
                         "데이터 없음", List.of(), List.of(), List.of()
                 ),
@@ -27,6 +30,16 @@ public class PlaceholderAiAnalysisClient implements AiAnalysisClient {
                 new LocationAnalysisContent.NearbyFacilities(
                         List.of(), List.of(), List.of(), List.of()
                 ),
+                new LocationAnalysisContent.CompetitionAnalysis(
+                        "경쟁 데이터 없음", null, null, null, null, List.of(), List.of()
+                ),
+                new LocationAnalysisContent.BusinessPerformanceAnalysis(
+                        "사업성 데이터 없음", List.of(), List.of(), List.of(), List.of()
+                ),
+                new LocationAnalysisContent.DataQualityAnalysis(
+                        null, null, "데이터 없음", "데이터 없음", null, List.of(), List.of()
+                ),
+                List.of(),
                 new LocationAnalysisContent.AnalysisScope(
                         "요청 지역 미지정", "정규화 전", LocationAnalysisContent.ScopeLevel.CITY,
                         "임시 응답", null

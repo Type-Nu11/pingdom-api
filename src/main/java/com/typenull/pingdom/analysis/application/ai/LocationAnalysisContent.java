@@ -9,9 +9,13 @@ import java.util.List;
 public record LocationAnalysisContent(
         String reportName,
         OverallLocationEvaluation overallLocationEvaluation,
+        CommercialAreaAnalysis commercialAreaAnalysis,
         TargetPopulationAnalysis targetPopulationAnalysis,
         FootTrafficAnalysis footTrafficAnalysis,
         NearbyFacilities nearbyFacilities,
+        CompetitionAnalysis competitionAnalysis,
+        BusinessPerformanceAnalysis businessPerformanceAnalysis,
+        DataQualityAnalysis dataQualityAnalysis,
         List<RecommendedPlace> recommendedPlaces,
         AnalysisScope analysisScope,
         List<DataSource> dataSources,
@@ -34,8 +38,37 @@ public record LocationAnalysisContent(
             List<DataSource> dataSources,
             List<String> limitations
     ) {
-        this(reportName, overallLocationEvaluation, targetPopulationAnalysis, footTrafficAnalysis,
-                nearbyFacilities, List.of(), analysisScope, dataSources, limitations);
+        this(reportName, overallLocationEvaluation, null, targetPopulationAnalysis, footTrafficAnalysis,
+                nearbyFacilities, null, null, null, List.of(), analysisScope, dataSources, limitations);
+    }
+
+    public LocationAnalysisContent(
+            String reportName,
+            OverallLocationEvaluation overallLocationEvaluation,
+            TargetPopulationAnalysis targetPopulationAnalysis,
+            FootTrafficAnalysis footTrafficAnalysis,
+            NearbyFacilities nearbyFacilities,
+            List<RecommendedPlace> recommendedPlaces,
+            AnalysisScope analysisScope,
+            List<DataSource> dataSources,
+            List<String> limitations
+    ) {
+        this(reportName, overallLocationEvaluation, null, targetPopulationAnalysis, footTrafficAnalysis,
+                nearbyFacilities, null, null, null, recommendedPlaces, analysisScope, dataSources, limitations);
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record CommercialAreaAnalysis(
+            String name,
+            String type,
+            String summary,
+            List<Metric> demandIndicators,
+            List<Evidence> evidences
+    ) {
+        public CommercialAreaAnalysis {
+            demandIndicators = demandIndicators == null ? List.of() : List.copyOf(demandIndicators);
+            evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = false)
@@ -59,11 +92,13 @@ public record LocationAnalysisContent(
             String derivedFromPlace,
             List<Metric> age,
             List<Metric> gender,
+            List<Metric> behaviorIndicators,
             List<Evidence> evidences
     ) {
         public TargetPopulationAnalysis {
             age = age == null ? List.of() : List.copyOf(age);
             gender = gender == null ? List.of() : List.copyOf(gender);
+            behaviorIndicators = behaviorIndicators == null ? List.of() : List.copyOf(behaviorIndicators);
             evidences = evidences == null ? List.of() : List.copyOf(evidences);
         }
 
@@ -73,7 +108,17 @@ public record LocationAnalysisContent(
                 List<Metric> gender,
                 List<Evidence> evidences
         ) {
-            this(summary, "데이터 없음", age, gender, evidences);
+            this(summary, "데이터 없음", age, gender, List.of(), evidences);
+        }
+
+        public TargetPopulationAnalysis(
+                String summary,
+                String derivedFromPlace,
+                List<Metric> age,
+                List<Metric> gender,
+                List<Evidence> evidences
+        ) {
+            this(summary, derivedFromPlace, age, gender, List.of(), evidences);
         }
     }
 
@@ -83,26 +128,100 @@ public record LocationAnalysisContent(
             Double total,
             List<Metric> byTime,
             List<Metric> byDay,
+            List<Metric> byMonth,
+            String operatingHoursAssessment,
+            Double operatingHoursFitScore,
             List<Evidence> evidences
     ) {
         public FootTrafficAnalysis {
             byTime = byTime == null ? List.of() : List.copyOf(byTime);
             byDay = byDay == null ? List.of() : List.copyOf(byDay);
+            byMonth = byMonth == null ? List.of() : List.copyOf(byMonth);
             evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+
+        public FootTrafficAnalysis(
+                String summary,
+                Double total,
+                List<Metric> byTime,
+                List<Metric> byDay,
+                List<Evidence> evidences
+        ) {
+            this(summary, total, byTime, byDay, List.of(), "데이터 없음", null, evidences);
         }
     }
 
     @JsonIgnoreProperties(ignoreUnknown = false)
     public record NearbyFacilities(
+            String summary,
+            List<Metric> demandDrivers,
             List<Facility> competitors,
             List<Facility> convenienceFacilities,
             List<Facility> transportFacilities,
             List<Evidence> evidences
     ) {
         public NearbyFacilities {
+            demandDrivers = demandDrivers == null ? List.of() : List.copyOf(demandDrivers);
             competitors = competitors == null ? List.of() : List.copyOf(competitors);
             convenienceFacilities = convenienceFacilities == null ? List.of() : List.copyOf(convenienceFacilities);
             transportFacilities = transportFacilities == null ? List.of() : List.copyOf(transportFacilities);
+            evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+
+        public NearbyFacilities(
+                List<Facility> competitors,
+                List<Facility> convenienceFacilities,
+                List<Facility> transportFacilities,
+                List<Evidence> evidences
+        ) {
+            this("데이터 없음", List.of(), competitors, convenienceFacilities, transportFacilities, evidences);
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record CompetitionAnalysis(
+            String summary,
+            Integer totalCompetitors,
+            Integer franchiseCompetitors,
+            Integer independentCompetitors,
+            Double competitionDensity,
+            List<Facility> keyCompetitors,
+            List<Evidence> evidences
+    ) {
+        public CompetitionAnalysis {
+            keyCompetitors = keyCompetitors == null ? List.of() : List.copyOf(keyCompetitors);
+            evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record BusinessPerformanceAnalysis(
+            String summary,
+            List<Metric> performanceIndicators,
+            List<String> opportunities,
+            List<String> risks,
+            List<Evidence> evidences
+    ) {
+        public BusinessPerformanceAnalysis {
+            performanceIndicators = performanceIndicators == null ? List.of() : List.copyOf(performanceIndicators);
+            opportunities = opportunities == null ? List.of() : List.copyOf(opportunities);
+            risks = risks == null ? List.of() : List.copyOf(risks);
+            evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+    }
+
+    @JsonIgnoreProperties(ignoreUnknown = false)
+    public record DataQualityAnalysis(
+            Double reliabilityScore,
+            Integer observationCount,
+            String observationPeriod,
+            String coverage,
+            Boolean radiusExpanded,
+            List<String> missingData,
+            List<Evidence> evidences
+    ) {
+        public DataQualityAnalysis {
+            missingData = missingData == null ? List.of() : List.copyOf(missingData);
             evidences = evidences == null ? List.of() : List.copyOf(evidences);
         }
     }
