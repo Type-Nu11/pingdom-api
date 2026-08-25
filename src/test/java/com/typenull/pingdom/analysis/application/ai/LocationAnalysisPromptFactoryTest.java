@@ -35,7 +35,8 @@ class LocationAnalysisPromptFactoryTest {
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
                 "totalScore >= 70", "totalScore가 45~69",
                 "additionalCriteria", "고정 디자인 XHTML",
-                "최소 3페이지", "overallLocationEvaluation", "통계 산출 근거",
+                "최소 8페이지", "overallLocationEvaluation", "commercialAreaAnalysis",
+                "competitionAnalysis", "businessPerformanceAnalysis", "dataQualityAnalysis", "통계 산출 근거",
                 "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자",
                 "SERVER_DESIGN_REFERENCE_BEGIN", "Pingdom Editorial Location Report v1",
                 "#F8F7F2", "#7D8777", "수평 막대"

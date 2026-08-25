@@ -36,9 +36,13 @@ public class LocationAnalysisResponseValidator {
         LocationAnalysisContent content = response.content();
         requireText(content.reportName(), "reportName");
         if (content.overallLocationEvaluation() == null
+                || content.commercialAreaAnalysis() == null
                 || content.targetPopulationAnalysis() == null
                 || content.footTrafficAnalysis() == null
                 || content.nearbyFacilities() == null
+                || content.competitionAnalysis() == null
+                || content.businessPerformanceAnalysis() == null
+                || content.dataQualityAnalysis() == null
                 || content.analysisScope() == null) {
             invalid();
         }
@@ -47,14 +51,21 @@ public class LocationAnalysisResponseValidator {
         }
         validateScope(request, content.analysisScope());
         validateEvidence(content.overallLocationEvaluation().evidences());
+        validateCommercialArea(content.commercialAreaAnalysis());
         validateEvidence(content.targetPopulationAnalysis().evidences());
         validateEvidence(content.footTrafficAnalysis().evidences());
         validateEvidence(content.nearbyFacilities().evidences());
+        validateCompetition(content.competitionAnalysis());
+        validateBusinessPerformance(content.businessPerformanceAnalysis());
+        validateDataQuality(content.dataQualityAnalysis());
         validateDataSources(content.dataSources());
         validateMetrics(content.targetPopulationAnalysis().age());
         validateMetrics(content.targetPopulationAnalysis().gender());
+        validateMetrics(content.targetPopulationAnalysis().behaviorIndicators());
         validateMetrics(content.footTrafficAnalysis().byTime());
         validateMetrics(content.footTrafficAnalysis().byDay());
+        validateMetrics(content.footTrafficAnalysis().byMonth());
+        validateMetrics(content.nearbyFacilities().demandDrivers());
         validateFacilities(content.nearbyFacilities().competitors());
         validateFacilities(content.nearbyFacilities().convenienceFacilities());
         validateFacilities(content.nearbyFacilities().transportFacilities());
@@ -71,6 +82,7 @@ public class LocationAnalysisResponseValidator {
                 && content.footTrafficAnalysis().total() == null
                 && content.footTrafficAnalysis().byTime().isEmpty()
                 && content.footTrafficAnalysis().byDay().isEmpty()
+                && content.footTrafficAnalysis().byMonth().isEmpty()
                 && content.nearbyFacilities().competitors().isEmpty()
                 && content.nearbyFacilities().convenienceFacilities().isEmpty()
                 && content.nearbyFacilities().transportFacilities().isEmpty()
@@ -104,6 +116,43 @@ public class LocationAnalysisResponseValidator {
                 || (scope.radiusMeters() != null && scope.radiusMeters() < 0)) {
             invalid();
         }
+    }
+
+    private void validateCommercialArea(LocationAnalysisContent.CommercialAreaAnalysis commercialArea) {
+        requireText(commercialArea.name(), "commercialAreaAnalysis.name");
+        requireText(commercialArea.type(), "commercialAreaAnalysis.type");
+        requireText(commercialArea.summary(), "commercialAreaAnalysis.summary");
+        validateMetrics(commercialArea.demandIndicators());
+        validateEvidence(commercialArea.evidences());
+    }
+
+    private void validateCompetition(LocationAnalysisContent.CompetitionAnalysis competition) {
+        requireText(competition.summary(), "competitionAnalysis.summary");
+        validateNonNegative(competition.totalCompetitors());
+        validateNonNegative(competition.franchiseCompetitors());
+        validateNonNegative(competition.independentCompetitors());
+        if (competition.competitionDensity() != null && competition.competitionDensity() < 0) {
+            invalid();
+        }
+        validateFacilities(competition.keyCompetitors());
+        validateEvidence(competition.evidences());
+    }
+
+    private void validateBusinessPerformance(LocationAnalysisContent.BusinessPerformanceAnalysis performance) {
+        requireText(performance.summary(), "businessPerformanceAnalysis.summary");
+        validateMetrics(performance.performanceIndicators());
+        validateEvidence(performance.evidences());
+    }
+
+    private void validateDataQuality(LocationAnalysisContent.DataQualityAnalysis dataQuality) {
+        if (dataQuality.reliabilityScore() != null
+                && (dataQuality.reliabilityScore() < 0 || dataQuality.reliabilityScore() > 100)) {
+            invalid();
+        }
+        validateNonNegative(dataQuality.observationCount());
+        requireText(dataQuality.observationPeriod(), "dataQualityAnalysis.observationPeriod");
+        requireText(dataQuality.coverage(), "dataQualityAnalysis.coverage");
+        validateEvidence(dataQuality.evidences());
     }
 
     private void validateEvidence(List<LocationAnalysisContent.Evidence> evidences) {
@@ -167,6 +216,12 @@ public class LocationAnalysisResponseValidator {
             if (place.evidenceIds().stream().anyMatch(id -> !StringUtils.hasText(id))) {
                 invalid();
             }
+        }
+    }
+
+    private void validateNonNegative(Integer value) {
+        if (value != null && value < 0) {
+            invalid();
         }
     }
 

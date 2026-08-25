@@ -19,8 +19,9 @@ public class LocationAnalysisPromptFactory {
             - 전체 톤: 여백이 넓고 절제된 편집 디자인. 장식용 이미지나 이모지를 사용하지 않는다.
             - 용지/배경: A4 세로, 아이보리 #F8F7F2, 본문 #292B2A, 보조 배경 #EEEEE7
             - 포인트: 올리브 #7D8777, 진한 패널 #303531, 구분선 #D5D7CF
-            - 섹션 구조: 01 표지·종합 입지 평가, 02 추천 장소·타깃/유동인구 통계,
-              03 주변 시설·분석 범위·데이터 출처·제한사항
+            - 섹션 구조: 01 표지·종합 입지 평가, 02 상권 개요·추천 장소,
+              03 타깃 고객, 04 유동 인구·영업시간, 05 경쟁 환경,
+              06 주변 시설·접근성, 07 사업성·실행 전략, 08 데이터 신뢰도·출처·제한사항
             - 공통 요소: 좌측 정렬, 얇은 상단 구분선, 큰 섹션 번호, 카드형 요약 지표,
               표의 회색 헤더, 통계 비율을 표현하는 수평 막대
             - 데이터 배치: 긴 설명보다 summary와 실제 수치를 우선하며, 표와 카드에 들어갈 수 있도록
@@ -45,7 +46,7 @@ public class LocationAnalysisPromptFactory {
     private String buildPrompt(String criteria, LocalDate analysisBasisDate) {
         return """
                 너는 Pingdom의 상권·입지 분석 AI다. 사용자의 업종·지역·고객층·영업시간을 근거로
-                검증 가능한 상권·입지 분석 HTML 보고서를 작성한다. 사실·계산·해석을 절대 혼합하지 않는다.
+                검증 가능한 상권·입지 분석 데이터를 작성한다. 사실·계산·해석을 절대 혼합하지 않는다.
 
                 [입력 격리]
                 분석 기준일: %s
@@ -125,33 +126,47 @@ public class LocationAnalysisPromptFactory {
                 근거 없는 "치명적", "매우 낮음" 같은 단정은 사용하지 않는다.
 
                 [보고서 데이터 필수 내용]
-                Backend가 고정 디자인 XHTML을 생성하므로 HTML을 직접 작성하지 않는다. 아래 9개 섹션의
+                Backend가 고정 디자인 XHTML을 생성하므로 HTML을 직접 작성하지 않는다. 아래 13개 섹션의
                 구조화된 데이터를 반드시 채운다.
                 1. 종합 입지 평가: overallLocationEvaluation.grade, summary, strengths, risks, evidences
-                2. 추천 장소: recommendedPlaces의 rank, name, address, score, reason, evidenceIds
-                3. 타깃 인구 분석: targetPopulationAnalysis의 summary, derivedFromPlace, age, gender, evidences
-                4. 유동 인구 분석: footTrafficAnalysis의 summary, total, byTime, byDay, evidences
-                5. 주변 시설: nearbyFacilities의 competitors, convenienceFacilities, transportFacilities, evidences
-                6. 분석 범위: analysisScope의 requestedRegion, normalizedRegion, scopeLevel, scopeDescription, radiusMeters
-                7. 데이터 출처: dataSources
-                8. 제한사항: limitations
-                9. 통계 산출 근거: 위 metrics와 evidences에 실제 원본값·분모·기간·범위를 남긴다.
-                age, gender, byTime, byDay 배열은 실제 관측값이 없을 때 반드시 []로 반환한다.
+                2. 상권 개요: commercialAreaAnalysis의 name, type, summary, demandIndicators, evidences
+                3. 추천 장소: recommendedPlaces의 rank, name, address, score, reason, evidenceIds
+                4. 타깃 인구 분석: targetPopulationAnalysis의 summary, derivedFromPlace, age, gender,
+                   behaviorIndicators, evidences
+                5. 유동 인구 분석: footTrafficAnalysis의 summary, total, byTime, byDay, byMonth,
+                   operatingHoursAssessment, operatingHoursFitScore, evidences
+                6. 주변 시설: nearbyFacilities의 summary, demandDrivers, competitors, convenienceFacilities,
+                   transportFacilities, evidences
+                7. 경쟁 분석: competitionAnalysis의 summary, totalCompetitors, franchiseCompetitors,
+                   independentCompetitors, competitionDensity, keyCompetitors, evidences
+                8. 사업성 분석: businessPerformanceAnalysis의 summary, performanceIndicators, opportunities,
+                   risks, evidences
+                9. 데이터 신뢰도: dataQualityAnalysis의 reliabilityScore, observationCount, observationPeriod,
+                   coverage, radiusExpanded, missingData, evidences
+                10. 분석 범위: analysisScope의 requestedRegion, normalizedRegion, scopeLevel, scopeDescription, radiusMeters
+                11. 데이터 출처: dataSources
+                12. 제한사항: limitations
+                13. 통계 산출 근거: 위 metrics와 evidences에 실제 원본값·분모·기간·범위를 남긴다.
+                age, gender, behaviorIndicators, byTime, byDay, byMonth, demandIndicators, demandDrivers,
+                keyCompetitors, performanceIndicators 배열은 실제 관측값이 없을 때 반드시 []로 반환한다.
                 데이터가 없을 때 null placeholder 객체나 0을 만들어내지 않는다. 문자열 설명에는 "데이터 없음"을 쓴다.
 
                 [통계 계산 및 보고서 분량]
-                추천 장소마다 MCP가 반환한 원본 유동인구를 빠짐없이 집계해 total, 시간대별, 요일별, 연령대별,
-                성별 지표를 만든다. 가능한 모든 후보를 비교 집합에 포함하고 상위 추천 장소만 잘라서 근거를 잃지 않는다.
+                추천 장소마다 MCP가 반환한 원본 유동인구를 빠짐없이 집계해 total, 시간대별, 요일별, 월별, 연령대별,
+                성별 지표를 만든다. 체류 시간·재방문율·소비력·경쟁도·매출 잠재력·임대료·공실률은 해당 MCP/DB 데이터가
+                실제로 존재할 때만 behaviorIndicators, demandIndicators, performanceIndicators에 넣는다.
+                가능한 모든 후보를 비교 집합에 포함하고 상위 추천 장소만 잘라서 근거를 잃지 않는다.
                 총량·평균·최대·비율은 같은 기간·반경·집계 단위끼리만 계산한다. 비율은 분모와 formula를 CALCULATION
                 evidence에 기록한다. 결과는 최소 3개 추천 장소 또는 데이터가 부족한 이유를 명시하며, 장소가 1개뿐이면
                 확인된 1개만 사용하고 부족한 비교 집합을 limitations에 기록한다. Backend PDF는 표·지표·막대형 통계 카드로
-                최소 3페이지를 구성하므로 각 섹션의 summary와 수치를 생략하지 않는다.
+                최소 8페이지를 구성하므로 각 섹션의 summary와 수치를 생략하지 않는다.
 
                 [XHTML/PDF 디자인 계약]
                 XHTML은 Backend의 고정 템플릿이 생성한다. 너는 디자인용 HTML이나 Markdown을 반환하지 않고 데이터만 반환한다.
                 Backend 템플릿은 레퍼런스처럼 여백이 넓은 아이보리 배경, 검정 대형 섹션 번호, 올리브 포인트 색상,
                 얇은 구분선, 동일한 카드·표·막대형 통계 컴포넌트를 모든 보고서에 반복한다. 보고서에는 표지·종합 평가,
-                추천 장소·타깃/유동인구 통계, 주변 시설·범위·출처의 3개 페이지 구간이 고정된다. 데이터가 없는 경우에도
+                상권·추천 장소, 타깃 고객, 유동인구·영업시간, 경쟁 환경, 주변 시설·접근성,
+                사업성·실행 전략, 데이터 신뢰도·출처의 8개 페이지 구간이 고정된다. 데이터가 없는 경우에도
                 레이아웃을 생략하지 않고 "데이터 없음"과 제한사항을 표시한다. Backend가 사용자 입력과 조회 텍스트를 escape하며,
                 외부 이미지·스크립트·iframe·javascript URL은 사용하지 않는다. HTML 바깥의 설명, Markdown, 코드 블록은 반환하지 않는다.
 
@@ -164,10 +179,14 @@ public class LocationAnalysisPromptFactory {
                 {
                   "reportName": "[업종] [정규화 지역] 상권·입지 분석 보고서",
                   "overallLocationEvaluation": {"grade":"SUITABLE|CONDITIONAL|UNSUITABLE|INSUFFICIENT_DATA", "summary":"", "strengths":[], "risks":[], "evidences":[]},
+                  "commercialAreaAnalysis": {"name":"상권명", "type":"상권 유형", "summary":"", "demandIndicators":[{"label":"주거 인구","value":12000,"unit":"명","sharePercent":null}], "evidences":[]},
                   "recommendedPlaces": [{"rank":1,"name":"장소명","address":"주소","score":85.3,"reason":"추천 이유","evidenceIds":["evidence-1"]}],
-                  "targetPopulationAnalysis": {"summary":"", "derivedFromPlace":"장소명", "age":[{"label":"20대","value":1200,"unit":"명","sharePercent":42.1}], "gender":[{"label":"F","value":900,"unit":"명","sharePercent":52.0}], "evidences":[]},
-                  "footTrafficAnalysis": {"summary":"", "total":28000, "byTime":[{"label":"18-20시","value":6200,"unit":"명","sharePercent":22.1}], "byDay":[], "evidences":[]},
-                  "nearbyFacilities": {"competitors":[], "convenienceFacilities":[], "transportFacilities":[], "evidences":[]},
+                  "targetPopulationAnalysis": {"summary":"", "derivedFromPlace":"장소명", "age":[{"label":"20대","value":1200,"unit":"명","sharePercent":42.1}], "gender":[{"label":"F","value":900,"unit":"명","sharePercent":52.0}], "behaviorIndicators":[{"label":"평균 체류 시간","value":38,"unit":"분","sharePercent":null}], "evidences":[]},
+                  "footTrafficAnalysis": {"summary":"", "total":28000, "byTime":[{"label":"18-20시","value":6200,"unit":"명","sharePercent":22.1}], "byDay":[], "byMonth":[], "operatingHoursAssessment":"", "operatingHoursFitScore":82.0, "evidences":[]},
+                  "nearbyFacilities": {"summary":"", "demandDrivers":[{"label":"오피스","value":24,"unit":"개","sharePercent":null}], "competitors":[], "convenienceFacilities":[], "transportFacilities":[], "evidences":[]},
+                  "competitionAnalysis": {"summary":"", "totalCompetitors":12, "franchiseCompetitors":4, "independentCompetitors":8, "competitionDensity":3.2, "keyCompetitors":[], "evidences":[]},
+                  "businessPerformanceAnalysis": {"summary":"", "performanceIndicators":[{"label":"매출 잠재력 지수","value":76.0,"unit":"점","sharePercent":76.0}], "opportunities":[], "risks":[], "evidences":[]},
+                  "dataQualityAnalysis": {"reliabilityScore":82.0, "observationCount":500000, "observationPeriod":"2026-07-21~2026-08-20", "coverage":"서울특별시 일부 권역", "radiusExpanded":false, "missingData":[], "evidences":[]},
                   "analysisScope": {"requestedRegion":"요청 원문", "normalizedRegion":"정규화 지역", "scopeLevel":"CITY|DISTRICT|NEIGHBORHOOD|ADDRESS", "scopeDescription":"적용 범위", "radiusMeters":1500},
                   "dataSources": [],
                   "limitations": []
