@@ -69,6 +69,8 @@ class GeminiAiAnalysisClientTest {
         server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
                 .andExpect(jsonPath("$.contents.length()" ).value(3))
                 .andExpect(jsonPath("$.contents[2].parts[0].functionResponse.name").value("recommend_location"))
+                .andExpect(jsonPath("$.contents[2].parts[0].functionResponse.response.result.recommendations[0].metrics.total_foot")
+                        .value(2328))
                 .andRespond(withSuccess(responseJson(), MediaType.APPLICATION_JSON));
 
         AiAnalysisProperties properties = new AiAnalysisProperties(
@@ -87,7 +89,9 @@ class GeminiAiAnalysisClientTest {
             @Override
             public McpToolResult callTool(String name, Map<String, Object> arguments) {
                 calledArguments.set(arguments);
-                return new McpToolResult(name, "{\"recommendations\":[]}", false);
+                return new McpToolResult(name, """
+                        {"recommendations":[{"rank":1,"metrics":{"total_foot":2328}}]}
+                        """, false);
             }
         };
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(

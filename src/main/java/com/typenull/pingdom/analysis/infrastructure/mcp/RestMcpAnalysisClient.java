@@ -57,10 +57,22 @@ public class RestMcpAnalysisClient implements McpAnalysisClient {
                 "arguments", arguments == null ? Map.of() : arguments
         ));
         JsonNode result = response.path("result");
-        String content = result.path("content").isArray()
-                ? result.path("content").toString()
-                : result.toString();
+        String content = extractToolContent(result);
         return new McpToolResult(name, content, result.path("isError").asBoolean(false));
+    }
+
+    /** MCP text content 내부의 JSON을 그대로 Gemini functionResponse에 전달한다. */
+    private String extractToolContent(JsonNode result) {
+        JsonNode content = result.path("content");
+        if (!content.isArray()) {
+            return result.toString();
+        }
+        for (JsonNode item : content) {
+            if ("text".equals(item.path("type").asText()) && item.path("text").isTextual()) {
+                return item.path("text").asText();
+            }
+        }
+        return content.toString();
     }
 
     private JsonNode request(String method, Map<String, Object> params) {
