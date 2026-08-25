@@ -14,7 +14,7 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 
 - Public: `/actuator/health`, `/actuator/health/liveness`, `/actuator/health/readiness`
 - Protected: other `/actuator/**` endpoints require `ADMIN`.
-- Readiness includes `readinessState` and `db`.
+- Readiness includes `readinessState`, `db`, and `redis`.
 - Health details are not exposed.
 
 ## Request Correlation
