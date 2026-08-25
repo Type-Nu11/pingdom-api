@@ -58,6 +58,7 @@ class LocationAnalysisResponseValidatorTest {
                 new LocationAnalysisContent.OverallLocationEvaluation(
                         LocationAnalysisContent.Grade.SUITABLE, "분석", List.of(), List.of(), List.of()
                 ),
+                commercialArea(),
                 new LocationAnalysisContent.TargetPopulationAnalysis(
                         "분석", "추천 장소 A", List.of(metric("20-29")), List.of(metric("여성")), List.of()
                 ),
@@ -65,6 +66,9 @@ class LocationAnalysisResponseValidatorTest {
                         "분석", 100d, List.of(), List.of(), List.of()
                 ),
                 new LocationAnalysisContent.NearbyFacilities(List.of(), List.of(), List.of(), List.of()),
+                competition(),
+                businessPerformance(),
+                dataQuality(),
                 List.of(new LocationAnalysisContent.RecommendedPlace(
                         1, "추천 장소 A", "대구 북구 주소", 80d, "유동인구가 많음", List.of()
                 )),
@@ -92,15 +96,44 @@ class LocationAnalysisResponseValidatorTest {
         return new LocationAnalysisContent(
                 "입지 분석",
                 new LocationAnalysisContent.OverallLocationEvaluation(grade, "데이터 없음", List.of(), List.of(), List.of()),
+                commercialArea(),
                 new LocationAnalysisContent.TargetPopulationAnalysis("데이터 없음", List.of(), List.of(), List.of()),
                 new LocationAnalysisContent.FootTrafficAnalysis("데이터 없음", null, List.of(), List.of(), List.of()),
                 new LocationAnalysisContent.NearbyFacilities(List.of(), List.of(), List.of(), List.of()),
+                competition(),
+                businessPerformance(),
+                dataQuality(),
+                List.of(),
                 new LocationAnalysisContent.AnalysisScope(
                         "대구광역시 북구", "대구광역시 북구", LocationAnalysisContent.ScopeLevel.DISTRICT,
                         "구 전체", null
                 ),
                 List.of(),
                 limitations
+        );
+    }
+
+    private LocationAnalysisContent.CommercialAreaAnalysis commercialArea() {
+        return new LocationAnalysisContent.CommercialAreaAnalysis(
+                "대구 북구 상권", "생활 상권", "상권 분석", List.of(), List.of()
+        );
+    }
+
+    private LocationAnalysisContent.CompetitionAnalysis competition() {
+        return new LocationAnalysisContent.CompetitionAnalysis(
+                "경쟁 분석", null, null, null, null, List.of(), List.of()
+        );
+    }
+
+    private LocationAnalysisContent.BusinessPerformanceAnalysis businessPerformance() {
+        return new LocationAnalysisContent.BusinessPerformanceAnalysis(
+                "사업성 분석", List.of(), List.of(), List.of(), List.of()
+        );
+    }
+
+    private LocationAnalysisContent.DataQualityAnalysis dataQuality() {
+        return new LocationAnalysisContent.DataQualityAnalysis(
+                null, null, "데이터 없음", "데이터 없음", null, List.of(), List.of()
         );
     }
 }

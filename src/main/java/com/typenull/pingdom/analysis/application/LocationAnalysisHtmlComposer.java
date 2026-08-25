@@ -6,11 +6,14 @@ import java.util.List;
 import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
-import org.springframework.web.util.HtmlUtils;
 
-/** 구조화된 AI 응답을 고정된 3페이지 이상 XHTML 디자인으로 변환한다. */
+/** 구조화된 AI 응답을 고정된 8페이지 XHTML 디자인으로 변환한다. */
 @Component
 public class LocationAnalysisHtmlComposer {
+
+    private static final int TOTAL_PAGES = 8;
+    private static final int MAX_TABLE_ROWS = 5;
+    private static final int MAX_FACILITY_ROWS = 3;
 
     public String compose(
             String reportId,
@@ -20,10 +23,95 @@ public class LocationAnalysisHtmlComposer {
             LocationAnalysisContent content
     ) {
         LocationAnalysisContent.OverallLocationEvaluation overall = content.overallLocationEvaluation();
+        LocationAnalysisContent.CommercialAreaAnalysis commercialArea = content.commercialAreaAnalysis();
         LocationAnalysisContent.TargetPopulationAnalysis target = content.targetPopulationAnalysis();
         LocationAnalysisContent.FootTrafficAnalysis traffic = content.footTrafficAnalysis();
         LocationAnalysisContent.NearbyFacilities facilities = content.nearbyFacilities();
+        LocationAnalysisContent.CompetitionAnalysis competition = content.competitionAnalysis();
+        LocationAnalysisContent.BusinessPerformanceAnalysis performance = content.businessPerformanceAnalysis();
+        LocationAnalysisContent.DataQualityAnalysis dataQuality = content.dataQualityAnalysis();
 
+        return documentStart()
+                + coverPage(reportId, reportName, publishedDate, analysisBasisDate, content, overall, commercialArea)
+                + page(2, "02 / MARKET & CANDIDATES", "상권 개요와 후보 입지",
+                panel("상권 개요", text(commercialArea == null ? null : commercialArea.summary()))
+                        + renderCards(
+                        "상권명", commercialArea == null ? null : commercialArea.name(),
+                        "상권 유형", commercialArea == null ? null : commercialArea.type(),
+                        "적용 반경", radius(content.analysisScope() == null ? null : content.analysisScope().radiusMeters())
+                )
+                        + panel("수요 유발 지표", renderMetricTable(commercialArea == null
+                        ? List.of() : commercialArea.demandIndicators()))
+                        + panel("추천 후보 비교", renderRecommendedPlaces(content.recommendedPlaces()))
+                        + renderEvidenceTable(commercialArea == null ? List.of() : commercialArea.evidences()))
+                + page(3, "03 / TARGET CUSTOMER", "타깃 고객 분석",
+                panel("타깃 고객 요약", text(target == null ? null : target.summary())
+                        + muted("산출 기준 장소: " + text(target == null ? null : target.derivedFromPlace())))
+                        + renderCards(
+                        "주요 연령", topMetric(target == null ? List.of() : target.age()),
+                        "주요 성별", topMetric(target == null ? List.of() : target.gender()),
+                        "행동 지표", topMetric(target == null ? List.of() : target.behaviorIndicators())
+                )
+                        + panel("연령 분포", renderMetricBars(target == null ? List.of() : target.age()))
+                        + panel("성별 분포", renderMetricBars(target == null ? List.of() : target.gender()))
+                        + panel("체류·재방문·소비 행동", renderMetricTable(target == null
+                        ? List.of() : target.behaviorIndicators()))
+                        + renderEvidenceTable(target == null ? List.of() : target.evidences()))
+                + page(4, "04 / FLOW & HOURS", "유동 인구와 영업시간",
+                panel("유동 인구 요약", text(traffic == null ? null : traffic.summary()))
+                        + renderCards(
+                        "전체 유동 인구", value(traffic == null ? null : traffic.total()),
+                        "영업시간 적합도", score(traffic == null ? null : traffic.operatingHoursFitScore()),
+                        "영업시간 판단", text(traffic == null ? null : traffic.operatingHoursAssessment())
+                )
+                        + panel("시간대별 유동", renderMetricBars(traffic == null ? List.of() : traffic.byTime()))
+                        + panel("요일별 유동", renderMetricBars(traffic == null ? List.of() : traffic.byDay()))
+                        + panel("월별 유동 추이", renderMetricBars(traffic == null ? List.of() : traffic.byMonth()))
+                        + renderEvidenceTable(traffic == null ? List.of() : traffic.evidences()))
+                + page(5, "05 / COMPETITION & CONTEXT", "경쟁과 주변 환경",
+                panel("경쟁 환경", text(competition == null ? null : competition.summary()))
+                        + renderCards(
+                        "전체 경쟁점", value(competition == null ? null : competition.totalCompetitors()),
+                        "프랜차이즈", value(competition == null ? null : competition.franchiseCompetitors()),
+                        "개인 매장", value(competition == null ? null : competition.independentCompetitors())
+                )
+                        + panel("핵심 경쟁점", renderFacilityTable("핵심 경쟁점", competition == null
+                        ? List.of() : competition.keyCompetitors()))
+                        + panel("주변 환경 요약", text(facilities == null ? null : facilities.summary())
+                        + renderMetricTable(facilities == null ? List.of() : facilities.demandDrivers()))
+                        + renderEvidenceTable(competition == null ? List.of() : competition.evidences()))
+                + page(6, "06 / LOCAL FACILITIES", "주변 시설과 접근성",
+                panel("주변 환경 요약", text(facilities == null ? null : facilities.summary()))
+                        + panel("주변 시설", renderFacilities(facilities))
+                        + renderEvidenceTable(facilities == null ? List.of() : facilities.evidences()))
+                + page(7, "07 / BUSINESS POTENTIAL", "사업성 및 실행 전략",
+                panel("사업성 요약", text(performance == null ? null : performance.summary()))
+                        + panel("핵심 사업성 지표", renderMetricTable(performance == null
+                        ? List.of() : performance.performanceIndicators()))
+                        + panel("기회 요인", renderStringList("확인된 기회", performance == null
+                        ? List.of() : performance.opportunities()))
+                        + panel("실행 전 확인할 위험", renderStringList("위험 및 대응 필요 항목", performance == null
+                        ? List.of() : performance.risks()))
+                        + renderEvidenceTable(performance == null ? List.of() : performance.evidences()))
+                + page(8, "08 / DATA QUALITY & SOURCES", "데이터 신뢰도와 분석 기준",
+                renderCards(
+                        "데이터 신뢰도", score(dataQuality == null ? null : dataQuality.reliabilityScore()),
+                        "관측 수", value(dataQuality == null ? null : dataQuality.observationCount()),
+                        "반경 확장", booleanText(dataQuality == null ? null : dataQuality.radiusExpanded())
+                )
+                        + panel("관측 범위", "<p><strong>관측 기간:</strong> "
+                        + escape(text(dataQuality == null ? null : dataQuality.observationPeriod())) + "<br />"
+                        + "<strong>데이터 범위:</strong> "
+                        + escape(text(dataQuality == null ? null : dataQuality.coverage())) + "</p>")
+                        + panel("분석 범위", renderScope(content.analysisScope()))
+                        + panel("누락·제한 사항", renderStringList("확인하지 못한 데이터", dataQuality == null
+                        ? List.of() : dataQuality.missingData()) + renderStringList("분석 제한사항", content.limitations()))
+                        + renderDataSources(content.dataSources())
+                        + renderEvidenceTable(dataQuality == null ? List.of() : dataQuality.evidences()))
+                + documentEnd();
+    }
+
+    private String documentStart() {
         return """
                 <!DOCTYPE html>
                 <html lang="ko">
@@ -39,161 +127,174 @@ public class LocationAnalysisHtmlComposer {
                     .section-number { float: left; margin: -2px 18px 0 0; color: #202321; font-family: Georgia, serif; font-size: 38px; line-height: .9; }
                     h1 { max-width: 145mm; margin: 12mm 0 4mm; color: #222522; font-family: Georgia, 'NanumGothic', sans-serif; font-size: 29px; font-weight: 400; line-height: 1.2; }
                     h2 { margin: 0 0 7mm; padding-top: 2mm; border-top: 1px solid #aeb4a8; color: #222522; font-family: Georgia, 'NanumGothic', sans-serif; font-size: 21px; font-weight: 400; line-height: 1.2; }
-                    h3 { margin: 5mm 0 2mm; color: #424842; font-size: 11px; font-weight: 700; }
+                    h3 { margin: 0 0 2mm; color: #424842; font-size: 11px; font-weight: 700; }
                     p { margin: 2mm 0; }
                     .rule { height: 1px; margin: 7mm 0; background: #d5d7cf; }
                     .meta { color: #737970; font-size: 9px; line-height: 1.8; }
                     .lead { max-width: 150mm; color: #555b54; font-size: 12px; line-height: 1.8; }
                     .grade { display: inline-block; margin: 2mm 0 3mm; padding: 2mm 5mm; color: #f8f7f2; background: #7d8777; font-size: 11px; letter-spacing: .7px; }
-                    .card-grid { display: table; width: 100%%; table-layout: fixed; border-spacing: 3mm 0; margin: 5mm -3mm 7mm; }
-                    .card-grid > .card { display: table-cell; width: 33.333%%; padding: 5mm; border-top: 3px solid #aeb4a8; background: #eeeee7; vertical-align: top; }
+                    .card-grid { display: table; width: 100%; table-layout: fixed; border-spacing: 3mm 0; margin: 5mm -3mm 7mm; }
+                    .card-grid > .card { display: table-cell; width: 33.333%; padding: 5mm; border-top: 3px solid #aeb4a8; background: #eeeee7; vertical-align: top; }
                     .card-label { color: #7b8179; font-size: 9px; }
-                    .card-value { margin-top: 2mm; color: #282c29; font-family: Georgia, 'NanumGothic', sans-serif; font-size: 20px; }
+                    .card-value { margin-top: 2mm; color: #282c29; font-family: Georgia, 'NanumGothic', sans-serif; font-size: 16px; word-break: break-word; }
                     .panel { margin: 4mm 0; padding: 5mm; background: #eeeee7; page-break-inside: avoid; }
                     .panel.dark { color: #f8f7f2; background: #303531; }
                     .panel.dark h3, .panel.dark .muted { color: #d4d9ce; }
                     .muted { color: #737970; font-size: 9px; }
                     .list { margin: 2mm 0 0; padding-left: 5mm; }
                     .list li { margin: 1mm 0; }
-                    table { width: 100%%; border-collapse: collapse; margin: 3mm 0 6mm; font-size: 9px; page-break-inside: avoid; }
+                    table { width: 100%; border-collapse: collapse; margin: 3mm 0 6mm; font-size: 9px; page-break-inside: avoid; }
                     th, td { padding: 2.5mm 2mm; border-bottom: 1px solid #d5d7cf; text-align: left; vertical-align: top; }
                     th { color: #697166; background: #e7e8e0; font-weight: 700; }
-                    .bar-row { display: table; width: 100%%; margin: 2mm 0; table-layout: fixed; }
-                    .bar-label, .bar-value { display: table-cell; width: 28%%; vertical-align: middle; }
-                    .bar-track { display: table-cell; width: 54%%; height: 4mm; background: #dfe2d9; vertical-align: middle; }
+                    .bar-row { display: table; width: 100%; margin: 2mm 0; table-layout: fixed; }
+                    .bar-label, .bar-value { display: table-cell; width: 28%; vertical-align: middle; }
+                    .bar-track { display: table-cell; width: 54%; height: 4mm; background: #dfe2d9; vertical-align: middle; }
                     .bar-fill { display: block; height: 4mm; background: #7d8777; }
-                    .bar-value { width: 18%%; padding-left: 2mm; color: #697166; text-align: right; }
+                    .bar-value { width: 18%; padding-left: 2mm; color: #697166; text-align: right; }
                     .footer { position: absolute; right: 19mm; bottom: 9mm; color: #858b82; font-family: Georgia, serif; font-size: 9px; }
-                    .avoid-break { page-break-inside: avoid; }
                   </style>
                 </head>
                 <body>
-                  <section class="page">
-                    <div class="eyebrow">PINGDOM / LOCATION INTELLIGENCE</div>
-                    <div class="section-number">01</div>
-                    <h1>%s</h1>
-                    <p class="lead">데이터로 확인한 지역의 기회와 위험을 한눈에 확인하는 상권·입지 분석 보고서입니다.</p>
-                    <div class="rule"></div>
-                    <p class="meta">보고서 ID: %s<br />발행일자: %s<br />분석 기준일: %s</p>
-                    <div class="card-grid">
-                      <div class="card"><div class="card-label">종합 등급</div><div class="card-value">%s</div></div>
-                      <div class="card"><div class="card-label">분석 범위</div><div class="card-value">%s</div></div>
-                      <div class="card"><div class="card-label">추천 장소</div><div class="card-value">%s</div></div>
-                    </div>
-                    <div class="panel dark">
-                      <h3>종합 입지 평가</h3>
-                      <span class="grade">%s</span>
-                      <p>%s</p>
-                    </div>
-                    %s
-                    %s
-                    <div class="footer">01 / 03</div>
-                  </section>
+                """;
+    }
 
-                  <section class="page">
-                    <div class="eyebrow">02 / PEOPLE &amp; FLOW</div>
-                    <h2><span class="section-number">02</span>타깃 인구와 유동 인구</h2>
-                    <div class="panel avoid-break"><h3>추천 장소</h3>%s</div>
-                    <div class="card-grid">
-                      <div class="card"><div class="card-label">전체 유동 인구</div><div class="card-value">%s</div></div>
-                      <div class="card"><div class="card-label">주요 연령</div><div class="card-value">%s</div></div>
-                      <div class="card"><div class="card-label">주요 성별</div><div class="card-value">%s</div></div>
-                    </div>
-                    <div class="panel avoid-break"><h3>타깃 인구 분석</h3><p>%s</p><p class="muted">산출 기준 장소: %s</p>%s%s</div>
-                    <div class="panel avoid-break"><h3>유동 인구 분석</h3><p>%s</p>%s%s%s</div>
-                    <div class="footer">02 / 03</div>
-                  </section>
+    private String documentEnd() {
+        return "</body></html>";
+    }
 
-                  <section class="page">
-                    <div class="eyebrow">03 / CONTEXT &amp; EVIDENCE</div>
-                    <h2><span class="section-number">03</span>주변 환경과 검증 근거</h2>
-                    %s
-                    <div class="panel avoid-break"><h3>분석 범위</h3>%s</div>
-                    %s
-                    %s
-                    <div class="footer">03 / 03</div>
-                  </section>
-                </body>
-                </html>
+    private String coverPage(
+            String reportId,
+            String reportName,
+            LocalDate publishedDate,
+            LocalDate analysisBasisDate,
+            LocationAnalysisContent content,
+            LocationAnalysisContent.OverallLocationEvaluation overall,
+            LocationAnalysisContent.CommercialAreaAnalysis commercialArea
+    ) {
+        return """
+                <section class="page">
+                  <div class="eyebrow">PINGDOM / LOCATION INTELLIGENCE</div>
+                  <div class="section-number">01</div>
+                  <h1>%s</h1>
+                  <p class="lead">데이터로 확인한 지역의 기회와 위험을 한눈에 확인하는 상권·입지 분석 보고서입니다.</p>
+                  <div class="rule"></div>
+                  <p class="meta">보고서 ID: %s<br />발행일자: %s<br />분석 기준일: %s</p>
+                  %s
+                  <div class="panel dark"><h3>종합 입지 평가</h3><span class="grade">%s</span><p>%s</p></div>
+                  %s%s
+                  <div class="footer">01 / %02d</div>
+                </section>
                 """.formatted(
                 escape(text(reportName)),
                 escape(text(reportId)),
                 escape(String.valueOf(publishedDate)),
                 escape(String.valueOf(analysisBasisDate)),
+                renderCards(
+                        "종합 등급", overall == null || overall.grade() == null ? null : overall.grade().name(),
+                        "분석 범위", content.analysisScope() == null ? null : content.analysisScope().normalizedRegion(),
+                        "상권", commercialArea == null ? null : commercialArea.name()
+                ),
                 escape(overall == null || overall.grade() == null ? null : overall.grade().name()),
-                escape(content.analysisScope() == null ? null : content.analysisScope().normalizedRegion()),
-                escape(value(content.recommendedPlaces().size())),
-                escape(overall == null || overall.grade() == null ? null : overall.grade().name()),
-                escape(overall == null ? null : overall.summary()),
+                escape(text(overall == null ? null : overall.summary())),
                 renderStringList("강점", overall == null ? List.of() : overall.strengths()),
                 renderStringList("주의 요인", overall == null ? List.of() : overall.risks()),
-                renderRecommendedPlaces(content.recommendedPlaces()),
-                escape(value(traffic == null ? null : traffic.total())),
-                escape(topMetric(target == null ? List.of() : target.age())),
-                escape(topMetric(target == null ? List.of() : target.gender())),
-                escape(target == null ? null : target.summary()),
-                escape(target == null ? null : target.derivedFromPlace()),
-                renderMetricBars("연령", target == null ? List.of() : target.age()),
-                renderMetricBars("성별", target == null ? List.of() : target.gender()),
-                escape(traffic == null ? null : traffic.summary()),
-                renderMetricBars("시간대", traffic == null ? List.of() : traffic.byTime()),
-                renderMetricBars("요일", traffic == null ? List.of() : traffic.byDay()),
-                renderEvidenceTable(traffic == null ? List.of() : traffic.evidences()),
-                renderFacilities(facilities),
-                renderScope(content.analysisScope()),
-                renderDataSources(content.dataSources()),
-                renderStringList("제한사항", content.limitations())
+                TOTAL_PAGES
         );
     }
 
+    private String page(int number, String eyebrow, String title, String body) {
+        return """
+                <section class="page">
+                  <div class="eyebrow">%s</div>
+                  <h2><span class="section-number">%02d</span>%s</h2>
+                  %s
+                  <div class="footer">%02d / %02d</div>
+                </section>
+                """.formatted(escape(eyebrow), number, escape(title), body, number, TOTAL_PAGES);
+    }
+
+    private String panel(String title, String body) {
+        return "<div class=\"panel\"><h3>" + escape(title) + "</h3>" + body + "</div>";
+    }
+
+    private String muted(String value) {
+        return "<p class=\"muted\">" + escape(value) + "</p>";
+    }
+
+    private String renderCards(String... labelValuePairs) {
+        StringBuilder cards = new StringBuilder("<div class=\"card-grid\">");
+        for (int index = 0; index < labelValuePairs.length; index += 2) {
+            cards.append("<div class=\"card\"><div class=\"card-label\">")
+                    .append(escape(labelValuePairs[index]))
+                    .append("</div><div class=\"card-value\">")
+                    .append(escape(text(labelValuePairs[index + 1])))
+                    .append("</div></div>");
+        }
+        return cards.append("</div>").toString();
+    }
+
     private String renderRecommendedPlaces(List<LocationAnalysisContent.RecommendedPlace> places) {
-        if (places.isEmpty()) return "<p class=\"muted\">데이터 없음</p>";
-        String rows = places.stream().map(place -> "<tr><td>" + escape(value(place.rank())) + "</td><td>"
+        if (places.isEmpty()) return muted("데이터 없음");
+        String rows = places.stream().limit(MAX_TABLE_ROWS).map(place -> "<tr><td>" + escape(value(place.rank())) + "</td><td>"
                 + escape(text(place.name())) + "</td><td>" + escape(text(place.address())) + "</td><td>"
-                + escape(value(place.score())) + "</td><td>" + escape(text(place.reason())) + "</td></tr>")
+                + escape(score(place.score())) + "</td><td>" + escape(text(place.reason())) + "</td></tr>")
                 .collect(Collectors.joining());
-        return "<table><tr><th>순위</th><th>장소</th><th>주소</th><th>점수</th><th>추천 근거</th></tr>" + rows + "</table>";
+        return "<table><tr><th>순위</th><th>장소</th><th>주소</th><th>점수</th><th>추천 근거</th></tr>" + rows + "</table>"
+                + truncationNotice(places.size(), MAX_TABLE_ROWS, "추천 후보");
     }
 
     private String renderFacilities(LocationAnalysisContent.NearbyFacilities facilities) {
-        if (facilities == null) return "<h3>주변 시설</h3><p class=\"muted\">주변 시설 데이터 없음</p>";
+        if (facilities == null) return muted("주변 시설 데이터 없음");
         String rendered = renderFacilityTable("경쟁 시설", facilities.competitors())
                 + renderFacilityTable("편의 시설", facilities.convenienceFacilities())
-                + renderFacilityTable("교통 시설", facilities.transportFacilities())
-                + renderEvidenceTable(facilities.evidences());
-        return "<h3>주변 시설</h3>" + (rendered.isBlank() ? "<p class=\"muted\">주변 시설 데이터 없음</p>" : rendered);
+                + renderFacilityTable("교통 시설", facilities.transportFacilities());
+        return rendered.isBlank() ? muted("주변 시설 데이터 없음") : rendered;
     }
 
-    private String renderMetricBars(String title, List<LocationAnalysisContent.Metric> metrics) {
-        if (metrics.isEmpty()) return "<p class=\"muted\">" + escape(title) + ": 데이터 없음</p>";
-        return "<h3>" + escape(title) + " 분포</h3>" + metrics.stream().map(metric -> {
+    private String renderMetricBars(List<LocationAnalysisContent.Metric> metrics) {
+        if (metrics.isEmpty()) return muted("데이터 없음");
+        return metrics.stream().limit(MAX_TABLE_ROWS).map(metric -> {
             double share = metric.sharePercent() == null ? 0d : Math.max(0d, Math.min(100d, metric.sharePercent()));
+            String display = metric.sharePercent() == null
+                    ? value(metric.value()) + " " + text(metric.unit())
+                    : value(metric.sharePercent()) + "%";
             return "<div class=\"bar-row\"><span class=\"bar-label\">" + escape(text(metric.label()))
                     + "</span><span class=\"bar-track\"><span class=\"bar-fill\" style=\"width:"
                     + String.format(java.util.Locale.ROOT, "%.2f", share) + "%\"></span></span><span class=\"bar-value\">"
-                    + escape(value(metric.sharePercent())) + "%</span></div>";
+                    + escape(display) + "</span></div>";
         }).collect(Collectors.joining());
+    }
+
+    private String renderMetricTable(List<LocationAnalysisContent.Metric> metrics) {
+        if (metrics.isEmpty()) return muted("데이터 없음");
+        String rows = metrics.stream().limit(MAX_TABLE_ROWS).map(metric -> "<tr><td>" + escape(text(metric.label())) + "</td><td>"
+                + escape(value(metric.value())) + " " + escape(text(metric.unit())) + "</td><td>"
+                + escape(metric.sharePercent() == null ? "-" : value(metric.sharePercent()) + "%") + "</td></tr>")
+                .collect(Collectors.joining());
+        return "<table><tr><th>지표</th><th>값</th><th>비율</th></tr>" + rows + "</table>"
+                + truncationNotice(metrics.size(), MAX_TABLE_ROWS, "지표");
     }
 
     private String renderStringList(String title, List<String> values) {
         if (values == null || values.isEmpty()) return "";
-        return "<div class=\"panel avoid-break\"><h3>" + escape(title) + "</h3><ul class=\"list\">"
-                + values.stream().filter(Objects::nonNull).map(value -> "<li>" + escape(text(value)) + "</li>")
+        return "<div><h3>" + escape(title) + "</h3><ul class=\"list\">"
+                + values.stream().filter(Objects::nonNull).limit(MAX_TABLE_ROWS).map(value -> "<li>" + escape(text(value)) + "</li>")
                 .collect(Collectors.joining()) + "</ul></div>";
     }
 
     private String renderFacilityTable(String title, List<LocationAnalysisContent.Facility> facilities) {
         if (facilities == null || facilities.isEmpty()) return "";
-        String rows = facilities.stream().map(facility -> "<tr><td>" + escape(text(facility.name())) + "</td><td>"
+        String rows = facilities.stream().limit(MAX_FACILITY_ROWS).map(facility -> "<tr><td>" + escape(text(facility.name())) + "</td><td>"
                 + escape(text(facility.category())) + "</td><td>" + escape(value(facility.distanceMeters())) + "m</td><td>"
                 + escape(text(facility.address())) + "</td><td>" + escape(text(facility.description())) + "</td></tr>")
                 .collect(Collectors.joining());
-        return "<h3>" + escape(title) + "</h3><table><tr><th>시설명</th><th>분류</th><th>거리</th><th>주소</th><th>설명</th></tr>" + rows + "</table>";
+        return "<h3>" + escape(title) + "</h3><table><tr><th>시설명</th><th>분류</th><th>거리</th><th>주소</th><th>설명</th></tr>"
+                + rows + "</table>" + truncationNotice(facilities.size(), MAX_FACILITY_ROWS, title);
     }
 
     private String renderEvidenceTable(List<LocationAnalysisContent.Evidence> evidences) {
         if (evidences == null || evidences.isEmpty()) return "";
-        String rows = evidences.stream().map(evidence -> "<tr><td>" + escape(text(evidence.id())) + "</td><td>"
+        String rows = evidences.stream().limit(MAX_TABLE_ROWS).map(evidence -> "<tr><td>" + escape(text(evidence.id())) + "</td><td>"
                 + escape(text(evidence.type() == null ? null : evidence.type().name())) + "</td><td>"
                 + escape(text(evidence.source())) + "</td><td>" + escape(text(evidence.description())) + "</td></tr>")
                 .collect(Collectors.joining());
@@ -201,7 +302,7 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String renderScope(LocationAnalysisContent.AnalysisScope scope) {
-        if (scope == null) return "<p class=\"muted\">분석 범위 데이터 없음</p>";
+        if (scope == null) return muted("분석 범위 데이터 없음");
         return "<p><strong>요청 지역:</strong> " + escape(text(scope.requestedRegion())) + "<br />"
                 + "<strong>정규화 지역:</strong> " + escape(text(scope.normalizedRegion())) + "<br />"
                 + "<strong>적용 범위:</strong> " + escape(text(scope.scopeDescription())) + "<br />"
@@ -209,8 +310,8 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String renderDataSources(List<LocationAnalysisContent.DataSource> sources) {
-        if (sources == null || sources.isEmpty()) return "<p class=\"muted\">데이터 출처 없음</p>";
-        String rows = sources.stream().map(source -> "<tr><td>" + escape(text(source.id())) + "</td><td>"
+        if (sources == null || sources.isEmpty()) return muted("데이터 출처 없음");
+        String rows = sources.stream().limit(MAX_TABLE_ROWS).map(source -> "<tr><td>" + escape(text(source.id())) + "</td><td>"
                 + escape(text(source.type() == null ? null : source.type().name())) + "</td><td>"
                 + escape(text(source.source())) + "</td><td>" + escape(text(source.reference())) + "</td></tr>")
                 .collect(Collectors.joining());
@@ -223,13 +324,45 @@ public class LocationAnalysisHtmlComposer {
                 .map(metric -> text(metric.label())).orElse("데이터 없음");
     }
 
-    private String value(Double value) { return value == null ? "데이터 없음" : String.format(java.util.Locale.ROOT, "%,.1f", value); }
+    private String score(Double value) {
+        return value == null ? "데이터 없음" : value(value) + "점";
+    }
 
-    private String radius(Double value) { return value == null ? "데이터 없음" : value(value) + "m"; }
+    private String booleanText(Boolean value) {
+        return value == null ? "데이터 없음" : value ? "확장됨" : "확장 안 함";
+    }
 
-    private String value(Integer value) { return value == null ? "데이터 없음" : String.valueOf(value); }
+    private String truncationNotice(int actualSize, int displayLimit, String subject) {
+        if (actualSize <= displayLimit) {
+            return "";
+        }
+        return muted(subject + "은 상위 " + displayLimit + "건만 표시했습니다. 전체 건수: " + actualSize + "건");
+    }
 
-    private String text(String value) { return value == null || value.isBlank() ? "데이터 없음" : value; }
+    private String value(Double value) {
+        return value == null ? "데이터 없음" : String.format(java.util.Locale.ROOT, "%,.1f", value);
+    }
 
-    private String escape(String value) { return HtmlUtils.htmlEscape(value == null ? "데이터 없음" : value); }
+    private String value(Integer value) {
+        return value == null ? "데이터 없음" : String.format(java.util.Locale.ROOT, "%,d", value);
+    }
+
+    private String radius(Double value) {
+        return value == null ? "데이터 없음" : value(value) + "m";
+    }
+
+    private String text(String value) {
+        return value == null || value.isBlank() ? "데이터 없음" : value;
+    }
+
+    private String escape(String value) {
+        // OpenHTMLtoPDF는 XHTML(XML) 파서라 &middot; 같은 HTML 전용 named entity를 허용하지 않는다.
+        // AI·사용자 입력은 XML 기본 문자와 작은따옴표만 숫자 entity로 치환해 PDF 변환을 안정화한다.
+        return (value == null ? "데이터 없음" : value)
+                .replace("&", "&amp;")
+                .replace("<", "&lt;")
+                .replace(">", "&gt;")
+                .replace("\"", "&quot;")
+                .replace("'", "&#39;");
+    }
 }

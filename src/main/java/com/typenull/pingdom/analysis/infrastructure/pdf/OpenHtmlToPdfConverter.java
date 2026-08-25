@@ -5,11 +5,14 @@ import com.typenull.pingdom.analysis.application.pdf.HtmlToPdfConverter;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import java.io.ByteArrayOutputStream;
-import java.io.IOException;
 import java.io.File;
+import java.io.IOException;
+import java.nio.file.Files;
+import java.nio.file.Path;
 import java.util.List;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -17,6 +20,7 @@ import org.springframework.stereotype.Component;
 public class OpenHtmlToPdfConverter implements HtmlToPdfConverter {
 
     private static final String DEFAULT_FONT_PATH = "/usr/share/fonts/truetype/nanum/NanumGothic.ttf";
+    private static final String BUNDLED_FONT_RESOURCE = "fonts/NanumGothic.ttf";
     private static final List<String> FALLBACK_FONT_PATHS = List.of(
             DEFAULT_FONT_PATH,
             System.getProperty("user.home") + "/Library/Fonts/NanumGothic-Regular.ttf",
@@ -25,6 +29,8 @@ public class OpenHtmlToPdfConverter implements HtmlToPdfConverter {
 
     @Value("${analysis.pdf.font-path:" + DEFAULT_FONT_PATH + "}")
     private String fontPath = DEFAULT_FONT_PATH;
+
+    private volatile File bundledFontFile;
 
     @Override
     public byte[] convert(String html) {
@@ -53,15 +59,54 @@ public class OpenHtmlToPdfConverter implements HtmlToPdfConverter {
     }
 
     private File resolveFontFile() {
-        return java.util.stream.Stream.concat(
-                        java.util.stream.Stream.of(fontPath),
-                        FALLBACK_FONT_PATHS.stream()
-                )
+        File configuredFont = findLocalFont(java.util.stream.Stream.of(fontPath));
+        if (configuredFont != null) {
+            return configuredFont;
+        }
+
+        File bundledFont = resolveBundledFont();
+        if (bundledFont != null) {
+            return bundledFont;
+        }
+
+        return findLocalFont(FALLBACK_FONT_PATHS.stream());
+    }
+
+    private File findLocalFont(java.util.stream.Stream<String> paths) {
+        return paths
                 .filter(path -> path != null && !path.isBlank())
                 .map(File::new)
                 .filter(file -> file.getName().toLowerCase(java.util.Locale.ROOT).endsWith(".ttf"))
                 .filter(File::isFile)
                 .findFirst()
                 .orElse(null);
+    }
+
+    /** JAR 내부 TTF는 File로 바로 전달할 수 없으므로 실행 중 한 번만 임시 파일로 풀어 등록한다. */
+    private File resolveBundledFont() {
+        File cached = bundledFontFile;
+        if (cached != null && cached.isFile()) {
+            return cached;
+        }
+
+        synchronized (this) {
+            if (bundledFontFile != null && bundledFontFile.isFile()) {
+                return bundledFontFile;
+            }
+            ClassPathResource resource = new ClassPathResource(BUNDLED_FONT_RESOURCE);
+            if (!resource.exists()) {
+                return null;
+            }
+            try (var inputStream = resource.getInputStream()) {
+                Path temporaryFont = Files.createTempFile("pingdom-nanum-gothic-", ".ttf");
+                Files.copy(inputStream, temporaryFont, java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                temporaryFont.toFile().deleteOnExit();
+                bundledFontFile = temporaryFont.toFile();
+                return bundledFontFile;
+            } catch (IOException exception) {
+                log.warn("내장 나눔고딕 폰트를 준비하지 못했습니다. resource={}", BUNDLED_FONT_RESOURCE, exception);
+                return null;
+            }
+        }
     }
 }
