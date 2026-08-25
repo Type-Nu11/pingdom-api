@@ -1,6 +1,7 @@
 package com.typenull.pingdom.notification.application.service;
 
 import com.typenull.pingdom.notification.domain.NotificationDelivery;
+import com.typenull.pingdom.notification.domain.NotificationDeliveryChannel;
 import com.typenull.pingdom.notification.domain.NotificationDeliveryStatus;
 import com.typenull.pingdom.notification.infrastructure.persistence.NotificationDeliveryRepository;
 import com.typenull.pingdom.shared.outbox.application.OutboxProperties;
@@ -10,6 +11,7 @@ import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Propagation;
@@ -59,12 +61,42 @@ class NotificationDeliveryRecordWriter {
         notificationDeliveryRepository.save(delivery);
     }
 
-    private java.util.Optional<NotificationDelivery> findExisting(
+    @Transactional(readOnly = true)
+    public boolean isFcmDeliverySucceeded(String outboxEventId, String token) {
+        if (!StringUtils.hasText(outboxEventId) || !StringUtils.hasText(token)) {
+            return false;
+        }
+
+        return notificationDeliveryRepository.findDeliveryRecord(
+                        outboxEventId,
+                        NotificationDeliveryChannel.FCM,
+                        hashRecipient(NotificationDeliveryChannel.FCM, token)
+                )
+                .map(delivery -> delivery.getStatus() == NotificationDeliveryStatus.SUCCEEDED)
+                .orElse(false);
+    }
+
+    @Transactional(readOnly = true)
+    public Long findFcmNotificationId(String outboxEventId) {
+        if (!StringUtils.hasText(outboxEventId)) {
+            return null;
+        }
+
+        return notificationDeliveryRepository
+                .findFirstByOutboxEventIdAndChannelAndNotificationIdIsNotNullOrderByCreatedAtAsc(
+                        outboxEventId,
+                        NotificationDeliveryChannel.FCM
+                )
+                .map(NotificationDelivery::getNotificationId)
+                .orElse(null);
+    }
+
+    private Optional<NotificationDelivery> findExisting(
             NotificationDeliveryRecordRequest request,
             String recipientHash
     ) {
         if (!StringUtils.hasText(request.outboxEventId())) {
-            return java.util.Optional.empty();
+            return Optional.empty();
         }
         return notificationDeliveryRepository.findDeliveryRecord(
                 request.outboxEventId(),
@@ -82,13 +114,17 @@ class NotificationDeliveryRecordWriter {
     }
 
     private String hashRecipient(NotificationDeliveryRecordRequest request) {
-        if (!StringUtils.hasText(request.recipient())) {
+        return hashRecipient(request.channel(), request.recipient());
+    }
+
+    private String hashRecipient(NotificationDeliveryChannel channel, String recipient) {
+        if (!StringUtils.hasText(recipient)) {
             return null;
         }
         try {
             MessageDigest digest = MessageDigest.getInstance("SHA-256");
             byte[] hash = digest.digest(
-                    (request.channel().name() + ":" + request.recipient().trim())
+                    (channel.name() + ":" + recipient.trim())
                             .getBytes(StandardCharsets.UTF_8)
             );
             return HexFormat.of().formatHex(hash);

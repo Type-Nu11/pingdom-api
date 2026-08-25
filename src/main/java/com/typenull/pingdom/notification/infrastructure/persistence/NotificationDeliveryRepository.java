@@ -13,6 +13,11 @@ import org.springframework.data.repository.query.Param;
 
 public interface NotificationDeliveryRepository extends JpaRepository<NotificationDelivery, Long> {
 
+    Optional<NotificationDelivery> findFirstByOutboxEventIdAndChannelAndNotificationIdIsNotNullOrderByCreatedAtAsc(
+            String outboxEventId,
+            NotificationDeliveryChannel channel
+    );
+
     @Query("""
             SELECT delivery
             FROM NotificationDelivery delivery
