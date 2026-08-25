@@ -62,7 +62,7 @@ management:
         liveness:
           include: livenessState
         readiness:
-          include: readinessState,db,redis
+          include: readinessState,db
 
 fcm:
   enabled: false

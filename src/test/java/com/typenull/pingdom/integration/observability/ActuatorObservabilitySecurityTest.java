@@ -22,7 +22,10 @@ import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
 @Tag("integration")
-@SpringBootTest(properties = "management.health.redis.enabled=false")
+@SpringBootTest(properties = {
+        "management.health.redis.enabled=false",
+        "management.endpoint.health.group.readiness.include=readinessState,db,redis"
+})
 @AutoConfigureMockMvc
 @Import(ActuatorObservabilitySecurityTest.RedisReadinessHealthTestConfiguration.class)
 class ActuatorObservabilitySecurityTest {
