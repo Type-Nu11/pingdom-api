@@ -113,16 +113,16 @@ jobs:
       - name: Set up Gradle
         uses: gradle/actions/setup-gradle@v6
 
-      - name: Run release migration test gate
+      - name: Run release migration smoke gate
         if: github.event_name == 'push' && github.ref == 'refs/heads/release'
-        run: ./gradlew --no-daemon --build-cache --configuration-cache migrationTest
+        run: ./gradlew --no-daemon --build-cache --configuration-cache migrationSmokeTest
 
-      - name: Verify release migration test reports
+      - name: Verify release migration smoke reports
         if: github.event_name == 'push' && github.ref == 'refs/heads/release'
         run: |
-          test_report_count="$(find build/test-results/migrationTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
+          test_report_count="$(find build/test-results/migrationSmokeTest -name 'TEST-*.xml' -type f | wc -l | tr -d ' ')"
           test "$test_report_count" -gt 0
-          echo "Migration test report files: $test_report_count"
+          echo "Migration smoke report files: $test_report_count"
 
       - name: Build bootJar
         run: ./gradlew --no-daemon --build-cache --configuration-cache bootJar
