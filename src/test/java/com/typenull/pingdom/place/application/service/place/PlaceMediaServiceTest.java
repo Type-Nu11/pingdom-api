@@ -19,6 +19,9 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceMediaRep
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3ObjectMetadata;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -30,11 +33,20 @@ class PlaceMediaServiceTest {
 
     private final MapPlaceRepository mapPlaceRepository = org.mockito.Mockito.mock(MapPlaceRepository.class);
     private final PlaceMediaRepository placeMediaRepository = org.mockito.Mockito.mock(PlaceMediaRepository.class);
+    private final S3ObjectStorage s3ObjectStorage = org.mockito.Mockito.mock(S3ObjectStorage.class);
+    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher =
+            org.mockito.Mockito.mock(S3ObjectDeleteOutboxPublisher.class);
     private PlaceMediaService placeMediaService;
 
     @BeforeEach
     void setUp() {
-        placeMediaService = new PlaceMediaService(mapPlaceRepository, placeMediaRepository);
+        placeMediaService = new PlaceMediaService(
+                mapPlaceRepository,
+                placeMediaRepository,
+                null,
+                s3ObjectStorage,
+                s3ObjectDeleteOutboxPublisher
+        );
     }
 
     @Test
@@ -42,7 +54,7 @@ class PlaceMediaServiceTest {
         when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 99L)));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
                 "https://cdn.pingdom.test/place.jpg",
-                null,
+                "places/1/exploration/7/issued.jpg",
                 null,
                 null,
                 null
@@ -61,9 +73,13 @@ class PlaceMediaServiceTest {
         when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
         when(placeMediaRepository.findMaxDisplayOrder(1L, PlaceMediaPurpose.EXPLORATION)).thenReturn(2);
         when(placeMediaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        when(s3ObjectStorage.headObject("places/1/exploration/7/issued.jpg"))
+                .thenReturn(new S3ObjectMetadata(1_024L, "image/jpeg"));
+        when(s3ObjectStorage.publicUrl("places/1/exploration/7/issued.jpg"))
+                .thenReturn("https://s3.pingdom.test/places/1/exploration/7/issued.jpg");
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
-                "https://cdn.pingdom.test/place.jpg",
-                "place/original.jpg",
+                "https://untrusted.example/place.jpg",
+                "places/1/exploration/7/issued.jpg",
                 "https://cdn.pingdom.test/place-thumb.jpg",
                 "place/thumb.jpg",
                 null
@@ -74,6 +90,66 @@ class PlaceMediaServiceTest {
         assertThat(response.placeId()).isEqualTo(1L);
         assertThat(response.purpose()).isEqualTo(PlaceMediaPurpose.EXPLORATION);
         assertThat(response.displayOrder()).isEqualTo(3);
+        assertThat(response.imageUrl()).isEqualTo("https://s3.pingdom.test/places/1/exploration/7/issued.jpg");
+    }
+
+    @Test
+    void createExplorationMediaRejectsKeyIssuedForAnotherPlace() {
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
+                null,
+                "places/2/exploration/7/issued.jpg",
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> placeMediaService.createExplorationMedia(1L, 7L, request))
+                .isInstanceOfSatisfying(MapException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
+
+        verify(s3ObjectStorage, never()).headObject(any());
+        verify(placeMediaRepository, never()).save(any());
+    }
+
+    @Test
+    void createExplorationMediaRejectsObjectLargerThanLimit() {
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(s3ObjectStorage.headObject("places/1/exploration/7/oversized.jpg"))
+                .thenReturn(new S3ObjectMetadata(10L * 1024 * 1024 + 1, "image/jpeg"));
+        PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
+                null,
+                "places/1/exploration/7/oversized.jpg",
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> placeMediaService.createExplorationMedia(1L, 7L, request))
+                .isInstanceOfSatisfying(MapException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
+
+        verify(placeMediaRepository, never()).save(any());
+    }
+
+    @Test
+    void createExplorationMediaRejectsUnsupportedObjectContentType() {
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(s3ObjectStorage.headObject("places/1/exploration/7/invalid-type.jpg"))
+                .thenReturn(new S3ObjectMetadata(1_024L, "application/pdf"));
+        PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
+                null,
+                "places/1/exploration/7/invalid-type.jpg",
+                null,
+                null,
+                null
+        );
+
+        assertThatThrownBy(() -> placeMediaService.createExplorationMedia(1L, 7L, request))
+                .isInstanceOfSatisfying(MapException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
+
+        verify(placeMediaRepository, never()).save(any());
     }
 
     @Test
@@ -164,6 +240,33 @@ class PlaceMediaServiceTest {
         assertThatThrownBy(() -> placeMediaService.deleteExplorationMedia(1L, 10L, 7L))
                 .isInstanceOfSatisfying(MapException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
+    }
+
+    @Test
+    void deleteExplorationMediaPublishesS3DeleteOutboxEvent() {
+        MapPlace place = place(1L, 7L);
+        PlaceMedia media = PlaceMedia.exploration(
+                place,
+                "https://s3.pingdom.test/places/1/exploration/7/issued.jpg",
+                "places/1/exploration/7/issued.jpg",
+                null,
+                null,
+                0,
+                LocalDateTime.of(2026, 8, 25, 10, 0)
+        );
+        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
+        when(placeMediaRepository.findByIdAndPlace_IdAndPurpose(10L, 1L, PlaceMediaPurpose.EXPLORATION))
+                .thenReturn(Optional.of(media));
+
+        placeMediaService.deleteExplorationMedia(1L, 10L, 7L);
+
+        verify(placeMediaRepository).delete(media);
+        verify(s3ObjectDeleteOutboxPublisher).publish(
+                "places/1/exploration/7/issued.jpg",
+                "PLACE_MEDIA",
+                "10",
+                "EXPLORATION_MEDIA_DELETED"
+        );
     }
 
     private PlaceMedia existingVerification() {

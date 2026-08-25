@@ -57,6 +57,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRep
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
+import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3ObjectMetadata;
 import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRepository;
 import java.time.LocalDateTime;
 import java.time.DayOfWeek;
@@ -85,7 +87,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.test.context.transaction.TestTransaction;
 import org.springframework.transaction.annotation.Transactional;
-import software.amazon.awssdk.services.s3.S3Client;
+import static org.mockito.Mockito.when;
 
 import static org.hamcrest.Matchers.containsString;
 import static org.hamcrest.Matchers.containsInAnyOrder;
@@ -194,7 +196,7 @@ class PlaceControllerTest {
     private PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
 
     @org.springframework.boot.test.mock.mockito.MockBean
-    private S3Client s3Client;
+    private S3ObjectStorage s3ObjectStorage;
 
     @BeforeEach
     void setUp() {
@@ -1165,20 +1167,23 @@ class PlaceControllerTest {
         String accessToken = signupAndLogin("placeMediaOwner01");
         Long ownerId = userRepository.findByUsername("placeMediaOwner01").orElseThrow().getId();
         MapPlace place = createMapPlace("탐색 미디어 장소", "경상남도 진주시 미디어로 1", ownerId);
+        String s3Key = "places/%d/exploration/%d/issued.jpg".formatted(place.getId(), ownerId);
+        when(s3ObjectStorage.headObject(s3Key)).thenReturn(new S3ObjectMetadata(1_024L, "image/jpeg"));
+        when(s3ObjectStorage.publicUrl(s3Key)).thenReturn("https://s3.pingdom.test/" + s3Key);
 
         mockMvc.perform(post("/places/{id}/media/exploration", place.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of(
-                                "imageUrl", "https://cdn.pingdom.test/exploration.jpg",
-                                "s3Key", "places/exploration.jpg",
+                                "imageUrl", "https://untrusted.example/exploration.jpg",
+                                "s3Key", s3Key,
                                 "thumbnailUrl", "https://cdn.pingdom.test/exploration-thumb.jpg",
                                 "thumbnailS3Key", "places/exploration-thumb.jpg"
                         ))))
                 .andExpect(status().isCreated())
                 .andExpect(jsonPath("$.placeId").value(place.getId()))
                 .andExpect(jsonPath("$.purpose").value("EXPLORATION"))
-                .andExpect(jsonPath("$.imageUrl").value("https://cdn.pingdom.test/exploration.jpg"))
+                .andExpect(jsonPath("$.imageUrl").value("https://s3.pingdom.test/" + s3Key))
                 .andExpect(jsonPath("$.sourceMapImageId").isEmpty())
                 .andExpect(jsonPath("$.displayOrder").value(0));
     }
@@ -1228,7 +1233,7 @@ class PlaceControllerTest {
     }
 
     @Test
-    void createExplorationMediaRejectsBlankImageUrl() throws Exception {
+    void createExplorationMediaRejectsMissingS3Key() throws Exception {
         String accessToken = signupAndLogin("placeMediaOwner03");
         Long ownerId = userRepository.findByUsername("placeMediaOwner03").orElseThrow().getId();
         MapPlace place = createMapPlace("미디어 검증 장소", "경상남도 진주시 검증로 1", ownerId);
@@ -1236,9 +1241,9 @@ class PlaceControllerTest {
         mockMvc.perform(post("/places/{id}/media/exploration", place.getId())
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("imageUrl", "   "))))
+                        .content(objectMapper.writeValueAsString(Map.of("imageUrl", "https://untrusted.example/image.jpg"))))
                 .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.errors.imageUrl").value("imageUrl은 필수입니다."));
+                .andExpect(jsonPath("$.errors.s3Key").value("s3Key는 필수입니다."));
     }
 
     @Test
