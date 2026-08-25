@@ -2520,6 +2520,26 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
+                        FROM information_schema.columns
+                        WHERE table_name = 'privacy_processing_history'
+                          AND column_name = 'outbox_event_id'
+                          AND data_type = 'character varying'
+                          AND character_maximum_length = 36
+                          AND is_nullable = 'YES'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
+                        FROM pg_constraint
+                        WHERE conrelid = 'privacy_processing_history'::regclass
+                          AND conname = 'uk_privacy_processing_history_outbox_subject'
+                          AND contype = 'u'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1
                         FROM pg_indexes
                         WHERE tablename = 'privacy_processing_history'
                           AND indexname = 'idx_privacy_processing_history_action_created'
