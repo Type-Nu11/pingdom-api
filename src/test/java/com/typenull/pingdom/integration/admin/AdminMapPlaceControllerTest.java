@@ -18,6 +18,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.node.ObjectNode;
+import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
 import com.typenull.pingdom.moderation.domain.SortParam;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -196,6 +197,335 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void listPlacesReturnsRegisteredPlaces() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("진주성")
+                .englishName("Jinju Castle")
+                .address("경상남도 진주시 남강로 626")
+                .category("문화재")
+                .touristSummary("남강을 내려다보는 역사 유적")
+                .touristCategories(Set.of(TouristCategory.EXHIBITION, TouristCategory.OTHER))
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(11L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "jinju castle")
+                        .param("page", "1")
+                        .param("limit", "20"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].name").value("진주성"))
+                .andExpect(jsonPath("$.places[0].address").value("경상남도 진주시 남강로 626"))
+                .andExpect(jsonPath("$.places[0].discoveryStatus").value("VISIBLE"))
+                .andExpect(jsonPath("$.places[0].category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("문화재"))
+                .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"))
+                .andExpect(jsonPath("$.places[0].touristSummary").value("남강을 내려다보는 역사 유적"))
+                .andExpect(jsonPath("$.places[0].touristCategories", containsInAnyOrder("EXHIBITION", "OTHER")))
+                .andExpect(jsonPath("$.places[0].level").value(1))
+                .andExpect(jsonPath("$.places[0].placeGrowth.level").value(1))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(20))
+                .andExpect(jsonPath("$.totalCount").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listPlacesFiltersByCategory() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace culturalHeritagePlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("문화재 카테고리 장소")
+                .address("경상남도 진주시 문화재로 1")
+                .category("문화재")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(31L)
+                .registrant("tourismRegistrar")
+                .build());
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("카페 카테고리 장소")
+                .address("경상남도 진주시 카페로 1")
+                .category("CAFE")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(32L)
+                .registrant("cafeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", "CULTURAL_HERITAGE"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(culturalHeritagePlace.getId()))
+                .andExpect(jsonPath("$.places[0].category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("문화재"))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void listPlacesCombinesCategoryKeywordSortAndPagination() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("복합검색 카페 A")
+                .address("경상남도 진주시 복합검색로 1")
+                .category("CAFE")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(41L)
+                .registrant("firstCafeRegistrar")
+                .build());
+        MapPlace secondCafe = mapPlaceRepository.save(MapPlace.builder()
+                .name("복합검색 카페 B")
+                .address("경상남도 진주시 복합검색로 2")
+                .category("CAFE")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(42L)
+                .registrant("secondCafeRegistrar")
+                .build());
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("복합검색 식당")
+                .address("경상남도 진주시 복합검색로 3")
+                .category("RESTAURANT")
+                .latitude(35.1896)
+                .longitude(128.0791)
+                .userId(43L)
+                .registrant("restaurantRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", " cafe ")
+                        .param("keyword", "복합검색")
+                        .param("sortParam", AdminPlaceSortParam.OLDEST.name())
+                        .param("page", "2")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(secondCafe.getId()))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.limit").value(1))
+                .andExpect(jsonPath("$.totalCount").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listPlacesReturnsNormalizedEmptyPageWhenCategoryDoesNotMatch() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("카페 장소")
+                .address("경상남도 진주시 카페로 10")
+                .category("CAFE")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(51L)
+                .registrant("cafeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("category", "숙박"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(0))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.totalPages").value(1))
+                .andExpect(jsonPath("$.hasNext").value(false));
+    }
+
+    @Test
+    void listPlacesReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("미분류 장소")
+                .address("경상남도 진주시 미분류로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(12L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value(nullValue()))
+                .andExpect(jsonPath("$.places[0].categoryName").value("미분류"))
+                .andExpect(jsonPath("$.places[0].level").value(1));
+    }
+
+    @Test
+    void listPlacesReturnsOtherNameOnlyForOtherCategory() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("기타 장소")
+                .address("경상남도 진주시 기타로 1")
+                .category("OTHER")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(14L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value("OTHER"))
+                .andExpect(jsonPath("$.places[0].categoryName").value("기타"));
+    }
+
+    @Test
+    void listPlacesTreatsUnsupportedLegacyCategoryAsUncategorized() throws Exception {
+        String accessToken = createAdminAndLogin();
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("기존 자유 문자열 장소")
+                .address("경상남도 진주시 레거시로 1")
+                .category("legacy-free-text")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(15L)
+                .registrant("legacyRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "기존 자유 문자열 장소"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].category").value(nullValue()))
+                .andExpect(jsonPath("$.places[0].categoryName").value("미분류"));
+    }
+
+    @Test
+    void listPlacesSortsByPlaceLevelDesc() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace firstHighLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("고레벨 장소 A")
+                .address("경상남도 진주시 고레벨로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(21L)
+                .registrant("firstHighRegistrar")
+                .photoCount(10L)
+                .build());
+        MapPlace lowLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("저레벨 장소")
+                .address("경상남도 진주시 저레벨로 1")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(22L)
+                .registrant("lowRegistrar")
+                .photoCount(0L)
+                .build());
+        MapPlace secondHighLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("고레벨 장소 B")
+                .address("경상남도 진주시 고레벨로 2")
+                .latitude(35.1896)
+                .longitude(128.0791)
+                .userId(23L)
+                .registrant("secondHighRegistrar")
+                .photoCount(10L)
+                .build());
+        MapPlace middleLevelPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("중레벨 장소")
+                .address("경상남도 진주시 중레벨로 1")
+                .latitude(35.1897)
+                .longitude(128.0792)
+                .userId(24L)
+                .registrant("middleRegistrar")
+                .photoCount(3L)
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortParam", AdminPlaceSortParam.LEVEL_DESC.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places[0].id").value(secondHighLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[0].level").value(5))
+                .andExpect(jsonPath("$.places[0].placeGrowth.level").value(5))
+                .andExpect(jsonPath("$.places[1].id").value(firstHighLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[1].placeGrowth.level").value(5))
+                .andExpect(jsonPath("$.places[2].id").value(middleLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[2].placeGrowth.level").value(3))
+                .andExpect(jsonPath("$.places[3].id").value(lowLevelPlace.getId()))
+                .andExpect(jsonPath("$.places[3].level").value(1))
+                .andExpect(jsonPath("$.places[3].placeGrowth.level").value(1));
+    }
+
+    @Test
+    void getPlaceReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("미분류 상세 장소")
+                .address("경상남도 진주시 미분류로 2")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(13L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.category").value(nullValue()))
+                .andExpect(jsonPath("$.categoryName").value("미분류"))
+                .andExpect(jsonPath("$.level").value(1));
+    }
+
+    @Test
+    void listPlacesRejectsMostLikedSort() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortParam", SortParam.MOST_LIKED.name()))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SORT_PARAM"));
+    }
+
+    @Test
+    void listPlacesFiltersByKeywordAcrossAddressAndRegistrantUserId() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace matchingPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("진주성")
+                .address("경상남도 진주시 남강로 626")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(77L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("다른 장소")
+                .address("서울특별시 강남구 테헤란로")
+                .latitude(37.4981)
+                .longitude(127.0276)
+                .userId(88L)
+                .registrant("anotherRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "남강로 626"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "77"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
     void getRecommendationExplanationReturnsFeatureLogsForAdmin() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -252,6 +582,202 @@ class AdminMapPlaceControllerTest {
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isNotFound())
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_EXPLANATION_NOT_FOUND"));
+    }
+
+    @Test
+    void listPlacesMatchesRegistrantUserIdExactlyWhenKeywordIsNumeric() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        MapPlace firstPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("정확 일치 장소")
+                .address("경상남도 진주시 테스트로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(7L)
+                .registrant("firstRegistrar")
+                .build());
+
+        mapPlaceRepository.save(MapPlace.builder()
+                .name("부분 일치 장소")
+                .address("경상남도 진주시 테스트로 2")
+                .latitude(35.1895)
+                .longitude(128.0790)
+                .userId(77L)
+                .registrant("secondRegistrar")
+                .build());
+
+        mockMvc.perform(get("/admin/places")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("keyword", "7"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places.length()").value(1))
+                .andExpect(jsonPath("$.places[0].id").value(firstPlace.getId()))
+                .andExpect(jsonPath("$.totalCount").value(1));
+    }
+
+    @Test
+    void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
+        String accessToken = createAdminAndLogin();
+        User placeOwner = userRepository.save(User.builder()
+                .username("placeOwner")
+                .email("place-owner@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1997)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+
+        MapPlace mapPlace = MapPlace.builder()
+                .name("남강")
+                .englishName("Nam River")
+                .address("경상남도 진주시 남강변")
+                .category("CULTURAL_HERITAGE")
+                .touristSummary("진주의 대표 강변 산책 장소")
+                .touristCategories(Set.of(TouristCategory.NIGHTLIFE))
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(placeOwner.getId())
+                .registrant(placeOwner.getUsername())
+                .build();
+        mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
+        mapPlace = mapPlaceRepository.save(mapPlace);
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/namgang.jpg")
+                .s3Key("map/namgang.jpg")
+                .title("남강 야경")
+                .description("강변에서 촬영한 사진")
+                .userId(15L)
+                .username("placeOwner")
+                .likeCount(7L)
+                .mapPlace(mapPlace)
+                .build());
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.discoveryStatus").value("HIDDEN"))
+                .andExpect(jsonPath("$.category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.categoryName").value("문화재"))
+                .andExpect(jsonPath("$.englishName").value("Nam River"))
+                .andExpect(jsonPath("$.touristSummary").value("진주의 대표 강변 산책 장소"))
+                .andExpect(jsonPath("$.touristCategories[0]").value("NIGHTLIFE"))
+                .andExpect(jsonPath("$.username").value("placeOwner"))
+                .andExpect(jsonPath("$.sortParam").value(SortParam.LATEST.name()))
+                .andExpect(jsonPath("$.postCount").value(1))
+                .andExpect(jsonPath("$.level").value(1))
+                .andExpect(jsonPath("$.placeGrowth.level").value(1))
+                .andExpect(jsonPath("$.posts[0].title").value("남강 야경"))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(7))
+                .andExpect(jsonPath("$.posts[0].username").value("placeOwner"))
+                .andExpect(jsonPath("$.posts[0].visibilityStatus").value("VISIBLE"))
+                .andExpect(jsonPath("$.posts[0].hiddenReason").value(nullValue()));
+    }
+
+    @Test
+    void getPlaceReturnsHiddenPostStatusReasonAndIdentity() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("숨김 게시글 장소")
+                .address("경상남도 진주시 숨김로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(31L)
+                .registrant("placeOwner")
+                .build());
+
+        MapImage hiddenPost = MapImage.builder()
+                .imageUrl("https://example.com/hidden.jpg")
+                .s3Key("map/hidden.jpg")
+                .title("숨김 게시글 제목")
+                .description("숨김 게시글 설명")
+                .userId(32L)
+                .username("bannedAuthor")
+                .likeCount(3L)
+                .mapPlace(mapPlace)
+                .build();
+        hiddenPost.autoHide("USER_BANNED", LocalDateTime.of(2026, 8, 12, 10, 0), 1L);
+        mapImageRepository.save(hiddenPost);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.postCount").value(1))
+                .andExpect(jsonPath("$.placeGrowth.photoCount").value(0))
+                .andExpect(jsonPath("$.placeGrowth.hiddenPhotoCount").value(1))
+                .andExpect(jsonPath("$.posts[0].visibilityStatus").value("HIDDEN"))
+                .andExpect(jsonPath("$.posts[0].hiddenReason").value("USER_BANNED"))
+                .andExpect(jsonPath("$.posts[0].title").value("숨김 게시글 제목"))
+                .andExpect(jsonPath("$.posts[0].userId").value(32L))
+                .andExpect(jsonPath("$.posts[0].username").value("bannedAuthor"))
+                .andExpect(jsonPath("$.posts[0].createdAt").isNotEmpty());
+    }
+
+    @Test
+    void getPlaceSortsPostsByMostLiked() throws Exception {
+        String accessToken = createAdminAndLogin();
+        User placeOwner = userRepository.save(User.builder()
+                .username("placeSortOwner")
+                .email("place-sort-owner@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1996)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.USER)
+                .build());
+
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("촉석루")
+                .address("경상남도 진주시 본성동")
+                .latitude(35.1880)
+                .longitude(128.0815)
+                .userId(placeOwner.getId())
+                .registrant(placeOwner.getUsername())
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/low-like.jpg")
+                .s3Key("map/low-like.jpg")
+                .title("좋아요 적은 사진")
+                .description("첫 번째 사진")
+                .userId(placeOwner.getId())
+                .username("placeSortOwner")
+                .likeCount(2L)
+                .mapPlace(mapPlace)
+                .build());
+
+        mapImageRepository.save(MapImage.builder()
+                .imageUrl("https://example.com/high-like.jpg")
+                .s3Key("map/high-like.jpg")
+                .title("좋아요 많은 사진")
+                .description("두 번째 사진")
+                .userId(placeOwner.getId())
+                .username("placeSortOwner")
+                .likeCount(9L)
+                .mapPlace(mapPlace)
+                .build());
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .param("sortParam", SortParam.MOST_LIKED.name()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.sortParam").value(SortParam.MOST_LIKED.name()))
+                .andExpect(jsonPath("$.posts[0].title").value("좋아요 많은 사진"))
+                .andExpect(jsonPath("$.posts[0].likeCount").value(9))
+                .andExpect(jsonPath("$.posts[1].title").value("좋아요 적은 사진"));
+    }
+
+    @Test
+    void getPlaceReturnsNotFoundWhenPlaceDoesNotExist() throws Exception {
+        String accessToken = createAdminAndLogin();
+
+        mockMvc.perform(get("/admin/places/{id}", 9999L)
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
     @Test
@@ -932,6 +1458,11 @@ class AdminMapPlaceControllerTest {
         assertTrue(auditLog.getAfterState().contains("\"dayOfWeek\":\"MONDAY\""));
         assertTrue(auditLog.getAfterState().contains("\"date\":\"2026-08-15\""));
 
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.regularHours", hasSize(2)))
+                .andExpect(jsonPath("$.operatingExceptions", hasSize(2)));
     }
 
     @Test
@@ -1069,6 +1600,10 @@ class AdminMapPlaceControllerTest {
                 mapPlace.getId()
         ));
 
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.touristCategories").isEmpty());
     }
 
     @Test
@@ -1677,6 +2212,18 @@ class AdminMapPlaceControllerTest {
                 .sum());
         assertTrue(adminPlaceMergeHistoryRepository.findById(historyId).orElseThrow().isRestored());
 
+        mockMvc.perform(get("/admin/places/{id}", sourcePlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.englishName").value("Restored Tourist Place"))
+                .andExpect(jsonPath("$.touristSummary").value("병합 복구 시 보존할 관광 정보"))
+                .andExpect(jsonPath(
+                        "$.touristCategories",
+                        containsInAnyOrder("EXHIBITION", "NIGHTLIFE")
+                ))
+                .andExpect(jsonPath("$.regularHours[0].dayOfWeek").value("MONDAY"))
+                .andExpect(jsonPath("$.operatingExceptions[0].date").value("2026-08-15"))
+                .andExpect(jsonPath("$.operatingExceptions[0].closed").value(true));
     }
 
     @Test
