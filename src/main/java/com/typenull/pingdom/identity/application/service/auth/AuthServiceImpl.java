@@ -19,6 +19,7 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.notification.outbox.EmailVerificationOutboxPayload;
 import com.typenull.pingdom.notification.outbox.PasswordResetOutboxPayload;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.application.PrivacyProcessingOutboxPublisher;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
 import com.typenull.pingdom.shared.outbox.application.OutboxEventPublisher;
@@ -57,6 +58,7 @@ public class AuthServiceImpl implements AuthService {
     private final JwtTokenProvider jwtTokenProvider;
     private final OutboxEventPublisher outboxEventPublisher;
     private final ApplicationEventPublisher eventPublisher;
+    private final PrivacyProcessingOutboxPublisher privacyProcessingOutboxPublisher;
     private final UserWithdrawalDataService userWithdrawalDataService;
     private final UserAccessStatusService userAccessStatusService;
     private final Clock clock;
@@ -356,7 +358,7 @@ public class AuthServiceImpl implements AuthService {
             return;
         }
 
-        eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
+        privacyProcessingOutboxPublisher.publish(PrivacyProcessingEvent.userAction(
                 user.getId(),
                 PrivacyProcessingAction.WITHDRAWAL_REQUESTED,
                 "회원 탈퇴 요청"
@@ -367,7 +369,7 @@ public class AuthServiceImpl implements AuthService {
                 "WITHDRAWN_" + UUID.randomUUID(),
                 now()
         );
-        eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
+        privacyProcessingOutboxPublisher.publish(PrivacyProcessingEvent.userAction(
                 user.getId(),
                 PrivacyProcessingAction.ANONYMIZED,
                 "회원 탈퇴에 따른 개인정보 익명화"

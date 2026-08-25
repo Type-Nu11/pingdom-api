@@ -4,6 +4,7 @@ import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.repository.OAuthAccountRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.application.PrivacyProcessingOutboxPublisher;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingBulkEvent;
 import jakarta.persistence.EntityManager;
 import java.sql.Connection;
@@ -14,7 +15,6 @@ import java.util.Locale;
 import javax.sql.DataSource;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
@@ -33,7 +33,7 @@ public class WithdrawnUserPurgeService {
     private final UserWithdrawalProperties properties;
     private final EntityManager entityManager;
     private final DataSource dataSource;
-    private final ApplicationEventPublisher eventPublisher;
+    private final PrivacyProcessingOutboxPublisher privacyProcessingOutboxPublisher;
 
     private volatile Boolean postgreSQL;
 
@@ -58,7 +58,7 @@ public class WithdrawnUserPurgeService {
         userWithdrawalDataService.detachContentUserReferences(expiredUserIds);
         int deletedOAuthAccountCount = oAuthAccountRepository.deleteAllByUserIds(expiredUserIds);
         userRepository.deleteAllByIdInBatch(expiredUserIds);
-        eventPublisher.publishEvent(PrivacyProcessingBulkEvent.systemAction(
+        privacyProcessingOutboxPublisher.publish(PrivacyProcessingBulkEvent.systemAction(
                 expiredUserIds,
                 PrivacyProcessingAction.DELETED,
                 "보존기간 만료에 따른 탈퇴 사용자 최종 삭제"
