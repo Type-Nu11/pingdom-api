@@ -33,7 +33,7 @@ class RestMcpAnalysisClientTest {
                 .andExpect(jsonPath("$.params.name").value("recommend_location"))
                 .andExpect(jsonPath("$.params.arguments.region").value("대구 북구"))
                 .andRespond(withSuccess(
-                        "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"추천 결과\"}]}}",
+                        "{\"jsonrpc\":\"2.0\",\"id\":4,\"result\":{\"content\":[{\"type\":\"text\",\"text\":\"{\\\"recommendations\\\":[{\\\"rank\\\":1,\\\"metrics\\\":{\\\"total_foot\\\":2328}}]}\"}]}}",
                         MediaType.APPLICATION_JSON
                 ));
 
@@ -42,7 +42,7 @@ class RestMcpAnalysisClientTest {
         assertThat(client.listTools()).extracting("name").containsExactly("recommend_location");
         assertThat(client.callTool("recommend_location", Map.of("region", "대구 북구")))
                 .extracting("name", "content")
-                .containsExactly("recommend_location", "[{\"type\":\"text\",\"text\":\"추천 결과\"}]");
+                .containsExactly("recommend_location", "{\"recommendations\":[{\"rank\":1,\"metrics\":{\"total_foot\":2328}}]}");
         server.verify();
     }
 }
