@@ -70,6 +70,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    @Tag("migration-smoke")
     void appliesAllMigrationsToPostgisDatabase() throws Exception {
         MigrateResult result = migrate(false);
 

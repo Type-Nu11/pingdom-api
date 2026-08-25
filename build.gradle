@@ -74,6 +74,7 @@ def postgresqlIntegrationTag = 'postgres-integration'
 def postgresqlSmokeTag = 'postgres-smoke'
 def integrationTag = 'integration'
 def migrationTag = 'migration'
+def migrationSmokeTag = 'migration-smoke'
 
 tasks.named('test') {
     // PR 게이트는 Spring Context와 Testcontainers를 제외한 단위 테스트만 실행한다.
@@ -146,6 +147,22 @@ tasks.register('migrationTest', Test) {
     shouldRunAfter tasks.named('postgresIntegrationTest')
     useJUnitPlatform {
         includeTags(migrationTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('migrationSmokeTest', Test) {
+    group = 'verification'
+    description = 'Runs the release-critical PostgreSQL Flyway migration smoke tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('postgresSmokeTest')
+    useJUnitPlatform {
+        includeTags(migrationSmokeTag)
     }
     testLogging {
         events 'failed'
