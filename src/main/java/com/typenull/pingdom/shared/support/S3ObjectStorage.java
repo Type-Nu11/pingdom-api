@@ -21,6 +21,8 @@ import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
+import software.amazon.awssdk.services.s3.model.HeadObjectResponse;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Request;
 import software.amazon.awssdk.services.s3.model.ListObjectsV2Response;
 import software.amazon.awssdk.services.s3.model.PutObjectRequest;
@@ -150,6 +152,36 @@ public class S3ObjectStorage {
             log.error("S3 연결 실패: {}", exception.getMessage());
             throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
         }
+    }
+
+    public S3ObjectMetadata headObject(String key) {
+        if (!StringUtils.hasText(key)) {
+            throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
+        }
+
+        try {
+            HeadObjectResponse response = s3Client().headObject(HeadObjectRequest.builder()
+                    .bucket(bucket)
+                    .key(key.trim())
+                    .build());
+            return new S3ObjectMetadata(response.contentLength(), response.contentType());
+        } catch (S3Exception exception) {
+            log.error("S3 객체 메타데이터 조회 실패: {}", exception.awsErrorDetails() == null
+                    ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 headObject failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
+    public String publicUrl(String key) {
+        if (!StringUtils.hasText(key)) {
+            throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
+        }
+        return s3Client().utilities()
+                .getUrl(GetUrlRequest.builder().bucket(bucket).key(key.trim()).build())
+                .toExternalForm();
     }
 
     public byte[] getBytes(String key) {
@@ -286,6 +318,9 @@ public class S3ObjectStorage {
     }
 
     public record PresignedPutResult(String key, String uploadUrl, String imageUrl, LocalDateTime expiresAt) {
+    }
+
+    public record S3ObjectMetadata(Long contentLength, String contentType) {
     }
 
     public record S3ListResult(List<String> keys, boolean truncated) {

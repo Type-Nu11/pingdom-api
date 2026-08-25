@@ -12,6 +12,7 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceDetailRe
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingExceptionRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingTimeRangeRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
+import com.typenull.pingdom.place.application.support.PlaceMediaStorageKey;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
@@ -31,6 +32,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceMediaRep
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
+import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -39,7 +41,6 @@ import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -57,6 +58,7 @@ public class MerchantOwnerPlaceManagementService {
     private final MerchantPlaceCapabilityPolicy capabilityPolicy;
     private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
     private final S3ObjectStorage s3ObjectStorage;
+    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final Clock clock;
 
     @Transactional(readOnly = true)
@@ -162,7 +164,7 @@ public class MerchantOwnerPlaceManagementService {
         findPlace(placeId);
         validateUpload(request);
         String extension = extension(request.fileName());
-        String key = "places/%d/exploration/%s.%s".formatted(placeId, UUID.randomUUID(), extension);
+        String key = PlaceMediaStorageKey.createExplorationKey(placeId, userId, extension);
         S3ObjectStorage.PresignedPutResult result = s3ObjectStorage.presignedPut(key, request.contentType());
         return new MerchantOwnerMediaUploadResponse(
                 result.uploadUrl(),
@@ -210,6 +212,8 @@ public class MerchantOwnerPlaceManagementService {
             place.updateImageUrl(null);
         }
         placeMediaRepository.delete(media);
+        publishS3Delete(media.getS3Key(), mediaId, "MERCHANT_EXPLORATION_MEDIA_DELETED");
+        publishS3Delete(media.getThumbnailS3Key(), mediaId, "MERCHANT_EXPLORATION_MEDIA_THUMBNAIL_DELETED");
     }
 
     private void requireCapability(Long userId, Long placeId, MerchantPlaceCapability capability) {
@@ -372,5 +376,17 @@ public class MerchantOwnerPlaceManagementService {
             throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
         }
         return fileName.substring(fileName.lastIndexOf('.') + 1).toLowerCase();
+    }
+
+    private void publishS3Delete(String s3Key, Long mediaId, String reason) {
+        if (!StringUtils.hasText(s3Key)) {
+            return;
+        }
+        s3ObjectDeleteOutboxPublisher.publish(
+                s3Key,
+                "PLACE_MEDIA",
+                mediaId == null ? null : String.valueOf(mediaId),
+                reason
+        );
     }
 }
