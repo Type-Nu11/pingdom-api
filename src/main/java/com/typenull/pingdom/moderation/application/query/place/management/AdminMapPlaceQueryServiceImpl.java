@@ -1,18 +1,13 @@
 package com.typenull.pingdom.moderation.application.query.place.management;
 
 import com.typenull.pingdom.moderation.application.query.place.duplicate.AdminMapPlaceDuplicateQueryService;
-import com.typenull.pingdom.moderation.application.query.place.lookup.AdminMapPlaceLookupQueryService;
 import com.typenull.pingdom.moderation.application.query.place.recommendation.AdminPlaceRecommendationMetricQueryService;
 
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateResponse;
-import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
-import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.metric.AdminPlaceRecommendationMetricsCompareResponse;
 import com.typenull.pingdom.moderation.api.dto.place.recommendation.metric.AdminPlaceRecommendationMetricsResponse;
-import com.typenull.pingdom.moderation.domain.AdminPlaceSortParam;
 import com.typenull.pingdom.moderation.domain.RecommendationMetricSortBy;
-import com.typenull.pingdom.moderation.domain.SortParam;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -23,25 +18,8 @@ import org.springframework.transaction.annotation.Transactional;
 /** 관리자 장소 목록·상세·중복·추천 지표 조회를 읽기 모델로 조합합니다. */
 public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService {
 
-    private final AdminMapPlaceLookupQueryService lookupQueryService;
     private final AdminMapPlaceDuplicateQueryService duplicateQueryService;
     private final AdminPlaceRecommendationMetricQueryService recommendationMetricQueryService;
-
-    @Override
-    public AdminMapPlaceResponse listPlaces(
-            int page,
-            int limit,
-            AdminPlaceSortParam sortParam,
-            String keyword,
-            String category
-    ) {
-        return lookupQueryService.listPlaces(page, limit, sortParam, keyword, category);
-    }
-
-    @Override
-    public AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword) {
-        return lookupQueryService.getPlace(placeId, sortParam, keyword);
-    }
 
     @Override
     public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {

@@ -326,60 +326,6 @@ class AbuseRateLimitControllerTest {
     }
 
     @Test
-    void reportReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
-        User user = createUser("limitedReportUser");
-        String accessToken = accessToken(user);
-        MapImage firstImage = createMapImage(100L, null);
-        MapImage secondImage = createMapImage(101L, null);
-
-        mockMvc.perform(post("/map/posts/{id}/report", firstImage.getId())
-                        .with(remoteAddress("198.51.100.40"))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "reason": "첫 번째 신고"
-                                }
-                                """))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/map/posts/{id}/report", secondImage.getId())
-                        .with(remoteAddress("198.51.100.40"))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("""
-                                {
-                                  "reason": "두 번째 신고"
-                                }
-                                """))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
-    }
-
-    @Test
-    void likeReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
-        User user = createUser("limitedLikeUser");
-        String accessToken = accessToken(user);
-        MapImage firstImage = createMapImage(200L, null);
-        MapImage secondImage = createMapImage(201L, null);
-
-        mockMvc.perform(post("/map/like")
-                        .with(remoteAddress("198.51.100.50"))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("mapImageId", firstImage.getId()))))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/map/like")
-                        .with(remoteAddress("198.51.100.50"))
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(Map.of("mapImageId", secondImage.getId()))))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
-    }
-
-    @Test
     void recommendationClickReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
         User user = createUser("limitedClickUser");
         String accessToken = accessToken(user);
@@ -449,38 +395,6 @@ class AbuseRateLimitControllerTest {
                                 "recommendationVersion", "place-rec-v1",
                                 "requestId", "recommendation-request-1"
                         ))))
-                .andExpect(status().isTooManyRequests())
-                .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
-    }
-
-    @Test
-    void imageUploadReturnsTooManyRequestsWhenUserLimitExceeded() throws Exception {
-        given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map")))
-                .willReturn(new S3ObjectStorage.S3PutResult("map/first.jpg", "https://example.com/first.jpg"));
-        given(s3ObjectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("map/thumbnails")))
-                .willReturn(new S3ObjectStorage.S3PutResult(
-                        "map/thumbnails/first-thumbnail.jpg",
-                        "https://example.com/first-thumbnail.jpg"
-                ));
-        User user = createUser("limitedUploadUser");
-        String accessToken = accessToken(user);
-        MapPlace firstPlace = createMapPlace("첫 번째 업로드 장소");
-        MapPlace secondPlace = createMapPlace("두 번째 업로드 장소");
-
-        mockMvc.perform(multipart("/map/posts")
-                        .file(imageFile("first.jpg"))
-                        .with(remoteAddress("198.51.100.70"))
-                        .param("title", "첫 번째 업로드")
-                        .param("placeId", firstPlace.getId().toString())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(multipart("/map/posts")
-                        .file(imageFile("second.jpg"))
-                        .with(remoteAddress("198.51.100.70"))
-                        .param("title", "두 번째 업로드")
-                        .param("placeId", secondPlace.getId().toString())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isTooManyRequests())
                 .andExpect(jsonPath("$.code").value("RATE_LIMIT_EXCEEDED"));
     }

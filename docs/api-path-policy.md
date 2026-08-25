@@ -18,7 +18,6 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 |---|---|---|
 | 공통/인증 | `/auth` | 회원가입, 로그인, 토큰 재발급, 로그아웃, 이메일 인증, 비밀번호 재설정 |
 | 사용자 | `/users` | 내 정보, 회원 탈퇴, 북마크 조회, OAuth 계정 연결 |
-| 앱 지도/게시글 | `/map` | 게시글, 좋아요, 신고, 좌표 기반 장소 생성, 북마크 생성/삭제 |
 | 앱 장소 조회 | `/place` | 장소 목록/상세, 자동완성, 추천 조회 |
 | 알림 | `/notifications`, `/firebase` | 알림 설정, FCM 토큰 관리 |
 | 관리자 | `/admin` | 관리자 조회/처리 API |
@@ -29,14 +28,14 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 - 단건 식별은 `/{id}` 형태를 사용한다.
 - 사용자 본인 resource는 `/me`를 사용한다.
 - 관리자 API는 `/admin` 하위에 도메인 resource를 둔다.
-- v1에는 `/map`, `/place`처럼 도메인 기준 prefix와 `/firebase` 같은 외부 연동 기준 prefix가 함께 존재한다.
+- v1에는 `/place`처럼 도메인 기준 prefix와 `/firebase` 같은 외부 연동 기준 prefix가 함께 존재한다.
 
 대표 예시는 아래와 같다.
 
 | 분류 | 예시 |
 |---|---|
-| 컬렉션 조회 | `/map/posts`, `/admin/reports`, `/admin/notification-deliveries` |
-| 단건 조회 | `/place/{placeId}`, `/map/posts/{postId}`, `/admin/places/{placeId}` |
+| 컬렉션 조회 | `/places`, `/admin/reports`, `/admin/notification-deliveries` |
+| 단건 조회 | `/place/{placeId}`, `/admin/reports/{reportId}`, `/admin/places/{placeId}` |
 | 내 resource | `/users/me`, `/users/me/export`, `/users/me/oauth-accounts/google` |
 | 개인정보 처리 | `DELETE /users/me`, `GET /admin/privacy-processing-histories` |
 | 하위 resource | `/admin/reports/reported-users/{userId}`, `/places/recommendations/{requestId}/explanation` |
@@ -60,7 +59,6 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 
 - `/auth`
 - `/place`
-- `/map`
 
 ### 3. 복수형 권장 대상
 
@@ -125,7 +123,7 @@ DB migration과 함께 공개 API를 변경하는 배포 순서와 rollback 판�
 다음 항목은 V1 기원, `LEGACY` 문자열, 또는 유사한 path 형태만으로 삭제 후보로 분류하지
 않는다. 삭제하려면 별도의 대체 계약과 호출자·데이터 전환 근거가 필요하다.
 
-- `POST`·`DELETE /map/like`, `GET /map/bookmarks`, 대체 계약이 없는 `DELETE /places/{id}`
+- 대체 계약이 없는 `DELETE /places/{id}`
 - 내부 maintenance API
 - 신고 ID 단건 심사와 post ID 기준 일괄 심사처럼 목적이 다른 API
 - `place-rec-v1`, `GeocodingSource.LEGACY`, 암호문 `v1:` prefix 등 현행 정책 또는 역사 데이터 표식

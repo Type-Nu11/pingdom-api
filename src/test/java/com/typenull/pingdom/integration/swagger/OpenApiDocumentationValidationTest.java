@@ -316,49 +316,6 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void adminPlaceContractsExposeCanonicalCategoryAndLevel() throws Exception {
-        JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
-        JsonNode operation = webDocument.at("/paths/~1admin~1places/get");
-        JsonNode categoryParameter = parameter(operation, "category");
-
-        assertThat(categoryParameter.isMissingNode()).isFalse();
-        assertThat(categoryParameter.path("required").asBoolean()).isFalse();
-        assertThat(categoryParameter.path("example").asText()).isEqualTo(PlaceCategoryPolicy.CAFE);
-        assertThat(categoryParameter.path("description").asText())
-                .contains("AdminMapPlaceItem.category", "touristCategories");
-        assertThat(categoryParameter.path("schema").path("enum"))
-                .extracting(JsonNode::asText)
-                .containsExactlyInAnyOrderElementsOf(ADMIN_PLACE_CATEGORIES);
-
-        JsonNode emptyResult = operation.at("/responses/200/content/*~1*/examples/emptyResult/value");
-        assertThat(emptyResult.path("places").isArray()).isTrue();
-        assertThat(emptyResult.path("places").isEmpty()).isTrue();
-        assertThat(emptyResult.path("totalCount").asLong()).isZero();
-        assertThat(emptyResult.path("totalPages").asLong()).isEqualTo(1L);
-        assertThat(emptyResult.path("hasNext").asBoolean()).isFalse();
-
-        for (String schemaName : List.of("AdminMapPlaceItem", "AdminMapPlaceDetailResponse")) {
-            JsonNode schema = webDocument.at("/components/schemas/" + schemaName);
-            JsonNode properties = schema.path("properties");
-
-            assertThat(properties.path("category").path("enum"))
-                    .extracting(JsonNode::asText)
-                    .containsExactlyInAnyOrderElementsOf(ADMIN_PLACE_CATEGORIES);
-            assertThat(properties.path("categoryName").path("enum"))
-                    .extracting(JsonNode::asText)
-                    .containsExactlyInAnyOrderElementsOf(ADMIN_PLACE_CATEGORY_NAMES);
-            assertThat(properties.path("touristCategories").path("description").asText())
-                    .contains("별도 기준");
-            assertThat(properties.path("level").path("type").asText()).isEqualTo("integer");
-            assertThat(properties.path("level").path("minimum").asInt()).isZero();
-            assertThat(requiredFields(schema)).contains("level");
-            assertNullableProperty(webDocument, schemaName, "category");
-        }
-        assertThat(webDocument.at("/components/schemas/AdminMapPlaceResponse/properties/totalPages/minimum")
-                .asLong()).isEqualTo(1L);
-    }
-
-    @Test
     void locationCheckInApisAreExposedInAppGroup() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
@@ -483,19 +440,7 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/users/me/place-registration-applications")).isTrue();
         assertThat(appDocument.path("paths").has("/places/coordinates")).isFalse();
         assertThat(appDocument.path("paths").has("/places/upload")).isFalse();
-        assertThat(appDocument.path("paths").path("/map/posts").has("post")).isTrue();
-        assertThat(appDocument.path("paths").has("/map/posts/me")).isFalse();
-        assertThat(appDocument.path("paths").path("/map/posts/{id}").has("get")).isFalse();
-
-        JsonNode postUploadProperties = appDocument.path("components").path("schemas")
-                .path("PostUploadRequest").path("properties");
-        assertThat(postUploadProperties.has("placeId")).isTrue();
-        assertThat(postUploadProperties.has("kakaoPlaceId")).isTrue();
-        for (String removedProperty : List.of("placeName", "address", "category", "coordinateToken")) {
-            assertThat(postUploadProperties.has(removedProperty))
-                    .as("제거된 게시글 업로드 필드: %s", removedProperty)
-                    .isFalse();
-        }
+        assertThat(appDocument.path("paths").has("/map/posts")).isFalse();
 
         for (String path : List.of(
                 "/users/me/merchant-owner-profile",
@@ -544,10 +489,13 @@ class OpenApiDocumentationValidationTest {
                     .isFalse();
         }
 
-        assertThat(appDocument.path("paths").path("/map/like").has("get")).isFalse();
-        assertThat(appDocument.path("paths").path("/map/like").has("post")).isTrue();
-        assertThat(appDocument.path("paths").path("/map/like/{postId}").has("delete")).isTrue();
-        assertThat(appDocument.path("paths").path("/map/likes").has("get")).isTrue();
+        for (String removedPath : List.of(
+                "/map/report-appeals", "/map/posts", "/map/posts/{id}", "/map/posts/{id}/report",
+                "/map/reports", "/map/place-rankings", "/map/bookmarks", "/map/likes", "/map/like",
+                "/map/like/{postId}", "/map/like/return/{postId}/{notificationsId}"
+        )) {
+            assertThat(appDocument.path("paths").has(removedPath)).isFalse();
+        }
         assertThat(defaultDocument.path("paths").has("/auth/google")).isFalse();
         assertThat(adminDocument.path("paths").has("/admin/ad")).isFalse();
         assertThat(parameter(adminDocument.at("/paths/~1admin~1notifications/get"), "userId")
@@ -587,39 +535,12 @@ class OpenApiDocumentationValidationTest {
 
         for (String schemaName : List.of(
                 "AdminMapPlaceTouristInfoUpdateRequest",
-                "AdminMapPlaceTouristInfoUpdateResponse",
-                "AdminMapPlaceDetailResponse",
-                "AdminMapPlaceItem"
+                "AdminMapPlaceTouristInfoUpdateResponse"
         )) {
             assertNullableProperty(document, schemaName, "englishName");
             assertNullableProperty(document, schemaName, "touristSummary");
         }
         assertNullableProperty(document, "PlaceAutocompleteItem", "englishName");
-    }
-
-    @Test
-    void adminPlacePostVisibilityContractIsDocumented() throws Exception {
-        JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
-        JsonNode postSchema = webDocument.at("/components/schemas/AdminMapPlaceImageItem");
-
-        assertThat(resolveSchema(webDocument, postSchema.at("/properties/visibilityStatus")).path("enum"))
-                .extracting(JsonNode::asText)
-                .containsExactlyInAnyOrder("VISIBLE", "HIDDEN");
-        assertNullableProperty(webDocument, "AdminMapPlaceImageItem", "hiddenReason");
-    }
-
-    @Test
-    void adminPlaceGrowthPhotoCountsAreDocumented() throws Exception {
-        JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
-        JsonNode detailSchema = webDocument.at("/components/schemas/AdminMapPlaceDetailResponse");
-        JsonNode growthSchema = webDocument.at("/components/schemas/AdminMapPlaceGrowthResponse");
-
-        assertThat(detailSchema.at("/properties/placeGrowth/$ref").asText())
-                .isEqualTo("#/components/schemas/AdminMapPlaceGrowthResponse");
-        assertThat(growthSchema.at("/properties/photoCount/description").asText())
-                .contains("성장에 반영된", "노출");
-        assertThat(growthSchema.at("/properties/hiddenPhotoCount/description").asText())
-                .contains("성장에 반영되지 않는", "숨김");
     }
 
     @Test
@@ -654,8 +575,6 @@ class OpenApiDocumentationValidationTest {
         JsonNode discoveryRequestSchema = webDocument.at("/components/schemas/AdminMapPlaceDiscoveryStatusUpdateRequest");
         assertThat(requiredFields(discoveryRequestSchema)).contains("discoveryStatus", "reason");
         for (String schemaName : List.of(
-                "AdminMapPlaceItem",
-                "AdminMapPlaceDetailResponse",
                 "AdminMapPlaceDiscoveryStatusUpdateRequest",
                 "AdminMapPlaceDiscoveryStatusUpdateResponse"
         )) {

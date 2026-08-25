@@ -69,7 +69,7 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     }
 
     private static Stream<String> protectedGetEndpoints() {
-        return Stream.of("/places", "/map/posts", "/users/me");
+        return Stream.of("/places", "/users/me");
     }
 
     private String loginAndReadRefreshToken(String username) throws Exception {

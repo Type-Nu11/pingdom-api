@@ -1915,70 +1915,6 @@ class PlaceControllerTest {
     }
 
     @Test
-    void likeRecordsRecommendationLikeConversion() throws Exception {
-        String accessToken = signupAndLogin("reader16");
-        MapPlace mapPlace = createMapPlace("좋아요 전환 장소", "경상남도 진주시 전환로 2", 35.1803, 128.1079, 1L);
-        MapImage mapImage = createMapImage(mapPlace, 0L, "좋아요 전환 사진");
-
-        mockMvc.perform(post("/places/recommendations/click")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1",
-                                "requestId", "like-conversion-request"
-                        ))))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/map/like")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", mapImage.getId()))))
-                .andExpect(status().isOk());
-
-        List<PlaceRecommendationConversion> conversions = placeRecommendationConversionRepository.findAll();
-        assertEquals(1, conversions.size());
-        assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
-        assertEquals(PlaceRecommendationConversionType.LIKE, conversions.get(0).getConversionType());
-        assertNotNull(conversions.get(0).getPlaceRecommendationClickId());
-    }
-
-    @Test
-    void likeConversionIsRecordedOnlyOncePerUserAndPlace() throws Exception {
-        String accessToken = signupAndLogin("reader17");
-        MapPlace mapPlace = createMapPlace("중복 전환 장소", "경상남도 진주시 전환로 3", 35.1803, 128.1079, 2L);
-        MapImage firstImage = createMapImage(mapPlace, 0L, "중복 전환 사진 1");
-        MapImage secondImage = createMapImage(mapPlace, 0L, "중복 전환 사진 2");
-
-        mockMvc.perform(post("/places/recommendations/click")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of(
-                                "placeId", mapPlace.getId(),
-                                "recommendationVersion", "place-rec-v1",
-                                "requestId", "like-conversion-once-request"
-                        ))))
-                .andExpect(status().isCreated());
-
-        mockMvc.perform(post("/map/like")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", firstImage.getId()))))
-                .andExpect(status().isOk());
-
-        mockMvc.perform(post("/map/like")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", secondImage.getId()))))
-                .andExpect(status().isOk());
-
-        List<PlaceRecommendationConversion> conversions = placeRecommendationConversionRepository.findAll();
-        assertEquals(1, conversions.size());
-        assertEquals(PlaceRecommendationConversionType.LIKE, conversions.get(0).getConversionType());
-        assertEquals(mapPlace.getId(), conversions.get(0).getPlaceId());
-    }
-
-    @Test
     void recommendPlacesAppliesCtrScoreToWellClickedPlace() throws Exception {
         String accessToken = signupAndLogin("reader13");
 
@@ -2152,19 +2088,19 @@ class PlaceControllerTest {
     }
 
     @Test
-    void removedLegacyBookmarkMethodsAreNotAllowed() throws Exception {
+    void removedLegacyBookmarkMethodsAreNotMapped() throws Exception {
         String accessToken = signupAndLogin("legacyPathWriter01");
 
         mockMvc.perform(post("/map/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(Map.of("placeId", 1L))))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isNotFound());
 
         mockMvc.perform(delete("/map/bookmarks")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
                         .param("placeId", "1"))
-                .andExpect(status().isMethodNotAllowed());
+                .andExpect(status().isNotFound());
     }
 
     @Test
@@ -2182,36 +2118,6 @@ class PlaceControllerTest {
                                 "coordinateToken", "removed-legacy-token"
                         ))))
                 .andExpect(status().isNotFound());
-    }
-
-    @Test
-    void likeAndUnlikeRefreshRecommendationSnapshot() throws Exception {
-        String accessToken = signupAndLogin("reader09");
-        MapPlace mapPlace = createMapPlace("좋아요 검증 장소", "경상남도 진주시 하대동 1", 35.1806, 128.1084, 1L);
-        MapImage mapImage = createMapImage(mapPlace, 0L, "좋아요 검증 사진");
-
-        mockMvc.perform(post("/map/like")
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(java.util.Map.of("mapImageId", mapImage.getId()))))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mapImageId").value(mapImage.getId()));
-
-        PlaceRecommendationSnapshot likedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
-                .orElseThrow();
-        assertEquals(1L, likedSnapshot.getPhotoCount());
-        assertEquals(1L, likedSnapshot.getTotalLikeCount());
-        assertNotNull(likedSnapshot.getLatestPostCreatedAt());
-
-        mockMvc.perform(delete("/map/like/{imageId}", mapImage.getId())
-                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk())
-                .andExpect(jsonPath("$.mapImageId").value(mapImage.getId()));
-
-        PlaceRecommendationSnapshot unlikedSnapshot = placeRecommendationSnapshotRepository.findById(mapPlace.getId())
-                .orElseThrow();
-        assertEquals(1L, unlikedSnapshot.getPhotoCount());
-        assertEquals(0L, unlikedSnapshot.getTotalLikeCount());
     }
 
     @Test

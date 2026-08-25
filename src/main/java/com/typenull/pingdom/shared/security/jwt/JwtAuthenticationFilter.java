@@ -34,10 +34,6 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             "/swagger-ui/**",
             "/v3/api-docs/**"
     );
-    private static final List<String> APPEAL_PATH_PATTERNS = List.of(
-            "/map/report-appeals",
-            "/map/report-appeals/**"
-    );
     private static final AntPathMatcher PATH_MATCHER = new AntPathMatcher();
 
     private final JwtTokenProvider jwtTokenProvider;
@@ -76,7 +72,7 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
             }
 
             if (status == JwtTokenProvider.TokenStatus.VALID && parsed.payload() != null) {
-                boolean canAuthenticate = canAuthenticate(request, parsed.payload().userId());
+                boolean canAuthenticate = userAccessStatusService.canAuthenticate(parsed.payload().userId());
                 if (canAuthenticate) {
                     String role = parsed.payload().role();
                     List<SimpleGrantedAuthority> authorities = (role == null)
@@ -107,16 +103,4 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         return authorizationHeader.substring(BEARER_PREFIX.length());
     }
 
-    private boolean canAuthenticate(HttpServletRequest request, Long userId) {
-        if (isAppealPath(request)) {
-            return userAccessStatusService.canAuthenticateForAppeal(userId);
-        }
-        return userAccessStatusService.canAuthenticate(userId);
-    }
-
-    private boolean isAppealPath(HttpServletRequest request) {
-        String requestUri = request.getRequestURI();
-        return APPEAL_PATH_PATTERNS.stream()
-                .anyMatch(pattern -> PATH_MATCHER.match(pattern, requestUri));
-    }
 }
