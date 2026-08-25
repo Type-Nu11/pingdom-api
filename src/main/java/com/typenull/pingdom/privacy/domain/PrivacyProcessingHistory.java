@@ -9,6 +9,7 @@ import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
 import jakarta.persistence.Index;
 import jakarta.persistence.Table;
+import jakarta.persistence.UniqueConstraint;
 import java.time.LocalDateTime;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
@@ -20,6 +21,12 @@ import lombok.NoArgsConstructor;
 @Entity
 @Table(
         name = "privacy_processing_history",
+        uniqueConstraints = {
+                @UniqueConstraint(
+                        name = "uk_privacy_processing_history_outbox_subject",
+                        columnNames = {"outbox_event_id", "subject_user_id"}
+                )
+        },
         indexes = {
                 @Index(name = "idx_privacy_processing_history_created", columnList = "created_at DESC, id DESC"),
                 @Index(name = "idx_privacy_processing_history_subject_created", columnList = "subject_user_id, created_at DESC"),
@@ -39,6 +46,10 @@ public class PrivacyProcessingHistory {
 
     @Column(name = "subject_user_id")
     private Long subjectUserId;
+
+    /** Outbox 재처리 시 동일 감사 이력의 중복 생성을 막는 원본 이벤트 식별자입니다. */
+    @Column(name = "outbox_event_id", length = 36, updatable = false)
+    private String outboxEventId;
 
     @Column(name = "actor_user_id")
     private Long actorUserId;

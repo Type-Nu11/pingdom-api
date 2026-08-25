@@ -29,10 +29,13 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사용자 신호, 후보 원천, 정책 가중치와 운영 상태를 결합해 추천 응답과 관측 기록 요청을
+ * 함께 조립하는 유스케이스입니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-/** 사용자 신호, 후보 원천, 정책 가중치와 운영 상태를 단계적으로 결합하는 장소 추천 오케스트레이터입니다. */
 public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQueryService {
 
     private static final int MIN_LIMIT = 1;
@@ -63,10 +66,13 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     private final RecommendationMetrics recommendationMetrics;
     private final ApplicationEventPublisher eventPublisher;
 
+    /**
+     * 추천 응답을 조합하고, 활성화된 feature log는 같은 쓰기 트랜잭션에 저장한 뒤 노출 기록을
+     * 커밋 후 처리하도록 요청합니다. 노출 기록 실패는 추천 응답을 실패시키지 않습니다.
+     */
     @Override
     @Transactional
-    /** 요청값을 보정하고 후보 수집부터 최종 재정렬·노출 기록까지 수행합니다. */
-    public PlaceRecommendationResponse recommendPlaces(
+    public PlaceRecommendationResponse recommendAndRecordObservations(
             Long userId,
             double latitude,
             double longitude,

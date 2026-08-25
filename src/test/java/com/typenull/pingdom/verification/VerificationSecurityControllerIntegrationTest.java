@@ -26,6 +26,7 @@ import java.time.LocalDateTime;
 import java.time.temporal.ChronoUnit;
 import java.util.Map;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -37,6 +38,7 @@ import org.springframework.mock.web.MockMultipartFile;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.transaction.annotation.Transactional;
 
+@Tag("integration")
 @SpringBootTest(properties = "verification.visit-evidence.max-file-size-bytes=1024")
 @AutoConfigureMockMvc
 @Transactional
@@ -65,6 +67,24 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/location-check-ins/{checkInId}/evidence/file", 1L))
                 .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visitor-verification-reports"))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visitor-verification-reports/{reportId}", 1L))
+                .andExpect(status().isUnauthorized());
+        mockMvc.perform(get("/visitor-verification-reports/{reportId}/corrections", 1L))
+                .andExpect(status().isUnauthorized());
+    }
+
+    @Test
+    void visitorVerificationListValidationReturnsStableErrorCode() throws Exception {
+        User tourist = userRepository.saveAndFlush(user("reportValidationTourist", UserRole.USER));
+
+        mockMvc.perform(get("/visitor-verification-reports")
+                        .param("page", "0")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("VALIDATION_FAILED"))
+                .andExpect(jsonPath("$.errors").isNotEmpty());
     }
 
     @Test

@@ -17,12 +17,12 @@ import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.application.PrivacyProcessingOutboxPublisher;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -45,10 +45,10 @@ public class UserDataExportService {
     private final TouristOfferRepository touristOfferRepository;
     private final TouristCouponRepository touristCouponRepository;
     private final MerchantVerificationCipher merchantVerificationCipher;
-    private final ApplicationEventPublisher eventPublisher;
+    private final PrivacyProcessingOutboxPublisher privacyProcessingOutboxPublisher;
     private final Clock clock;
 
-    @Transactional(readOnly = true)
+    @Transactional
     public UserDataExportResult exportMyData(Long userId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
@@ -84,7 +84,7 @@ public class UserDataExportService {
                 .findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId);
         var touristCoupons = touristCouponRepository.findAllByUserIdOrderByIssuedAtDescIdDesc(userId);
 
-        eventPublisher.publishEvent(PrivacyProcessingEvent.userAction(
+        privacyProcessingOutboxPublisher.publish(PrivacyProcessingEvent.userAction(
                 userId,
                 PrivacyProcessingAction.EXPORT_REQUESTED,
                 "사용자 데이터 export 요청"

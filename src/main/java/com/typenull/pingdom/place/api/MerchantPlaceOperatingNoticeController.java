@@ -11,9 +11,12 @@ import com.typenull.pingdom.place.application.service.place.operating.PlaceOpera
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -36,6 +39,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @Tag(name = "Merchant", description = "Merchant 전용 API")
+@SecurityRequirement(name = "bearerAuth")
 public class MerchantPlaceOperatingNoticeController {
 
     private final PlaceOperatingNoticeService placeOperatingNoticeService;
@@ -73,7 +77,15 @@ public class MerchantPlaceOperatingNoticeController {
     }
 
     @PostMapping
-    @Operation(summary = "점주 상점 운영 상태 공지 생성", description = "점주가 본인 상점의 임시 운영 상태 공지를 생성합니다.")
+    @Operation(summary = "점주 상점 운영 상태 공지 생성", description = "OWNER만 본인 장소에 공지를 생성할 수 있습니다. startsAt이 현재 시각 이후이면 SCHEDULED, 그렇지 않으면 ACTIVE로 생성되며, 같은 장소·공지 유형에는 활성 또는 예약 공지를 하나만 둘 수 있습니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "201", description = "운영 상태 공지 생성 성공", content = @Content(schema = @Schema(implementation = PlaceOperatingNoticeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "입력값 또는 공지 상태가 올바르지 않음", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}), examples = @ExampleObject(name = "PLACE_OPERATING_NOTICE_INVALID_REQUEST", value = "{\"message\":\"상점 운영 상태 공지 요청이 올바르지 않습니다.\",\"code\":\"PLACE_OPERATING_NOTICE_INVALID_REQUEST\"}"))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "INVALID_TOKEN", value = "{\"message\":\"유효하지 않은 토큰입니다.\",\"code\":\"INVALID_TOKEN\"}"))),
+            @ApiResponse(responseCode = "403", description = "장소 운영 공지 관리 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "PLACE_OPERATING_NOTICE_FORBIDDEN", value = "{\"message\":\"해당 상점 운영 상태 공지를 관리할 권한이 없습니다.\",\"code\":\"PLACE_OPERATING_NOTICE_FORBIDDEN\"}"))),
+            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "PLACE_NOT_FOUND", value = "{\"message\":\"장소를 찾을 수 없습니다.\",\"code\":\"PLACE_NOT_FOUND\"}"))),
+            @ApiResponse(responseCode = "409", description = "같은 공지 유형의 활성 또는 예약 공지가 이미 존재함", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "PLACE_OPERATING_NOTICE_ALREADY_ACTIVE", value = "{\"message\":\"이미 활성 또는 예약된 상점 운영 상태 공지가 있습니다.\",\"code\":\"PLACE_OPERATING_NOTICE_ALREADY_ACTIVE\"}")))
+    })
     public ResponseEntity<PlaceOperatingNoticeResponse> createNotice(
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId,
             @Valid @RequestBody PlaceOperatingNoticeCreateRequest request,
@@ -84,7 +96,14 @@ public class MerchantPlaceOperatingNoticeController {
     }
 
     @PatchMapping("/{noticeId}")
-    @Operation(summary = "점주 상점 운영 상태 공지 수정", description = "점주가 본인 상점의 운영 상태 공지 내용을 수정합니다.")
+    @Operation(summary = "점주 상점 운영 상태 공지 수정", description = "OWNER만 본인 장소의 SCHEDULED 또는 ACTIVE 공지의 심각도와 메시지를 수정할 수 있습니다. 생성·수정·취소 결과는 공개 운영 공지 조회와 동일한 공지 리소스를 변경합니다. 잘못된 상태는 PLACE_OPERATING_NOTICE_INVALID_REQUEST, 권한 부족은 PLACE_OPERATING_NOTICE_FORBIDDEN, 대상 없음은 PLACE_OPERATING_NOTICE_NOT_FOUND로 응답합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "운영 상태 공지 수정 성공", content = @Content(schema = @Schema(implementation = PlaceOperatingNoticeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "입력값 또는 수정 가능하지 않은 공지 상태", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "장소 운영 공지 관리 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "장소 또는 공지를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<PlaceOperatingNoticeResponse> updateNotice(
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId,
             @Parameter(description = "공지 ID", example = "10") @PathVariable Long noticeId,
@@ -95,7 +114,14 @@ public class MerchantPlaceOperatingNoticeController {
     }
 
     @PostMapping("/{noticeId}/cancel")
-    @Operation(summary = "점주 상점 운영 상태 공지 취소", description = "점주가 본인 상점의 예약 또는 활성 운영 상태 공지를 취소합니다.")
+    @Operation(summary = "점주 상점 운영 상태 공지 취소", description = "OWNER만 본인 장소의 SCHEDULED 또는 ACTIVE 공지를 취소할 수 있습니다. 이미 취소되었거나 종료된 공지는 400 PLACE_OPERATING_NOTICE_INVALID_REQUEST로 응답하며, 권한 부족과 대상 없음은 각각 PLACE_OPERATING_NOTICE_FORBIDDEN, PLACE_OPERATING_NOTICE_NOT_FOUND로 구분합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "운영 상태 공지 취소 성공", content = @Content(schema = @Schema(implementation = PlaceOperatingNoticeResponse.class))),
+            @ApiResponse(responseCode = "400", description = "입력값 또는 취소 가능하지 않은 공지 상태", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}), examples = @ExampleObject(name = "PLACE_OPERATING_NOTICE_INVALID_REQUEST", value = "{\"message\":\"상점 운영 상태 공지 요청이 올바르지 않습니다.\",\"code\":\"PLACE_OPERATING_NOTICE_INVALID_REQUEST\"}"))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "403", description = "장소 운영 공지 관리 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "장소 또는 공지를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public ResponseEntity<PlaceOperatingNoticeResponse> cancelNotice(
             @Parameter(description = "장소 ID", example = "1") @PathVariable Long placeId,
             @Parameter(description = "공지 ID", example = "10") @PathVariable Long noticeId,

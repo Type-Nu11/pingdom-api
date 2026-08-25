@@ -8,18 +8,38 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.shared.web.RequestIdFilter;
+import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.boot.actuate.health.Health;
+import org.springframework.boot.actuate.health.HealthIndicator;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.context.TestConfiguration;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Import;
 import org.springframework.test.web.servlet.MockMvc;
 
-@SpringBootTest(properties = "management.health.redis.enabled=false")
+@Tag("integration")
+@SpringBootTest(properties = {
+        "management.health.redis.enabled=false",
+        "management.endpoint.health.group.readiness.include=readinessState,db,redis"
+})
 @AutoConfigureMockMvc
+@Import(ActuatorObservabilitySecurityTest.RedisReadinessHealthTestConfiguration.class)
 class ActuatorObservabilitySecurityTest {
 
     @Autowired
     private MockMvc mockMvc;
+
+    @Autowired
+    private RedisReadinessHealthIndicator redisHealthIndicator;
+
+    @BeforeEach
+    void setUp() {
+        redisHealthIndicator.markUp();
+    }
 
     @Test
     void healthEndpointIsAccessibleWithoutAuthentication() throws Exception {
@@ -37,6 +57,15 @@ class ActuatorObservabilitySecurityTest {
     }
 
     @Test
+    void readinessEndpointReturnsServiceUnavailableWhenRedisIsUnavailable() throws Exception {
+        redisHealthIndicator.markDown();
+
+        mockMvc.perform(get("/actuator/health/readiness"))
+                .andExpect(status().isServiceUnavailable())
+                .andExpect(jsonPath("$.status").value("DOWN"));
+    }
+
+    @Test
     void nonHealthActuatorEndpointIsNotPublic() throws Exception {
         mockMvc.perform(get("/actuator/metrics"))
                 .andExpect(status().isUnauthorized());
@@ -48,5 +77,32 @@ class ActuatorObservabilitySecurityTest {
                         .header(RequestIdFilter.REQUEST_ID_HEADER, "client-request-1"))
                 .andExpect(status().isOk())
                 .andExpect(header().string(RequestIdFilter.REQUEST_ID_HEADER, "client-request-1"));
+    }
+
+    @TestConfiguration(proxyBeanMethods = false)
+    static class RedisReadinessHealthTestConfiguration {
+
+        @Bean
+        RedisReadinessHealthIndicator redisHealthIndicator() {
+            return new RedisReadinessHealthIndicator();
+        }
+    }
+
+    static class RedisReadinessHealthIndicator implements HealthIndicator {
+
+        private boolean available = true;
+
+        @Override
+        public Health health() {
+            return available ? Health.up().build() : Health.down().build();
+        }
+
+        void markUp() {
+            available = true;
+        }
+
+        void markDown() {
+            available = false;
+        }
     }
 }

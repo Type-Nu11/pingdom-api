@@ -96,6 +96,21 @@ class VisitorVerificationReportCorrectionServiceTest {
     }
 
     @Test
+    void correctionIsRejectedUntilTheOriginalReportIsReviewed() {
+        VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.SUBMITTED);
+        when(reportRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(report));
+
+        assertThatThrownBy(() -> service.submit(
+                1L, 5L,
+                new VisitorVerificationReportCorrectionRequest("수정", null, null, null, null, null)))
+                .isInstanceOf(VisitorVerificationException.class)
+                .extracting(exception -> ((VisitorVerificationException) exception).getErrorCode())
+                .isEqualTo(VisitorVerificationErrorCode.CORRECTION_NOT_ALLOWED);
+
+        verifyNoInteractions(correctionRepository);
+    }
+
+    @Test
     void duplicateActiveCorrectionIsRejected() {
         VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.ACCEPTED);
         when(reportRepository.findByIdForUpdate(5L)).thenReturn(Optional.of(report));

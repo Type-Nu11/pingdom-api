@@ -21,6 +21,19 @@ public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long
 
     List<TouristOffer> findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(Long merchantOwnerUserId);
 
+    @Lock(LockModeType.PESSIMISTIC_WRITE)
+    @Query("""
+            SELECT offer
+            FROM TouristOffer offer
+            WHERE offer.merchantOwnerUserId = :merchantOwnerUserId
+              AND offer.placeId = :placeId
+            ORDER BY offer.id ASC
+            """)
+    List<TouristOffer> findAllByMerchantOwnerUserIdAndPlaceIdForUpdate(
+            @Param("merchantOwnerUserId") Long merchantOwnerUserId,
+            @Param("placeId") Long placeId
+    );
+
     Optional<TouristOffer> findByIdAndMerchantOwnerUserId(Long id, Long merchantOwnerUserId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

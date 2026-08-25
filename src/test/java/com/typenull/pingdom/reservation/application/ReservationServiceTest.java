@@ -121,6 +121,40 @@ class ReservationServiceTest {
     }
 
     @Test
+    void getMineRejectsAnotherTouristReservation() {
+        Reservation reservation = Reservation.create(2L, 9L, "request-1", 2,
+                LocalDateTime.of(2026, 7, 20, 13, 0));
+        when(reservationRepository.findById(3L)).thenReturn(Optional.of(reservation));
+
+        assertThatThrownBy(() -> service.getMine(1L, 3L))
+                .isInstanceOfSatisfying(ReservationException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.RESERVATION_FORBIDDEN));
+    }
+
+    @Test
+    void getMineReturnsNotFoundForUnknownReservation() {
+        when(reservationRepository.findById(3L)).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> service.getMine(1L, 3L))
+                .isInstanceOfSatisfying(ReservationException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND));
+    }
+
+    @Test
+    void getMineRequiresTouristAccount() {
+        Reservation reservation = Reservation.create(2L, 9L, "request-1", 2,
+                LocalDateTime.of(2026, 7, 20, 13, 0));
+        User merchantOwner = User.builder().id(2L).role(UserRole.MERCHANT_OWNER).status(UserStatus.ACTIVE).build();
+        when(reservationRepository.findById(3L)).thenReturn(Optional.of(reservation));
+        when(userRepository.findById(2L)).thenReturn(Optional.of(merchantOwner));
+
+        assertThatThrownBy(() -> service.getMine(2L, 3L))
+                .isInstanceOfSatisfying(ReservationException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(ReservationErrorCode.TOURIST_ACCOUNT_REQUIRED));
+    }
+
+    @Test
     void currentPlaceOwnerCanConfirmReservationCreatedBeforeOwnershipTransfer() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
         Reservation reservation = Reservation.create(1L, 9L, "request-1", 2, now);

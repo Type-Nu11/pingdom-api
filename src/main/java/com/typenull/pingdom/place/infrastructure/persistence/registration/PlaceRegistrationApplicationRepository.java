@@ -28,6 +28,8 @@ public interface PlaceRegistrationApplicationRepository extends JpaRepository<Pl
             MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
     boolean existsByApplicantUserIdAndApplicationTypeNotAndStatus(
             Long applicantUserId, MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
+    boolean existsByExistingPlaceIdAndApplicationTypeAndStatus(
+            Long existingPlaceId, MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
     Page<PlaceRegistrationApplication> findAllByStatus(PlaceRegistrationStatus status, Pageable pageable);
     Optional<PlaceRegistrationApplication> findByIdAndApplicantUserId(Long id, Long userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)

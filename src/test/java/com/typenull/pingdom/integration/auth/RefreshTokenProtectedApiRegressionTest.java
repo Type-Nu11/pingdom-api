@@ -8,6 +8,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import jakarta.servlet.http.Cookie;
 import java.util.stream.Stream;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -15,6 +16,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
+@Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
 class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTestSupport {

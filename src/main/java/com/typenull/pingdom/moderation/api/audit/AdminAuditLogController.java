@@ -1,10 +1,12 @@
 package com.typenull.pingdom.moderation.api.audit;
 
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.audit.AdminAuditLogResponse;
 import com.typenull.pingdom.moderation.application.query.audit.AdminAuditLogQueryService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
@@ -48,9 +50,11 @@ public class AdminAuditLogController {
             @Parameter(description = "페이지 번호(1부터 시작)", example = "1")
             @RequestParam(defaultValue = "1") int page,
             @Parameter(description = "페이지 크기", example = "20")
-            @RequestParam(defaultValue = "20") int limit
+            @RequestParam(defaultValue = "20") int limit,
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         return adminAuditLogQueryService.listAuditLogs(
+                adminUser == null ? null : adminUser.userId(),
                 actorUserId,
                 action,
                 targetType,

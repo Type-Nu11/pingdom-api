@@ -5,6 +5,8 @@ plugins {
     id 'io.spring.dependency-management' version '1.1.7'
 }
 
+import org.gradle.api.tasks.testing.Test
+
 group = 'com.typenull'
 version = '0.0.1-SNAPSHOT'
 description = 'Pingdom'
@@ -68,8 +70,83 @@ dependencies {
     testAnnotationProcessor 'org.projectlombok:lombok'
 }
 
+def postgresqlIntegrationTag = 'postgres-integration'
+def postgresqlSmokeTag = 'postgres-smoke'
+def integrationTag = 'integration'
+def migrationTag = 'migration'
+
 tasks.named('test') {
-    useJUnitPlatform()
+    // PR 게이트는 Spring Context와 Testcontainers를 제외한 단위 테스트만 실행한다.
+    maxHeapSize = '1g'
+    useJUnitPlatform {
+        excludeTags(integrationTag, postgresqlIntegrationTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('integrationTest', Test) {
+    group = 'verification'
+    description = 'Runs Spring-based integration tests without Testcontainers PostgreSQL tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('test')
+    useJUnitPlatform {
+        includeTags(integrationTag)
+        excludeTags(postgresqlIntegrationTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('postgresSmokeTest', Test) {
+    group = 'verification'
+    description = 'Runs the critical PostgreSQL repository and lock smoke tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('test')
+    useJUnitPlatform {
+        includeTags(postgresqlSmokeTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('postgresIntegrationTest', Test) {
+    group = 'verification'
+    description = 'Runs PostgreSQL Testcontainers tests except Flyway migration tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('postgresSmokeTest')
+    useJUnitPlatform {
+        includeTags(postgresqlIntegrationTag)
+        excludeTags(migrationTag)
+    }
+    testLogging {
+        events 'failed'
+        exceptionFormat = 'full'
+    }
+}
+
+tasks.register('migrationTest', Test) {
+    group = 'verification'
+    description = 'Runs PostgreSQL Flyway migration tests.'
+    testClassesDirs = sourceSets.test.output.classesDirs
+    classpath = sourceSets.test.runtimeClasspath
+    maxHeapSize = '2g'
+    shouldRunAfter tasks.named('postgresIntegrationTest')
+    useJUnitPlatform {
+        includeTags(migrationTag)
+    }
     testLogging {
         events 'failed'
         exceptionFormat = 'full'

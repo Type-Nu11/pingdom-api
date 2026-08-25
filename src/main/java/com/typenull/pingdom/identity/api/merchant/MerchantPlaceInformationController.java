@@ -6,9 +6,11 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceInformationRe
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceInformationUpdateRequest;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceInformationService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -34,7 +36,7 @@ public class MerchantPlaceInformationController {
     private final MerchantPlaceInformationService informationService;
 
     @GetMapping
-    @Operation(summary = "Merchant 장소 정보 조회", description = "장소 관리자 또는 소유자만 본인 장소의 Merchant 관리 정보를 조회합니다.")
+    @Operation(summary = "Merchant 장소 정보 조회", description = "장소 관리자 또는 소유자만 본인 장소의 Merchant 관리 정보를 조회합니다. 권한 부족은 MERCHANT_TEAM_PERMISSION_REQUIRED, 정보 미등록은 PLACE_INFORMATION_NOT_FOUND로 구분합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "조회 성공", content = @Content(schema = @Schema(implementation = MerchantPlaceInformationResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
@@ -49,13 +51,13 @@ public class MerchantPlaceInformationController {
     }
 
     @PutMapping
-    @Operation(summary = "Merchant 장소 정보 등록 및 수정", description = "장소 관리자 또는 소유자가 장소 소개와 방문 전환 링크를 등록하거나 전체 교체합니다.")
+    @Operation(summary = "Merchant 장소 정보 등록 및 수정", description = "장소 관리자 또는 소유자가 장소 소개와 방문 전환 링크를 등록하거나 전체 교체합니다. URL·길이 검증은 VALIDATION_FAILED, 권한 부족은 MERCHANT_TEAM_PERMISSION_REQUIRED, 대상 장소 없음은 PLACE_NOT_FOUND로 응답합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "수정 성공", content = @Content(schema = @Schema(implementation = MerchantPlaceInformationResponse.class))),
-            @ApiResponse(responseCode = "400", description = "입력값 검증 실패", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "403", description = "장소 관리 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "400", description = "입력값 검증 실패", content = @Content(schema = @Schema(implementation = ValidationErrorResponse.class), examples = @ExampleObject(name = "VALIDATION_FAILED", value = "{\"message\":\"입력값이 올바르지 않습니다.\",\"code\":\"VALIDATION_FAILED\",\"errors\":{\"websiteUrl\":\"웹사이트 URL은 http:// 또는 https://로 시작해야 합니다.\"}}"))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "INVALID_TOKEN", value = "{\"message\":\"유효하지 않은 토큰입니다.\",\"code\":\"INVALID_TOKEN\"}"))),
+            @ApiResponse(responseCode = "403", description = "장소 관리 권한 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "MERCHANT_TEAM_PERMISSION_REQUIRED", value = "{\"message\":\"Merchant 팀원 관리 권한이 필요합니다.\",\"code\":\"MERCHANT_TEAM_PERMISSION_REQUIRED\"}"))),
+            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class), examples = @ExampleObject(name = "PLACE_NOT_FOUND", value = "{\"message\":\"장소를 찾을 수 없습니다.\",\"code\":\"PLACE_NOT_FOUND\"}")))
     })
     public MerchantPlaceInformationResponse upsert(
             @PathVariable Long placeId,

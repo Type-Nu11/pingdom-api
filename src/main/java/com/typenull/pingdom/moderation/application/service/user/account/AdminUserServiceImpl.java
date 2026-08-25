@@ -22,6 +22,8 @@ import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryItem
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionHistoryResponse;
 import com.typenull.pingdom.moderation.api.dto.user.AdminUserSanctionStatusResponse;
 import com.typenull.pingdom.moderation.application.AdminUserService;
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -52,11 +54,13 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final UserSanctionCommandService userSanctionCommandService;
     private final UserSanctionHistoryRepository userSanctionHistoryRepository;
     private final AdminAuditLogService adminAuditLogService;
+    private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
     @Override
     @Transactional
     public BanResponse banUser(Long userId, BanRequest request, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         LocalDateTime now = now();
         User user = findUser(userId);
         LocalDateTime expiresAt = resolveBanExpiresAt(request, now);
@@ -87,6 +91,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional
     public UnbanResponse unbanUser(Long userId, UnbanRequest request, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         LocalDateTime now = now();
         User user = findUser(userId);
         String reason = request == null ? null : request.reason();
@@ -108,7 +113,12 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
-    public AdminBannedUserResponse listBannedUsers(AdminBannedUserSearchCondition condition, Pageable pageable) {
+    public AdminBannedUserResponse listBannedUsers(
+            Long adminUserId,
+            AdminBannedUserSearchCondition condition,
+            Pageable pageable
+    ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_READ);
         int normalizedPage = Math.max(pageable.getPageNumber() + 1, 1);
         int normalizedLimit = Math.min(Math.max(pageable.getPageSize(), 1), 100);
         validateHistoryPeriod(condition.bannedFrom(), condition.bannedTo());
@@ -154,7 +164,8 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
-    public AdminBannedUserDetailResponse getBannedUser(Long userId) {
+    public AdminBannedUserDetailResponse getBannedUser(Long adminUserId, Long userId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_READ);
         LocalDateTime now = now();
         User user = findUser(userId);
         userSanctionCommandService.expireBanIfNeeded(user, now);
@@ -181,7 +192,8 @@ public class AdminUserServiceImpl implements AdminUserService {
 
     @Override
     @Transactional
-    public AdminUserSanctionStatusResponse getUserSanctionStatus(Long userId) {
+    public AdminUserSanctionStatusResponse getUserSanctionStatus(Long adminUserId, Long userId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_READ);
         LocalDateTime now = now();
         User user = findUser(userId);
         userSanctionCommandService.expireBanIfNeeded(user, now);
@@ -201,6 +213,7 @@ public class AdminUserServiceImpl implements AdminUserService {
     @Override
     @Transactional
     public AdminUserSanctionHistoryResponse listUserSanctionHistories(
+            Long adminUserId,
             Long userId,
             UserBanType banType,
             UserSanctionAction action,
@@ -208,6 +221,7 @@ public class AdminUserServiceImpl implements AdminUserService {
             LocalDateTime to,
         Pageable pageable
     ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_READ);
         User user = findUser(userId);
         validateHistoryPeriod(from, to);
         userSanctionCommandService.expireBanIfNeeded(user, now());

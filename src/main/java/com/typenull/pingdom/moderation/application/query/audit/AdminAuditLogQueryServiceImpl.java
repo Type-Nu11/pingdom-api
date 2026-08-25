@@ -1,5 +1,7 @@
 package com.typenull.pingdom.moderation.application.query.audit;
 
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
 import com.typenull.pingdom.moderation.api.dto.audit.AdminAuditLogItem;
 import com.typenull.pingdom.moderation.api.dto.audit.AdminAuditLogResponse;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
@@ -21,11 +23,13 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class AdminAuditLogQueryServiceImpl implements AdminAuditLogQueryService {
 
+    private final AdminRoleAuthorizationService authorizationService;
     private final AdminAuditLogRepository adminAuditLogRepository;
 
     @Override
     @Transactional(readOnly = true)
     public AdminAuditLogResponse listAuditLogs(
+            Long requestingAdminUserId,
             Long actorUserId,
             AdminAuditAction action,
             AdminAuditTargetType targetType,
@@ -35,6 +39,7 @@ public class AdminAuditLogQueryServiceImpl implements AdminAuditLogQueryService 
             int page,
             int limit
     ) {
+        authorizationService.requirePermission(requestingAdminUserId, AdminPermission.AUDIT_READ);
         validatePeriod(from, to);
 
         int safePage = Math.max(page, 1);

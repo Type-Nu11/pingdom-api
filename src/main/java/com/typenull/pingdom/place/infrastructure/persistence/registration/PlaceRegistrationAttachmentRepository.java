@@ -10,6 +10,11 @@ public interface PlaceRegistrationAttachmentRepository extends JpaRepository<Pla
 
     List<PlaceRegistrationAttachment> findAllByApplicationIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(Long applicationId);
 
+    List<PlaceRegistrationAttachment> findAllByApplicationIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
+            Long applicationId,
+            PlaceRegistrationAttachmentType documentType
+    );
+
     Optional<PlaceRegistrationAttachment> findByIdAndApplicationId(Long id, Long applicationId);
 
     long countByApplicationIdAndDocumentType(Long applicationId, PlaceRegistrationAttachmentType documentType);

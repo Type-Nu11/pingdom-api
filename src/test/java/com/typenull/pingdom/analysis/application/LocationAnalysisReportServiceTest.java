@@ -23,36 +23,6 @@ import org.junit.jupiter.api.Test;
 class LocationAnalysisReportServiceTest {
 
     @Test
-    void convertsAiGeneratedHtmlReportDirectlyToPdf() {
-        LocationAnalysisPromptFactory promptFactory = mock(LocationAnalysisPromptFactory.class);
-        AiAnalysisClient aiClient = mock(AiAnalysisClient.class);
-        LocationAnalysisResponseValidator validator = mock(LocationAnalysisResponseValidator.class);
-        LocationAnalysisHtmlComposer htmlComposer = mock(LocationAnalysisHtmlComposer.class);
-        HtmlToPdfConverter pdfConverter = mock(HtmlToPdfConverter.class);
-        Clock clock = Clock.fixed(Instant.parse("2026-08-18T00:00:00Z"), ZoneOffset.UTC);
-        LocationAnalysisRequest request = new LocationAnalysisRequest();
-        request.setRegion("서울 강남구");
-        AiAnalysisPrompt prompt = new AiAnalysisPrompt("prompt", java.time.LocalDate.of(2026, 8, 18));
-        String html = "<!doctype html><html><body>Gemini 보고서</body></html>";
-
-        when(promptFactory.create(request, java.time.LocalDate.of(2026, 8, 18))).thenReturn(prompt);
-        when(aiClient.analyze(prompt)).thenReturn(new AiAnalysisResponse(
-                "입지 분석", html, java.time.LocalDate.of(2026, 8, 18)
-        ));
-        when(pdfConverter.convert(html)).thenReturn(new byte[]{'%', 'P', 'D', 'F', '-'});
-
-        LocationAnalysisReportService service = new LocationAnalysisReportService(
-                promptFactory, aiClient, validator, htmlComposer, pdfConverter, clock
-        );
-
-        LocationAnalysisReportService.LocationAnalysisPdf result = service.generate(request);
-
-        assertThat(result.content()).startsWith(new byte[]{'%', 'P', 'D', 'F', '-'});
-        assertThat(result.reportName()).isEqualTo("입지 분석");
-        verify(pdfConverter).convert(html);
-    }
-
-    @Test
     void sendsPromptToAiComposesMetadataAndConvertsHtmlToPdf() {
         LocationAnalysisPromptFactory promptFactory = mock(LocationAnalysisPromptFactory.class);
         AiAnalysisClient aiClient = mock(AiAnalysisClient.class);

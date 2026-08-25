@@ -110,39 +110,54 @@ public class LocationAnalysisPromptFactory {
                 UNSUITABLE: totalScore < 45 또는 확인된 회피 불가능 치명적 위험이 있을 때.
                 근거 없는 "치명적", "매우 낮음" 같은 단정은 사용하지 않는다.
 
-                [보고서 필수 내용]
-                HTML에는 아래 섹션을 정확히 이 순서로 작성한다.
-                1. 보고서 제목 및 기준일
-                2. 종합 입지 평가: grade, summary, strengths, risks, evidences와 계산표
-                3. 추천 장소: recommendedPlaces와 장소별 근거
-                4. 타깃 인구 분석: summary, derivedFromPlace, age, gender, evidences
-                5. 유동 인구 분석: summary, total, byTime, byDay, evidences
-                6. 주변 시설: competitors, convenienceFacilities, transportFacilities, evidences
-                7. 분석 범위: analysisScope
-                8. 데이터 출처: dataSources
-                9. 제한사항: limitations
-                값이 없으면 해당 카드 또는 표 셀에 "데이터 없음"을 표시한다. 빈 표, null, undefined, 빈 목록 기호를 출력하지 않는다.
+                [보고서 데이터 필수 내용]
+                Backend가 고정 디자인 XHTML을 생성하므로 HTML을 직접 작성하지 않는다. 아래 9개 섹션의
+                구조화된 데이터를 반드시 채운다.
+                1. 종합 입지 평가: overallLocationEvaluation.grade, summary, strengths, risks, evidences
+                2. 추천 장소: recommendedPlaces의 rank, name, address, score, reason, evidenceIds
+                3. 타깃 인구 분석: targetPopulationAnalysis의 summary, derivedFromPlace, age, gender, evidences
+                4. 유동 인구 분석: footTrafficAnalysis의 summary, total, byTime, byDay, evidences
+                5. 주변 시설: nearbyFacilities의 competitors, convenienceFacilities, transportFacilities, evidences
+                6. 분석 범위: analysisScope의 requestedRegion, normalizedRegion, scopeLevel, scopeDescription, radiusMeters
+                7. 데이터 출처: dataSources
+                8. 제한사항: limitations
+                9. 통계 산출 근거: 위 metrics와 evidences에 실제 원본값·분모·기간·범위를 남긴다.
+                age, gender, byTime, byDay 배열은 실제 관측값이 없을 때 반드시 []로 반환한다.
+                데이터가 없을 때 null placeholder 객체나 0을 만들어내지 않는다. 문자열 설명에는 "데이터 없음"을 쓴다.
+
+                [통계 계산 및 보고서 분량]
+                추천 장소마다 MCP가 반환한 원본 유동인구를 빠짐없이 집계해 total, 시간대별, 요일별, 연령대별,
+                성별 지표를 만든다. 가능한 모든 후보를 비교 집합에 포함하고 상위 추천 장소만 잘라서 근거를 잃지 않는다.
+                총량·평균·최대·비율은 같은 기간·반경·집계 단위끼리만 계산한다. 비율은 분모와 formula를 CALCULATION
+                evidence에 기록한다. 결과는 최소 3개 추천 장소 또는 데이터가 부족한 이유를 명시하며, 장소가 1개뿐이면
+                확인된 1개만 사용하고 부족한 비교 집합을 limitations에 기록한다. Backend PDF는 표·지표·막대형 통계 카드로
+                최소 3페이지를 구성하므로 각 섹션의 summary와 수치를 생략하지 않는다.
 
                 [XHTML/PDF 디자인 계약]
-                html은 OpenHTMLToPDF가 읽는 완전한 단일 XHTML 문서다. 내용만 달라지고 섹션 순서·색상·폰트·여백·카드·표
-                디자인은 매 요청 동일해야 한다. <!DOCTYPE html>로 시작하고 html lang="ko", head, meta charset="UTF-8" />,
-                body를 포함한다. 모든 태그를 올바르게 중첩·종료하며 meta, br, hr, img, link 등 void element는 반드시 />로 닫는다.
-                외부 이미지·CSS·스크립트·iframe·javascript URL을 사용하지 않는다. @page가 필요하면 head의 고정 style 태그에서만
-                선언하고, 그 밖의 스타일은 고정된 인라인 CSS만 사용한다. 사용자 입력과 조회 텍스트는 HTML escape 한다.
-
-                흰 배경, 제목 #172554, 강조 #0F766E, 구분선 #E2E8F0, 본문 #334155, 폰트 "Noto Sans KR", "Malgun Gothic",
-                sans-serif를 고정 사용한다. 제목은 14~16px, 본문은 10~11px으로 유지한다. 표는 동일한 회색 헤더·테두리·padding과
-                border-collapse를 사용하며 카드와 표 행에는 page-break-inside:avoid를 적용한다. 외부 이미지나 임의의 차트 대신
-                근거 표를 사용한다. HTML 바깥의 설명, Markdown, 코드 블록을 포함하지 않는다.
+                XHTML은 Backend의 고정 템플릿이 생성한다. 너는 디자인용 HTML이나 Markdown을 반환하지 않고 데이터만 반환한다.
+                Backend 템플릿은 레퍼런스처럼 여백이 넓은 아이보리 배경, 검정 대형 섹션 번호, 올리브 포인트 색상,
+                얇은 구분선, 동일한 카드·표·막대형 통계 컴포넌트를 모든 보고서에 반복한다. 보고서에는 표지·종합 평가,
+                추천 장소·타깃/유동인구 통계, 주변 시설·범위·출처의 3개 페이지 구간이 고정된다. 데이터가 없는 경우에도
+                레이아웃을 생략하지 않고 "데이터 없음"과 제한사항을 표시한다. Backend가 사용자 입력과 조회 텍스트를 escape하며,
+                외부 이미지·스크립트·iframe·javascript URL은 사용하지 않는다. HTML 바깥의 설명, Markdown, 코드 블록은 반환하지 않는다.
 
                 [최종 반환 계약]
-                도구 조회와 내부 추론을 마친 뒤 정확히 다음 두 필드만 가진 유효한 JSON 객체만 반환한다.
+                도구 조회와 내부 추론을 마친 뒤 아래 필드만 가진 유효한 JSON 객체를 반환한다.
                 {
                   "reportName": "[업종] [정규화 지역] 상권·입지 분석 보고서",
-                  "html": "<!DOCTYPE html><html lang=\"ko\"><head><meta charset=\"UTF-8\" /></head><body>...</body></html>"
+                  "overallLocationEvaluation": {"grade":"SUITABLE|CONDITIONAL|UNSUITABLE|INSUFFICIENT_DATA", "summary":"", "strengths":[], "risks":[], "evidences":[]},
+                  "recommendedPlaces": [{"rank":1,"name":"장소명","address":"주소","score":85.3,"reason":"추천 이유","evidenceIds":["evidence-1"]}],
+                  "targetPopulationAnalysis": {"summary":"", "derivedFromPlace":"장소명", "age":[{"label":"20대","value":1200,"unit":"명","sharePercent":42.1}], "gender":[{"label":"F","value":900,"unit":"명","sharePercent":52.0}], "evidences":[]},
+                  "footTrafficAnalysis": {"summary":"", "total":28000, "byTime":[{"label":"18-20시","value":6200,"unit":"명","sharePercent":22.1}], "byDay":[], "evidences":[]},
+                  "nearbyFacilities": {"competitors":[], "convenienceFacilities":[], "transportFacilities":[], "evidences":[]},
+                  "analysisScope": {"requestedRegion":"요청 원문", "normalizedRegion":"정규화 지역", "scopeLevel":"CITY|DISTRICT|NEIGHBORHOOD|ADDRESS", "scopeDescription":"적용 범위", "radiusMeters":1500},
+                  "dataSources": [],
+                  "limitations": []
                 }
-                html은 JSON 문자열로 올바르게 escape 한다. reportId, 발행일자, 저장 경로, 다운로드 URL은 Backend 책임이므로
-                만들거나 반환하지 않는다. JSON 외의 문자, Markdown, 설명 문장, 코드 블록, 추가 필드는 절대 출력하지 않는다.
+                필드명·enum·배열 이름·중첩 구조를 변경하지 않는다. recommendedPlaces 객체에는 반드시 rank, name, address,
+                score, reason, evidenceIds를 모두 포함한다. 데이터가 없으면 배열은 []로 반환한다. reportId, 발행일자,
+                분석 기준일, 저장 경로, 다운로드 URL은 Backend 책임이므로 만들거나 반환하지 않는다. JSON 외의 문자,
+                Markdown, 설명 문장, 코드 블록, html 필드와 추가 필드는 절대 출력하지 않는다.
                 """.formatted(analysisBasisDate, criteria);
     }
 }

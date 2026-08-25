@@ -6,6 +6,7 @@ import jakarta.servlet.Filter;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import java.util.Arrays;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.apache.catalina.valves.RemoteIpValve;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -24,6 +25,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.ResponseEntity;
 
+@Tag("integration")
 @SpringBootTest(
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {

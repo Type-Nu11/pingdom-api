@@ -9,6 +9,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRoleAssignment;
+import com.typenull.pingdom.identity.domain.repository.AdminRoleAssignmentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
@@ -16,6 +19,7 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminAuditLogRepository;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -27,6 +31,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+@Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
 @Transactional
@@ -42,6 +47,9 @@ class AdminAuditLogControllerTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AdminRoleAssignmentRepository adminRoleAssignmentRepository;
+
+    @Autowired
     private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
@@ -50,7 +58,23 @@ class AdminAuditLogControllerTest {
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
+        adminRoleAssignmentRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
+    }
+
+    @Test
+    void analystCanReadAuditLogsButSupportOperatorIsRejected() throws Exception {
+        String analystAccessToken = createAdminAndLogin("auditAnalyst", AdminRole.ANALYST);
+        String supportAccessToken = createAdminAndLogin("auditSupport", AdminRole.SUPPORT_OPERATOR);
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + analystAccessToken))
+                .andExpect(status().isOk());
+
+        mockMvc.perform(get("/admin/audit-logs")
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + supportAccessToken))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
     @Test
@@ -159,7 +183,7 @@ class AdminAuditLogControllerTest {
     }
 
     private String createUserAndLogin(String username, UserRole role) throws Exception {
-        userRepository.save(User.builder()
+        User user = userRepository.save(User.builder()
                 .username(username)
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
@@ -168,7 +192,33 @@ class AdminAuditLogControllerTest {
                 .country("KR")
                 .role(role)
                 .build());
+        if (role == UserRole.ADMIN) {
+            adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
+                    user.getId(), AdminRole.SUPER_ADMIN, user.getId(), LocalDateTime.now()
+            ));
+        }
 
+        return login(username);
+    }
+
+    private String createAdminAndLogin(String username, AdminRole adminRole) throws Exception {
+        User admin = userRepository.save(User.builder()
+                .username(username)
+                .email(username + "@example.com")
+                .password(passwordEncoder.encode("password123"))
+                .birthYear(1998)
+                .language("ko")
+                .country("KR")
+                .role(UserRole.ADMIN)
+                .build());
+        adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
+                admin.getId(), adminRole, admin.getId(), LocalDateTime.now()
+        ));
+
+        return login(username);
+    }
+
+    private String login(String username) throws Exception {
         LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
                         .contentType(MediaType.APPLICATION_JSON)

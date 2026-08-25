@@ -132,6 +132,57 @@ class ScoutProfileServiceScenarioTest {
     }
 
     @Test
+    void activeProfileCanBeUpdatedEvenWhenActivityEligibilityIsSuspended() {
+        ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
+        profile.activate(9L, NOW.plusMinutes(1));
+        ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(1L, NOW);
+        eligibility.grant(9L, NOW.plusMinutes(1), null, NOW.plusMinutes(1));
+        eligibility.suspend(9L, "현장 재검증", NOW.plusMinutes(2));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
+        when(profileRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(profile));
+        when(eligibilityRepository.findById(1L)).thenReturn(Optional.of(eligibility));
+
+        var response = service.update(1L, new ScoutProfileRequest("수정 Scout", null));
+
+        assertThat(response.displayName()).isEqualTo("수정 Scout");
+        assertThat(response.profileStatus()).isEqualTo(ScoutProfileStatus.ACTIVE);
+        assertThat(response.activityEligibilityStatus()).isEqualTo(
+                com.typenull.pingdom.verification.domain.ScoutActivityEligibilityStatus.SUSPENDED
+        );
+    }
+
+    @Test
+    void revokedProfileCannotBeUpdated() {
+        ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
+        profile.activate(9L, NOW.plusMinutes(1));
+        profile.revoke(9L, "자격 회수", NOW.plusMinutes(2));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
+        when(profileRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(profile));
+
+        assertThatThrownBy(() -> service.update(1L, new ScoutProfileRequest("새 Scout", null)))
+                .isInstanceOfSatisfying(VisitorVerificationException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(VisitorVerificationErrorCode.INVALID_SCOUT_PROFILE_STATE));
+    }
+
+    @Test
+    void revokedProfileCannotBeAppliedAgain() {
+        ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
+        profile.activate(9L, NOW.plusMinutes(1));
+        profile.revoke(9L, "자격 회수", NOW.plusMinutes(2));
+        when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
+        when(profileRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(profile));
+
+        assertThatThrownBy(() -> service.apply(1L, new ScoutProfileRequest("새 Scout", null)))
+                .isInstanceOfSatisfying(VisitorVerificationException.class, exception ->
+                        assertThat(exception.getErrorCode())
+                                .isEqualTo(VisitorVerificationErrorCode.SCOUT_PROFILE_ALREADY_EXISTS));
+
+        verify(profileRepository, never()).save(any(ScoutProfile.class));
+        verify(eligibilityRepository, never()).save(any(ScoutActivityEligibility.class));
+    }
+
+    @Test
     void adminWithoutScoutReviewPermissionIsRejectedBeforeTargetLookup() {
         doThrow(new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED))
                 .when(authorizationService).requirePermission(9L, AdminPermission.SCOUT_REVIEW);

@@ -28,6 +28,7 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -41,6 +42,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
+@Tag("integration")
 @SpringBootTest(properties = {
         "spring.cloud.aws.s3.bucket=test-bucket",
         "spring.cloud.aws.s3.public-base-url=https://cdn.pingdom.test",

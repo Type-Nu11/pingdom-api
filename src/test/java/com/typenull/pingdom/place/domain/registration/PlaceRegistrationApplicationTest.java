@@ -131,6 +131,27 @@ class PlaceRegistrationApplicationTest {
         assertThat(application.getRegisteredPlaceId()).isNull();
     }
 
+    @Test
+    void claimSubmissionRejectsExpiredSensitiveAttachmentAndRefreshesOwnerSnapshotOnlyWhileDraft() {
+        PlaceRegistrationApplication application = draft();
+        application.configureMerchantSubmission(
+                MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM,
+                "홍길동", "핑덤카페", "encrypted-registration-number", "핑덤카페",
+                "owner@pingdom.test", "사업자 소개", "+821012345678", 30L, 20L, "운영권 이전", NOW
+        );
+        application.replaceAttachments(List.of(
+                PlaceRegistrationAttachment.create(application, null, PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION,
+                        "registration/business", "business.jpg", "image/jpeg", 1_024, "b".repeat(64), 1L,
+                        NOW, NOW.minusDays(1), 0),
+                attachment(application, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT, "identity"),
+                attachment(application, PlaceRegistrationAttachmentType.REPRESENTATIVE_IMAGE, "image")), NOW);
+
+        application.refreshClaimOwnershipSnapshot(21L, NOW);
+
+        assertThat(application.getPreviousOwnerUserId()).isEqualTo(21L);
+        assertThatThrownBy(() -> application.submit(NOW)).isInstanceOf(IllegalStateException.class);
+    }
+
     private PlaceRegistrationAttachment attachment(PlaceRegistrationApplication application,
                                                    PlaceRegistrationAttachmentType type, String key) {
         return PlaceRegistrationAttachment.create(application, key, type, "registration/" + key,

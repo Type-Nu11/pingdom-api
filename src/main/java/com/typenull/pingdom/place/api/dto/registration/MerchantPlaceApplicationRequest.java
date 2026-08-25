@@ -22,6 +22,10 @@ public record MerchantPlaceApplicationRequest(
         @Valid PlaceRegistrationRequest newPlace,
         @Positive Long existingPlaceId,
         @Size(max = 500) String claimReason,
+        /**
+         * 기존 장소 Claim에서는 더 이상 사용하지 않습니다. 실제 파일은 multipart 첨부 API로만 등록합니다.
+         * NEW_PLACE의 하위 newPlace.attachments 계약에는 영향을 주지 않습니다.
+         */
         @Valid @Size(max = 20) List<PlaceRegistrationAttachmentRequest> attachments
 ) {
 }

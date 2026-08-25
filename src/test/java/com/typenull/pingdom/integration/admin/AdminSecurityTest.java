@@ -14,6 +14,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRoleAssignment;
+import com.typenull.pingdom.identity.domain.repository.AdminRoleAssignmentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
@@ -24,6 +27,7 @@ import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -36,6 +40,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+@Tag("integration")
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"
@@ -57,6 +62,9 @@ class AdminSecurityTest {
     private UserRepository userRepository;
 
     @Autowired
+    private AdminRoleAssignmentRepository adminRoleAssignmentRepository;
+
+    @Autowired
     private AdminAuditLogRepository adminAuditLogRepository;
 
     @Autowired
@@ -71,6 +79,7 @@ class AdminSecurityTest {
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
+        adminRoleAssignmentRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -345,6 +354,9 @@ class AdminSecurityTest {
 
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
         User admin = createUser("securityAuditAdmin", UserRole.ADMIN);
+        adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
+                admin.getId(), AdminRole.SUPER_ADMIN, admin.getId(), LocalDateTime.now()
+        ));
         User merchantOwner = createUser("securityAuditMerchant", UserRole.MERCHANT_OWNER);
         User withdrawnAdmin = createUser("securityAuditWithdrawnAdmin", UserRole.ADMIN);
         User targetUser = createUser("securityAuditTarget", UserRole.USER);

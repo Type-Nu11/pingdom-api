@@ -6,14 +6,14 @@ import java.time.LocalDateTime;
 
 @Schema(description = "Merchant 장소 정보 응답")
 public record MerchantPlaceInformationResponse(
-        Long placeId,
-        @Schema(nullable = true) String description,
-        @Schema(nullable = true) String contactPhone,
-        @Schema(nullable = true) String websiteUrl,
-        @Schema(nullable = true) String reservationUrl,
-        @Schema(nullable = true) Long updatedByUserId,
-        LocalDateTime createdAt,
-        LocalDateTime updatedAt
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long placeId,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String description,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String contactPhone,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String websiteUrl,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String reservationUrl,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) Long updatedByUserId,
+        @Schema(format = "date-time", requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
+        @Schema(format = "date-time", requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt
 ) {
 
     public static MerchantPlaceInformationResponse from(MerchantPlaceInformation information) {

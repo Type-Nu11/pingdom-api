@@ -21,6 +21,14 @@
 - PostgreSQL 방언, Flyway, 잠금, 동시성처럼 H2로 재현할 수 없는 계약은 Testcontainers PostgreSQL을 사용한다.
 - S3, FCM, OAuth, 이메일 등 외부 시스템은 단위·통합 테스트에서 대체 구현 또는 mock으로 격리한다. 실제 외부 연동은 별도 계약 또는 수동 검증 범위로 둔다.
 
+## CI 테스트 게이트
+
+- 기본 `test` 태스크는 `integration`, `postgres-integration` 태그가 없는 단위 테스트만 실행한다. Spring Context를 올리는 테스트는 `@Tag("integration")`을 선언하고 `integrationTest` 태스크로 분리한다.
+- Testcontainers PostgreSQL을 사용하는 테스트는 `@Tag("postgres-integration")`을 선언한다. Actions의 `postgres-integration-test`는 `@Tag("postgres-smoke")`가 붙은 핵심 repository·락 계약만 `postgresSmokeTest`로 검증한다. 전체 `postgresIntegrationTest`는 CI action에 포함하지 않고 필요할 때만 명시적으로 실행한다.
+- Flyway 마이그레이션 테스트는 `@Tag("migration")`도 함께 선언한다. PR에서는 migration 관련 경로 변경 시 `migration-verification.yml`이, `release` push에서는 배포 전 `migrationTest` 태스크가 실행한다.
+- PR workflow는 단위 테스트와 PostgreSQL smoke만 실행한다. Spring 기반 통합 테스트는 `./gradlew integrationTest`, 전체 PostgreSQL 테스트는 `./gradlew postgresIntegrationTest`로 명시적으로 실행한다.
+- 각 Actions job은 JUnit XML 결과 파일이 하나 이상 생성됐는지 확인한다. 선택 조건이나 태그 오류로 테스트가 실행되지 않으면 성공으로 처리하지 않는다.
+
 ## 픽스처와 중복 테스트
 
 - 픽스처는 의미 있는 기본값과 필요한 최소 변경 지점만 제공한다. 전역 만능 fixture나 무작위 시간·ID에 의존하는 기본값은 만들지 않는다.

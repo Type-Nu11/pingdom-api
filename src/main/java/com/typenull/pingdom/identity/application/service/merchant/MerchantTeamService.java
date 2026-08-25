@@ -69,7 +69,7 @@ public class MerchantTeamService {
         LocalDateTime now = LocalDateTime.now(clock);
         LocalDateTime expiresAt = request.expiresAt() == null ? now.plusDays(7) : request.expiresAt();
         if (!expiresAt.isAfter(now)) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_ROLE);
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_INVALID_EXPIRATION);
         }
         try {
             return MerchantTeamInvitationResponse.from(invitationRepository.save(
@@ -124,6 +124,9 @@ public class MerchantTeamService {
         try {
             invitation.accept(now);
         } catch (IllegalStateException exception) {
+            if (invitation.getStatus() == MerchantPlaceInvitationStatus.EXPIRED) {
+                throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_EXPIRED);
+            }
             throw new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND);
         }
         MerchantPlaceMember member = existingMember.orElseGet(() ->

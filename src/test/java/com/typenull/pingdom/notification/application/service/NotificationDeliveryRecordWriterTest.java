@@ -136,4 +136,56 @@ class NotificationDeliveryRecordWriterTest {
         assertThat(existing.getAttemptCount()).isEqualTo(2);
         assertThat(existing.getFailureReason()).isEqualTo("failed again");
     }
+
+    @Test
+    void retryableFcmFailureBecomesFinalFailureOnOutboxMaxAttempt() {
+        NotificationDelivery existing = NotificationDelivery.create(
+                NotificationDeliveryChannel.FCM,
+                1L,
+                10L,
+                "NEW_LIKE",
+                EVENT_ID,
+                "MAP_IMAGE_LIKED",
+                "recipient-hash",
+                LocalDateTime.now(CLOCK)
+        );
+        existing.recordResult(
+                NotificationDeliveryStatus.RETRY_SCHEDULED,
+                1L,
+                10L,
+                "NEW_LIKE",
+                "MAP_IMAGE_LIKED",
+                null,
+                "UNAVAILABLE",
+                "FCM_SEND_FAILED",
+                "failed",
+                true,
+                1,
+                LocalDateTime.now(CLOCK)
+        );
+
+        when(notificationDeliveryRepository.findDeliveryRecord(eq(EVENT_ID), eq(NotificationDeliveryChannel.FCM), anyString()))
+                .thenReturn(Optional.of(existing));
+        when(notificationDeliveryRepository.save(any(NotificationDelivery.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        writer.record(new NotificationDeliveryRecordRequest(
+                NotificationDeliveryChannel.FCM,
+                NotificationDeliveryStatus.RETRY_SCHEDULED,
+                1L,
+                10L,
+                "NEW_LIKE",
+                EVENT_ID,
+                "MAP_IMAGE_LIKED",
+                "token",
+                null,
+                "UNAVAILABLE",
+                "FCM_SEND_FAILED",
+                "failed again",
+                true
+        ));
+
+        assertThat(existing.getStatus()).isEqualTo(NotificationDeliveryStatus.FINAL_FAILED);
+        assertThat(existing.getAttemptCount()).isEqualTo(2);
+    }
 }

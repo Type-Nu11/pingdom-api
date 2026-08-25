@@ -12,6 +12,8 @@ import org.springframework.data.repository.query.Param;
 
 public interface PrivacyProcessingHistoryRepository extends JpaRepository<PrivacyProcessingHistory, Long> {
 
+    boolean existsByOutboxEventIdAndSubjectUserId(String outboxEventId, Long subjectUserId);
+
     @Query("""
             SELECT history
             FROM PrivacyProcessingHistory history

@@ -58,7 +58,7 @@ public class NotificationDeliveryRecorder {
     ) {
         recordSafely(new NotificationDeliveryRecordRequest(
                 NotificationDeliveryChannel.FCM,
-                NotificationDeliveryStatus.FAILED,
+                retryable ? NotificationDeliveryStatus.RETRY_SCHEDULED : NotificationDeliveryStatus.FAILED,
                 userId,
                 notificationId,
                 notificationType == null ? null : notificationType.name(),
@@ -71,6 +71,14 @@ public class NotificationDeliveryRecorder {
                 failureReason,
                 retryable
         ));
+    }
+
+    public boolean isFcmDeliverySucceeded(String outboxEventId, String token) {
+        return writer.isFcmDeliverySucceeded(outboxEventId, token);
+    }
+
+    public Long findFcmNotificationId(String outboxEventId) {
+        return writer.findFcmNotificationId(outboxEventId);
     }
 
     public void recordEmailSuccess(

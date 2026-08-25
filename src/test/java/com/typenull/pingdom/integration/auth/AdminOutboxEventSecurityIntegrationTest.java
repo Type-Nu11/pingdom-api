@@ -21,6 +21,7 @@ import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -28,6 +29,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
+@Tag("integration")
 @SpringBootTest(properties = "outbox.enabled=false")
 @AutoConfigureMockMvc
 class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationTestSupport {

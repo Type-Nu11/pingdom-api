@@ -136,10 +136,12 @@ public class AdminUserController {
             @Parameter(description = "정렬 기준", example = "BANNED_AT")
             @RequestParam(defaultValue = "BANNED_AT") AdminBannedUserSortBy sortBy,
             @Parameter(description = "정렬 방향", example = "DESC")
-            @RequestParam(defaultValue = "DESC") Sort.Direction sortDirection
+            @RequestParam(defaultValue = "DESC") Sort.Direction sortDirection,
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
         return adminUserService.listBannedUsers(
+                adminUser == null ? null : adminUser.userId(),
                 new AdminBannedUserSearchCondition(
                         keyword,
                         banType,
@@ -231,9 +233,10 @@ public class AdminUserController {
             )
     })
     public AdminBannedUserDetailResponse getBannedUser(
-            @Parameter(description = "조회할 밴 유저 ID", example = "7") @PathVariable Long userId
+            @Parameter(description = "조회할 밴 유저 ID", example = "7") @PathVariable Long userId,
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
-        return adminUserService.getBannedUser(userId);
+        return adminUserService.getBannedUser(adminUser == null ? null : adminUser.userId(), userId);
     }
 
     @GetMapping("/users/{userId}/sanction")
@@ -242,9 +245,10 @@ public class AdminUserController {
             description = "관리자가 특정 사용자의 현재 제재 상태를 조회합니다. 만료된 기간 밴은 현재 제재로 보지 않습니다."
     )
     public AdminUserSanctionStatusResponse getUserSanctionStatus(
-            @Parameter(description = "조회할 사용자 ID", example = "7") @PathVariable Long userId
+            @Parameter(description = "조회할 사용자 ID", example = "7") @PathVariable Long userId,
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
-        return adminUserService.getUserSanctionStatus(userId);
+        return adminUserService.getUserSanctionStatus(adminUser == null ? null : adminUser.userId(), userId);
     }
 
     @GetMapping("/users/{userId}/sanctions")
@@ -348,10 +352,19 @@ public class AdminUserController {
             @RequestParam(required = false) LocalDateTime from,
             @Parameter(description = "처리 시각 종료 필터", example = "2026-06-30T23:59:59")
             @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME)
-            @RequestParam(required = false) LocalDateTime to
+            @RequestParam(required = false) LocalDateTime to,
+            @CurrentUser JwtAuthenticatedUser adminUser
     ) {
         Pageable normalizedPageable = PageRequest.of(Math.max(page - 1, 0), limit);
-        return adminUserService.listUserSanctionHistories(userId, banType, action, from, to, normalizedPageable);
+        return adminUserService.listUserSanctionHistories(
+                adminUser == null ? null : adminUser.userId(),
+                userId,
+                banType,
+                action,
+                from,
+                to,
+                normalizedPageable
+        );
     }
 
     @PostMapping("/ban/{userId}")

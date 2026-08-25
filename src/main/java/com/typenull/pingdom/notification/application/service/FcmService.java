@@ -15,6 +15,7 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.util.StringUtils;
 
 @Service
 @RequiredArgsConstructor
@@ -32,38 +33,38 @@ public class FcmService {
 
     @Transactional
     public NotificationResponse sendLikeNotification(Long ownerId, Long likerId) {
-        return sendLikeNotification(ownerId, likerId, null);
+        return sendLikeNotification(ownerId, likerId, null).notification();
     }
 
     @Transactional
-    public NotificationResponse sendLikeNotification(Long ownerId, Long likerId, String outboxEventId) {
+    public FcmDispatchResult sendLikeNotification(Long ownerId, Long likerId, String outboxEventId) {
         if (Objects.equals(ownerId, likerId)) {
-            return null;
+            return FcmDispatchResult.skipped();
         }
 
         User owner = userRepository.findById(ownerId).orElse(null);
         if (owner == null || owner.isWithdrawn()) {
             log.warn("좋아요 알림 수신자를 찾지 못해 전송을 생략합니다. ownerId={}", ownerId);
-            return null;
+            return FcmDispatchResult.skipped();
         }
 
         User liker = userRepository.findById(likerId).orElse(null);
         if (liker == null || liker.isWithdrawn()) {
             log.warn("좋아요 알림 발신자를 찾지 못해 전송을 생략합니다. likerId={}", likerId);
-            return null;
+            return FcmDispatchResult.skipped();
         }
 
         return sendNotification(ownerId, NotificationType.NEW_LIKE, outboxEventId, liker.getUsername());
     }
 
     @Transactional
-    public NotificationResponse sendPlaceInformationReverificationNotification(
+    public FcmDispatchResult sendPlaceInformationReverificationNotification(
             Long userId, NotificationType type, String placeName, String outboxEventId
     ) {
         User user = userRepository.findById(userId).orElse(null);
         if (user == null || user.isWithdrawn()) {
             log.warn("장소 정보 재확인 알림 수신자를 찾지 못해 전송을 생략합니다. userId={}", userId);
-            return null;
+            return FcmDispatchResult.skipped();
         }
         if (type != NotificationType.PLACE_INFORMATION_REVERIFICATION_REQUESTED
                 && type != NotificationType.PLACE_INFORMATION_REVERIFICATION_REMINDER) {
@@ -72,39 +73,58 @@ public class FcmService {
         return sendNotification(userId, type, outboxEventId, placeName);
     }
 
-    private NotificationResponse sendNotification(Long userId, NotificationType type, String outboxEventId, String... args) {
+    private FcmDispatchResult sendNotification(Long userId, NotificationType type, String outboxEventId, String... args) {
         if (!notificationDeliveryPolicy.canReceive(userId, type)) {
             log.debug("사용자 알림 설정에 의해 발송을 생략합니다. userId={}, type={}", userId, type);
-            return null;
+            return FcmDispatchResult.skipped();
         }
 
         List<FcmDeviceToken> deviceTokens = fcmDeviceTokenService.findTokens(userId);
         if (deviceTokens.isEmpty()) {
             log.debug("수신자의 FCM 토큰이 없어 전송을 생략합니다. userId={}, type={}", userId, type);
-            return null;
+            return FcmDispatchResult.skipped();
         }
 
         String title = type.getTitle();
         String body = type.formatBody(args);
-        Notifications savedNotification = notificationsRepository.save(
-                Notifications.builder()
-                        .userId(userId)
-                        .type(type)
-                        .title(title)
-                        .body(body)
-                        .isRead(false)
-                        .createdAt(LocalDateTime.now(clock))
-                        .build()
-        );
-
-        for (FcmDeviceToken deviceToken : deviceTokens) {
-            sendToToken(userId, deviceToken.getToken(), type, title, body, savedNotification.getId(), outboxEventId);
+        Long notificationId = StringUtils.hasText(outboxEventId)
+                ? notificationDeliveryRecorder.findFcmNotificationId(outboxEventId)
+                : null;
+        if (notificationId == null) {
+            Notifications savedNotification = notificationsRepository.save(
+                    Notifications.builder()
+                            .userId(userId)
+                            .type(type)
+                            .title(title)
+                            .body(body)
+                            .isRead(false)
+                            .createdAt(LocalDateTime.now(clock))
+                            .build()
+            );
+            notificationId = savedNotification.getId();
         }
 
-        return new NotificationResponse(savedNotification.getId());
+        boolean hasRetryableFailure = false;
+        for (FcmDeviceToken deviceToken : deviceTokens) {
+            if (notificationDeliveryRecorder.isFcmDeliverySucceeded(outboxEventId, deviceToken.getToken())) {
+                log.info("이미 성공한 FCM 토큰 전송을 재시도에서 생략합니다. type={}, eventId={}", type, outboxEventId);
+                continue;
+            }
+            hasRetryableFailure |= sendToToken(
+                    userId,
+                    deviceToken.getToken(),
+                    type,
+                    title,
+                    body,
+                    notificationId,
+                    outboxEventId
+            );
+        }
+
+        return new FcmDispatchResult(new NotificationResponse(notificationId), hasRetryableFailure);
     }
 
-    private void sendToToken(
+    private boolean sendToToken(
             Long userId,
             String token,
             NotificationType type,
@@ -117,6 +137,7 @@ public class FcmService {
             String response = fcmMessageSender.send(token, type, title, body, notificationId);
             notificationDeliveryRecorder.recordFcmSuccess(userId, notificationId, type, outboxEventId, token, response);
             log.info("FCM 전송 성공: {}", response);
+            return false;
         } catch (FcmSendException exception) {
             if (exception.isInvalidToken()) {
                 notificationDeliveryRecorder.recordFcmFailure(
@@ -132,7 +153,7 @@ public class FcmService {
                 );
                 fcmDeviceTokenService.deleteInvalidToken(token);
                 log.warn("무효 FCM 토큰을 삭제했습니다. type={}, reason={}", type, exception.getMessage());
-                return;
+                return false;
             }
             notificationDeliveryRecorder.recordFcmFailure(
                     userId,
@@ -152,6 +173,7 @@ public class FcmService {
                     exception.getMessage(),
                     exception
             );
+            return true;
         } catch (RuntimeException exception) {
             notificationDeliveryRecorder.recordFcmFailure(
                     userId,
@@ -171,6 +193,7 @@ public class FcmService {
                     exception.getMessage(),
                     exception
             );
+            return true;
         }
     }
 }

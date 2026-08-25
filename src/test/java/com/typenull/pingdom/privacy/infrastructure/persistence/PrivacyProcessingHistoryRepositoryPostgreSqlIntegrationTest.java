@@ -1,6 +1,7 @@
 package com.typenull.pingdom.privacy.infrastructure.persistence;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
 import com.typenull.pingdom.privacy.domain.PrivacyProcessingActorType;
@@ -8,12 +9,14 @@ import com.typenull.pingdom.privacy.domain.PrivacyProcessingHistory;
 import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.test.context.DynamicPropertyRegistry;
 import org.springframework.test.context.DynamicPropertySource;
 import org.testcontainers.containers.PostgreSQLContainer;
@@ -21,6 +24,7 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+@Tag("postgres-integration")
 @Testcontainers
 @SpringBootTest(properties = {
         "spring.docker.compose.enabled=false",
@@ -80,6 +84,16 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
                 .containsExactly(10L);
     }
 
+    @Test
+    void 동일_Outbox_이벤트와_대상_사용자_조합은_한_번만_저장된다() {
+        privacyProcessingHistoryRepository.saveAndFlush(history(10L, NOW, "outbox-event-1"));
+
+        assertThatThrownBy(() -> privacyProcessingHistoryRepository.saveAndFlush(
+                history(10L, NOW.plusSeconds(1), "outbox-event-1")
+        ))
+                .isInstanceOf(DataIntegrityViolationException.class);
+    }
+
     private Page<PrivacyProcessingHistory> findByPeriod(
             boolean hasFrom,
             LocalDateTime from,
@@ -102,8 +116,13 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
     }
 
     private PrivacyProcessingHistory history(Long subjectUserId, LocalDateTime createdAt) {
+        return history(subjectUserId, createdAt, null);
+    }
+
+    private PrivacyProcessingHistory history(Long subjectUserId, LocalDateTime createdAt, String outboxEventId) {
         return PrivacyProcessingHistory.builder()
                 .subjectUserId(subjectUserId)
+                .outboxEventId(outboxEventId)
                 .actorUserId(100L)
                 .actorType(PrivacyProcessingActorType.ADMIN)
                 .action(PrivacyProcessingAction.EXPORT_REQUESTED)

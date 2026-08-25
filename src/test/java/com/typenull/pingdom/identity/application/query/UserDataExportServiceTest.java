@@ -34,7 +34,7 @@ import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
-import com.typenull.pingdom.privacy.domain.PrivacyProcessingAction;
+import com.typenull.pingdom.privacy.application.PrivacyProcessingOutboxPublisher;
 import com.typenull.pingdom.privacy.event.PrivacyProcessingEvent;
 import java.time.Clock;
 import java.time.Instant;
@@ -44,14 +44,12 @@ import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
-import org.assertj.core.api.InstanceOfAssertFactories;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
-import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.data.domain.Pageable;
 import org.springframework.test.util.ReflectionTestUtils;
 
@@ -95,7 +93,7 @@ class UserDataExportServiceTest {
     private MerchantVerificationCipher merchantVerificationCipher;
 
     @Mock
-    private ApplicationEventPublisher eventPublisher;
+    private PrivacyProcessingOutboxPublisher privacyProcessingOutboxPublisher;
 
     @Mock
     private Clock clock;
@@ -233,12 +231,11 @@ class UserDataExportServiceTest {
                 )
                 .containsExactly(tuple(60L, CouponStatus.EXPIRED));
 
-        ArgumentCaptor<Object> eventCaptor = ArgumentCaptor.forClass(Object.class);
-        verify(eventPublisher).publishEvent(eventCaptor.capture());
+        ArgumentCaptor<PrivacyProcessingEvent> eventCaptor = ArgumentCaptor.forClass(PrivacyProcessingEvent.class);
+        verify(privacyProcessingOutboxPublisher).publish(eventCaptor.capture());
         assertThat(eventCaptor.getValue())
-                .asInstanceOf(InstanceOfAssertFactories.type(PrivacyProcessingEvent.class))
                 .extracting(PrivacyProcessingEvent::subjectUserId, PrivacyProcessingEvent::actorUserId, PrivacyProcessingEvent::action)
-                .containsExactly(userId, userId, PrivacyProcessingAction.EXPORT_REQUESTED);
+                .containsExactly(userId, userId, com.typenull.pingdom.privacy.domain.PrivacyProcessingAction.EXPORT_REQUESTED);
     }
 
     @Test

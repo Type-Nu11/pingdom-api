@@ -371,7 +371,7 @@ public class PlaceController {
     ) {
         Long userId = user != null ? user.userId() : null;
         return ResponseEntity.ok(
-                placeRecommendationQueryService.recommendPlaces(
+                placeRecommendationQueryService.recommendAndRecordObservations(
                         userId,
                         latitude,
                         longitude,

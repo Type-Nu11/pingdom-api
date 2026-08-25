@@ -21,6 +21,7 @@ import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
 import java.util.Map.Entry;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -28,6 +29,7 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+@Tag("integration")
 @SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
 @ActiveProfiles("dev")
@@ -126,6 +128,57 @@ class OpenApiDocumentationValidationTest {
         assertThat(bearerAuth.path("type").asText()).isEqualTo("http");
         assertThat(bearerAuth.path("scheme").asText()).isEqualTo("bearer");
         assertThat(bearerAuth.path("bearerFormat").asText()).isEqualTo("JWT");
+    }
+
+    @Test
+    void authorizationRulesAreReflectedInEveryGroupedOpenApiDocument() throws Exception {
+        JsonNode appDocument = readApiDocs("/v3/api-docs/app");
+        JsonNode availability = appDocument.at("/paths/~1places~1{placeId}~1availabilities/get");
+
+        assertThat(availability.at("/security/0/bearerAuth").isArray()).isTrue();
+        assertErrorResponse(availability, "401");
+        assertErrorResponse(availability, "403");
+
+        JsonNode commonDocument = readApiDocs("/v3/api-docs/common");
+        JsonNode reviews = commonDocument.at("/paths/~1places~1{placeId}~1reviews/get");
+
+        assertThat(reviews.at("/security/0/bearerAuth").isArray()).isTrue();
+        assertErrorResponse(reviews, "401");
+
+        JsonNode publicAnalysis = appDocument.at("/paths/~1analysis~1reports~1location/post");
+        assertThat(publicAnalysis.path("security").isMissingNode()).isTrue();
+        assertThat(publicAnalysis.path("responses").has("401")).isFalse();
+
+        JsonNode fcmRegistration = appDocument.at("/paths/~1firebase~1fcm-tokens/post");
+        assertThat(fcmRegistration.path("responses").has("400")).isTrue();
+        assertThat(fcmRegistration.at("/responses/400/content/application~1json/schema/oneOf").toString())
+                .contains("ErrorResponse", "ValidationErrorResponse");
+    }
+
+    @Test
+    void allProtectedOperationsDeclareJwtAndCommonAuthorizationFailures() throws Exception {
+        for (String apiDocPath : API_DOC_PATHS) {
+            JsonNode paths = readApiDocs(apiDocPath).path("paths");
+            for (Iterator<Entry<String, JsonNode>> pathIterator = paths.fields(); pathIterator.hasNext(); ) {
+                Entry<String, JsonNode> pathEntry = pathIterator.next();
+                if (isPublicPath(pathEntry.getKey())) {
+                    continue;
+                }
+
+                for (Iterator<Entry<String, JsonNode>> operationIterator = pathEntry.getValue().fields(); operationIterator.hasNext(); ) {
+                    Entry<String, JsonNode> operationEntry = operationIterator.next();
+                    if (!isHttpMethod(operationEntry.getKey())) {
+                        continue;
+                    }
+
+                    JsonNode operation = operationEntry.getValue();
+                    String location = apiDocPath + " " + operationEntry.getKey().toUpperCase() + " " + pathEntry.getKey();
+                    assertThat(operation.at("/security/0/bearerAuth").isArray()).as(location).isTrue();
+                    assertErrorResponse(operation, "401");
+                    assertErrorResponse(operation, "403");
+                }
+            }
+        }
     }
 
     @Test
@@ -453,7 +506,10 @@ class OpenApiDocumentationValidationTest {
                 "/merchant-owner/place-claims/{claimId}",
                 "/merchant-owner/place-claims/{claimId}/cancel",
                 "/merchant-owner/places/{placeId}/information",
-                "/merchant-owner/place-claims/{claimId}/attachments"
+                "/merchant-owner/place-claims/{claimId}/attachments",
+                "/users/me/merchant-place-applications/{applicationId}/attachments",
+                "/users/me/merchant-place-applications/{applicationId}/attachments/{attachmentId}",
+                "/users/me/merchant-place-applications/{applicationId}/attachments/reorder"
         )) {
             assertThat(merchantDocument.path("paths").has(path)).as("Merchant 경로: %s", path).isTrue();
             assertThat(appDocument.path("paths").has(path)).as("App에 노출되지 않아야 함: %s", path).isFalse();
@@ -1291,6 +1347,13 @@ class OpenApiDocumentationValidationTest {
         };
     }
 
+    private boolean isPublicPath(String path) {
+        return "/".equals(path)
+                || path.startsWith("/auth/")
+                || "/consultations/intro".equals(path)
+                || path.startsWith("/analysis/reports/");
+    }
+
     private void assertLimitParameter(JsonNode parameter) {
         assertThat(parameter.path("name").asText()).isEqualTo("limit");
         assertThat(parameter.path("in").asText()).isEqualTo("query");
@@ -1299,6 +1362,17 @@ class OpenApiDocumentationValidationTest {
         assertThat(parameter.path("schema").path("default").asInt()).isEqualTo(10);
         assertThat(parameter.path("schema").path("minimum").asInt()).isEqualTo(1);
         assertThat(parameter.path("schema").path("maximum").asInt()).isEqualTo(50);
+    }
+
+    private void assertErrorResponse(JsonNode operation, String status) {
+        assertThat(operation.path("responses").has(status)).isTrue();
+        JsonNode content = operation.path("responses").path(status).path("content");
+        String schemaReference = content.path("application/json").path("schema").path("$ref").asText();
+        if (schemaReference.isBlank()) {
+            schemaReference = content.path("*/*").path("schema").path("$ref").asText();
+        }
+        assertThat(schemaReference)
+                .isEqualTo("#/components/schemas/ErrorResponse");
     }
 
     private JsonNode resolveSchema(JsonNode document, JsonNode schema) {

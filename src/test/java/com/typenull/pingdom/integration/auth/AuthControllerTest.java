@@ -49,6 +49,7 @@ import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.HexFormat;
 import org.junit.jupiter.api.BeforeEach;
+import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
@@ -61,6 +62,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
+@Tag("integration")
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
         "spring.security.oauth2.client.registration.google.client-secret=test-google-client-secret"

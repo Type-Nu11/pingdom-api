@@ -74,7 +74,7 @@ class PaymentCommandServiceTest {
         PaymentResponse processing = response(PaymentStatus.REFUND_PROCESSING, 15_000L);
         PaymentResponse refunded = new PaymentResponse(100L, 10L, "TOSS", "provider-1", 15_000L,
                 "KRW", PaymentStatus.REFUNDED, null, LocalDateTime.of(2026, 7, 26, 12, 0),
-                LocalDateTime.of(2026, 7, 26, 12, 1), LocalDateTime.of(2026, 7, 26, 12, 2));
+                LocalDateTime.of(2026, 7, 26, 12, 1), null, LocalDateTime.of(2026, 7, 26, 12, 2));
         when(writer.prepareRefund(2L, 100L)).thenReturn(processing);
         when(registry.require("TOSS")).thenReturn(provider);
         when(writer.completeRefund(2L, 100L)).thenReturn(refunded);
@@ -103,6 +103,6 @@ class PaymentCommandServiceTest {
         return new PaymentResponse(100L, 10L, "TOSS", amount == null ? null : "provider-1", amount,
                 amount == null ? null : "KRW", status, status == PaymentStatus.FAILED ? "DECLINED" : null,
                 LocalDateTime.of(2026, 7, 26, 12, 0),
-                status == PaymentStatus.PAID ? LocalDateTime.of(2026, 7, 26, 12, 1) : null, null);
+                status == PaymentStatus.PAID ? LocalDateTime.of(2026, 7, 26, 12, 1) : null, null, null);
     }
 }
