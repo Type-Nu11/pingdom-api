@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.never;
+import static org.mockito.Mockito.times;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -31,6 +32,7 @@ class FcmServiceTest {
 
     private static final long OWNER_ID = 1L;
     private static final long LIKER_ID = 2L;
+    private static final String OUTBOX_EVENT_ID = "outbox-event-id";
 
     @Mock
     private UserRepository userRepository;
@@ -171,6 +173,37 @@ class FcmServiceTest {
                 eq("temporary"),
                 eq(true)
         );
+    }
+
+    @Test
+    void retriesOnlyFailedTokenAndReusesExistingNotification() {
+        when(userRepository.findById(OWNER_ID)).thenReturn(Optional.of(user(OWNER_ID, "owner")));
+        when(userRepository.findById(LIKER_ID)).thenReturn(Optional.of(user(LIKER_ID, "liker")));
+        when(notificationDeliveryPolicy.canReceive(OWNER_ID, NotificationType.NEW_LIKE)).thenReturn(true);
+        when(fcmDeviceTokenService.findTokens(OWNER_ID)).thenReturn(List.of(
+                FcmDeviceToken.create(OWNER_ID, "succeeded-token", LocalDateTime.now()),
+                FcmDeviceToken.create(OWNER_ID, "retry-token", LocalDateTime.now())
+        ));
+        when(notificationDeliveryRecorder.findFcmNotificationId(OUTBOX_EVENT_ID)).thenReturn(null, 100L);
+        when(notificationDeliveryRecorder.isFcmDeliverySucceeded(OUTBOX_EVENT_ID, "succeeded-token"))
+                .thenReturn(false, true);
+        when(notificationsRepository.save(any(Notifications.class))).thenReturn(savedNotification());
+        when(fcmMessageSender.send(eq("succeeded-token"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L)))
+                .thenReturn("sent");
+        when(fcmMessageSender.send(eq("retry-token"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L)))
+                .thenThrow(new FcmSendException("temporary", false, null))
+                .thenReturn("sent");
+
+        FcmDispatchResult firstResult = fcmService.sendLikeNotification(OWNER_ID, LIKER_ID, OUTBOX_EVENT_ID);
+        FcmDispatchResult retryResult = fcmService.sendLikeNotification(OWNER_ID, LIKER_ID, OUTBOX_EVENT_ID);
+
+        assertThat(firstResult.hasRetryableFailure()).isTrue();
+        assertThat(retryResult.hasRetryableFailure()).isFalse();
+        verify(notificationsRepository, times(1)).save(any(Notifications.class));
+        verify(fcmMessageSender, times(1))
+                .send(eq("succeeded-token"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L));
+        verify(fcmMessageSender, times(2))
+                .send(eq("retry-token"), eq(NotificationType.NEW_LIKE), any(), any(), eq(100L));
     }
 
     private User user(Long userId, String username) {
