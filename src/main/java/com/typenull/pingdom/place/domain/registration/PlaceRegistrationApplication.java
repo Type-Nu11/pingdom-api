@@ -46,7 +46,7 @@ public class PlaceRegistrationApplication {
 
     @Enumerated(EnumType.STRING)
     @Column(name = "application_type", nullable = false, length = 30)
-    private MerchantPlaceApplicationType applicationType = MerchantPlaceApplicationType.LEGACY;
+    private MerchantPlaceApplicationType applicationType = MerchantPlaceApplicationType.NEW_PLACE;
 
     @Column(name = "legal_name", length = 100)
     private String legalName;
@@ -121,16 +121,6 @@ public class PlaceRegistrationApplication {
     @OrderBy("documentType ASC, displayOrder ASC, id ASC")
     private List<PlaceRegistrationAttachment> attachments = new ArrayList<>();
 
-    // Legacy file IDs remain readable while #1104 attachment metadata is adopted.
-    @Column(name = "business_registration_file_id", length = 100)
-    private String businessRegistrationFileId;
-
-    @Column(name = "identity_document_file_id", length = 100)
-    private String identityDocumentFileId;
-
-    @Column(name = "representative_image_file_ids", length = 2000)
-    private String representativeImageFileIds;
-
     @Column(name = "timezone", nullable = false, length = 64)
     private String timezone = "Asia/Seoul";
 
@@ -198,6 +188,18 @@ public class PlaceRegistrationApplication {
                 postalCode, description, Set.of(), now);
     }
 
+    public static PlaceRegistrationApplication merchantPlaceDraft(Long applicantUserId, String placeName,
+                                                                    PlaceRegistrationCategory category, double latitude, double longitude,
+                                                                    String roadAddress, String jibunAddress, String postalCode,
+                                                                    String description, Set<PlaceRegistrationTag> tags, LocalDateTime now) {
+        PlaceRegistrationApplication application = draft(
+                applicantUserId, placeName, category, latitude, longitude,
+                roadAddress, jibunAddress, postalCode, description, tags, now
+        );
+        application.applicationType = MerchantPlaceApplicationType.NEW_PLACE;
+        return application;
+    }
+
     public static PlaceRegistrationApplication draft(Long applicantUserId, String placeName,
                                                      PlaceRegistrationCategory category, double latitude, double longitude,
                                                      String roadAddress, String jibunAddress, String postalCode,
@@ -229,7 +231,7 @@ public class PlaceRegistrationApplication {
         if (status != PlaceRegistrationStatus.DRAFT) {
             throw new IllegalStateException("초안 상태의 신청만 사업자 정보를 수정할 수 있습니다.");
         }
-        if (applicationType == null || applicationType == MerchantPlaceApplicationType.LEGACY
+        if (applicationType == null
                 || legalName == null || legalName.isBlank()
                 || businessName == null || businessName.isBlank()
                 || encryptedBusinessRegistrationNumber == null || encryptedBusinessRegistrationNumber.isBlank()
@@ -334,17 +336,6 @@ public class PlaceRegistrationApplication {
         this.updatedAt = now;
     }
 
-    public void attachFileIds(String businessRegistrationFileId, String identityDocumentFileId,
-                              String representativeImageFileIds, LocalDateTime now) {
-        if (status != PlaceRegistrationStatus.DRAFT) {
-            throw new IllegalStateException("초안 상태의 신청만 파일을 연결할 수 있습니다.");
-        }
-        this.businessRegistrationFileId = businessRegistrationFileId;
-        this.identityDocumentFileId = identityDocumentFileId;
-        this.representativeImageFileIds = representativeImageFileIds;
-        this.updatedAt = now;
-    }
-
     public void submit(LocalDateTime now) {
         submit(now, null);
     }
@@ -443,12 +434,7 @@ public class PlaceRegistrationApplication {
     }
 
     public boolean hasRequiredFiles(LocalDateTime now) {
-        if (!attachments.isEmpty()) {
-            return hasRequiredAttachments(now);
-        }
-        return businessRegistrationFileId != null && !businessRegistrationFileId.isBlank()
-                && identityDocumentFileId != null && !identityDocumentFileId.isBlank()
-                && representativeImageFileIds != null && !representativeImageFileIds.isBlank();
+        return hasRequiredAttachments(now);
     }
 
     public boolean hasRequiredAttachments() {

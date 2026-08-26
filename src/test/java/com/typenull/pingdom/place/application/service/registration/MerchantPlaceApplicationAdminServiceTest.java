@@ -45,6 +45,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantPlaceApplicationAdminServiceTest {
@@ -99,6 +101,27 @@ class MerchantPlaceApplicationAdminServiceTest {
                 "통합 신청 민감정보 상세 조회",
                 Map.of(),
                 Map.of()
+        );
+    }
+
+    @Test
+    void adminListFiltersByStatusAndUsesFilteredPageMetadata() {
+        PlaceRegistrationApplication application = application(12L);
+        when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
+        when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
+        when(applicationRepository.findAllByStatus(
+                eq(PlaceRegistrationStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(0, 20), 41));
+
+        var response = service.listForAdmin(99L, PlaceRegistrationStatus.PENDING, 1, 20);
+
+        assertThat(response.total()).isEqualTo(41);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.hasNext()).isTrue();
+        verify(applicationRepository).findAllByStatus(
+                eq(PlaceRegistrationStatus.PENDING),
+                org.mockito.ArgumentMatchers.any()
         );
     }
 
@@ -188,7 +211,6 @@ class MerchantPlaceApplicationAdminServiceTest {
     @Test
     void reviewRejectsStaleVersionBeforeAnyStateChange() {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
-        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
         when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
         when(application.matchesVersion(3L)).thenReturn(false);
         when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
@@ -321,7 +343,6 @@ class MerchantPlaceApplicationAdminServiceTest {
     private PlaceRegistrationApplication application(Long id) {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         org.mockito.Mockito.lenient().when(application.getId()).thenReturn(id);
-        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
         return application;
     }
 }

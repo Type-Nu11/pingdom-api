@@ -4,10 +4,7 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
-import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
-import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimAttachmentRepository;
-import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationCipher;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
@@ -41,10 +38,7 @@ public class UserWithdrawalDataService {
     private final NotificationSettingRepository notificationSettingRepository;
     private final MerchantOwnerProfileRepository merchantOwnerProfileRepository;
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
-    private final MerchantPlaceClaimRepository merchantPlaceClaimRepository;
     private final MerchantVerificationRepository merchantVerificationRepository;
-    private final MerchantPlaceClaimAttachmentRepository merchantPlaceClaimAttachmentRepository;
-    private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final TouristOfferRepository touristOfferRepository;
     private final TouristCouponRepository touristCouponRepository;
     private final MerchantVerificationCipher merchantVerificationCipher;
@@ -53,9 +47,6 @@ public class UserWithdrawalDataService {
     @Transactional
     public void cleanupUserOwnedData(Long userId) {
         LocalDateTime now = LocalDateTime.now(clock);
-        merchantPlaceClaimAttachmentRepository.findAllByClaimOwnerUserId(userId).forEach(attachment ->
-                s3ObjectDeleteOutboxPublisher.publish(attachment.getStorageKey(),
-                        "MERCHANT_PLACE_CLAIM_ATTACHMENT", String.valueOf(attachment.getClaimId()), "USER_WITHDRAWAL"));
         int anonymizedPostCount = mapImageRepository.updateUsernameByUserId(
                 userId,
                 User.WITHDRAWN_DISPLAY_NAME
@@ -70,7 +61,6 @@ public class UserWithdrawalDataService {
         int deletedFcmTokenCount = fcmDeviceTokenRepository.deleteAllByUserId(userId);
         int deletedNotificationSettingCount = notificationSettingRepository.deleteAllByUserId(userId);
         int deletedMerchantOwnerPlaceCount = merchantOwnerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
-        int deletedMerchantPlaceClaimCount = merchantPlaceClaimRepository.deleteAllByMerchantOwnerUserId(userId);
         int closedTouristOfferCount = touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
         int deletedTouristCouponCount = touristCouponRepository.deleteAllByUserId(userId);
         merchantOwnerProfileRepository.findByUserIdForUpdate(userId)
@@ -82,7 +72,7 @@ public class UserWithdrawalDataService {
                 ));
 
         log.info(
-                "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}, deletedMerchantPlaceClaimCount={}, closedTouristOfferCount={}, deletedTouristCouponCount={}",
+                "탈퇴 사용자 연관 데이터를 정리했습니다. userId={}, anonymizedPostCount={}, anonymizedPlaceCount={}, deletedLikeCount={}, deletedBookmarkCount={}, deletedNotificationCount={}, deletedFcmTokenCount={}, deletedNotificationSettingCount={}, deletedMerchantOwnerPlaceCount={}, closedTouristOfferCount={}, deletedTouristCouponCount={}",
                 userId,
                 anonymizedPostCount,
                 anonymizedPlaceCount,
@@ -92,7 +82,6 @@ public class UserWithdrawalDataService {
                 deletedFcmTokenCount,
                 deletedNotificationSettingCount,
                 deletedMerchantOwnerPlaceCount,
-                deletedMerchantPlaceClaimCount,
                 closedTouristOfferCount,
                 deletedTouristCouponCount
         );

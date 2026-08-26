@@ -14,6 +14,7 @@ import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
 import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
@@ -71,13 +72,14 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                 .putArray("parts")
                 .addObject()
                 .put("text", prompt.content());
+        McpAnalysisClient.McpToolResult latestSuccessfulToolResult = null;
 
         for (int toolCallCount = 0; toolCallCount <= MAX_TOOL_CALLS; toolCallCount++) {
             JsonNode response = generateContent(contents, mcpTools);
             JsonNode modelContent = response.path("candidates").path(0).path("content");
             JsonNode functionCall = findFunctionCall(modelContent);
             if (functionCall == null) {
-                return parseFinalResponseWithRepair(contents, response, prompt);
+                return parseFinalResponseWithRepair(contents, response, prompt, latestSuccessfulToolResult);
             }
             if (toolCallCount == MAX_TOOL_CALLS) {
                 contents.addObject()
@@ -86,7 +88,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                         .addObject()
                         .put("text", "도구 호출을 중단하고 지금까지 조회된 결과만 사용해 최종 JSON 보고서를 반환하라. 추가 도구를 호출하지 마라.");
                 JsonNode finalResponse = generateContent(contents, List.of());
-                return parseFinalResponseWithRepair(contents, finalResponse, prompt);
+                return parseFinalResponseWithRepair(contents, finalResponse, prompt, latestSuccessfulToolResult);
             }
 
             String name = functionCall.path("name").asText(null);
@@ -109,6 +111,9 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             McpAnalysisClient.McpToolResult toolResult = mcpAnalysisClient.callTool(name, arguments);
             log.info("입지 분석 MCP 응답 수신. tool={}, isError={}, contentLength={}",
                     name, toolResult.isError(), toolResult.content() == null ? 0 : toolResult.content().length());
+            if (!toolResult.isError()) {
+                latestSuccessfulToolResult = toolResult;
+            }
             appendFunctionResponse(contents, toolResult);
         }
         throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
@@ -199,14 +204,16 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
     private AiAnalysisResponse parseFinalResponseWithRepair(
             ArrayNode previousContents,
             JsonNode response,
-            AiAnalysisPrompt prompt
+            AiAnalysisPrompt prompt,
+            McpAnalysisClient.McpToolResult latestSuccessfulToolResult
     ) {
         String content = extractText(response);
         try {
             return parseFinalResponse(content, prompt);
         } catch (AnalysisReportException exception) {
-            log.warn("입지 분석 AI JSON 계약 오류. retry=true, cause={}, responsePreview={}",
+            log.warn("입지 분석 AI JSON 계약 오류. retry=true, cause={}, causeMessage={}, responsePreview={}",
                     exception.getCause() == null ? "validation" : exception.getCause().getClass().getSimpleName(),
+                    causeMessage(exception),
                     responsePreview(content));
             ArrayNode repairContents = previousContents.deepCopy();
             JsonNode modelContent = response.path("candidates").path(0).path("content");
@@ -228,9 +235,16 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                 log.info("입지 분석 AI JSON 계약 수정 재시도 성공. responseLength={}", repairedContent.length());
                 return repaired;
             } catch (AnalysisReportException retryException) {
-                log.warn("입지 분석 AI JSON 계약 수정 재시도 실패. cause={}, responsePreview={}",
+                log.warn("입지 분석 AI JSON 계약 수정 재시도 실패. cause={}, causeMessage={}, responsePreview={}",
                         retryException.getCause() == null ? "validation" : retryException.getCause().getClass().getSimpleName(),
+                        causeMessage(retryException),
                         responsePreview(repairedContent));
+                AiAnalysisResponse fallback = createMcpDataFallback(prompt, latestSuccessfulToolResult);
+                if (fallback != null) {
+                    log.info("입지 분석 AI 계약 오류를 MCP 원천 데이터 보고서로 대체. recommendationCount={}",
+                            fallback.content().recommendedPlaces().size());
+                    return fallback;
+                }
                 throw retryException;
             }
         }
@@ -242,6 +256,143 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         }
         String normalized = content.replaceAll("[\\r\\n]+", " ");
         return normalized.length() <= 700 ? normalized : normalized.substring(0, 700) + "...";
+    }
+
+    private String causeMessage(AnalysisReportException exception) {
+        Throwable cause = exception.getCause();
+        if (cause == null || !StringUtils.hasText(cause.getMessage())) {
+            return "<none>";
+        }
+        String normalized = cause.getMessage().replaceAll("[\\r\\n]+", " ");
+        return normalized.length() <= 500 ? normalized : normalized.substring(0, 500) + "...";
+    }
+
+    /**
+     * Gemini의 설명 JSON이 계약을 두 번 연속 위반해도, 이미 조회한 MCP 수치를 버리지 않기 위한 최후 경로다.
+     * 수치가 없는 항목을 추정하지 않고 MCP가 제공한 후보·유동인구·타깃 매칭 수치만 사용한다.
+     */
+    private AiAnalysisResponse createMcpDataFallback(
+            AiAnalysisPrompt prompt,
+            McpAnalysisClient.McpToolResult toolResult
+    ) {
+        if (toolResult == null || toolResult.isError() || !StringUtils.hasText(toolResult.content())) {
+            return null;
+        }
+        try {
+            JsonNode payload = objectMapper.readTree(toolResult.content());
+            JsonNode recommendations = payload.path("recommendations");
+            if (!recommendations.isArray() || recommendations.isEmpty()) {
+                return null;
+            }
+
+            LocalDate basisDate = prompt.analysisBasisDate();
+            double totalFoot = 0;
+            double ageMatch = 0;
+            double genderMatch = 0;
+            double topScore = 0;
+            Double averageHour = null;
+            List<LocationAnalysisContent.RecommendedPlace> places = new ArrayList<>();
+            for (JsonNode recommendation : recommendations) {
+                JsonNode metrics = recommendation.path("metrics");
+                double foot = number(metrics.path("total_foot"));
+                double age = number(metrics.path("age_match"));
+                double gender = number(metrics.path("gender_match"));
+                totalFoot += foot;
+                ageMatch += age;
+                genderMatch += gender;
+                if (averageHour == null && metrics.path("avg_hour").isNumber()) {
+                    averageHour = metrics.path("avg_hour").asDouble();
+                }
+                int rank = recommendation.path("rank").asInt(places.size() + 1);
+                double score = number(recommendation.path("score"));
+                double scorePercent = score <= 1 ? score * 100 : score;
+                topScore = Math.max(topScore, scorePercent);
+                String address = textOr(recommendation.path("address"), "주소 미상");
+                String name = textOr(recommendation.path("name"), "추천 입지 " + rank);
+                places.add(new LocationAnalysisContent.RecommendedPlace(
+                        rank, name, address, Math.min(100, Math.max(0, scorePercent)),
+                        "유동인구 " + Math.round(foot) + "명, 타깃 연령 매칭 " + Math.round(age) + "명", List.of("mcp-1")
+                ));
+            }
+
+            double ageShare = totalFoot == 0 ? 0 : ageMatch * 100 / totalFoot;
+            double genderShare = totalFoot == 0 ? 0 : genderMatch * 100 / totalFoot;
+            Double radiusMeters = payload.path("searched_radius_m").isNumber()
+                    ? payload.path("searched_radius_m").asDouble() : 1500D;
+            List<LocationAnalysisContent.SourceValue> sourceValues = List.of(
+                    new LocationAnalysisContent.SourceValue("top_candidates_total_foot", String.valueOf(Math.round(totalFoot)), "명"),
+                    new LocationAnalysisContent.SourceValue("target_age_match", String.valueOf(Math.round(ageMatch)), "명"),
+                    new LocationAnalysisContent.SourceValue("target_gender_match", String.valueOf(Math.round(genderMatch)), "명")
+            );
+            LocationAnalysisContent.Evidence evidence = new LocationAnalysisContent.Evidence(
+                    "mcp-1", LocationAnalysisContent.EvidenceType.MCP, "Pingdom MCP", "recommend_location",
+                    basisDate, "MCP가 반환한 상위 후보 입지의 유동인구 및 타깃 매칭 집계", null, sourceValues
+            );
+            List<LocationAnalysisContent.Evidence> evidences = List.of(evidence);
+            List<LocationAnalysisContent.Metric> timeMetrics = averageHour == null ? List.of() : List.of(
+                    new LocationAnalysisContent.Metric("후보지 평균 활동 시각", averageHour, "시", null)
+            );
+            String region = prompt.requestedRegion();
+            LocationAnalysisContent content = new LocationAnalysisContent(
+                    "MCP 원천 데이터 기반 입지 분석 보고서",
+                    new LocationAnalysisContent.OverallLocationEvaluation(
+                            LocationAnalysisContent.Grade.CONDITIONAL,
+                            "상위 " + places.size() + "개 후보지에서 유동인구 데이터를 확인했습니다. 경쟁·시설 데이터는 별도 검증이 필요합니다.",
+                            List.of("상위 후보 유동인구 합계 " + Math.round(totalFoot) + "명 확인"),
+                            List.of("경쟁점과 주변 시설은 MCP 응답에 포함되지 않음"), evidences),
+                    new LocationAnalysisContent.CommercialAreaAnalysis(region, "유동인구 기반 후보 입지",
+                            "MCP 추천 후보의 유동인구를 기준으로 비교한 상권입니다.",
+                            List.of(new LocationAnalysisContent.Metric("상위 후보 유동인구 합계", totalFoot, "명", null)), evidences),
+                    new LocationAnalysisContent.TargetPopulationAnalysis(
+                            "MCP가 요청 타깃 조건에 맞는 유동인구를 집계했습니다.", places.getFirst().name(),
+                            List.of(new LocationAnalysisContent.Metric("타깃 연령 매칭", ageMatch, "명", ageShare)),
+                            List.of(new LocationAnalysisContent.Metric("타깃 성별 매칭", genderMatch, "명", genderShare)),
+                            List.of(), evidences),
+                    new LocationAnalysisContent.FootTrafficAnalysis(
+                            "상위 추천 후보의 유동인구를 합산한 값입니다.", totalFoot, timeMetrics, List.of(), List.of(),
+                            "MCP 평균 활동 시각을 참고해 영업시간을 추가 검토하세요.", null, evidences),
+                    new LocationAnalysisContent.NearbyFacilities("MCP 응답에 주변 시설 데이터가 없습니다.",
+                            List.of(), List.of(), List.of(), List.of(), List.of()),
+                    new LocationAnalysisContent.CompetitionAnalysis("MCP 응답에 경쟁점 데이터가 없습니다.",
+                            null, null, null, null, List.of(), List.of()),
+                    new LocationAnalysisContent.BusinessPerformanceAnalysis(
+                            "유동인구 지표를 기반으로 한 조건부 평가입니다.",
+                            List.of(new LocationAnalysisContent.Metric("상위 후보 점수", topScore, "점", topScore)),
+                            List.of("타깃 유동인구가 확인된 후보지 우선 검토"),
+                            List.of("경쟁·시설 정보 추가 검증 필요"), evidences),
+                    new LocationAnalysisContent.DataQualityAnalysis(null, places.size(), "MCP 단건 조회", region,
+                            radiusMeters > 1500, List.of("경쟁점 데이터", "주변 시설 데이터"), evidences),
+                    places,
+                    new LocationAnalysisContent.AnalysisScope(region, region,
+                            LocationAnalysisContent.ScopeLevel.NEIGHBORHOOD,
+                            "MCP 추천 후보 조회 범위", radiusMeters),
+                    List.of(new LocationAnalysisContent.DataSource("mcp-1", LocationAnalysisContent.EvidenceType.MCP,
+                            "Pingdom MCP", "recommend_location", basisDate, region)),
+                    List.of("Gemini 서술 응답의 계약 오류로 MCP 원천 데이터 기반 보고서로 생성됨.")
+            );
+            return new AiAnalysisResponse(content, basisDate);
+        } catch (JsonProcessingException exception) {
+            log.warn("입지 분석 MCP 원천 데이터 대체 생성 실패. cause={}", exception.getClass().getSimpleName());
+            return null;
+        }
+    }
+
+    private double number(JsonNode value) {
+        if (value.isNumber()) {
+            return value.asDouble();
+        }
+        if (value.isTextual()) {
+            try {
+                return Double.parseDouble(value.asText());
+            } catch (NumberFormatException ignored) {
+                return 0;
+            }
+        }
+        return 0;
+    }
+
+    private String textOr(JsonNode value, String fallback) {
+        return StringUtils.hasText(value.asText()) ? value.asText() : fallback;
     }
 
     private String extractText(JsonNode response) {
