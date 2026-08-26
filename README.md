@@ -8,18 +8,21 @@ Pingdom App과 Admin에서 필요한 인증, 장소, 게시글, 추천, 사업�
 결제, 알림 및 관리 기능을 제공합니다. 핵심 데이터의 일관성을 보장하고 외부 서비스
 연동과 비동기 후속 처리를 안정적으로 수행하는 것이 이 저장소의 주요 역할입니다.
 
+이 저장소는 Pingdom 서버의 공개 소스 저장소입니다. 운영 환경의 인증정보와 배포 설정은
+포함하지 않으며, 로컬 개발과 API 계약 검증에 필요한 구성만 제공합니다.
+
 ## Project Status
 
-현재 **SNAPSHOT 개발 단계**입니다.
+현재 **GA(General Availability)** 단계입니다.
 
-프로젝트 요구사항을 검증하고 있으며, 안정화 이전까지 기능, 구성, API 계약 및
-제공 결과가 예고 없이 변경될 수 있습니다.
+안정화된 서비스를 제공하며, API와 데이터 구조의 변경은 Release와 변경 이력을 통해
+관리합니다.
 
 | Item | Status |
 |---|---|
-| Development | `In Progress` |
-| Release | `SNAPSHOT` |
-| Stability | `Experimental` |
+| Development | `Generally Available` |
+| Release | `GA` |
+| Stability | `Stable` |
 
 ## Repository Role
 
@@ -74,7 +77,7 @@ Pingdom App과 Admin에서 필요한 인증, 장소, 게시글, 추천, 사업�
 - Git
 - Java 21
 - Docker 및 Docker Compose
-- Google OAuth, AWS S3, Postmark, Firebase 연동이 필요한 기능에 대한 별도 자격 증명
+- Google OAuth, AWS S3, Postmark, Firebase를 실제로 연동할 경우 해당 서비스의 자격 증명
 
 ### Setup
 
@@ -87,11 +90,11 @@ cd pingdom-api
 ### Usage
 
 ```bash
-SPRING_PROFILES_ACTIVE=local ./gradlew bootRun
+./scripts/bootstrap-local-development.sh --run
 ```
 
-`local` 프로필에서는 `docker-compose-local.yml`에 정의된 PostgreSQL과 Redis가
-Spring Docker Compose 연동을 통해 함께 실행됩니다. 애플리케이션 실행 후
+이 명령은 `docker-compose-local.yml`의 PostgreSQL과 Redis를 시작한 뒤 `local` 프로필로
+애플리케이션을 실행합니다. 애플리케이션 실행 후
 `http://localhost:8080/swagger-ui`에서 API 문서를 확인할 수 있습니다.
 
 ## Configuration
@@ -189,13 +192,11 @@ docs/local-development.md
 
 ## Release and Compatibility
 
-현재 버전은 안정화 이전의 SNAPSHOT 버전입니다.
+현재 버전은 GA(General Availability) 단계입니다.
 
-- 정식 버전과의 호환성을 보장하지 않습니다.
-- API와 데이터 구조는 안정화 이전까지 변경될 수 있습니다.
 - 변경사항은 저장소의 Release 또는 변경 이력을 기준으로 확인합니다.
 - 데이터베이스 변경은 Flyway 마이그레이션으로 관리합니다.
-- 안정화 이후 별도의 버전 및 호환성 정책을 적용할 예정입니다.
+- 호환성에 영향을 주는 변경사항은 Release와 API 계약을 통해 안내합니다.
 
 ## License
 
