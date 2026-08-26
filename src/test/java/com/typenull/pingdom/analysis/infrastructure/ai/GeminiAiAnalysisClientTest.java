@@ -8,8 +8,10 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
+import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
+import com.typenull.pingdom.analysis.application.ai.LocationAnalysisResponseValidator;
 import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
 import java.time.Duration;
 import java.time.LocalDate;
@@ -131,6 +133,55 @@ class GeminiAiAnalysisClientTest {
 
         assertThat(response.reportName()).isEqualTo("입지 분석");
         assertThat(calledArguments.get()).containsEntry("region", "대구광역시 북구 서변동");
+        server.verify();
+    }
+
+    @Test
+    void createsReportFromMcpDataWhenGeminiBreaksContractTwice() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                .andRespond(withSuccess(toolCallResponse(), MediaType.APPLICATION_JSON));
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                .andRespond(withSuccess(invalidEvidenceResponseJson(), MediaType.APPLICATION_JSON));
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                .andRespond(withSuccess(invalidEvidenceResponseJson(), MediaType.APPLICATION_JSON));
+
+        AiAnalysisProperties properties = new AiAnalysisProperties(
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
+                Duration.ofSeconds(1), Duration.ofSeconds(2)
+        );
+        McpAnalysisClient mcpClient = new McpAnalysisClient() {
+            @Override
+            public List<McpTool> listTools() {
+                return List.of(new McpTool("recommend_location", "추천 장소 조회", Map.of("type", "object")));
+            }
+
+            @Override
+            public McpToolResult callTool(String name, Map<String, Object> arguments) {
+                return new McpToolResult(name, """
+                        {"recommendations":[{"rank":1,"address":"서울특별시 송파구 잠실3동","score":0.9,
+                        "metrics":{"total_foot":2328,"age_match":1169,"gender_match":2328,"avg_hour":18.5}}],
+                        "searched_radius_m":1500}
+                        """, false);
+            }
+        };
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties, new ObjectMapper(), mcpClient
+        );
+
+        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
+                "prompt", LocalDate.of(2026, 8, 18), "서울특별시 송파구 잠실3동"
+        ));
+
+        assertThat(response.content().overallLocationEvaluation().grade()).isEqualTo(
+                com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent.Grade.CONDITIONAL
+        );
+        assertThat(response.content().footTrafficAnalysis().total()).isEqualTo(2328D);
+        assertThat(response.content().recommendedPlaces()).hasSize(1);
+        LocationAnalysisRequest request = new LocationAnalysisRequest();
+        request.setRegion("서울특별시 송파구 잠실3동");
+        new LocationAnalysisResponseValidator().validate(request, response);
         server.verify();
     }
 
