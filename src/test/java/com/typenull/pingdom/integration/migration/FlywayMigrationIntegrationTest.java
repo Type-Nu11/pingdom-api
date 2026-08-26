@@ -669,10 +669,9 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
-                        FROM pg_constraint
-                        WHERE conrelid = 'location_check_in'::regclass
-                          AND conname = 'uq_location_check_in_daily'
-                          AND contype = 'u'
+                        FROM pg_indexes
+                        WHERE tablename = 'location_check_in'
+                          AND indexname = 'uq_location_check_in_daily'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

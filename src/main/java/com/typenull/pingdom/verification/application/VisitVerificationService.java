@@ -76,7 +76,7 @@ public class VisitVerificationService {
             VisitVerificationObservationRequest request) {
         requireTourist(userId);
         Instant now = clock.instant();
-        VisitVerificationSession session = sessionRepository.findLockedByIdAndTouristUserId(sessionId, userId)
+        VisitVerificationSession session = sessionRepository.findByIdAndTouristUserIdForUpdate(sessionId, userId)
                 .orElseThrow(() -> new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_VERIFICATION_SESSION_NOT_FOUND));
         if (!session.isActive()) return VisitVerificationSessionResponse.from(session, properties);
         if (session.isExpiredAt(now) || session.hasObservationGapExceeded(now, properties.maxObservationGap())) {
@@ -107,7 +107,7 @@ public class VisitVerificationService {
     public VisitVerificationSessionResponse get(Long userId, Long sessionId) {
         requireTourist(userId);
         Instant now = clock.instant();
-        VisitVerificationSession session = sessionRepository.findLockedByIdAndTouristUserId(sessionId, userId)
+        VisitVerificationSession session = sessionRepository.findByIdAndTouristUserIdForUpdate(sessionId, userId)
                 .orElseThrow(() -> new VisitorVerificationException(VisitorVerificationErrorCode.VISIT_VERIFICATION_SESSION_NOT_FOUND));
         if (session.isActive() && (session.isExpiredAt(now) || session.hasObservationGapExceeded(now, properties.maxObservationGap()))) {
             session.expire(now);

@@ -57,7 +57,7 @@ class VisitVerificationServiceTest {
     void completesOnlyAfterServerVerifiedThirtySecondDwellWithContinuousObservations() {
         VisitVerificationSessionResponse started = service.start(1L, startRequest());
         VisitVerificationSession session = capturedSession();
-        when(sessionRepository.findLockedByIdAndTouristUserId(10L, 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByIdAndTouristUserIdForUpdate(10L, 1L)).thenReturn(Optional.of(session));
 
         clock.advance(Duration.ofSeconds(15));
         VisitVerificationSessionResponse inProgress = service.submitObservation(1L, 10L, observationRequest());
@@ -78,7 +78,7 @@ class VisitVerificationServiceTest {
     void marksSessionAsProximityLostWhenAnAcceptedObservationLeavesRadius() {
         service.start(1L, startRequest());
         VisitVerificationSession session = capturedSession();
-        when(sessionRepository.findLockedByIdAndTouristUserId(10L, 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByIdAndTouristUserIdForUpdate(10L, 1L)).thenReturn(Optional.of(session));
         clock.advance(Duration.ofSeconds(5));
 
         VisitVerificationSessionResponse response = service.submitObservation(1L, 10L,
@@ -92,7 +92,7 @@ class VisitVerificationServiceTest {
     void expiresSessionWhenClientMissesMaximumObservationGap() {
         service.start(1L, startRequest());
         VisitVerificationSession session = capturedSession();
-        when(sessionRepository.findLockedByIdAndTouristUserId(10L, 1L)).thenReturn(Optional.of(session));
+        when(sessionRepository.findByIdAndTouristUserIdForUpdate(10L, 1L)).thenReturn(Optional.of(session));
         clock.advance(Duration.ofSeconds(16));
 
         VisitVerificationSessionResponse response = service.submitObservation(1L, 10L, observationRequest());

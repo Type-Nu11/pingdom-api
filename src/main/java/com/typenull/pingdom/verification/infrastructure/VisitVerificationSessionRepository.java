@@ -15,7 +15,8 @@ public interface VisitVerificationSessionRepository extends JpaRepository<VisitV
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select session from VisitVerificationSession session where session.id = :id and session.touristUserId = :userId")
-    Optional<VisitVerificationSession> findLockedByIdAndTouristUserId(@Param("id") Long id, @Param("userId") Long userId);
+    Optional<VisitVerificationSession> findByIdAndTouristUserIdForUpdate(@Param("id") Long id,
+            @Param("userId") Long userId);
 
     long deleteByExpiresAtLessThanEqual(Instant expiresAt);
 }
