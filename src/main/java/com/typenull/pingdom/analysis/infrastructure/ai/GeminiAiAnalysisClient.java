@@ -18,12 +18,14 @@ import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 /** Gemini tool call과 Pingdom MCP tool 실행을 중계하는 클라이언트다. */
+@Slf4j
 public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
     /** recommend_location이 내부에서 반경 확장을 처리하므로 요청당 MCP 실행은 한 번으로 제한한다. */
@@ -61,6 +63,8 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         }
 
         List<McpAnalysisClient.McpTool> mcpTools = mcpAnalysisClient.listTools();
+        log.info("입지 분석 AI 시작. mcpToolCount={}, requestedRegionPresent={}",
+                mcpTools.size(), StringUtils.hasText(prompt.requestedRegion()));
         ArrayNode contents = objectMapper.createArrayNode();
         contents.addObject()
                 .put("role", "user")
@@ -73,7 +77,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             JsonNode modelContent = response.path("candidates").path(0).path("content");
             JsonNode functionCall = findFunctionCall(modelContent);
             if (functionCall == null) {
-                return parseFinalResponse(extractText(response), prompt);
+                return parseFinalResponseWithRepair(contents, response, prompt);
             }
             if (toolCallCount == MAX_TOOL_CALLS) {
                 contents.addObject()
@@ -82,7 +86,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                         .addObject()
                         .put("text", "도구 호출을 중단하고 지금까지 조회된 결과만 사용해 최종 JSON 보고서를 반환하라. 추가 도구를 호출하지 마라.");
                 JsonNode finalResponse = generateContent(contents, List.of());
-                return parseFinalResponse(extractText(finalResponse), prompt);
+                return parseFinalResponseWithRepair(contents, finalResponse, prompt);
             }
 
             String name = functionCall.path("name").asText(null);
@@ -100,8 +104,11 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                 arguments.put("region", prompt.requestedRegion());
             }
 
+            log.info("입지 분석 MCP 호출. tool={}, argumentKeys={}", name, arguments.keySet());
             contents.add(modelContent.deepCopy());
             McpAnalysisClient.McpToolResult toolResult = mcpAnalysisClient.callTool(name, arguments);
+            log.info("입지 분석 MCP 응답 수신. tool={}, isError={}, contentLength={}",
+                    name, toolResult.isError(), toolResult.content() == null ? 0 : toolResult.content().length());
             appendFunctionResponse(contents, toolResult);
         }
         throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, null);
@@ -186,6 +193,55 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         } catch (JsonProcessingException exception) {
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_RESPONSE_INVALID, exception);
         }
+    }
+
+    /** 계약 오류는 한 번만 수정 요청한다. 두 번째 실패는 원본 오류로 클라이언트에 502를 반환한다. */
+    private AiAnalysisResponse parseFinalResponseWithRepair(
+            ArrayNode previousContents,
+            JsonNode response,
+            AiAnalysisPrompt prompt
+    ) {
+        String content = extractText(response);
+        try {
+            return parseFinalResponse(content, prompt);
+        } catch (AnalysisReportException exception) {
+            log.warn("입지 분석 AI JSON 계약 오류. retry=true, cause={}, responsePreview={}",
+                    exception.getCause() == null ? "validation" : exception.getCause().getClass().getSimpleName(),
+                    responsePreview(content));
+            ArrayNode repairContents = previousContents.deepCopy();
+            JsonNode modelContent = response.path("candidates").path(0).path("content");
+            if (modelContent.isObject()) {
+                repairContents.add(modelContent.deepCopy());
+            }
+            repairContents.addObject()
+                    .put("role", "user")
+                    .putArray("parts")
+                    .addObject()
+                    .put("text", "직전 JSON은 서버 계약을 지키지 못했다. 필드명·enum·중첩 구조를 유지하고, "
+                            + "evidences에는 문자열이 아닌 Evidence 객체만 넣어 유효한 JSON 객체만 다시 반환하라. "
+                            + "MCP에서 받은 실제 수치는 삭제하거나 0으로 바꾸지 마라.");
+
+            JsonNode repairedResponse = generateContent(repairContents, List.of());
+            String repairedContent = extractText(repairedResponse);
+            try {
+                AiAnalysisResponse repaired = parseFinalResponse(repairedContent, prompt);
+                log.info("입지 분석 AI JSON 계약 수정 재시도 성공. responseLength={}", repairedContent.length());
+                return repaired;
+            } catch (AnalysisReportException retryException) {
+                log.warn("입지 분석 AI JSON 계약 수정 재시도 실패. cause={}, responsePreview={}",
+                        retryException.getCause() == null ? "validation" : retryException.getCause().getClass().getSimpleName(),
+                        responsePreview(repairedContent));
+                throw retryException;
+            }
+        }
+    }
+
+    private String responsePreview(String content) {
+        if (!StringUtils.hasText(content)) {
+            return "<empty>";
+        }
+        String normalized = content.replaceAll("[\\r\\n]+", " ");
+        return normalized.length() <= 700 ? normalized : normalized.substring(0, 700) + "...";
     }
 
     private String extractText(JsonNode response) {
