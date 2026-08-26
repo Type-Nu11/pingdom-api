@@ -235,7 +235,7 @@ jobs:
             readiness_endpoint="http://127.0.0.1:8080/actuator/health/readiness"
             attempt=1
             until curl --fail --silent --show-error "$readiness_endpoint"; do
-              if [ "$attempt" -ge 12 ]; then
+              if [ "$attempt" -ge 37 ]; then
                 echo "Readiness probe failed after $attempt attempts: $readiness_endpoint"
                 docker compose ps
                 docker compose logs --tail=100 app
