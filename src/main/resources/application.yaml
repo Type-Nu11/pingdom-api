@@ -338,6 +338,17 @@ verification:
     max-accuracy-meters: 50
     observation-ttl: PT5M
     future-tolerance: PT30S
+  visit-verification:
+    default-radius-meters: 20
+    radius-overrides: {}
+    max-accuracy-meters: 20
+    dwell-duration: PT30S
+    session-ttl: PT5M
+    max-observation-gap: PT15S
+    observation-interval: PT5S
+    observation-ttl: PT1M
+    future-tolerance: PT10S
+    retention: P30D
   visit-evidence:
     retention: P30D
     max-file-size-bytes: 10485760
