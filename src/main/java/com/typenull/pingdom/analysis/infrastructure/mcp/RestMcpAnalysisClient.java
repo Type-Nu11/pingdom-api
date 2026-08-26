@@ -15,6 +15,7 @@ import java.util.concurrent.atomic.AtomicLong;
 import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
@@ -26,9 +27,14 @@ public class RestMcpAnalysisClient implements McpAnalysisClient {
     private final RestClient restClient;
     private final ObjectMapper objectMapper;
     private final AtomicLong requestId = new AtomicLong();
+    private final ThreadLocal<String> sessionId = new ThreadLocal<>();
+    private final ThreadLocal<String> protocolVersion = new ThreadLocal<>();
 
     @Override
     public List<McpTool> listTools() {
+        // MCP Streamable HTTP는 initialize 응답의 세션을 같은 호출 흐름에서 재사용한다.
+        sessionId.remove();
+        protocolVersion.remove();
         request("initialize", Map.of(
                 "protocolVersion", "2024-11-05",
                 "capabilities", Map.of(),
@@ -103,12 +109,27 @@ public class RestMcpAnalysisClient implements McpAnalysisClient {
         payload.put("method", method);
         payload.put("params", params);
         try {
-            JsonNode response = restClient.post()
+            var request = restClient.post()
                     .uri("")
                     .contentType(MediaType.APPLICATION_JSON)
-                    .body(payload)
-                    .retrieve()
-                    .body(JsonNode.class);
+                    .body(payload);
+            if (sessionId.get() != null) {
+                request.header("Mcp-Session-Id", sessionId.get());
+            }
+            if (protocolVersion.get() != null) {
+                request.header("MCP-Protocol-Version", protocolVersion.get());
+            }
+            ResponseEntity<JsonNode> entity = request.retrieve().toEntity(JsonNode.class);
+            String issuedSessionId = entity.getHeaders().getFirst("Mcp-Session-Id");
+            if (issuedSessionId != null) {
+                sessionId.set(issuedSessionId);
+            }
+            JsonNode response = entity.getBody();
+            String negotiatedVersion = response == null ? null
+                    : response.path("result").path("protocolVersion").asText(null);
+            if (negotiatedVersion != null) {
+                protocolVersion.set(negotiatedVersion);
+            }
             if (response == null || response.has("error")) {
                 throw new AnalysisReportException(AnalysisReportErrorCode.MCP_SERVICE_UNAVAILABLE, null);
             }
