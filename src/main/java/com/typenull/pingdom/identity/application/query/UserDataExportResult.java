@@ -4,8 +4,6 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOnboardingStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
-import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
-import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.travel.CurrentActivityIntent;
@@ -27,7 +25,6 @@ public record UserDataExportResult(
         List<ExportTravelSchedule> travelSchedules,
         ExportCurrentActivityIntent currentActivityIntent,
         ExportMerchantOwnerProfile merchantOwnerProfile,
-        List<ExportMerchantPlaceClaim> merchantPlaceClaims,
         ExportMerchantVerification merchantVerification,
         List<ExportTouristOffer> touristOffers,
         List<ExportTouristCoupon> touristCoupons
@@ -41,7 +38,6 @@ public record UserDataExportResult(
             UserCurrentActivityIntent currentActivityIntent,
             MerchantOwnerProfile merchantOwnerProfile,
             List<Long> merchantOwnerPlaceIds,
-            List<MerchantPlaceClaim> merchantPlaceClaims,
             MerchantVerification merchantVerification,
             List<TouristOffer> touristOffers,
             List<TouristCoupon> touristCoupons,
@@ -80,17 +76,6 @@ public record UserDataExportResult(
                                 merchantOwnerProfile.getOnboardingCompletedAt(),
                                 merchantOwnerPlaceIds
                         ),
-                merchantPlaceClaims.stream()
-                        .map(claim -> new ExportMerchantPlaceClaim(
-                                claim.getId(),
-                                claim.getPlaceId(),
-                                claim.getStatus(),
-                                claim.getClaimReason(),
-                                claim.getReviewReason(),
-                                claim.getReviewedAt(),
-                                claim.getCreatedAt()
-                        ))
-                        .toList(),
                 merchantVerification == null
                         ? null
                         : new ExportMerchantVerification(
@@ -171,17 +156,6 @@ public record UserDataExportResult(
             Integer onboardingCompletionRate,
             LocalDateTime onboardingCompletedAt,
             List<Long> placeIds
-    ) {
-    }
-
-    public record ExportMerchantPlaceClaim(
-            Long id,
-            Long placeId,
-            MerchantPlaceClaimStatus status,
-            String claimReason,
-            String reviewReason,
-            LocalDateTime reviewedAt,
-            LocalDateTime createdAt
     ) {
     }
 
