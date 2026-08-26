@@ -205,8 +205,9 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         try {
             return parseFinalResponse(content, prompt);
         } catch (AnalysisReportException exception) {
-            log.warn("입지 분석 AI JSON 계약 오류. retry=true, cause={}, responsePreview={}",
+            log.warn("입지 분석 AI JSON 계약 오류. retry=true, cause={}, causeMessage={}, responsePreview={}",
                     exception.getCause() == null ? "validation" : exception.getCause().getClass().getSimpleName(),
+                    causeMessage(exception),
                     responsePreview(content));
             ArrayNode repairContents = previousContents.deepCopy();
             JsonNode modelContent = response.path("candidates").path(0).path("content");
@@ -228,8 +229,9 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
                 log.info("입지 분석 AI JSON 계약 수정 재시도 성공. responseLength={}", repairedContent.length());
                 return repaired;
             } catch (AnalysisReportException retryException) {
-                log.warn("입지 분석 AI JSON 계약 수정 재시도 실패. cause={}, responsePreview={}",
+                log.warn("입지 분석 AI JSON 계약 수정 재시도 실패. cause={}, causeMessage={}, responsePreview={}",
                         retryException.getCause() == null ? "validation" : retryException.getCause().getClass().getSimpleName(),
+                        causeMessage(retryException),
                         responsePreview(repairedContent));
                 throw retryException;
             }
@@ -242,6 +244,15 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         }
         String normalized = content.replaceAll("[\\r\\n]+", " ");
         return normalized.length() <= 700 ? normalized : normalized.substring(0, 700) + "...";
+    }
+
+    private String causeMessage(AnalysisReportException exception) {
+        Throwable cause = exception.getCause();
+        if (cause == null || !StringUtils.hasText(cause.getMessage())) {
+            return "<none>";
+        }
+        String normalized = cause.getMessage().replaceAll("[\\r\\n]+", " ");
+        return normalized.length() <= 500 ? normalized : normalized.substring(0, 500) + "...";
     }
 
     private String extractText(JsonNode response) {
