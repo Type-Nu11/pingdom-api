@@ -9,11 +9,8 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
-import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationAttachmentRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationRequest;
-import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationResponse;
-import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationReviewRequest;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
@@ -51,15 +48,12 @@ import org.locationtech.jts.geom.Coordinate;
 import org.locationtech.jts.geom.GeometryFactory;
 import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
-import org.springframework.data.domain.Page;
-import org.springframework.data.domain.PageRequest;
-import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
 @RequiredArgsConstructor
-/** 장소 등록 신청의 초안, 제출, 심사, 취소·재개·완료 상태 전이를 관리합니다. */
+/** 통합 Merchant 장소 신청의 신규 장소 초안과 승인 후 장소 생성을 담당합니다. */
 public class PlaceRegistrationService {
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
     private final PlaceRegistrationApplicationRepository repository;
@@ -74,10 +68,10 @@ public class PlaceRegistrationService {
     private final ObjectMapper objectMapper;
 
     @Transactional
-    /** 등록 신청과 첨부파일·운영시간 초안을 함께 저장합니다. */
-    public PlaceRegistrationResponse create(Long userId, PlaceRegistrationRequest r) {
+    /** 통합 Merchant 신청에 포함되는 신규 장소 초안을 생성합니다. */
+    public Long createForUnifiedApplication(Long userId, PlaceRegistrationRequest r) {
         LocalDateTime now = now();
-        PlaceRegistrationApplication application = PlaceRegistrationApplication.draft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
+        PlaceRegistrationApplication application = PlaceRegistrationApplication.merchantPlaceDraft(userId, r.placeName(), r.category(), r.latitude(), r.longitude(),
                 r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
         application.updateContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
         updateOperatingSchedule(application, r, now);
@@ -86,41 +80,7 @@ public class PlaceRegistrationService {
         } catch (IllegalArgumentException exception) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
         }
-        return response(repository.save(application));
-    }
-
-    @Transactional(readOnly = true)
-    public PlaceRegistrationPageResponse list(Long userId, int page, int limit) {
-        Page<PlaceRegistrationApplication> result = repository.findAllByApplicantUserIdAndApplicationType(
-                userId, MerchantPlaceApplicationType.LEGACY, pageable(page, limit));
-        return page(result);
-    }
-
-    @Transactional(readOnly = true)
-    public PlaceRegistrationPageResponse listAll(int page, int limit) {
-        return page(repository.findAllByApplicationType(MerchantPlaceApplicationType.LEGACY, pageable(page, limit)));
-    }
-
-    @Transactional(readOnly = true)
-    public PlaceRegistrationResponse getAny(Long id) {
-        PlaceRegistrationApplication application = repository.findById(id).orElseThrow(this::notFound);
-        requireLegacy(application);
-        return response(application);
-    }
-
-    @Transactional(readOnly = true)
-    public PlaceRegistrationResponse get(Long userId, Long id) {
-        PlaceRegistrationApplication application = repository.findByIdAndApplicantUserId(id, userId).orElseThrow(this::notFound);
-        requireLegacy(application);
-        return response(application);
-    }
-
-    @Transactional
-    public PlaceRegistrationResponse update(Long userId, Long id, PlaceRegistrationRequest r) {
-        PlaceRegistrationApplication a = mine(userId, id);
-        requireLegacy(a);
-        updateDraft(a, userId, r);
-        return response(a);
+        return repository.save(application).getId();
     }
 
     @Transactional
@@ -145,15 +105,6 @@ public class PlaceRegistrationService {
     }
 
     @Transactional
-    /** 제출 가능한 초안인지 검증한 뒤 심사 대기 상태로 전환합니다. */
-    public PlaceRegistrationResponse submit(Long userId, Long id) {
-        PlaceRegistrationApplication a = mine(userId, id);
-        requireLegacy(a);
-        submitDraft(a);
-        return response(a);
-    }
-
-    @Transactional
     public void submitForUnifiedApplication(Long userId, Long id) {
         PlaceRegistrationApplication application = mine(userId, id);
         requireUnifiedNewPlace(application);
@@ -164,37 +115,6 @@ public class PlaceRegistrationService {
         try { a.submit(now(), contentHash(a)); } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(a.hasRequiredFiles() ? PlaceRegistrationErrorCode.INVALID_STATE : PlaceRegistrationErrorCode.REQUIRED_FILES_MISSING);
         }
-    }
-
-    @Transactional
-    public PlaceRegistrationResponse cancel(Long userId, Long id) { return transition(userId, id, a -> a.cancel(now())); }
-
-    @Transactional
-    public PlaceRegistrationResponse reopen(Long userId, Long id) { return transition(userId, id, a -> a.reopen(now())); }
-
-    @Transactional
-    public PlaceRegistrationResponse approve(Long adminId, Long id, PlaceRegistrationReviewRequest r) {
-        PlaceRegistrationApplication a = locked(id);
-        requireLegacy(a);
-        try { a.approve(adminId, r.reason(), now()); } catch (IllegalStateException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
-        return response(a);
-    }
-
-    @Transactional
-    public PlaceRegistrationResponse reject(Long adminId, Long id, PlaceRegistrationReviewRequest r) {
-        PlaceRegistrationApplication a = locked(id);
-        requireLegacy(a);
-        try { a.reject(adminId, r.reason(), now()); } catch (IllegalStateException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
-        return response(a);
-    }
-
-    @Transactional
-    public PlaceRegistrationResponse complete(Long userId, Long id) {
-        PlaceRegistrationApplication a = mine(userId, id);
-        requireLegacy(a);
-        Long placeId = createApprovedPlace(a, userId);
-        a.register(placeId, now());
-        return response(a);
     }
 
     /** 통합 신청 승인에서 신규 장소를 생성하되, 상태 전이는 호출 측의 COMPLETED 전이로 위임합니다. */
@@ -230,12 +150,6 @@ public class PlaceRegistrationService {
         return place.getId();
     }
 
-    private PlaceRegistrationResponse transition(Long userId, Long id, java.util.function.Consumer<PlaceRegistrationApplication> action) {
-        PlaceRegistrationApplication a = mine(userId, id);
-        requireLegacy(a);
-        try { action.accept(a); } catch (IllegalStateException e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
-        return response(a);
-    }
     private PlaceRegistrationApplication mine(Long userId, Long id) {
         PlaceRegistrationApplication application = locked(id);
         if (!application.getApplicantUserId().equals(userId)) {
@@ -244,23 +158,15 @@ public class PlaceRegistrationService {
         return application;
     }
     private PlaceRegistrationApplication locked(Long id) { return repository.findByIdForUpdate(id).orElseThrow(this::notFound); }
-    private void requireLegacy(PlaceRegistrationApplication application) {
-        if (application.getApplicationType() != MerchantPlaceApplicationType.LEGACY) {
-            throw notFound();
-        }
-    }
     private void requireUnifiedNewPlace(PlaceRegistrationApplication application) {
         if (application.getApplicationType() != MerchantPlaceApplicationType.NEW_PLACE) {
             throw notFound();
         }
     }
     private PlaceRegistrationException notFound() { return new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND); }
-    private PlaceRegistrationResponse response(PlaceRegistrationApplication a) { return PlaceRegistrationResponse.from(a); }
 
     private void applyDraftFiles(PlaceRegistrationApplication application, Long userId,
                                  PlaceRegistrationRequest request, LocalDateTime now) {
-        application.attachFileIds(request.businessRegistrationFileId(), request.identityDocumentFileId(),
-                request.representativeImageFileIds(), now);
         List<PlaceRegistrationAttachment> attachments = request.attachments() == null
                 ? List.of()
                 : request.attachments().stream()
@@ -341,8 +247,6 @@ public class PlaceRegistrationService {
             return result;
         } catch (Exception e) { throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE); }
     }
-    private PlaceRegistrationPageResponse page(Page<PlaceRegistrationApplication> p) { return new PlaceRegistrationPageResponse(p.getContent().stream().map(this::response).toList(), p.getNumber()+1, p.getSize(), p.getTotalElements(), p.getTotalPages(), p.hasNext()); }
-    private PageRequest pageable(int page, int limit) { return PageRequest.of(Math.max(0, page-1), Math.min(Math.max(limit, 1), 100), Sort.by(Sort.Order.desc("updatedAt"), Sort.Order.desc("id"))); }
     private LocalDateTime now() { return LocalDateTime.now(clock); }
     private String normalizePhone(String phone) {
         String normalized = phone == null ? "" : phone.replaceAll("[\\s-]", "");
