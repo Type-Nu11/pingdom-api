@@ -1,5 +1,6 @@
 package com.typenull.pingdom.analysis.infrastructure.mcp;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
@@ -11,6 +12,7 @@ import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.concurrent.atomic.AtomicLong;
+import lombok.extern.slf4j.Slf4j;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.web.client.RestClient;
@@ -18,6 +20,7 @@ import org.springframework.web.client.RestClientException;
 
 /** Pingdom MCP의 JSON-RPC /mcp 엔드포인트를 호출하는 MCP Client다. */
 @RequiredArgsConstructor
+@Slf4j
 public class RestMcpAnalysisClient implements McpAnalysisClient {
 
     private final RestClient restClient;
@@ -58,6 +61,7 @@ public class RestMcpAnalysisClient implements McpAnalysisClient {
         ));
         JsonNode result = response.path("result");
         String content = extractToolContent(result);
+        logToolResult(name, result.path("isError").asBoolean(false), content);
         return new McpToolResult(name, content, result.path("isError").asBoolean(false));
     }
 
@@ -73,6 +77,23 @@ public class RestMcpAnalysisClient implements McpAnalysisClient {
             }
         }
         return content.toString();
+    }
+
+    private void logToolResult(String name, boolean isError, String content) {
+        try {
+            JsonNode payload = objectMapper.readTree(content);
+            JsonNode recommendations = payload.path("recommendations");
+            JsonNode firstMetrics = recommendations.path(0).path("metrics");
+            log.info("입지 분석 MCP 결과. tool={}, isError={}, recommendationCount={}, searchedRadiusMeters={}, "
+                            + "firstTotalFootPresent={}, firstAgeMatchPresent={}, firstGenderMatchPresent={}",
+                    name, isError, recommendations.isArray() ? recommendations.size() : 0,
+                    payload.path("searched_radius_m").isNumber() ? payload.path("searched_radius_m").asInt() : null,
+                    firstMetrics.hasNonNull("total_foot"), firstMetrics.hasNonNull("age_match"),
+                    firstMetrics.hasNonNull("gender_match"));
+        } catch (JsonProcessingException exception) {
+            log.warn("입지 분석 MCP 결과가 JSON text가 아님. tool={}, isError={}, contentLength={}",
+                    name, isError, content == null ? 0 : content.length());
+        }
     }
 
     private JsonNode request(String method, Map<String, Object> params) {

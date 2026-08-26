@@ -57,6 +57,33 @@ class GeminiAiAnalysisClientTest {
     }
 
     @Test
+    void retriesOnceWhenGeminiReturnsStringEvidenceInsteadOfEvidenceObject() {
+        RestClient.Builder builder = RestClient.builder();
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                .andRespond(withSuccess(invalidEvidenceResponseJson(), MediaType.APPLICATION_JSON));
+        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+                .andExpect(jsonPath("$.contents[2].parts[0].text")
+                        .value(org.hamcrest.Matchers.containsString("Evidence 객체만")))
+                .andRespond(withSuccess(responseJson(), MediaType.APPLICATION_JSON));
+
+        AiAnalysisProperties properties = new AiAnalysisProperties(
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
+                Duration.ofSeconds(1), Duration.ofSeconds(2)
+        );
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties, new ObjectMapper()
+        );
+
+        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
+                "prompt", LocalDate.of(2026, 8, 18)
+        ));
+
+        assertThat(response.reportName()).isEqualTo("입지 분석");
+        server.verify();
+    }
+
+    @Test
     void executesGeminiToolCallThroughMcpAndSendsResultBack() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
@@ -168,5 +195,11 @@ class GeminiAiAnalysisClientTest {
 
     private String toolCallResponse() {
         return "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"recommend_location\",\"args\":{\"region\":\"대구 북구\",\"age_min\":20,\"age_max\":39,\"gender\":\"ANY\"}}}]}}]}";
+    }
+
+    private String invalidEvidenceResponseJson() {
+        return """
+                {"candidates":[{"content":{"parts":[{"text":"{\\"reportName\\":\\"입지 분석\\",\\"overallLocationEvaluation\\":{\\"grade\\":\\"INSUFFICIENT_DATA\\",\\"summary\\":\\"분석\\",\\"strengths\\":[],\\"risks\\":[],\\"evidences\\":[\\"GEOCODE_FAILED\\"]}}"}]}}]}
+                """;
     }
 }

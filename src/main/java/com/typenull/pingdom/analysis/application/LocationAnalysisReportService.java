@@ -3,6 +3,7 @@ package com.typenull.pingdom.analysis.application;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisClient;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
+import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
 import com.typenull.pingdom.analysis.application.ai.LocationAnalysisPromptFactory;
 import com.typenull.pingdom.analysis.application.ai.LocationAnalysisResponseValidator;
 import com.typenull.pingdom.analysis.application.pdf.HtmlToPdfConverter;
@@ -46,8 +47,26 @@ public class LocationAnalysisReportService {
                 promptFactory.create(request, analysisBasisDate)
         );
         long aiCompletedAt = System.nanoTime();
+        LocationAnalysisContent content = aiResponse.content();
+        String grade = content != null && content.overallLocationEvaluation() != null
+                && content.overallLocationEvaluation().grade() != null
+                ? content.overallLocationEvaluation().grade().name() : "missing";
+        int recommendationCount = content == null || content.recommendedPlaces() == null
+                ? 0 : content.recommendedPlaces().size();
+        Double trafficTotal = content != null && content.footTrafficAnalysis() != null
+                ? content.footTrafficAnalysis().total() : null;
+        Double analysisRadius = content != null && content.analysisScope() != null
+                ? content.analysisScope().radiusMeters() : null;
+        log.info("입지 분석 AI 결과 수신. grade={}, recommendationCount={}, trafficTotal={}, analysisRadiusMeters={}",
+                grade, recommendationCount, trafficTotal, analysisRadius);
         // PDF 디자인과 한글 폰트를 요청마다 동일하게 유지하기 위해 AI가 반환한 HTML은 사용하지 않는다.
-        responseValidator.validate(request, aiResponse);
+        try {
+            responseValidator.validate(request, aiResponse);
+        } catch (RuntimeException exception) {
+            log.warn("입지 분석 AI 결과 검증 실패. grade={}, recommendationCount={}, trafficTotal={}",
+                    grade, recommendationCount, trafficTotal);
+            throw exception;
+        }
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
         LocalDate effectiveAnalysisBasisDate = aiResponse.analysisBasisDate() == null
