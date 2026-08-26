@@ -57,26 +57,6 @@ public class AdminMerchantOwnerController {
         return adminService.listPlaces(userId);
     }
 
-    @PostMapping("/{userId}/approve")
-    @Operation(summary = "Merchant Owner 승인")
-    public MerchantOwnerProfileResponse approve(
-            @PathVariable Long userId,
-            @Valid @RequestBody MerchantOwnerReviewRequest request,
-            @CurrentUser JwtAuthenticatedUser admin
-    ) {
-        return adminService.approve(admin.userId(), userId, request);
-    }
-
-    @PostMapping("/{userId}/reject")
-    @Operation(summary = "Merchant Owner 거절")
-    public MerchantOwnerProfileResponse reject(
-            @PathVariable Long userId,
-            @Valid @RequestBody MerchantOwnerReviewRequest request,
-            @CurrentUser JwtAuthenticatedUser admin
-    ) {
-        return adminService.reject(admin.userId(), userId, request);
-    }
-
     @PostMapping("/{userId}/revoke")
     @Operation(summary = "Merchant Owner 권한 회수")
     public MerchantOwnerProfileResponse revoke(
