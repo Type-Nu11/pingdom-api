@@ -11,14 +11,11 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.MapImageLikeRe
 import com.typenull.pingdom.identity.application.query.UserDataExportResult;
 import com.typenull.pingdom.identity.application.query.UserDataExportService;
 import com.typenull.pingdom.identity.domain.User;
-import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaim;
-import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceClaimStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus;
 import com.typenull.pingdom.identity.domain.repository.TravelScheduleRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
-import com.typenull.pingdom.identity.domain.repository.MerchantPlaceClaimRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserCurrentActivityIntentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -76,9 +73,6 @@ class UserDataExportServiceTest {
 
     @Mock
     private MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
-
-    @Mock
-    private MerchantPlaceClaimRepository merchantPlaceClaimRepository;
 
     @Mock
     private MerchantVerificationRepository merchantVerificationRepository;
@@ -144,17 +138,6 @@ class UserDataExportServiceTest {
                 "확인 완료",
                 LocalDateTime.of(2026, 7, 15, 13, 0)
         );
-        MerchantPlaceClaim merchantPlaceClaim = MerchantPlaceClaim.builder()
-                .id(40L)
-                .merchantOwnerUserId(userId)
-                .placeId(123L)
-                .claimReason("매장 운영자입니다.")
-                .status(MerchantPlaceClaimStatus.REJECTED)
-                .reviewReason("사업자 주소 불일치")
-                .reviewedAt(LocalDateTime.of(2026, 7, 16, 10, 0))
-                .createdAt(LocalDateTime.of(2026, 7, 15, 14, 0))
-                .updatedAt(LocalDateTime.of(2026, 7, 16, 10, 0))
-                .build();
         TouristOffer touristOffer = TouristOffer.draft(
                 userId,
                 123L,
@@ -185,8 +168,6 @@ class UserDataExportServiceTest {
         when(travelScheduleRepository.findAllByUser_IdOrderByStartDateAscIdAsc(userId))
                 .thenReturn(List.of(travelSchedule));
         when(currentActivityIntentRepository.findByUser_Id(userId)).thenReturn(Optional.of(activityIntent));
-        when(merchantPlaceClaimRepository.findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId))
-                .thenReturn(List.of(merchantPlaceClaim));
         when(merchantVerificationRepository.findById(userId)).thenReturn(Optional.of(merchantVerification));
         when(merchantVerificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
         when(touristOfferRepository.findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(userId))
@@ -211,13 +192,6 @@ class UserDataExportServiceTest {
         assertThat(result.merchantVerification().businessRegistrationNumber()).isEqualTo("1234567890");
         assertThat(result.merchantVerification().identityStatus())
                 .isEqualTo(MerchantVerificationStatus.APPROVED);
-        assertThat(result.merchantPlaceClaims())
-                .extracting(
-                        UserDataExportResult.ExportMerchantPlaceClaim::id,
-                        UserDataExportResult.ExportMerchantPlaceClaim::status,
-                        UserDataExportResult.ExportMerchantPlaceClaim::reviewReason
-                )
-                .containsExactly(tuple(40L, MerchantPlaceClaimStatus.REJECTED, "사업자 주소 불일치"));
         assertThat(result.touristOffers())
                 .extracting(
                         UserDataExportResult.ExportTouristOffer::id,
