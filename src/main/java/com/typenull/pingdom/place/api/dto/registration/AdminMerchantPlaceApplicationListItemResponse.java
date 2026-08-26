@@ -1,6 +1,5 @@
 package com.typenull.pingdom.place.api.dto.registration;
 
-import com.typenull.pingdom.identity.api.dto.merchant.MerchantVerificationResponse;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
@@ -32,12 +31,20 @@ public record AdminMerchantPlaceApplicationListItemResponse(
                 application.getStatus(),
                 application.getLegalName(),
                 application.getBusinessName(),
-                MerchantVerificationResponse.mask(businessRegistrationNumber),
+                mask(businessRegistrationNumber),
                 application.getMerchantDisplayName(),
                 application.getPlaceName(),
                 application.getExistingPlaceId(),
                 application.getSubmittedAt(),
                 application.getUpdatedAt()
         );
+    }
+
+    private static String mask(String businessRegistrationNumber) {
+        if (businessRegistrationNumber == null || businessRegistrationNumber.length() < 5) {
+            return "***";
+        }
+        return businessRegistrationNumber.substring(0, 3) + "-****-"
+                + businessRegistrationNumber.substring(businessRegistrationNumber.length() - 2);
     }
 }

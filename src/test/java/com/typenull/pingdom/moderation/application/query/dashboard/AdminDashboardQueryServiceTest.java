@@ -166,8 +166,7 @@ class AdminDashboardQueryServiceTest {
                 org.mockito.ArgumentMatchers.eq(PostReportStatus.PENDING),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(List.of(report));
-        when(applicationRepository.findAllByApplicationTypeNotAndStatus(
-                org.mockito.ArgumentMatchers.any(),
+        when(applicationRepository.findAllByStatus(
                 org.mockito.ArgumentMatchers.eq(PlaceRegistrationStatus.PENDING),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of()));
@@ -195,15 +194,11 @@ class AdminDashboardQueryServiceTest {
                 org.mockito.ArgumentMatchers.eq(PostReportStatus.PENDING),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(List.of());
-        when(applicationRepository.findAllByApplicationTypeNotAndStatus(
-                org.mockito.ArgumentMatchers.any(),
+        when(applicationRepository.findAllByStatus(
                 org.mockito.ArgumentMatchers.eq(PlaceRegistrationStatus.PENDING),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of(application)));
-        when(applicationRepository.countByApplicationTypeNotAndStatus(
-                org.mockito.ArgumentMatchers.any(),
-                org.mockito.ArgumentMatchers.eq(PlaceRegistrationStatus.PENDING)
-        )).thenReturn(1L);
+        when(applicationRepository.countByStatus(PlaceRegistrationStatus.PENDING)).thenReturn(1L);
 
         AdminDashboardPendingItemsResponse response = service.getPendingItems(10);
 

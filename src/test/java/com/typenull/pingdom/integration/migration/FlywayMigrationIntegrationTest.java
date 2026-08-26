@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "112";
+    private static final String LATEST_MIGRATION_VERSION = "113";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(112);
+        assertThat(result.migrationsExecuted).isEqualTo(113);
 
         assertPostMigrationSchema();
     }
@@ -291,7 +291,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(23);
+        assertThat(result.migrationsExecuted).isEqualTo(24);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -392,7 +392,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(110);
+        assertThat(result.migrationsExecuted).isEqualTo(111);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -506,7 +506,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(85);
+        assertThat(result.migrationsExecuted).isEqualTo(86);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -576,17 +576,6 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
-                        FROM pg_constraint
-                        WHERE conrelid = 'merchant_place_claim'::regclass
-                          AND conname = 'fk_merchant_place_claim_previous_owner'
-                          AND contype = 'f'
-                          AND confrelid = 'merchant_owner_profile'::regclass
-                          AND convalidated = true
-                    )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
                         FROM information_schema.tables
                         WHERE table_name = 'place_information_verification_summary'
                     )
@@ -608,21 +597,6 @@ class FlywayMigrationIntegrationTest {
                         FROM pg_indexes
                         WHERE tablename = 'place_information_verification_summary'
                           AND indexname = 'idx_place_information_summary_last_verified'
-                    )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM information_schema.tables
-                        WHERE table_name = 'merchant_place_claim'
-                    )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_indexes
-                        WHERE tablename = 'merchant_place_claim'
-                          AND indexname = 'uq_merchant_place_claim_pending_place'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -769,7 +743,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(57);
+        assertThat(result.migrationsExecuted).isEqualTo(58);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -914,7 +888,7 @@ class FlywayMigrationIntegrationTest {
             insertMerchantPlaceClaimFixture(statement, false);
         }
 
-        MigrateResult result = migrate(false);
+        MigrateResult result = migrateTo("43");
 
         assertThat(result.success).isTrue();
         try (Connection connection = postgres.createConnection("");
@@ -926,6 +900,89 @@ class FlywayMigrationIntegrationTest {
                         WHERE id = 920001
                           AND claim_type = 'INITIAL'
                           AND previous_owner_user_id IS NULL
+                    )
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void removesLegacyMerchantReviewRowsAfterQueuingAttachmentDeletion() throws Exception {
+        migrateTo("111");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            insertMerchantPlaceClaimFixture(statement, true);
+            statement.executeUpdate("""
+                    INSERT INTO place_registration_application (
+                        id, applicant_user_id, status, place_name, category,
+                        latitude, longitude, road_address, jibun_address, postal_code, description,
+                        submitted_at, created_at, updated_at
+                    ) VALUES (
+                        930001, 920001, 'PENDING', '레거시 장소 신청', 'CAFE',
+                        37.5, 127.0, '서울시 중구 레거시로 1', '서울시 중구 레거시동 1', '04500', '레거시 신청',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO place_registration_application_attachment (
+                        application_id, document_type, storage_key, original_filename,
+                        content_type, file_size, file_hash, uploaded_by_user_id, uploaded_at
+                    ) VALUES (
+                        930001, 'BUSINESS_REGISTRATION', 'legacy/place-registration-license.pdf', 'license.pdf',
+                        'application/pdf', 100, 'aaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaa',
+                        920001, CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO merchant_place_application_review_history (
+                        application_id, admin_user_id, before_status, after_status, reviewed_version,
+                        reason, previous_owner_snapshot, team_snapshot, offer_snapshot, created_at
+                    ) VALUES (
+                        930001, 920001, 'PENDING', 'REJECTED', 0,
+                        '레거시 심사 이력', '{}', '{}', '{}', CURRENT_TIMESTAMP
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO merchant_place_claim_attachment (
+                        claim_id, document_type, storage_key, original_filename,
+                        content_type, file_size, file_hash, created_at, updated_at
+                    ) VALUES (
+                        920001, 'BUSINESS_LICENSE', 'legacy/merchant-claim-license.pdf', 'claim-license.pdf',
+                        'application/pdf', 100, 'bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbb',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM place_registration_application
+                    WHERE id = 930001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM merchant_place_application_review_history
+                    WHERE application_id = 930001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM outbox_event
+                    WHERE event_type = 'S3_OBJECT_DELETE_REQUESTED'
+                      AND payload LIKE '%LEGACY_MERCHANT_REVIEW_CLEANUP%'
+                      AND payload LIKE '%legacy/%'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM information_schema.tables
+                    WHERE table_name IN (
+                        'merchant_place_claim',
+                        'merchant_place_claim_attachment',
+                        'merchant_place_claim_review_history'
                     )
                     """)).isTrue();
         }
@@ -3055,61 +3112,33 @@ class FlywayMigrationIntegrationTest {
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM information_schema.tables
-                        WHERE table_name = 'merchant_place_claim'
+                    SELECT COUNT(*) = 0
+                    FROM information_schema.tables
+                    WHERE table_name IN (
+                        'merchant_place_claim',
+                        'merchant_place_claim_attachment',
+                        'merchant_place_claim_review_history'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 4
-                    FROM pg_constraint
-                    WHERE conrelid = 'merchant_place_claim'::regclass
-                      AND conname IN (
-                          'fk_merchant_place_claim_profile',
-                          'fk_merchant_place_claim_place',
-                          'fk_merchant_place_claim_reviewer',
-                          'fk_merchant_place_claim_previous_owner'
+                    SELECT COUNT(*) = 0
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_registration_application'
+                      AND column_name IN (
+                          'business_registration_file_id',
+                          'identity_document_file_id',
+                          'representative_image_file_ids'
                       )
-                      AND contype = 'f'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
                         FROM pg_constraint
-                        WHERE conrelid = 'merchant_place_claim'::regclass
-                          AND conname = 'ck_merchant_place_claim_status'
-                          AND contype = 'c'
-                          AND convalidated = true
-                    )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM information_schema.columns
-                        WHERE table_name = 'merchant_place_claim'
-                          AND column_name = 'claim_type'
-                          AND is_nullable = 'NO'
-                          AND character_maximum_length = 30
-                    )
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT COUNT(*) = 2
-                    FROM pg_constraint
-                    WHERE conrelid = 'merchant_place_claim'::regclass
-                      AND conname IN (
-                          'ck_merchant_place_claim_type',
-                          'ck_merchant_place_claim_transfer_owner'
-                      )
-                      AND contype = 'c'
-                      AND convalidated = true
-                    """)).isTrue();
-            assertThat(queryBoolean(statement, """
-                    SELECT EXISTS (
-                        SELECT 1
-                        FROM pg_indexes
-                        WHERE tablename = 'merchant_place_claim'
-                          AND indexname = 'uq_merchant_place_claim_pending_place'
+                        WHERE conrelid = 'place_registration_application'::regclass
+                          AND conname = 'ck_place_registration_application_type'
+                          AND pg_get_constraintdef(oid) LIKE '%NEW_PLACE%'
+                          AND pg_get_constraintdef(oid) LIKE '%EXISTING_PLACE_CLAIM%'
+                          AND pg_get_constraintdef(oid) NOT LIKE '%LEGACY%'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

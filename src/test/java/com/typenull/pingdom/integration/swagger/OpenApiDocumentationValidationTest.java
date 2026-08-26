@@ -480,21 +480,16 @@ class OpenApiDocumentationValidationTest {
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
-        assertThat(appDocument.path("paths").has("/users/me/place-registration-applications")).isTrue();
+        assertThat(appDocument.path("paths").has("/users/me/place-registration-applications")).isFalse();
         assertThat(appDocument.path("paths").has("/places/coordinates")).isFalse();
         assertThat(appDocument.path("paths").has("/places/upload")).isFalse();
         assertThat(appDocument.path("paths").has("/map/posts")).isFalse();
 
         for (String path : List.of(
                 "/users/me/merchant-owner-profile",
-                "/users/me/merchant-verification",
                 "/users/me/merchant-place-applications",
                 "/merchant-owner/me",
-                "/merchant-owner/place-claims",
-                "/merchant-owner/place-claims/{claimId}",
-                "/merchant-owner/place-claims/{claimId}/cancel",
                 "/merchant-owner/places/{placeId}/information",
-                "/merchant-owner/place-claims/{claimId}/attachments",
                 "/users/me/merchant-place-applications/{applicationId}/attachments",
                 "/users/me/merchant-place-applications/{applicationId}/attachments/{attachmentId}",
                 "/users/me/merchant-place-applications/{applicationId}/attachments/reorder"
@@ -505,11 +500,8 @@ class OpenApiDocumentationValidationTest {
 
         for (String path : List.of(
                 "/admin/merchant-owners",
-                "/admin/merchant-owners/{userId}/approve",
                 "/admin/merchant-owners/{userId}/onboarding",
-                "/admin/merchant-verifications",
-                "/admin/merchant-place-claims",
-                "/admin/place-registration-applications"
+                "/admin/merchant-place-applications"
         )) {
             assertThat(adminDocument.path("paths").has(path)).as("Admin 경로: %s", path).isTrue();
             assertThat(merchantDocument.path("paths").has(path)).as("Merchant에 노출되지 않아야 함: %s", path).isFalse();
@@ -521,6 +513,7 @@ class OpenApiDocumentationValidationTest {
         JsonNode defaultDocument = readApiDocs("/v3/api-docs");
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
+        JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
         for (String hiddenPath : List.of(
                 "/place/recommendations",
@@ -535,9 +528,28 @@ class OpenApiDocumentationValidationTest {
         for (String removedPath : List.of(
                 "/map/report-appeals", "/map/posts", "/map/posts/{id}", "/map/posts/{id}/report",
                 "/map/reports", "/map/place-rankings", "/map/bookmarks", "/map/likes", "/map/like",
-                "/map/like/{postId}", "/map/like/return/{postId}/{notificationsId}"
+                "/map/like/{postId}", "/map/like/return/{postId}/{notificationsId}",
+                "/users/me/place-registration-applications"
         )) {
             assertThat(appDocument.path("paths").has(removedPath)).isFalse();
+        }
+        for (String removedPath : List.of(
+                "/users/me/merchant-verification",
+                "/merchant-owner/place-claims",
+                "/merchant-owner/place-claims/{claimId}",
+                "/merchant-owner/place-claims/{claimId}/cancel",
+                "/merchant-owner/place-claims/{claimId}/attachments"
+        )) {
+            assertThat(merchantDocument.path("paths").has(removedPath)).isFalse();
+        }
+        for (String removedPath : List.of(
+                "/admin/merchant-owners/{userId}/approve",
+                "/admin/merchant-owners/{userId}/reject",
+                "/admin/merchant-verifications",
+                "/admin/merchant-place-claims",
+                "/admin/place-registration-applications"
+        )) {
+            assertThat(adminDocument.path("paths").has(removedPath)).isFalse();
         }
         assertThat(defaultDocument.path("paths").has("/auth/google")).isFalse();
         assertThat(adminDocument.path("paths").has("/admin/ad")).isFalse();

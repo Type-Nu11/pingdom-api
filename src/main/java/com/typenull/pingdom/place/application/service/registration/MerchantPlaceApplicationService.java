@@ -77,7 +77,7 @@ public class MerchantPlaceApplicationService {
     private final PlaceRegistrationApplicationRepository applicationRepository;
     private final PlaceRegistrationAttachmentRepository attachmentRepository;
     private final MapPlaceRepository placeRepository;
-    private final PlaceRegistrationService legacyPlaceRegistrationService;
+    private final PlaceRegistrationService placeRegistrationService;
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantVerificationRepository verificationRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
@@ -99,7 +99,7 @@ public class MerchantPlaceApplicationService {
         PlaceRegistrationApplication application;
         if (request.applicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
             PlaceRegistrationRequest newPlace = requireNewPlace(request);
-            Long id = legacyPlaceRegistrationService.create(userId, newPlace).id();
+            Long id = placeRegistrationService.createForUnifiedApplication(userId, newPlace);
             application = locked(id);
         } else {
             rejectClientClaimAttachments(request);
@@ -112,22 +112,25 @@ public class MerchantPlaceApplicationService {
 
     @Transactional(readOnly = true)
     public MerchantPlaceApplicationPageResponse list(Long userId, int page, int limit) {
-        return page(applicationRepository.findAllByApplicantUserIdAndApplicationTypeNot(
-                userId, MerchantPlaceApplicationType.LEGACY, pageable(page, limit)));
+        return page(applicationRepository.findAllByApplicantUserId(userId, pageable(page, limit)));
     }
 
     @Transactional(readOnly = true)
     public MerchantPlaceApplicationPageResponse listAll(int page, int limit) {
-        return page(applicationRepository.findAllByApplicationTypeNot(MerchantPlaceApplicationType.LEGACY, pageable(page, limit)));
+        return page(applicationRepository.findAll(pageable(page, limit)));
     }
 
     @Transactional(readOnly = true)
-    public AdminMerchantPlaceApplicationPageResponse listForAdmin(Long adminUserId, int page, int limit) {
+    public AdminMerchantPlaceApplicationPageResponse listForAdmin(
+            Long adminUserId,
+            PlaceRegistrationStatus status,
+            int page,
+            int limit
+    ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        Page<PlaceRegistrationApplication> result = applicationRepository.findAllByApplicationTypeNot(
-                MerchantPlaceApplicationType.LEGACY,
-                pageable(page, limit)
-        );
+        Page<PlaceRegistrationApplication> result = status == null
+                ? applicationRepository.findAll(pageable(page, limit))
+                : applicationRepository.findAllByStatus(status, pageable(page, limit));
         return new AdminMerchantPlaceApplicationPageResponse(
                 result.getContent().stream()
                         .map(application -> AdminMerchantPlaceApplicationListItemResponse.from(
@@ -147,14 +150,12 @@ public class MerchantPlaceApplicationService {
     public MerchantPlaceApplicationResponse get(Long userId, Long id) {
         PlaceRegistrationApplication application = applicationRepository.findByIdAndApplicantUserId(id, userId)
                 .orElseThrow(this::notFound);
-        requireUnified(application);
         return response(application);
     }
 
     @Transactional(readOnly = true)
     public MerchantPlaceApplicationResponse getAny(Long id) {
         PlaceRegistrationApplication application = applicationRepository.findById(id).orElseThrow(this::notFound);
-        requireUnified(application);
         return response(application);
     }
 
@@ -222,7 +223,7 @@ public class MerchantPlaceApplicationService {
                 throw new IllegalStateException("신청 유형은 초안 생성 후 변경할 수 없습니다.");
             }
             if (request.applicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
-                legacyPlaceRegistrationService.updateForUnifiedApplication(userId, id, requireNewPlace(request));
+                placeRegistrationService.updateForUnifiedApplication(userId, id, requireNewPlace(request));
             } else {
                 rejectClientClaimAttachments(request);
                 refreshClaimSnapshot(application, request, now());
@@ -243,7 +244,7 @@ public class MerchantPlaceApplicationService {
         PlaceRegistrationApplication application = mine(userId, id);
         requireMerchantData(application);
         if (application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
-            legacyPlaceRegistrationService.submitForUnifiedApplication(userId, id);
+            placeRegistrationService.submitForUnifiedApplication(userId, id);
         } else {
             submitExistingPlaceClaim(application);
         }
@@ -277,7 +278,6 @@ public class MerchantPlaceApplicationService {
     public MerchantPlaceApplicationResponse approve(Long adminUserId, Long id, MerchantPlaceApplicationReviewRequest request) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         PlaceRegistrationApplication application = locked(id);
-        requireUnified(application);
         if (application.getStatus() != PlaceRegistrationStatus.PENDING) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
@@ -295,7 +295,7 @@ public class MerchantPlaceApplicationService {
             application.approve(adminUserId, reason, now);
             prepareMerchantVerification(application, now);
             if (application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
-                Long placeId = legacyPlaceRegistrationService.createApprovedPlaceForUnifiedApplication(
+                Long placeId = placeRegistrationService.createApprovedPlaceForUnifiedApplication(
                         application.getApplicantUserId(), application.getId());
                 application.complete(placeId, now);
             } else {
@@ -334,7 +334,6 @@ public class MerchantPlaceApplicationService {
     public MerchantPlaceApplicationResponse reject(Long adminUserId, Long id, MerchantPlaceApplicationReviewRequest request) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         PlaceRegistrationApplication application = locked(id);
-        requireUnified(application);
         if (application.getStatus() != PlaceRegistrationStatus.PENDING) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
@@ -547,7 +546,6 @@ public class MerchantPlaceApplicationService {
 
     private PlaceRegistrationApplication mine(Long userId, Long id) {
         PlaceRegistrationApplication application = locked(id);
-        requireUnified(application);
         if (!application.getApplicantUserId().equals(userId)) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED);
         }
@@ -555,19 +553,11 @@ public class MerchantPlaceApplicationService {
     }
 
     private PlaceRegistrationApplication unified(Long id) {
-        PlaceRegistrationApplication application = applicationRepository.findById(id).orElseThrow(this::notFound);
-        requireUnified(application);
-        return application;
+        return applicationRepository.findById(id).orElseThrow(this::notFound);
     }
 
     private PlaceRegistrationApplication locked(Long id) {
         return applicationRepository.findByIdForUpdate(id).orElseThrow(this::notFound);
-    }
-
-    private void requireUnified(PlaceRegistrationApplication application) {
-        if (application.getApplicationType() == MerchantPlaceApplicationType.LEGACY) {
-            throw notFound();
-        }
     }
 
     private PlaceRegistrationException notFound() {

@@ -19,10 +19,8 @@ import com.typenull.pingdom.identity.domain.merchant.MerchantOperationalQualityS
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
-import com.typenull.pingdom.identity.domain.merchant.MerchantVerification;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
-import com.typenull.pingdom.identity.domain.repository.MerchantVerificationRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.event.MerchantOnboardingUpdatedEvent;
 import com.typenull.pingdom.identity.event.MerchantOperationalQualityUpdatedEvent;
@@ -32,9 +30,6 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
-import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
-import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -58,7 +53,6 @@ public class MerchantOwnerAdminService {
     private final UserRepository userRepository;
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
-    private final MerchantVerificationRepository verificationRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService auditLogService;
     private final UserAccessStatusService userAccessStatusService;
@@ -66,7 +60,6 @@ public class MerchantOwnerAdminService {
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AdminRoleAuthorizationService authorizationService;
-    private final PlaceRegistrationApplicationRepository applicationRepository;
 
     @Transactional(readOnly = true)
     public MerchantOwnerProfilePageResponse list(MerchantOwnerStatus status, int page, int limit) {
@@ -102,76 +95,6 @@ public class MerchantOwnerAdminService {
         return ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(userId).stream()
                 .map(MerchantOwnerPlaceResponse::from)
                 .toList();
-    }
-
-    @Transactional
-    public MerchantOwnerProfileResponse approve(
-            Long adminUserId,
-            Long userId,
-            MerchantOwnerReviewRequest request
-    ) {
-        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        User user = requireUserForUpdate(userId);
-        requireNoPendingUnifiedApplication(userId);
-        LocalDateTime now = LocalDateTime.now(clock);
-        if (user.isWithdrawn() || user.isCurrentlyBanned(now)) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE);
-        }
-        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
-        requireApprovedVerificationForUpdate(userId, profile.getBusinessName());
-        MerchantOwnerStatus beforeStatus = profile.getStatus();
-
-        try {
-            profile.approve(adminUserId, now);
-            user.activateMerchantOwnerRole();
-        } catch (IllegalStateException exception) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
-        }
-        replacePlaces(userId, request.normalizedPlaceIds(), now);
-        userAccessStatusService.evict(userId);
-        recordAudit(
-                adminUserId,
-                AdminAuditAction.MERCHANT_OWNER_APPROVED,
-                userId,
-                request.reason(),
-                beforeStatus,
-                profile.getStatus(),
-                request.normalizedPlaceIds()
-        );
-        return response(profile);
-    }
-
-    @Transactional
-    public MerchantOwnerProfileResponse reject(
-            Long adminUserId,
-            Long userId,
-            MerchantOwnerReviewRequest request
-    ) {
-        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        User user = requireUserForUpdate(userId);
-        requireNoPendingUnifiedApplication(userId);
-        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
-        MerchantOwnerStatus beforeStatus = profile.getStatus();
-        LocalDateTime now = LocalDateTime.now(clock);
-        try {
-            profile.reject(adminUserId, now);
-        } catch (IllegalStateException exception) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
-        }
-        user.revokeMerchantOwnerRole();
-        touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
-        ownerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
-        userAccessStatusService.evict(userId);
-        recordAudit(
-                adminUserId,
-                AdminAuditAction.MERCHANT_OWNER_REJECTED,
-                userId,
-                request.reason(),
-                beforeStatus,
-                profile.getStatus(),
-                Set.of()
-        );
-        return response(profile);
     }
 
     @Transactional
@@ -371,24 +294,6 @@ public class MerchantOwnerAdminService {
     private MerchantOwnerProfile requireProfileForUpdate(Long userId) {
         return profileRepository.findByUserIdForUpdate(userId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.PROFILE_NOT_FOUND));
-    }
-
-    private void requireApprovedVerificationForUpdate(Long userId, String businessName) {
-        MerchantVerification verification = verificationRepository.findByUserIdForUpdate(userId)
-                .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED));
-        if (!verification.isFullyApproved() || !verification.matchesBusinessName(businessName)) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.VERIFICATION_REQUIRED);
-        }
-    }
-
-    private void requireNoPendingUnifiedApplication(Long userId) {
-        if (applicationRepository.existsByApplicantUserIdAndApplicationTypeNotAndStatus(
-                userId,
-                MerchantPlaceApplicationType.LEGACY,
-                PlaceRegistrationStatus.PENDING
-        )) {
-            throw new MerchantOwnerException(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED);
-        }
     }
 
     private User requireUserForUpdate(Long userId) {

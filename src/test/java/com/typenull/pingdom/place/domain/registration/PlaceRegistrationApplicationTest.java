@@ -20,11 +20,11 @@ class PlaceRegistrationApplicationTest {
     @Test
     void supportsSubmitRejectReopenAndRegisterFlow() {
         PlaceRegistrationApplication application = draft();
-        application.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        attachRequiredFiles(application);
         application.submit(NOW);
         application.reject(99L, "주소 확인 필요", NOW);
         application.reopen(NOW);
-        application.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        attachRequiredFiles(application);
         application.submit(NOW);
         application.approve(99L, "확인 완료", NOW);
         application.register(10L, NOW);
@@ -92,7 +92,7 @@ class PlaceRegistrationApplicationTest {
     @Test
     void rejectsInvalidStateTransitionsAndRegistrationReuse() {
         PlaceRegistrationApplication application = draft();
-        application.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        attachRequiredFiles(application);
         application.submit(NOW);
         application.cancel(NOW);
 
@@ -100,7 +100,7 @@ class PlaceRegistrationApplicationTest {
         assertThatThrownBy(() -> application.register(10L, NOW)).isInstanceOf(IllegalStateException.class);
 
         PlaceRegistrationApplication approved = draft();
-        approved.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        attachRequiredFiles(approved);
         approved.submit(NOW);
         approved.approve(99L, "승인", NOW);
         approved.register(10L, NOW);
@@ -121,7 +121,7 @@ class PlaceRegistrationApplicationTest {
                 "홍길동", "핑덤카페", "encrypted-registration-number", "핑덤카페",
                 "owner@pingdom.test", "사업자 소개", "+821012345678", 30L, 20L, "운영권 이전", NOW
         );
-        application.attachFileIds("business-file", "identity-file", "image-file", NOW);
+        attachRequiredFiles(application);
         application.submit(NOW);
         application.approve(99L, "확인 완료", NOW);
         application.complete(30L, NOW);
@@ -156,6 +156,14 @@ class PlaceRegistrationApplicationTest {
                                                    PlaceRegistrationAttachmentType type, String key) {
         return PlaceRegistrationAttachment.create(application, key, type, "registration/" + key,
                 key + ".jpg", "image/jpeg", 1_024, "a".repeat(64), 1L, NOW, null, 0);
+    }
+
+    private void attachRequiredFiles(PlaceRegistrationApplication application) {
+        application.replaceAttachments(List.of(
+                attachment(application, PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION, "business"),
+                attachment(application, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT, "identity"),
+                attachment(application, PlaceRegistrationAttachmentType.REPRESENTATIVE_IMAGE, "image")
+        ), NOW);
     }
 
     private PlaceRegistrationApplication draft() {

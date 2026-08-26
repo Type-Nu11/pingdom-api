@@ -22,7 +22,6 @@ import com.typenull.pingdom.moderation.domain.sanction.UserSanctionAction;
 import com.typenull.pingdom.moderation.domain.sanction.UserSanctionHistory;
 import com.typenull.pingdom.moderation.infrastructure.persistence.UserSanctionHistoryRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
-import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceDuplicateQueryRepository;
@@ -167,8 +166,7 @@ public class AdminDashboardQueryService {
                 .map(this::toPendingItem)
                 .toList();
         List<AdminDashboardPendingItem> applicationItems = applicationRepository
-                .findAllByApplicationTypeNotAndStatus(
-                        MerchantPlaceApplicationType.LEGACY,
+                .findAllByStatus(
                         PlaceRegistrationStatus.PENDING,
                         pageable
                 )
@@ -185,10 +183,7 @@ public class AdminDashboardQueryService {
         return new AdminDashboardPendingItemsResponse(
                 items,
                 postReportRepository.countByStatus(PostReportStatus.PENDING)
-                        + applicationRepository.countByApplicationTypeNotAndStatus(
-                                MerchantPlaceApplicationType.LEGACY,
-                                PlaceRegistrationStatus.PENDING
-                        )
+                        + applicationRepository.countByStatus(PlaceRegistrationStatus.PENDING)
         );
     }
 
