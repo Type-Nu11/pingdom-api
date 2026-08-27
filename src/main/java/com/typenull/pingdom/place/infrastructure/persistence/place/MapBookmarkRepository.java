@@ -31,7 +31,7 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
 
     List<MapBookmark> findByUserIdOrderByIdAsc(Long userId);
 
-    void deleteByPlaceIdAndUserId(Long placeId, Long userId);
+    long deleteByPlaceIdAndUserId(Long placeId, Long userId);
 
     @Modifying
     @Query("""

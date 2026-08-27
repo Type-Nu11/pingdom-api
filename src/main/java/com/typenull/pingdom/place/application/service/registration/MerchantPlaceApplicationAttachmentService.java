@@ -3,7 +3,6 @@ package com.typenull.pingdom.place.application.service.registration;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationAttachmentResponse;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
-import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType;
@@ -27,7 +26,7 @@ import org.springframework.transaction.support.TransactionSynchronizationManager
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 기존 장소 Claim 첨부를 서버가 직접 검증·저장하는 경계입니다.
+ * 통합 Merchant 장소 신청 첨부를 서버가 직접 검증·저장하는 경계입니다.
  * 외부 요청의 storageKey, 해시, 크기 등의 메타데이터는 사용하지 않습니다.
  */
 @Service
@@ -53,7 +52,7 @@ public class MerchantPlaceApplicationAttachmentService {
             PlaceRegistrationAttachmentType documentType,
             MultipartFile file
     ) {
-        PlaceRegistrationApplication application = ownedClaimDraft(userId, applicationId);
+        PlaceRegistrationApplication application = ownedDraft(userId, applicationId);
         byte[] content = validateAndRead(file, documentType);
         malwareScanner.scan(content);
         String contentType = file.getContentType();
@@ -102,7 +101,7 @@ public class MerchantPlaceApplicationAttachmentService {
 
     @org.springframework.transaction.annotation.Transactional(readOnly = true)
     public List<MerchantPlaceApplicationAttachmentResponse> list(Long userId, Long applicationId) {
-        ownedClaim(userId, applicationId);
+        owned(userId, applicationId);
         return attachmentRepository.findAllByApplicationIdOrderByDocumentTypeAscDisplayOrderAscIdAsc(applicationId)
                 .stream()
                 .filter(PlaceRegistrationAttachment::isActive)
@@ -112,7 +111,7 @@ public class MerchantPlaceApplicationAttachmentService {
 
     @org.springframework.transaction.annotation.Transactional
     public void delete(Long userId, Long applicationId, Long attachmentId) {
-        ownedClaimDraft(userId, applicationId);
+        ownedDraft(userId, applicationId);
         PlaceRegistrationAttachment attachment = attachmentRepository.findByIdAndApplicationId(attachmentId, applicationId)
                 .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ATTACHMENT_NOT_FOUND));
         attachmentRepository.delete(attachment);
@@ -121,7 +120,7 @@ public class MerchantPlaceApplicationAttachmentService {
 
     @org.springframework.transaction.annotation.Transactional
     public void reorder(Long userId, Long applicationId, List<Long> attachmentIds) {
-        ownedClaimDraft(userId, applicationId);
+        ownedDraft(userId, applicationId);
         if (attachmentIds == null || attachmentIds.isEmpty() || attachmentIds.size() != new HashSet<>(attachmentIds).size()) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
         }
@@ -145,26 +144,23 @@ public class MerchantPlaceApplicationAttachmentService {
         }
     }
 
-    private PlaceRegistrationApplication ownedClaimDraft(Long userId, Long applicationId) {
-        PlaceRegistrationApplication application = ownedClaim(userId, applicationId, true);
+    private PlaceRegistrationApplication ownedDraft(Long userId, Long applicationId) {
+        PlaceRegistrationApplication application = owned(userId, applicationId, true);
         if (application.getStatus() != PlaceRegistrationStatus.DRAFT) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
         }
         return application;
     }
 
-    private PlaceRegistrationApplication ownedClaim(Long userId, Long applicationId) {
-        return ownedClaim(userId, applicationId, false);
+    private PlaceRegistrationApplication owned(Long userId, Long applicationId) {
+        return owned(userId, applicationId, false);
     }
 
-    private PlaceRegistrationApplication ownedClaim(Long userId, Long applicationId, boolean lock) {
+    private PlaceRegistrationApplication owned(Long userId, Long applicationId, boolean lock) {
         PlaceRegistrationApplication application = (lock
                 ? applicationRepository.findByIdForUpdate(applicationId)
                 : applicationRepository.findById(applicationId))
                 .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND));
-        if (application.getApplicationType() != MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM) {
-            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND);
-        }
         if (!application.getApplicantUserId().equals(userId)) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED);
         }

@@ -50,6 +50,7 @@ public enum MapErrorCode implements ErrorCode {
     PLACE_ID_REQUIRED(HttpStatus.BAD_REQUEST, "장소 ID 또는 카카오 장소 ID 중 하나는 필수입니다."),
     PLACE_SEARCH_CONDITION_INVALID(HttpStatus.BAD_REQUEST, "장소 검색 필터 조건이 올바르지 않습니다."),
     UNSUPPORTED_PLACE_SEARCH_SORT(HttpStatus.BAD_REQUEST, "장소 검색 정렬은 LATEST, NEAREST 또는 POPULAR만 지원합니다."),
+    UNSUPPORTED_TREND_PERIOD(HttpStatus.BAD_REQUEST, "지원하지 않는 장소 트렌드 기간입니다."),
     FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 즐겨찾기한 장소입니다."),
     BOOKMARK_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 북마크한 장소입니다."),
     BOOKMARK_NOT_FOUND(HttpStatus.NOT_FOUND, "북마크 되어있지 않습니다."),

@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "113";
+    private static final String LATEST_MIGRATION_VERSION = "115";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(113);
+        assertThat(result.migrationsExecuted).isEqualTo(115);
 
         assertPostMigrationSchema();
     }
@@ -291,7 +291,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(24);
+        assertThat(result.migrationsExecuted).isEqualTo(26);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -392,7 +392,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(111);
+        assertThat(result.migrationsExecuted).isEqualTo(113);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -506,7 +506,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(86);
+        assertThat(result.migrationsExecuted).isEqualTo(88);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -669,10 +669,9 @@ class FlywayMigrationIntegrationTest {
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
                         SELECT 1
-                        FROM pg_constraint
-                        WHERE conrelid = 'location_check_in'::regclass
-                          AND conname = 'uq_location_check_in_daily'
-                          AND contype = 'u'
+                        FROM pg_indexes
+                        WHERE tablename = 'location_check_in'
+                          AND indexname = 'uq_location_check_in_daily'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
@@ -743,7 +742,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(58);
+        assertThat(result.migrationsExecuted).isEqualTo(60);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1278,6 +1277,79 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 15
+                    FROM information_schema.columns
+                    WHERE table_name = 'visit_verification_session'
+                      AND column_name IN (
+                          'id', 'tourist_user_id', 'place_id', 'verification_date', 'started_at', 'expires_at',
+                          'last_observed_at', 'last_verified_at', 'last_distance_meters', 'required_radius_meters',
+                          'required_dwell_seconds', 'verified_dwell_seconds', 'status', 'completed_at',
+                          'completed_check_in_id'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM pg_constraint
+                    WHERE conrelid = 'visit_verification_session'::regclass
+                      AND conname IN (
+                          'ck_visit_verification_session_distance',
+                          'ck_visit_verification_session_radius',
+                          'ck_visit_verification_session_duration',
+                          'ck_visit_verification_session_status',
+                          'ck_visit_verification_session_completed'
+                      )
+                      AND contype = 'c'
+                      AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_indexes
+                    WHERE tablename = 'visit_verification_session'
+                      AND indexname IN (
+                          'uq_visit_verification_session_active',
+                          'uq_visit_verification_session_completed_check_in',
+                          'idx_visit_verification_session_retention'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'map_bookmark_trend_tracking'
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'map_bookmark_trend_event'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM information_schema.columns
+                    WHERE table_name = 'map_bookmark_trend_event'
+                      AND column_name IN (
+                          'id', 'user_id', 'place_id', 'origin_place_id', 'event_type', 'occurred_at'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'map_bookmark_trend_event'
+                      AND indexname IN (
+                          'idx_map_bookmark_trend_event_stream',
+                          'idx_map_bookmark_trend_event_place_time'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 4
+                    FROM pg_indexes
+                    WHERE tablename = 'location_check_in'
+                      AND indexname IN (
+                          'idx_location_check_in_tourist_recorded',
+                          'idx_location_check_in_place_recorded',
+                          'uq_location_check_in_daily',
+                          'uq_location_check_in_dwell_daily'
+                      )
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 9
                     FROM information_schema.columns

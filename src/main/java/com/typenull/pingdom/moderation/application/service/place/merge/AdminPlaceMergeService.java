@@ -36,6 +36,7 @@ import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommen
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkTrendEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationClickRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationConversionRepository;
@@ -78,6 +79,7 @@ public class AdminPlaceMergeService {
     private final LocationCheckInRepository locationCheckInRepository;
     private final ScoutFieldReportRepository scoutFieldReportRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
+    private final MapBookmarkTrendEventRepository mapBookmarkTrendEventRepository;
     private final MapImageRepository mapImageRepository;
     private final PlaceRecommendationClickRepository placeRecommendationClickRepository;
     private final PlaceRecommendationExposureRepository placeRecommendationExposureRepository;
@@ -142,6 +144,7 @@ public class AdminPlaceMergeService {
 
         long movedImageCount = reassignImages(sourcePlace, targetPlace, mergeExecutionContext);
         BookmarkMergeResult bookmarkMergeResult = reassignBookmarks(sourcePlace, targetPlace, mergeExecutionContext);
+        mapBookmarkTrendEventRepository.reassignPlace(sourcePlace.getId(), targetPlace.getId());
         ConversionMergeResult conversionMergeResult = reassignConversions(sourcePlace, targetPlace, mergeExecutionContext);
         int movedClickCount = reassignClicks(sourcePlace, targetPlace, mergeExecutionContext);
         int movedExposureCount = reassignExposures(sourcePlace, targetPlace, mergeExecutionContext);
@@ -237,6 +240,11 @@ public class AdminPlaceMergeService {
         MapPlace restoredSourcePlace = insertRestoredPlace(sourceSnapshot);
         restoreImages(restoredSourcePlace, readLongList(history.getMovedImageIds()));
         restoreBookmarks(restoredSourcePlace, history.getMovedBookmarkIds(), history.getDeletedBookmarks());
+        mapBookmarkTrendEventRepository.restoreOriginalPlace(
+                history.getSourcePlaceId(),
+                targetPlace.getId(),
+                restoredSourcePlace.getId()
+        );
         restoreConversions(restoredSourcePlace, history.getMovedConversionIds(), history.getDeletedConversions());
         restoreClicks(restoredSourcePlace.getId(), readLongList(history.getMovedClickIds()));
         restoreExposures(restoredSourcePlace.getId(), readLongList(history.getMovedExposureIds()));
@@ -279,6 +287,7 @@ public class AdminPlaceMergeService {
         Set<String> supportedTables = Set.of(
                 "map_image",
                 "map_bookmark",
+                "map_bookmark_trend_event",
                 "place_recommendation_click",
                 "place_recommendation_exposure",
                 "place_recommendation_conversion",
