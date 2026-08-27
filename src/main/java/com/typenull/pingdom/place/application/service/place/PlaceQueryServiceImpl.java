@@ -263,6 +263,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 regularHours(mapPlace),
                 operatingExceptions(mapPlace),
                 activeOperatingNotices(mapPlace, operatingState.checkedAt()),
+                mapPlace.getDescription(),
                 mapPlace.getTouristSummary(),
                 mapPlace.currentTouristCategories(),
                 mapPlace.getPrimaryInformationSource(),

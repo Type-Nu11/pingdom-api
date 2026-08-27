@@ -32,7 +32,7 @@ public interface PlaceLocalHotQueryRepository extends Repository<MapPlace, Long>
                    local_places.address AS address,
                    local_places.latitude AS latitude,
                    local_places.longitude AS longitude,
-                   image.image_url AS imageUrl,
+                   COALESCE(map_place.image_url, image.image_url) AS imageUrl,
                    local_places.bookmarkCount AS bookmarkCount,
                    EXISTS (
                        SELECT 1
@@ -41,6 +41,7 @@ public interface PlaceLocalHotQueryRepository extends Repository<MapPlace, Long>
                          AND user_bookmark.user_id = :userId
                    ) AS bookmarked
             FROM local_places
+            JOIN map_place map_place ON map_place.map_place_id = local_places.placeId
             LEFT JOIN LATERAL (
                 SELECT map_image.image_url
                 FROM map_image

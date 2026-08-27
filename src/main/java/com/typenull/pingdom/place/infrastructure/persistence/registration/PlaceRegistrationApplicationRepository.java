@@ -6,13 +6,18 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
-import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 public interface PlaceRegistrationApplicationRepository extends JpaRepository<PlaceRegistrationApplication, Long> {
+
+    Page<PlaceRegistrationApplication> findByStatusAndCompletedPlaceIdIsNotNull(
+            PlaceRegistrationStatus status,
+            Pageable pageable
+    );
     Page<PlaceRegistrationApplication> findAllByApplicantUserId(Long userId, Pageable pageable);
     boolean existsByExistingPlaceIdAndApplicationTypeAndStatus(
             Long existingPlaceId, MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
