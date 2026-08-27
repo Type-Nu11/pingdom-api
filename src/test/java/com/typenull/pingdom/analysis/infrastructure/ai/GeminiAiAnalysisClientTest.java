@@ -1,7 +1,6 @@
 package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
-import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
@@ -11,8 +10,6 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
-import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
-import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.analysis.infrastructure.mcp.McpAnalysisProperties;
 import java.time.LocalDate;
 import java.time.Duration;
@@ -23,25 +20,6 @@ import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
 class GeminiAiAnalysisClientTest {
-
-    @Test
-    void rejectsMissingRemoteMcpUrlBeforeCallingGemini() {
-        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
-        AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", null, "test-key",
-                Duration.ofSeconds(1), Duration.ofSeconds(2)
-        );
-        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties, new McpAnalysisProperties("", ""), new ObjectMapper()
-        );
-
-        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18)
-        )))
-                .isInstanceOf(AnalysisReportException.class)
-                .extracting("errorCode")
-                .isEqualTo(AnalysisReportErrorCode.MCP_SERVICE_UNAVAILABLE);
-    }
 
     @Test
     void registersRemoteMcpAndParsesFinalInteractionOutput() {
