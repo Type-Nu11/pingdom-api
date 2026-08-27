@@ -560,8 +560,7 @@ public class MerchantPlaceApplicationService {
         auditLogService.record(adminUserId, action, AdminAuditTargetType.MERCHANT_PLACE_APPLICATION, application.getId(), reason,
                 Map.of("status", PlaceRegistrationStatus.PENDING),
                 Map.of("status", application.getStatus(), "applicationType", application.getApplicationType(),
-                        "placeId", String.valueOf(application.getCompletedPlaceId() == null
-                                ? application.getRegisteredPlaceId() : application.getCompletedPlaceId())));
+                        "placeId", String.valueOf(application.getCompletedPlaceId())));
     }
 
     private MerchantPlaceApplicationResponse response(PlaceRegistrationApplication application) {

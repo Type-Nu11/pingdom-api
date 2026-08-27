@@ -39,15 +39,12 @@ public record AdminMerchantPlaceApplicationResponse(
             String businessRegistrationNumber,
             List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
     ) {
-        Long placeId = application.getCompletedPlaceId() != null
-                ? application.getCompletedPlaceId()
-                : application.getRegisteredPlaceId();
         return new AdminMerchantPlaceApplicationResponse(
                 application.getId(), application.getApplicantUserId(), application.getApplicationType(), application.getStatus(),
                 application.getLegalName(), application.getBusinessName(), businessRegistrationNumber,
                 application.getMerchantDisplayName(), application.getMerchantContactEmail(), application.getMerchantDescription(),
                 application.getMerchantContactPhone(), application.getPlaceName(), application.getExistingPlaceId(),
-                application.getClaimReason(), application.getReviewReason(), placeId, application.getSubmittedAt(),
+                application.getClaimReason(), application.getReviewReason(), application.getCompletedPlaceId(), application.getSubmittedAt(),
                 application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(), application.getCreatedAt(),
                 application.getUpdatedAt(), application.getVersion(), application.getSubmissionVersion(), attachments
         );

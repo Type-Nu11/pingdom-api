@@ -6,8 +6,11 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationCategory;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationOperatingStatus;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationTag;
 import java.time.DayOfWeek;
 import java.time.LocalDateTime;
@@ -66,6 +69,24 @@ class MerchantPlaceApplicationResponseTest {
         assertThat(response.newPlace()).isNull();
     }
 
+    @Test
+    void returnsCompletedPlaceIdAfterNewPlaceApproval() {
+        PlaceRegistrationApplication application = newPlaceDraft();
+        application.replaceAttachments(List.of(
+                attachment(application, PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION, "business"),
+                attachment(application, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT, "identity"),
+                attachment(application, PlaceRegistrationAttachmentType.REPRESENTATIVE_IMAGE, "image")
+        ), NOW);
+        application.submit(NOW);
+        application.approve(99L, "승인", NOW);
+        application.complete(30L, NOW);
+
+        MerchantPlaceApplicationResponse response = MerchantPlaceApplicationResponse.from(application, objectMapper());
+
+        assertThat(response.status()).isEqualTo(PlaceRegistrationStatus.COMPLETED);
+        assertThat(response.placeId()).isEqualTo(30L);
+    }
+
     private PlaceRegistrationApplication newPlaceDraft() {
         return PlaceRegistrationApplication.merchantPlaceDraft(
                 1L,
@@ -84,5 +105,30 @@ class MerchantPlaceApplicationResponseTest {
 
     private ObjectMapper objectMapper() {
         return new ObjectMapper().registerModule(new JavaTimeModule());
+    }
+
+    private PlaceRegistrationAttachment attachment(
+            PlaceRegistrationApplication application,
+            PlaceRegistrationAttachmentType documentType,
+            String key
+    ) {
+        return PlaceRegistrationAttachment.create(
+                application,
+                key,
+                documentType,
+                "private/test/" + key,
+                key + ".pdf",
+                "application/pdf",
+                10L,
+                switch (documentType) {
+                    case BUSINESS_REGISTRATION -> "a".repeat(64);
+                    case IDENTITY_DOCUMENT -> "b".repeat(64);
+                    case REPRESENTATIVE_IMAGE -> "c".repeat(64);
+                },
+                1L,
+                NOW,
+                null,
+                0
+        );
     }
 }
