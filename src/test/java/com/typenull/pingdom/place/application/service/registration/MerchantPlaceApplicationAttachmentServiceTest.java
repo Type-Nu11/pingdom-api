@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
@@ -91,6 +92,24 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         assertThat(attachment.getRetentionExpiresAt()).isEqualTo(LocalDateTime.of(2026, 9, 23, 0, 0));
         assertThat(response.toString()).doesNotContain("private/generated-key");
         verify(malwareScanner).scan(any());
+    }
+
+    @Test
+    void uploadAlsoAllowsNewPlaceDraft() {
+        lenient().when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
+        when(attachmentRepository.findAllByApplicationIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
+                APPLICATION_ID, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT)).thenReturn(List.of());
+        when(storage.putPrivate(any(), eq("image/jpeg"), any()))
+                .thenReturn(new S3ObjectStorage.S3PutResult("private/generated-key", "ignored"));
+        when(attachmentRepository.saveAndFlush(any(PlaceRegistrationAttachment.class)))
+                .thenAnswer(invocation -> invocation.getArgument(0));
+
+        assertThatCode(() -> service.upload(
+                USER_ID, APPLICATION_ID, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT, jpeg("id.jpg")
+        )).doesNotThrowAnyException();
+
+        verify(malwareScanner).scan(any());
+        verify(storage).putPrivate(any(), eq("image/jpeg"), any());
     }
 
     @Test
