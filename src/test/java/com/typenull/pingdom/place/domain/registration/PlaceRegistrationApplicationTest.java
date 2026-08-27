@@ -18,7 +18,7 @@ class PlaceRegistrationApplicationTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 13, 0, 0);
 
     @Test
-    void supportsSubmitRejectReopenAndRegisterFlow() {
+    void supportsSubmitRejectReopenAndCompleteFlow() {
         PlaceRegistrationApplication application = draft();
         attachRequiredFiles(application);
         application.submit(NOW);
@@ -27,10 +27,10 @@ class PlaceRegistrationApplicationTest {
         attachRequiredFiles(application);
         application.submit(NOW);
         application.approve(99L, "확인 완료", NOW);
-        application.register(10L, NOW);
+        application.complete(10L, NOW);
 
-        assertThat(application.getStatus()).isEqualTo(PlaceRegistrationStatus.REGISTERED);
-        assertThat(application.getRegisteredPlaceId()).isEqualTo(10L);
+        assertThat(application.getStatus()).isEqualTo(PlaceRegistrationStatus.COMPLETED);
+        assertThat(application.getCompletedPlaceId()).isEqualTo(10L);
     }
 
     @Test
@@ -90,22 +90,22 @@ class PlaceRegistrationApplicationTest {
     }
 
     @Test
-    void rejectsInvalidStateTransitionsAndRegistrationReuse() {
+    void rejectsInvalidStateTransitionsAndCompletionReuse() {
         PlaceRegistrationApplication application = draft();
         attachRequiredFiles(application);
         application.submit(NOW);
         application.cancel(NOW);
 
         assertThatThrownBy(() -> application.approve(99L, "승인", NOW)).isInstanceOf(IllegalStateException.class);
-        assertThatThrownBy(() -> application.register(10L, NOW)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> application.complete(10L, NOW)).isInstanceOf(IllegalStateException.class);
 
         PlaceRegistrationApplication approved = draft();
         attachRequiredFiles(approved);
         approved.submit(NOW);
         approved.approve(99L, "승인", NOW);
-        approved.register(10L, NOW);
+        approved.complete(10L, NOW);
 
-        assertThatThrownBy(() -> approved.register(11L, NOW)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> approved.complete(11L, NOW)).isInstanceOf(IllegalStateException.class);
     }
 
     @Test
@@ -128,7 +128,6 @@ class PlaceRegistrationApplicationTest {
 
         assertThat(application.getStatus()).isEqualTo(PlaceRegistrationStatus.COMPLETED);
         assertThat(application.getCompletedPlaceId()).isEqualTo(30L);
-        assertThat(application.getRegisteredPlaceId()).isNull();
     }
 
     @Test

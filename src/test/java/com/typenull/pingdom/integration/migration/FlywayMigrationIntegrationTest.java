@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "115";
+    private static final String LATEST_MIGRATION_VERSION = "116";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(115);
+        assertThat(result.migrationsExecuted).isEqualTo(116);
 
         assertPostMigrationSchema();
     }
@@ -339,7 +339,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(26);
+        assertThat(result.migrationsExecuted).isEqualTo(27);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -440,7 +440,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(113);
+        assertThat(result.migrationsExecuted).isEqualTo(114);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -554,7 +554,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(88);
+        assertThat(result.migrationsExecuted).isEqualTo(89);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -790,7 +790,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(60);
+        assertThat(result.migrationsExecuted).isEqualTo(61);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1031,6 +1031,70 @@ class FlywayMigrationIntegrationTest {
                         'merchant_place_claim_attachment',
                         'merchant_place_claim_review_history'
                     )
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void migratesRegisteredPlaceApplicationsToCompleted() throws Exception {
+        migrateTo("115");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (
+                        id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned
+                    ) VALUES (
+                        116001, 'registered-application-user', 'registered-application@example.com', true, 'password', 1990,
+                        'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'USER', false
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        116001, '기존 등록 장소', '서울시 중구 등록로 1', 37.5, 127.0, 'registered-application-user', 0
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO place_registration_application (
+                        id, applicant_user_id, application_type, status, place_name, category,
+                        latitude, longitude, road_address, jibun_address, postal_code, description,
+                        reviewer_user_id, registered_place_id, submitted_at, reviewed_at, registered_at,
+                        created_at, updated_at
+                    ) VALUES (
+                        116001, 116001, 'NEW_PLACE', 'REGISTERED', '기존 등록 신청', 'CAFE',
+                        37.5, 127.0, '서울시 중구 등록로 1', '서울시 중구 등록동 1', '04500', '기존 등록 신청 데이터',
+                        116001, 116001, TIMESTAMP '2026-08-01 09:00:00', TIMESTAMP '2026-08-01 10:00:00',
+                        TIMESTAMP '2026-08-01 10:01:00', TIMESTAMP '2026-08-01 08:00:00', TIMESTAMP '2026-08-01 10:01:00'
+                    )
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT status = 'COMPLETED'
+                       AND completed_place_id = 116001
+                       AND completed_at = TIMESTAMP '2026-08-01 10:01:00'
+                    FROM place_registration_application
+                    WHERE id = 116001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_registration_application'
+                      AND column_name IN ('registered_place_id', 'registered_at')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT pg_get_constraintdef(oid) NOT LIKE '%REGISTERED%'
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_registration_application'::regclass
+                      AND conname = 'ck_place_registration_status'
                     """)).isTrue();
         }
     }
@@ -1490,6 +1554,19 @@ class FlywayMigrationIntegrationTest {
                       AND conname = 'ck_place_registration_application_timestamps'
                       AND contype = 'c'
                       AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_registration_application'
+                      AND column_name IN ('registered_place_id', 'registered_at')
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT pg_get_constraintdef(oid) LIKE '%COMPLETED%'
+                       AND pg_get_constraintdef(oid) NOT LIKE '%REGISTERED%'
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_registration_application'::regclass
+                      AND conname = 'ck_place_registration_status'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (

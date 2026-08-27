@@ -36,9 +36,6 @@ public record MerchantPlaceApplicationResponse(
         List<MerchantPlaceApplicationAttachmentResponse> attachments
 ) {
     public static MerchantPlaceApplicationResponse from(PlaceRegistrationApplication application, ObjectMapper objectMapper) {
-        Long placeId = application.getCompletedPlaceId() != null
-                ? application.getCompletedPlaceId()
-                : application.getRegisteredPlaceId();
         return new MerchantPlaceApplicationResponse(
                 application.getId(), application.getApplicantUserId(), application.getApplicationType(), application.getStatus(),
                 application.getLegalName(), application.getBusinessName(), application.getMerchantDisplayName(),
@@ -46,7 +43,7 @@ public record MerchantPlaceApplicationResponse(
                 application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE
                         ? MerchantPlaceApplicationNewPlaceResponse.from(application, objectMapper)
                         : null,
-                application.getPlaceName(), application.getExistingPlaceId(), application.getClaimReason(), application.getReviewReason(), placeId,
+                application.getPlaceName(), application.getExistingPlaceId(), application.getClaimReason(), application.getReviewReason(), application.getCompletedPlaceId(),
                 application.getSubmittedAt(), application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(),
                 application.getCreatedAt(), application.getUpdatedAt(), application.getVersion(), application.getSubmissionVersion(),
                 application.getAttachments().stream().map(MerchantPlaceApplicationAttachmentResponse::from).toList()
