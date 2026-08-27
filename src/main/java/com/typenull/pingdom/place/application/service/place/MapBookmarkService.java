@@ -6,15 +6,20 @@ import com.typenull.pingdom.place.api.dto.bookmark.BookmarkRemoveResponse;
 import com.typenull.pingdom.place.application.service.recommendation.feedback.PlaceRecommendationConversionService;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
+import com.typenull.pingdom.place.domain.place.core.MapBookmarkTrendEvent;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import com.typenull.pingdom.place.domain.recommendation.engagement.PlaceRecommendationConversionType;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkTrendEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.support.MapMessages;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
+import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -24,9 +29,11 @@ import org.springframework.transaction.annotation.Transactional;
 public class MapBookmarkService {
 
     private final MapBookmarkRepository mapBookmarkRepository;
+    private final MapBookmarkTrendEventRepository mapBookmarkTrendEventRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
     private final PlaceRecommendationConversionService placeRecommendationConversionService;
+    private final Clock clock;
 
     @Transactional
     public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
@@ -51,7 +58,13 @@ public class MapBookmarkService {
                 .placeId(placeId)
                 .build();
 
-        MapBookmark saved = mapBookmarkRepository.save(bookmark);
+        MapBookmark saved;
+        try {
+            saved = mapBookmarkRepository.saveAndFlush(bookmark);
+        } catch (DataIntegrityViolationException exception) {
+            throw new MapException(MapErrorCode.BOOKMARK_ALREADY_EXISTS);
+        }
+        mapBookmarkTrendEventRepository.save(MapBookmarkTrendEvent.added(userId, placeId, LocalDateTime.now(clock)));
         placeRecommendationSnapshotService.refresh(placeId);
         placeRecommendationConversionService.recordConversionIfEligible(
                 userId,
@@ -63,11 +76,10 @@ public class MapBookmarkService {
 
     @Transactional
     public BookmarkRemoveResponse removeBookmark(Long placeId, long userId) {
-        if(!mapBookmarkRepository.existsByUserIdAndPlaceId(userId, placeId)){
+        if (mapBookmarkRepository.deleteByPlaceIdAndUserId(placeId, userId) == 0) {
             throw new MapException(MapErrorCode.BOOKMARK_NOT_FOUND);
         }
-
-        mapBookmarkRepository.deleteByPlaceIdAndUserId(placeId, userId);
+        mapBookmarkTrendEventRepository.save(MapBookmarkTrendEvent.removed(userId, placeId, LocalDateTime.now(clock)));
         placeRecommendationSnapshotService.refresh(placeId);
 
         return new BookmarkRemoveResponse(userId, placeId, MapMessages.BOOKMARK_REMOVED);
