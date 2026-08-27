@@ -40,6 +40,9 @@ services:
     env_file:
       - .env
     environment:
+      # 배포 Compose는 공유 .env에 남은 개발 프로필을 상속하지 않는다.
+      SPRING_PROFILES_ACTIVE: ''
+      FCM_KEY_PATH: /app/fcm-key.json
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pingdom}
       DB_USERNAME: ${POSTGRES_USER:-pingdom}
       DB_PASSWORD: ${POSTGRES_PASSWORD:-pingdom}
