@@ -4,6 +4,10 @@ import java.util.List;
 
 public record AdminMapPlaceDuplicateResponse(
         List<AdminMapPlaceDuplicateGroupItem> groups,
-        int totalCount
+        int page,
+        int limit,
+        long total,
+        int totalPages,
+        boolean hasNext
 ) {
 }

@@ -23,6 +23,8 @@ import java.util.Map;
 import java.util.Objects;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -60,13 +62,17 @@ public class AdminPlaceDuplicateService {
     }
 
     @Transactional(readOnly = true)
-    public AdminPlaceDuplicateCandidateListResponse list(PlaceDuplicateDecisionStatus status) {
-        List<AdminPlaceDuplicateCandidateResponse> candidates = candidateRepository
-                .findByStatusOrderByDetectedAtDescIdDesc(status)
+    public AdminPlaceDuplicateCandidateListResponse list(PlaceDuplicateDecisionStatus status, int page, int limit) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        var result = candidateRepository.findByStatus(status,
+                PageRequest.of(safePage - 1, safeLimit, Sort.by("detectedAt").descending().and(Sort.by("id").descending())));
+        List<AdminPlaceDuplicateCandidateResponse> candidates = result.getContent()
                 .stream()
                 .map(this::toResponse)
                 .toList();
-        return new AdminPlaceDuplicateCandidateListResponse(candidates, candidates.size());
+        return new AdminPlaceDuplicateCandidateListResponse(
+                candidates, result.getNumber() + 1, result.getSize(), result.getTotalElements(), result.getTotalPages(), result.hasNext());
     }
 
     @Transactional(readOnly = true)
