@@ -82,6 +82,54 @@ class FlywayMigrationIntegrationTest {
     }
 
     @Test
+    void skipsOrphanBookmarksWhenBackfillingTrendEvents() throws Exception {
+        migrateTo("114");
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (
+                        115001, '트렌드 이관 장소', '서울시 중구', 37.5, 127.0, 'migration-test', 0
+                    )
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO map_bookmark (user_id, place_id, created_at)
+                    VALUES
+                        (115001, 115001, CURRENT_TIMESTAMP),
+                        (115002, 115002, CURRENT_TIMESTAMP)
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+
+        assertThat(result.success).isTrue();
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM map_bookmark_trend_event
+                    WHERE user_id = 115001
+                      AND place_id = 115001
+                      AND origin_place_id = 115001
+                      AND event_type = 'BASELINE_ACTIVE'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 0
+                    FROM map_bookmark_trend_event
+                    WHERE user_id = 115002
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM map_bookmark
+                    WHERE user_id = 115002
+                      AND place_id = 115002
+                    """)).isTrue();
+        }
+    }
+
+    @Test
     void createsMcpSpatialMovementHistoryWithGeneratedGeometry() throws Exception {
         migrate(false);
 
