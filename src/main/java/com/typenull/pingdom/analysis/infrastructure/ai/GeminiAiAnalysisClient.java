@@ -17,6 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 /** Gemini Interactions API에 Remote MCP를 등록하고 최종 분석 결과만 받는 클라이언트다. */
 @Slf4j
@@ -55,7 +56,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         request.put("model", properties.model());
         request.put("input", prompt.content());
         // recommend_location만 허용하므로 Gemini가 MCP를 반드시 한 번 호출하도록 강제한다.
-        request.put("tool_choice", "any");
+        request.putObject("generation_config").put("tool_choice", "any");
         request.set("tools", remoteMcpTools());
 
         log.info("입지 분석 Gemini Remote MCP 요청. model={}, mcpUrl={}, requestedRegionPresent={}",
@@ -98,7 +99,13 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
             return response;
         } catch (AnalysisReportException exception) {
             throw exception;
+        } catch (RestClientResponseException exception) {
+            // 외부 응답의 상태만 남긴다. 프롬프트·이메일·API 키가 포함될 수 있는 요청/응답 본문은 기록하지 않는다.
+            log.warn("Gemini Interactions API 요청 실패. status={}, statusText={}",
+                    exception.getStatusCode().value(), exception.getStatusText());
+            throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, exception);
         } catch (RestClientException exception) {
+            log.warn("Gemini Interactions API 연결 실패. cause={}", exception.getClass().getSimpleName());
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, exception);
         }
     }

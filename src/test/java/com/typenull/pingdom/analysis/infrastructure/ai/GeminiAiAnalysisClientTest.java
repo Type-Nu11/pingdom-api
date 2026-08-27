@@ -1,15 +1,19 @@
 package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
+import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
+import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
+import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.analysis.infrastructure.mcp.McpAnalysisProperties;
 import java.time.LocalDate;
 import java.time.Duration;
@@ -30,7 +34,8 @@ class GeminiAiAnalysisClientTest {
                 .andExpect(header("x-goog-api-key", "test-key"))
                 .andExpect(jsonPath("$.model").value("gemini-3.1-flash-lite"))
                 .andExpect(jsonPath("$.input").value("prompt"))
-                .andExpect(jsonPath("$.tool_choice").value("any"))
+                .andExpect(jsonPath("$.generation_config.tool_choice").value("any"))
+                .andExpect(jsonPath("$.tool_choice").doesNotExist())
                 .andExpect(jsonPath("$.tools[0].type").value("mcp_server"))
                 .andExpect(jsonPath("$.tools[0].name").value("pingdom_mcp"))
                 .andExpect(jsonPath("$.tools[0].url").value("https://mcp.test/mcp"))
@@ -88,6 +93,130 @@ class GeminiAiAnalysisClientTest {
                 "prompt", LocalDate.of(2026, 8, 18)
         )).reportName()).isEqualTo("입지 분석");
         server.verify();
+    }
+
+    @Test
+    void omitsMcpAuthorizationHeaderWhenAuthTokenIsBlank() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+                .andExpect(jsonPath("$.tools[0].headers").doesNotExist())
+                .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
+
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
+        );
+
+        client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18)));
+
+        server.verify();
+    }
+
+    @Test
+    void failsBeforeRemoteCallWhenGeminiApiKeyIsMissing() {
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                RestClient.create(),
+                new AiAnalysisProperties("gemini", "http://gemini.test/v1beta", null, "", Duration.ZERO, Duration.ZERO),
+                new McpAnalysisProperties("https://mcp.test/mcp", ""),
+                new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18))))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())
+                .isEqualTo(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void failsBeforeRemoteCallWhenMcpServerUrlIsMissing() {
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                RestClient.create(), properties(), new McpAnalysisProperties("", ""), new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18))))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())
+                .isEqualTo(AnalysisReportErrorCode.MCP_SERVICE_UNAVAILABLE);
+    }
+
+    @Test
+    void mapsGeminiBadRequestToAiServiceUnavailable() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+                .andRespond(withBadRequest().body("invalid Gemini request"));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18))))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())
+                .isEqualTo(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE);
+
+        server.verify();
+    }
+
+    @Test
+    void mapsFailedGeminiInteractionToAiServiceUnavailable() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+                .andRespond(withSuccess("{\"status\":\"failed\"}", MediaType.APPLICATION_JSON));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18))))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())
+                .isEqualTo(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE);
+
+        server.verify();
+    }
+
+    @Test
+    void rejectsHtmlReturnedDirectlyByGemini() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+                .andRespond(withSuccess("{\"status\":\"completed\",\"output_text\":\"{\\\"html\\\":\\\"<main/>\\\"}\"}",
+                        MediaType.APPLICATION_JSON));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18))))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())
+                .isEqualTo(AnalysisReportErrorCode.AI_RESPONSE_INVALID);
+
+        server.verify();
+    }
+
+    @Test
+    void rejectsCompletedInteractionWithoutTextOutput() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+                .andRespond(withSuccess("{\"status\":\"completed\",\"steps\":[]}", MediaType.APPLICATION_JSON));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18))))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting(exception -> ((AnalysisReportException) exception).getErrorCode())
+                .isEqualTo(AnalysisReportErrorCode.AI_RESPONSE_INVALID);
+
+        server.verify();
+    }
+
+    private AiAnalysisProperties properties() {
+        return new AiAnalysisProperties(
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
+                Duration.ofSeconds(1), Duration.ofSeconds(2)
+        );
     }
 
     private String interactionResponse() {
