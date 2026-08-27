@@ -7,11 +7,14 @@ import com.typenull.pingdom.engagement.infrastructure.persistence.ReporterModera
 import com.typenull.pingdom.engagement.infrastructure.persistence.TrustScoreChangeHistoryRepository;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreBatchResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryItem;
+import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryResponse;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
@@ -43,8 +46,13 @@ public class TrustScoreBatchService {
     }
 
     @Transactional(readOnly = true)
-    public List<AdminTrustScoreChangeHistoryItem> listHistory(Long reporterUserId) {
-        return historyRepository.findTop100ByReporterUserIdOrderByChangedAtDescIdDesc(reporterUserId)
-                .stream().map(AdminTrustScoreChangeHistoryItem::from).toList();
+    public AdminTrustScoreChangeHistoryResponse listHistory(Long reporterUserId, int page, int limit) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        var result = historyRepository.findAllByReporterUserId(reporterUserId,
+                PageRequest.of(safePage - 1, safeLimit, Sort.by("changedAt").descending().and(Sort.by("id").descending())));
+        return new AdminTrustScoreChangeHistoryResponse(
+                result.getContent().stream().map(AdminTrustScoreChangeHistoryItem::from).toList(),
+                result.getNumber() + 1, result.getSize(), result.getTotalElements(), result.getTotalPages(), result.hasNext());
     }
 }

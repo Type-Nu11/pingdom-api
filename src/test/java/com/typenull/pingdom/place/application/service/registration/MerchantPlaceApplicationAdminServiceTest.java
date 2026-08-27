@@ -115,7 +115,7 @@ class MerchantPlaceApplicationAdminServiceTest {
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(0, 20), 41));
 
-        var response = service.listForAdmin(99L, PlaceRegistrationStatus.PENDING, 1, 20);
+        var response = service.listForAdmin(99L, PlaceRegistrationStatus.PENDING, null, 1, 20);
 
         assertThat(response.total()).isEqualTo(41);
         assertThat(response.totalPages()).isEqualTo(3);

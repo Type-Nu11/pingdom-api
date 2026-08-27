@@ -22,7 +22,7 @@ public interface AdminMapPlaceQueryService {
 
     AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword);
 
-    AdminMapPlaceDuplicateResponse listDuplicatePlaces();
+    AdminMapPlaceDuplicateResponse listDuplicatePlaces(int page, int limit);
 
     AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId);
 

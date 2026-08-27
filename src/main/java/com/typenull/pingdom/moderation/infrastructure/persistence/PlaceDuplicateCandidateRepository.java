@@ -2,7 +2,8 @@ package com.typenull.pingdom.moderation.infrastructure.persistence;
 
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateCandidate;
 import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import java.util.Optional;
 import jakarta.persistence.LockModeType;
 import org.springframework.data.jpa.repository.Lock;
@@ -14,7 +15,7 @@ public interface PlaceDuplicateCandidateRepository extends JpaRepository<PlaceDu
 
     Optional<PlaceDuplicateCandidate> findByLeftPlaceIdAndRightPlaceId(Long leftPlaceId, Long rightPlaceId);
 
-    List<PlaceDuplicateCandidate> findByStatusOrderByDetectedAtDescIdDesc(PlaceDuplicateDecisionStatus status);
+    Page<PlaceDuplicateCandidate> findByStatus(PlaceDuplicateDecisionStatus status, Pageable pageable);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT candidate FROM PlaceDuplicateCandidate candidate WHERE candidate.id = :candidateId")
