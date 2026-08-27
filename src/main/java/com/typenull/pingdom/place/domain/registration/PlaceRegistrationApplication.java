@@ -133,9 +133,6 @@ public class PlaceRegistrationApplication {
     @Column(name = "reviewer_user_id")
     private Long reviewerUserId;
 
-    @Column(name = "registered_place_id", unique = true)
-    private Long registeredPlaceId;
-
     @Column(name = "submitted_at")
     private LocalDateTime submittedAt;
 
@@ -147,9 +144,6 @@ public class PlaceRegistrationApplication {
 
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
-
-    @Column(name = "registered_at")
-    private LocalDateTime registeredAt;
 
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
@@ -400,17 +394,6 @@ public class PlaceRegistrationApplication {
         }
         status = PlaceRegistrationStatus.CANCELED;
         canceledAt = now;
-        updatedAt = now;
-    }
-
-    public void register(Long placeId, LocalDateTime now) {
-        requireStatus(PlaceRegistrationStatus.APPROVED);
-        if (placeId == null) {
-            throw new IllegalArgumentException("등록 장소 ID가 필요합니다.");
-        }
-        status = PlaceRegistrationStatus.REGISTERED;
-        registeredPlaceId = placeId;
-        registeredAt = now;
         updatedAt = now;
     }
 

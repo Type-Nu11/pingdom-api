@@ -25,6 +25,7 @@ import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.application.service.localhot.PlaceAdministrativeRegionService;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationEvidence;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerificationStatus;
@@ -68,6 +69,7 @@ public class AdminPlaceQualityService {
     private final Clock clock;
     private final PlaceDiscoveryMetrics placeDiscoveryMetrics;
     private final PlaceInformationMetrics placeInformationMetrics;
+    private final PlaceAdministrativeRegionService placeAdministrativeRegionService;
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
@@ -100,6 +102,7 @@ public class AdminPlaceQualityService {
                 AdminPlaceServiceSupport.toPoint(request.latitude(), request.longitude()),
                 GeocodingSource.ADMIN
         );
+        placeAdministrativeRegionService.synchronizeIfConfigured(mapPlace);
 
         requestRecommendationResync(mapPlace, "ADMIN_COORDINATE_UPDATED");
 
@@ -151,6 +154,7 @@ public class AdminPlaceQualityService {
                 AdminPlaceServiceSupport.toPoint(request.latitude(), request.longitude()),
                 GeocodingSource.ADMIN
         );
+        placeAdministrativeRegionService.synchronizeIfConfigured(mapPlace);
         Map<String, Object> afterState = AdminPlaceServiceSupport.geocodingState(mapPlace);
 
         adminAuditLogService.record(

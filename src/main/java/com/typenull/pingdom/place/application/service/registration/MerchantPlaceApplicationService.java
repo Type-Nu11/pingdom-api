@@ -123,13 +123,22 @@ public class MerchantPlaceApplicationService {
     public AdminMerchantPlaceApplicationPageResponse listForAdmin(
             Long adminUserId,
             PlaceRegistrationStatus status,
+            MerchantPlaceApplicationType applicationType,
             int page,
             int limit
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        Page<PlaceRegistrationApplication> result = status == null
-                ? applicationRepository.findAll(pageable(page, limit))
-                : applicationRepository.findAllByStatus(status, pageable(page, limit));
+        var pageable = pageable(page, limit);
+        Page<PlaceRegistrationApplication> result;
+        if (status != null && applicationType != null) {
+            result = applicationRepository.findAllByStatusAndApplicationType(status, applicationType, pageable);
+        } else if (status != null) {
+            result = applicationRepository.findAllByStatus(status, pageable);
+        } else if (applicationType != null) {
+            result = applicationRepository.findAllByApplicationType(applicationType, pageable);
+        } else {
+            result = applicationRepository.findAll(pageable);
+        }
         return new AdminMerchantPlaceApplicationPageResponse(
                 result.getContent().stream()
                         .map(application -> AdminMerchantPlaceApplicationListItemResponse.from(
@@ -560,8 +569,7 @@ public class MerchantPlaceApplicationService {
         auditLogService.record(adminUserId, action, AdminAuditTargetType.MERCHANT_PLACE_APPLICATION, application.getId(), reason,
                 Map.of("status", PlaceRegistrationStatus.PENDING),
                 Map.of("status", application.getStatus(), "applicationType", application.getApplicationType(),
-                        "placeId", String.valueOf(application.getCompletedPlaceId() == null
-                                ? application.getRegisteredPlaceId() : application.getCompletedPlaceId())));
+                        "placeId", String.valueOf(application.getCompletedPlaceId())));
     }
 
     private MerchantPlaceApplicationResponse response(PlaceRegistrationApplication application) {

@@ -46,9 +46,11 @@ public class AdminPlaceDuplicateController {
     @GetMapping("/duplicate-candidates")
     @Operation(summary = "관리자 중복 장소 후보 조회")
     public AdminPlaceDuplicateCandidateListResponse listDuplicateCandidates(
-            @RequestParam(defaultValue = "PENDING") PlaceDuplicateDecisionStatus status
+            @RequestParam(defaultValue = "PENDING") PlaceDuplicateDecisionStatus status,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit
     ) {
-        return adminPlaceDuplicateService.list(status);
+        return adminPlaceDuplicateService.list(status, page, limit);
     }
 
     @GetMapping("/duplicate-candidates/{candidateId}")
@@ -92,8 +94,11 @@ public class AdminPlaceDuplicateController {
             summary = "관리자 중복 장소 목록 조회",
             description = "관리자가 병합 대상이 될 수 있는 중복 장소 그룹을 조회합니다."
     )
-    public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
-        return adminMapPlaceQueryService.listDuplicatePlaces();
+    public AdminMapPlaceDuplicateResponse listDuplicatePlaces(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return adminMapPlaceQueryService.listDuplicatePlaces(page, limit);
     }
 
     @GetMapping("/duplicates/{id}")
@@ -127,8 +132,11 @@ public class AdminPlaceDuplicateController {
             summary = "관리자 장소 병합 이력 조회",
             description = "관리자가 최근 장소 병합 이력을 조회합니다."
     )
-    public AdminPlaceMergeHistoryResponse listMergeHistories() {
-        return adminPlaceMergeService.listMergeHistories();
+    public AdminPlaceMergeHistoryResponse listMergeHistories(
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return adminPlaceMergeService.listMergeHistories(page, limit);
     }
 
     @PostMapping("/merge-histories/{historyId}/restore")

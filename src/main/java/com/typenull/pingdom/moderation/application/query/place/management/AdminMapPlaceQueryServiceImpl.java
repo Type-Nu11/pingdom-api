@@ -44,8 +44,8 @@ public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService 
     }
 
     @Override
-    public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
-        return duplicateQueryService.listDuplicatePlaces();
+    public AdminMapPlaceDuplicateResponse listDuplicatePlaces(int page, int limit) {
+        return duplicateQueryService.listDuplicatePlaces(page, limit);
     }
 
     @Override

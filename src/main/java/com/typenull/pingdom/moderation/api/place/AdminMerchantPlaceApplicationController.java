@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationR
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest;
 import com.typenull.pingdom.place.application.service.registration.MerchantPlaceApplicationService;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
+import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -39,11 +40,12 @@ public class AdminMerchantPlaceApplicationController {
     @Operation(summary = "관리자 Merchant 장소 신청 목록 조회")
     public AdminMerchantPlaceApplicationPageResponse list(
             @RequestParam(required = false) PlaceRegistrationStatus status,
+            @RequestParam(required = false) MerchantPlaceApplicationType applicationType,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
             @CurrentUser JwtAuthenticatedUser admin
     ) {
-        return service.listForAdmin(admin.userId(), status, page, limit);
+        return service.listForAdmin(admin.userId(), status, applicationType, page, limit);
     }
 
     @GetMapping("/{id}")

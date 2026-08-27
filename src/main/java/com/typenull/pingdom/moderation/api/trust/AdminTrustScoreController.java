@@ -13,6 +13,7 @@ import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreIntervention
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreBatchResponse;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryItem;
+import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreChangeHistoryResponse;
 import com.typenull.pingdom.moderation.application.query.trust.AdminTrustScoreQueryService;
 import com.typenull.pingdom.moderation.application.service.trust.AdminTrustScoreService;
 import com.typenull.pingdom.moderation.application.service.trust.TrustScoreBatchService;
@@ -38,7 +39,6 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
-import java.util.List;
 
 @RestController
 @RequestMapping("/admin/trust-score")
@@ -118,8 +118,12 @@ public class AdminTrustScoreController {
 
     @GetMapping("/reporters/{reporterUserId}/history")
     @Operation(summary = "신고자 Trust Score 변경 이력 조회")
-    public List<AdminTrustScoreChangeHistoryItem> listTrustScoreHistory(@PathVariable Long reporterUserId) {
-        return trustScoreBatchService.listHistory(reporterUserId);
+    public AdminTrustScoreChangeHistoryResponse listTrustScoreHistory(
+            @PathVariable Long reporterUserId,
+            @RequestParam(defaultValue = "1") int page,
+            @RequestParam(defaultValue = "20") int limit
+    ) {
+        return trustScoreBatchService.listHistory(reporterUserId, page, limit);
     }
 
     @GetMapping("/anomalies")

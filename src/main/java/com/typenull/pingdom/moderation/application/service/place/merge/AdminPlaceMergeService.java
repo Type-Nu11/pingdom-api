@@ -21,6 +21,7 @@ import com.typenull.pingdom.moderation.domain.place.PlaceDuplicateDecisionStatus
 import com.typenull.pingdom.moderation.infrastructure.persistence.AdminPlaceMergeHistoryRepository;
 import com.typenull.pingdom.moderation.infrastructure.persistence.PlaceDuplicateCandidateRepository;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotResyncService;
+import com.typenull.pingdom.place.application.service.localhot.PlaceAdministrativeRegionService;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
@@ -67,6 +68,8 @@ import org.locationtech.jts.geom.Point;
 import org.springframework.stereotype.Service;
 import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
 /** 장소 병합·이력 조회·복구 구현을 담당한다. */
@@ -86,6 +89,7 @@ public class AdminPlaceMergeService {
     private final PlaceRecommendationConversionRepository placeRecommendationConversionRepository;
     private final PlaceRecommendationFeatureLogRepository placeRecommendationFeatureLogRepository;
     private final PlaceRecommendationSnapshotResyncService placeRecommendationSnapshotResyncService;
+    private final PlaceAdministrativeRegionService placeAdministrativeRegionService;
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
     private final AdminAuditLogService adminAuditLogService;
     private final AdminPlaceMergeHistoryRepository adminPlaceMergeHistoryRepository;
@@ -201,8 +205,12 @@ public class AdminPlaceMergeService {
     }
 
     @Transactional(readOnly = true)
-    public AdminPlaceMergeHistoryResponse listMergeHistories() {
-        List<AdminPlaceMergeHistoryItem> histories = adminPlaceMergeHistoryRepository.findTop50ByOrderByMergedAtDescIdDesc().stream()
+    public AdminPlaceMergeHistoryResponse listMergeHistories(int page, int limit) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
+        var result = adminPlaceMergeHistoryRepository.findAll(
+                PageRequest.of(safePage - 1, safeLimit, Sort.by("mergedAt").descending().and(Sort.by("id").descending())));
+        List<AdminPlaceMergeHistoryItem> histories = result.getContent().stream()
                 .map(history -> new AdminPlaceMergeHistoryItem(
                         history.getId(),
                         history.getSourcePlaceId(),
@@ -213,7 +221,8 @@ public class AdminPlaceMergeService {
                         history.getRestoredAt()
                 ))
                 .toList();
-        return new AdminPlaceMergeHistoryResponse(histories);
+        return new AdminPlaceMergeHistoryResponse(
+                histories, result.getNumber() + 1, result.getSize(), result.getTotalElements(), result.getTotalPages(), result.hasNext());
     }
 
     @Transactional
@@ -567,6 +576,7 @@ public class AdminPlaceMergeService {
                 sourceSnapshot.longitude(),
                 AdminPlaceServiceSupport.toPoint(sourceSnapshot.latitude(), sourceSnapshot.longitude())
         );
+        placeAdministrativeRegionService.synchronizeIfConfigured(restoredSourcePlace);
         restoredSourcePlace.updateTouristInformation(
                 sourceSnapshot.englishName(),
                 sourceSnapshot.touristSummary(),

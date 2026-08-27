@@ -29,7 +29,9 @@ public class AdminMapPlaceDuplicateQueryService {
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
 
     @Transactional(readOnly = true)
-    public AdminMapPlaceDuplicateResponse listDuplicatePlaces() {
+    public AdminMapPlaceDuplicateResponse listDuplicatePlaces(int page, int limit) {
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.max(1, Math.min(limit, 100));
         AdminPlaceDuplicateResolver.DuplicateAnalysis duplicateAnalysis =
                 adminPlaceDuplicateResolver.analyze(mapPlaceDuplicateQueryRepository.findPotentialDuplicatePlaces());
 
@@ -41,7 +43,12 @@ public class AdminMapPlaceDuplicateQueryService {
                 ))
                 .toList();
 
-        return new AdminMapPlaceDuplicateResponse(groups, groups.size());
+        int total = groups.size();
+        int fromIndex = Math.min((safePage - 1) * safeLimit, total);
+        int toIndex = Math.min(fromIndex + safeLimit, total);
+        int totalPages = total == 0 ? 0 : (int) Math.ceil((double) total / safeLimit);
+        return new AdminMapPlaceDuplicateResponse(
+                groups.subList(fromIndex, toIndex), safePage, safeLimit, total, totalPages, safePage < totalPages);
     }
 
     @Transactional(readOnly = true)
