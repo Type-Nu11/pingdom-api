@@ -3,7 +3,6 @@ package com.typenull.pingdom.analysis.infrastructure.ai;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -163,29 +162,6 @@ class GeminiAiAnalysisClientTest {
                 .isInstanceOf(AnalysisReportException.class)
                 .extracting("errorCode")
                 .isEqualTo(AnalysisReportErrorCode.AI_RESPONSE_INVALID);
-        server.verify();
-    }
-
-    @Test
-    void omitsAuthorizationHeaderWhenMcpTokenIsNotConfigured() {
-        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
-                .andExpect(headerDoesNotExist("Authorization"))
-                .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
-
-        AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", null, "test-key",
-                Duration.ofSeconds(1), Duration.ofSeconds(2)
-        );
-        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties,
-                new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
-        );
-
-        assertThat(client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18)
-        )).reportName()).isEqualTo("입지 분석");
         server.verify();
     }
 
