@@ -87,7 +87,8 @@ public class AdminMerchantPlaceApplicationController {
     }
 
     @PostMapping("/{id}/approve")
-    @Operation(summary = "관리자 Merchant 장소 신청 승인")
+    @Operation(summary = "관리자 Merchant 장소 신청 승인",
+            description = "NEW_PLACE 승인 시 장소 생성, Merchant Owner 연결과 신청의 COMPLETED 전이가 하나의 트랜잭션으로 완료됩니다. 신청자의 추가 완료 요청은 필요하지 않습니다.")
     public MerchantPlaceApplicationResponse approve(
             @PathVariable Long id,
             @Valid @RequestBody MerchantPlaceApplicationReviewRequest request,

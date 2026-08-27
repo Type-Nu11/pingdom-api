@@ -25,6 +25,7 @@ import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachment;
+import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationOperatingDay;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.MerchantPlaceApplicationReviewHistoryRepository;
@@ -338,6 +339,51 @@ class MerchantPlaceApplicationAdminServiceTest {
         org.mockito.InOrder roleActivationOrder = org.mockito.Mockito.inOrder(applicant, userAccessStatusService);
         roleActivationOrder.verify(applicant).activateMerchantOwnerRole();
         roleActivationOrder.verify(userAccessStatusService).evict(10L);
+    }
+
+    @Test
+    void newPlaceApprovalCreatesPlaceAndCompletesWithoutApplicantFollowUp() throws Exception {
+        PlaceRegistrationApplication application = application(12L);
+        com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile profile = org.mockito.Mockito.mock(
+                com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile.class);
+        com.typenull.pingdom.identity.domain.merchant.MerchantVerification verification = org.mockito.Mockito.mock(
+                com.typenull.pingdom.identity.domain.merchant.MerchantVerification.class);
+
+        when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
+        when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
+        when(application.matchesVersion(4L)).thenReturn(true);
+        when(application.getApplicantUserId()).thenReturn(10L);
+        when(application.getLegalName()).thenReturn("홍길동");
+        when(application.getBusinessName()).thenReturn("핑덤");
+        when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted");
+        when(application.getMerchantDisplayName()).thenReturn("핑덤");
+        when(application.getMerchantContactEmail()).thenReturn("owner@pingdom.test");
+        when(application.getMerchantDescription()).thenReturn("소개");
+        when(application.getMerchantContactPhone()).thenReturn("+821012345678");
+        when(application.getAttachments()).thenReturn(List.of());
+        when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
+        when(profileRepository.findByUserIdForUpdate(10L)).thenReturn(Optional.of(profile));
+        when(profile.getStatus()).thenReturn(com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus.PENDING);
+        when(verificationRepository.findByUserIdForUpdate(10L)).thenReturn(Optional.of(verification));
+        when(verification.getIdentityStatus()).thenReturn(
+                com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.PENDING);
+        when(verification.getBusinessStatus()).thenReturn(
+                com.typenull.pingdom.identity.domain.merchant.MerchantVerificationStatus.PENDING);
+        when(legacyPlaceRegistrationService.createApprovedPlaceForUnifiedApplication(10L, 12L)).thenReturn(30L);
+        when(objectMapper.readValue(
+                org.mockito.ArgumentMatchers.nullable(String.class),
+                org.mockito.ArgumentMatchers.<com.fasterxml.jackson.core.type.TypeReference<
+                        List<PlaceRegistrationOperatingDay>>>any()
+        )).thenReturn(List.of());
+
+        service.approve(99L, 12L,
+                new com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationReviewRequest(4L, "승인"));
+
+        org.mockito.InOrder inOrder = org.mockito.Mockito.inOrder(application, legacyPlaceRegistrationService);
+        inOrder.verify(application).approve(eq(99L), eq("승인"), org.mockito.ArgumentMatchers.any());
+        inOrder.verify(legacyPlaceRegistrationService).createApprovedPlaceForUnifiedApplication(10L, 12L);
+        inOrder.verify(application).complete(eq(30L), org.mockito.ArgumentMatchers.any());
+        verify(verification).review(eq(99L), eq(true), eq(true), eq(null), org.mockito.ArgumentMatchers.any());
     }
 
     private PlaceRegistrationApplication application(Long id) {

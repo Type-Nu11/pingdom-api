@@ -21,7 +21,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/** 기존 장소 Claim 초안의 실제 파일 업로드 API입니다. */
+/** 통합 Merchant 장소 신청 초안의 실제 파일 업로드 API입니다. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications/{applicationId}/attachments")
@@ -31,7 +31,8 @@ public class MerchantPlaceApplicationAttachmentController {
     private final MerchantPlaceApplicationAttachmentService service;
 
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "Merchant 기존 장소 Claim 첨부파일 업로드")
+    @Operation(summary = "Merchant 장소 신청 첨부파일 업로드",
+            description = "NEW_PLACE와 EXISTING_PLACE_CLAIM 초안에만 업로드할 수 있습니다. 서버가 파일 형식·서명·크기·악성코드를 검증하고 private 저장소에 보관합니다.")
     public MerchantPlaceApplicationAttachmentResponse upload(
             @PathVariable Long applicationId,
             @RequestParam PlaceRegistrationAttachmentType documentType,
@@ -42,7 +43,7 @@ public class MerchantPlaceApplicationAttachmentController {
     }
 
     @GetMapping
-    @Operation(summary = "Merchant 기존 장소 Claim 첨부파일 목록 조회")
+    @Operation(summary = "Merchant 장소 신청 첨부파일 목록 조회")
     public List<MerchantPlaceApplicationAttachmentResponse> list(
             @PathVariable Long applicationId,
             @CurrentUser JwtAuthenticatedUser user
@@ -52,7 +53,7 @@ public class MerchantPlaceApplicationAttachmentController {
 
     @DeleteMapping("/{attachmentId}")
     @ResponseStatus(HttpStatus.NO_CONTENT)
-    @Operation(summary = "Merchant 기존 장소 Claim 첨부파일 삭제")
+    @Operation(summary = "Merchant 장소 신청 첨부파일 삭제")
     public void delete(
             @PathVariable Long applicationId,
             @PathVariable Long attachmentId,
@@ -62,7 +63,7 @@ public class MerchantPlaceApplicationAttachmentController {
     }
 
     @PostMapping("/reorder")
-    @Operation(summary = "Merchant 기존 장소 Claim 대표 이미지 순서 변경")
+    @Operation(summary = "Merchant 장소 신청 대표 이미지 순서 변경")
     public void reorder(
             @PathVariable Long applicationId,
             @RequestParam List<Long> attachmentIds,

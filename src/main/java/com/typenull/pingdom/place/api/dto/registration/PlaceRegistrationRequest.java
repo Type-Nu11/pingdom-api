@@ -8,9 +8,8 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import jakarta.validation.Valid;
-import java.util.List;
 import java.util.Set;
-import java.time.ZoneId;
+import java.util.List;
 
 public record PlaceRegistrationRequest(
         @NotBlank @Size(max = 100) String placeName,
@@ -24,7 +23,6 @@ public record PlaceRegistrationRequest(
         @NotBlank @Size(max = 20) String businessContactPhone,
         @NotBlank @Size(max = 20) String applicantContactPhone,
         Set<PlaceRegistrationTag> tags,
-        @Valid @Size(max = 20) List<PlaceRegistrationAttachmentRequest> attachments,
         @Size(max = 64) String timezone,
         @Valid @Size(max = 7) List<PlaceRegistrationOperatingDay> operatingDays
 ) {

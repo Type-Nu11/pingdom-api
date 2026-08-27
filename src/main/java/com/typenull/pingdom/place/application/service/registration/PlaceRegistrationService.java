@@ -9,7 +9,6 @@ import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceReposit
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerProfileRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
-import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationAttachmentRequest;
 import com.typenull.pingdom.place.api.dto.registration.PlaceRegistrationRequest;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationErrorCode;
 import com.typenull.pingdom.place.domain.exception.PlaceRegistrationException;
@@ -75,11 +74,6 @@ public class PlaceRegistrationService {
                 r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
         application.updateContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
         updateOperatingSchedule(application, r, now);
-        try {
-            applyDraftFiles(application, userId, r, now);
-        } catch (IllegalArgumentException exception) {
-            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
-        }
         return repository.save(application).getId();
     }
 
@@ -96,7 +90,6 @@ public class PlaceRegistrationService {
             a.update(r.placeName(), r.category(), r.latitude(), r.longitude(), r.roadAddress(), r.jibunAddress(), r.postalCode(), r.description(), r.tags(), now);
             a.updateContactPhones(normalizePhone(r.businessContactPhone()), normalizePhone(r.applicantContactPhone()));
             updateOperatingSchedule(a, r, now);
-            applyDraftFiles(a, userId, r, now);
         } catch (IllegalArgumentException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
         } catch (IllegalStateException e) {
@@ -164,25 +157,6 @@ public class PlaceRegistrationService {
         }
     }
     private PlaceRegistrationException notFound() { return new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND); }
-
-    private void applyDraftFiles(PlaceRegistrationApplication application, Long userId,
-                                 PlaceRegistrationRequest request, LocalDateTime now) {
-        List<PlaceRegistrationAttachment> attachments = request.attachments() == null
-                ? List.of()
-                : request.attachments().stream()
-                .map(attachment -> toAttachment(application, userId, attachment, now))
-                .toList();
-        application.replaceAttachments(attachments, now);
-    }
-
-    private PlaceRegistrationAttachment toAttachment(PlaceRegistrationApplication application, Long userId,
-                                                     PlaceRegistrationAttachmentRequest request, LocalDateTime now) {
-        LocalDateTime retentionExpiresAt = request.retentionDays() == null
-                ? null : now.plusDays(request.retentionDays());
-        return PlaceRegistrationAttachment.create(application, request.fileId(), request.documentType(),
-                request.storageKey(), request.originalFilename(), request.contentType(), request.fileSize(),
-                request.fileHash(), userId, now, retentionExpiresAt, request.resolvedDisplayOrder());
-    }
 
     private String contentHash(PlaceRegistrationApplication application) {
         String canonical = application.getPlaceName() + "|" + application.getCategory() + "|"

@@ -49,7 +49,8 @@ public class MerchantPlaceApplicationController {
     }
 
     @GetMapping("/{id}")
-    @Operation(summary = "Merchant 장소 신청 상세 조회")
+    @Operation(summary = "Merchant 장소 신청 상세 조회",
+            description = "NEW_PLACE이면 newPlace에 저장된 장소 입력값 전체를 반환합니다. 첨부파일은 별도 첨부 API로 조회·관리합니다.")
     public MerchantPlaceApplicationResponse get(@PathVariable Long id, @CurrentUser JwtAuthenticatedUser user) {
         return service.get(user.userId(), id);
     }
