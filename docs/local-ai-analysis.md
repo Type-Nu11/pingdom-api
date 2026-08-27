@@ -55,6 +55,4 @@ AI_MODEL=qwen2.5:7b \
 | `MCP_SERVER_URL` | Gemini가 접근할 수 있는 Pingdom Remote MCP Streamable HTTP 주소 |
 | `MCP_AUTH_TOKEN` | MCP 인증 토큰. 설정 시 Gemini 요청의 Bearer 헤더로 전달 |
 
-Remote MCP 운영 환경에서는 유효한 TLS 인증서를 적용하고 `MCP_AUTH_TOKEN`을 Backend와 MCP에 동일하게 설정합니다. DB 포트는 외부에 노출하지 않습니다.
-
 Gemini 무료 티어의 모델별 한도와 요금은 Google 공식 가격·제한 문서를 확인해야 합니다.
