@@ -112,6 +112,31 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    @Test
+    void rejectsInteractionWithoutModelOutput() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+                .andRespond(withSuccess("{\"status\":\"completed\",\"steps\":[]}", MediaType.APPLICATION_JSON));
+
+        AiAnalysisProperties properties = new AiAnalysisProperties(
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
+                Duration.ofSeconds(1), Duration.ofSeconds(2)
+        );
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties,
+                new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
+        );
+
+        assertThatThrownBy(() -> client.analyze(new AiAnalysisPrompt(
+                "prompt", LocalDate.of(2026, 8, 18)
+        )))
+                .isInstanceOf(AnalysisReportException.class)
+                .extracting("errorCode")
+                .isEqualTo(AnalysisReportErrorCode.AI_RESPONSE_INVALID);
+        server.verify();
+    }
+
     private String interactionResponse() {
         return "{\"status\":\"completed\",\"output_text\":"
                 + "\"{\\\"reportName\\\":\\\"입지 분석\\\","
