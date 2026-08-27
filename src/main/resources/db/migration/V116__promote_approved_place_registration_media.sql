@@ -1,16 +1,25 @@
 ALTER TABLE map_place
-    ADD COLUMN description VARCHAR(1000);
+    ADD COLUMN IF NOT EXISTS description VARCHAR(1000);
 
 ALTER TABLE place_media
-    ADD COLUMN source_registration_attachment_id BIGINT;
+    ADD COLUMN IF NOT EXISTS source_registration_attachment_id BIGINT;
 
-ALTER TABLE place_media
-    ADD CONSTRAINT fk_place_media_registration_attachment
-        FOREIGN KEY (source_registration_attachment_id)
-        REFERENCES place_registration_application_attachment (id)
-        ON DELETE RESTRICT;
+DO $$
+BEGIN
+    IF NOT EXISTS (
+        SELECT 1
+        FROM pg_constraint
+        WHERE conname = 'fk_place_media_registration_attachment'
+    ) THEN
+        ALTER TABLE place_media
+            ADD CONSTRAINT fk_place_media_registration_attachment
+            FOREIGN KEY (source_registration_attachment_id)
+            REFERENCES place_registration_application_attachment (id)
+            ON DELETE RESTRICT;
+    END IF;
+END $$;
 
-CREATE UNIQUE INDEX uq_place_media_source_registration_attachment
+CREATE UNIQUE INDEX IF NOT EXISTS uq_place_media_source_registration_attachment
     ON place_media (source_registration_attachment_id)
     WHERE source_registration_attachment_id IS NOT NULL;
 
@@ -31,7 +40,7 @@ FROM ordered_representative_images ordered
 WHERE attachment.id = ordered.id
   AND attachment.display_order <> ordered.normalized_display_order;
 
-CREATE UNIQUE INDEX uq_registration_attachment_representative_display_order
+CREATE UNIQUE INDEX IF NOT EXISTS uq_registration_attachment_representative_display_order
     ON place_registration_application_attachment (application_id, display_order)
     WHERE document_type = 'REPRESENTATIVE_IMAGE'
       AND deleted_at IS NULL;
