@@ -260,6 +260,9 @@ gemini:
 
 place:
   local-hot:
+    backfill:
+      enabled: ${LOCAL_HOT_REGION_BACKFILL_ENABLED:false}
+      batch-size: ${LOCAL_HOT_REGION_BACKFILL_BATCH_SIZE:100}
     kakao:
       enabled: ${KAKAO_LOCAL_REGION_ENABLED:false}
       api-key: ${KAKAO_REST_API_KEY:}
