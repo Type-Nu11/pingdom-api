@@ -39,6 +39,18 @@ public class LocationCheckIn {
 
     public static LocationCheckIn proximityMatched(Long touristUserId, Long placeId, LocalDate checkInDate,
             Instant observedAt, Instant recordedAt, double distanceMeters) {
+        return create(touristUserId, placeId, checkInDate, observedAt, recordedAt, distanceMeters,
+                LocationCheckInStatus.PROXIMITY_MATCHED);
+    }
+
+    public static LocationCheckIn dwellVerified(Long touristUserId, Long placeId, LocalDate checkInDate,
+            Instant observedAt, Instant recordedAt, double distanceMeters) {
+        return create(touristUserId, placeId, checkInDate, observedAt, recordedAt, distanceMeters,
+                LocationCheckInStatus.DWELL_VERIFIED);
+    }
+
+    private static LocationCheckIn create(Long touristUserId, Long placeId, LocalDate checkInDate,
+            Instant observedAt, Instant recordedAt, double distanceMeters, LocationCheckInStatus status) {
         LocationCheckIn checkIn = new LocationCheckIn();
         checkIn.touristUserId = Objects.requireNonNull(touristUserId);
         checkIn.placeId = Objects.requireNonNull(placeId);
@@ -46,7 +58,7 @@ public class LocationCheckIn {
         checkIn.observedAt = Objects.requireNonNull(observedAt);
         checkIn.recordedAt = Objects.requireNonNull(recordedAt);
         checkIn.distanceMeters = distanceMeters;
-        checkIn.status = LocationCheckInStatus.PROXIMITY_MATCHED;
+        checkIn.status = status;
         return checkIn;
     }
 }
