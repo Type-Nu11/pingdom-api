@@ -259,6 +259,15 @@ gemini:
   read-timeout: ${GEMINI_READ_TIMEOUT:PT5S}
 
 place:
+  local-hot:
+    kakao:
+      enabled: ${KAKAO_LOCAL_REGION_ENABLED:false}
+      api-key: ${KAKAO_REST_API_KEY:}
+      base-url: ${KAKAO_LOCAL_BASE_URL:https://dapi.kakao.com}
+      connect-timeout: ${KAKAO_LOCAL_CONNECT_TIMEOUT:2s}
+      read-timeout: ${KAKAO_LOCAL_READ_TIMEOUT:3s}
+      cache-ttl: ${KAKAO_LOCAL_REGION_CACHE_TTL:10m}
+      cache-max-entries: ${KAKAO_LOCAL_REGION_CACHE_MAX_ENTRIES:10000}
   recommendation:
     verified-boost:
       score: ${VERIFIED_BOOST_SCORE:0.08}
