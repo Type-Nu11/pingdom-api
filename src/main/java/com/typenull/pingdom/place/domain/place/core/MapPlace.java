@@ -168,6 +168,10 @@ public class MapPlace {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
+    /** Merchant 신규 장소 신청의 장소 설명입니다. Merchant profile 소개와 별도 계약을 유지합니다. */
+    @Column(name = "description", length = 1000)
+    private String description;
+
     @Column(name = "kakao_place_id", length = 50)
     private String kakaoPlaceId;
 
@@ -323,6 +327,10 @@ public class MapPlace {
 
     public void updateImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
+    }
+
+    public void updateDescription(String description) {
+        this.description = description == null || description.isBlank() ? null : description.trim();
     }
 
     public boolean isOperating() {

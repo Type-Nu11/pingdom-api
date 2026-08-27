@@ -17,6 +17,17 @@ public final class PlaceMediaStorageKey {
         return StringUtils.hasText(key) && key.trim().startsWith(explorationPrefix(placeId, userId));
     }
 
+    /** 승인 신청 첨부의 공개 복구 키입니다. attachmentId를 포함해 재시도해도 같은 객체만 갱신합니다. */
+    public static String createRegistrationExplorationKey(
+            Long placeId,
+            Long userId,
+            Long attachmentId,
+            String extension
+    ) {
+        return explorationPrefix(placeId, userId)
+                + "registration/" + attachmentId + "." + extension;
+    }
+
     private static String explorationPrefix(Long placeId, Long userId) {
         return "places/%d/exploration/%d/".formatted(placeId, userId);
     }

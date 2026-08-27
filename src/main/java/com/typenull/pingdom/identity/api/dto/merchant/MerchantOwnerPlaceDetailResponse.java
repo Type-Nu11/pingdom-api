@@ -30,6 +30,7 @@ public record MerchantOwnerPlaceDetailResponse(
         LocalDateTime operatingStatusCheckedAt,
         List<PlaceRegularOperatingHourResponse> regularHours,
         List<PlaceOperatingExceptionResponse> operatingExceptions,
+        String description,
         String touristSummary,
         Set<TouristCategory> touristCategories,
         PlaceInformationSourceType primaryInformationSource,

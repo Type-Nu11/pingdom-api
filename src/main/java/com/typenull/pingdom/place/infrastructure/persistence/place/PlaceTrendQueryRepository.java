@@ -48,7 +48,7 @@ public interface PlaceTrendQueryRepository extends Repository<MapPlace, Long> {
                    map_place.place_name AS placeName,
                    map_place.category AS category,
                    map_place.address AS address,
-                   image.image_url AS imageUrl,
+                   COALESCE(map_place.image_url, image.image_url) AS imageUrl,
                    growth.bookmark_adds AS bookmarkAdds,
                    growth.bookmark_removes AS bookmarkRemoves,
                    (growth.bookmark_adds - growth.bookmark_removes) AS netBookmarkGrowth,

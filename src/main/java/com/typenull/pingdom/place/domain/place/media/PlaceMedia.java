@@ -61,6 +61,10 @@ public class PlaceMedia {
     @Column(name = "source_map_image_id")
     private Long sourceMapImageId;
 
+    /** 신청 대표 이미지에서 승격됐음을 기록해 승인 재시도와 backfill을 멱등 처리합니다. */
+    @Column(name = "source_registration_attachment_id")
+    private Long sourceRegistrationAttachmentId;
+
     @Column(name = "display_order", nullable = false)
     private int displayOrder;
 
@@ -78,6 +82,7 @@ public class PlaceMedia {
             String thumbnailUrl,
             String thumbnailS3Key,
             Long sourceMapImageId,
+            Long sourceRegistrationAttachmentId,
             int displayOrder,
             LocalDateTime createdAt
     ) {
@@ -88,7 +93,11 @@ public class PlaceMedia {
         this.thumbnailUrl = trimToNull(thumbnailUrl);
         this.thumbnailS3Key = trimToNull(thumbnailS3Key);
         validateSourceMapImage(purpose, sourceMapImageId);
+        if (purpose != PlaceMediaPurpose.EXPLORATION && sourceRegistrationAttachmentId != null) {
+            throw new IllegalArgumentException("registration attachment source는 exploration media에만 연결할 수 있습니다.");
+        }
         this.sourceMapImageId = sourceMapImageId;
+        this.sourceRegistrationAttachmentId = sourceRegistrationAttachmentId;
         this.displayOrder = Math.max(0, displayOrder);
         this.createdAt = Objects.requireNonNull(createdAt, "createdAt must not be null");
         this.updatedAt = createdAt;
@@ -111,6 +120,7 @@ public class PlaceMedia {
                 thumbnailUrl,
                 thumbnailS3Key,
                 sourceMapImageId,
+                null,
                 0,
                 createdAt
         );
@@ -133,6 +143,32 @@ public class PlaceMedia {
                 thumbnailUrl,
                 thumbnailS3Key,
                 null,
+                null,
+                displayOrder,
+                createdAt
+        );
+    }
+
+    public static PlaceMedia explorationFromRegistrationAttachment(
+            MapPlace place,
+            String imageUrl,
+            String s3Key,
+            Long sourceRegistrationAttachmentId,
+            int displayOrder,
+            LocalDateTime createdAt
+    ) {
+        if (sourceRegistrationAttachmentId == null) {
+            throw new IllegalArgumentException("sourceRegistrationAttachmentId must not be null");
+        }
+        return new PlaceMedia(
+                place,
+                PlaceMediaPurpose.EXPLORATION,
+                imageUrl,
+                s3Key,
+                null,
+                null,
+                null,
+                sourceRegistrationAttachmentId,
                 displayOrder,
                 createdAt
         );
