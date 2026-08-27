@@ -48,6 +48,8 @@ public record PlaceDetailResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         List<PlaceOperatingNoticeResponse> activeOperatingNotices,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        String description,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String touristSummary,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         Set<TouristCategory> touristCategories,

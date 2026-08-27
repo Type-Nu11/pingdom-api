@@ -17,6 +17,8 @@ public interface PlaceMediaRepository extends JpaRepository<PlaceMedia, Long> {
 
     Optional<PlaceMedia> findBySourceMapImageId(Long sourceMapImageId);
 
+    Optional<PlaceMedia> findBySourceRegistrationAttachmentId(Long sourceRegistrationAttachmentId);
+
     Optional<PlaceMedia> findByIdAndPlace_IdAndPurpose(Long id, Long placeId, PlaceMediaPurpose purpose);
 
     @Query("""

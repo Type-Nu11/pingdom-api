@@ -65,6 +65,7 @@ public class PlaceRegistrationService {
     private final MerchantPlaceMemberRepository memberRepository;
     private final UserRepository userRepository;
     private final UserAccessStatusService userAccessStatusService;
+    private final PlaceRegistrationMediaPromotionService mediaPromotionService;
     private final Clock clock;
     private final ObjectMapper objectMapper;
 
@@ -135,11 +136,14 @@ public class PlaceRegistrationService {
         userAccessStatusService.evict(userId);
         MapPlace place = MapPlace.builder().name(a.getPlaceName()).address(a.getRoadAddress())
                 .roadAddress(a.getRoadAddress()).jibunAddress(a.getJibunAddress()).postalCode(a.getPostalCode())
+                .description(a.getDescription())
                 .category(a.getCategory().name()).latitude(a.getLatitude()).longitude(a.getLongitude())
                 .location(point(a.getLatitude(), a.getLongitude())).userId(userId).registrant(user.getUsername())
                 .geocodingSource(GeocodingSource.LEGACY).build();
+        // tags·연락처는 현재 MapPlace의 공개 canonical field가 아니므로 신청/상점주 계약에만 보관합니다.
         placeAdministrativeRegionService.synchronizeIfConfigured(place);
         place = placeRepository.save(place);
+        mediaPromotionService.promote(place, a);
         place.replaceOperatingSchedule(toRegularHours(a), toBreakTimes(a), List.of());
         ownerPlaceRepository.save(MerchantOwnerPlace.builder().placeId(place.getId()).merchantOwnerUserId(userId).createdAt(now).build());
         memberRepository.save(MerchantPlaceMember.owner(place.getId(), userId, now));

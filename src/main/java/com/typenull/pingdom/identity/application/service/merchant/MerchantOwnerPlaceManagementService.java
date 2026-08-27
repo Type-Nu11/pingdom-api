@@ -253,6 +253,7 @@ public class MerchantOwnerPlaceManagementService {
                 place.getOperatingStatusCheckedAt(),
                 regularHours(place),
                 operatingExceptions(place),
+                place.getDescription(),
                 place.getTouristSummary(),
                 place.currentTouristCategories(),
                 place.getPrimaryInformationSource(),

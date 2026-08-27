@@ -19,6 +19,7 @@ import software.amazon.awssdk.core.exception.SdkException;
 import software.amazon.awssdk.core.sync.RequestBody;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.model.DeleteObjectRequest;
+import software.amazon.awssdk.services.s3.model.CopyObjectRequest;
 import software.amazon.awssdk.services.s3.model.GetUrlRequest;
 import software.amazon.awssdk.services.s3.model.GetObjectRequest;
 import software.amazon.awssdk.services.s3.model.HeadObjectRequest;
@@ -148,6 +149,33 @@ public class S3ObjectStorage {
         } catch (S3Exception exception) {
             log.error("S3 삭제 실패: {}", exception.awsErrorDetails() == null ? exception.getMessage() : exception.awsErrorDetails().errorMessage());
             throw new S3StorageException(S3StorageError.S3_ERROR, "S3 deleteObject failed.", exception);
+        } catch (SdkException exception) {
+            log.error("S3 연결 실패: {}", exception.getMessage());
+            throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
+        }
+    }
+
+    /**
+     * private 신청 첨부를 공개 장소 미디어 prefix로 복사합니다.
+     * 객체 공개 범위는 ACL이 아니라 bucket policy의 key prefix로 결정하므로,
+     * 원본 key를 그대로 노출하지 않고 공개 prefix에 별도 객체를 둡니다.
+     */
+    public void copy(String sourceKey, String targetKey) {
+        if (!StringUtils.hasText(sourceKey) || !StringUtils.hasText(targetKey)) {
+            throw new IllegalArgumentException("S3 복사 source/target key가 비어 있습니다.");
+        }
+        String source = sourceKey.trim();
+        String target = targetKey.trim();
+        try {
+            s3Client().copyObject(CopyObjectRequest.builder()
+                    .sourceBucket(bucket)
+                    .sourceKey(source)
+                    .destinationBucket(bucket)
+                    .destinationKey(target)
+                    .build());
+        } catch (S3Exception exception) {
+            log.error("S3 복사 실패: {} -> {}", source, target);
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 copyObject failed.", exception);
         } catch (SdkException exception) {
             log.error("S3 연결 실패: {}", exception.getMessage());
             throw new S3StorageException(S3StorageError.CONNECTION_ERROR, "S3 connection failed.", exception);
