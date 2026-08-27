@@ -14,6 +14,7 @@ import com.typenull.pingdom.notification.infrastructure.persistence.FcmDeviceTok
 import com.typenull.pingdom.notification.infrastructure.persistence.NotificationSettingRepository;
 import com.typenull.pingdom.notification.infrastructure.persistence.NotificationsRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkTrendEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import java.util.Collection;
@@ -33,6 +34,7 @@ public class UserWithdrawalDataService {
     private final MapPlaceRepository mapPlaceRepository;
     private final MapImageLikeRepository mapImageLikeRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
+    private final MapBookmarkTrendEventRepository mapBookmarkTrendEventRepository;
     private final NotificationsRepository notificationsRepository;
     private final FcmDeviceTokenRepository fcmDeviceTokenRepository;
     private final NotificationSettingRepository notificationSettingRepository;
@@ -56,6 +58,8 @@ public class UserWithdrawalDataService {
                 User.WITHDRAWN_DISPLAY_NAME
         );
         int deletedLikeCount = mapImageLikeRepository.deleteAllByUserId(userId);
+        java.util.List<Long> bookmarkedPlaceIds = mapBookmarkRepository.findPlaceIdsByUserId(userId);
+        mapBookmarkTrendEventRepository.recordRemovals(userId, bookmarkedPlaceIds, now);
         int deletedBookmarkCount = mapBookmarkRepository.deleteAllByUserId(userId);
         int deletedNotificationCount = notificationsRepository.deleteAllByUserId(userId);
         int deletedFcmTokenCount = fcmDeviceTokenRepository.deleteAllByUserId(userId);

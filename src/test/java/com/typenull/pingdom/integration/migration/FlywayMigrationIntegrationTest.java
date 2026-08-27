@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "114";
+    private static final String LATEST_MIGRATION_VERSION = "115";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(114);
+        assertThat(result.migrationsExecuted).isEqualTo(115);
 
         assertPostMigrationSchema();
     }
@@ -291,7 +291,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(25);
+        assertThat(result.migrationsExecuted).isEqualTo(26);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -392,7 +392,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(112);
+        assertThat(result.migrationsExecuted).isEqualTo(113);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -506,7 +506,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(87);
+        assertThat(result.migrationsExecuted).isEqualTo(88);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -742,7 +742,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(59);
+        assertThat(result.migrationsExecuted).isEqualTo(60);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1310,6 +1310,33 @@ class FlywayMigrationIntegrationTest {
                           'uq_visit_verification_session_active',
                           'uq_visit_verification_session_completed_check_in',
                           'idx_visit_verification_session_retention'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'map_bookmark_trend_tracking'
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'map_bookmark_trend_event'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 6
+                    FROM information_schema.columns
+                    WHERE table_name = 'map_bookmark_trend_event'
+                      AND column_name IN (
+                          'id', 'user_id', 'place_id', 'origin_place_id', 'event_type', 'occurred_at'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_indexes
+                    WHERE tablename = 'map_bookmark_trend_event'
+                      AND indexname IN (
+                          'idx_map_bookmark_trend_event_stream',
+                          'idx_map_bookmark_trend_event_place_time'
                       )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
