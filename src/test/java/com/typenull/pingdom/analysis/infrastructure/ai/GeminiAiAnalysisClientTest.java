@@ -8,17 +8,11 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisPrompt;
 import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
-import com.typenull.pingdom.analysis.application.ai.LocationAnalysisResponseValidator;
-import com.typenull.pingdom.analysis.application.ai.McpAnalysisClient;
-import java.time.Duration;
+import com.typenull.pingdom.analysis.infrastructure.mcp.McpAnalysisProperties;
 import java.time.LocalDate;
-import java.util.List;
-import java.util.Map;
-import java.util.concurrent.atomic.AtomicInteger;
-import java.util.concurrent.atomic.AtomicReference;
+import java.time.Duration;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
@@ -28,16 +22,54 @@ import org.springframework.web.client.RestClient;
 class GeminiAiAnalysisClientTest {
 
     @Test
-    void sendsJsonGenerationRequestAndParsesCandidateText() {
-        RestClient.Builder builder = RestClient.builder();
+    void registersRemoteMcpAndParsesFinalInteractionOutput() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
                 .andExpect(method(HttpMethod.POST))
                 .andExpect(header("x-goog-api-key", "test-key"))
-                .andExpect(jsonPath("$.contents[0].parts[0].text").value("prompt"))
-                .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
+                .andExpect(jsonPath("$.model").value("gemini-3.1-flash-lite"))
+                .andExpect(jsonPath("$.input").value("prompt"))
+                .andExpect(jsonPath("$.tool_choice").value("any"))
+                .andExpect(jsonPath("$.tools[0].type").value("mcp_server"))
+                .andExpect(jsonPath("$.tools[0].name").value("pingdom_mcp"))
+                .andExpect(jsonPath("$.tools[0].url").value("https://mcp.test/mcp"))
+                .andExpect(jsonPath("$.tools[0].allowed_tools[0]").value("recommend_location"))
+                .andExpect(jsonPath("$.tools[0].headers.Authorization")
+                        .value("Bearer mcp-secret"))
+                .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
+
+        AiAnalysisProperties properties = new AiAnalysisProperties(
+                "gemini", "http://gemini.test/v1beta", null, "test-key",
+                Duration.ofSeconds(1), Duration.ofSeconds(2)
+        );
+        McpAnalysisProperties mcpProperties = new McpAnalysisProperties(
+                "https://mcp.test/mcp", "mcp-secret"
+        );
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties, mcpProperties, new ObjectMapper()
+        );
+
+        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
+                "prompt", LocalDate.of(2026, 8, 18)
+        ));
+
+        assertThat(response.reportName()).isEqualTo("입지 분석");
+        assertThat(response.analysisBasisDate()).isEqualTo(LocalDate.of(2026, 8, 18));
+        server.verify();
+    }
+
+    @Test
+    void extractsTextFromModelOutputStepWhenOutputTextIsAbsent() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
                 .andRespond(withSuccess(
-                        responseJson(),
+                        """
+                                {"status":"completed","steps":[{"type":"model_output","content":[
+                                  {"type":"text","text":"{\\"reportName\\":\\"입지 분석\\",\\"overallLocationEvaluation\\":{\\"grade\\":\\"INSUFFICIENT_DATA\\"}}"}
+                                ]}]}
+                                """,
                         MediaType.APPLICATION_JSON
                 ));
 
@@ -45,212 +77,22 @@ class GeminiAiAnalysisClientTest {
                 "gemini", "http://gemini.test/v1beta", null, "test-key",
                 Duration.ofSeconds(1), Duration.ofSeconds(2)
         );
+        McpAnalysisProperties mcpProperties = new McpAnalysisProperties(
+                "https://mcp.test/mcp", ""
+        );
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties, new ObjectMapper()
+                builder.build(), properties, mcpProperties, new ObjectMapper()
         );
 
-        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
+        assertThat(client.analyze(new AiAnalysisPrompt(
                 "prompt", LocalDate.of(2026, 8, 18)
-        ));
-
-        assertThat(response.reportName()).isEqualTo("입지 분석");
-        assertThat(response.content()).isNotNull();
+        )).reportName()).isEqualTo("입지 분석");
         server.verify();
     }
 
-    @Test
-    void retriesOnceWhenGeminiReturnsStringEvidenceInsteadOfEvidenceObject() {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andRespond(withSuccess(invalidEvidenceResponseJson(), MediaType.APPLICATION_JSON));
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andExpect(jsonPath("$.contents[2].parts[0].text")
-                        .value(org.hamcrest.Matchers.containsString("Evidence 객체만")))
-                .andRespond(withSuccess(responseJson(), MediaType.APPLICATION_JSON));
-
-        AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", null, "test-key",
-                Duration.ofSeconds(1), Duration.ofSeconds(2)
-        );
-        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties, new ObjectMapper()
-        );
-
-        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18)
-        ));
-
-        assertThat(response.reportName()).isEqualTo("입지 분석");
-        server.verify();
-    }
-
-    @Test
-    void executesGeminiToolCallThroughMcpAndSendsResultBack() {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andExpect(jsonPath("$.tools[0].functionDeclarations[0].name").value("recommend_location"))
-                .andRespond(withSuccess(
-                        "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"recommend_location\",\"args\":{\"region\":\"대구 북구\",\"age_min\":20,\"age_max\":39,\"gender\":\"ANY\",\"radius_m\":1500}}}]}}]}",
-                        MediaType.APPLICATION_JSON
-                ));
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andExpect(jsonPath("$.contents.length()" ).value(3))
-                .andExpect(jsonPath("$.contents[2].parts[0].functionResponse.name").value("recommend_location"))
-                .andExpect(jsonPath("$.contents[2].parts[0].functionResponse.response.result.recommendations[0].metrics.total_foot")
-                        .value(2328))
-                .andRespond(withSuccess(responseJson(), MediaType.APPLICATION_JSON));
-
-        AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", null, "test-key",
-                Duration.ofSeconds(1), Duration.ofSeconds(2)
-        );
-        AtomicReference<Map<String, Object>> calledArguments = new AtomicReference<>();
-        McpAnalysisClient mcpClient = new McpAnalysisClient() {
-            @Override
-            public List<McpTool> listTools() {
-                return List.of(new McpTool(
-                        "recommend_location", "추천 장소 조회", Map.of("type", "object")
-                ));
-            }
-
-            @Override
-            public McpToolResult callTool(String name, Map<String, Object> arguments) {
-                calledArguments.set(arguments);
-                return new McpToolResult(name, """
-                        {"recommendations":[{"rank":1,"metrics":{"total_foot":2328}}]}
-                        """, false);
-            }
-        };
-        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties, new ObjectMapper(), mcpClient
-        );
-
-        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18), "대구광역시 북구 서변동"
-        ));
-
-        assertThat(response.reportName()).isEqualTo("입지 분석");
-        assertThat(calledArguments.get()).containsEntry("region", "대구광역시 북구 서변동");
-        server.verify();
-    }
-
-    @Test
-    void createsReportFromMcpDataWhenGeminiBreaksContractTwice() {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andRespond(withSuccess(toolCallResponse(), MediaType.APPLICATION_JSON));
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andRespond(withSuccess(invalidEvidenceResponseJson(), MediaType.APPLICATION_JSON));
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andRespond(withSuccess(invalidEvidenceResponseJson(), MediaType.APPLICATION_JSON));
-
-        AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", null, "test-key",
-                Duration.ofSeconds(1), Duration.ofSeconds(2)
-        );
-        McpAnalysisClient mcpClient = new McpAnalysisClient() {
-            @Override
-            public List<McpTool> listTools() {
-                return List.of(new McpTool("recommend_location", "추천 장소 조회", Map.of("type", "object")));
-            }
-
-            @Override
-            public McpToolResult callTool(String name, Map<String, Object> arguments) {
-                return new McpToolResult(name, """
-                        {"recommendations":[{"rank":1,"address":"서울특별시 송파구 잠실3동","score":0.9,
-                        "metrics":{"total_foot":2328,"age_match":1169,"gender_match":2328,"avg_hour":18.5}}],
-                        "searched_radius_m":1500}
-                        """, false);
-            }
-        };
-        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties, new ObjectMapper(), mcpClient
-        );
-
-        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18), "서울특별시 송파구 잠실3동"
-        ));
-
-        assertThat(response.content().overallLocationEvaluation().grade()).isEqualTo(
-                com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent.Grade.CONDITIONAL
-        );
-        assertThat(response.content().footTrafficAnalysis().total()).isEqualTo(2328D);
-        assertThat(response.content().recommendedPlaces()).hasSize(1);
-        LocationAnalysisRequest request = new LocationAnalysisRequest();
-        request.setRegion("서울특별시 송파구 잠실3동");
-        new LocationAnalysisResponseValidator().validate(request, response);
-        server.verify();
-    }
-
-    @Test
-    void requestsFinalJsonWithoutToolsWhenToolCallLimitIsReached() {
-        RestClient.Builder builder = RestClient.builder();
-        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        for (int i = 0; i < 2; i++) {
-            server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                    .andRespond(withSuccess(toolCallResponse(), MediaType.APPLICATION_JSON));
-        }
-        server.expect(requestTo("models/gemini-3.1-flash-lite:generateContent"))
-                .andRespond(withSuccess(responseJson(), MediaType.APPLICATION_JSON));
-
-        AiAnalysisProperties properties = new AiAnalysisProperties(
-                "gemini", "http://gemini.test/v1beta", null, "test-key",
-                Duration.ofSeconds(1), Duration.ofSeconds(2)
-        );
-        AtomicInteger toolCalls = new AtomicInteger();
-        McpAnalysisClient mcpClient = new McpAnalysisClient() {
-            @Override
-            public List<McpTool> listTools() {
-                return List.of(new McpTool(
-                        "recommend_location", "추천 장소 조회", Map.of("type", "object")
-                ));
-            }
-
-            @Override
-            public McpToolResult callTool(String name, Map<String, Object> arguments) {
-                toolCalls.incrementAndGet();
-                return new McpToolResult(name, "{\"recommendations\":[]}", false);
-            }
-        };
-        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
-                builder.build(), properties, new ObjectMapper(), mcpClient
-        );
-
-        AiAnalysisResponse response = client.analyze(new AiAnalysisPrompt(
-                "prompt", LocalDate.of(2026, 8, 18)
-        ));
-
-        assertThat(response.reportName()).isEqualTo("입지 분석");
-        assertThat(toolCalls).hasValue(1);
-        server.verify();
-    }
-
-    private String responseJson() {
-        try {
-            String content = new ObjectMapper().writeValueAsString(Map.of(
-                    "reportName", "입지 분석",
-                    "overallLocationEvaluation", Map.of("grade", "INSUFFICIENT_DATA")
-            ));
-            return new ObjectMapper().writeValueAsString(Map.of(
-                    "candidates", List.of(Map.of(
-                            "content", Map.of("parts", List.of(Map.of("text", content)))
-                    ))
-            ));
-        } catch (Exception exception) {
-            throw new AssertionError(exception);
-        }
-    }
-
-    private String toolCallResponse() {
-        return "{\"candidates\":[{\"content\":{\"role\":\"model\",\"parts\":[{\"functionCall\":{\"name\":\"recommend_location\",\"args\":{\"region\":\"대구 북구\",\"age_min\":20,\"age_max\":39,\"gender\":\"ANY\"}}}]}}]}";
-    }
-
-    private String invalidEvidenceResponseJson() {
-        return """
-                {"candidates":[{"content":{"parts":[{"text":"{\\"reportName\\":\\"입지 분석\\",\\"overallLocationEvaluation\\":{\\"grade\\":\\"INSUFFICIENT_DATA\\",\\"summary\\":\\"분석\\",\\"strengths\\":[],\\"risks\\":[],\\"evidences\\":[\\"GEOCODE_FAILED\\"]}}"}]}}]}
-                """;
+    private String interactionResponse() {
+        return "{\"status\":\"completed\",\"output_text\":"
+                + "\"{\\\"reportName\\\":\\\"입지 분석\\\","
+                + "\\\"overallLocationEvaluation\\\":{\\\"grade\\\":\\\"INSUFFICIENT_DATA\\\"}}\"}";
     }
 }
