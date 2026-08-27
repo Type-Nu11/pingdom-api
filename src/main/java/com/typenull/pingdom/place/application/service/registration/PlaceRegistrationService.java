@@ -19,6 +19,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.place.application.service.recommendation.snapshot.PlaceRecommendationSnapshotService;
+import com.typenull.pingdom.place.application.service.localhot.PlaceAdministrativeRegionService;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import java.time.Clock;
@@ -57,6 +58,7 @@ public class PlaceRegistrationService {
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
     private final PlaceRegistrationApplicationRepository repository;
     private final MapPlaceRepository placeRepository;
+    private final PlaceAdministrativeRegionService placeAdministrativeRegionService;
     private final PlaceRecommendationSnapshotService snapshotService;
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
@@ -131,11 +133,13 @@ public class PlaceRegistrationService {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.MERCHANT_PROFILE_REQUIRED);
         }
         userAccessStatusService.evict(userId);
-        MapPlace place = placeRepository.save(MapPlace.builder().name(a.getPlaceName()).address(a.getRoadAddress())
+        MapPlace place = MapPlace.builder().name(a.getPlaceName()).address(a.getRoadAddress())
                 .roadAddress(a.getRoadAddress()).jibunAddress(a.getJibunAddress()).postalCode(a.getPostalCode())
                 .category(a.getCategory().name()).latitude(a.getLatitude()).longitude(a.getLongitude())
                 .location(point(a.getLatitude(), a.getLongitude())).userId(userId).registrant(user.getUsername())
-                .geocodingSource(GeocodingSource.LEGACY).build());
+                .geocodingSource(GeocodingSource.LEGACY).build();
+        placeAdministrativeRegionService.synchronizeIfConfigured(place);
+        place = placeRepository.save(place);
         place.replaceOperatingSchedule(toRegularHours(a), toBreakTimes(a), List.of());
         ownerPlaceRepository.save(MerchantOwnerPlace.builder().placeId(place.getId()).merchantOwnerUserId(userId).createdAt(now).build());
         memberRepository.save(MerchantPlaceMember.owner(place.getId(), userId, now));

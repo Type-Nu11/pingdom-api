@@ -171,6 +171,9 @@ public class MapPlace {
     @Column(name = "kakao_place_id", length = 50)
     private String kakaoPlaceId;
 
+    @Column(name = "region_code", length = 5)
+    private String regionCode;
+
     @Column(name = "latitude", nullable = false)
     private Double latitude;
 
@@ -288,6 +291,10 @@ public class MapPlace {
         this.latitude = latitude;
         this.longitude = longitude;
         this.location = location;
+    }
+
+    public void updateAdministrativeRegion(String regionCode) {
+        this.regionCode = regionCode;
     }
 
     public void updateGeocoding(
