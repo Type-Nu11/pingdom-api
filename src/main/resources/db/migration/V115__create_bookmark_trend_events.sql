@@ -32,6 +32,7 @@ SELECT
     'BASELINE_ACTIVE',
     tracking.started_at - INTERVAL '1 microsecond'
 FROM map_bookmark bookmark
+JOIN map_place place ON place.map_place_id = bookmark.place_id
 CROSS JOIN map_bookmark_trend_tracking tracking
 WHERE tracking.id = TRUE;
 
