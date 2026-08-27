@@ -102,7 +102,6 @@ public class MerchantPlaceApplicationService {
             Long id = placeRegistrationService.createForUnifiedApplication(userId, newPlace);
             application = locked(id);
         } else {
-            rejectClientClaimAttachments(request);
             application = createClaimDraft(userId, request, now());
             applicationRepository.save(application);
         }
@@ -225,7 +224,6 @@ public class MerchantPlaceApplicationService {
             if (request.applicationType() == MerchantPlaceApplicationType.NEW_PLACE) {
                 placeRegistrationService.updateForUnifiedApplication(userId, id, requireNewPlace(request));
             } else {
-                rejectClientClaimAttachments(request);
                 refreshClaimSnapshot(application, request, now());
             }
             applyMerchantData(application, request, now());
@@ -524,12 +522,6 @@ public class MerchantPlaceApplicationService {
         }
     }
 
-    private void rejectClientClaimAttachments(MerchantPlaceApplicationRequest request) {
-        if (request.attachments() != null && !request.attachments().isEmpty()) {
-            throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_ATTACHMENT_METADATA);
-        }
-    }
-
     private PlaceRegistrationRequest requireNewPlace(MerchantPlaceApplicationRequest request) {
         if (request.newPlace() == null) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.INVALID_STATE);
@@ -573,7 +565,7 @@ public class MerchantPlaceApplicationService {
     }
 
     private MerchantPlaceApplicationResponse response(PlaceRegistrationApplication application) {
-        return MerchantPlaceApplicationResponse.from(application);
+        return MerchantPlaceApplicationResponse.from(application, objectMapper);
     }
 
     private List<AdminMerchantPlaceApplicationAttachmentResponse> attachments(PlaceRegistrationApplication application) {
