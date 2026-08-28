@@ -6,10 +6,8 @@ import io.swagger.v3.oas.models.media.Schema;
 import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 
 @Configuration
-@Profile({"dev", "local", "openapi-export"})
 public class PlaceExplorationOpenApiConfig {
 
     @Bean
