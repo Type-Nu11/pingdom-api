@@ -100,13 +100,20 @@ public class LocationAnalysisPromptFactory {
                    임의로 순서를 바꾸지 말고 동점이라고 표시한다.
 
                 [추천·타깃 산출]
-                1. MCP가 반환한 모든 recommendation을 rank 순서 그대로 recommendedPlaces에 넣는다. 장소명은 address에서
-                   확인 가능한 명칭만 사용하고, 주소·점수는 원본값을 변경하지 않는다. reason에는 total_foot, age_match,
-                   gender_match, avg_hour 중 실제 반환된 수치만 근거로 짧게 작성한다. 주소가 없으면 추정하지 않는다.
-                2. 추천 장소 유동인구에서 실제 관측된 age_match와 gender_match를 타깃 일치 통계로 사용한다.
+                1. MCP가 반환한 모든 recommendation을 rank 순서 그대로 recommendedPlaces에 넣는다. name은 MCP address의
+                   첫 번째 실제 장소명만 그대로 복사하고, address에 장소명이 없으면 address 전체를 name에도 그대로 복사한다.
+                   "후보 1", "[지역] 후보 N", "인근" 같은 임의 명칭·접미사를 만들거나 주소·점수를 변경하지 않는다.
+                   reason에는 total_foot, age_match, gender_match, avg_hour 중 실제 반환된 수치만 근거로 짧게 작성한다.
+                   주소가 없으면 해당 후보를 만들지 않는다.
+                2. MCP recommendation에 값이 있으면 다음 매핑을 반드시 수행한다. metrics.total_foot →
+                   footTrafficAnalysis.total, metrics.age_match → targetPopulationAnalysis.age의 타깃 일치 지표,
+                   metrics.gender_match → targetPopulationAnalysis.gender의 성별 일치 지표,
+                   metrics.avg_hour → targetPopulationAnalysis.behaviorIndicators의 "평균 활동 시간".
+                   이 값들은 MCP에 존재하는데도 null 또는 []로 반환하지 않는다. MCP에 해당 값이 없을 때만 해당 배열을 []로 둔다.
+                3. 추천 장소 유동인구에서 실제 관측된 age_match와 gender_match를 타깃 일치 통계로 사용한다.
                    연령·성별 분포 원본이 없으면 age와 gender는 []로 두고, derivedFromPlace에는 산출에 사용한 추천 장소명을
                    기록한다. 존재하지 않는 세부 연령대나 성별 비율을 만들지 않는다.
-                3. targetCustomerGroup과 operatingHours의 적합성은 입력 조건과 동일 기간·범위의 DB 유동인구를
+                4. targetCustomerGroup과 operatingHours의 적합성은 입력 조건과 동일 기간·범위의 DB 유동인구를
                    비교한 결과만 사용한다.
 
                 [점수와 등급]
@@ -154,6 +161,7 @@ public class LocationAnalysisPromptFactory {
                    coverage, radiusExpanded, missingData, evidences
                 10. 분석 범위: analysisScope의 requestedRegion, normalizedRegion, scopeLevel, scopeDescription, radiusMeters
                 11. 데이터 출처: dataSources
+                dataSources의 각 원소는 반드시 {"id":"source-1","type":"MCP","source":"Pingdom MCP","reference":"recommend_location","basisDate":"YYYY-MM-DD","scope":"분석 범위"} 형태의 객체이며 문자열 배열을 반환하지 않는다.
                 12. 제한사항: limitations
                 13. 통계 산출 근거: 위 metrics와 evidences에 실제 원본값·분모·기간·범위를 남긴다.
                 age, gender, behaviorIndicators, byTime, byDay, byMonth, demandIndicators, demandDrivers,

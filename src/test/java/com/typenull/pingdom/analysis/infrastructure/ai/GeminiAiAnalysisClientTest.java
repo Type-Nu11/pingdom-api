@@ -2,7 +2,6 @@ package com.typenull.pingdom.analysis.infrastructure.ai;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
-import static org.springframework.test.web.client.match.MockRestRequestMatchers.header;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
@@ -29,12 +28,11 @@ class GeminiAiAnalysisClientTest {
     void registersRemoteMcpAndParsesFinalInteractionOutput() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andExpect(method(HttpMethod.POST))
-                .andExpect(header("x-goog-api-key", "test-key"))
                 .andExpect(jsonPath("$.model").value("gemini-3.1-flash-lite"))
                 .andExpect(jsonPath("$.input").value("prompt"))
-                .andExpect(jsonPath("$.generation_config.tool_choice").value("any"))
+                .andExpect(jsonPath("$.generation_config.tool_choice").value("auto"))
                 .andExpect(jsonPath("$.tool_choice").doesNotExist())
                 .andExpect(jsonPath("$.tools[0].type").value("mcp_server"))
                 .andExpect(jsonPath("$.tools[0].name").value("pingdom_mcp"))
@@ -69,7 +67,7 @@ class GeminiAiAnalysisClientTest {
     void extractsTextFromModelOutputStepWhenOutputTextIsAbsent() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andRespond(withSuccess(
                         """
                                 {"status":"completed","steps":[{"type":"model_output","content":[
@@ -100,7 +98,7 @@ class GeminiAiAnalysisClientTest {
     void omitsMcpAuthorizationHeaderWhenAuthTokenIsBlank() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andExpect(jsonPath("$.tools[0].headers").doesNotExist())
                 .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
 
@@ -144,7 +142,7 @@ class GeminiAiAnalysisClientTest {
     void mapsGeminiBadRequestToAiServiceUnavailable() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andRespond(withBadRequest().body("invalid Gemini request"));
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
                 builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
@@ -162,7 +160,7 @@ class GeminiAiAnalysisClientTest {
     void mapsFailedGeminiInteractionToAiServiceUnavailable() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andRespond(withSuccess("{\"status\":\"failed\"}", MediaType.APPLICATION_JSON));
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
                 builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
@@ -180,7 +178,7 @@ class GeminiAiAnalysisClientTest {
     void rejectsHtmlReturnedDirectlyByGemini() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andRespond(withSuccess("{\"status\":\"completed\",\"output_text\":\"{\\\"html\\\":\\\"<main/>\\\"}\"}",
                         MediaType.APPLICATION_JSON));
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
@@ -199,7 +197,7 @@ class GeminiAiAnalysisClientTest {
     void rejectsCompletedInteractionWithoutTextOutput() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
-        server.expect(requestTo("http://gemini.test/v1beta/interactions"))
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
                 .andRespond(withSuccess("{\"status\":\"completed\",\"steps\":[]}", MediaType.APPLICATION_JSON));
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
                 builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""), new ObjectMapper()
