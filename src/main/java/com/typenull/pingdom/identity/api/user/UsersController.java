@@ -4,6 +4,7 @@ import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
 import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
 import com.typenull.pingdom.identity.api.dto.profile.MyPageResponse;
+import com.typenull.pingdom.identity.api.dto.profile.ProfileImageUploadResponse;
 import com.typenull.pingdom.identity.api.dto.profile.TravelPurposePreferenceResponse;
 import com.typenull.pingdom.identity.api.dto.profile.TravelPurposePreferenceUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.export.UserDataExportResponse;
@@ -27,12 +28,15 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
+import org.springframework.http.MediaType;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RestController
 @RequestMapping("/users")
@@ -105,6 +109,30 @@ public class UsersController {
     ) {
         MyPageQueryResult result = myPageService.getMyPageInfo(authenticatedUserId(user));
         return ResponseEntity.ok(MyPageResponse.from(result));
+    }
+
+    @PostMapping(value = "/me/profile-image", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
+    @Operation(summary = "내 프로필 이미지 변경", description = "JPEG 또는 PNG 프로필 이미지를 업로드하고 즉시 변경합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "프로필 이미지 변경 성공",
+                    content = @Content(schema = @Schema(implementation = ProfileImageUploadResponse.class))),
+            @ApiResponse(responseCode = "400", description = "파일이 비어 있거나 허용되지 않은 이미지 형식",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청 또는 유효하지 않은 토큰",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "404", description = "사용자를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "413", description = "파일 크기 초과",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "프로필 이미지 저장소 사용 불가",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    })
+    public ResponseEntity<ProfileImageUploadResponse> changeProfileImage(
+            @RequestPart("file") MultipartFile file,
+            @CurrentUser JwtAuthenticatedUser user
+    ) {
+        String profileImageUrl = changeInfoService.changeProfileImage(file, authenticatedUserId(user));
+        return ResponseEntity.ok(new ProfileImageUploadResponse(profileImageUrl));
     }
 
     @GetMapping("/me/travel-purposes")
