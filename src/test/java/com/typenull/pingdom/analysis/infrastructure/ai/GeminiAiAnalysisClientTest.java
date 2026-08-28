@@ -39,7 +39,8 @@ class GeminiAiAnalysisClientTest {
                 .andExpect(jsonPath("$.tools[0].type").value("mcp_server"))
                 .andExpect(jsonPath("$.tools[0].name").value("pingdom_mcp"))
                 .andExpect(jsonPath("$.tools[0].url").value("https://mcp.test/mcp"))
-                .andExpect(jsonPath("$.tools[0].allowed_tools[0]").value("recommend_location"))
+                .andExpect(jsonPath("$.tools[0].allowed_tools[0].mode").value("any"))
+                .andExpect(jsonPath("$.tools[0].allowed_tools[0].tools[0]").value("recommend_location"))
                 .andExpect(jsonPath("$.tools[0].headers.Authorization")
                         .value("Bearer mcp-secret"))
                 .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
