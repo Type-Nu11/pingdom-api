@@ -11,8 +11,13 @@ import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationTy
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.enums.Explode;
+import io.swagger.v3.oas.annotations.enums.ParameterStyle;
+import io.swagger.v3.oas.annotations.media.ArraySchema;
+import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -39,13 +44,19 @@ public class AdminMerchantPlaceApplicationController {
     @GetMapping
     @Operation(summary = "관리자 Merchant 장소 신청 목록 조회")
     public AdminMerchantPlaceApplicationPageResponse list(
-            @RequestParam(required = false) PlaceRegistrationStatus status,
+            @Parameter(
+                    description = "반복 전달 가능한 신청 상태 필터",
+                    style = ParameterStyle.FORM,
+                    explode = Explode.TRUE,
+                    array = @ArraySchema(schema = @Schema(implementation = PlaceRegistrationStatus.class))
+            )
+            @RequestParam(name = "status", required = false) List<PlaceRegistrationStatus> statuses,
             @RequestParam(required = false) MerchantPlaceApplicationType applicationType,
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
             @CurrentUser JwtAuthenticatedUser admin
     ) {
-        return service.listForAdmin(admin.userId(), status, applicationType, page, limit);
+        return service.listForAdmin(admin.userId(), statuses, applicationType, page, limit);
     }
 
     @GetMapping("/{id}")

@@ -106,24 +106,85 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     @Test
-    void adminListFiltersByStatusAndUsesFilteredPageMetadata() {
+    void adminListSupportsSingleStatusAndUsesFilteredPageMetadata() {
         PlaceRegistrationApplication application = application(12L);
         when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
-        when(applicationRepository.findAllByStatus(
-                eq(PlaceRegistrationStatus.PENDING),
+        when(applicationRepository.findAllByStatusIn(
+                eq(List.of(PlaceRegistrationStatus.PENDING)),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(0, 20), 41));
 
-        var response = service.listForAdmin(99L, PlaceRegistrationStatus.PENDING, null, 1, 20);
+        var response = service.listForAdmin(99L, List.of(PlaceRegistrationStatus.PENDING), null, 1, 20);
 
         assertThat(response.total()).isEqualTo(41);
         assertThat(response.totalPages()).isEqualTo(3);
         assertThat(response.hasNext()).isTrue();
-        verify(applicationRepository).findAllByStatus(
-                eq(PlaceRegistrationStatus.PENDING),
+        verify(applicationRepository).findAllByStatusIn(
+                eq(List.of(PlaceRegistrationStatus.PENDING)),
                 org.mockito.ArgumentMatchers.any()
         );
+    }
+
+    @Test
+    void adminListFiltersMultipleStatusesAndApplicationTypeWithPageMetadata() {
+        PlaceRegistrationApplication application = application(12L);
+        List<PlaceRegistrationStatus> statuses = List.of(
+                PlaceRegistrationStatus.APPROVED,
+                PlaceRegistrationStatus.COMPLETED,
+                PlaceRegistrationStatus.REJECTED,
+                PlaceRegistrationStatus.CANCELED
+        );
+        when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
+        when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
+        when(applicationRepository.findAllByStatusInAndApplicationType(
+                eq(statuses),
+                eq(MerchantPlaceApplicationType.NEW_PLACE),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(1, 10), 21));
+
+        var response = service.listForAdmin(
+                99L,
+                statuses,
+                MerchantPlaceApplicationType.NEW_PLACE,
+                2,
+                10
+        );
+
+        assertThat(response.page()).isEqualTo(2);
+        assertThat(response.limit()).isEqualTo(10);
+        assertThat(response.total()).isEqualTo(21);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.hasNext()).isTrue();
+        verify(applicationRepository).findAllByStatusInAndApplicationType(
+                eq(statuses),
+                eq(MerchantPlaceApplicationType.NEW_PLACE),
+                org.mockito.ArgumentMatchers.any()
+        );
+    }
+
+    @Test
+    void adminListKeepsFilteredMetadataForAnOutOfRangePage() {
+        List<PlaceRegistrationStatus> statuses = List.of(PlaceRegistrationStatus.APPROVED);
+        when(applicationRepository.findAllByStatusInAndApplicationType(
+                eq(statuses),
+                eq(MerchantPlaceApplicationType.NEW_PLACE),
+                org.mockito.ArgumentMatchers.any()
+        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(3, 10), 21));
+
+        var response = service.listForAdmin(
+                99L,
+                statuses,
+                MerchantPlaceApplicationType.NEW_PLACE,
+                4,
+                10
+        );
+
+        assertThat(response.items()).isEmpty();
+        assertThat(response.page()).isEqualTo(4);
+        assertThat(response.total()).isEqualTo(21);
+        assertThat(response.totalPages()).isEqualTo(3);
+        assertThat(response.hasNext()).isFalse();
     }
 
     @Test
