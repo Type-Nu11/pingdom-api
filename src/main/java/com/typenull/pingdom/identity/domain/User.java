@@ -262,6 +262,10 @@ public class User {
         this.username = username;
     }
 
+    public void changeProfileImageUrl(String profileImageUrl) {
+        this.profileImageUrl = profileImageUrl;
+    }
+
     public boolean isAdmin() {
         return this.role == UserRole.ADMIN;
     }

@@ -16,7 +16,11 @@ public enum UsersErrorCode implements ErrorCode {
     TRAVEL_SCHEDULE_PERIOD_OVERLAP(HttpStatus.CONFLICT, "기존 여행 일정과 기간이 겹칩니다."),
     TRAVEL_SCHEDULE_NOT_FOUND(HttpStatus.NOT_FOUND, "여행 일정을 찾을 수 없습니다."),
     TRAVEL_SCHEDULE_NOT_EDITABLE(HttpStatus.CONFLICT, "취소된 여행 일정은 수정할 수 없습니다."),
-    TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "여행 일정이 다른 요청으로 변경되었습니다. 다시 조회해 주세요.");
+    TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION(HttpStatus.CONFLICT, "여행 일정이 다른 요청으로 변경되었습니다. 다시 조회해 주세요."),
+    PROFILE_IMAGE_FILE_EMPTY(HttpStatus.BAD_REQUEST, "프로필 이미지 파일은 필수입니다."),
+    PROFILE_IMAGE_FILE_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "프로필 이미지는 10MB 이하여야 합니다."),
+    PROFILE_IMAGE_FILE_INVALID(HttpStatus.BAD_REQUEST, "프로필 이미지는 JPEG 또는 PNG 파일이어야 합니다."),
+    PROFILE_IMAGE_STORAGE_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "프로필 이미지 저장소를 현재 사용할 수 없습니다.");
 
     private final HttpStatus status;
     private final String message;

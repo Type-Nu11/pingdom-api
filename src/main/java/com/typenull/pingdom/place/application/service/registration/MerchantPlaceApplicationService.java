@@ -122,7 +122,7 @@ public class MerchantPlaceApplicationService {
     @Transactional(readOnly = true)
     public AdminMerchantPlaceApplicationPageResponse listForAdmin(
             Long adminUserId,
-            PlaceRegistrationStatus status,
+            List<PlaceRegistrationStatus> statuses,
             MerchantPlaceApplicationType applicationType,
             int page,
             int limit
@@ -130,10 +130,10 @@ public class MerchantPlaceApplicationService {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
         var pageable = pageable(page, limit);
         Page<PlaceRegistrationApplication> result;
-        if (status != null && applicationType != null) {
-            result = applicationRepository.findAllByStatusAndApplicationType(status, applicationType, pageable);
-        } else if (status != null) {
-            result = applicationRepository.findAllByStatus(status, pageable);
+        if (statuses != null && !statuses.isEmpty() && applicationType != null) {
+            result = applicationRepository.findAllByStatusInAndApplicationType(statuses, applicationType, pageable);
+        } else if (statuses != null && !statuses.isEmpty()) {
+            result = applicationRepository.findAllByStatusIn(statuses, pageable);
         } else if (applicationType != null) {
             result = applicationRepository.findAllByApplicationType(applicationType, pageable);
         } else {
