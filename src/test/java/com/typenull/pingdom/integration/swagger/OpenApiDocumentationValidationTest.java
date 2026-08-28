@@ -509,6 +509,27 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void adminMerchantPlaceApplicationStatusFilterSupportsRepeatedEnumValues() throws Exception {
+        JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
+        JsonNode operation = adminDocument.at("/paths/~1admin~1merchant-place-applications/get");
+        JsonNode statusParameter = parameter(operation, "status");
+        JsonNode applicationTypeParameter = parameter(operation, "applicationType");
+
+        assertThat(statusParameter.path("in").asText()).isEqualTo("query");
+        assertThat(statusParameter.path("style").asText()).isEqualTo("form");
+        assertThat(statusParameter.path("explode").asBoolean()).isTrue();
+        assertThat(statusParameter.path("schema").path("type").asText()).isEqualTo("array");
+        assertThat(resolveSchema(adminDocument, statusParameter.path("schema").path("items")).path("enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder(
+                        "DRAFT", "PENDING", "APPROVED", "REJECTED", "COMPLETED", "CANCELED"
+                );
+        assertThat(applicationTypeParameter.path("schema").path("enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("NEW_PLACE", "EXISTING_PLACE_CLAIM");
+    }
+
+    @Test
     void removedLegacyApiDocumentationDoesNotAppear() throws Exception {
         JsonNode defaultDocument = readApiDocs("/v3/api-docs");
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
