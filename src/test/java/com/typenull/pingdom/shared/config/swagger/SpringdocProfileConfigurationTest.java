@@ -2,16 +2,23 @@ package com.typenull.pingdom.shared.config.swagger;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
-import java.util.Arrays;
 import org.junit.jupiter.api.Test;
+import org.springframework.boot.test.context.runner.ApplicationContextRunner;
 import org.springframework.context.annotation.Profile;
 
 class SpringdocProfileConfigurationTest {
 
+    private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
+            .withUserConfiguration(
+                    SpringdocSecurityConfig.class,
+                    PlaceExplorationOpenApiConfig.class,
+                    SpringdocGroupsConfig.class
+            );
+
     @Test
-    void localProfileRegistersGroupedOpenApiConfiguration() {
-        assertThat(profilesOf(SpringdocGroupsConfig.class)).contains("local");
-        assertThat(profilesOf(PlaceExplorationOpenApiConfig.class)).contains("local");
+    void groupedOpenApiConfigurationsAreNotProfileRestricted() {
+        assertThat(SpringdocGroupsConfig.class.getAnnotation(Profile.class)).isNull();
+        assertThat(PlaceExplorationOpenApiConfig.class.getAnnotation(Profile.class)).isNull();
     }
 
     @Test
@@ -19,9 +26,14 @@ class SpringdocProfileConfigurationTest {
         assertThat(SpringdocSecurityConfig.class.getAnnotation(Profile.class)).isNull();
     }
 
-    private String[] profilesOf(Class<?> configurationClass) {
-        Profile profile = configurationClass.getAnnotation(Profile.class);
-        assertThat(profile).isNotNull();
-        return Arrays.stream(profile.value()).toArray(String[]::new);
+    @Test
+    void defaultContextRegistersAllGroupedOpenApiBeans() {
+        contextRunner.run(context -> {
+            assertThat(context).hasBean("appApi");
+            assertThat(context).hasBean("commonApi");
+            assertThat(context).hasBean("consultingApi");
+            assertThat(context).hasBean("adminApi");
+            assertThat(context).hasBean("merchantApi");
+        });
     }
 }

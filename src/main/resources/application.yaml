@@ -113,6 +113,19 @@ springdoc:
     enabled: true
   swagger-ui:
     enabled: true
+    path: /swagger-ui
+    urls-primary-name: admin
+    urls:
+      - name: app
+        url: /v3/api-docs/app
+      - name: common
+        url: /v3/api-docs/common
+      - name: consulting
+        url: /v3/api-docs/consulting
+      - name: admin
+        url: /v3/api-docs/admin
+      - name: merchant
+        url: /v3/api-docs/merchant
 
 management:
   endpoints:
