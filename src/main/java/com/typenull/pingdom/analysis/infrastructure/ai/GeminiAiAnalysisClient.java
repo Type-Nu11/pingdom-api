@@ -76,7 +76,10 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         mcp.put("type", "mcp_server");
         mcp.put("name", MCP_NAME);
         mcp.put("url", mcpProperties.serverUrl());
-        mcp.putArray("allowed_tools").add(MCP_TOOL);
+        // Interactions API는 허용 도구 목록을 문자열 배열이 아닌 AllowedTools 객체 배열로 받는다.
+        ObjectNode allowedTools = mcp.putArray("allowed_tools").addObject();
+        allowedTools.put("mode", "any");
+        allowedTools.putArray("tools").add(MCP_TOOL);
         if (StringUtils.hasText(mcpProperties.authToken())) {
             mcp.putObject("headers")
                     .put("Authorization", "Bearer " + mcpProperties.authToken());
