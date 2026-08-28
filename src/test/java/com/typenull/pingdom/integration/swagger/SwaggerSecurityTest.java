@@ -58,6 +58,22 @@ class SwaggerSecurityTest {
     }
 
     @Test
+    void swaggerConfigListsAllApiGroups() throws Exception {
+        mockMvc.perform(get("/v3/api-docs/swagger-config"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.urls[0].name").value("app"))
+                .andExpect(jsonPath("$.urls[0].url").value("/v3/api-docs/app"))
+                .andExpect(jsonPath("$.urls[1].name").value("common"))
+                .andExpect(jsonPath("$.urls[1].url").value("/v3/api-docs/common"))
+                .andExpect(jsonPath("$.urls[2].name").value("consulting"))
+                .andExpect(jsonPath("$.urls[2].url").value("/v3/api-docs/consulting"))
+                .andExpect(jsonPath("$.urls[3].name").value("admin"))
+                .andExpect(jsonPath("$.urls[3].url").value("/v3/api-docs/admin"))
+                .andExpect(jsonPath("$.urls[4].name").value("merchant"))
+                .andExpect(jsonPath("$.urls[4].url").value("/v3/api-docs/merchant"));
+    }
+
+    @Test
     void appGroupDocsContainPlaceQueryApis() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
