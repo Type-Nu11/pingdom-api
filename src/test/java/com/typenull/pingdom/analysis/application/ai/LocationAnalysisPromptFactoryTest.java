@@ -44,6 +44,12 @@ class LocationAnalysisPromptFactoryTest {
                 "자동 확장된 참고 분석 범위", "metrics.total_foot는 footTrafficAnalysis.total",
                 "Evidence 객체 계약", "문자열이 아닌 아래 JSON 객체", "GEOCODE_FAILED: ..."
         );
+        assertThat(prompt.content()).contains(
+                "metrics.total_foot →",
+                "metrics.avg_hour →",
+                "문자열 배열을 반환하지 않는다",
+                "임의 명칭·접미사를 만들거나"
+        );
         assertThat(prompt.content()).doesNotContain("\"html\"");
     }
 

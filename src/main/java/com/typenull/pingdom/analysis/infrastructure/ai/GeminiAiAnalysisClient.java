@@ -55,8 +55,8 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         ObjectNode request = objectMapper.createObjectNode();
         request.put("model", properties.model());
         request.put("input", prompt.content());
-        // recommend_location만 허용하므로 Gemini가 MCP를 반드시 한 번 호출하도록 강제한다.
-        request.putObject("generation_config").put("tool_choice", "any");
+        // 도구를 사용할 수 있게 하되, 결과를 받은 뒤 불필요하게 재호출하지 않도록 자동 선택한다.
+        request.putObject("generation_config").put("tool_choice", "auto");
         request.set("tools", remoteMcpTools());
 
         log.info("입지 분석 Gemini Remote MCP 요청. model={}, mcpUrl={}, requestedRegionPresent={}",
@@ -90,8 +90,10 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
     private JsonNode requestInteractions(ObjectNode request) {
         try {
             JsonNode response = restClient.post()
-                    .uri("interactions")
-                    .header("x-goog-api-key", properties.apiKey())
+                    .uri(uriBuilder -> uriBuilder
+                            .path("interactions")
+                            .queryParam("key", properties.apiKey())
+                            .build())
                     .contentType(MediaType.APPLICATION_JSON)
                     .body(request)
                     .retrieve()
