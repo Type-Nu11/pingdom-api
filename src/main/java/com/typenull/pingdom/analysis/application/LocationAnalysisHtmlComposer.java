@@ -69,7 +69,7 @@ public class LocationAnalysisHtmlComposer {
                         + panel("월별 유동 추이", renderMetricBars(traffic == null ? List.of() : traffic.byMonth()))
                         + renderEvidenceTable(traffic == null ? List.of() : traffic.evidences()))
                 + page(5, "05 / COMPETITION & CONTEXT", "경쟁과 주변 환경",
-                panel("경쟁 환경", text(competition == null ? null : competition.summary()))
+                panel("경쟁 환경", sectionText(competition == null ? null : competition.summary(), "경쟁업체 없음"))
                         + renderCards(
                         "전체 경쟁점", value(competition == null ? null : competition.totalCompetitors()),
                         "프랜차이즈", value(competition == null ? null : competition.franchiseCompetitors()),
@@ -77,11 +77,11 @@ public class LocationAnalysisHtmlComposer {
                 )
                         + panel("핵심 경쟁점", renderFacilityTable("핵심 경쟁점", competition == null
                         ? List.of() : competition.keyCompetitors()))
-                        + panel("주변 환경 요약", text(facilities == null ? null : facilities.summary())
+                        + panel("주변 환경 요약", sectionText(facilities == null ? null : facilities.summary(), "주변 시설 없음")
                         + renderMetricTable(facilities == null ? List.of() : facilities.demandDrivers()))
                         + renderEvidenceTable(competition == null ? List.of() : competition.evidences()))
                 + page(6, "06 / LOCAL FACILITIES", "주변 시설과 접근성",
-                panel("주변 환경 요약", text(facilities == null ? null : facilities.summary()))
+                panel("주변 환경 요약", sectionText(facilities == null ? null : facilities.summary(), "주변 시설 없음"))
                         + panel("주변 시설", renderFacilities(facilities))
                         + renderEvidenceTable(facilities == null ? List.of() : facilities.evidences()))
                 + page(7, "07 / BUSINESS POTENTIAL", "사업성 및 실행 전략",
@@ -244,11 +244,16 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String renderFacilities(LocationAnalysisContent.NearbyFacilities facilities) {
-        if (facilities == null) return muted("주변 시설 데이터 없음");
+        if (facilities == null) return muted("주변 시설 없음");
+        if (facilities.competitors().isEmpty()
+                && facilities.convenienceFacilities().isEmpty()
+                && facilities.transportFacilities().isEmpty()) {
+            return muted("주변 시설 없음");
+        }
         String rendered = renderFacilityTable("경쟁 시설", facilities.competitors())
                 + renderFacilityTable("편의 시설", facilities.convenienceFacilities())
                 + renderFacilityTable("교통 시설", facilities.transportFacilities());
-        return rendered.isBlank() ? muted("주변 시설 데이터 없음") : rendered;
+        return rendered;
     }
 
     private String renderMetricBars(List<LocationAnalysisContent.Metric> metrics) {
@@ -283,13 +288,28 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String renderFacilityTable(String title, List<LocationAnalysisContent.Facility> facilities) {
-        if (facilities == null || facilities.isEmpty()) return "";
+        if (facilities == null || facilities.isEmpty()) return muted(emptyFacilityMessage(title));
         String rows = facilities.stream().limit(MAX_FACILITY_ROWS).map(facility -> "<tr><td>" + escape(text(facility.name())) + "</td><td>"
                 + escape(text(facility.category())) + "</td><td>" + escape(value(facility.distanceMeters())) + "m</td><td>"
                 + escape(text(facility.address())) + "</td><td>" + escape(text(facility.description())) + "</td></tr>")
                 .collect(Collectors.joining());
         return "<h3>" + escape(title) + "</h3><table><tr><th>시설명</th><th>분류</th><th>거리</th><th>주소</th><th>설명</th></tr>"
                 + rows + "</table>" + truncationNotice(facilities.size(), MAX_FACILITY_ROWS, title);
+    }
+
+    private String sectionText(String value, String fallback) {
+        return value == null || value.isBlank() || "데이터 없음".equals(value)
+                ? muted(fallback)
+                : text(value);
+    }
+
+    private String emptyFacilityMessage(String title) {
+        return switch (title) {
+            case "경쟁 시설", "핵심 경쟁점" -> "경쟁업체 없음";
+            case "편의 시설" -> "편의 시설 없음";
+            case "교통 시설" -> "교통 시설 없음";
+            default -> title + " 없음";
+        };
     }
 
     private String renderEvidenceTable(List<LocationAnalysisContent.Evidence> evidences) {

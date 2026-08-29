@@ -49,5 +49,7 @@ class LocationAnalysisHtmlComposerTest {
                 "경쟁과 주변 환경", "주변 시설과 접근성", "사업성 및 실행 전략", "데이터 신뢰도와 분석 기준");
         assertThat(html).doesNotContain("####", "```", "<script");
         assertThat(html).contains("데이터 없음");
+        assertThat(html).contains("경쟁업체 없음", "주변 시설 없음");
+        assertThat(html).doesNotContain("주변 시설 데이터 없음");
     }
 }
