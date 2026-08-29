@@ -8,7 +8,7 @@ plugins {
 import org.gradle.api.tasks.testing.Test
 
 group = 'com.typenull'
-version = '0.0.1-SNAPSHOT'
+version = '1.5.1'
 description = 'Pingdom'
 
 ext['testcontainers.version'] = '1.21.4'
