@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.api.dto.registration;
 
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
@@ -19,6 +20,7 @@ public record AdminMerchantPlaceApplicationResponse(
         String merchantContactEmail,
         String merchantDescription,
         String merchantContactPhone,
+        MerchantPlaceApplicationNewPlaceResponse newPlace,
         String placeName,
         Long existingPlaceId,
         String claimReason,
@@ -37,13 +39,18 @@ public record AdminMerchantPlaceApplicationResponse(
     public static AdminMerchantPlaceApplicationResponse from(
             PlaceRegistrationApplication application,
             String businessRegistrationNumber,
-            List<AdminMerchantPlaceApplicationAttachmentResponse> attachments
+            List<AdminMerchantPlaceApplicationAttachmentResponse> attachments,
+            ObjectMapper objectMapper
     ) {
         return new AdminMerchantPlaceApplicationResponse(
                 application.getId(), application.getApplicantUserId(), application.getApplicationType(), application.getStatus(),
                 application.getLegalName(), application.getBusinessName(), businessRegistrationNumber,
                 application.getMerchantDisplayName(), application.getMerchantContactEmail(), application.getMerchantDescription(),
-                application.getMerchantContactPhone(), application.getPlaceName(), application.getExistingPlaceId(),
+                application.getMerchantContactPhone(),
+                application.getApplicationType() == MerchantPlaceApplicationType.NEW_PLACE
+                        ? MerchantPlaceApplicationNewPlaceResponse.from(application, objectMapper)
+                        : null,
+                application.getPlaceName(), application.getExistingPlaceId(),
                 application.getClaimReason(), application.getReviewReason(), application.getCompletedPlaceId(), application.getSubmittedAt(),
                 application.getReviewedAt(), application.getCompletedAt(), application.getCanceledAt(), application.getCreatedAt(),
                 application.getUpdatedAt(), application.getVersion(), application.getSubmissionVersion(), attachments

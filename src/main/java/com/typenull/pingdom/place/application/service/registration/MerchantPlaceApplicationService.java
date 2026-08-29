@@ -185,7 +185,8 @@ public class MerchantPlaceApplicationService {
         return AdminMerchantPlaceApplicationResponse.from(
                 application,
                 decryptRegistrationNumber(application),
-                attachments
+                attachments,
+                objectMapper
         );
     }
 
