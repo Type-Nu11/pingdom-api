@@ -21,7 +21,7 @@ class LocationAnalysisHtmlComposerTest {
                 new LocationAnalysisContent(
                         "강남 카페 입지 분석",
                         new LocationAnalysisContent.OverallLocationEvaluation(
-                                LocationAnalysisContent.Grade.CONDITIONAL, "조건부 적합",
+                                LocationAnalysisContent.Grade.CONDITIONAL, 75d, "조건부 적합",
                                 List.of("유동인구 확인"), List.of(), List.of()
                         ),
                         new LocationAnalysisContent.TargetPopulationAnalysis(
@@ -47,6 +47,8 @@ class LocationAnalysisHtmlComposerTest {
         assertThat(html).contains("page-break-after: always", "NanumGothic", "01 / 08", "02 / 08", "08 / 08");
         assertThat(html).contains("상권 개요와 후보 입지", "타깃 고객 분석", "유동 인구와 영업시간",
                 "경쟁과 주변 환경", "주변 시설과 접근성", "사업성 및 실행 전략", "데이터 신뢰도와 분석 기준");
+        assertThat(html).contains("전체 평가도", "75.0점");
+        assertThat(html).doesNotContain(">CONDITIONAL<");
         assertThat(html).doesNotContain("####", "```", "<script");
         assertThat(html).contains("데이터 없음");
         assertThat(html).contains("경쟁업체 없음", "주변 시설 없음");

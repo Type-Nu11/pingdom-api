@@ -36,6 +36,7 @@ class LocationAnalysisPromptFactoryTest {
                 "totalScore >= 70", "totalScore가 45~69",
                 "additionalCriteria", "고정 디자인 XHTML",
                 "최소 8페이지", "overallLocationEvaluation", "commercialAreaAnalysis",
+                "overallScore",
                 "competitionAnalysis", "businessPerformanceAnalysis", "dataQualityAnalysis", "통계 산출 근거",
                 "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자",
                 "SERVER_DESIGN_REFERENCE_BEGIN", "Pingdom Editorial Location Report v1",

@@ -20,6 +20,7 @@ public class LocationAnalysisReportService {
     private final LocationAnalysisPromptFactory promptFactory;
     private final AiAnalysisClient aiAnalysisClient;
     private final LocationAnalysisResponseValidator responseValidator;
+    private final LocationAnalysisCompetitionService competitionService;
     private final LocationAnalysisHtmlComposer htmlComposer;
     private final HtmlToPdfConverter htmlToPdfConverter;
     private final Clock clock;
@@ -28,6 +29,7 @@ public class LocationAnalysisReportService {
             LocationAnalysisPromptFactory promptFactory,
             AiAnalysisClient aiAnalysisClient,
             LocationAnalysisResponseValidator responseValidator,
+            LocationAnalysisCompetitionService competitionService,
             LocationAnalysisHtmlComposer htmlComposer,
             HtmlToPdfConverter htmlToPdfConverter,
             Clock clock
@@ -35,6 +37,7 @@ public class LocationAnalysisReportService {
         this.promptFactory = promptFactory;
         this.aiAnalysisClient = aiAnalysisClient;
         this.responseValidator = responseValidator;
+        this.competitionService = competitionService;
         this.htmlComposer = htmlComposer;
         this.htmlToPdfConverter = htmlToPdfConverter;
         this.clock = clock;
@@ -67,6 +70,7 @@ public class LocationAnalysisReportService {
                     grade, recommendationCount, trafficTotal);
             throw exception;
         }
+        content = competitionService.enrich(content, request.getCategory());
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
         LocalDate effectiveAnalysisBasisDate = aiResponse.analysisBasisDate() == null
@@ -76,7 +80,7 @@ public class LocationAnalysisReportService {
                 aiResponse.reportName(),
                 publishedDate,
                 effectiveAnalysisBasisDate,
-                aiResponse.content()
+                content
         );
         byte[] pdf = htmlToPdfConverter.convert(html);
         long completedAt = System.nanoTime();

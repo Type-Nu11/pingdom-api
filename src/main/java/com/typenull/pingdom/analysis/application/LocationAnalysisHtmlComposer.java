@@ -190,11 +190,11 @@ public class LocationAnalysisHtmlComposer {
                 escape(String.valueOf(publishedDate)),
                 escape(String.valueOf(analysisBasisDate)),
                 renderCards(
-                        "종합 등급", overall == null || overall.grade() == null ? null : overall.grade().name(),
+                        "전체 평가도", score(overall == null ? null : overall.overallScore()),
                         "분석 범위", content.analysisScope() == null ? null : content.analysisScope().normalizedRegion(),
                         "상권", commercialArea == null ? null : commercialArea.name()
                 ),
-                escape(overall == null || overall.grade() == null ? null : overall.grade().name()),
+                escape(score(overall == null ? null : overall.overallScore())),
                 escape(text(overall == null ? null : overall.summary())),
                 renderStringList("강점", overall == null ? List.of() : overall.strengths()),
                 renderStringList("주의 요인", overall == null ? List.of() : overall.risks()),

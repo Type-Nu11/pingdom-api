@@ -103,6 +103,7 @@ public class LocationAnalysisPromptFactory {
                 1. MCP가 반환한 모든 recommendation을 rank 순서 그대로 recommendedPlaces에 넣는다. name은 MCP address의
                    첫 번째 실제 장소명만 그대로 복사하고, address에 장소명이 없으면 address 전체를 name에도 그대로 복사한다.
                    "후보 1", "[지역] 후보 N", "인근" 같은 임의 명칭·접미사를 만들거나 주소·점수를 변경하지 않는다.
+                   MCP가 반환한 lat/lng는 각각 latitude/longitude에 그대로 복사한다. 좌표가 없으면 두 필드를 null로 둔다.
                    reason에는 total_foot, age_match, gender_match, avg_hour 중 실제 반환된 수치만 근거로 짧게 작성한다.
                    주소가 없으면 해당 후보를 만들지 않는다.
                 2. MCP recommendation에 값이 있으면 다음 매핑을 반드시 수행한다. metrics.total_foot →
@@ -140,6 +141,8 @@ public class LocationAnalysisPromptFactory {
                 CONDITIONAL: totalScore가 45~69, 개선 가능한 중대 위험, 또는 비핵심 입력 누락으로 점수를 계산할 수 없을 때.
                 UNSUITABLE: totalScore < 45 또는 확인된 회피 불가능 치명적 위험이 있을 때.
                 근거 없는 "치명적", "매우 낮음" 같은 단정은 사용하지 않는다.
+                overallLocationEvaluation.overallScore에는 위 totalScore를 0~100 숫자로 그대로 기록한다.
+                INSUFFICIENT_DATA로 점수를 계산할 수 없을 때만 overallScore를 null로 둔다.
 
                 [보고서 데이터 필수 내용]
                 Backend가 고정 디자인 XHTML을 생성하므로 HTML을 직접 작성하지 않는다. 아래 13개 섹션의
@@ -207,9 +210,9 @@ public class LocationAnalysisPromptFactory {
                 도구 조회와 내부 추론을 마친 뒤 아래 필드만 가진 유효한 JSON 객체를 반환한다.
                 {
                   "reportName": "[업종] [정규화 지역] 상권·입지 분석 보고서",
-                  "overallLocationEvaluation": {"grade":"SUITABLE|CONDITIONAL|UNSUITABLE|INSUFFICIENT_DATA", "summary":"", "strengths":[], "risks":[], "evidences":[]},
+                  "overallLocationEvaluation": {"grade":"SUITABLE|CONDITIONAL|UNSUITABLE|INSUFFICIENT_DATA", "overallScore":85.3, "summary":"", "strengths":[], "risks":[], "evidences":[]},
                   "commercialAreaAnalysis": {"name":"상권명", "type":"상권 유형", "summary":"", "demandIndicators":[{"label":"주거 인구","value":12000,"unit":"명","sharePercent":null}], "evidences":[]},
-                  "recommendedPlaces": [{"rank":1,"name":"장소명","address":"주소","score":85.3,"reason":"추천 이유","evidenceIds":["evidence-1"]}],
+                  "recommendedPlaces": [{"rank":1,"name":"장소명","address":"주소","score":85.3,"reason":"추천 이유","evidenceIds":["evidence-1"],"latitude":35.876,"longitude":128.596}],
                   "targetPopulationAnalysis": {"summary":"", "derivedFromPlace":"장소명", "age":[{"label":"20대","value":1200,"unit":"명","sharePercent":42.1}], "gender":[{"label":"F","value":900,"unit":"명","sharePercent":52.0}], "behaviorIndicators":[{"label":"평균 체류 시간","value":38,"unit":"분","sharePercent":null}], "evidences":[]},
                   "footTrafficAnalysis": {"summary":"", "total":28000, "byTime":[{"label":"18-20시","value":6200,"unit":"명","sharePercent":22.1}], "byDay":[], "byMonth":[], "operatingHoursAssessment":"", "operatingHoursFitScore":82.0, "evidences":[]},
                   "nearbyFacilities": {"summary":"", "demandDrivers":[{"label":"오피스","value":24,"unit":"개","sharePercent":null}], "competitors":[], "convenienceFacilities":[], "transportFacilities":[], "evidences":[]},
@@ -221,7 +224,8 @@ public class LocationAnalysisPromptFactory {
                   "limitations": []
                 }
                 필드명·enum·배열 이름·중첩 구조를 변경하지 않는다. recommendedPlaces 객체에는 반드시 rank, name, address,
-                score, reason, evidenceIds를 모두 포함한다. 데이터가 없으면 배열은 []로 반환한다. reportId, 발행일자,
+                score, reason, evidenceIds, latitude, longitude를 포함한다. 좌표를 MCP가 반환하지 않으면 latitude와 longitude는 null로 둔다.
+                데이터가 없으면 배열은 []로 반환한다. reportId, 발행일자,
                 분석 기준일, 저장 경로, 다운로드 URL은 Backend 책임이므로 만들거나 반환하지 않는다. JSON 외의 문자,
                 Markdown, 설명 문장, 코드 블록, html 필드와 추가 필드는 절대 출력하지 않는다.
                 """.formatted(analysisBasisDate, criteria, analysisBasisDate, DESIGN_REFERENCE);
