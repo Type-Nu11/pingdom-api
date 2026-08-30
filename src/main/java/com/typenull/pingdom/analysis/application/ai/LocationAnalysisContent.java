@@ -28,6 +28,30 @@ public record LocationAnalysisContent(
         limitations = limitations == null ? List.of() : List.copyOf(limitations);
     }
 
+    /** Backend가 map_place에서 확인한 동일 업종 경쟁업체를 AI 결과에 반영한다. */
+    public LocationAnalysisContent withNearbyCompetitors(List<Facility> competitors) {
+        NearbyFacilities currentFacilities = nearbyFacilities == null
+                ? new NearbyFacilities("데이터 없음", List.of(), List.of(), List.of(), List.of(), List.of())
+                : nearbyFacilities;
+        CompetitionAnalysis updatedCompetition = competitionAnalysis == null
+                ? null
+                : new CompetitionAnalysis(
+                        competitionAnalysis.summary(), competitionAnalysis.totalCompetitors(),
+                        competitionAnalysis.franchiseCompetitors(), competitionAnalysis.independentCompetitors(),
+                        competitionAnalysis.competitionDensity(), competitors, competitionAnalysis.evidences()
+                );
+        NearbyFacilities updatedFacilities = new NearbyFacilities(
+                currentFacilities.summary(), currentFacilities.demandDrivers(), competitors,
+                currentFacilities.convenienceFacilities(), currentFacilities.transportFacilities(),
+                currentFacilities.evidences()
+        );
+        return new LocationAnalysisContent(
+                reportName, overallLocationEvaluation, commercialAreaAnalysis, targetPopulationAnalysis,
+                footTrafficAnalysis, updatedFacilities, updatedCompetition, businessPerformanceAnalysis,
+                dataQualityAnalysis, recommendedPlaces, analysisScope, dataSources, limitations
+        );
+    }
+
     public LocationAnalysisContent(
             String reportName,
             OverallLocationEvaluation overallLocationEvaluation,
@@ -74,6 +98,7 @@ public record LocationAnalysisContent(
     @JsonIgnoreProperties(ignoreUnknown = false)
     public record OverallLocationEvaluation(
             Grade grade,
+            Double overallScore,
             String summary,
             List<String> strengths,
             List<String> risks,
@@ -83,6 +108,16 @@ public record LocationAnalysisContent(
             strengths = strengths == null ? List.of() : List.copyOf(strengths);
             risks = risks == null ? List.of() : List.copyOf(risks);
             evidences = evidences == null ? List.of() : List.copyOf(evidences);
+        }
+
+        public OverallLocationEvaluation(
+                Grade grade,
+                String summary,
+                List<String> strengths,
+                List<String> risks,
+                List<Evidence> evidences
+        ) {
+            this(grade, null, summary, strengths, risks, evidences);
         }
     }
 
@@ -233,10 +268,23 @@ public record LocationAnalysisContent(
             String address,
             Double score,
             String reason,
-            List<String> evidenceIds
+            List<String> evidenceIds,
+            Double latitude,
+            Double longitude
     ) {
         public RecommendedPlace {
             evidenceIds = evidenceIds == null ? List.of() : List.copyOf(evidenceIds);
+        }
+
+        public RecommendedPlace(
+                Integer rank,
+                String name,
+                String address,
+                Double score,
+                String reason,
+                List<String> evidenceIds
+        ) {
+            this(rank, name, address, score, reason, evidenceIds, null, null);
         }
     }
 

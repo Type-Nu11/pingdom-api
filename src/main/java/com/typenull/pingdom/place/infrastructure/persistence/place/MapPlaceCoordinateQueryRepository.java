@@ -50,4 +50,55 @@ public interface MapPlaceCoordinateQueryRepository extends Repository<MapPlace, 
             @Param("placeId") Long placeId,
             @Param("radiusMeters") double radiusMeters
     );
+
+    @Query(
+            value = """
+                    SELECT candidate.map_place_id AS placeId,
+                           candidate.place_name AS name,
+                           candidate.category AS category,
+                           candidate.address AS address,
+                           ST_Distance(
+                               candidate.location::geography,
+                               ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                               false
+                           ) AS distanceMeters
+                    FROM map_place candidate
+                    WHERE candidate.location IS NOT NULL
+                      AND LOWER(TRIM(candidate.category)) = LOWER(TRIM(:category))
+                      AND candidate.operating_status = 'OPERATING'
+                      AND candidate.discovery_status = 'VISIBLE'
+                      AND ST_DWithin(
+                          candidate.location::geography,
+                          ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                          :radiusMeters,
+                          false
+                      )
+                      AND ST_Distance(
+                          candidate.location::geography,
+                          ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                          false
+                      ) > 1
+                    ORDER BY distanceMeters ASC, candidate.map_place_id ASC
+                    """,
+            nativeQuery = true
+    )
+    List<NearbyCategoryPlace> findNearbyPlacesByCategory(
+            @Param("latitude") double latitude,
+            @Param("longitude") double longitude,
+            @Param("category") String category,
+            @Param("radiusMeters") double radiusMeters,
+            Pageable pageable
+    );
+
+    interface NearbyCategoryPlace {
+        Long getPlaceId();
+
+        String getName();
+
+        String getCategory();
+
+        String getAddress();
+
+        Double getDistanceMeters();
+    }
 }
