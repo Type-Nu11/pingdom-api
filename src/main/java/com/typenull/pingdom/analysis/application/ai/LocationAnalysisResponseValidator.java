@@ -49,6 +49,14 @@ public class LocationAnalysisResponseValidator {
         if (content.overallLocationEvaluation().grade() == null) {
             invalid();
         }
+        Double overallScore = content.overallLocationEvaluation().overallScore();
+        if (overallScore != null && (overallScore < 0 || overallScore > 100)) {
+            invalid();
+        }
+        if (content.overallLocationEvaluation().grade() != LocationAnalysisContent.Grade.INSUFFICIENT_DATA
+                && overallScore == null) {
+            invalid();
+        }
         validateScope(request, content.analysisScope());
         validateEvidence(content.overallLocationEvaluation().evidences());
         validateCommercialArea(content.commercialAreaAnalysis());
@@ -209,6 +217,12 @@ public class LocationAnalysisResponseValidator {
             requireText(place.address(), "recommendedPlaces.address");
             requireText(place.reason(), "recommendedPlaces.reason");
             if (place.score() == null || place.score() < 0 || place.score() > 100) {
+                invalid();
+            }
+            if ((place.latitude() == null) != (place.longitude() == null)
+                    || place.latitude() != null
+                    && (place.latitude() < -90 || place.latitude() > 90
+                    || place.longitude() < -180 || place.longitude() > 180)) {
                 invalid();
             }
             if (place.evidenceIds().stream().anyMatch(id -> !StringUtils.hasText(id))) {

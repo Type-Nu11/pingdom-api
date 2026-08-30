@@ -27,6 +27,7 @@ class LocationAnalysisReportServiceTest {
         LocationAnalysisPromptFactory promptFactory = mock(LocationAnalysisPromptFactory.class);
         AiAnalysisClient aiClient = mock(AiAnalysisClient.class);
         LocationAnalysisResponseValidator validator = mock(LocationAnalysisResponseValidator.class);
+        LocationAnalysisCompetitionService competitionService = mock(LocationAnalysisCompetitionService.class);
         LocationAnalysisHtmlComposer htmlComposer = mock(LocationAnalysisHtmlComposer.class);
         HtmlToPdfConverter pdfConverter = mock(HtmlToPdfConverter.class);
         Clock clock = Clock.fixed(Instant.parse("2026-08-18T00:00:00Z"), ZoneOffset.UTC);
@@ -58,9 +59,10 @@ class LocationAnalysisReportServiceTest {
         ));
         when(htmlComposer.compose(any(), any(), any(), any(), any())).thenReturn("<html/> ");
         when(pdfConverter.convert("<html/> ")).thenReturn(new byte[]{'%', 'P', 'D', 'F', '-'});
+        when(competitionService.enrich(any(), any())).thenAnswer(invocation -> invocation.getArgument(0));
 
         LocationAnalysisReportService service = new LocationAnalysisReportService(
-                promptFactory, aiClient, validator, htmlComposer, pdfConverter, clock
+                promptFactory, aiClient, validator, competitionService, htmlComposer, pdfConverter, clock
         );
 
         LocationAnalysisReportService.LocationAnalysisPdf result = service.generate(request);

@@ -56,7 +56,7 @@ class LocationAnalysisResponseValidatorTest {
         LocationAnalysisContent content = new LocationAnalysisContent(
                 "입지 분석",
                 new LocationAnalysisContent.OverallLocationEvaluation(
-                        LocationAnalysisContent.Grade.SUITABLE, "분석", List.of(), List.of(), List.of()
+                        LocationAnalysisContent.Grade.SUITABLE, 80d, "분석", List.of(), List.of(), List.of()
                 ),
                 commercialArea(),
                 new LocationAnalysisContent.TargetPopulationAnalysis(
@@ -87,7 +87,7 @@ class LocationAnalysisResponseValidatorTest {
         LocationAnalysisContent content = new LocationAnalysisContent(
                 "입지 분석",
                 new LocationAnalysisContent.OverallLocationEvaluation(
-                        LocationAnalysisContent.Grade.CONDITIONAL, "확장 반경의 참고 분석 결과", List.of(), List.of(), List.of()
+                        LocationAnalysisContent.Grade.CONDITIONAL, 60d, "확장 반경의 참고 분석 결과", List.of(), List.of(), List.of()
                 ),
                 commercialArea(),
                 new LocationAnalysisContent.TargetPopulationAnalysis(
