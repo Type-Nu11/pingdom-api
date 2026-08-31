@@ -325,6 +325,11 @@ public class MapPlace {
         this.kakaoPlaceId = kakaoPlaceId;
     }
 
+    public void updateBasicInformation(String name, String category) {
+        this.name = Objects.requireNonNull(name, "name must not be null");
+        this.category = Objects.requireNonNull(category, "category must not be null");
+    }
+
     public void updateImageUrl(String imageUrl) {
         this.imageUrl = imageUrl;
     }
