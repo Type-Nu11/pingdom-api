@@ -25,7 +25,6 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
     private static final String MCP_NAME = "pingdom_mcp";
     private static final String MCP_TOOL = "recommend_location";
-    private static final double RESPONSE_TEMPERATURE = 0.1d;
 
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
@@ -59,8 +58,6 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         // 도구를 사용할 수 있게 하되, 결과를 받은 뒤 불필요하게 재호출하지 않도록 자동 선택한다.
         ObjectNode generationConfig = request.putObject("generation_config");
         generationConfig.put("tool_choice", "auto");
-        // 응답 잘림으로 JSON 계약이 깨지지 않도록 출력 토큰 상한은 공급자 기본값에 맡긴다.
-        generationConfig.put("temperature", RESPONSE_TEMPERATURE);
         request.set("tools", remoteMcpTools());
 
         log.info("입지 분석 Gemini Remote MCP 요청. model={}, mcpUrl={}, requestedRegionPresent={}",
