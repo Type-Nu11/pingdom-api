@@ -493,6 +493,7 @@ class OpenApiDocumentationValidationTest {
                 "/users/me/merchant-place-applications",
                 "/merchant-owner/me",
                 "/merchant-owner/places/{placeId}/information",
+                "/merchant-owner/places/{placeId}/reviews",
                 "/users/me/merchant-place-applications/{applicationId}/attachments",
                 "/users/me/merchant-place-applications/{applicationId}/attachments/{attachmentId}",
                 "/users/me/merchant-place-applications/{applicationId}/attachments/reorder"
