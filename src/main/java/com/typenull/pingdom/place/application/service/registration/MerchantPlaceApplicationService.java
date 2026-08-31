@@ -256,6 +256,7 @@ public class MerchantPlaceApplicationService {
         } else {
             submitExistingPlaceClaim(application);
         }
+        applicationRepository.flush();
         return response(application);
     }
 
@@ -335,6 +336,7 @@ public class MerchantPlaceApplicationService {
                 claimReviewContext == null ? ReviewSnapshots.empty() : claimReviewContext.snapshots(),
                 now
         );
+        applicationRepository.flush();
         return response(application);
     }
 
