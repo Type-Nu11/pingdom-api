@@ -354,6 +354,9 @@ class OpenApiDocumentationValidationTest {
             assertThat(requiredFields(schema)).contains("level");
             assertNullableProperty(webDocument, schemaName, "category");
         }
+        JsonNode detailSchema = webDocument.at("/components/schemas/AdminMapPlaceDetailResponse");
+        assertNullableProperty(webDocument, "AdminMapPlaceDetailResponse", "imageUrl");
+        assertThat(requiredFields(detailSchema)).contains("imageUrl");
         assertThat(webDocument.at("/components/schemas/AdminMapPlaceResponse/properties/totalPages/minimum")
                 .asLong()).isEqualTo(1L);
     }

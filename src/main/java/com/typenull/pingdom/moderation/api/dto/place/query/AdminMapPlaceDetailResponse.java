@@ -16,6 +16,12 @@ import java.util.Set;
 public record AdminMapPlaceDetailResponse(
         Long id,
         String name,
+        @Schema(
+                description = "장소 목록·상세에서 공통으로 사용하는 canonical 대표 이미지 URL입니다. 대표 이미지가 없으면 null입니다.",
+                nullable = true,
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
+        String imageUrl,
         String address,
         @Schema(nullable = true)
         String roadAddress,
