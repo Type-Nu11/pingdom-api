@@ -1,6 +1,8 @@
 package com.typenull.pingdom.moderation.application.service.place.quality;
 
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
+import com.typenull.pingdom.moderation.api.dto.place.quality.basic.AdminMapPlaceBasicInformationUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.basic.AdminMapPlaceBasicInformationUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateRequest;
@@ -19,10 +21,12 @@ import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapP
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.tourist.AdminMapPlaceTouristInfoUpdateResponse;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
+import com.typenull.pingdom.moderation.domain.audit.AdminAuditLog;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategory;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.application.service.localhot.PlaceAdministrativeRegionService;
@@ -73,6 +77,48 @@ public class AdminPlaceQualityService {
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
+    }
+
+    @Transactional
+    public AdminMapPlaceBasicInformationUpdateResponse updatePlaceBasicInformation(
+            Long adminUserId,
+            Long placeId,
+            AdminMapPlaceBasicInformationUpdateRequest request
+    ) {
+        MapPlace mapPlace = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new AdminException(AdminErrorCode.PLACE_NOT_FOUND));
+        String normalizedName = AdminPlaceServiceSupport.trimToNull(request.name());
+        PlaceCategory category = request.category();
+        Map<String, Object> beforeState = AdminPlaceServiceSupport.basicInformationState(mapPlace);
+
+        mapPlace.updateBasicInformation(normalizedName, category.name());
+
+        Map<String, Object> afterState = AdminPlaceServiceSupport.basicInformationState(mapPlace);
+        AdminAuditLog auditLog = adminAuditLogService.record(
+                adminUserId,
+                AdminAuditAction.PLACE_BASIC_INFORMATION_UPDATED,
+                AdminAuditTargetType.PLACE,
+                placeId,
+                request.reason().trim(),
+                beforeState,
+                afterState
+        );
+
+        log.info(
+                "Admin updated place basic information. adminUserId={}, placeId={}, name={}, category={}",
+                adminUserId,
+                placeId,
+                mapPlace.getName(),
+                category
+        );
+
+        return new AdminMapPlaceBasicInformationUpdateResponse(
+                mapPlace.getId(),
+                mapPlace.getName(),
+                category,
+                auditLog.getCreatedAt(),
+                "장소 기본 정보를 수정했습니다."
+        );
     }
 
     @Transactional
