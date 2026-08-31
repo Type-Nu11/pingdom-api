@@ -70,6 +70,23 @@ class MerchantOwnerAuthorizationTest {
     }
 
     @Test
+    void approvedOwnerCanReadOwnProfileBeforeBusinessVerificationCompletes() {
+        Long userId = 1L;
+        User owner = User.builder().id(userId).role(UserRole.MERCHANT_OWNER).build();
+        when(userRepository.findById(userId)).thenReturn(Optional.of(owner));
+        when(profileRepository.existsByUserIdAndStatus(userId, MerchantOwnerStatus.ACTIVE)).thenReturn(true);
+
+        MerchantOwnerAuthorization authorization = new MerchantOwnerAuthorization(
+                userRepository,
+                profileRepository,
+                verificationRepository
+        );
+
+        assertThat(authorization.isApproved(authentication(userId))).isTrue();
+        assertThat(authorization.isActive(authentication(userId))).isFalse();
+    }
+
+    @Test
     void activeOwnerWithoutApprovedVerificationIsRejected() {
         Long userId = 1L;
         User owner = User.builder().id(userId).role(UserRole.MERCHANT_OWNER).build();
