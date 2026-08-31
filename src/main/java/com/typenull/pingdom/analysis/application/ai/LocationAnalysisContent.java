@@ -30,19 +30,34 @@ public record LocationAnalysisContent(
 
     /** Backend가 map_place에서 확인한 동일 업종 경쟁업체를 AI 결과에 반영한다. */
     public LocationAnalysisContent withNearbyCompetitors(List<Facility> competitors) {
+        return withNearbyPlaces(competitors, List.of(), List.of());
+    }
+
+    /** Backend가 map_place에서 확인한 주변 장소를 시설 유형별로 반영한다. */
+    public LocationAnalysisContent withNearbyPlaces(
+            List<Facility> competitors,
+            List<Facility> convenienceFacilities,
+            List<Facility> transportFacilities
+    ) {
         NearbyFacilities currentFacilities = nearbyFacilities == null
                 ? new NearbyFacilities("데이터 없음", List.of(), List.of(), List.of(), List.of(), List.of())
                 : nearbyFacilities;
         CompetitionAnalysis updatedCompetition = competitionAnalysis == null
                 ? null
                 : new CompetitionAnalysis(
-                        competitionAnalysis.summary(), competitionAnalysis.totalCompetitors(),
-                        competitionAnalysis.franchiseCompetitors(), competitionAnalysis.independentCompetitors(),
+                        competitionAnalysis.summary(), competitors.size(),
+                        Math.min(nonNegative(competitionAnalysis.franchiseCompetitors()), competitors.size()),
+                        Math.max(0, competitors.size()
+                                - Math.min(nonNegative(competitionAnalysis.franchiseCompetitors()), competitors.size())),
                         competitionAnalysis.competitionDensity(), competitors, competitionAnalysis.evidences()
                 );
+        List<Facility> effectiveConvenience = convenienceFacilities.isEmpty()
+                ? currentFacilities.convenienceFacilities() : convenienceFacilities;
+        List<Facility> effectiveTransport = transportFacilities.isEmpty()
+                ? currentFacilities.transportFacilities() : transportFacilities;
         NearbyFacilities updatedFacilities = new NearbyFacilities(
-                currentFacilities.summary(), currentFacilities.demandDrivers(), competitors,
-                currentFacilities.convenienceFacilities(), currentFacilities.transportFacilities(),
+                facilitySummary(currentFacilities.summary(), competitors, effectiveConvenience, effectiveTransport),
+                currentFacilities.demandDrivers(), competitors, effectiveConvenience, effectiveTransport,
                 currentFacilities.evidences()
         );
         return new LocationAnalysisContent(
@@ -50,6 +65,24 @@ public record LocationAnalysisContent(
                 footTrafficAnalysis, updatedFacilities, updatedCompetition, businessPerformanceAnalysis,
                 dataQualityAnalysis, recommendedPlaces, analysisScope, dataSources, limitations
         );
+    }
+
+    private static int nonNegative(Integer value) {
+        return value == null ? 0 : Math.max(0, value);
+    }
+
+    private static String facilitySummary(
+            String currentSummary,
+            List<Facility> competitors,
+            List<Facility> convenienceFacilities,
+            List<Facility> transportFacilities
+    ) {
+        if (currentSummary != null && !currentSummary.isBlank()
+                && !"데이터 없음".equals(currentSummary) && !"주변 시설 없음".equals(currentSummary)) {
+            return currentSummary;
+        }
+        int total = competitors.size() + convenienceFacilities.size() + transportFacilities.size();
+        return total == 0 ? "확인된 시설 없음" : "추천 좌표 1.5km 내 공개 장소 " + total + "건 확인";
     }
 
     public LocationAnalysisContent(
