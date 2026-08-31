@@ -21,6 +21,7 @@ public record MerchantOwnerProfileResponse(
         @Schema(nullable = true) LocalDateTime onboardingCompletedAt,
         @Schema(nullable = true) Long reviewedBy,
         @Schema(nullable = true) LocalDateTime reviewedAt,
+        @Schema(nullable = true) String reviewReason,
         LocalDateTime createdAt,
         LocalDateTime updatedAt,
         List<Long> placeIds
@@ -39,6 +40,7 @@ public record MerchantOwnerProfileResponse(
                 profile.getOnboardingCompletedAt(),
                 profile.getReviewedBy(),
                 profile.getReviewedAt(),
+                profile.getReviewReason(),
                 profile.getCreatedAt(),
                 profile.getUpdatedAt(),
                 placeIds

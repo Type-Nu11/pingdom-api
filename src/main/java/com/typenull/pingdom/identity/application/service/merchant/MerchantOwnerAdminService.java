@@ -29,7 +29,9 @@ import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceRegistrationApplicationRepository;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -60,6 +62,7 @@ public class MerchantOwnerAdminService {
     private final ApplicationEventPublisher eventPublisher;
     private final Clock clock;
     private final AdminRoleAuthorizationService authorizationService;
+    private final PlaceRegistrationApplicationRepository applicationRepository;
 
     @Transactional(readOnly = true)
     public MerchantOwnerProfilePageResponse list(MerchantOwnerStatus status, int page, int limit) {
@@ -98,6 +101,74 @@ public class MerchantOwnerAdminService {
     }
 
     @Transactional
+    public MerchantOwnerProfileResponse approve(
+            Long adminUserId,
+            Long userId,
+        MerchantOwnerReviewRequest request
+    ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        User user = requireUserForUpdate(userId);
+        requireNoPendingUnifiedApplication(userId);
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (user.isWithdrawn() || user.isCurrentlyBanned(now)) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.USER_ACCOUNT_NOT_ELIGIBLE);
+        }
+        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
+        MerchantOwnerStatus beforeStatus = profile.getStatus();
+        try {
+            profile.approve(adminUserId, request.reason(), now);
+            user.activateMerchantOwnerRole();
+        } catch (IllegalStateException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
+        }
+        userAccessStatusService.evict(userId);
+        recordAudit(
+                adminUserId,
+                AdminAuditAction.MERCHANT_OWNER_APPROVED,
+                userId,
+                request.reason(),
+                beforeStatus,
+                profile.getStatus(),
+                Set.of()
+        );
+        return response(profile);
+    }
+
+    @Transactional
+    public MerchantOwnerProfileResponse reject(
+            Long adminUserId,
+            Long userId,
+            MerchantOwnerReviewRequest request
+    ) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
+        String reviewReason = requireReviewReason(request.reason());
+        User user = requireUserForUpdate(userId);
+        requireNoPendingUnifiedApplication(userId);
+        MerchantOwnerProfile profile = requireProfileForUpdate(userId);
+        MerchantOwnerStatus beforeStatus = profile.getStatus();
+        LocalDateTime now = LocalDateTime.now(clock);
+        try {
+            profile.reject(adminUserId, reviewReason, now);
+        } catch (IllegalStateException exception) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
+        }
+        user.revokeMerchantOwnerRole();
+        touristOfferRepository.closeAllByMerchantOwnerUserId(userId, now);
+        ownerPlaceRepository.deleteAllByMerchantOwnerUserId(userId);
+        userAccessStatusService.evict(userId);
+        recordAudit(
+                adminUserId,
+                AdminAuditAction.MERCHANT_OWNER_REJECTED,
+                userId,
+                reviewReason,
+                beforeStatus,
+                profile.getStatus(),
+                Set.of()
+        );
+        return response(profile);
+    }
+
+    @Transactional
     public MerchantOwnerProfileResponse revoke(
             Long adminUserId,
             Long userId,
@@ -109,7 +180,7 @@ public class MerchantOwnerAdminService {
         MerchantOwnerStatus beforeStatus = profile.getStatus();
         LocalDateTime now = LocalDateTime.now(clock);
         try {
-            profile.revoke(adminUserId, now);
+            profile.revoke(adminUserId, request.reason(), now);
         } catch (IllegalStateException exception) {
             throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_PROFILE_STATE);
         }
@@ -299,6 +370,22 @@ public class MerchantOwnerAdminService {
     private User requireUserForUpdate(Long userId) {
         return userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new UsersException(UsersErrorCode.USER_NOT_FOUND));
+    }
+
+    private void requireNoPendingUnifiedApplication(Long userId) {
+        if (applicationRepository.existsByApplicantUserIdAndStatus(
+                userId,
+                PlaceRegistrationStatus.PENDING
+        )) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED);
+        }
+    }
+
+    private String requireReviewReason(String reason) {
+        if (reason == null || reason.trim().isEmpty()) {
+            throw new MerchantOwnerException(MerchantOwnerErrorCode.INVALID_REVIEW_REASON);
+        }
+        return reason.trim();
     }
 
     private MerchantOwnerProfileResponse response(MerchantOwnerProfile profile) {

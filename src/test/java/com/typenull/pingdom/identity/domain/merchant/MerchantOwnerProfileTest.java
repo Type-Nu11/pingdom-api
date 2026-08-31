@@ -24,7 +24,7 @@ class MerchantOwnerProfileTest {
     @Test
     void rejectedProfileCanBeReapplied() {
         MerchantOwnerProfile profile = pendingProfile();
-        profile.reject(99L, NOW.plusMinutes(1));
+        profile.reject(99L, "서류 보완 필요", NOW.plusMinutes(1));
 
         profile.reapply(
                 "새 상호",
@@ -37,6 +37,7 @@ class MerchantOwnerProfileTest {
 
         assertThat(profile.getStatus()).isEqualTo(MerchantOwnerStatus.PENDING);
         assertThat(profile.getReviewedBy()).isNull();
+        assertThat(profile.getReviewReason()).isNull();
         assertThat(profile.getBusinessName()).isEqualTo("새 상호");
     }
 

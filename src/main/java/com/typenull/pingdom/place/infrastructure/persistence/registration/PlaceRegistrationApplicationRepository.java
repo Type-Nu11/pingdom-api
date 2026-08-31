@@ -20,6 +20,10 @@ public interface PlaceRegistrationApplicationRepository extends JpaRepository<Pl
             Pageable pageable
     );
     Page<PlaceRegistrationApplication> findAllByApplicantUserId(Long userId, Pageable pageable);
+    boolean existsByApplicantUserIdAndStatus(
+            Long applicantUserId,
+            PlaceRegistrationStatus status
+    );
     boolean existsByExistingPlaceIdAndApplicationTypeAndStatus(
             Long existingPlaceId, MerchantPlaceApplicationType applicationType, PlaceRegistrationStatus status);
     Page<PlaceRegistrationApplication> findAllByStatus(PlaceRegistrationStatus status, Pageable pageable);
