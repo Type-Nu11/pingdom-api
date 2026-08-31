@@ -29,6 +29,19 @@ public class TouristCoupon {
     @Column(name = "offer_id", nullable = false)
     private Long offerId;
 
+    /** 발급 이후 Offer·장소 변경과 무관하게 쿠폰 표기를 유지하는 발급 시점 스냅샷입니다. */
+    @Column(name = "offer_title", length = 100)
+    private String offerTitle;
+
+    @Column(name = "benefit_description", length = 500)
+    private String benefitDescription;
+
+    @Column(name = "place_id")
+    private Long placeId;
+
+    @Column(name = "place_name", length = 100)
+    private String placeName;
+
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
@@ -57,12 +70,20 @@ public class TouristCoupon {
 
     private TouristCoupon(
             Long offerId,
+            String offerTitle,
+            String benefitDescription,
+            Long placeId,
+            String placeName,
             Long userId,
             String code,
             LocalDateTime issuedAt,
             LocalDateTime expiresAt
     ) {
         this.offerId = Objects.requireNonNull(offerId);
+        this.offerTitle = offerTitle;
+        this.benefitDescription = benefitDescription;
+        this.placeId = placeId;
+        this.placeName = placeName;
         this.userId = Objects.requireNonNull(userId);
         this.code = Objects.requireNonNull(code);
         this.issuedAt = Objects.requireNonNull(issuedAt);
@@ -80,7 +101,31 @@ public class TouristCoupon {
             LocalDateTime issuedAt,
             LocalDateTime expiresAt
     ) {
-        return new TouristCoupon(offerId, userId, code, issuedAt, expiresAt);
+        return new TouristCoupon(offerId, null, null, null, null, userId, code, issuedAt, expiresAt);
+    }
+
+    public static TouristCoupon issue(
+            Long offerId,
+            String offerTitle,
+            String benefitDescription,
+            Long placeId,
+            String placeName,
+            Long userId,
+            String code,
+            LocalDateTime issuedAt,
+            LocalDateTime expiresAt
+    ) {
+        return new TouristCoupon(
+                offerId,
+                offerTitle,
+                benefitDescription,
+                placeId,
+                placeName,
+                userId,
+                code,
+                issuedAt,
+                expiresAt
+        );
     }
 
     /** 유효 기간과 사용 권한을 확인한 뒤 쿠폰을 사용 완료 상태로 전환합니다. */
