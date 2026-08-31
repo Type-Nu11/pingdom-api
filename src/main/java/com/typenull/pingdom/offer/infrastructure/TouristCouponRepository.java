@@ -17,6 +17,8 @@ public interface TouristCouponRepository extends JpaRepository<TouristCoupon, Lo
 
     boolean existsByOfferIdAndUserId(Long offerId, Long userId);
 
+    Optional<TouristCoupon> findByIdAndUserId(Long id, Long userId);
+
     Page<TouristCoupon> findAllByUserId(Long userId, Pageable pageable);
 
     List<TouristCoupon> findAllByUserIdOrderByIssuedAtDescIdDesc(Long userId);

@@ -234,6 +234,52 @@ class OfferControllerIntegrationTest {
     }
 
     @Test
+    void getsOwnedCouponWithItsCurrentStatusAndHidesOtherUsersCoupon() throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        User tourist = saveUser("couponDetailTourist", UserRole.USER);
+        User otherTourist = saveUser("couponDetailOtherTourist", UserRole.USER);
+
+        TouristCoupon issued = couponRepository.saveAndFlush(TouristCoupon.issue(
+                201L, tourist.getId(), "detail-issued", now.minusMinutes(1), now.plusDays(1)
+        ));
+        TouristCoupon redeemed = TouristCoupon.issue(
+                202L, tourist.getId(), "detail-redeemed", now.minusDays(1), now.plusDays(1)
+        );
+        redeemed.redeem(999L, now.minusMinutes(1));
+        redeemed = couponRepository.saveAndFlush(redeemed);
+        TouristCoupon expired = couponRepository.saveAndFlush(TouristCoupon.issue(
+                203L, tourist.getId(), "detail-expired", now.minusDays(1), now.minusMinutes(1)
+        ));
+
+        mockMvc.perform(get("/coupons/{couponId}", issued.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(issued.getId()))
+                .andExpect(jsonPath("$.status").value("ISSUED"));
+
+        mockMvc.perform(get("/coupons/{couponId}", redeemed.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REDEEMED"))
+                .andExpect(jsonPath("$.redeemedAt").isNotEmpty());
+
+        mockMvc.perform(get("/coupons/{couponId}", expired.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+
+        mockMvc.perform(get("/coupons/{couponId}", issued.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(otherTourist)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COUPON_NOT_FOUND"));
+
+        mockMvc.perform(get("/coupons/{couponId}", Long.MAX_VALUE)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COUPON_NOT_FOUND"));
+    }
+
+    @Test
     void userWithoutOngoingTravelScheduleCannotIssueCoupon() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("ineligibleTouristMerchant", UserRole.MERCHANT_OWNER);

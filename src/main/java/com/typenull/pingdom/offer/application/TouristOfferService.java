@@ -152,6 +152,14 @@ public class TouristOfferService {
         );
     }
 
+    @Transactional(readOnly = true)
+    public CouponResponse getCoupon(Long userId, Long couponId) {
+        LocalDateTime now = LocalDateTime.now(clock);
+        TouristCoupon coupon = couponRepository.findByIdAndUserId(couponId, userId)
+                .orElseThrow(() -> new OfferException(OfferErrorCode.COUPON_NOT_FOUND));
+        return CouponResponse.from(coupon, now);
+    }
+
     private PageRequest pageRequest(int page, int limit, String sortProperty) {
         return pageRequest(page, limit, sortProperty, Sort.Direction.ASC);
     }
