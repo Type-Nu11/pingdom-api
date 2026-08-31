@@ -190,7 +190,18 @@ jobs:
               previous_image="$(docker inspect --format='{{.Config.Image}}' "$previous_app_container_id")"
             fi
 
-            git pull origin release
+            if ! git diff --quiet HEAD; then
+              backup_dir="$HOME/.pingdom-deploy-backups"
+              backup_timestamp="$(date -u +%Y%m%dT%H%M%SZ)"
+              backup_file="$backup_dir/release-$backup_timestamp.patch"
+
+              mkdir -p "$backup_dir"
+              git diff --binary HEAD > "$backup_file"
+              git stash push -m "release deploy $backup_timestamp"
+              echo "Stashed tracked local changes. Backup: $backup_file"
+            fi
+
+            git pull --ff-only origin release
 
             expected_image="${{ secrets.DOCKER_USERNAME }}/pingdom:${{ github.sha }}"
             export PINGDOM_APP_IMAGE="$expected_image"
