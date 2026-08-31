@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "121";
+    private static final String LATEST_MIGRATION_VERSION = "122";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(121);
+        assertThat(result.migrationsExecuted).isEqualTo(122);
 
         assertPostMigrationSchema();
     }
@@ -339,7 +339,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(32);
+        assertThat(result.migrationsExecuted).isEqualTo(33);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -440,7 +440,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(119);
+        assertThat(result.migrationsExecuted).isEqualTo(120);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -554,7 +554,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(94);
+        assertThat(result.migrationsExecuted).isEqualTo(95);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -790,7 +790,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(66);
+        assertThat(result.migrationsExecuted).isEqualTo(67);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -4058,6 +4058,25 @@ class FlywayMigrationIntegrationTest {
                           'idx_map_place_location_gist',
                           'idx_map_place_location_geography_gist'
                       )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 9
+                    FROM information_schema.columns
+                    WHERE table_name = 'merchant_place_media_upload'
+                      AND column_name IN (
+                          'merchant_place_media_upload_id', 'place_id', 'issued_by_user_id',
+                          's3_key', 'content_type', 'status', 'expires_at', 'registered_at', 'created_at'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2
+                    FROM pg_constraint
+                    WHERE conrelid = 'merchant_place_media_upload'::regclass
+                      AND conname IN (
+                          'fk_merchant_place_media_upload_place',
+                          'fk_merchant_place_media_upload_issuer'
+                      )
+                      AND contype = 'f'
                     """)).isTrue();
         }
     }

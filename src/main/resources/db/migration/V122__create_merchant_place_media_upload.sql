@@ -12,7 +12,7 @@ CREATE TABLE merchant_place_media_upload (
     CONSTRAINT fk_merchant_place_media_upload_place FOREIGN KEY (place_id)
         REFERENCES map_place (map_place_id) ON DELETE CASCADE,
     CONSTRAINT fk_merchant_place_media_upload_issuer FOREIGN KEY (issued_by_user_id)
-        REFERENCES users (user_id) ON DELETE CASCADE,
+        REFERENCES users (id) ON DELETE CASCADE,
     CONSTRAINT ck_merchant_place_media_upload_status CHECK (status IN ('ISSUED', 'REGISTERED')),
     CONSTRAINT ck_merchant_place_media_upload_registered_at CHECK (
         (status = 'ISSUED' AND registered_at IS NULL)
