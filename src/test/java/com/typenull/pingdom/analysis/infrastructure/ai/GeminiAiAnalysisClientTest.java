@@ -34,7 +34,7 @@ class GeminiAiAnalysisClientTest {
                 .andExpect(jsonPath("$.input").value("prompt"))
                 .andExpect(jsonPath("$.generation_config.tool_choice").value("auto"))
                 .andExpect(jsonPath("$.generation_config.temperature").value(0.1))
-                .andExpect(jsonPath("$.generation_config.max_output_tokens").value(5000))
+                .andExpect(jsonPath("$.generation_config.max_output_tokens").doesNotExist())
                 .andExpect(jsonPath("$.tool_choice").doesNotExist())
                 .andExpect(jsonPath("$.tools[0].type").value("mcp_server"))
                 .andExpect(jsonPath("$.tools[0].name").value("pingdom_mcp"))
