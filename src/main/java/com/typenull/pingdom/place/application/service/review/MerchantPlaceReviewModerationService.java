@@ -2,9 +2,13 @@ package com.typenull.pingdom.place.application.service.review;
 
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
 import com.typenull.pingdom.place.api.dto.review.MerchantPlaceReviewDeletionRequestResponse;
+import com.typenull.pingdom.place.api.dto.review.MerchantPlaceReviewPageResponse;
+import com.typenull.pingdom.place.api.dto.review.MerchantPlaceReviewResponse;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewDeletionRequestCreateRequest;
+import com.typenull.pingdom.place.domain.review.PlaceReview;
 import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequest;
 import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequestStatus;
+import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -12,9 +16,16 @@ import com.typenull.pingdom.shared.exception.MapException;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
+import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -22,10 +33,45 @@ import org.springframework.transaction.annotation.Transactional;
 @RequiredArgsConstructor
 public class MerchantPlaceReviewModerationService {
 
+    private static final List<PlaceReviewVisibilityStatus> MERCHANT_REVIEW_VISIBILITY_STATUSES = List.of(
+            PlaceReviewVisibilityStatus.VISIBLE,
+            PlaceReviewVisibilityStatus.HIDDEN,
+            PlaceReviewVisibilityStatus.DELETED
+    );
+
     private final MerchantOwnerPlaceRepository merchantOwnerPlaceRepository;
     private final PlaceReviewRepository placeReviewRepository;
     private final PlaceReviewDeletionRequestRepository deletionRequestRepository;
     private final Clock clock;
+
+    @Transactional(readOnly = true)
+    public MerchantPlaceReviewPageResponse list(Long merchantOwnerUserId, Long placeId, int page, int limit) {
+        requireOwner(merchantOwnerUserId, placeId);
+
+        int safePage = Math.max(page, 1);
+        int safeLimit = Math.min(Math.max(limit, 1), 100);
+        Page<PlaceReview> reviews = placeReviewRepository.findAllByPlace_IdAndVisibilityStatusIn(
+                placeId,
+                MERCHANT_REVIEW_VISIBILITY_STATUSES,
+                PageRequest.of(
+                        safePage - 1,
+                        safeLimit,
+                        Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))
+                )
+        );
+        Map<Long, PlaceReviewDeletionRequest> latestRequests = latestRequests(reviews.getContent());
+
+        return new MerchantPlaceReviewPageResponse(
+                reviews.getContent().stream()
+                        .map(review -> MerchantPlaceReviewResponse.from(review, latestRequests.get(review.getId())))
+                        .toList(),
+                safePage,
+                safeLimit,
+                reviews.getTotalElements(),
+                reviews.getTotalPages(),
+                reviews.hasNext()
+        );
+    }
 
     @Transactional
     public MerchantPlaceReviewDeletionRequestResponse requestDeletion(
@@ -34,9 +80,7 @@ public class MerchantPlaceReviewModerationService {
             Long reviewId,
             PlaceReviewDeletionRequestCreateRequest request
     ) {
-        if (!merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(placeId, merchantOwnerUserId)) {
-            throw new MapException(MapErrorCode.PLACE_REVIEW_MANAGEMENT_FORBIDDEN);
-        }
+        requireOwner(merchantOwnerUserId, placeId);
         var review = placeReviewRepository.findByIdAndPlaceIdForUpdate(reviewId, placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_REVIEW_NOT_FOUND));
         if (deletionRequestRepository.existsByReview_IdAndStatus(reviewId, PlaceReviewDeletionRequestStatus.PENDING)) {
@@ -63,6 +107,27 @@ public class MerchantPlaceReviewModerationService {
             }
             throw exception;
         }
+    }
+
+    private void requireOwner(Long merchantOwnerUserId, Long placeId) {
+        if (!merchantOwnerPlaceRepository.existsByPlaceIdAndMerchantOwnerUserId(placeId, merchantOwnerUserId)) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_MANAGEMENT_FORBIDDEN);
+        }
+    }
+
+    private Map<Long, PlaceReviewDeletionRequest> latestRequests(Collection<PlaceReview> reviews) {
+        if (reviews.isEmpty()) {
+            return Map.of();
+        }
+        return deletionRequestRepository.findAllByReview_IdInOrderByReview_IdAscCreatedAtDescIdDesc(
+                        reviews.stream().map(PlaceReview::getId).toList()
+                )
+                .stream()
+                .collect(java.util.stream.Collectors.toMap(
+                        request -> request.getReview().getId(),
+                        Function.identity(),
+                        (latest, ignored) -> latest
+                ));
     }
 
     private boolean hasConstraint(Throwable throwable, String constraintName) {
