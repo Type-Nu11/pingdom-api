@@ -23,33 +23,25 @@ class LocationAnalysisPromptFactoryTest {
         AiAnalysisPrompt prompt = factory.create(request, LocalDate.of(2026, 8, 18));
 
         assertThat(prompt.content()).contains(
-                "Pingdom MCP 주소",
-                "실행환경에 설정되어 있다",
-                "읽기 전용 도구"
+                "Pingdom MCP",
+                "읽기 전용 도구",
+                "recommend_location을 정확히 한 번 호출"
         );
         assertThat(prompt.content()).contains("서울 강남구", "카페", "20-39 여성", "18:00-22:00");
         assertThat(prompt.requestedRegion()).isEqualTo("서울 강남구");
-        assertThat(prompt.content()).contains("종합 입지 평가", "주변 시설", "분석 범위", "데이터 출처");
         assertThat(prompt.content()).contains(
                 "recommendedPlaces", "derivedFromPlace", "반경",
                 "FRONTEND_REQUEST_JSON_BEGIN", "FRONTEND_REQUEST_JSON_END",
-                "totalScore >= 70", "totalScore가 45~69",
-                "additionalCriteria", "고정 디자인 XHTML",
-                "최소 8페이지", "overallLocationEvaluation", "commercialAreaAnalysis",
-                "overallScore",
-                "competitionAnalysis", "businessPerformanceAnalysis", "dataQualityAnalysis", "통계 산출 근거",
-                "sourceValues", "같은 기간·반경·집계 단위", "JSON 외의 문자",
-                "SERVER_DESIGN_REFERENCE_BEGIN", "Pingdom Editorial Location Report v1",
-                "#F8F7F2", "#7D8777", "수평 막대",
-                "결과를 임의로 0, 빈 배열, \"데이터 없음\"으로 바꾸거나 무시하지 않는다",
-                "자동 확장된 참고 분석 범위", "metrics.total_foot는 footTrafficAnalysis.total",
-                "Evidence 객체 계약", "문자열이 아닌 아래 JSON 객체", "GEOCODE_FAILED: ..."
+                "SUITABLE", "CONDITIONAL", "INSUFFICIENT_DATA",
+                "overallLocationEvaluation", "commercialAreaAnalysis", "competitionAnalysis",
+                "businessPerformanceAnalysis", "dataQualityAnalysis", "analysisScope",
+                "sourceValues", "JSON 외의 모든 문자는 출력하지 않는다"
         );
         assertThat(prompt.content()).contains(
-                "metrics.total_foot →",
-                "metrics.avg_hour →",
-                "문자열 배열을 반환하지 않는다",
-                "임의 명칭·접미사를 만들거나"
+                "metrics.total_foot",
+                "metrics.avg_hour",
+                "문자열이 아닌 객체",
+                "임의의 0은 만들지 않는다"
         );
         assertThat(prompt.content()).doesNotContain("\"html\"");
     }
