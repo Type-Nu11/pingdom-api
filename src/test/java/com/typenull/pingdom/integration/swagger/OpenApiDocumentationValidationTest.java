@@ -606,7 +606,7 @@ class OpenApiDocumentationValidationTest {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
-        for (String path : List.of("/offers", "/offers/{offerId}", "/offers/{offerId}/coupons", "/coupons")) {
+        for (String path : List.of("/offers", "/offers/{offerId}", "/offers/{offerId}/coupons", "/coupons", "/coupons/{couponId}")) {
             assertThat(appDocument.path("paths").has(path)).as("App 경로: %s", path).isTrue();
             assertThat(merchantDocument.path("paths").has(path)).as("Merchant에 노출되지 않아야 함: %s", path).isFalse();
         }

@@ -18,6 +18,7 @@ import com.typenull.pingdom.offer.domain.exception.OfferException;
 import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.application.service.conversion.PlaceConversionEventService;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
@@ -40,6 +41,7 @@ class TouristOfferServiceTest {
 
     @Mock private TouristOfferRepository offerRepository;
     @Mock private TouristCouponRepository couponRepository;
+    @Mock private MapPlaceRepository mapPlaceRepository;
     @Mock private TouristEligibilityPolicy eligibilityPolicy;
     @Mock private MerchantOfferAccessPolicy merchantAccessPolicy;
     @Mock private PlaceConversionEventService conversionEventService;
@@ -59,6 +61,7 @@ class TouristOfferServiceTest {
         TouristOffer offer = publishedOffer(2);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        stubMissingPlace();
         when(couponRepository.saveAndFlush(any(TouristCoupon.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -90,6 +93,7 @@ class TouristOfferServiceTest {
         offer.publish(NOW.minusMinutes(1));
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        stubMissingPlace();
         when(couponRepository.saveAndFlush(any(TouristCoupon.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -118,6 +122,7 @@ class TouristOfferServiceTest {
         TouristOffer offer = publishedOffer(2);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        stubMissingPlace();
         when(couponRepository.saveAndFlush(any(TouristCoupon.class)))
                 .thenThrow(constraintViolation("uq_tourist_coupon_offer_user"));
 
@@ -132,6 +137,7 @@ class TouristOfferServiceTest {
         DataIntegrityViolationException violation = constraintViolation("fk_tourist_coupon_offer");
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
+        stubMissingPlace();
         when(couponRepository.saveAndFlush(any(TouristCoupon.class))).thenThrow(violation);
 
         assertThatThrownBy(() -> offerService.issue(2L, 1L)).isSameAs(violation);
@@ -177,6 +183,10 @@ class TouristOfferServiceTest {
         TouristOffer offer = draftOffer(quantity);
         offer.publish(NOW.minusMinutes(1));
         return offer;
+    }
+
+    private void stubMissingPlace() {
+        when(mapPlaceRepository.findById(100L)).thenReturn(Optional.empty());
     }
 
     private TouristOffer draftOffer(int quantity) {

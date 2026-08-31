@@ -23,6 +23,7 @@ import org.springframework.test.web.servlet.MockMvc;
 class CouponMerchantOpenApiContractTest {
 
     private static final String COUPONS_PATH = "/coupons";
+    private static final String COUPON_DETAIL_PATH = COUPONS_PATH + "/{couponId}";
     private static final String PLACE_INFORMATION_PATH = "/merchant-owner/places/{placeId}/information";
     private static final String OPERATING_NOTICES_PATH = "/merchant-owner/places/{placeId}/operating-notices";
     private static final String OPERATING_NOTICE_PATH = OPERATING_NOTICES_PATH + "/{noticeId}";
@@ -44,19 +45,34 @@ class CouponMerchantOpenApiContractTest {
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
         JsonNode couponList = operation(appDocument, COUPONS_PATH, "get");
+        JsonNode couponDetail = operation(appDocument, COUPON_DETAIL_PATH, "get");
         assertThat(appDocument.path("paths").has(COUPONS_PATH)).isTrue();
+        assertThat(appDocument.path("paths").has(COUPON_DETAIL_PATH)).isTrue();
         assertThat(merchantDocument.path("paths").has(COUPONS_PATH)).isFalse();
+        assertThat(merchantDocument.path("paths").has(COUPON_DETAIL_PATH)).isFalse();
         assertBearerSecurity(couponList);
+        assertBearerSecurity(couponDetail);
         assertThat(couponList.path("parameters").toString())
                 .contains("status", "issuedFrom", "issuedTo", "page", "limit");
         assertThat(couponList.path("parameters").toString()).contains("ISSUED", "REDEEMED", "EXPIRED");
         assertErrorExample(couponList, "400", "COUPON_LIST_FILTER_INVALID");
         assertErrorExample(couponList, "401", "INVALID_TOKEN");
+        assertThat(couponDetail.path("parameters").toString()).contains("couponId");
+        assertThat(couponDetail.path("responses").has("200")).isTrue();
+        assertThat(couponDetail.at("/responses/200/content/*~1*/schema/$ref").asText())
+                .isEqualTo("#/components/schemas/CouponResponse");
+        assertErrorExample(couponDetail, "401", "INVALID_TOKEN");
+        assertErrorExample(couponDetail, "404", "COUPON_NOT_FOUND");
         assertRequired(appDocument, "CouponResponse", List.of(
-                "id", "offerId", "code", "status", "issuedAt", "expiresAt", "redeemedAt"
+                "id", "offerId", "offerTitle", "benefitDescription", "placeId", "placeName",
+                "code", "status", "issuedAt", "expiresAt", "redeemedAt"
         ));
         assertThat(appDocument.at("/components/schemas/CouponResponse/properties/redeemedAt/nullable").asBoolean())
                 .isTrue();
+        for (String property : List.of("offerTitle", "benefitDescription", "placeId", "placeName")) {
+            assertThat(appDocument.at("/components/schemas/CouponResponse/properties/" + property + "/nullable").asBoolean())
+                    .isTrue();
+        }
         assertRequired(appDocument, "CouponPageResponse", List.of(
                 "coupons", "page", "limit", "totalElements", "totalPages", "hasNext"
         ));

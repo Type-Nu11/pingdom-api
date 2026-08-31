@@ -1,5 +1,6 @@
 package com.typenull.pingdom.offer;
 
+import static org.hamcrest.Matchers.nullValue;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -136,12 +137,30 @@ class OfferControllerIntegrationTest {
         mockMvc.perform(post("/offers/{offerId}/coupons", offer.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
                 .andExpect(status().isCreated())
-                .andExpect(jsonPath("$.status").value("ISSUED"));
+                .andExpect(jsonPath("$.status").value("ISSUED"))
+                .andExpect(jsonPath("$.offerTitle").value("관광객 웰컴 음료"))
+                .andExpect(jsonPath("$.benefitDescription").value("음료 1잔 무료"))
+                .andExpect(jsonPath("$.placeId").value(place.getId()))
+                .andExpect(jsonPath("$.placeName").value("핑덤 카페"));
 
         mockMvc.perform(get("/offers")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.offers.length()").value(0));
+
+        mockMvc.perform(post("/merchant-owner/offers/{offerId}/close", offer.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(merchant)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("CLOSED"));
+
+        mockMvc.perform(get("/coupons")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.coupons.length()").value(1))
+                .andExpect(jsonPath("$.coupons[0].offerTitle").value("관광객 웰컴 음료"))
+                .andExpect(jsonPath("$.coupons[0].benefitDescription").value("음료 1잔 무료"))
+                .andExpect(jsonPath("$.coupons[0].placeId").value(place.getId()))
+                .andExpect(jsonPath("$.coupons[0].placeName").value("핑덤 카페"));
 
         mockMvc.perform(post("/offers/{offerId}/coupons", offer.getId())
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
@@ -190,7 +209,11 @@ class OfferControllerIntegrationTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.coupons.length()").value(1))
                 .andExpect(jsonPath("$.coupons[0].code").value("active-coupon"))
-                .andExpect(jsonPath("$.coupons[0].status").value("ISSUED"));
+                .andExpect(jsonPath("$.coupons[0].status").value("ISSUED"))
+                .andExpect(jsonPath("$.coupons[0].offerTitle").value(nullValue()))
+                .andExpect(jsonPath("$.coupons[0].benefitDescription").value(nullValue()))
+                .andExpect(jsonPath("$.coupons[0].placeId").value(nullValue()))
+                .andExpect(jsonPath("$.coupons[0].placeName").value(nullValue()));
 
         mockMvc.perform(get("/coupons")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist))
@@ -208,6 +231,52 @@ class OfferControllerIntegrationTest {
                         .param("issuedTo", now.minusDays(1).toString()))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.code").value("COUPON_LIST_FILTER_INVALID"));
+    }
+
+    @Test
+    void getsOwnedCouponWithItsCurrentStatusAndHidesOtherUsersCoupon() throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        User tourist = saveUser("couponDetailTourist", UserRole.USER);
+        User otherTourist = saveUser("couponDetailOtherTourist", UserRole.USER);
+
+        TouristCoupon issued = couponRepository.saveAndFlush(TouristCoupon.issue(
+                201L, tourist.getId(), "detail-issued", now.minusMinutes(1), now.plusDays(1)
+        ));
+        TouristCoupon redeemed = TouristCoupon.issue(
+                202L, tourist.getId(), "detail-redeemed", now.minusDays(1), now.plusDays(1)
+        );
+        redeemed.redeem(999L, now.minusMinutes(1));
+        redeemed = couponRepository.saveAndFlush(redeemed);
+        TouristCoupon expired = couponRepository.saveAndFlush(TouristCoupon.issue(
+                203L, tourist.getId(), "detail-expired", now.minusDays(1), now.minusMinutes(1)
+        ));
+
+        mockMvc.perform(get("/coupons/{couponId}", issued.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.id").value(issued.getId()))
+                .andExpect(jsonPath("$.status").value("ISSUED"));
+
+        mockMvc.perform(get("/coupons/{couponId}", redeemed.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("REDEEMED"))
+                .andExpect(jsonPath("$.redeemedAt").isNotEmpty());
+
+        mockMvc.perform(get("/coupons/{couponId}", expired.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.status").value("EXPIRED"));
+
+        mockMvc.perform(get("/coupons/{couponId}", issued.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(otherTourist)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COUPON_NOT_FOUND"));
+
+        mockMvc.perform(get("/coupons/{couponId}", Long.MAX_VALUE)
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(tourist)))
+                .andExpect(status().isNotFound())
+                .andExpect(jsonPath("$.code").value("COUPON_NOT_FOUND"));
     }
 
     @Test
