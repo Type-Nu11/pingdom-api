@@ -14,6 +14,12 @@ import org.springframework.data.repository.query.Param;
 public interface PlaceReviewRepository extends JpaRepository<PlaceReview, Long> {
     Page<PlaceReview> findAllByPlace_IdAndVisibilityStatus(Long placeId, PlaceReviewVisibilityStatus visibilityStatus, Pageable pageable);
 
+    Page<PlaceReview> findAllByPlace_IdAndVisibilityStatusIn(
+            Long placeId,
+            Collection<PlaceReviewVisibilityStatus> visibilityStatuses,
+            Pageable pageable
+    );
+
     Page<PlaceReview> findAllByUserIdAndVisibilityStatusIn(
             Long userId,
             Collection<PlaceReviewVisibilityStatus> visibilityStatuses,
