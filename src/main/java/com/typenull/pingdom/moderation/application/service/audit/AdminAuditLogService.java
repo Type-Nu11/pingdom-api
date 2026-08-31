@@ -29,7 +29,7 @@ public class AdminAuditLogService {
     private final Clock clock;
 
     @Transactional
-    public void record(
+    public AdminAuditLog record(
             Long actorUserId,
             AdminAuditAction action,
             AdminAuditTargetType targetType,
@@ -42,7 +42,7 @@ public class AdminAuditLogService {
         Objects.requireNonNull(targetType, "targetType must not be null");
         Objects.requireNonNull(targetId, "targetId must not be null");
 
-        adminAuditLogRepository.save(AdminAuditLog.builder()
+        return adminAuditLogRepository.save(AdminAuditLog.builder()
                 .actorUserId(actorUserId)
                 .actorUsername(resolveActorUsername(actorUserId))
                 .action(action)
