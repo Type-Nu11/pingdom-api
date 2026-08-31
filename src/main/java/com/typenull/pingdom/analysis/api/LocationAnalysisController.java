@@ -12,6 +12,7 @@ import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import java.nio.charset.StandardCharsets;
+import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ContentDisposition;
@@ -49,12 +50,12 @@ public class LocationAnalysisController {
     ) {
         LocationAnalysisReportService.LocationAnalysisPdf report = reportService.generate(request);
         archiveService.archive(request, report);
-        String filename = "location-analysis-%s.pdf".formatted(report.reportId());
+        String filename = downloadFilename(report.reportName(), report.publishedDate(), 0);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header("X-Report-Id", report.reportId())
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename(filename)
+                        .filename(filename, StandardCharsets.UTF_8)
                         .build()
                         .toString())
                 .body(report.content());
@@ -85,9 +86,28 @@ public class LocationAnalysisController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename("location-analysis-%s.pdf".formatted(report.reportId()))
+                        .filename(downloadFilename(report.reportName(), report.publishedDate(), report.version()),
+                                StandardCharsets.UTF_8)
                         .build().toString())
                 .body(report.content());
+    }
+
+    private String downloadFilename(String reportName, LocalDate publishedDate, long version) {
+        String safeReportName = sanitizeFilename(reportName);
+        String date = publishedDate == null ? "undated" : publishedDate.toString();
+        long displayVersion = Math.max(1, version + 1);
+        return "%s-%s-유동인구분석-v%d.pdf".formatted(safeReportName, date, displayVersion);
+    }
+
+    private String sanitizeFilename(String reportName) {
+        if (reportName == null || reportName.isBlank()) {
+            return "입지분석보고서";
+        }
+        String sanitized = reportName
+                .replaceAll("[\\\\/:*?\"<>|\\r\\n]+", "-")
+                .replaceAll("\\s+", " ")
+                .trim();
+        return sanitized.isBlank() ? "입지분석보고서" : sanitized;
     }
 
     @GetMapping(value = "/{reportId}/html", produces = MediaType.TEXT_HTML_VALUE)
