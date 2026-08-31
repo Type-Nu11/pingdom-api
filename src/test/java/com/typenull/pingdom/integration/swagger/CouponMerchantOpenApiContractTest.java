@@ -53,10 +53,15 @@ class CouponMerchantOpenApiContractTest {
         assertErrorExample(couponList, "400", "COUPON_LIST_FILTER_INVALID");
         assertErrorExample(couponList, "401", "INVALID_TOKEN");
         assertRequired(appDocument, "CouponResponse", List.of(
-                "id", "offerId", "code", "status", "issuedAt", "expiresAt", "redeemedAt"
+                "id", "offerId", "offerTitle", "benefitDescription", "placeId", "placeName",
+                "code", "status", "issuedAt", "expiresAt", "redeemedAt"
         ));
         assertThat(appDocument.at("/components/schemas/CouponResponse/properties/redeemedAt/nullable").asBoolean())
                 .isTrue();
+        for (String property : List.of("offerTitle", "benefitDescription", "placeId", "placeName")) {
+            assertThat(appDocument.at("/components/schemas/CouponResponse/properties/" + property + "/nullable").asBoolean())
+                    .isTrue();
+        }
         assertRequired(appDocument, "CouponPageResponse", List.of(
                 "coupons", "page", "limit", "totalElements", "totalPages", "hasNext"
         ));
