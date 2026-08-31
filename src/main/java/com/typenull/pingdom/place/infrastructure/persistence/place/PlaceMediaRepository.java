@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.domain.place.media.PlaceMediaPurpose;
 import java.util.List;
 import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
@@ -20,6 +21,19 @@ public interface PlaceMediaRepository extends JpaRepository<PlaceMedia, Long> {
     Optional<PlaceMedia> findBySourceRegistrationAttachmentId(Long sourceRegistrationAttachmentId);
 
     Optional<PlaceMedia> findByIdAndPlace_IdAndPurpose(Long id, Long placeId, PlaceMediaPurpose purpose);
+
+    @Modifying(flushAutomatically = true, clearAutomatically = true)
+    @Query("""
+            UPDATE PlaceMedia media
+            SET media.displayOrder = media.displayOrder + :offset
+            WHERE media.place.id = :placeId
+              AND media.purpose = :purpose
+            """)
+    int increaseDisplayOrder(
+            @Param("placeId") Long placeId,
+            @Param("purpose") PlaceMediaPurpose purpose,
+            @Param("offset") int offset
+    );
 
     @Query("""
             SELECT COALESCE(MAX(media.displayOrder), -1)

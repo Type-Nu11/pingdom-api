@@ -42,6 +42,7 @@ import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.ArrayList;
 import java.util.Comparator;
 import java.util.HashSet;
 import java.util.List;
@@ -236,9 +237,27 @@ public class MerchantOwnerPlaceManagementService {
         if (request == null) {
             throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
         }
-        PlaceMedia media = findExplorationMedia(placeId, mediaId);
-        media.updateDisplayOrder(request.displayOrder());
-        return PlaceMediaItem.from(media);
+        findPlaceForUpdate(placeId);
+        List<PlaceMedia> media = explorationMediaForUpdate(placeId);
+        int currentIndex = findExplorationMediaIndex(media, mediaId);
+        if (request.displayOrder() < 0 || request.displayOrder() >= media.size()) {
+            throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
+        }
+
+        if (currentIndex == request.displayOrder()) {
+            return PlaceMediaItem.from(media.get(currentIndex));
+        }
+
+        int temporaryOffset = temporaryDisplayOrderOffset(media);
+        placeMediaRepository.increaseDisplayOrder(placeId, PlaceMediaPurpose.EXPLORATION, temporaryOffset);
+
+        List<PlaceMedia> reorderedMedia = new ArrayList<>(explorationMediaForUpdate(placeId));
+        PlaceMedia movedMedia = reorderedMedia.remove(findExplorationMediaIndex(reorderedMedia, mediaId));
+        reorderedMedia.add(request.displayOrder(), movedMedia);
+        for (int displayOrder = 0; displayOrder < reorderedMedia.size(); displayOrder++) {
+            reorderedMedia.get(displayOrder).updateDisplayOrder(displayOrder);
+        }
+        return PlaceMediaItem.from(movedMedia);
     }
 
     @Transactional
@@ -284,6 +303,34 @@ public class MerchantOwnerPlaceManagementService {
     private PlaceMedia findExplorationMedia(Long placeId, Long mediaId) {
         return placeMediaRepository.findByIdAndPlace_IdAndPurpose(mediaId, placeId, PlaceMediaPurpose.EXPLORATION)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
+    }
+
+    private List<PlaceMedia> explorationMediaForUpdate(Long placeId) {
+        return placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
+                placeId,
+                PlaceMediaPurpose.EXPLORATION
+        );
+    }
+
+    private int findExplorationMediaIndex(List<PlaceMedia> media, Long mediaId) {
+        for (int index = 0; index < media.size(); index++) {
+            if (java.util.Objects.equals(media.get(index).getId(), mediaId)) {
+                return index;
+            }
+        }
+        throw new MapException(MapErrorCode.PLACE_MEDIA_NOT_FOUND);
+    }
+
+    private int temporaryDisplayOrderOffset(List<PlaceMedia> media) {
+        int maxDisplayOrder = media.stream()
+                .mapToInt(PlaceMedia::getDisplayOrder)
+                .max()
+                .orElse(0);
+        try {
+            return Math.addExact(maxDisplayOrder, Math.addExact(media.size(), 1));
+        } catch (ArithmeticException exception) {
+            throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
+        }
     }
 
     private void validateUploadedObject(String s3Key, MerchantPlaceMediaUpload upload) {
