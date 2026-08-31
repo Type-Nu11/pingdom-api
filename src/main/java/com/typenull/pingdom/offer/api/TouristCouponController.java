@@ -2,6 +2,7 @@ package com.typenull.pingdom.offer.api;
 
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.offer.api.dto.CouponPageResponse;
+import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.application.TouristOfferService;
 import com.typenull.pingdom.offer.domain.CouponStatus;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -20,6 +21,7 @@ import lombok.RequiredArgsConstructor;
 import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
@@ -59,5 +61,25 @@ public class TouristCouponController {
             @CurrentUser JwtAuthenticatedUser user
     ) {
         return offerService.listCoupons(user.userId(), status, issuedFrom, issuedTo, page, limit);
+    }
+
+    @GetMapping("/{couponId}")
+    @Operation(summary = "내 관광객 Coupon 단건 조회", description = "본인이 발급받은 Coupon의 현재 상태를 조회합니다. 만료 시각이 지난 미사용 Coupon은 EXPIRED로 반환하며, REDEEMED Coupon은 redeemedAt을 함께 반환합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "Coupon 단건 조회 성공", content = @Content(schema = @Schema(implementation = CouponResponse.class))),
+            @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(name = "INVALID_TOKEN", value = "{\"message\":\"유효하지 않은 토큰입니다.\",\"code\":\"INVALID_TOKEN\"}")
+            )),
+            @ApiResponse(responseCode = "404", description = "Coupon을 찾을 수 없거나 요청자의 Coupon이 아님", content = @Content(
+                    schema = @Schema(implementation = ErrorResponse.class),
+                    examples = @ExampleObject(name = "COUPON_NOT_FOUND", value = "{\"message\":\"쿠폰을 찾을 수 없습니다.\",\"code\":\"COUPON_NOT_FOUND\"}")
+            ))
+    })
+    public CouponResponse get(
+            @Parameter(description = "Coupon ID", example = "1") @PathVariable Long couponId,
+            @CurrentUser JwtAuthenticatedUser user
+    ) {
+        return offerService.getCoupon(user.userId(), couponId);
     }
 }
