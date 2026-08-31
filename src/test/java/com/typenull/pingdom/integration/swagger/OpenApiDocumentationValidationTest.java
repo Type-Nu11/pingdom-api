@@ -515,6 +515,19 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void merchantOwnerReviewRequestExposesOnlyReviewReason() throws Exception {
+        JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
+        JsonNode reviewRequest = resolveSchema(
+                adminDocument,
+                adminDocument.at("/paths/~1admin~1merchant-owners~1{userId}~1approve/post/requestBody"
+                        + "/content/application~1json/schema")
+        );
+
+        assertThat(reviewRequest.path("properties").has("reason")).isTrue();
+        assertThat(reviewRequest.path("properties").has("placeIds")).isFalse();
+    }
+
+    @Test
     void adminMerchantPlaceApplicationStatusFilterSupportsRepeatedEnumValues() throws Exception {
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode operation = adminDocument.at("/paths/~1admin~1merchant-place-applications/get");
