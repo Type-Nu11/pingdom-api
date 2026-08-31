@@ -2,6 +2,8 @@ package com.typenull.pingdom.moderation.api.place.quality;
 
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
+import com.typenull.pingdom.moderation.api.dto.place.quality.basic.AdminMapPlaceBasicInformationUpdateRequest;
+import com.typenull.pingdom.moderation.api.dto.place.quality.basic.AdminMapPlaceBasicInformationUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.coordinate.AdminMapPlaceCoordinateUpdateResponse;
 import com.typenull.pingdom.moderation.api.dto.place.quality.discovery.AdminMapPlaceDiscoveryStatusUpdateRequest;
@@ -58,6 +60,29 @@ public class AdminPlaceQualityController {
     private final AdminMapPlaceService adminMapPlaceService;
     private final AdminPlaceQualityService adminPlaceQualityService;
     private final AdminPlaceOperatingScheduleService adminPlaceOperatingScheduleService;
+
+    @PatchMapping("/{id}/basic-information")
+    @Operation(
+            summary = "관리자 장소 기본 정보 수정",
+            description = "관리자가 장소명과 표준 카테고리를 수정하고 변경 사유를 감사 로그에 남깁니다."
+    )
+    @ApiResponses({
+            @ApiResponse(
+                    responseCode = "200",
+                    description = "장소 기본 정보 수정 성공",
+                    content = @Content(schema = @Schema(implementation = AdminMapPlaceBasicInformationUpdateResponse.class))
+            ),
+            @ApiResponse(responseCode = "400", description = "입력값 검증 실패"),
+            @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음")
+    })
+    public ResponseEntity<AdminMapPlaceBasicInformationUpdateResponse> updatePlaceBasicInformation(
+            @Parameter(description = "기본 정보를 수정할 장소 ID", example = "1") @PathVariable("id") Long placeId,
+            @Valid @RequestBody AdminMapPlaceBasicInformationUpdateRequest request,
+            @CurrentUser JwtAuthenticatedUser adminUser
+    ) {
+        Long adminUserId = adminUser == null ? null : adminUser.userId();
+        return ResponseEntity.ok(adminPlaceQualityService.updatePlaceBasicInformation(adminUserId, placeId, request));
+    }
 
     @PatchMapping("/{id}/coordinates")
     @Operation(
