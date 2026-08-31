@@ -82,6 +82,7 @@ class LocationAnalysisCompetitionServiceTest {
                 .extracting(LocationAnalysisContent.Facility::name)
                 .containsExactly("롯데월드몰");
         assertThat(enriched.competitionAnalysis().totalCompetitors()).isEqualTo(1);
+        assertThat(enriched.competitionAnalysis().summary()).contains("경쟁점 1건");
     }
 
     private MapPlaceCoordinateQueryRepository.NearbyAnalysisPlace nearby(

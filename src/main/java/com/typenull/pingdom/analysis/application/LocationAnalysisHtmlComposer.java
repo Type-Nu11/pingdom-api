@@ -7,13 +7,13 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/** 구조화된 AI 응답을 고정된 8페이지 XHTML 디자인으로 변환한다. */
+/** 구조화된 AI 응답을 고정된 7페이지 XHTML 디자인으로 변환한다. */
 @Component
 public class LocationAnalysisHtmlComposer {
 
-    private static final int TOTAL_PAGES = 8;
+    private static final int TOTAL_PAGES = 7;
     private static final int MAX_TABLE_ROWS = 5;
-    private static final int MAX_FACILITY_ROWS = 3;
+    private static final int MAX_FACILITY_ROWS = 2;
 
     public String compose(
             String reportId,
@@ -72,19 +72,12 @@ public class LocationAnalysisHtmlComposer {
                 panel("경쟁 환경", sectionText(competition == null ? null : competition.summary(), "경쟁업체 없음"))
                         + renderCards(
                         "전체 경쟁점", value(competition == null ? null : competition.totalCompetitors()),
-                        "프랜차이즈", value(competition == null ? null : competition.franchiseCompetitors()),
-                        "개인 매장", value(competition == null ? null : competition.independentCompetitors())
+                        "조회 반경", "100m",
+                        "판정 기준", "동일 업종"
                 )
-                        + panel("핵심 경쟁점", renderFacilityTable("핵심 경쟁점", competition == null
-                        ? List.of() : competition.keyCompetitors()))
-                        + panel("주변 환경 요약", sectionText(facilities == null ? null : facilities.summary(), "주변 시설 없음")
-                        + renderMetricTable(facilities == null ? List.of() : facilities.demandDrivers()))
+                        + panel("주변 시설과 경쟁업체", renderNearbyContext(competition, facilities))
                         + renderEvidenceTable(competition == null ? List.of() : competition.evidences()))
-                + page(6, "06 / LOCAL FACILITIES", "주변 시설과 접근성",
-                panel("주변 환경 요약", sectionText(facilities == null ? null : facilities.summary(), "주변 시설 없음"))
-                        + panel("주변 시설", renderFacilities(facilities))
-                        + renderEvidenceTable(facilities == null ? List.of() : facilities.evidences()))
-                + page(7, "07 / BUSINESS POTENTIAL", "사업성 및 실행 전략",
+                + page(6, "06 / BUSINESS POTENTIAL", "사업성 및 실행 전략",
                 panel("사업성 요약", text(performance == null ? null : performance.summary()))
                         + panel("핵심 사업성 지표", renderMetricTable(performance == null
                         ? List.of() : performance.performanceIndicators()))
@@ -93,7 +86,7 @@ public class LocationAnalysisHtmlComposer {
                         + panel("실행 전 확인할 위험", renderStringList("위험 및 대응 필요 항목", performance == null
                         ? List.of() : performance.risks()))
                         + renderEvidenceTable(performance == null ? List.of() : performance.evidences()))
-                + page(8, "08 / DATA QUALITY & SOURCES", "데이터 신뢰도와 분석 기준",
+                + page(7, "07 / DATA QUALITY & SOURCES", "데이터 신뢰도와 분석 기준",
                 renderCards(
                         "데이터 신뢰도", score(dataQuality == null ? null : dataQuality.reliabilityScore()),
                         "관측 수", value(dataQuality == null ? null : dataQuality.observationCount()),
@@ -243,19 +236,6 @@ public class LocationAnalysisHtmlComposer {
                 + truncationNotice(places.size(), MAX_TABLE_ROWS, "추천 후보");
     }
 
-    private String renderFacilities(LocationAnalysisContent.NearbyFacilities facilities) {
-        if (facilities == null) return muted("주변 시설 없음");
-        if (facilities.competitors().isEmpty()
-                && facilities.convenienceFacilities().isEmpty()
-                && facilities.transportFacilities().isEmpty()) {
-            return muted("주변 시설 없음");
-        }
-        String rendered = renderFacilityTable("경쟁 시설", facilities.competitors())
-                + renderFacilityTable("편의 시설", facilities.convenienceFacilities())
-                + renderFacilityTable("교통 시설", facilities.transportFacilities());
-        return rendered;
-    }
-
     private String renderMetricBars(List<LocationAnalysisContent.Metric> metrics) {
         if (metrics.isEmpty()) return muted("데이터 없음");
         return metrics.stream().limit(MAX_TABLE_ROWS).map(metric -> {
@@ -287,29 +267,35 @@ public class LocationAnalysisHtmlComposer {
                 .collect(Collectors.joining()) + "</ul></div>";
     }
 
-    private String renderFacilityTable(String title, List<LocationAnalysisContent.Facility> facilities) {
-        if (facilities == null || facilities.isEmpty()) return muted(emptyFacilityMessage(title));
-        String rows = facilities.stream().limit(MAX_FACILITY_ROWS).map(facility -> "<tr><td>" + escape(text(facility.name())) + "</td><td>"
-                + escape(text(facility.category())) + "</td><td>" + escape(value(facility.distanceMeters())) + "m</td><td>"
-                + escape(text(facility.address())) + "</td><td>" + escape(text(facility.description())) + "</td></tr>")
-                .collect(Collectors.joining());
-        return "<h3>" + escape(title) + "</h3><table><tr><th>시설명</th><th>분류</th><th>거리</th><th>주소</th><th>설명</th></tr>"
-                + rows + "</table>" + truncationNotice(facilities.size(), MAX_FACILITY_ROWS, title);
+    private String renderNearbyContext(
+            LocationAnalysisContent.CompetitionAnalysis competition,
+            LocationAnalysisContent.NearbyFacilities facilities
+    ) {
+        java.util.ArrayList<ContextFacility> entries = new java.util.ArrayList<>();
+        if (competition != null) {
+            competition.keyCompetitors().forEach(facility -> entries.add(new ContextFacility("경쟁 업체", facility)));
+        }
+        if (facilities != null) {
+            facilities.convenienceFacilities().forEach(facility -> entries.add(new ContextFacility("주변 시설", facility)));
+            facilities.transportFacilities().forEach(facility -> entries.add(new ContextFacility("교통 시설", facility)));
+        }
+        if (entries.isEmpty()) {
+            return muted("주변 시설 및 경쟁업체 없음");
+        }
+        String rows = entries.stream().limit(MAX_FACILITY_ROWS * 3).map(entry -> {
+            LocationAnalysisContent.Facility facility = entry.facility();
+            return "<tr><td>" + escape(entry.type()) + "</td><td>" + escape(text(facility.name())) + "</td><td>"
+                    + escape(text(facility.category())) + "</td><td>" + escape(value(facility.distanceMeters())) + "m</td><td>"
+                    + escape(text(facility.address())) + "</td></tr>";
+        }).collect(Collectors.joining());
+        return "<table><tr><th>구분</th><th>시설명</th><th>분류</th><th>거리</th><th>주소</th></tr>" + rows + "</table>"
+                + truncationNotice(entries.size(), MAX_FACILITY_ROWS * 3, "주변 시설과 경쟁업체");
     }
 
     private String sectionText(String value, String fallback) {
         return value == null || value.isBlank() || "데이터 없음".equals(value)
                 ? muted(fallback)
                 : text(value);
-    }
-
-    private String emptyFacilityMessage(String title) {
-        return switch (title) {
-            case "경쟁 시설", "핵심 경쟁점" -> "경쟁업체 없음";
-            case "편의 시설" -> "편의 시설 없음";
-            case "교통 시설" -> "교통 시설 없음";
-            default -> title + " 없음";
-        };
     }
 
     private String renderEvidenceTable(List<LocationAnalysisContent.Evidence> evidences) {
@@ -339,9 +325,18 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String topMetric(List<LocationAnalysisContent.Metric> metrics) {
-        return metrics.stream().filter(metric -> metric != null && metric.sharePercent() != null)
+        LocationAnalysisContent.Metric topByShare = metrics.stream()
+                .filter(metric -> metric != null && metric.sharePercent() != null)
                 .max(java.util.Comparator.comparing(LocationAnalysisContent.Metric::sharePercent))
-                .map(metric -> text(metric.label())).orElse("데이터 없음");
+                .orElse(null);
+        if (topByShare != null) {
+            return text(topByShare.label());
+        }
+        return metrics.stream()
+                .filter(metric -> metric != null && metric.value() != null)
+                .findFirst()
+                .map(metric -> value(metric.value()) + " " + text(metric.unit()))
+                .orElse("데이터 없음");
     }
 
     private String score(Double value) {
@@ -384,5 +379,8 @@ public class LocationAnalysisHtmlComposer {
                 .replace(">", "&gt;")
                 .replace("\"", "&quot;")
                 .replace("'", "&#39;");
+    }
+
+    private record ContextFacility(String type, LocationAnalysisContent.Facility facility) {
     }
 }
