@@ -967,6 +967,57 @@ class AdminMapPlaceControllerTest {
     }
 
     @Test
+    void updatePlaceBasicInformationRejectsBlankName() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("기본 정보 검증 장소")
+                .category("CAFE")
+                .address("경상남도 진주시 기본로 2")
+                .latitude(35.1802)
+                .longitude(128.1079)
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/basic-information", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "   ",
+                                "category", "CAFE",
+                                "reason", "장소명 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.name").value("장소명은 필수입니다."));
+    }
+
+    @Test
+    void updatePlaceBasicInformationRejectsInvalidCategory() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("카테고리 검증 장소")
+                .category("CAFE")
+                .address("경상남도 진주시 기본로 3")
+                .latitude(35.1803)
+                .longitude(128.1080)
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/basic-information", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "카테고리 검증 장소",
+                                  "category": "INVALID",
+                                  "reason": "유효하지 않은 카테고리 검증"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        MapPlace unchangedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals("CAFE", unchangedPlace.getCategory());
+        assertTrue(adminAuditLogRepository.findAll().isEmpty());
+    }
+
+    @Test
     void repeatedCoordinateUpdatesCoalesceWaitingRecommendationResyncEvent() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()

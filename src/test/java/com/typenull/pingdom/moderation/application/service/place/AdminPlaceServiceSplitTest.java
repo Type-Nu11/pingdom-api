@@ -40,6 +40,7 @@ class AdminPlaceServiceSplitTest {
                         "createPlaceInformationEvidence",
                         "getPlaceInformationEvidence",
                         "reviewPlaceInformationEvidence",
+                        "updatePlaceBasicInformation",
                         "updatePlaceCoordinates",
                         "updatePlaceDiscoveryStatus",
                         "updatePlaceGeocoding",
