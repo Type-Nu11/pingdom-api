@@ -51,7 +51,7 @@ class PlaceRegistrationMediaPromotionServiceTest {
         when(placeMediaRepository.save(any(PlaceMedia.class))).thenAnswer(invocation -> invocation.getArgument(0));
         when(storage.publicUrl(any())).thenAnswer(invocation -> "https://cdn.pingdom.test/" + invocation.getArgument(0));
 
-        service.promote(place, application);
+        var result = service.promote(place, application);
 
         ArgumentCaptor<PlaceMedia> mediaCaptor = ArgumentCaptor.forClass(PlaceMedia.class);
         verify(placeMediaRepository, org.mockito.Mockito.times(2)).save(mediaCaptor.capture());
@@ -67,6 +67,8 @@ class PlaceRegistrationMediaPromotionServiceTest {
         );
         verify(place).updateImageUrl("https://cdn.pingdom.test/places/70069/exploration/7/registration/11.jpg");
         verify(place).updateDescription("신청 장소 설명");
+        assertThat(result.promotedCount()).isEqualTo(2);
+        assertThat(result.alreadyPromotedCount()).isZero();
     }
 
     @Test
@@ -78,10 +80,12 @@ class PlaceRegistrationMediaPromotionServiceTest {
         when(placeMediaRepository.findBySourceRegistrationAttachmentId(11L))
                 .thenReturn(Optional.of(org.mockito.Mockito.mock(PlaceMedia.class)));
 
-        service.promote(place, application);
+        var result = service.promote(place, application);
 
         verify(storage, org.mockito.Mockito.never()).copy(any(), any());
         verify(placeMediaRepository, org.mockito.Mockito.never()).save(any());
+        assertThat(result.promotedCount()).isZero();
+        assertThat(result.alreadyPromotedCount()).isOne();
     }
 
     private PlaceRegistrationAttachment attachment(Long id, int displayOrder, String filename, String contentType) {

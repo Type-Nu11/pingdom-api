@@ -19,15 +19,31 @@ public class PlaceRegistrationMediaBackfillService {
     private final PlaceRegistrationMediaPromotionService promotionService;
 
     @Transactional(propagation = Propagation.REQUIRES_NEW)
-    public boolean backfill(Long applicationId) {
+    public BackfillResult backfill(Long applicationId) {
         PlaceRegistrationApplication application = applicationRepository.findByIdForUpdate(applicationId)
                 .orElseThrow();
         if (application.getStatus() != PlaceRegistrationStatus.COMPLETED
                 || application.getCompletedPlaceId() == null) {
-            return false;
+            return BackfillResult.skipped();
         }
         var place = placeRepository.findByIdForUpdate(application.getCompletedPlaceId()).orElseThrow();
-        promotionService.promote(place, application);
-        return true;
+        var promotionResult = promotionService.promote(place, application);
+        return new BackfillResult(
+                promotionResult.hasPromotedMedia(),
+                promotionResult.promotedCount(),
+                promotionResult.alreadyPromotedCount()
+        );
+    }
+
+    /** 한 신청의 결과를 반환해 이미 복구된 건과 실제 변경 건을 구분합니다. */
+    public record BackfillResult(
+            boolean processed,
+            int promotedMediaCount,
+            int alreadyPromotedMediaCount
+    ) {
+
+        public static BackfillResult skipped() {
+            return new BackfillResult(false, 0, 0);
+        }
     }
 }

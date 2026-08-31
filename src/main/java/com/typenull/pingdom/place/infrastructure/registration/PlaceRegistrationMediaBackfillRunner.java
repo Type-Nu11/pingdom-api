@@ -27,9 +27,24 @@ class PlaceRegistrationMediaBackfillRunner implements ApplicationRunner {
 
     @Override
     public void run(ApplicationArguments args) {
-        int processed = 0;
-        int skipped = 0;
-        int failed = 0;
+        BackfillSummary summary = runBackfill();
+        log.info(
+                "Approved place registration media backfill completed. processedApplications={}, "
+                        + "skippedApplications={}, failedApplications={}, promotedMedia={}, alreadyPromotedMedia={}",
+                summary.processedApplications(),
+                summary.skippedApplications(),
+                summary.failedApplications(),
+                summary.promotedMedia(),
+                summary.alreadyPromotedMedia()
+        );
+    }
+
+    BackfillSummary runBackfill() {
+        int processedApplications = 0;
+        int skippedApplications = 0;
+        int failedApplications = 0;
+        int promotedMedia = 0;
+        int alreadyPromotedMedia = 0;
         int page = 0;
         boolean hasNext;
         do {
@@ -39,13 +54,16 @@ class PlaceRegistrationMediaBackfillRunner implements ApplicationRunner {
             );
             for (var application : applications) {
                 try {
-                    if (backfillService.backfill(application.getId())) {
-                        processed++;
+                    var result = backfillService.backfill(application.getId());
+                    promotedMedia += result.promotedMediaCount();
+                    alreadyPromotedMedia += result.alreadyPromotedMediaCount();
+                    if (result.processed()) {
+                        processedApplications++;
                     } else {
-                        skipped++;
+                        skippedApplications++;
                     }
                 } catch (RuntimeException exception) {
-                    failed++;
+                    failedApplications++;
                     log.warn("Approved place registration media backfill failed. applicationId={}, placeId={}",
                             application.getId(), application.getCompletedPlaceId(), exception);
                 }
@@ -53,7 +71,21 @@ class PlaceRegistrationMediaBackfillRunner implements ApplicationRunner {
             hasNext = applications.hasNext();
             page++;
         } while (hasNext);
-        log.info("Approved place registration media backfill completed. processed={}, skipped={}, failed={}",
-                processed, skipped, failed);
+        return new BackfillSummary(
+                processedApplications,
+                skippedApplications,
+                failedApplications,
+                promotedMedia,
+                alreadyPromotedMedia
+        );
+    }
+
+    record BackfillSummary(
+            int processedApplications,
+            int skippedApplications,
+            int failedApplications,
+            int promotedMedia,
+            int alreadyPromotedMedia
+    ) {
     }
 }
