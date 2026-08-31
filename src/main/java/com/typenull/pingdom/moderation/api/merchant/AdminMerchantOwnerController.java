@@ -58,7 +58,12 @@ public class AdminMerchantOwnerController {
     }
 
     @PostMapping("/{userId}/approve")
-    @Operation(summary = "Merchant Owner 승인")
+    @Operation(
+            summary = "Merchant Owner 승인",
+            description = "승인 사유만 처리합니다. 장소 연결은 변경하지 않으며, 승인 후 연결이 필요하면 "
+                    + "PUT /admin/merchant-owners/{userId}/places로 전체 장소 목록을 별도 요청해야 합니다. "
+                    + "승인과 장소 연결은 별도 트랜잭션입니다."
+    )
     public MerchantOwnerProfileResponse approve(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOwnerReviewRequest request,
@@ -88,7 +93,11 @@ public class AdminMerchantOwnerController {
     }
 
     @PutMapping("/{userId}/places")
-    @Operation(summary = "Merchant Owner 장소 연결 변경")
+    @Operation(
+            summary = "Merchant Owner 장소 연결 변경",
+            description = "현재 연결 장소를 요청의 placeIds 전체로 교체합니다. 빈 목록은 모든 장소 연결을 해제합니다. "
+                    + "Merchant Owner 승인과는 별도 요청 및 별도 트랜잭션입니다."
+    )
     public MerchantOwnerProfileResponse replacePlaces(
             @PathVariable Long userId,
             @Valid @RequestBody MerchantOwnerPlaceUpdateRequest request,

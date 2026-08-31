@@ -66,7 +66,7 @@ class MerchantOwnerAdminServiceTest {
         when(profileRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(profile));
         when(ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(USER_ID)).thenReturn(List.of());
 
-        var response = service.approve(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest("서류 확인", null));
+        var response = service.approve(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest("서류 확인"));
 
         assertThat(response.status()).isEqualTo(MerchantOwnerStatus.ACTIVE);
         assertThat(response.reviewedBy()).isEqualTo(ADMIN_USER_ID);
@@ -84,7 +84,7 @@ class MerchantOwnerAdminServiceTest {
         when(profileRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(profile));
         when(ownerPlaceRepository.findAllByMerchantOwnerUserIdOrderByPlaceIdAsc(USER_ID)).thenReturn(List.of());
 
-        var response = service.reject(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest("사업자 정보가 부족합니다", null));
+        var response = service.reject(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest("사업자 정보가 부족합니다"));
 
         assertThat(response.status()).isEqualTo(MerchantOwnerStatus.REJECTED);
         assertThat(response.reviewReason()).isEqualTo("사업자 정보가 부족합니다");
@@ -97,7 +97,7 @@ class MerchantOwnerAdminServiceTest {
 
     @Test
     void rejectsBlankReviewReason() {
-        assertThatThrownBy(() -> service.reject(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest(" ", null)))
+        assertThatThrownBy(() -> service.reject(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest(" ")))
                 .isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.INVALID_REVIEW_REASON));
     }
@@ -111,7 +111,7 @@ class MerchantOwnerAdminServiceTest {
                 PlaceRegistrationStatus.PENDING
         )).thenReturn(true);
 
-        assertThatThrownBy(() -> service.approve(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest(null, null)))
+        assertThatThrownBy(() -> service.approve(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest(null)))
                 .isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(MerchantOwnerErrorCode.UNIFIED_APPLICATION_REVIEW_REQUIRED));
@@ -126,7 +126,7 @@ class MerchantOwnerAdminServiceTest {
         when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         when(profileRepository.findByUserIdForUpdate(USER_ID)).thenReturn(Optional.of(profile));
 
-        assertThatThrownBy(() -> service.approve(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest(null, null)))
+        assertThatThrownBy(() -> service.approve(ADMIN_USER_ID, USER_ID, new MerchantOwnerReviewRequest(null)))
                 .isInstanceOfSatisfying(MerchantOwnerException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(MerchantOwnerErrorCode.INVALID_PROFILE_STATE));
     }

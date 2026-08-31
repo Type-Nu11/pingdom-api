@@ -111,10 +111,20 @@ public class LocationAnalysisPromptFactory {
                    metrics.gender_match → targetPopulationAnalysis.gender의 성별 일치 지표,
                    metrics.avg_hour → targetPopulationAnalysis.behaviorIndicators의 "평균 활동 시간".
                    이 값들은 MCP에 존재하는데도 null 또는 []로 반환하지 않는다. MCP에 해당 값이 없을 때만 해당 배열을 []로 둔다.
-                3. 추천 장소 유동인구에서 실제 관측된 age_match와 gender_match를 타깃 일치 통계로 사용한다.
+                3. MCP recommendation에 statistics가 있으면 다음 매핑을 반드시 수행한다.
+                   statistics.gender → targetPopulationAnalysis.gender, statistics.age → targetPopulationAnalysis.age,
+                   statistics.by_time → footTrafficAnalysis.byTime, statistics.by_day → footTrafficAnalysis.byDay,
+                   statistics.by_month → footTrafficAnalysis.byMonth, statistics.total → footTrafficAnalysis.total.
+                   statistics.age_match는 타깃 연령 일치 지표로 사용한다. statistics의 배열 원소는 label/value/unit을
+                   그대로 복사하고 sharePercent가 필요하면 같은 statistics.total을 분모로 계산한 CALCULATION evidence를 남긴다.
+                4. MCP recommendation에 nearby_places가 있으면 각 객체의 name, address, category, distance_m을 그대로 사용한다.
+                   category가 요청 category와 같으면 competitors에, 이름에 역·정류장·터미널·지하철·공항이 포함되면
+                   transportFacilities에, 그 외 실제 장소는 convenienceFacilities에 분류한다. 분류된 장소 수와
+                   distance_m만으로 주변환경 요약과 demandDrivers를 계산하고, 장소명·주소·거리를 만들거나 바꾸지 않는다.
+                5. 추천 장소 유동인구에서 실제 관측된 age_match와 gender_match를 타깃 일치 통계로 사용한다.
                    연령·성별 분포 원본이 없으면 age와 gender는 []로 두고, derivedFromPlace에는 산출에 사용한 추천 장소명을
                    기록한다. 존재하지 않는 세부 연령대나 성별 비율을 만들지 않는다.
-                4. targetCustomerGroup과 operatingHours의 적합성은 입력 조건과 동일 기간·범위의 DB 유동인구를
+                6. targetCustomerGroup과 operatingHours의 적합성은 입력 조건과 동일 기간·범위의 DB 유동인구를
                    비교한 결과만 사용한다.
 
                 [점수와 등급]
@@ -169,7 +179,14 @@ public class LocationAnalysisPromptFactory {
                 13. 통계 산출 근거: 위 metrics와 evidences에 실제 원본값·분모·기간·범위를 남긴다.
                 age, gender, behaviorIndicators, byTime, byDay, byMonth, demandIndicators, demandDrivers,
                 keyCompetitors, performanceIndicators 배열은 실제 관측값이 없을 때 반드시 []로 반환한다.
-                데이터가 없을 때 null placeholder 객체나 0을 만들어내지 않는다. 문자열 설명에는 "데이터 없음"을 쓴다.
+                단, MCP 응답에 statistics의 해당 배열이 있으면 빈 배열을 반환할 수 없다. statistics가 있으면
+                commercialAreaAnalysis.demandIndicators, targetPopulationAnalysis.age/gender,
+                footTrafficAnalysis.byTime/byDay/byMonth, businessPerformanceAnalysis.performanceIndicators를
+                실제 값 또는 명시적인 CALCULATION 값으로 채운다. nearby_places가 있으면 nearbyFacilities.summary와
+                convenienceFacilities/transportFacilities/competitors 중 해당 분류 배열을 채우고, 분류된 장소가
+                없을 때만 각 배열을 []로 둔다.
+                데이터가 없을 때 null placeholder 객체나 0을 만들어내지 않는다. 문자열 설명에는 "원천 데이터 미제공"
+                또는 "확인된 시설 없음"처럼 누락 원인을 구체적으로 쓴다. 단순히 "데이터 없음"만 단독으로 쓰지 않는다.
 
                 [Evidence 객체 계약]
                 모든 evidences 배열의 원소는 문자열이 아닌 아래 JSON 객체여야 한다.
@@ -183,10 +200,17 @@ public class LocationAnalysisPromptFactory {
                 [통계 계산 및 보고서 분량]
                 MCP recommendations의 metrics.total_foot는 footTrafficAnalysis.total 또는 후보 비교 지표에 반드시
                 반영한다. metrics.age_match와 metrics.gender_match는 타깃 일치 통계에, metrics.avg_hour는
-                behaviorIndicators의 "평균 활동 시간"에 반드시 반영한다. 시간대별·요일별·월별 분포 원본이 없으면
-                byTime, byDay, byMonth는 []로 둔다. 체류 시간·재방문율·소비력·경쟁도·매출 잠재력·임대료·공실률은
+                behaviorIndicators의 "평균 활동 시간"에 반드시 반영한다. MCP가 반환한 statistics.gender/age/by_time/by_day/by_month는
+                각각 성별·연령·시간대·요일·월별 배열에 반드시 반영한다. statistics가 없거나 해당 배열이 비어 있을 때만
+                해당 배열을 []로 둔다. 체류 시간·재방문율·소비력·경쟁도·매출 잠재력·임대료·공실률은
                 해당 MCP/DB 데이터가 실제로 존재할 때만 behaviorIndicators, demandIndicators,
-                performanceIndicators에 넣는다. 가능한 모든 반환 후보를 비교 집합에 포함하고 상위 추천 장소만
+                performanceIndicators에 넣는다. statistics.total과 statistics.age_match가 있으면 각각
+                "반경 내 관측 유동인구"와 "타깃 연령 유동인구" demandIndicators를 만들고, 같은 원천값으로
+                타깃 연령 비율을 계산한다. statistics.gender, by_time, by_day, by_month와 nearby_places도
+                각각 해당 페이지의 통계와 시설 데이터로 반드시 사용한다. 매출·임대료·공실률처럼 원천이 없는 지표는
+                "매출 데이터 미제공"처럼 명시하고 숫자를 만들지 않는다. 단, statistics.total과 age_match가 있으면
+                performanceIndicators에 "유동인구 기반 수요 지수"를 `age_match / total * 100`으로 계산해 넣을 수 있으며,
+                CALCULATION evidence에 원본값·분모·formula를 기록한다. 가능한 모든 반환 후보를 비교 집합에 포함하고 상위 추천 장소만
                 잘라서 근거를 잃지 않는다.
                 총량·평균·최대·비율은 같은 기간·반경·집계 단위끼리만 계산한다. 비율은 분모와 formula를 CALCULATION
                 evidence에 기록한다. 결과는 최소 3개 추천 장소 또는 데이터가 부족한 이유를 명시하며, 장소가 1개뿐이면

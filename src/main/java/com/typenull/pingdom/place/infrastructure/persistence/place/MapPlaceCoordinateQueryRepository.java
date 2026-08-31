@@ -90,7 +90,52 @@ public interface MapPlaceCoordinateQueryRepository extends Repository<MapPlace, 
             Pageable pageable
     );
 
+    /** 추천 좌표 주변의 공개 장소를 한 번에 조회해 분석 보고서의 시설 데이터로 사용합니다. */
+    @Query(
+            value = """
+                    SELECT candidate.map_place_id AS placeId,
+                           candidate.place_name AS name,
+                           candidate.category AS category,
+                           candidate.address AS address,
+                           ST_Distance(
+                               candidate.location::geography,
+                               ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                               false
+                           ) AS distanceMeters
+                    FROM map_place candidate
+                    WHERE candidate.location IS NOT NULL
+                      AND candidate.operating_status = 'OPERATING'
+                      AND candidate.discovery_status = 'VISIBLE'
+                      AND ST_DWithin(
+                          candidate.location::geography,
+                          ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                          :radiusMeters,
+                          false
+                      )
+                    ORDER BY distanceMeters ASC, candidate.map_place_id ASC
+                    """,
+            nativeQuery = true
+    )
+    List<NearbyAnalysisPlace> findNearbyPlacesForAnalysis(
+            @Param("latitude") double latitude,
+            @Param("longitude") double longitude,
+            @Param("radiusMeters") double radiusMeters,
+            Pageable pageable
+    );
+
     interface NearbyCategoryPlace {
+        Long getPlaceId();
+
+        String getName();
+
+        String getCategory();
+
+        String getAddress();
+
+        Double getDistanceMeters();
+    }
+
+    interface NearbyAnalysisPlace {
         Long getPlaceId();
 
         String getName();
