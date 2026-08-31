@@ -473,7 +473,45 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.category").value(nullValue()))
                 .andExpect(jsonPath("$.categoryName").value("미분류"))
+                .andExpect(jsonPath("$.imageUrl").value(nullValue()))
                 .andExpect(jsonPath("$.level").value(1));
+    }
+
+    @Test
+    void getPlaceReflectsCurrentCanonicalRepresentativeImageUrl() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("대표 이미지 갱신 장소")
+                .address("경상남도 진주시 대표이미지로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(14L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mapPlace.updateImageUrl("https://example.com/places/representative-first.jpg");
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/places/representative-first.jpg"));
+
+        mapPlace.updateImageUrl("https://example.com/places/representative-updated.jpg");
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/places/representative-updated.jpg"));
+
+        mapPlace.updateImageUrl(null);
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value(nullValue()));
     }
 
     @Test
@@ -641,6 +679,7 @@ class AdminMapPlaceControllerTest {
                 .userId(placeOwner.getId())
                 .registrant(placeOwner.getUsername())
                 .build();
+        mapPlace.updateImageUrl("https://example.com/places/namgang-representative.jpg");
         mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
         mapPlace = mapPlaceRepository.save(mapPlace);
 
@@ -660,6 +699,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/places/namgang-representative.jpg"))
                 .andExpect(jsonPath("$.discoveryStatus").value("HIDDEN"))
                 .andExpect(jsonPath("$.category").value("CULTURAL_HERITAGE"))
                 .andExpect(jsonPath("$.categoryName").value("문화재"))

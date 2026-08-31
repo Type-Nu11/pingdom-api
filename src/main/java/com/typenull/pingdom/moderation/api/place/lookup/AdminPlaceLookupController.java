@@ -170,6 +170,7 @@ public class AdminPlaceLookupController {
                                             {
                                               "id": 1,
                                               "name": "진주성",
+                                              "imageUrl": "https://example.com/places/1/representative.jpg",
                                               "address": "경상남도 진주시 남강로 626",
                                               "discoveryStatus": "VISIBLE",
                                               "category": "CULTURAL_HERITAGE",
