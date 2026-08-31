@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.api.merchant;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaUploadRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaUploadResponse;
@@ -16,10 +17,14 @@ import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.DeleteMapping;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -87,6 +92,26 @@ public class MerchantOwnerPlaceController {
             @Valid @RequestBody MerchantOwnerMediaUploadRequest request
     ) {
         return service.createUploadUrl(user.userId(), placeId, request);
+    }
+
+    @PostMapping("/media")
+    @Operation(
+            summary = "Merchant Owner 업로드 완료 탐색 미디어 등록",
+            description = "업로드 URL 발급 응답의 s3Key만 등록할 수 있습니다. 만료되거나 등록 완료된 key는 거부됩니다. "
+                    + "등록되지 않은 객체는 S3 lifecycle 정책이 정리합니다."
+    )
+    @ApiResponse(
+            responseCode = "201",
+            description = "탐색 미디어 등록 성공",
+            content = @Content(schema = @Schema(implementation = PlaceMediaItem.class))
+    )
+    public ResponseEntity<PlaceMediaItem> createMedia(
+            @CurrentUser JwtAuthenticatedUser user,
+            @PathVariable Long placeId,
+            @Valid @RequestBody MerchantOwnerMediaCreateRequest request
+    ) {
+        return ResponseEntity.status(HttpStatus.CREATED)
+                .body(service.createMedia(user.userId(), placeId, request));
     }
 
     @GetMapping("/media")

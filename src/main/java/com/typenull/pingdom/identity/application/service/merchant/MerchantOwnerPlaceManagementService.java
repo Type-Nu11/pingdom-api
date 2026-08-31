@@ -1,6 +1,7 @@
 package com.typenull.pingdom.identity.application.service.merchant;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaResponse;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaUploadRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaUploadResponse;
@@ -9,6 +10,8 @@ import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerOperatingSche
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerOperatingScheduleUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerOperatingStatusUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerPlaceDetailResponse;
+import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMediaUpload;
+import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMediaUploadRepository;
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingExceptionRequest;
 import com.typenull.pingdom.moderation.api.dto.place.quality.operating.AdminMapPlaceOperatingTimeRangeRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
@@ -33,6 +36,8 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3ObjectMetadata;
+import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import java.time.Clock;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
@@ -55,6 +60,7 @@ public class MerchantOwnerPlaceManagementService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceMediaRepository placeMediaRepository;
+    private final MerchantPlaceMediaUploadRepository mediaUploadRepository;
     private final MerchantPlaceCapabilityPolicy capabilityPolicy;
     private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
     private final S3ObjectStorage s3ObjectStorage;
@@ -166,12 +172,57 @@ public class MerchantOwnerPlaceManagementService {
         String extension = extension(request.fileName());
         String key = PlaceMediaStorageKey.createExplorationKey(placeId, userId, extension);
         S3ObjectStorage.PresignedPutResult result = s3ObjectStorage.presignedPut(key, request.contentType());
+        mediaUploadRepository.save(MerchantPlaceMediaUpload.issue(
+                placeId,
+                userId,
+                result.key(),
+                request.contentType(),
+                result.expiresAt(),
+                LocalDateTime.now(clock)
+        ));
         return new MerchantOwnerMediaUploadResponse(
                 result.uploadUrl(),
                 result.imageUrl(),
                 result.key(),
                 result.expiresAt()
         );
+    }
+
+    @Transactional
+    public PlaceMediaItem createMedia(
+            Long userId,
+            Long placeId,
+            MerchantOwnerMediaCreateRequest request
+    ) {
+        requireCapability(userId, placeId, MerchantPlaceCapability.PLACE_INFO_EDIT);
+        if (request == null || !StringUtils.hasText(request.s3Key())) {
+            throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
+        }
+
+        MapPlace place = findPlaceForUpdate(placeId);
+        String s3Key = request.s3Key().trim();
+        MerchantPlaceMediaUpload upload = mediaUploadRepository.findByS3KeyForUpdate(s3Key)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (!upload.isRegistrableBy(placeId, userId, now)) {
+            throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
+        }
+
+        validateUploadedObject(s3Key, upload);
+        int displayOrder = request.displayOrder() == null
+                ? placeMediaRepository.findMaxDisplayOrder(placeId, PlaceMediaPurpose.EXPLORATION) + 1
+                : request.displayOrder();
+        PlaceMedia media = placeMediaRepository.save(PlaceMedia.exploration(
+                place,
+                s3ObjectStorage.publicUrl(s3Key),
+                s3Key,
+                null,
+                null,
+                displayOrder,
+                now
+        ));
+        upload.markRegistered(now);
+        return PlaceMediaItem.from(media);
     }
 
     @Transactional
@@ -233,6 +284,29 @@ public class MerchantOwnerPlaceManagementService {
     private PlaceMedia findExplorationMedia(Long placeId, Long mediaId) {
         return placeMediaRepository.findByIdAndPlace_IdAndPurpose(mediaId, placeId, PlaceMediaPurpose.EXPLORATION)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
+    }
+
+    private void validateUploadedObject(String s3Key, MerchantPlaceMediaUpload upload) {
+        S3ObjectMetadata metadata;
+        try {
+            metadata = s3ObjectStorage.headObject(s3Key);
+        } catch (S3StorageException exception) {
+            throw toMapException(exception);
+        }
+        if (metadata.contentLength() == null
+                || metadata.contentLength() <= 0
+                || metadata.contentLength() > MAX_UPLOAD_SIZE
+                || !upload.matchesContentType(metadata.contentType())
+                || !ALLOWED_CONTENT_TYPES.contains(metadata.contentType().toLowerCase())) {
+            throw new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
+        }
+    }
+
+    private MapException toMapException(S3StorageException exception) {
+        if (exception.getError() == S3ObjectStorage.S3StorageError.CONNECTION_ERROR) {
+            return new MapException(MapErrorCode.S3_CONNECTION_ERROR);
+        }
+        return new MapException(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST);
     }
 
     private MerchantOwnerPlaceDetailResponse toDetail(MapPlace place) {
