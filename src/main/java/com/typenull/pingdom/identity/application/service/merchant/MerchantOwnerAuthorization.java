@@ -18,6 +18,16 @@ public class MerchantOwnerAuthorization {
     private final MerchantOwnerProfileRepository profileRepository;
     private final MerchantVerificationRepository verificationRepository;
 
+    public boolean isApproved(Authentication authentication) {
+        if (authentication == null || !(authentication.getPrincipal() instanceof JwtAuthenticatedUser principal)) {
+            return false;
+        }
+        return userRepository.findById(principal.userId())
+                .filter(user -> user.isMerchantOwner() && !user.isWithdrawn())
+                .isPresent()
+                && profileRepository.existsByUserIdAndStatus(principal.userId(), MerchantOwnerStatus.ACTIVE);
+    }
+
     public boolean isActive(Authentication authentication) {
         if (authentication == null || !(authentication.getPrincipal() instanceof JwtAuthenticatedUser principal)) {
             return false;

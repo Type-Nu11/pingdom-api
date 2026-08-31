@@ -93,6 +93,14 @@ public final class AdminPlaceServiceSupport {
         return state;
     }
 
+    public static Map<String, Object> basicInformationState(MapPlace place) {
+        Map<String, Object> state = new LinkedHashMap<>();
+        state.put("placeId", place.getId());
+        state.put("name", place.getName());
+        state.put("category", place.getCategory());
+        return state;
+    }
+
     public static Map<String, Object> operatingStatusState(MapPlace place) {
         Map<String, Object> state = new LinkedHashMap<>();
         state.put("placeId", place.getId());

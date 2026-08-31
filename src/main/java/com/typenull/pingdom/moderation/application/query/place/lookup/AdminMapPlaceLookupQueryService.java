@@ -124,6 +124,7 @@ public class AdminMapPlaceLookupQueryService {
         return new AdminMapPlaceDetailResponse(
                 mapPlace.getId(),
                 mapPlace.getName(),
+                mapPlace.getImageUrl(),
                 mapPlace.getAddress(),
                 mapPlace.getRoadAddress(),
                 mapPlace.getJibunAddress(),

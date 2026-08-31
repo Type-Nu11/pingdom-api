@@ -33,6 +33,7 @@ import com.typenull.pingdom.place.domain.place.core.MapBookmark;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
+import com.typenull.pingdom.place.domain.place.category.PlaceCategory;
 import com.typenull.pingdom.place.domain.place.discovery.PlaceDiscoveryStatus;
 import com.typenull.pingdom.place.domain.place.geocoding.GeocodingSource;
 import com.typenull.pingdom.place.domain.place.information.PlaceInformationSourceType;
@@ -472,7 +473,45 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.category").value(nullValue()))
                 .andExpect(jsonPath("$.categoryName").value("미분류"))
+                .andExpect(jsonPath("$.imageUrl").value(nullValue()))
                 .andExpect(jsonPath("$.level").value(1));
+    }
+
+    @Test
+    void getPlaceReflectsCurrentCanonicalRepresentativeImageUrl() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("대표 이미지 갱신 장소")
+                .address("경상남도 진주시 대표이미지로 1")
+                .latitude(35.1894)
+                .longitude(128.0789)
+                .userId(14L)
+                .registrant("placeRegistrar")
+                .build());
+
+        mapPlace.updateImageUrl("https://example.com/places/representative-first.jpg");
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/places/representative-first.jpg"));
+
+        mapPlace.updateImageUrl("https://example.com/places/representative-updated.jpg");
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/places/representative-updated.jpg"));
+
+        mapPlace.updateImageUrl(null);
+        mapPlaceRepository.saveAndFlush(mapPlace);
+
+        mockMvc.perform(get("/admin/places/{id}", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.imageUrl").value(nullValue()));
     }
 
     @Test
@@ -640,6 +679,7 @@ class AdminMapPlaceControllerTest {
                 .userId(placeOwner.getId())
                 .registrant(placeOwner.getUsername())
                 .build();
+        mapPlace.updateImageUrl("https://example.com/places/namgang-representative.jpg");
         mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
         mapPlace = mapPlaceRepository.save(mapPlace);
 
@@ -659,6 +699,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.id").value(mapPlace.getId()))
                 .andExpect(jsonPath("$.name").value("남강"))
+                .andExpect(jsonPath("$.imageUrl").value("https://example.com/places/namgang-representative.jpg"))
                 .andExpect(jsonPath("$.discoveryStatus").value("HIDDEN"))
                 .andExpect(jsonPath("$.category").value("CULTURAL_HERITAGE"))
                 .andExpect(jsonPath("$.categoryName").value("문화재"))
@@ -918,6 +959,102 @@ class AdminMapPlaceControllerTest {
         assertNotNull(updatedPlace.getLocation());
         assertEquals(128.1076, updatedPlace.getLocation().getX());
         assertEquals(35.1796, updatedPlace.getLocation().getY());
+    }
+
+    @Test
+    void updatePlaceBasicInformationUpdatesValuesAndRecordsAuditLog() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("기존 장소명")
+                .category("CAFE")
+                .address("경상남도 진주시 기본로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(90L)
+                .registrant("basicInformationOwner")
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/basic-information", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "  진주성  ",
+                                "category", "CULTURAL_HERITAGE",
+                                "reason", "  장소명과 분류 오등록 정정  "
+                        ))))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.placeId").value(mapPlace.getId()))
+                .andExpect(jsonPath("$.name").value("진주성"))
+                .andExpect(jsonPath("$.category").value("CULTURAL_HERITAGE"))
+                .andExpect(jsonPath("$.modifiedAt").isNotEmpty())
+                .andExpect(jsonPath("$.message").value("장소 기본 정보를 수정했습니다."));
+
+        MapPlace updatedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals("진주성", updatedPlace.getName());
+        assertEquals(PlaceCategory.CULTURAL_HERITAGE.name(), updatedPlace.getCategory());
+
+        assertEquals(1, adminAuditLogRepository.findAll().size());
+        var auditLog = adminAuditLogRepository.findAll().getFirst();
+        assertEquals(AdminAuditAction.PLACE_BASIC_INFORMATION_UPDATED, auditLog.getAction());
+        assertEquals(AdminAuditTargetType.PLACE, auditLog.getTargetType());
+        assertEquals(String.valueOf(mapPlace.getId()), auditLog.getTargetId());
+        assertEquals("장소명과 분류 오등록 정정", auditLog.getReason());
+        assertTrue(auditLog.getBeforeState().contains("\"name\":\"기존 장소명\""));
+        assertTrue(auditLog.getBeforeState().contains("\"category\":\"CAFE\""));
+        assertTrue(auditLog.getAfterState().contains("\"name\":\"진주성\""));
+        assertTrue(auditLog.getAfterState().contains("\"category\":\"CULTURAL_HERITAGE\""));
+        assertNotNull(auditLog.getCreatedAt());
+    }
+
+    @Test
+    void updatePlaceBasicInformationRejectsBlankName() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("기본 정보 검증 장소")
+                .category("CAFE")
+                .address("경상남도 진주시 기본로 2")
+                .latitude(35.1802)
+                .longitude(128.1079)
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/basic-information", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content(objectMapper.writeValueAsString(Map.of(
+                                "name", "   ",
+                                "category", "CAFE",
+                                "reason", "장소명 검증"
+                        ))))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.name").value("장소명은 필수입니다."));
+    }
+
+    @Test
+    void updatePlaceBasicInformationRejectsInvalidCategory() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
+                .name("카테고리 검증 장소")
+                .category("CAFE")
+                .address("경상남도 진주시 기본로 3")
+                .latitude(35.1803)
+                .longitude(128.1080)
+                .build());
+
+        mockMvc.perform(patch("/admin/places/{id}/basic-information", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("""
+                                {
+                                  "name": "카테고리 검증 장소",
+                                  "category": "INVALID",
+                                  "reason": "유효하지 않은 카테고리 검증"
+                                }
+                                """))
+                .andExpect(status().isBadRequest());
+
+        MapPlace unchangedPlace = mapPlaceRepository.findById(mapPlace.getId()).orElseThrow();
+        assertEquals("CAFE", unchangedPlace.getCategory());
+        assertTrue(adminAuditLogRepository.findAll().isEmpty());
     }
 
     @Test

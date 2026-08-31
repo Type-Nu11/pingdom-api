@@ -31,7 +31,7 @@ public class PlaceRegistrationMediaPromotionService {
     private final S3ObjectStorage storage;
     private final Clock clock;
 
-    public void promote(MapPlace place, PlaceRegistrationApplication application) {
+    public PromotionResult promote(MapPlace place, PlaceRegistrationApplication application) {
         // 기존 COMPLETED 데이터도 같은 경로로 복구하므로 이미 운영 중인 설명은 덮어쓰지 않습니다.
         if (place.getDescription() == null) {
             place.updateDescription(application.getDescription());
@@ -43,9 +43,12 @@ public class PlaceRegistrationMediaPromotionService {
                         .thenComparing(PlaceRegistrationAttachment::getId))
                 .toList();
 
+        int promotedCount = 0;
+        int alreadyPromotedCount = 0;
         for (PlaceRegistrationAttachment attachment : representativeImages) {
             if (attachment.getId() == null
                     || placeMediaRepository.findBySourceRegistrationAttachmentId(attachment.getId()).isPresent()) {
+                alreadyPromotedCount++;
                 continue;
             }
             String targetKey = PlaceMediaStorageKey.createRegistrationExplorationKey(
@@ -70,6 +73,16 @@ public class PlaceRegistrationMediaPromotionService {
             if (place.getImageUrl() == null) {
                 place.updateImageUrl(media.getImageUrl());
             }
+            promotedCount++;
+        }
+        return new PromotionResult(promotedCount, alreadyPromotedCount);
+    }
+
+    /** 백필 runner가 신규 승격과 기존 승격 건을 운영 로그에서 구분할 수 있게 합니다. */
+    public record PromotionResult(int promotedCount, int alreadyPromotedCount) {
+
+        public boolean hasPromotedMedia() {
+            return promotedCount > 0;
         }
     }
 

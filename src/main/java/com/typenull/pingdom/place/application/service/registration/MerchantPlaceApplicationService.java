@@ -439,7 +439,7 @@ public class MerchantPlaceApplicationService {
                 .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.MERCHANT_PROFILE_REQUIRED));
         User user = userRepository.findByIdForUpdate(application.getApplicantUserId())
                 .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED));
-        profile.approve(adminUserId, now);
+        profile.approve(adminUserId, application.getReviewReason(), now);
         user.activateMerchantOwnerRole();
     }
 

@@ -354,6 +354,9 @@ class OpenApiDocumentationValidationTest {
             assertThat(requiredFields(schema)).contains("level");
             assertNullableProperty(webDocument, schemaName, "category");
         }
+        JsonNode detailSchema = webDocument.at("/components/schemas/AdminMapPlaceDetailResponse");
+        assertNullableProperty(webDocument, "AdminMapPlaceDetailResponse", "imageUrl");
+        assertThat(requiredFields(detailSchema)).contains("imageUrl");
         assertThat(webDocument.at("/components/schemas/AdminMapPlaceResponse/properties/totalPages/minimum")
                 .asLong()).isEqualTo(1L);
     }
@@ -500,6 +503,8 @@ class OpenApiDocumentationValidationTest {
 
         for (String path : List.of(
                 "/admin/merchant-owners",
+                "/admin/merchant-owners/{userId}/approve",
+                "/admin/merchant-owners/{userId}/reject",
                 "/admin/merchant-owners/{userId}/onboarding",
                 "/admin/merchant-place-applications"
         )) {
@@ -564,8 +569,6 @@ class OpenApiDocumentationValidationTest {
             assertThat(merchantDocument.path("paths").has(removedPath)).isFalse();
         }
         for (String removedPath : List.of(
-                "/admin/merchant-owners/{userId}/approve",
-                "/admin/merchant-owners/{userId}/reject",
                 "/admin/merchant-verifications",
                 "/admin/merchant-place-claims",
                 "/admin/place-registration-applications"

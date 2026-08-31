@@ -7,6 +7,7 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
+import java.util.Objects;
 import lombok.AccessLevel;
 import lombok.AllArgsConstructor;
 import lombok.Builder;
@@ -61,6 +62,9 @@ public class MerchantOwnerProfile {
 
     @Column(name = "reviewed_at")
     private LocalDateTime reviewedAt;
+
+    @Column(name = "review_reason", length = 500)
+    private String reviewReason;
 
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -121,41 +125,39 @@ public class MerchantOwnerProfile {
         status = MerchantOwnerStatus.PENDING;
         reviewedBy = null;
         reviewedAt = null;
+        reviewReason = null;
     }
 
     public void approve(Long adminUserId, LocalDateTime now) {
-        if (status == MerchantOwnerStatus.ACTIVE) {
-            return;
-        }
+        approve(adminUserId, null, now);
+    }
+
+    public void approve(Long adminUserId, String reviewReason, LocalDateTime now) {
         requirePending();
         status = MerchantOwnerStatus.ACTIVE;
-        reviewedBy = adminUserId;
-        reviewedAt = now;
-        updatedAt = now;
+        recordReview(adminUserId, reviewReason, now);
     }
 
     public void reject(Long adminUserId, LocalDateTime now) {
-        if (status == MerchantOwnerStatus.REJECTED) {
-            return;
-        }
+        reject(adminUserId, null, now);
+    }
+
+    public void reject(Long adminUserId, String reviewReason, LocalDateTime now) {
         requirePending();
         status = MerchantOwnerStatus.REJECTED;
-        reviewedBy = adminUserId;
-        reviewedAt = now;
-        updatedAt = now;
+        recordReview(adminUserId, reviewReason, now);
     }
 
     public void revoke(Long adminUserId, LocalDateTime now) {
-        if (status == MerchantOwnerStatus.REVOKED) {
-            return;
-        }
+        revoke(adminUserId, null, now);
+    }
+
+    public void revoke(Long adminUserId, String reviewReason, LocalDateTime now) {
         if (status != MerchantOwnerStatus.ACTIVE) {
             throw new IllegalStateException("활성 Merchant Owner 권한만 회수할 수 있습니다.");
         }
         status = MerchantOwnerStatus.REVOKED;
-        reviewedBy = adminUserId;
-        reviewedAt = now;
-        updatedAt = now;
+        recordReview(adminUserId, reviewReason, now);
     }
 
     public void anonymize(LocalDateTime now) {
@@ -170,6 +172,7 @@ public class MerchantOwnerProfile {
         onboardingCompletedAt = null;
         reviewedBy = null;
         reviewedAt = now;
+        reviewReason = null;
         updatedAt = now;
     }
 
@@ -214,5 +217,20 @@ public class MerchantOwnerProfile {
         if (status != MerchantOwnerStatus.PENDING) {
             throw new IllegalStateException("대기 중인 Merchant Owner 신청만 심사할 수 있습니다.");
         }
+    }
+
+    private void recordReview(Long adminUserId, String reviewReason, LocalDateTime now) {
+        reviewedBy = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
+        reviewedAt = Objects.requireNonNull(now, "now must not be null");
+        this.reviewReason = normalizeReviewReason(reviewReason);
+        updatedAt = now;
+    }
+
+    private String normalizeReviewReason(String reviewReason) {
+        if (reviewReason == null) {
+            return null;
+        }
+        String normalized = reviewReason.trim();
+        return normalized.isEmpty() ? null : normalized;
     }
 }

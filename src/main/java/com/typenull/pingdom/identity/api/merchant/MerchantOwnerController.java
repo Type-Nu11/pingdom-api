@@ -1,6 +1,6 @@
 package com.typenull.pingdom.identity.api.merchant;
 
-import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
+import com.typenull.pingdom.shared.security.annotation.ApprovedMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileResponse;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerProfileService;
@@ -15,14 +15,14 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/merchant-owner")
 @RequiredArgsConstructor
-@ActiveMerchantOwnerOnly
+@ApprovedMerchantOwnerOnly
 @Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantOwnerController {
 
     private final MerchantOwnerProfileService profileService;
 
     @GetMapping("/me")
-    @Operation(summary = "활성 Merchant Owner 프로필 조회", description = "DB의 현재 역할과 활성 상태를 확인합니다.")
+    @Operation(summary = "승인된 Merchant Owner 프로필 조회", description = "DB의 현재 역할과 승인 상태를 확인합니다.")
     public MerchantOwnerProfileResponse getActiveProfile(
             @CurrentUser JwtAuthenticatedUser user
     ) {
