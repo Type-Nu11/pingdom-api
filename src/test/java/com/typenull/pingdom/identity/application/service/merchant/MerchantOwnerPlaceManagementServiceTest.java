@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaUploadRequest;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMediaUpload;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMediaUploadStatus;
@@ -26,6 +27,7 @@ import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
+import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -33,6 +35,7 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.ArgumentCaptor;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.test.util.ReflectionTestUtils;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantOwnerPlaceManagementServiceTest {
@@ -135,6 +138,80 @@ class MerchantOwnerPlaceManagementServiceTest {
                 .isInstanceOfSatisfying(MapException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
         verifyNoInteractions(s3ObjectStorage);
+    }
+
+    @Test
+    void updateMediaOrderMovesMediaAndNormalizesDisplayOrders() {
+        PlaceMedia first = explorationMedia(101L, 0);
+        PlaceMedia second = explorationMedia(102L, 1);
+        PlaceMedia third = explorationMedia(103L, 2);
+        when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place()));
+        when(placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
+                PLACE_ID,
+                PlaceMediaPurpose.EXPLORATION
+        )).thenReturn(List.of(first, second, third));
+
+        PlaceMediaItem response = service.updateMediaOrder(
+                USER_ID,
+                PLACE_ID,
+                103L,
+                new MerchantOwnerMediaOrderUpdateRequest(0)
+        );
+
+        assertThat(response.id()).isEqualTo(103L);
+        assertThat(third.getDisplayOrder()).isZero();
+        assertThat(first.getDisplayOrder()).isEqualTo(1);
+        assertThat(second.getDisplayOrder()).isEqualTo(2);
+        verify(placeMediaRepository).increaseDisplayOrder(PLACE_ID, PlaceMediaPurpose.EXPLORATION, 6);
+    }
+
+    @Test
+    void updateMediaOrderRejectsPositionOutsideCurrentMediaRange() {
+        PlaceMedia media = explorationMedia(101L, 0);
+        when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place()));
+        when(placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
+                PLACE_ID,
+                PlaceMediaPurpose.EXPLORATION
+        )).thenReturn(List.of(media));
+
+        assertThatThrownBy(() -> service.updateMediaOrder(
+                USER_ID,
+                PLACE_ID,
+                101L,
+                new MerchantOwnerMediaOrderUpdateRequest(1)
+        )).isInstanceOfSatisfying(MapException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
+    }
+
+    @Test
+    void updateMediaOrderRejectsMediaFromAnotherPlace() {
+        when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place()));
+        when(placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
+                PLACE_ID,
+                PlaceMediaPurpose.EXPLORATION
+        )).thenReturn(List.of(explorationMedia(101L, 0)));
+
+        assertThatThrownBy(() -> service.updateMediaOrder(
+                USER_ID,
+                PLACE_ID,
+                999L,
+                new MerchantOwnerMediaOrderUpdateRequest(0)
+        )).isInstanceOfSatisfying(MapException.class, exception ->
+                assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
+    }
+
+    private PlaceMedia explorationMedia(Long id, int displayOrder) {
+        PlaceMedia media = PlaceMedia.exploration(
+                place(),
+                "https://cdn.pingdom.test/media-%d.jpg".formatted(id),
+                "places/10/exploration/20/media-%d.jpg".formatted(id),
+                null,
+                null,
+                displayOrder,
+                NOW
+        );
+        ReflectionTestUtils.setField(media, "id", id);
+        return media;
     }
 
     private MapPlace place() {
