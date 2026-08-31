@@ -124,7 +124,11 @@ public class MerchantOwnerPlaceController {
     }
 
     @PatchMapping("/media/{mediaId}")
-    @Operation(summary = "Merchant Owner 탐색 미디어 순서 변경")
+    @Operation(
+            summary = "Merchant Owner 탐색 미디어 순서 변경",
+            description = "displayOrder는 0부터 시작하는 이동 대상 위치입니다. 서버가 같은 장소의 탐색 미디어를 재배치해 "
+                    + "중복 없이 0부터 연속된 순서를 보장합니다."
+    )
     public PlaceMediaItem updateMediaOrder(
             @CurrentUser JwtAuthenticatedUser user,
             @PathVariable Long placeId,

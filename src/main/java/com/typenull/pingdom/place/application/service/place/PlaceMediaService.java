@@ -56,7 +56,7 @@ public class PlaceMediaService {
 
     @Transactional
     public PlaceMediaItem createExplorationMedia(Long placeId, Long userId, PlaceMediaCreateRequest request) {
-        MapPlace place = getOwnedPlace(placeId, userId);
+        MapPlace place = getOwnedPlaceForUpdate(placeId, userId);
         String s3Key = validateExplorationObject(placeId, userId, request);
         int displayOrder = request.displayOrder() == null
                 ? placeMediaRepository.findMaxDisplayOrder(placeId, PlaceMediaPurpose.EXPLORATION) + 1
@@ -76,7 +76,7 @@ public class PlaceMediaService {
 
     @Transactional
     public void deleteExplorationMedia(Long placeId, Long mediaId, Long userId) {
-        getOwnedPlace(placeId, userId);
+        getOwnedPlaceForUpdate(placeId, userId);
         PlaceMedia media = placeMediaRepository
                 .findByIdAndPlace_IdAndPurpose(mediaId, placeId, PlaceMediaPurpose.EXPLORATION)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
@@ -125,6 +125,18 @@ public class PlaceMediaService {
     private MapPlace getOwnedPlace(Long placeId, Long userId) {
         MapPlace place = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        requirePlaceMediaManagementCapability(placeId, userId, place);
+        return place;
+    }
+
+    private MapPlace getOwnedPlaceForUpdate(Long placeId, Long userId) {
+        MapPlace place = mapPlaceRepository.findByIdForUpdate(placeId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
+        requirePlaceMediaManagementCapability(placeId, userId, place);
+        return place;
+    }
+
+    private void requirePlaceMediaManagementCapability(Long placeId, Long userId, MapPlace place) {
         if (!Objects.equals(place.getUserId(), userId)) {
             try {
                 merchantPlaceCapabilityPolicy.require(userId, placeId, MerchantPlaceCapability.PLACE_INFO_EDIT);
@@ -132,7 +144,6 @@ public class PlaceMediaService {
                 throw new MapException(MapErrorCode.OTHERS_PLACE_MEDIA_NOT_MANAGED);
             }
         }
-        return place;
     }
 
     private List<PlaceMediaItem> getMediaItems(Long placeId, PlaceMediaPurpose purpose) {

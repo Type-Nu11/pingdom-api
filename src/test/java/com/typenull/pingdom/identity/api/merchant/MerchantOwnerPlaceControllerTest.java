@@ -3,11 +3,13 @@ package com.typenull.pingdom.identity.api.merchant;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.patch;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
+import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantOwnerPlaceManagementService;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
 import com.typenull.pingdom.place.domain.place.media.PlaceMediaPurpose;
@@ -83,6 +85,33 @@ class MerchantOwnerPlaceControllerTest {
                         .content("{\"s3Key\":\"\"}"))
                 .andExpect(status().isBadRequest())
                 .andExpect(jsonPath("$.errors.s3Key").value("s3Key는 필수입니다."));
+
+        verifyNoInteractions(service);
+    }
+
+    @Test
+    void updatesMediaOrderWithTargetPosition() throws Exception {
+        when(service.updateMediaOrder(20L, 10L, 30L, new MerchantOwnerMediaOrderUpdateRequest(0)))
+                .thenReturn(new PlaceMediaItem(
+                        30L, 10L, PlaceMediaPurpose.EXPLORATION, "https://image",
+                        "places/10/exploration/20/new.jpg", null, null, null,
+                        0, LocalDateTime.of(2026, 8, 31, 12, 0), LocalDateTime.of(2026, 8, 31, 12, 0)
+                ));
+
+        mockMvc.perform(patch("/merchant-owner/places/10/media/30")
+                        .contentType("application/json")
+                        .content("{\"displayOrder\":0}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.displayOrder").value(0));
+    }
+
+    @Test
+    void rejectsNegativeMediaOrderBeforeCallingService() throws Exception {
+        mockMvc.perform(patch("/merchant-owner/places/10/media/30")
+                        .contentType("application/json")
+                        .content("{\"displayOrder\":-1}"))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.errors.displayOrder").value("노출 순서는 0 이상이어야 합니다."));
 
         verifyNoInteractions(service);
     }
