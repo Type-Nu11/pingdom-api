@@ -59,7 +59,7 @@ public class TouristOfferController {
     }
 
     @PostMapping("/{offerId}/coupons")
-    @Operation(summary = "관광객 Coupon 발급", description = "진행 중인 여행 일정이 있는 일반 사용자에게 Offer당 한 번만 발급합니다.")
+    @Operation(summary = "관광객 Coupon 발급", description = "진행 중인 여행 일정이 있는 일반 사용자에게 Offer당 한 번만 발급합니다. 발급 시 Offer 제목·혜택과 장소 정보를 Coupon에 스냅샷으로 저장합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "Coupon 발급 성공", content = @Content(schema = @Schema(implementation = CouponResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),

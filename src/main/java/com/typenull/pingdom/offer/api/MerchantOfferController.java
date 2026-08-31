@@ -113,7 +113,7 @@ public class MerchantOfferController {
     }
 
     @PostMapping("/coupons/redeem")
-    @Operation(summary = "관광객 Coupon 사용 처리", description = "본인이 소유한 장소의 Offer에서 발급된 Coupon만 사용할 수 있습니다.")
+    @Operation(summary = "관광객 Coupon 사용 처리", description = "본인이 소유한 장소의 Offer에서 발급된 Coupon만 사용할 수 있습니다. 응답의 Offer·장소 요약은 발급 시점 스냅샷입니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Coupon 사용 처리 성공", content = @Content(schema = @Schema(implementation = CouponResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),

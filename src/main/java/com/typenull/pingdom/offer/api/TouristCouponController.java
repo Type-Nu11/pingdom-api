@@ -35,7 +35,7 @@ public class TouristCouponController {
     private final TouristOfferService offerService;
 
     @GetMapping
-    @Operation(summary = "내 관광객 Coupon 목록 조회", description = "발급일 기간은 양 끝값을 포함합니다. status=ISSUED는 아직 만료되지 않은 쿠폰, EXPIRED는 발급 상태이면서 expiresAt이 현재 시각 이하인 쿠폰입니다. 기본 정렬은 issuedAt 내림차순, id 내림차순이며 page와 limit은 각각 최소 1, limit 최대 100으로 보정됩니다.")
+    @Operation(summary = "내 관광객 Coupon 목록 조회", description = "Offer 제목·혜택과 장소 정보는 Coupon 발급 시점 스냅샷을 반환하므로 Offer 종료 또는 이후 정보 변경과 무관하게 유지됩니다. 원본 정보를 복구할 수 없으면 해당 필드는 null입니다. 발급일 기간은 양 끝값을 포함합니다. status=ISSUED는 아직 만료되지 않은 쿠폰, EXPIRED는 발급 상태이면서 expiresAt이 현재 시각 이하인 쿠폰입니다. 기본 정렬은 issuedAt 내림차순, id 내림차순이며 page와 limit은 각각 최소 1, limit 최대 100으로 보정됩니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Coupon 목록 조회 성공", content = @Content(schema = @Schema(implementation = CouponPageResponse.class))),
             @ApiResponse(responseCode = "400", description = "발급일 기간 조건 또는 요청 파라미터 형식이 올바르지 않음", content = @Content(

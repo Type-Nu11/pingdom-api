@@ -14,6 +14,7 @@ import com.typenull.pingdom.offer.infrastructure.TouristCouponRepository;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.place.application.service.conversion.PlaceConversionEventService;
 import com.typenull.pingdom.place.domain.conversion.PlaceConversionEventType;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.ArrayList;
@@ -35,6 +36,7 @@ public class TouristOfferService {
 
     private final TouristOfferRepository offerRepository;
     private final TouristCouponRepository couponRepository;
+    private final MapPlaceRepository mapPlaceRepository;
     private final TouristEligibilityPolicy eligibilityPolicy;
     private final MerchantOfferAccessPolicy merchantAccessPolicy;
     private final PlaceConversionEventService conversionEventService;
@@ -96,6 +98,10 @@ public class TouristOfferService {
 
         TouristCoupon coupon = TouristCoupon.issue(
                 offerId,
+                offer.getTitle(),
+                offer.getBenefitDescription(),
+                offer.getPlaceId(),
+                mapPlaceRepository.findById(offer.getPlaceId()).map(place -> place.getName()).orElse(null),
                 userId,
                 UUID.randomUUID().toString(),
                 now,
