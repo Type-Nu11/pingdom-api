@@ -51,7 +51,7 @@ class PlaceMediaServiceTest {
 
     @Test
     void createExplorationMediaRequiresPlaceOwner() {
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 99L)));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 99L)));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
                 "https://cdn.pingdom.test/place.jpg",
                 "places/1/exploration/7/issued.jpg",
@@ -70,7 +70,7 @@ class PlaceMediaServiceTest {
     @Test
     void createExplorationMediaUsesNextDisplayOrderWhenOrderIsMissing() {
         MapPlace place = place(1L, 7L);
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place));
         when(placeMediaRepository.findMaxDisplayOrder(1L, PlaceMediaPurpose.EXPLORATION)).thenReturn(2);
         when(placeMediaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(s3ObjectStorage.headObject("places/1/exploration/7/issued.jpg"))
@@ -95,7 +95,7 @@ class PlaceMediaServiceTest {
 
     @Test
     void createExplorationMediaRejectsKeyIssuedForAnotherPlace() {
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
                 null,
                 "places/2/exploration/7/issued.jpg",
@@ -114,7 +114,7 @@ class PlaceMediaServiceTest {
 
     @Test
     void createExplorationMediaRejectsObjectLargerThanLimit() {
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(s3ObjectStorage.headObject("places/1/exploration/7/oversized.jpg"))
                 .thenReturn(new S3ObjectMetadata(10L * 1024 * 1024 + 1, "image/jpeg"));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
@@ -134,7 +134,7 @@ class PlaceMediaServiceTest {
 
     @Test
     void createExplorationMediaRejectsUnsupportedObjectContentType() {
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(s3ObjectStorage.headObject("places/1/exploration/7/invalid-type.jpg"))
                 .thenReturn(new S3ObjectMetadata(1_024L, "application/pdf"));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
@@ -230,7 +230,7 @@ class PlaceMediaServiceTest {
 
     @Test
     void deleteExplorationMediaRejectsVerificationMediaId() {
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place(1L, 7L)));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(placeMediaRepository.findByIdAndPlace_IdAndPurpose(
                 10L,
                 1L,
@@ -254,7 +254,7 @@ class PlaceMediaServiceTest {
                 0,
                 LocalDateTime.of(2026, 8, 25, 10, 0)
         );
-        when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
+        when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place));
         when(placeMediaRepository.findByIdAndPlace_IdAndPurpose(10L, 1L, PlaceMediaPurpose.EXPLORATION))
                 .thenReturn(Optional.of(media));
 
