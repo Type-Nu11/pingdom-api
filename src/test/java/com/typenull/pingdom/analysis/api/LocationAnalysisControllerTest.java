@@ -17,7 +17,10 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandler;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
+import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
+import org.springframework.http.ContentDisposition;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.setup.MockMvcBuilders;
@@ -64,7 +67,10 @@ class LocationAnalysisControllerTest {
                         .content(new ObjectMapper().writeValueAsBytes(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-                .andExpect(header().string("Content-Disposition", "attachment; filename=\"location-analysis-report-1.pdf\""))
+                .andDo(result -> Assertions.assertThat(ContentDisposition.parse(
+                                result.getResponse().getHeader(HttpHeaders.CONTENT_DISPOSITION)
+                        ).getFilename())
+                        .isEqualTo("입지 분석-undated-유동인구분석-v1.pdf"))
                 .andExpect(content().bytes(new byte[]{'%', 'P', 'D', 'F', '-'}));
     }
 

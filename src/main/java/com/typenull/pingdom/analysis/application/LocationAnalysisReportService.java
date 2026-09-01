@@ -70,7 +70,8 @@ public class LocationAnalysisReportService {
                     grade, recommendationCount, trafficTotal);
             throw exception;
         }
-        content = competitionService.enrich(content, request.getCategory());
+        content = competitionService.enrich(content, request.getCategory())
+                .withDerivedBusinessPerformance();
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);
         LocalDate effectiveAnalysisBasisDate = aiResponse.analysisBasisDate() == null

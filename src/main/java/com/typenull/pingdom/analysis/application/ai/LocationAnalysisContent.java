@@ -42,15 +42,10 @@ public record LocationAnalysisContent(
         NearbyFacilities currentFacilities = nearbyFacilities == null
                 ? new NearbyFacilities("데이터 없음", List.of(), List.of(), List.of(), List.of(), List.of())
                 : nearbyFacilities;
-        CompetitionAnalysis updatedCompetition = competitionAnalysis == null
-                ? null
-                : new CompetitionAnalysis(
-                        competitionAnalysis.summary(), competitors.size(),
-                        Math.min(nonNegative(competitionAnalysis.franchiseCompetitors()), competitors.size()),
-                        Math.max(0, competitors.size()
-                                - Math.min(nonNegative(competitionAnalysis.franchiseCompetitors()), competitors.size())),
-                        competitionAnalysis.competitionDensity(), competitors, competitionAnalysis.evidences()
-                );
+        CompetitionAnalysis updatedCompetition = new CompetitionAnalysis(
+                competitionSummary(competitors.size()), competitors.size(), null, null, null, competitors,
+                competitionAnalysis == null ? List.of() : competitionAnalysis.evidences()
+        );
         List<Facility> effectiveConvenience = convenienceFacilities.isEmpty()
                 ? currentFacilities.convenienceFacilities() : convenienceFacilities;
         List<Facility> effectiveTransport = transportFacilities.isEmpty()
@@ -67,8 +62,33 @@ public record LocationAnalysisContent(
         );
     }
 
-    private static int nonNegative(Integer value) {
-        return value == null ? 0 : Math.max(0, value);
+    /** 관측된 유동 데이터가 있지만 AI 사업성 섹션이 비어 있을 때만 서버가 수치를 재사용해 보강한다. */
+    public LocationAnalysisContent withDerivedBusinessPerformance() {
+        if (footTrafficAnalysis == null || footTrafficAnalysis.total() == null || footTrafficAnalysis.total() <= 0d) {
+            return this;
+        }
+
+        BusinessPerformanceAnalysis current = businessPerformanceAnalysis;
+        List<Metric> indicators = current == null || current.performanceIndicators().isEmpty()
+                ? derivedPerformanceIndicators() : current.performanceIndicators();
+        String summary = current == null || isEmptyData(current.summary())
+                ? "관측 유동 인구 " + formatWholeNumber(footTrafficAnalysis.total())
+                        + "명을 기준으로 입지 수요를 검토했습니다."
+                : current.summary();
+        List<String> opportunities = current == null || current.opportunities().isEmpty()
+                ? List.of("관측 유동 인구를 바탕으로 시간대별 운영·홍보 전략을 검증할 수 있습니다.")
+                : current.opportunities();
+        List<String> risks = current == null || current.risks().isEmpty()
+                ? List.of("유동 지표는 관측값이며 매출·임대료·전환율은 별도 검증이 필요합니다.")
+                : current.risks();
+        BusinessPerformanceAnalysis derived = new BusinessPerformanceAnalysis(
+                summary, indicators, opportunities, risks, current == null ? List.of() : current.evidences()
+        );
+        return new LocationAnalysisContent(
+                reportName, overallLocationEvaluation, commercialAreaAnalysis, targetPopulationAnalysis,
+                footTrafficAnalysis, nearbyFacilities, competitionAnalysis, derived, dataQualityAnalysis,
+                recommendedPlaces, analysisScope, dataSources, limitations
+        );
     }
 
     private static String facilitySummary(
@@ -77,12 +97,52 @@ public record LocationAnalysisContent(
             List<Facility> convenienceFacilities,
             List<Facility> transportFacilities
     ) {
-        if (currentSummary != null && !currentSummary.isBlank()
-                && !"데이터 없음".equals(currentSummary) && !"주변 시설 없음".equals(currentSummary)) {
-            return currentSummary;
-        }
         int total = competitors.size() + convenienceFacilities.size() + transportFacilities.size();
-        return total == 0 ? "확인된 시설 없음" : "추천 좌표 1.5km 내 공개 장소 " + total + "건 확인";
+        return total == 0
+                ? "추천 좌표 1.5km 내 공개 map_place 시설이 확인되지 않았습니다."
+                : "추천 좌표 1.5km 내 공개 map_place 장소 " + total + "건을 분류했습니다."
+                        + " 경쟁 " + competitors.size() + "건, 편의 " + convenienceFacilities.size()
+                        + "건, 교통 " + transportFacilities.size() + "건";
+    }
+
+    private List<Metric> derivedPerformanceIndicators() {
+        java.util.ArrayList<Metric> metrics = new java.util.ArrayList<>();
+        metrics.add(new Metric("관측 유동 인구", footTrafficAnalysis.total(), "명", null));
+        if (footTrafficAnalysis.operatingHoursFitScore() != null) {
+            metrics.add(new Metric(
+                    "영업시간 적합도", footTrafficAnalysis.operatingHoursFitScore(), "점",
+                    footTrafficAnalysis.operatingHoursFitScore()
+            ));
+        }
+        footTrafficAnalysis.byTime().stream()
+                .filter(metric -> metric != null && metric.value() != null)
+                .max(java.util.Comparator.comparing(Metric::value))
+                .ifPresent(metric -> metrics.add(new Metric(
+                        "피크 유동 시간대(" + metric.label() + ")", metric.value(), metric.unit(), metric.sharePercent()
+                )));
+        if (targetPopulationAnalysis != null) {
+            targetPopulationAnalysis.behaviorIndicators().stream()
+                    .filter(metric -> metric != null && metric.value() != null)
+                    .findFirst()
+                    .ifPresent(metric -> metrics.add(new Metric(
+                            "평균 활동 시간", metric.value(), metric.unit(), metric.sharePercent()
+                    )));
+        }
+        return List.copyOf(metrics);
+    }
+
+    private static boolean isEmptyData(String value) {
+        return value == null || value.isBlank() || value.contains("데이터 없음");
+    }
+
+    private static String formatWholeNumber(Double value) {
+        return String.format(java.util.Locale.ROOT, "%,.0f", value);
+    }
+
+    private static String competitionSummary(int totalCompetitors) {
+        return totalCompetitors == 0
+                ? "분석 기준 좌표 100m 내 동일 업종 공개 장소가 확인되지 않았습니다."
+                : "분석 기준 좌표 100m 내 동일 업종 경쟁점 " + totalCompetitors + "건을 확인했습니다.";
     }
 
     public LocationAnalysisContent(

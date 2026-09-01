@@ -44,14 +44,34 @@ class LocationAnalysisHtmlComposerTest {
         assertThat(html).contains("report-1", "강남 카페 입지 분석", "2026-08-17", "종합 입지 평가");
         assertThat(html).contains("<!DOCTYPE html>", "<meta charset=\"UTF-8\" />");
         assertThat(html).contains("타깃 고객 분석", "유동 인구와 영업시간", "주변 시설");
-        assertThat(html).contains("page-break-after: always", "NanumGothic", "01 / 08", "02 / 08", "08 / 08");
+        assertThat(html).contains("page-break-after: always", "NanumGothic", "01 / 07", "02 / 07", "07 / 07");
         assertThat(html).contains("상권 개요와 후보 입지", "타깃 고객 분석", "유동 인구와 영업시간",
-                "경쟁과 주변 환경", "주변 시설과 접근성", "사업성 및 실행 전략", "데이터 신뢰도와 분석 기준");
+                "경쟁과 주변 환경", "주변 시설과 경쟁업체", "사업성 및 실행 전략", "데이터 신뢰도와 분석 기준");
+        assertThat(html).doesNotContain("06 / LOCAL FACILITIES", "08 / DATA QUALITY & SOURCES");
         assertThat(html).contains("전체 평가도", "75.0점");
         assertThat(html).doesNotContain(">CONDITIONAL<");
         assertThat(html).doesNotContain("####", "```", "<script");
         assertThat(html).contains("데이터 없음");
-        assertThat(html).contains("경쟁업체 없음", "주변 시설 없음");
+        assertThat(html).contains("경쟁업체 없음", "주변 시설 및 경쟁업체 없음");
         assertThat(html).doesNotContain("주변 시설 데이터 없음");
+    }
+
+    @Test
+    void rendersBehaviorCardWithValueWhenTheMetricHasNoSharePercent() {
+        String html = composer.compose(
+                "report-1", "강남 카페 입지 분석", LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 17),
+                new LocationAnalysisContent(
+                        "강남 카페 입지 분석", null, null,
+                        new LocationAnalysisContent.TargetPopulationAnalysis(
+                                "타깃 분석", "강남역",
+                                List.of(), List.of(),
+                                List.of(new LocationAnalysisContent.Metric("평균 활동 시간", 18.5d, "시", null)),
+                                List.of()
+                        ),
+                        null, null, null, null, null, List.of(), null, List.of(), List.of()
+                )
+        );
+
+        assertThat(html).contains("행동 지표", "18.5 시");
     }
 }

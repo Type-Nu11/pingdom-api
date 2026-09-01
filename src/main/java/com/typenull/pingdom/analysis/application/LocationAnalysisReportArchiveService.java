@@ -51,7 +51,10 @@ public class LocationAnalysisReportArchiveService {
     @Transactional(readOnly = true)
     public LocationAnalysisPdfDownload download(String reportId, String email) {
         LocationAnalysisReport report = find(reportId, email);
-        return new LocationAnalysisPdfDownload(report.getReportId(), report.getPdfContent());
+        return new LocationAnalysisPdfDownload(
+                report.getReportId(), report.getReportName(), report.getPublishedDate(), report.getVersion(),
+                report.getPdfContent()
+        );
     }
 
     @Transactional(readOnly = true)
@@ -85,7 +88,16 @@ public class LocationAnalysisReportArchiveService {
         return new AnalysisReportException(AnalysisReportErrorCode.ANALYSIS_REPORT_NOT_FOUND, null);
     }
 
-    public record LocationAnalysisPdfDownload(String reportId, byte[] content) {
+    public record LocationAnalysisPdfDownload(
+            String reportId,
+            String reportName,
+            java.time.LocalDate publishedDate,
+            long version,
+            byte[] content
+    ) {
+        public LocationAnalysisPdfDownload(String reportId, byte[] content) {
+            this(reportId, null, null, 0, content);
+        }
     }
 
     private String normalizeEmail(String email) {
