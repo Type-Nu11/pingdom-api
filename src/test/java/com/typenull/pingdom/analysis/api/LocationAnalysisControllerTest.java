@@ -66,7 +66,7 @@ class LocationAnalysisControllerTest {
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
                 .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
-                        "attachment; filename=\"location-analysis.pdf\"; filename*=UTF-8''%EC%9E%85%EC%A7%80%20%EB%B6%84%EC%84%9D-undated-%EC%9C%A0%EB%8F%99%EC%9D%B8%EA%B5%AC%EB%B6%84%EC%84%9D-v1.pdf"))
+                        "attachment; filename=\"location-analysis-undated-foot-traffic-analysis-v1.pdf\""))
                 .andExpect(content().bytes(new byte[]{'%', 'P', 'D', 'F', '-'}));
     }
 

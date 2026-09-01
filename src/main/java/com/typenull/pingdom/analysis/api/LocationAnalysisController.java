@@ -87,27 +87,28 @@ public class LocationAnalysisController {
     }
 
     private String contentDisposition(String filename) {
-        String encodedFilename = java.net.URLEncoder.encode(filename, StandardCharsets.UTF_8)
-                .replace("+", "%20");
-        return "attachment; filename=\"location-analysis.pdf\"; filename*=UTF-8''" + encodedFilename;
+        return "attachment; filename=\"" + filename + "\"";
     }
 
     private String downloadFilename(String reportName, LocalDate publishedDate, long version) {
-        String safeReportName = sanitizeFilename(reportName);
+        String safeReportName = asciiFilename(reportName);
         String date = publishedDate == null ? "undated" : publishedDate.toString();
         long displayVersion = Math.max(1, version + 1);
-        return "%s-%s-유동인구분석-v%d.pdf".formatted(safeReportName, date, displayVersion);
+        return "%s-%s-foot-traffic-analysis-v%d.pdf".formatted(safeReportName, date, displayVersion);
     }
 
-    private String sanitizeFilename(String reportName) {
+    private String asciiFilename(String reportName) {
         if (reportName == null || reportName.isBlank()) {
-            return "입지분석보고서";
+            return "location-analysis";
         }
         String sanitized = reportName
                 .replaceAll("[\\\\/:*?\"<>|\\r\\n]+", "-")
-                .replaceAll("\\s+", " ")
+                .replaceAll("[^\\p{ASCII}]", "")
+                .replaceAll("[^A-Za-z0-9._-]+", "-")
+                .replaceAll("-{2,}", "-")
+                .replaceAll("^-+|-+$", "")
                 .trim();
-        return sanitized.isBlank() ? "입지분석보고서" : sanitized;
+        return sanitized.isBlank() ? "location-analysis" : sanitized;
     }
 
     @GetMapping(value = "/{reportId}/html", produces = MediaType.TEXT_HTML_VALUE)
