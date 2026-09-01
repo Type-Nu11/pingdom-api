@@ -48,7 +48,7 @@ class LocationAnalysisHtmlComposerTest {
         assertThat(html).contains("상권 개요와 후보 입지", "타깃 고객 분석", "유동 인구와 영업시간",
                 "경쟁과 주변 환경", "주변 시설과 경쟁업체", "사업성 및 실행 전략", "데이터 신뢰도와 분석 기준");
         assertThat(html).doesNotContain("06 / LOCAL FACILITIES", "08 / DATA QUALITY & SOURCES");
-        assertThat(html).contains("전체 평가도", "75.0점");
+        assertThat(html).contains("전체 평가도", "75.0\u00a0점");
         assertThat(html).doesNotContain(">CONDITIONAL<");
         assertThat(html).doesNotContain("####", "```", "<script");
         assertThat(html).contains("데이터 없음");
