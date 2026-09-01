@@ -47,7 +47,8 @@ public class AdminReservationController {
     @PostMapping("/{reservationId}/confirm")
     @Operation(summary = "관리자 예약 승인")
     public AdminReservationResponse confirm(@PathVariable Long reservationId,
-            @RequestBody(required = false) ReservationReviewRequest request, @CurrentUser JwtAuthenticatedUser admin) {
+            @Valid @RequestBody(required = false) ReservationReviewRequest request,
+            @CurrentUser JwtAuthenticatedUser admin) {
         return service.confirmByAdmin(admin.userId(), reservationId, request == null ? null : request.reason());
     }
 
