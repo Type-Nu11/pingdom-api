@@ -17,9 +17,7 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandler;
 import com.typenull.pingdom.shared.observability.AuthMetrics;
-import org.assertj.core.api.Assertions;
 import org.junit.jupiter.api.Test;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
@@ -67,10 +65,8 @@ class LocationAnalysisControllerTest {
                         .content(new ObjectMapper().writeValueAsBytes(request)))
                 .andExpect(status().isOk())
                 .andExpect(content().contentType(MediaType.APPLICATION_PDF))
-                .andDo(result -> Assertions.assertThat(ContentDisposition.parse(
-                                result.getResponse().getHeader(HttpHeaders.CONTENT_DISPOSITION)
-                        ).getFilename())
-                        .isEqualTo("입지 분석-undated-유동인구분석-v1.pdf"))
+                .andExpect(header().string(HttpHeaders.CONTENT_DISPOSITION,
+                        "attachment; filename=\"location-analysis.pdf\"; filename*=UTF-8''%EC%9E%85%EC%A7%80%20%EB%B6%84%EC%84%9D-undated-%EC%9C%A0%EB%8F%99%EC%9D%B8%EA%B5%AC%EB%B6%84%EC%84%9D-v1.pdf"))
                 .andExpect(content().bytes(new byte[]{'%', 'P', 'D', 'F', '-'}));
     }
 

@@ -15,7 +15,6 @@ import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
-import org.springframework.http.ContentDisposition;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
@@ -54,10 +53,7 @@ public class LocationAnalysisController {
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header("X-Report-Id", report.reportId())
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename(filename, StandardCharsets.UTF_8)
-                        .build()
-                        .toString())
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(filename))
                 .body(report.content());
     }
 
@@ -85,11 +81,15 @@ public class LocationAnalysisController {
         var report = archiveService.download(reportId, email);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
-                .header(HttpHeaders.CONTENT_DISPOSITION, ContentDisposition.attachment()
-                        .filename(downloadFilename(report.reportName(), report.publishedDate(), report.version()),
-                                StandardCharsets.UTF_8)
-                        .build().toString())
+                .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(
+                        downloadFilename(report.reportName(), report.publishedDate(), report.version())))
                 .body(report.content());
+    }
+
+    private String contentDisposition(String filename) {
+        String encodedFilename = java.net.URLEncoder.encode(filename, StandardCharsets.UTF_8)
+                .replace("+", "%20");
+        return "attachment; filename=\"location-analysis.pdf\"; filename*=UTF-8''" + encodedFilename;
     }
 
     private String downloadFilename(String reportName, LocalDate publishedDate, long version) {
