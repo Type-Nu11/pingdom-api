@@ -32,13 +32,6 @@ public class MerchantReservationController {
         return service.listOwned(user.userId(), page, limit);
     }
 
-    @PostMapping("/{reservationId}/confirm")
-    @Operation(summary = "예약 확정")
-    public ReservationResponse confirm(@PathVariable Long reservationId,
-            @CurrentUser JwtAuthenticatedUser user) {
-        return service.confirm(user.userId(), reservationId);
-    }
-
     @PostMapping("/{reservationId}/cancel")
     @Operation(summary = "예약 취소")
     public ReservationResponse cancel(@PathVariable Long reservationId,

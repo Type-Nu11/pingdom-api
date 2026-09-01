@@ -46,8 +46,23 @@ public class Reservation {
     @Column(name = "confirmed_at")
     private LocalDateTime confirmedAt;
 
+    @Column(name = "reviewed_by")
+    private Long reviewedBy;
+
+    @Column(name = "reviewed_at")
+    private LocalDateTime reviewedAt;
+
+    @Column(name = "review_reason", length = 500)
+    private String reviewReason;
+
+    @Column(name = "rejected_at")
+    private LocalDateTime rejectedAt;
+
     @Column(name = "canceled_at")
     private LocalDateTime canceledAt;
+
+    @Column(name = "canceled_by")
+    private Long canceledBy;
 
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
@@ -82,6 +97,18 @@ public class Reservation {
     }
 
     /** 결제·재고 조건이 충족된 예약을 확정 상태로 전환합니다. */
+    public void confirm(Long adminUserId, String reason, LocalDateTime now) {
+        if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 확정할 수 있습니다.");
+        status = ReservationStatus.CONFIRMED;
+        confirmedAt = Objects.requireNonNull(now, "now must not be null");
+        reviewedBy = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
+        reviewedAt = now;
+        reviewReason = normalizeReason(reason);
+        updatedAt = now;
+    }
+
+    /** 관리자 심사 API 도입 전 내부 호출 호환용 확정 처리입니다. */
+    @Deprecated
     public void confirm(LocalDateTime now) {
         if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 확정할 수 있습니다.");
         status = ReservationStatus.CONFIRMED;
@@ -89,10 +116,36 @@ public class Reservation {
         updatedAt = now;
     }
 
+    public void reject(Long adminUserId, String reason, LocalDateTime now) {
+        if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 반려할 수 있습니다.");
+        String normalizedReason = normalizeReason(reason);
+        if (normalizedReason == null) throw new IllegalArgumentException("반려 사유가 필요합니다.");
+        status = ReservationStatus.REJECTED;
+        reviewedBy = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
+        reviewedAt = Objects.requireNonNull(now, "now must not be null");
+        reviewReason = normalizedReason;
+        rejectedAt = now;
+        updatedAt = now;
+    }
+
+    public void cancel(Long canceledBy, LocalDateTime now) {
+        if (status != ReservationStatus.CONFIRMED) throw new IllegalStateException("확정된 예약만 취소할 수 있습니다.");
+        status = ReservationStatus.CANCELED;
+        canceledAt = Objects.requireNonNull(now, "now must not be null");
+        this.canceledBy = Objects.requireNonNull(canceledBy, "canceledBy must not be null");
+        updatedAt = now;
+    }
+
+    @Deprecated
     public void cancel(LocalDateTime now) {
         if (status == ReservationStatus.CANCELED) throw new IllegalStateException("이미 취소된 예약입니다.");
         status = ReservationStatus.CANCELED;
         canceledAt = Objects.requireNonNull(now, "now must not be null");
         updatedAt = now;
+    }
+
+    private String normalizeReason(String reason) {
+        if (reason == null || reason.isBlank()) return null;
+        return reason.trim();
     }
 }
