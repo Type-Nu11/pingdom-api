@@ -84,6 +84,7 @@ class ReservationServiceTest {
     void cancelReleasesCapacityOnlyOnce() {
         Reservation reservation = Reservation.create(1L, 9L, "request-1", 2,
                 LocalDateTime.of(2026, 7, 20, 13, 0));
+        reservation.confirm(LocalDateTime.of(2026, 7, 20, 13, 5));
         when(reservationRepository.findByIdForUpdate(3L)).thenReturn(Optional.of(reservation));
 
         service.cancelMine(1L, 3L);

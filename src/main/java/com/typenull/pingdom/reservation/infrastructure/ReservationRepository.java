@@ -47,6 +47,22 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
             """)
     Page<Reservation> findAllOwned(@Param("ownerId") Long ownerId, Pageable pageable);
 
+    @Query("""
+            select reservation from Reservation reservation
+            join PlaceAvailability availability on availability.id = reservation.availabilityId
+            where (:status is null or reservation.status = :status)
+              and (:placeId is null or availability.placeId = :placeId)
+              and (:ownerId is null or availability.merchantOwnerUserId = :ownerId)
+              and (:touristUserId is null or reservation.touristUserId = :touristUserId)
+              and (:productId is null or reservation.productId = :productId)
+              and (:reservationFrom is null or availability.startsAt >= :reservationFrom)
+              and (:reservationTo is null or availability.startsAt < :reservationTo)
+            """)
+    Page<Reservation> findAllForAdmin(@Param("status") ReservationStatus status, @Param("placeId") Long placeId,
+            @Param("ownerId") Long ownerId, @Param("touristUserId") Long touristUserId,
+            @Param("productId") Long productId, @Param("reservationFrom") java.time.LocalDateTime reservationFrom,
+            @Param("reservationTo") java.time.LocalDateTime reservationTo, Pageable pageable);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select reservation from Reservation reservation where reservation.id = :id")
     Optional<Reservation> findByIdForUpdate(@Param("id") Long id);
