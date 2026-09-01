@@ -76,10 +76,10 @@ public record LocationAnalysisContent(
                         + "명을 기준으로 입지 수요를 검토했습니다."
                 : current.summary();
         List<String> opportunities = current == null || current.opportunities().isEmpty()
-                ? List.of("관측 유동 인구를 바탕으로 시간대별 운영·홍보 전략을 검증할 수 있습니다.")
+                ? List.of("유동인구가 많은 시간대를 중심으로 영업·홍보 시간을 조정하세요.")
                 : current.opportunities();
         List<String> risks = current == null || current.risks().isEmpty()
-                ? List.of("유동 지표는 관측값이며 매출·임대료·전환율은 별도 검증이 필요합니다.")
+                ? List.of("유동인구만으로 매출을 확정할 수 없으므로 임대료·경쟁점·전환율을 추가 확인하세요.")
                 : current.risks();
         BusinessPerformanceAnalysis derived = new BusinessPerformanceAnalysis(
                 summary, indicators, opportunities, risks, current == null ? List.of() : current.evidences()
@@ -89,6 +89,89 @@ public record LocationAnalysisContent(
                 footTrafficAnalysis, nearbyFacilities, competitionAnalysis, derived, dataQualityAnalysis,
                 recommendedPlaces, analysisScope, dataSources, limitations
         );
+    }
+
+    /** MCP가 반환한 후보·총량을 비어 있는 보고서 지표에 연결한다. 원천 구분이 없으면 라벨로 범위를 명시한다. */
+    public LocationAnalysisContent withDerivedReportMetrics() {
+        FootTrafficAnalysis currentTraffic = footTrafficAnalysis;
+        CommercialAreaAnalysis currentArea = commercialAreaAnalysis;
+        if (currentTraffic == null && currentArea == null) {
+            return this;
+        }
+
+        double total = currentTraffic == null || currentTraffic.total() == null
+                ? 0d : currentTraffic.total();
+        List<Metric> behavior = targetPopulationAnalysis == null
+                ? List.of() : targetPopulationAnalysis.behaviorIndicators();
+        List<Metric> byTime = currentTraffic == null ? List.of() : currentTraffic.byTime();
+        if (byTime.isEmpty() && !behavior.isEmpty()) {
+            Metric activity = behavior.stream()
+                    .filter(metric -> metric != null && metric.value() != null)
+                    .findFirst()
+                    .orElse(null);
+            if (activity != null) {
+                byTime = List.of(new Metric(
+                        "평균 활동 시간(시간대 원천 구분 없음)", activity.value(), activity.unit(), activity.sharePercent()
+                ));
+            }
+        }
+        if (byTime.isEmpty() && total > 0d) {
+            byTime = List.of(new Metric("전체 관측값(시간대 구분 없음)", total, "명", null));
+        }
+        List<Metric> byDay = currentTraffic == null ? List.of() : currentTraffic.byDay();
+        if (byDay.isEmpty() && total > 0d) {
+            byDay = List.of(new Metric("전체 관측값(요일 구분 없음)", total, "명", null));
+        }
+        List<Metric> byMonth = currentTraffic == null ? List.of() : currentTraffic.byMonth();
+        if (byMonth.isEmpty() && total > 0d) {
+            byMonth = List.of(new Metric("전체 관측값(월 구분 없음)", total, "명", null));
+        }
+
+        FootTrafficAnalysis updatedTraffic = currentTraffic;
+        if (currentTraffic != null) {
+            String summary = isEmptyData(currentTraffic.summary())
+                    ? "추천 후보에서 관측된 유동 인구를 기준으로 시간 흐름을 검토했습니다."
+                    : currentTraffic.summary();
+            updatedTraffic = new FootTrafficAnalysis(
+                    summary, currentTraffic.total(), byTime, byDay, byMonth,
+                    currentTraffic.operatingHoursAssessment(), currentTraffic.operatingHoursFitScore(),
+                    currentTraffic.evidences()
+            );
+        }
+
+        List<Metric> demandIndicators = currentArea == null ? List.of() : currentArea.demandIndicators();
+        if (demandIndicators.isEmpty()) {
+            java.util.ArrayList<Metric> derivedDemand = new java.util.ArrayList<>();
+            if (total > 0d) {
+                derivedDemand.add(new Metric("관측 유동 인구", total, "명", null));
+            }
+            addFirstMetric(derivedDemand, targetPopulationAnalysis == null ? List.of() : targetPopulationAnalysis.age(),
+                    "타깃 연령 일치 관측");
+            addFirstMetric(derivedDemand, targetPopulationAnalysis == null ? List.of() : targetPopulationAnalysis.gender(),
+                    "타깃 성별 일치 관측");
+            demandIndicators = List.copyOf(derivedDemand);
+        }
+        CommercialAreaAnalysis updatedArea = currentArea;
+        if (currentArea != null && (currentArea.demandIndicators().isEmpty() || isEmptyData(currentArea.summary()))) {
+            String summary = isEmptyData(currentArea.summary())
+                    ? "추천 후보의 관측 유동 인구와 타깃 일치 지표를 기준으로 수요를 검토했습니다."
+                    : currentArea.summary();
+            updatedArea = new CommercialAreaAnalysis(
+                    currentArea.name(), currentArea.type(), summary, demandIndicators, currentArea.evidences()
+            );
+        }
+        return new LocationAnalysisContent(
+                reportName, overallLocationEvaluation, updatedArea, targetPopulationAnalysis, updatedTraffic,
+                nearbyFacilities, competitionAnalysis, businessPerformanceAnalysis, dataQualityAnalysis,
+                recommendedPlaces, analysisScope, dataSources, limitations
+        );
+    }
+
+    private static void addFirstMetric(List<Metric> target, List<Metric> source, String label) {
+        source.stream()
+                .filter(metric -> metric != null && metric.value() != null)
+                .findFirst()
+                .ifPresent(metric -> target.add(new Metric(label, metric.value(), metric.unit(), metric.sharePercent())));
     }
 
     private static String facilitySummary(

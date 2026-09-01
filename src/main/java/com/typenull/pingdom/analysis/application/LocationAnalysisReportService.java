@@ -71,6 +71,7 @@ public class LocationAnalysisReportService {
             throw exception;
         }
         content = competitionService.enrich(content, request.getCategory())
+                .withDerivedReportMetrics()
                 .withDerivedBusinessPerformance();
         String reportId = UUID.randomUUID().toString();
         LocalDate publishedDate = LocalDate.now(clock);

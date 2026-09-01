@@ -340,7 +340,7 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String score(Double value) {
-        return value == null ? "데이터 없음" : value(value) + "점";
+        return value == null ? "데이터 없음" : value(value) + "\u00a0점";
     }
 
     private String booleanText(Boolean value) {
