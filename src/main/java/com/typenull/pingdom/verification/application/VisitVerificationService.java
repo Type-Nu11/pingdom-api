@@ -33,11 +33,12 @@ public class VisitVerificationService {
     private final MapPlaceRepository placeRepository;
     private final Clock clock;
     private final VisitVerificationProperties properties;
+    private final VisitVerificationPolicyResolver policyResolver;
 
     @Transactional
     public VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request) {
         requireTourist(userId);
-        return start(userId, request, properties.radiusMetersFor(request.placeId()), properties.dwellDuration());
+        return start(userId, request, null);
     }
 
     /** 장소 ID를 신뢰하지 않고 좌표 주변의 단일 공개 장소를 서버가 선택합니다. */
@@ -57,15 +58,14 @@ public class VisitVerificationService {
         }
         Long placeId = candidates.get(0).getPlaceId();
         return start(userId, new VisitVerificationStartRequest(placeId, request.latitude(), request.longitude(),
-                request.accuracyMeters(), request.observedAt()), properties.foregroundRadiusMeters(),
-                properties.foregroundDwellDuration());
+                request.accuracyMeters(), request.observedAt()), new VisitVerificationPolicy(
+                        properties.foregroundRadiusMeters(), properties.foregroundDwellDuration()));
     }
 
     private VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request,
-            double requiredRadiusMeters, Duration requiredDwellDuration) {
+            VisitVerificationPolicy requestedPolicy) {
         requireTourist(userId);
         Instant now = clock.instant();
-        validateObservation(request.accuracyMeters(), request.observedAt(), now, requiredRadiusMeters);
         LocalDate verificationDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
 
         VisitVerificationSession existing = sessionRepository
@@ -75,19 +75,25 @@ public class VisitVerificationService {
                         .findFirstByTouristUserIdAndPlaceIdAndVerificationDateAndStatusInOrderByIdDesc(
                                 userId, request.placeId(), verificationDate, ACTIVE_STATUSES)
                         .orElse(null));
-        if (existing != null) return VisitVerificationSessionResponse.from(existing, properties);
+        if (existing != null) {
+            validateObservation(request.accuracyMeters(), request.observedAt(), now, existing.getRequiredRadiusMeters());
+            return VisitVerificationSessionResponse.from(existing, properties);
+        }
 
         MapPlace place = requireAvailablePlace(request.placeId());
-        validateObservation(request.accuracyMeters(), request.observedAt(), now, requiredRadiusMeters);
+        VisitVerificationPolicy policy = requestedPolicy == null
+                ? policyResolver.resolve(place.getId())
+                : requestedPolicy;
+        validateObservation(request.accuracyMeters(), request.observedAt(), now, policy.requiredRadiusMeters());
         double distanceMeters = LocationCheckInService.distanceMeters(request.latitude(), request.longitude(),
                 place.getLatitude(), place.getLongitude());
-        if (distanceMeters > requiredRadiusMeters) {
+        if (distanceMeters > policy.requiredRadiusMeters()) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.OUTSIDE_CHECK_IN_RADIUS);
         }
         try {
             VisitVerificationSession session = sessionRepository.saveAndFlush(VisitVerificationSession.start(userId,
-                    place.getId(), verificationDate, request.observedAt(), now, distanceMeters, requiredRadiusMeters,
-                    requiredDwellDuration, properties.sessionTtl()));
+                    place.getId(), verificationDate, request.observedAt(), now, distanceMeters,
+                    policy.requiredRadiusMeters(), policy.requiredDwellDuration(), properties.sessionTtl()));
             return VisitVerificationSessionResponse.from(session, properties);
         } catch (DataIntegrityViolationException exception) {
             if (hasConstraint(exception, "uq_visit_verification_session_active")) {

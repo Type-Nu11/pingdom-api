@@ -92,7 +92,7 @@ public class VisitVerificationSessionController {
 
     @GetMapping("/{sessionId}")
     @Operation(summary = "내 체류 기반 방문 인증 상태 조회")
-    @ApiResponse(responseCode = "200", description = "인증 세션 상태",
+    @ApiResponse(responseCode = "200", description = "현재 인증 세션 상태",
             content = @Content(schema = @Schema(implementation = VisitVerificationSessionResponse.class)))
     @ApiResponse(responseCode = "401", description = "인증되지 않은 요청",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))

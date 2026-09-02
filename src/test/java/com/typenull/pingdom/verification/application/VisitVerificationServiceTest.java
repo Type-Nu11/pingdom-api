@@ -20,7 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/** 체류 인증의 서버 시각 기반 완료·이탈·관측 공백 처리를 검증합니다. */
+/** 체류 인증의 서버 시각 기반 완료·이탈·관측 공백과 세션별 정책 확정을 검증합니다. */
 class VisitVerificationServiceTest {
     private static final Instant STARTED_AT = Instant.parse("2026-08-26T06:00:00Z");
     private final VisitVerificationSessionRepository sessionRepository = mock(VisitVerificationSessionRepository.class);
@@ -32,11 +32,11 @@ class VisitVerificationServiceTest {
 
     @BeforeEach
     void setUp() {
-        VisitVerificationProperties properties = new VisitVerificationProperties(20.0, Map.of(), 20.0,
+        VisitVerificationProperties properties = new VisitVerificationProperties(500.0, Map.of(), 20.0,
                 Duration.ofSeconds(30), Duration.ofMinutes(5), Duration.ofSeconds(15), Duration.ofSeconds(5),
                 Duration.ofMinutes(1), Duration.ofSeconds(10), Duration.ofDays(30), 1000.0, Duration.ofSeconds(30));
         service = new VisitVerificationService(sessionRepository, checkInRepository, userRepository, placeRepository,
-                clock, properties);
+                clock, properties, new VisitVerificationPolicyResolver(properties));
         when(userRepository.findById(1L)).thenReturn(Optional.of(
                 User.builder().id(1L).role(UserRole.USER).status(UserStatus.ACTIVE).build()));
         when(placeRepository.findById(2L)).thenReturn(Optional.of(MapPlace.builder()
@@ -68,6 +68,8 @@ class VisitVerificationServiceTest {
         VisitVerificationSessionResponse completed = service.submitObservation(1L, 10L, observationRequest());
 
         assertThat(started.status()).isEqualTo(VisitVerificationSessionStatus.STARTED);
+        assertThat(started.requiredRadiusMeters()).isEqualTo(500.0);
+        assertThat(started.requiredDwellSeconds()).isEqualTo(30);
         assertThat(inProgress.status()).isEqualTo(VisitVerificationSessionStatus.IN_PROGRESS);
         assertThat(completed.status()).isEqualTo(VisitVerificationSessionStatus.COMPLETED);
         assertThat(completed.verifiedDwellSeconds()).isEqualTo(30);
@@ -85,10 +87,27 @@ class VisitVerificationServiceTest {
         clock.advance(Duration.ofSeconds(5));
 
         VisitVerificationSessionResponse response = service.submitObservation(1L, 10L,
-                new VisitVerificationObservationRequest(35.1810, 128.1078, 10.0, clock.instant()));
+                new VisitVerificationObservationRequest(35.1851, 128.1078, 10.0, clock.instant()));
 
         assertThat(response.status()).isEqualTo(VisitVerificationSessionStatus.PROXIMITY_LOST);
         verify(checkInRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void returnsExistingSessionWithItsPersistedPolicyAfterGlobalDefaultChanges() {
+        VisitVerificationSession existing = VisitVerificationSession.start(1L, 2L,
+                LocalDate.ofInstant(STARTED_AT, ZoneId.of("Asia/Seoul")), STARTED_AT, STARTED_AT, 10.0,
+                20.0, Duration.ofSeconds(30), Duration.ofMinutes(5));
+        ReflectionTestUtils.setField(existing, "id", 10L);
+        when(sessionRepository.findFirstByTouristUserIdAndPlaceIdAndVerificationDateAndStatusInOrderByIdDesc(
+                eq(1L), eq(2L), any(LocalDate.class), anyCollection())).thenReturn(Optional.of(existing));
+
+        VisitVerificationSessionResponse response = service.start(1L, startRequest());
+
+        assertThat(response.id()).isEqualTo(10L);
+        assertThat(response.requiredRadiusMeters()).isEqualTo(20.0);
+        assertThat(response.requiredDwellSeconds()).isEqualTo(30);
+        verify(sessionRepository, never()).saveAndFlush(any());
     }
 
     @Test
