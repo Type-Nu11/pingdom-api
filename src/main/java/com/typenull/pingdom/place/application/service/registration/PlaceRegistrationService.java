@@ -136,6 +136,8 @@ public class PlaceRegistrationService {
             // ACTIVE 프로필에 approve()를 호출하면 PENDING 상태 검증으로 409(INVALID_STATE)가 발생합니다.
             if (profile.getStatus() == MerchantOwnerStatus.PENDING) {
                 profile.approve(a.getReviewerUserId(), now);
+            } else if (profile.getStatus() != MerchantOwnerStatus.ACTIVE) {
+                throw new IllegalStateException("신규 장소를 승인할 수 없는 Merchant Owner 프로필 상태입니다.");
             }
             user.activateMerchantOwnerRole();
         } catch (IllegalStateException e) {
