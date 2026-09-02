@@ -5,9 +5,12 @@ import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionRespons
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
 import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
+import com.typenull.pingdom.place.api.dto.place.reservable.NearbyReservablePlaceResponse;
 
 public interface PlaceQueryService {
     PlaceListResponse listPlaces(PlaceSearchCondition condition);
+
+    NearbyReservablePlaceResponse listNearbyReservablePlaces(NearbyReservablePlaceCondition condition);
 
     PlaceAutocompleteResponse autocompletePlaces(String keyword, int limit, Double latitude, Double longitude);
 

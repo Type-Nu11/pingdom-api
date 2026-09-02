@@ -14,6 +14,8 @@ import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionRespons
 import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListItem;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.reservable.NearbyReservablePlaceItem;
+import com.typenull.pingdom.place.api.dto.place.reservable.NearbyReservablePlaceResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingExceptionResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceOperatingTimeRangeResponse;
 import com.typenull.pingdom.place.api.dto.place.operating.PlaceRegularOperatingHourResponse;
@@ -39,6 +41,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQu
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationVerificationSummaryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceTouristCategoryProjection;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository.PlaceSearchProjection;
+import com.typenull.pingdom.place.infrastructure.persistence.place.NearbyReservablePlaceQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.NearbyReservablePlaceQueryRepository.NearbyReservablePlaceProjection;
 import com.typenull.pingdom.shared.observability.PlaceVisitDecisionMetrics;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -77,6 +81,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private final MapPlaceRepository mapPlaceRepository;
     private final PlaceSearchQueryRepository placeSearchQueryRepository;
+    private final NearbyReservablePlaceQueryRepository nearbyReservablePlaceQueryRepository;
     private final MerchantOwnerPublicQueryService merchantOwnerPublicQueryService;
     private final PlaceOperatingNoticeRepository placeOperatingNoticeRepository;
     private final PlaceInformationVerificationSummaryRepository placeInformationVerificationSummaryRepository;
@@ -148,6 +153,53 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 placePage.getTotalElements(),
                 placePage.getTotalPages()
         );
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public NearbyReservablePlaceResponse listNearbyReservablePlaces(NearbyReservablePlaceCondition condition) {
+        if (condition == null
+                || !Double.isFinite(condition.latitude())
+                || condition.latitude() < -90.0d
+                || condition.latitude() > 90.0d
+                || !Double.isFinite(condition.longitude())
+                || condition.longitude() < -180.0d
+                || condition.longitude() > 180.0d
+                || condition.page() < 1
+                || condition.limit() < 1
+                || condition.limit() > MAX_SEARCH_LIMIT
+                || (condition.from() != null && condition.to() != null
+                && !condition.from().isBefore(condition.to()))) {
+            throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
+        }
+
+        int quantity = condition.quantity() == null ? 1 : condition.quantity();
+        if (quantity < 1) throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
+
+        double radiusKm = condition.radiusKm() == null ? 3.0d : condition.radiusKm();
+        if (radiusKm < 0.1d || radiusKm > 20.0d) throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
+
+        NearbyReservablePlaceSort sort = NearbyReservablePlaceSort.from(condition.sort());
+        TouristCategory touristCategory = normalizeTouristCategory(condition.touristCategory());
+        LocalDateTime now = LocalDateTime.now(clock);
+        if (condition.to() != null && !condition.to().isAfter(now)) {
+            throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
+        }
+        Page<NearbyReservablePlaceProjection> places = nearbyReservablePlaceQueryRepository.findNearbyReservablePlaces(
+                condition.latitude(), condition.longitude(), radiusKm * 1_000d, condition.from(), condition.to(), quantity,
+                condition.productType() == null ? null : condition.productType().name(), normalizeCategory(condition.category()),
+                touristCategory == null ? null : touristCategory.name(), sort.name(), now,
+                PageRequest.of(condition.page() - 1, condition.limit()));
+
+        return NearbyReservablePlaceResponse.of(places.getContent().stream().map(this::toNearbyReservablePlaceItem).toList(),
+                condition.page(), condition.limit(), places.getTotalElements(), places.getTotalPages(), now);
+    }
+
+    private NearbyReservablePlaceItem toNearbyReservablePlaceItem(NearbyReservablePlaceProjection place) {
+        return new NearbyReservablePlaceItem(place.getPlaceId(), place.getName(), place.getCategory(), place.getLatitude(),
+                place.getLongitude(), place.getAddress(), place.getImageUrl(), Math.round(place.getDistanceMeters()),
+                place.getAvailabilityId(), place.getAvailableStartsAt(), place.getAvailableEndsAt(), place.getRemainingCapacity(),
+                place.getProductType(), place.getProductId(), place.getProductName());
     }
 
     @Override

@@ -6,6 +6,7 @@ import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceVisitDecisionResponse;
 import com.typenull.pingdom.place.api.dto.place.card.TouristPlaceCardResponse;
 import com.typenull.pingdom.place.api.dto.place.list.PlaceListResponse;
+import com.typenull.pingdom.place.api.dto.place.reservable.NearbyReservablePlaceResponse;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaResponse;
@@ -20,6 +21,10 @@ import com.typenull.pingdom.place.application.service.recommendation.feedback.Pl
 import com.typenull.pingdom.place.application.service.recommendation.explanation.PlaceRecommendationExplanationQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
+import com.typenull.pingdom.place.application.service.place.NearbyReservablePlaceCondition;
+import com.typenull.pingdom.availability.domain.AvailabilityProductType;
+import java.time.LocalDateTime;
+import org.springframework.format.annotation.DateTimeFormat;
 import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
 import com.typenull.pingdom.place.application.service.place.MapViewportQueryService;
 import com.typenull.pingdom.place.application.service.place.operating.PlaceOperatingNoticeService;
@@ -69,6 +74,40 @@ public class PlaceController {
     private final PlaceMediaService placeMediaService;
     private final PlaceOperatingNoticeService placeOperatingNoticeService;
     private final MapViewportQueryService mapViewportQueryService;
+
+    @GetMapping("/nearby-reservable")
+    @Operation(summary = "현재 위치 주변 예약 가능 장소 조회", description = "현재 위치와 예약 조건에 맞는 장소를 한 번에 조회합니다.")
+    @SecurityRequirement(name = "bearerAuth")
+    public ResponseEntity<NearbyReservablePlaceResponse> nearbyReservablePlaces(
+            @Parameter(description = "현재 위도", example = "35.8714")
+            @RequestParam @DecimalMin(value = "-90.0") @DecimalMax(value = "90.0") double latitude,
+            @Parameter(description = "현재 경도", example = "128.6014")
+            @RequestParam @DecimalMin(value = "-180.0") @DecimalMax(value = "180.0") double longitude,
+            @Parameter(description = "검색 반경(km)", example = "3.0")
+            @RequestParam(defaultValue = "3.0") @DecimalMin(value = "0.1") @DecimalMax(value = "20.0") Double radiusKm,
+            @Parameter(description = "페이지 번호", example = "1")
+            @RequestParam(defaultValue = "1") @Min(1) int page,
+            @Parameter(description = "페이지 크기", example = "20")
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+            @Parameter(description = "조회 시작 시각", example = "2026-09-10T00:00:00")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime from,
+            @Parameter(description = "조회 종료 시각", example = "2026-09-11T00:00:00")
+            @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
+            @Parameter(description = "예약 인원", example = "2")
+            @RequestParam(required = false) @Min(1) Integer quantity,
+            @Parameter(description = "예약 상품 유형", example = "TICKET")
+            @RequestParam(required = false) AvailabilityProductType productType,
+            @Parameter(description = "장소 카테고리", example = "테마파크")
+            @RequestParam(required = false) String category,
+            @Parameter(description = "관광 카테고리", example = "ATTRACTION")
+            @RequestParam(required = false) String touristCategory,
+            @Parameter(description = "정렬", schema = @Schema(
+                    allowableValues = {"NEAREST", "EARLIEST_AVAILABLE", "POPULAR"}, defaultValue = "NEAREST"))
+            @RequestParam(defaultValue = "NEAREST") String sort
+    ) {
+        return ResponseEntity.ok(placeQueryService.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(
+                page, limit, latitude, longitude, radiusKm, from, to, quantity, productType, category, touristCategory, sort)));
+    }
 
     @GetMapping("/map")
     @Operation(summary = "지도 viewport 장소 조회", description = "지도 경계와 zoom에 따라 장소 cluster 또는 marker를 조회합니다.")
