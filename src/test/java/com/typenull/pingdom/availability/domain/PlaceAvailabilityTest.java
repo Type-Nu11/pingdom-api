@@ -32,7 +32,7 @@ class PlaceAvailabilityTest {
         PlaceAvailability availability = slot(10);
         availability.reserve(4, now);
 
-        availability.update(now.plusHours(1), now.plusHours(3), 15, now);
+        availability.update(now.plusHours(1), now.plusHours(2), 15, now);
 
         assertThat(availability.getRemainingCapacity()).isEqualTo(11);
     }
@@ -62,6 +62,24 @@ class PlaceAvailabilityTest {
 
         assertThatThrownBy(() -> availability.update(
                 AvailabilityProductType.TICKET, now.plusHours(1), now.plusHours(3), 10, now))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void reservationTimeCannotChangeAfterCapacityWasAllocated() {
+        PlaceAvailability availability = slot(10);
+        availability.reserve(1, now);
+
+        assertThatThrownBy(() -> availability.update(
+                now.plusHours(2), now.plusHours(3), 10, now))
+                .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void startedSlotCannotReserve() {
+        PlaceAvailability availability = slot(10);
+
+        assertThatThrownBy(() -> availability.reserve(1, now.plusHours(1)))
                 .isInstanceOf(IllegalStateException.class);
     }
 

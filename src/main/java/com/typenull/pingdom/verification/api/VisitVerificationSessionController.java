@@ -48,6 +48,28 @@ public class VisitVerificationSessionController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.start(user.userId(), request));
     }
 
+    @PostMapping("/foreground")
+    @Operation(summary = "좌표 기반 foreground 방문 인증 시작",
+            description = "장소 ID를 받지 않고 서버가 현재 좌표 주변의 공개·운영 중 장소를 판정해 인증 세션을 시작합니다.")
+    @ApiResponse(responseCode = "201", description = "인증 세션 시작 또는 진행 중·완료 세션 재반환")
+    @ApiResponse(responseCode = "400", description = "관측 시각 또는 GPS 정확도 검증 실패",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "401", description = "인증되지 않은 요청",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "403", description = "활성 관광객 계정이 아님",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "404", description = "현재 좌표에서 인증할 장소를 찾을 수 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "409", description = "현재 좌표에서 장소를 하나로 결정할 수 없음",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    @ApiResponse(responseCode = "422", description = "장소 인증 허용 반경 밖",
+            content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+    public ResponseEntity<VisitVerificationSessionResponse> startForeground(
+            @Valid @RequestBody ForegroundVisitVerificationStartRequest request,
+            @CurrentUser JwtAuthenticatedUser user) {
+        return ResponseEntity.status(HttpStatus.CREATED).body(service.startForeground(user.userId(), request));
+    }
+
     @PostMapping("/{sessionId}/observations")
     @Operation(summary = "체류 인증 위치 관측 제출",
             description = "서버 수신 시각과 연속 관측 간격으로 체류 시간을 계산합니다. 반경 이탈은 PROXIMITY_LOST, 관측 공백 또는 세션 기한 초과는 EXPIRED로 반환됩니다.")
@@ -70,6 +92,8 @@ public class VisitVerificationSessionController {
 
     @GetMapping("/{sessionId}")
     @Operation(summary = "내 체류 기반 방문 인증 상태 조회")
+    @ApiResponse(responseCode = "200", description = "현재 인증 세션 상태",
+            content = @Content(schema = @Schema(implementation = VisitVerificationSessionResponse.class)))
     @ApiResponse(responseCode = "401", description = "인증되지 않은 요청",
             content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     @ApiResponse(responseCode = "403", description = "활성 관광객 계정이 아님",

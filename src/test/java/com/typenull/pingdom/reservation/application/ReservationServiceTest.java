@@ -27,6 +27,7 @@ import java.time.*;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
 
 class ReservationServiceTest {
     private final ReservationRepository reservationRepository = mock(ReservationRepository.class);
@@ -72,10 +73,16 @@ class ReservationServiceTest {
                 7L, 11L, 31L, AvailabilityProductType.TICKET,
                 now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
 
-        var response = service.create(1L, new ReservationCreateRequest(9L, "ticket-request", 2));
+        var response = service.create(1L, new ReservationCreateRequest(
+                9L, "ticket-request", 2, "홍길동", "010-1234-5678", "창가 자리 부탁드립니다."));
 
         assertThat(response.productType()).isEqualTo(AvailabilityProductType.TICKET);
         assertThat(response.productId()).isEqualTo(31L);
+        assertThat(response.reservationStartsAt()).isEqualTo(now.plusDays(1));
+        assertThat(response.reservationEndsAt()).isEqualTo(now.plusDays(1).plusHours(1));
+        assertThat(response.bookerName()).isEqualTo("홍길동");
+        assertThat(response.bookerPhone()).isEqualTo("010-1234-5678");
+        assertThat(response.requestNote()).isEqualTo("창가 자리 부탁드립니다.");
         verify(reservationRepository).save(argThat(reservation ->
                 reservation.getProductType() == AvailabilityProductType.TICKET));
     }
@@ -122,6 +129,23 @@ class ReservationServiceTest {
     }
 
     @Test
+    void reusedIdempotencyKeyWithDifferentBookerIsRejected() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
+        Reservation existing = Reservation.create(1L, 9L, null, AvailabilityProductType.GENERAL,
+                "request-1", 2, now.plusDays(1), now.plusDays(1).plusHours(1),
+                "홍길동", "010-1234-5678", null, now);
+        when(reservationRepository.findByTouristUserIdAndIdempotencyKey(1L, "request-1"))
+                .thenReturn(Optional.of(existing));
+
+        assertThatThrownBy(() -> service.create(1L, new ReservationCreateRequest(
+                9L, "request-1", 2, "김길동", "010-1234-5678", null)))
+                .isInstanceOfSatisfying(ReservationException.class, exception ->
+                        assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.IDEMPOTENCY_KEY_REUSED));
+
+        verifyNoInteractions(availabilityService);
+    }
+
+    @Test
     void getMineRejectsAnotherTouristReservation() {
         Reservation reservation = Reservation.create(2L, 9L, "request-1", 2,
                 LocalDateTime.of(2026, 7, 20, 13, 0));
@@ -153,6 +177,18 @@ class ReservationServiceTest {
                 .isInstanceOfSatisfying(ReservationException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(ReservationErrorCode.TOURIST_ACCOUNT_REQUIRED));
+    }
+
+    @Test
+    void adminListMarksAbsentReservationPeriodFiltersAsDisabled() {
+        when(reservationRepository.findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
+                isNull(), eq(false), isNull(), eq(false), isNull(), any()))
+                .thenReturn(Page.empty());
+
+        service.listForAdmin(ReservationStatus.PENDING, null, null, null, null, null, null, 1, 10);
+
+        verify(reservationRepository).findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
+                isNull(), eq(false), isNull(), eq(false), isNull(), any());
     }
 
     @Test

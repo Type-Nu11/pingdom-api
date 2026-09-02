@@ -103,6 +103,9 @@ public class PlaceAvailability {
         if (allocated > 0 && (!Objects.equals(this.productId, productId) || this.productType != nextProductType)) {
             throw new IllegalStateException("예약이 존재하는 슬롯의 상품은 변경할 수 없습니다.");
         }
+        if (allocated > 0 && (!this.startsAt.equals(startsAt) || !this.endsAt.equals(endsAt))) {
+            throw new IllegalStateException("예약이 존재하는 슬롯의 일시는 변경할 수 없습니다.");
+        }
         this.productId = productId;
         this.productType = nextProductType;
         this.startsAt = startsAt;
@@ -124,7 +127,7 @@ public class PlaceAvailability {
     }
 
     public void reserve(int quantity, LocalDateTime now) {
-        if (quantity <= 0 || status != AvailabilityStatus.ACTIVE || remainingCapacity < quantity || !endsAt.isAfter(now)) {
+        if (quantity <= 0 || status != AvailabilityStatus.ACTIVE || remainingCapacity < quantity || !startsAt.isAfter(now)) {
             throw new IllegalStateException("예약 가능한 재고가 부족합니다.");
         }
         remainingCapacity -= quantity;

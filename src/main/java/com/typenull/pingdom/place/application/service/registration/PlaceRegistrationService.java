@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.application.service.registration;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile;
+import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerStatus;
 import com.typenull.pingdom.identity.domain.merchant.MerchantPlaceMember;
 import com.typenull.pingdom.identity.domain.repository.MerchantPlaceMemberRepository;
 import com.typenull.pingdom.identity.domain.repository.MerchantOwnerPlaceRepository;
@@ -130,7 +131,16 @@ public class PlaceRegistrationService {
                 .orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.MERCHANT_PROFILE_REQUIRED));
         User user = userRepository.findByIdForUpdate(userId).orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED));
         LocalDateTime now = now();
-        try { profile.approve(a.getReviewerUserId(), now); user.activateMerchantOwnerRole(); } catch (IllegalStateException e) {
+        try {
+            // 기존 Merchant Owner의 신규 장소 신청은 이미 활성화된 프로필을 재심사하지 않습니다.
+            // ACTIVE 프로필에 approve()를 호출하면 PENDING 상태 검증으로 409(INVALID_STATE)가 발생합니다.
+            if (profile.getStatus() == MerchantOwnerStatus.PENDING) {
+                profile.approve(a.getReviewerUserId(), now);
+            } else if (profile.getStatus() != MerchantOwnerStatus.ACTIVE) {
+                throw new IllegalStateException("신규 장소를 승인할 수 없는 Merchant Owner 프로필 상태입니다.");
+            }
+            user.activateMerchantOwnerRole();
+        } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.MERCHANT_PROFILE_REQUIRED);
         }
         userAccessStatusService.evict(userId);

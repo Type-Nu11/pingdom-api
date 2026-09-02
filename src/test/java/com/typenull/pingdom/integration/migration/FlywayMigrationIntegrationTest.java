@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "123";
+    private static final String LATEST_MIGRATION_VERSION = "126";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(123);
+        assertThat(result.migrationsExecuted).isEqualTo(126);
 
         assertPostMigrationSchema();
     }
@@ -339,7 +339,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(34);
+        assertThat(result.migrationsExecuted).isEqualTo(37);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -440,7 +440,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(121);
+        assertThat(result.migrationsExecuted).isEqualTo(124);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -554,7 +554,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(96);
+        assertThat(result.migrationsExecuted).isEqualTo(99);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -790,7 +790,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(68);
+        assertThat(result.migrationsExecuted).isEqualTo(71);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1413,6 +1413,12 @@ class FlywayMigrationIntegrationTest {
                       )
                       AND contype = 'c'
                       AND convalidated = true
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT pg_get_constraintdef(oid) LIKE '%required_radius_meters >%'
+                    FROM pg_constraint
+                    WHERE conrelid = 'visit_verification_session'::regclass
+                      AND conname = 'ck_visit_verification_session_radius'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 3
@@ -2267,6 +2273,22 @@ class FlywayMigrationIntegrationTest {
                       AND column_name IN ('opens_at', 'closes_at')
                       AND data_type = 'time without time zone'
                       AND is_nullable = 'NO'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 5
+                    FROM information_schema.columns
+                    WHERE table_name = 'reservation'
+                      AND column_name IN (
+                          'reservation_starts_at', 'reservation_ends_at', 'booker_name',
+                          'booker_phone', 'request_note'
+                      )
+                      AND is_nullable = 'YES'
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 1
+                    FROM pg_indexes
+                    WHERE tablename = 'reservation'
+                      AND indexname = 'idx_reservation_starts_at'
                     """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT EXISTS (
