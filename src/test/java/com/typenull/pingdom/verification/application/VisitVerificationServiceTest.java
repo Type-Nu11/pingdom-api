@@ -1,6 +1,7 @@
 package com.typenull.pingdom.verification.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
@@ -10,6 +11,8 @@ import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.verification.api.dto.*;
 import com.typenull.pingdom.verification.domain.*;
+import com.typenull.pingdom.verification.domain.exception.VisitorVerificationErrorCode;
+import com.typenull.pingdom.verification.domain.exception.VisitorVerificationException;
 import com.typenull.pingdom.verification.infrastructure.*;
 import java.time.*;
 import java.util.*;
@@ -31,7 +34,7 @@ class VisitVerificationServiceTest {
     void setUp() {
         VisitVerificationProperties properties = new VisitVerificationProperties(20.0, Map.of(), 20.0,
                 Duration.ofSeconds(30), Duration.ofMinutes(5), Duration.ofSeconds(15), Duration.ofSeconds(5),
-                Duration.ofMinutes(1), Duration.ofSeconds(10), Duration.ofDays(30));
+                Duration.ofMinutes(1), Duration.ofSeconds(10), Duration.ofDays(30), 1000.0, Duration.ofSeconds(30));
         service = new VisitVerificationService(sessionRepository, checkInRepository, userRepository, placeRepository,
                 clock, properties);
         when(userRepository.findById(1L)).thenReturn(Optional.of(
@@ -99,6 +102,47 @@ class VisitVerificationServiceTest {
 
         assertThat(response.status()).isEqualTo(VisitVerificationSessionStatus.EXPIRED);
         verify(checkInRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void startsForegroundSessionForTheSingleNearbyPlace() {
+        MapPlaceRepository.NearbyVisitPlace candidate = mock(MapPlaceRepository.NearbyVisitPlace.class);
+        when(candidate.getPlaceId()).thenReturn(2L);
+        when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
+                .thenReturn(List.of(candidate));
+
+        VisitVerificationSessionResponse response = service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant()));
+
+        assertThat(response.placeId()).isEqualTo(2L);
+        assertThat(response.requiredRadiusMeters()).isEqualTo(1000.0);
+        assertThat(response.requiredDwellSeconds()).isEqualTo(30);
+    }
+
+    @Test
+    void rejectsForegroundStartWhenNoPlaceIsNearby() {
+        when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
+                .thenReturn(List.of());
+
+        assertThatThrownBy(() -> service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant())))
+                .isInstanceOfSatisfying(VisitorVerificationException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_NOT_FOUND));
+    }
+
+    @Test
+    void rejectsForegroundStartWhenMultiplePlacesAreNearby() {
+        MapPlaceRepository.NearbyVisitPlace first = mock(MapPlaceRepository.NearbyVisitPlace.class);
+        MapPlaceRepository.NearbyVisitPlace second = mock(MapPlaceRepository.NearbyVisitPlace.class);
+        when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
+                .thenReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant())))
+                .isInstanceOfSatisfying(VisitorVerificationException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS));
     }
 
     private VisitVerificationSession capturedSession() {
