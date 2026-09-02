@@ -28,7 +28,7 @@ public class ReservableProductService {
         accessPolicy.requireOwnedPlace(ownerId, request.placeId(), now);
         try {
             return ReservableProductResponse.from(repository.save(ReservableProduct.create(
-                    ownerId, request.placeId(), request.productType(), request.name(), now)));
+                    ownerId, request.placeId(), request.productType().toAvailabilityProductType(), request.name(), now)));
         } catch (IllegalArgumentException exception) {
             throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
         }

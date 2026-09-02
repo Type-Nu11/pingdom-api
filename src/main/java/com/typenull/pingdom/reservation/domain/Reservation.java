@@ -36,6 +36,21 @@ public class Reservation {
     @Column(nullable = false)
     private int quantity;
 
+    @Column(name = "reservation_starts_at")
+    private LocalDateTime reservationStartsAt;
+
+    @Column(name = "reservation_ends_at")
+    private LocalDateTime reservationEndsAt;
+
+    @Column(name = "booker_name", length = 100)
+    private String bookerName;
+
+    @Column(name = "booker_phone", length = 30)
+    private String bookerPhone;
+
+    @Column(name = "request_note", length = 500)
+    private String requestNote;
+
     @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 20)
     private ReservationStatus status;
@@ -82,7 +97,18 @@ public class Reservation {
 
     public static Reservation create(Long touristUserId, Long availabilityId, Long productId,
             AvailabilityProductType productType, String idempotencyKey, int quantity, LocalDateTime now) {
+        return create(touristUserId, availabilityId, productId, productType, idempotencyKey, quantity,
+                null, null, "예약자", "00000000", null, now);
+    }
+
+    public static Reservation create(Long touristUserId, Long availabilityId, Long productId,
+            AvailabilityProductType productType, String idempotencyKey, int quantity,
+            LocalDateTime reservationStartsAt, LocalDateTime reservationEndsAt, String bookerName,
+            String bookerPhone, String requestNote, LocalDateTime now) {
         if (quantity <= 0) throw new IllegalArgumentException("예약 인원은 1명 이상이어야 합니다.");
+        if (reservationStartsAt != null && (reservationEndsAt == null || !reservationEndsAt.isAfter(reservationStartsAt))) {
+            throw new IllegalArgumentException("예약 종료 시각은 시작 시각보다 이후여야 합니다.");
+        }
         Reservation reservation = new Reservation();
         reservation.touristUserId = Objects.requireNonNull(touristUserId, "touristUserId must not be null");
         reservation.availabilityId = Objects.requireNonNull(availabilityId, "availabilityId must not be null");
@@ -90,6 +116,11 @@ public class Reservation {
         reservation.productType = Objects.requireNonNull(productType, "productType must not be null");
         reservation.idempotencyKey = Objects.requireNonNull(idempotencyKey, "idempotencyKey must not be null");
         reservation.quantity = quantity;
+        reservation.reservationStartsAt = reservationStartsAt;
+        reservation.reservationEndsAt = reservationEndsAt;
+        reservation.bookerName = requireText(bookerName, "bookerName");
+        reservation.bookerPhone = requireText(bookerPhone, "bookerPhone");
+        reservation.requestNote = normalizeText(requestNote);
         reservation.status = ReservationStatus.PENDING;
         reservation.createdAt = Objects.requireNonNull(now, "now must not be null");
         reservation.updatedAt = now;
@@ -145,7 +176,17 @@ public class Reservation {
     }
 
     private String normalizeReason(String reason) {
-        if (reason == null || reason.isBlank()) return null;
-        return reason.trim();
+        return normalizeText(reason);
+    }
+
+    private static String requireText(String value, String fieldName) {
+        String normalized = normalizeText(value);
+        if (normalized == null) throw new IllegalArgumentException(fieldName + " must not be blank");
+        return normalized;
+    }
+
+    private static String normalizeText(String value) {
+        if (value == null || value.isBlank()) return null;
+        return value.trim();
     }
 }

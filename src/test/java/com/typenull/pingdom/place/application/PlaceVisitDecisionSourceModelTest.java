@@ -65,7 +65,7 @@ class PlaceVisitDecisionSourceModelTest {
     @Test
     void availabilityReservationReducesRemainingCapacity() {
         PlaceAvailability availability = PlaceAvailability.create(
-                99L, 10L, NOW, NOW.plusHours(2), 20, NOW
+                99L, 10L, NOW.plusHours(1), NOW.plusHours(2), 20, NOW
         );
 
         availability.reserve(3, NOW.plusMinutes(10));
