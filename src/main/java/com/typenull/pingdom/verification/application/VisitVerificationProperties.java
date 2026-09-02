@@ -19,7 +19,9 @@ public record VisitVerificationProperties(
         @NotNull Duration observationInterval,
         @NotNull Duration observationTtl,
         @NotNull Duration futureTolerance,
-        @NotNull Duration retention
+        @NotNull Duration retention,
+        @DecimalMin(value = "10.0") @DecimalMax("10000.0") Double foregroundRadiusMeters,
+        @NotNull Duration foregroundDwellDuration
 ) {
     public VisitVerificationProperties {
         if (defaultRadiusMeters == null) defaultRadiusMeters = 20.0;
@@ -32,6 +34,8 @@ public record VisitVerificationProperties(
         if (observationTtl == null) observationTtl = Duration.ofMinutes(1);
         if (futureTolerance == null) futureTolerance = Duration.ofSeconds(10);
         if (retention == null) retention = Duration.ofDays(30);
+        if (foregroundRadiusMeters == null) foregroundRadiusMeters = 1000.0;
+        if (foregroundDwellDuration == null) foregroundDwellDuration = Duration.ofSeconds(30);
         if (maxAccuracyMeters > defaultRadiusMeters) {
             throw new IllegalArgumentException("maxAccuracyMeters must not exceed defaultRadiusMeters");
         }
@@ -39,7 +43,8 @@ public record VisitVerificationProperties(
                 || maxObservationGap.isZero() || maxObservationGap.isNegative()
                 || observationInterval.isZero() || observationInterval.isNegative()
                 || observationTtl.isZero() || observationTtl.isNegative() || retention.isNegative()
-                || futureTolerance.isNegative() || observationInterval.compareTo(maxObservationGap) > 0
+                || futureTolerance.isNegative() || foregroundDwellDuration.isZero() || foregroundDwellDuration.isNegative()
+                || observationInterval.compareTo(maxObservationGap) > 0
                 || maxObservationGap.compareTo(sessionTtl) > 0) {
             throw new IllegalArgumentException("visit verification durations are invalid");
         }

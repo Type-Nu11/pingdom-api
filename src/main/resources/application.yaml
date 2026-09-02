@@ -373,6 +373,8 @@ verification:
     observation-ttl: PT1M
     future-tolerance: PT10S
     retention: P30D
+    foreground-radius-meters: 1000
+    foreground-dwell-duration: PT30S
   visit-evidence:
     retention: P30D
     max-file-size-bytes: 10485760

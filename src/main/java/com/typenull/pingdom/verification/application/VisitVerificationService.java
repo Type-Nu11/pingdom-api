@@ -15,6 +15,7 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
+import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -36,8 +37,35 @@ public class VisitVerificationService {
     @Transactional
     public VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request) {
         requireTourist(userId);
+        return start(userId, request, properties.radiusMetersFor(request.placeId()), properties.dwellDuration());
+    }
+
+    /** 장소 ID를 신뢰하지 않고 좌표 주변의 단일 공개 장소를 서버가 선택합니다. */
+    @Transactional
+    public VisitVerificationSessionResponse startForeground(Long userId,
+            ForegroundVisitVerificationStartRequest request) {
+        requireTourist(userId);
         Instant now = clock.instant();
-        validateObservation(request.accuracyMeters(), request.observedAt(), now, properties.radiusMetersFor(request.placeId()));
+        validateObservation(request.accuracyMeters(), request.observedAt(), now, properties.foregroundRadiusMeters());
+        List<MapPlaceRepository.NearbyVisitPlace> candidates = placeRepository.findNearbyPlacesForVisitVerification(
+                request.latitude(), request.longitude(), properties.foregroundRadiusMeters(), PageRequest.of(0, 2));
+        if (candidates.isEmpty()) {
+            throw new VisitorVerificationException(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_NOT_FOUND);
+        }
+        if (candidates.size() > 1) {
+            throw new VisitorVerificationException(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS);
+        }
+        Long placeId = candidates.get(0).getPlaceId();
+        return start(userId, new VisitVerificationStartRequest(placeId, request.latitude(), request.longitude(),
+                request.accuracyMeters(), request.observedAt()), properties.foregroundRadiusMeters(),
+                properties.foregroundDwellDuration());
+    }
+
+    private VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request,
+            double requiredRadiusMeters, Duration requiredDwellDuration) {
+        requireTourist(userId);
+        Instant now = clock.instant();
+        validateObservation(request.accuracyMeters(), request.observedAt(), now, requiredRadiusMeters);
         LocalDate verificationDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
 
         VisitVerificationSession existing = sessionRepository
@@ -50,7 +78,6 @@ public class VisitVerificationService {
         if (existing != null) return VisitVerificationSessionResponse.from(existing, properties);
 
         MapPlace place = requireAvailablePlace(request.placeId());
-        double requiredRadiusMeters = properties.radiusMetersFor(place.getId());
         validateObservation(request.accuracyMeters(), request.observedAt(), now, requiredRadiusMeters);
         double distanceMeters = LocationCheckInService.distanceMeters(request.latitude(), request.longitude(),
                 place.getLatitude(), place.getLongitude());
@@ -60,7 +87,7 @@ public class VisitVerificationService {
         try {
             VisitVerificationSession session = sessionRepository.saveAndFlush(VisitVerificationSession.start(userId,
                     place.getId(), verificationDate, request.observedAt(), now, distanceMeters, requiredRadiusMeters,
-                    properties.dwellDuration(), properties.sessionTtl()));
+                    requiredDwellDuration, properties.sessionTtl()));
             return VisitVerificationSessionResponse.from(session, properties);
         } catch (DataIntegrityViolationException exception) {
             if (hasConstraint(exception, "uq_visit_verification_session_active")) {

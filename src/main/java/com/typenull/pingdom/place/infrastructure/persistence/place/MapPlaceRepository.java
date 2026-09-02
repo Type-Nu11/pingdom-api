@@ -117,4 +117,37 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             """)
     // 장소와 운영 예외 및 예외 시간을 함께 조회합니다.
     List<MapPlace> findAllWithOperatingExceptionsByIdIn(@Param("placeIds") Collection<Long> placeIds);
+
+    /** 좌표 기반 foreground 인증에 사용할 공개·운영 중 장소 후보를 거리순으로 조회합니다. */
+    @Query(value = """
+            SELECT candidate.map_place_id AS placeId,
+                   ST_Distance(
+                       candidate.location::geography,
+                       ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                       false
+                   ) AS distanceMeters
+            FROM map_place candidate
+            WHERE candidate.location IS NOT NULL
+              AND candidate.operating_status = 'OPERATING'
+              AND candidate.discovery_status = 'VISIBLE'
+              AND ST_DWithin(
+                  candidate.location::geography,
+                  ST_SetSRID(ST_MakePoint(:longitude, :latitude), 4326)::geography,
+                  :radiusMeters,
+                  false
+              )
+            ORDER BY distanceMeters ASC, candidate.map_place_id ASC
+            """, nativeQuery = true)
+    List<NearbyVisitPlace> findNearbyPlacesForVisitVerification(
+            @Param("latitude") double latitude,
+            @Param("longitude") double longitude,
+            @Param("radiusMeters") double radiusMeters,
+            Pageable pageable
+    );
+
+    interface NearbyVisitPlace {
+        Long getPlaceId();
+
+        Double getDistanceMeters();
+    }
 }
