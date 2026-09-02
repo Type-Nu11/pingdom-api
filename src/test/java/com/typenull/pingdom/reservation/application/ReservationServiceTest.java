@@ -27,6 +27,7 @@ import java.time.*;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.springframework.data.domain.Page;
 
 class ReservationServiceTest {
     private final ReservationRepository reservationRepository = mock(ReservationRepository.class);
@@ -153,6 +154,18 @@ class ReservationServiceTest {
                 .isInstanceOfSatisfying(ReservationException.class, exception ->
                         assertThat(exception.getErrorCode())
                                 .isEqualTo(ReservationErrorCode.TOURIST_ACCOUNT_REQUIRED));
+    }
+
+    @Test
+    void adminListMarksAbsentReservationPeriodFiltersAsDisabled() {
+        when(reservationRepository.findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
+                isNull(), eq(false), isNull(), eq(false), isNull(), any()))
+                .thenReturn(Page.empty());
+
+        service.listForAdmin(ReservationStatus.PENDING, null, null, null, null, null, null, 1, 10);
+
+        verify(reservationRepository).findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
+                isNull(), eq(false), isNull(), eq(false), isNull(), any());
     }
 
     @Test

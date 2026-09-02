@@ -202,7 +202,8 @@ public class ReservationService {
             throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
         }
         Page<Reservation> reservations = reservationRepository.findAllForAdmin(status, placeId, ownerId, touristUserId,
-                productId, reservationFrom, reservationTo, pageRequest(page, limit));
+                productId, reservationFrom != null, reservationFrom, reservationTo != null, reservationTo,
+                pageRequest(page, limit));
         return new AdminReservationPageResponse(reservations.getContent().stream().map(this::toAdminResponse).toList(),
                 page, limit, reservations.getTotalElements(), reservations.getTotalPages(), reservations.hasNext());
     }
