@@ -19,6 +19,11 @@ public record ReservationResponse(
         Long productId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AvailabilityProductType productType,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int quantity,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime reservationStartsAt,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime reservationEndsAt,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String bookerName,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String bookerPhone,
+        @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) String requestNote,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) ReservationStatus status,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime createdAt,
         @Schema(
@@ -43,7 +48,8 @@ public record ReservationResponse(
     public static ReservationResponse from(Reservation reservation) {
         return new ReservationResponse(reservation.getId(), reservation.getTouristUserId(),
                 reservation.getAvailabilityId(), reservation.getProductId(), reservation.getProductType(),
-                reservation.getQuantity(),
+                reservation.getQuantity(), reservation.getReservationStartsAt(), reservation.getReservationEndsAt(),
+                reservation.getBookerName(), reservation.getBookerPhone(), reservation.getRequestNote(),
                 reservation.getStatus(),
                 reservation.getCreatedAt(), reservation.getConfirmedAt(), reservation.getReviewedBy(),
                 reservation.getReviewedAt(), reservation.getReviewReason(), reservation.getRejectedAt(), reservation.getCanceledAt(), reservation.getCanceledBy(),

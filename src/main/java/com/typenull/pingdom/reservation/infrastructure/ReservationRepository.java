@@ -55,8 +55,8 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
               and (:ownerId is null or availability.merchantOwnerUserId = :ownerId)
               and (:touristUserId is null or reservation.touristUserId = :touristUserId)
               and (:productId is null or reservation.productId = :productId)
-              and (:hasReservationFrom = false or availability.startsAt >= :reservationFrom)
-              and (:hasReservationTo = false or availability.startsAt < :reservationTo)
+              and (:hasReservationFrom = false or reservation.reservationStartsAt >= :reservationFrom)
+              and (:hasReservationTo = false or reservation.reservationStartsAt < :reservationTo)
             """)
     Page<Reservation> findAllForAdmin(@Param("status") ReservationStatus status, @Param("placeId") Long placeId,
             @Param("ownerId") Long ownerId, @Param("touristUserId") Long touristUserId,

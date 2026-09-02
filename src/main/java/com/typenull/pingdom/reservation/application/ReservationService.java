@@ -103,7 +103,10 @@ public class ReservationService {
                 .orElse(null);
         if (existing != null) {
             if (!existing.getAvailabilityId().equals(request.availabilityId())
-                    || existing.getQuantity() != request.quantity()) {
+                    || existing.getQuantity() != request.quantity()
+                    || !java.util.Objects.equals(existing.getBookerName(), request.bookerName().trim())
+                    || !java.util.Objects.equals(existing.getBookerPhone(), request.bookerPhone().trim())
+                    || !java.util.Objects.equals(existing.getRequestNote(), normalize(request.requestNote()))) {
                 throw new ReservationException(ReservationErrorCode.IDEMPOTENCY_KEY_REUSED);
             }
             return ReservationResponse.from(existing);
@@ -113,7 +116,9 @@ public class ReservationService {
         try {
             Reservation saved = reservationRepository.save(
                     Reservation.create(userId, request.availabilityId(), availability.getProductId(),
-                            availability.getProductType(), request.idempotencyKey(), request.quantity(), now));
+                            availability.getProductType(), request.idempotencyKey(), request.quantity(),
+                            availability.getStartsAt(), availability.getEndsAt(), request.bookerName(),
+                            request.bookerPhone(), request.requestNote(), now));
             saveHistory(saved.getId(), saved.getStatus(), userId, null, now);
             conversionEventService.publish(
                     userId,
@@ -265,7 +270,7 @@ public class ReservationService {
                 : reservableProductRepository.findById(reservation.getProductId()).orElse(null);
         return AdminReservationResponse.of(reservation, tourist == null ? null : tourist.getUsername(),
                 availability.getMerchantOwnerUserId(), owner == null ? null : owner.getUsername(), availability.getPlaceId(),
-                place == null ? null : place.getName(), availability.getStartsAt(), availability.getEndsAt(),
+                place == null ? null : place.getName(),
                 product == null ? null : product.getName(), reservationStatusHistoryRepository
                         .findAllByReservationIdOrderByChangedAtAscIdAsc(reservation.getId()).stream()
                         .map(AdminReservationStatusHistoryResponse::from).toList());
@@ -325,5 +330,9 @@ public class ReservationService {
     private Reservation findForUpdate(Long id) {
         return reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+    }
+
+    private String normalize(String value) {
+        return value == null || value.isBlank() ? null : value.trim();
     }
 }
