@@ -32,12 +32,12 @@ public class VisitVerificationService {
     private final MapPlaceRepository placeRepository;
     private final Clock clock;
     private final VisitVerificationProperties properties;
+    private final VisitVerificationPolicyResolver policyResolver;
 
     @Transactional
     public VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request) {
         requireTourist(userId);
         Instant now = clock.instant();
-        validateObservation(request.accuracyMeters(), request.observedAt(), now, properties.radiusMetersFor(request.placeId()));
         LocalDate verificationDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
 
         VisitVerificationSession existing = sessionRepository
@@ -47,20 +47,23 @@ public class VisitVerificationService {
                         .findFirstByTouristUserIdAndPlaceIdAndVerificationDateAndStatusInOrderByIdDesc(
                                 userId, request.placeId(), verificationDate, ACTIVE_STATUSES)
                         .orElse(null));
-        if (existing != null) return VisitVerificationSessionResponse.from(existing, properties);
+        if (existing != null) {
+            validateObservation(request.accuracyMeters(), request.observedAt(), now, existing.getRequiredRadiusMeters());
+            return VisitVerificationSessionResponse.from(existing, properties);
+        }
 
         MapPlace place = requireAvailablePlace(request.placeId());
-        double requiredRadiusMeters = properties.radiusMetersFor(place.getId());
-        validateObservation(request.accuracyMeters(), request.observedAt(), now, requiredRadiusMeters);
+        VisitVerificationPolicy policy = policyResolver.resolve(place.getId());
+        validateObservation(request.accuracyMeters(), request.observedAt(), now, policy.requiredRadiusMeters());
         double distanceMeters = LocationCheckInService.distanceMeters(request.latitude(), request.longitude(),
                 place.getLatitude(), place.getLongitude());
-        if (distanceMeters > requiredRadiusMeters) {
+        if (distanceMeters > policy.requiredRadiusMeters()) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.OUTSIDE_CHECK_IN_RADIUS);
         }
         try {
             VisitVerificationSession session = sessionRepository.saveAndFlush(VisitVerificationSession.start(userId,
-                    place.getId(), verificationDate, request.observedAt(), now, distanceMeters, requiredRadiusMeters,
-                    properties.dwellDuration(), properties.sessionTtl()));
+                    place.getId(), verificationDate, request.observedAt(), now, distanceMeters,
+                    policy.requiredRadiusMeters(), policy.requiredDwellDuration(), properties.sessionTtl()));
             return VisitVerificationSessionResponse.from(session, properties);
         } catch (DataIntegrityViolationException exception) {
             if (hasConstraint(exception, "uq_visit_verification_session_active")) {
