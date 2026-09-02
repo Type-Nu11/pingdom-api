@@ -39,6 +39,8 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
               and (availability.productId is null or exists (
                   select product.id from ReservableProduct product
                   where product.id = availability.productId
+                    and product.placeId = availability.placeId
+                    and product.productType = availability.productType
                     and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
               ))
               and exists (
@@ -81,6 +83,8 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
               and (availability.productId is null or exists (
                   select product.id from ReservableProduct product
                   where product.id = availability.productId
+                    and product.placeId = availability.placeId
+                    and product.productType = availability.productType
                     and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
               ))
               and exists (
@@ -126,6 +130,8 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
               and (availability.productId is null or exists (
                   select product.id from ReservableProduct product
                   where product.id = availability.productId
+                    and product.placeId = availability.placeId
+                    and product.productType = availability.productType
                     and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
               ))
               and exists (

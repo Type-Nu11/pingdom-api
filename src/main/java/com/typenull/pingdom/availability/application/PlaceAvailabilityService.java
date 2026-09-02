@@ -13,7 +13,11 @@ import com.typenull.pingdom.product.domain.ReservableProductStatus;
 import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.Collection;
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.hibernate.exception.ConstraintViolationException;
 import org.springframework.dao.DataIntegrityViolationException;
@@ -34,11 +38,13 @@ public class PlaceAvailabilityService {
         LocalDateTime now = LocalDateTime.now(clock);
         accessPolicy.requireOwnedPlace(ownerId, request.placeId(), now);
         try {
-            ReservableProduct product = requireProduct(request);
+            ReservableProduct product = requireProduct(request, null);
             requireProductReference(request, product, null);
-            return AvailabilityResponse.from(repository.saveAndFlush(PlaceAvailability.create(ownerId, request.placeId(),
-                    product == null ? null : product.getId(), productType(request, product, AvailabilityProductType.GENERAL),
-                    request.startsAt(), request.endsAt(), request.totalCapacity(), now)));
+            PlaceAvailability availability = repository.saveAndFlush(PlaceAvailability.create(
+                    ownerId, request.placeId(), product == null ? null : product.getId(),
+                    productType(request, product, AvailabilityProductType.GENERAL),
+                    request.startsAt(), request.endsAt(), request.totalCapacity(), now));
+            return AvailabilityResponse.from(availability, product == null ? null : product.getName());
         } catch (DataIntegrityViolationException exception) {
             if (hasSlotConstraint(exception)) {
                 throw new AvailabilityException(AvailabilityErrorCode.AVAILABILITY_ALREADY_EXISTS);
@@ -58,7 +64,7 @@ public class PlaceAvailabilityService {
         }
         accessPolicy.requireOwnedPlace(ownerId, request.placeId(), now);
         try {
-            ReservableProduct product = requireProduct(request);
+            ReservableProduct product = requireProduct(request, availability);
             requireProductReference(request, product, availability);
             boolean preservingExistingProduct = request.productId() == null && availability.getProductId() != null;
             Long productId = request.productId() == null ? availability.getProductId() : product.getId();
@@ -67,7 +73,7 @@ public class PlaceAvailabilityService {
             availability.update(productId, productType, request.startsAt(), request.endsAt(),
                     request.totalCapacity(), now);
             repository.flush();
-            return AvailabilityResponse.from(availability);
+            return toResponse(availability, product);
         } catch (DataIntegrityViolationException exception) {
             if (hasSlotConstraint(exception)) {
                 throw new AvailabilityException(AvailabilityErrorCode.AVAILABILITY_ALREADY_EXISTS);
@@ -91,7 +97,7 @@ public class PlaceAvailabilityService {
             } else {
                 availability.deactivate(now);
             }
-            return AvailabilityResponse.from(availability);
+            return toResponse(availability, null);
         } catch (IllegalStateException exception) {
             throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_STATE);
         }
@@ -100,14 +106,13 @@ public class PlaceAvailabilityService {
     @Transactional(readOnly = true)
     public List<AvailabilityResponse> listOwned(Long ownerId) {
         accessPolicy.requireActiveMerchantOwner(ownerId, LocalDateTime.now(clock));
-        return repository.findAllCurrentlyOwned(ownerId).stream()
-                .map(AvailabilityResponse::from).toList();
+        return toResponses(repository.findAllCurrentlyOwned(ownerId));
     }
 
     @Transactional(readOnly = true)
     public List<AvailabilityResponse> listPublic(Long placeId) {
-        return repository.findPublicByPlaceId(placeId, AvailabilityStatus.ACTIVE, LocalDateTime.now(clock)).stream()
-                .map(AvailabilityResponse::from).toList();
+        return toResponses(repository.findPublicByPlaceId(
+                placeId, AvailabilityStatus.ACTIVE, LocalDateTime.now(clock)));
     }
 
     @Transactional
@@ -131,10 +136,14 @@ public class PlaceAvailabilityService {
         }
     }
 
-    private ReservableProduct requireProduct(AvailabilityUpsertRequest request) {
-        if (request.productId() == null) return null;
+    private ReservableProduct requireProduct(AvailabilityUpsertRequest request, PlaceAvailability current) {
+        Long productId = request.productId();
+        if (productId == null && current != null) {
+            productId = current.getProductId();
+        }
+        if (productId == null) return null;
         return productRepository.findByIdAndPlaceIdAndStatus(
-                        request.productId(), request.placeId(), ReservableProductStatus.ACTIVE)
+                        productId, request.placeId(), ReservableProductStatus.ACTIVE)
                 .orElseThrow(() -> new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT));
     }
 
@@ -186,6 +195,43 @@ public class PlaceAvailabilityService {
     private PlaceAvailability findOwned(Long ownerId, Long id) {
         return repository.findByIdAndMerchantOwnerUserId(id, ownerId)
                 .orElseThrow(() -> new AvailabilityException(AvailabilityErrorCode.AVAILABILITY_NOT_FOUND));
+    }
+
+    private AvailabilityResponse toResponse(PlaceAvailability availability, ReservableProduct product) {
+        if (availability.getProductId() == null) {
+            return AvailabilityResponse.from(availability, null);
+        }
+        ReservableProduct resolvedProduct = product == null
+                ? productRepository.findById(availability.getProductId()).orElse(null)
+                : product;
+        return AvailabilityResponse.from(availability, resolvedProduct == null ? null : resolvedProduct.getName());
+    }
+
+    private List<AvailabilityResponse> toResponses(List<PlaceAvailability> availabilities) {
+        Map<Long, ReservableProduct> productsById = productRepository.findAllById(productIds(availabilities)).stream()
+                .collect(Collectors.toMap(ReservableProduct::getId, Function.identity()));
+        return availabilities.stream()
+                .map(availability -> AvailabilityResponse.from(
+                        availability,
+                        availability.getProductId() == null
+                                ? null
+                                : productName(productsById, availability.getProductId())))
+                .toList();
+    }
+
+    private Collection<Long> productIds(List<PlaceAvailability> availabilities) {
+        return availabilities.stream()
+                .map(PlaceAvailability::getProductId)
+                .filter(java.util.Objects::nonNull)
+                .collect(Collectors.toSet());
+    }
+
+    private String productName(Map<Long, ReservableProduct> productsById, Long productId) {
+        ReservableProduct product = productsById.get(productId);
+        if (product == null) {
+            throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_STATE);
+        }
+        return product.getName();
     }
 
     private boolean hasConstraint(Throwable throwable, String constraintName) {
