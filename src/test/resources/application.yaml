@@ -89,3 +89,16 @@ outbox:
   max-backoff: PT10M
   processing-timeout: PT5M
   retention: P7D
+
+verification:
+  visit-verification:
+    default-radius-meters: 500
+    radius-overrides: {}
+    max-accuracy-meters: 20
+    dwell-duration: PT30S
+    session-ttl: PT5M
+    max-observation-gap: PT15S
+    observation-interval: PT5S
+    observation-ttl: PT1M
+    future-tolerance: PT10S
+    retention: P30D

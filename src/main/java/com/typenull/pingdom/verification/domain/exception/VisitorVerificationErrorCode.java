@@ -21,6 +21,8 @@ public enum VisitorVerificationErrorCode implements ErrorCode {
     ACTIVE_VISIT_VERIFICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "이 장소의 진행 중인 방문 인증이 이미 있습니다."),
     DAILY_VISIT_VERIFICATION_ALREADY_EXISTS(HttpStatus.CONFLICT, "오늘 이 장소에서 완료한 방문 인증이 이미 있습니다."),
     LOCATION_OBSERVATION_OUT_OF_ORDER(HttpStatus.BAD_REQUEST, "위치 측정 시각은 이전 관측보다 빠를 수 없습니다."),
+    FOREGROUND_VISIT_PLACE_NOT_FOUND(HttpStatus.NOT_FOUND, "현재 좌표에서 인증할 장소를 찾을 수 없습니다."),
+    FOREGROUND_VISIT_PLACE_AMBIGUOUS(HttpStatus.CONFLICT, "현재 좌표에서 인증할 장소를 하나로 결정할 수 없습니다."),
     CHECK_IN_NOT_FOUND(HttpStatus.NOT_FOUND, "증빙을 등록할 체크인을 찾을 수 없습니다."),
     VISIT_EVIDENCE_NOT_FOUND(HttpStatus.NOT_FOUND, "방문 인증 증빙을 찾을 수 없습니다."),
     VISIT_EVIDENCE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이 체크인에 등록된 방문 인증 증빙이 이미 있습니다."),
