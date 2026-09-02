@@ -14,7 +14,7 @@ public interface PlaceMenuRepository extends JpaRepository<PlaceMenu, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select menu from PlaceMenu menu where menu.placeId = :placeId order by menu.displayOrder asc, menu.id asc")
-    List<PlaceMenu> findAllByPlaceIdForUpdateOrderByDisplayOrderAscIdAsc(@Param("placeId") Long placeId);
+    List<PlaceMenu> findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(@Param("placeId") Long placeId);
 
     List<PlaceMenu> findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(Long placeId,
             Collection<PlaceMenuStatus> statuses);

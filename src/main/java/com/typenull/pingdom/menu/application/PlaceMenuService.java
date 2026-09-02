@@ -88,7 +88,7 @@ public class PlaceMenuService {
         requirePlace(placeId);
         requireManage(userId, placeId);
         PlaceMenu target = findMenu(menuId, placeId);
-        List<PlaceMenu> menus = menuRepository.findAllByPlaceIdForUpdateOrderByDisplayOrderAscIdAsc(placeId);
+        List<PlaceMenu> menus = menuRepository.findAllByPlaceIdOrderByDisplayOrderAscIdAscForUpdate(placeId);
         int destination = Math.min(request.displayOrder(), menus.size() - 1);
         menus.remove(target);
         menus.add(destination, target);
