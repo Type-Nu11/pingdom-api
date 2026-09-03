@@ -9,6 +9,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface MapBookmarkTrendEventRepository extends JpaRepository<MapBookmarkTrendEvent, Long> {
 
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM MapBookmarkTrendEvent event WHERE event.placeId = :placeId")
+    int deleteAllByPlaceId(@Param("placeId") Long placeId);
+
     @Modifying
     @Query("UPDATE MapBookmarkTrendEvent event SET event.placeId = :targetPlaceId WHERE event.placeId = :sourcePlaceId")
     int reassignPlace(@Param("sourcePlaceId") Long sourcePlaceId, @Param("targetPlaceId") Long targetPlaceId);

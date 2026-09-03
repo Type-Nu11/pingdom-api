@@ -8,6 +8,8 @@ import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
 import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.event.PlaceEventRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkTrendEventRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
@@ -28,6 +30,8 @@ public class AdminMapPlaceService {
     private final PlaceEventRepository placeEventRepository;
     private final LocationCheckInRepository locationCheckInRepository;
     private final ScoutFieldReportRepository scoutFieldReportRepository;
+    private final MapBookmarkRepository mapBookmarkRepository;
+    private final MapBookmarkTrendEventRepository mapBookmarkTrendEventRepository;
     private final MapImageRepository mapImageRepository;
     private final AdminPostService adminPostService;
     private final AdminAuditLogService adminAuditLogService;
@@ -50,6 +54,9 @@ public class AdminMapPlaceService {
 
         linkedPostIds.forEach(postId -> adminPostService.deletePost(postId, adminUserId));
 
+        // 북마크 이력의 RESTRICT FK와 실제 사용자 즐겨찾기를 모두 정리한 뒤 장소를 삭제합니다.
+        int deletedBookmarkTrendEventCount = mapBookmarkTrendEventRepository.deleteAllByPlaceId(placeId);
+        int deletedBookmarkCount = mapBookmarkRepository.deleteAllByPlaceId(placeId);
         mapPlaceRepository.delete(mapPlace);
         adminAuditLogService.record(
                 adminUserId,
@@ -58,7 +65,13 @@ public class AdminMapPlaceService {
                 placeId,
                 "PLACE_DELETED",
                 beforeState,
-                Map.of("placeId", placeId, "deleted", true, "deletedPostCount", linkedPostIds.size())
+                Map.of(
+                        "placeId", placeId,
+                        "deleted", true,
+                        "deletedPostCount", linkedPostIds.size(),
+                        "deletedBookmarkCount", deletedBookmarkCount,
+                        "deletedBookmarkTrendEventCount", deletedBookmarkTrendEventCount
+                )
         );
     }
 }

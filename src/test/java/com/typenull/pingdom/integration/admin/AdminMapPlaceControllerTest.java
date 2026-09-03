@@ -30,6 +30,7 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.core.MapBookmark;
+import com.typenull.pingdom.place.domain.place.core.MapBookmarkTrendEvent;
 import com.typenull.pingdom.post.domain.MapImage;
 import com.typenull.pingdom.post.domain.MapImageVisibilityStatus;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
@@ -56,6 +57,7 @@ import com.typenull.pingdom.place.infrastructure.persistence.recommendation.Plac
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationExposureRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.recommendation.PlaceRecommendationFeatureLogRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapBookmarkTrendEventRepository;
 import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceInformationEvidenceRepository;
@@ -123,6 +125,9 @@ class AdminMapPlaceControllerTest {
     private MapBookmarkRepository mapBookmarkRepository;
 
     @Autowired
+    private MapBookmarkTrendEventRepository mapBookmarkTrendEventRepository;
+
+    @Autowired
     private MapImageRepository mapImageRepository;
 
     @Autowired
@@ -168,6 +173,7 @@ class AdminMapPlaceControllerTest {
     void setUp() {
         outboxEventRepository.deleteAllInBatch();
         adminAuditLogRepository.deleteAllInBatch();
+        mapBookmarkTrendEventRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
         placeRecommendationConversionRepository.deleteAllInBatch();
@@ -884,6 +890,44 @@ class AdminMapPlaceControllerTest {
         assertTrue(adminAuditLogRepository.findAll().stream()
                 .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
                 .anyMatch(log -> log.getBeforeState().contains("\"operatingStatus\":\"OPERATING\"")));
+    }
+
+    @Test
+    void deletePlaceDeletesAllUserBookmarksAndBookmarkTrendEvents() throws Exception {
+        String accessToken = createAdminAndLogin();
+        MapPlace mapPlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name("즐겨찾기 삭제 대상 장소")
+                .address("경상남도 진주시 즐겨찾기로 1")
+                .latitude(35.1801)
+                .longitude(128.1078)
+                .userId(94L)
+                .registrant("bookmarkDeleteOwner")
+                .build());
+        mapBookmarkRepository.saveAndFlush(MapBookmark.builder()
+                .userId(201L)
+                .placeId(mapPlace.getId())
+                .build());
+        mapBookmarkRepository.saveAndFlush(MapBookmark.builder()
+                .userId(202L)
+                .placeId(mapPlace.getId())
+                .build());
+        mapBookmarkTrendEventRepository.saveAndFlush(MapBookmarkTrendEvent.added(
+                201L,
+                mapPlace.getId(),
+                LocalDateTime.of(2026, 9, 3, 10, 0)
+        ));
+
+        mockMvc.perform(delete("/admin/places/{id}/delete", mapPlace.getId())
+                        .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
+                .andExpect(status().isNoContent());
+
+        assertFalse(mapPlaceRepository.existsById(mapPlace.getId()));
+        assertEquals(0L, mapBookmarkRepository.countByPlaceId(mapPlace.getId()));
+        assertTrue(mapBookmarkTrendEventRepository.findAll().stream()
+                .noneMatch(event -> event.getPlaceId().equals(mapPlace.getId())));
+        assertTrue(adminAuditLogRepository.findAll().stream()
+                .filter(log -> log.getAction() == AdminAuditAction.PLACE_DELETED)
+                .anyMatch(log -> log.getAfterState().contains("\"deletedBookmarkCount\":2")));
     }
 
     @Test

@@ -31,6 +31,10 @@ public interface MapBookmarkRepository extends JpaRepository<MapBookmark, Long> 
 
     List<MapBookmark> findByUserIdOrderByIdAsc(Long userId);
 
+    @Modifying(flushAutomatically = true)
+    @Query("DELETE FROM MapBookmark b WHERE b.placeId = :placeId")
+    int deleteAllByPlaceId(@Param("placeId") Long placeId);
+
     long deleteByPlaceIdAndUserId(Long placeId, Long userId);
 
     @Modifying
