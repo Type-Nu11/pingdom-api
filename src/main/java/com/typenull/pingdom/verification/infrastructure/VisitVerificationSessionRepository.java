@@ -13,6 +13,12 @@ public interface VisitVerificationSessionRepository extends JpaRepository<VisitV
     Optional<VisitVerificationSession> findFirstByTouristUserIdAndPlaceIdAndVerificationDateAndStatusInOrderByIdDesc(
             Long touristUserId, Long placeId, LocalDate verificationDate, Collection<VisitVerificationSessionStatus> statuses);
 
+    // foreground 신규 장소 탐색 전에 진행 중인 세션을 최근 관측순으로 복구합니다.
+    List<VisitVerificationSession> findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
+            Long touristUserId,
+            LocalDate verificationDate,
+            Collection<VisitVerificationSessionStatus> statuses);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("select session from VisitVerificationSession session where session.id = :id and session.touristUserId = :userId")
     Optional<VisitVerificationSession> findByIdAndTouristUserIdForUpdate(@Param("id") Long id,
