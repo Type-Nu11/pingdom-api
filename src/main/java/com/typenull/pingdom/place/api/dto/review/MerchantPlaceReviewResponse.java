@@ -31,7 +31,7 @@ public record MerchantPlaceReviewResponse(
                 review.getUserId(),
                 review.getRecommendReason(),
                 review.getContent(),
-                review.getImageUrls(),
+                List.copyOf(review.getImageUrls()),
                 review.getCreatedAt(),
                 review.getVisibilityStatus(),
                 deletionRequest == null ? null : MerchantPlaceReviewDeletionRequestStatusResponse.from(deletionRequest)

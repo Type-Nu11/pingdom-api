@@ -40,7 +40,7 @@ public record AdminPlaceReviewDeletionRequestResponse(
                 review.getUserId(),
                 review.getRecommendReason(),
                 review.getContent(),
-                review.getImageUrls(),
+                List.copyOf(review.getImageUrls()),
                 review.getVisibilityStatus(),
                 review.getCreatedAt()
         );
