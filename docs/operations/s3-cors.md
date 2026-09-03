@@ -5,13 +5,24 @@
 
 ## 적용
 
-배포 환경의 AWS 자격 증명으로 다음 명령을 실행합니다. `CORS_ALLOWED_ORIGINS`는
+로컬 프론트(`http://localhost:5173`)에서 로컬 S3 버킷을 사용하는 경우에는 다음처럼
+`--local` 옵션을 사용합니다. 이 옵션은 `pingdom-local` 버킷과 로컬·운영 프론트 origin을
+기본값으로 사용합니다.
+
+```bash
+./scripts/configure-s3-cors.sh --local --dry-run
+./scripts/configure-s3-cors.sh --local
+```
+
+배포 환경의 AWS 자격 증명으로 다음 명령을 실행합니다.
+
+`CORS_ALLOWED_ORIGINS`는
 Spring API에 사용하는 값과 동일하게 설정하고, origin 뒤에 경로 또는 `/`를 붙이지 않습니다.
 `put-bucket-cors`는 기존 버킷 CORS 전체를 대체하므로 필요한 모든 origin을 한 번에 지정합니다.
 
 ```bash
 export AWS_S3_BUCKET=pingdom-production
-export CORS_ALLOWED_ORIGINS=http://localhost:5173,https://<frontend-domain>
+export CORS_ALLOWED_ORIGINS=http://localhost:5173,https://www.typenull.xyz
 
 ./scripts/configure-s3-cors.sh --dry-run
 ./scripts/configure-s3-cors.sh

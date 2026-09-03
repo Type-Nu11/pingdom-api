@@ -4,11 +4,12 @@ set -euo pipefail
 usage() {
   cat <<'USAGE'
 Usage: AWS_S3_BUCKET=<bucket> CORS_ALLOWED_ORIGINS=<origin,...> \
-  ./scripts/configure-s3-cors.sh [--dry-run]
+  ./scripts/configure-s3-cors.sh [--local] [--dry-run]
 
 Configure the S3 bucket CORS rules used by browser presigned PUT uploads.
 
   --dry-run  Print the generated AWS CLI payload without changing AWS.
+  --local    Use local defaults (bucket: pingdom-local, origins: localhost:5173 and www.typenull.xyz).
 USAGE
 }
 
@@ -18,12 +19,20 @@ fail() {
 }
 
 dry_run=false
-case "${1:-}" in
-  "") ;;
-  --dry-run) dry_run=true ;;
-  --help|-h) usage; exit 0 ;;
-  *) usage >&2; exit 1 ;;
-esac
+local_defaults=false
+for argument in "$@"; do
+  case "${argument}" in
+    --dry-run) dry_run=true ;;
+    --local) local_defaults=true ;;
+    --help|-h) usage; exit 0 ;;
+    *) usage >&2; exit 1 ;;
+  esac
+done
+
+if [[ "${local_defaults}" == true ]]; then
+  AWS_S3_BUCKET="${AWS_S3_BUCKET:-pingdom-local}"
+  CORS_ALLOWED_ORIGINS="${CORS_ALLOWED_ORIGINS:-http://localhost:5173,https://www.typenull.xyz}"
+fi
 
 : "${AWS_S3_BUCKET:?AWS_S3_BUCKET is required.}"
 : "${CORS_ALLOWED_ORIGINS:?CORS_ALLOWED_ORIGINS is required (comma-separated origins).}"
