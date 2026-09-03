@@ -112,6 +112,9 @@ docs/local-development.md
 환경변수로 주입합니다. 실제 인증정보, API Key, 비밀 값 및 운영 환경 정보는
 저장소에 커밋하지 않습니다.
 
+브라우저에서 S3 presigned URL 업로드를 사용하는 배포는 [S3 CORS 운영 문서](docs/operations/s3-cors.md)에
+따라 버킷 CORS를 별도로 적용해야 합니다.
+
 ## Verification
 
 저장소 변경사항은 테스트, API 계약, 로컬 개발 환경 및 시스템 인벤토리 기준으로 검증합니다.
