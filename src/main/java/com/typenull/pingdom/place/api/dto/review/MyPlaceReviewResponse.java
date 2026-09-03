@@ -23,7 +23,7 @@ public record MyPlaceReviewResponse(
                 review.getPlace().getId(),
                 review.getRecommendReason(),
                 review.getContent(),
-                review.getImageUrls(),
+                List.copyOf(review.getImageUrls()),
                 review.getCreatedAt(),
                 review.getVisibilityStatus()
         );
