@@ -48,18 +48,65 @@ public class VisitVerificationService {
         requireTourist(userId);
         Instant now = clock.instant();
         validateObservation(request.accuracyMeters(), request.observedAt(), now, properties.foregroundRadiusMeters());
+
+        // 진행 중인 동일 장소 세션은 새 후보 탐색보다 먼저 복구합니다.
+        VisitVerificationSession existing = findExistingForegroundSession(userId, request, now);
+        if (existing != null) {
+            validateObservation(request.accuracyMeters(), request.observedAt(), now, existing.getRequiredRadiusMeters());
+            return VisitVerificationSessionResponse.from(existing, properties);
+        }
+
         List<MapPlaceRepository.NearbyVisitPlace> candidates = placeRepository.findNearbyPlacesForVisitVerification(
                 request.latitude(), request.longitude(), properties.foregroundRadiusMeters(), PageRequest.of(0, 2));
         if (candidates.isEmpty()) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_NOT_FOUND);
         }
-        if (candidates.size() > 1) {
-            throw new VisitorVerificationException(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS);
-        }
-        Long placeId = candidates.get(0).getPlaceId();
+
+        Long placeId = selectForegroundPlace(candidates, request.accuracyMeters());
         return start(userId, new VisitVerificationStartRequest(placeId, request.latitude(), request.longitude(),
                 request.accuracyMeters(), request.observedAt()), new VisitVerificationPolicy(
                         properties.foregroundRadiusMeters(), properties.foregroundDwellDuration()));
+    }
+
+    /**
+     * 후보 간 거리 차이가 GPS 정확도 두 배보다 작거나 같으면 실제로 어느 장소가 더 가까운지 보장할 수 없습니다.
+     * Repository 정렬(distance, placeId)로 재현성은 확보하되, 불확실한 동률을 임의 선택하지 않습니다.
+     */
+    private Long selectForegroundPlace(List<MapPlaceRepository.NearbyVisitPlace> candidates, double accuracyMeters) {
+        MapPlaceRepository.NearbyVisitPlace nearest = candidates.getFirst();
+        if (candidates.size() == 1) return nearest.getPlaceId();
+
+        double distanceGap = candidates.get(1).getDistanceMeters() - nearest.getDistanceMeters();
+        if (distanceGap <= accuracyMeters * 2) {
+            throw new VisitorVerificationException(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS);
+        }
+        return nearest.getPlaceId();
+    }
+
+    private VisitVerificationSession findExistingForegroundSession(Long userId,
+            ForegroundVisitVerificationStartRequest request, Instant now) {
+        LocalDate verificationDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
+        return sessionRepository.findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
+                        userId, verificationDate, ACTIVE_STATUSES).stream()
+                .filter(session -> isReusableForegroundSession(session, request, now))
+                .findFirst()
+                .orElse(null);
+    }
+
+    private boolean isReusableForegroundSession(VisitVerificationSession session,
+            ForegroundVisitVerificationStartRequest request, Instant now) {
+        if (session.isExpiredAt(now) || session.hasObservationGapExceeded(now, properties.maxObservationGap())) {
+            session.expire(now);
+            return false;
+        }
+        MapPlace place = placeRepository.findById(session.getPlaceId()).orElse(null);
+        if (place == null || place.getOperatingStatus() != PlaceOperatingStatus.OPERATING
+                || place.getDiscoveryStatus() != PlaceDiscoveryStatus.VISIBLE) {
+            return false;
+        }
+        double distanceMeters = LocationCheckInService.distanceMeters(request.latitude(), request.longitude(),
+                place.getLatitude(), place.getLongitude());
+        return distanceMeters <= session.getRequiredRadiusMeters();
     }
 
     private VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request,
