@@ -125,8 +125,7 @@ class VisitVerificationServiceTest {
 
     @Test
     void startsForegroundSessionForTheSingleNearbyPlace() {
-        MapPlaceRepository.NearbyVisitPlace candidate = mock(MapPlaceRepository.NearbyVisitPlace.class);
-        when(candidate.getPlaceId()).thenReturn(2L);
+        MapPlaceRepository.NearbyVisitPlace candidate = nearbyPlace(2L, 10.0);
         when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
                 .thenReturn(List.of(candidate));
 
@@ -151,9 +150,22 @@ class VisitVerificationServiceTest {
     }
 
     @Test
-    void rejectsForegroundStartWhenMultiplePlacesAreNearby() {
-        MapPlaceRepository.NearbyVisitPlace first = mock(MapPlaceRepository.NearbyVisitPlace.class);
-        MapPlaceRepository.NearbyVisitPlace second = mock(MapPlaceRepository.NearbyVisitPlace.class);
+    void selectsTheNearestForegroundPlaceWhenDistanceGapExceedsGpsAccuracy() {
+        MapPlaceRepository.NearbyVisitPlace first = nearbyPlace(2L, 10.0);
+        MapPlaceRepository.NearbyVisitPlace second = nearbyPlace(3L, 40.0);
+        when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
+                .thenReturn(List.of(first, second));
+
+        VisitVerificationSessionResponse response = service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant()));
+
+        assertThat(response.placeId()).isEqualTo(2L);
+    }
+
+    @Test
+    void rejectsForegroundStartWhenGpsAccuracyCannotDistinguishNearbyPlaces() {
+        MapPlaceRepository.NearbyVisitPlace first = nearbyPlace(2L, 10.0);
+        MapPlaceRepository.NearbyVisitPlace second = nearbyPlace(3L, 20.0);
         when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
                 .thenReturn(List.of(first, second));
 
@@ -162,6 +174,64 @@ class VisitVerificationServiceTest {
                 .isInstanceOfSatisfying(VisitorVerificationException.class,
                         exception -> assertThat(exception.getErrorCode())
                                 .isEqualTo(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS));
+    }
+
+    @Test
+    void rejectsForegroundStartWhenNearbyPlacesHaveTheSameDistance() {
+        MapPlaceRepository.NearbyVisitPlace first = nearbyPlace(2L, 10.0);
+        MapPlaceRepository.NearbyVisitPlace second = nearbyPlace(3L, 10.0);
+        when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
+                .thenReturn(List.of(first, second));
+
+        assertThatThrownBy(() -> service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant())))
+                .isInstanceOfSatisfying(VisitorVerificationException.class,
+                        exception -> assertThat(exception.getErrorCode())
+                                .isEqualTo(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS));
+    }
+
+    @Test
+    void reusesExistingForegroundSessionBeforeSelectingAnotherNearbyPlace() {
+        VisitVerificationSession existing = VisitVerificationSession.start(1L, 2L,
+                LocalDate.ofInstant(STARTED_AT, ZoneId.of("Asia/Seoul")), STARTED_AT, STARTED_AT, 15.0,
+                1000.0, Duration.ofSeconds(30), Duration.ofMinutes(5));
+        ReflectionTestUtils.setField(existing, "id", 11L);
+        when(sessionRepository.findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
+                eq(1L), any(LocalDate.class), anyCollection())).thenReturn(List.of(existing));
+
+        VisitVerificationSessionResponse response = service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant()));
+
+        assertThat(response.id()).isEqualTo(11L);
+        assertThat(response.placeId()).isEqualTo(2L);
+        verify(placeRepository, never()).findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), anyDouble(), any());
+        verify(sessionRepository, never()).saveAndFlush(any());
+    }
+
+    @Test
+    void expiresStaleForegroundSessionBeforeSelectingANewNearbyPlace() {
+        VisitVerificationSession stale = VisitVerificationSession.start(1L, 2L,
+                LocalDate.ofInstant(STARTED_AT, ZoneId.of("Asia/Seoul")), STARTED_AT, STARTED_AT, 15.0,
+                1000.0, Duration.ofSeconds(30), Duration.ofMinutes(5));
+        MapPlaceRepository.NearbyVisitPlace candidate = nearbyPlace(2L, 10.0);
+        when(sessionRepository.findAllByTouristUserIdAndVerificationDateAndStatusInOrderByLastVerifiedAtDesc(
+                eq(1L), any(LocalDate.class), anyCollection())).thenReturn(List.of(stale));
+        when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
+                .thenReturn(List.of(candidate));
+        clock.advance(Duration.ofMinutes(5));
+
+        VisitVerificationSessionResponse response = service.startForeground(1L,
+                new ForegroundVisitVerificationStartRequest(35.1801, 128.1078, 10.0, clock.instant()));
+
+        assertThat(stale.getStatus()).isEqualTo(VisitVerificationSessionStatus.EXPIRED);
+        assertThat(response.status()).isEqualTo(VisitVerificationSessionStatus.STARTED);
+    }
+
+    private MapPlaceRepository.NearbyVisitPlace nearbyPlace(long placeId, double distanceMeters) {
+        MapPlaceRepository.NearbyVisitPlace candidate = mock(MapPlaceRepository.NearbyVisitPlace.class);
+        when(candidate.getPlaceId()).thenReturn(placeId);
+        when(candidate.getDistanceMeters()).thenReturn(distanceMeters);
+        return candidate;
     }
 
     private VisitVerificationSession capturedSession() {
