@@ -145,9 +145,10 @@ class OpenApiDocumentationValidationTest {
         assertThat(reviews.at("/security/0/bearerAuth").isArray()).isTrue();
         assertErrorResponse(reviews, "401");
 
-        JsonNode publicAnalysis = appDocument.at("/paths/~1analysis~1reports~1location/post");
-        assertThat(publicAnalysis.path("security").isMissingNode()).isTrue();
-        assertThat(publicAnalysis.path("responses").has("401")).isFalse();
+        JsonNode protectedAnalysis = appDocument.at("/paths/~1analysis~1reports~1location/post");
+        assertThat(protectedAnalysis.at("/security/0/bearerAuth").isArray()).isTrue();
+        assertErrorResponse(protectedAnalysis, "401");
+        assertErrorResponse(protectedAnalysis, "403");
 
         JsonNode fcmRegistration = appDocument.at("/paths/~1firebase~1fcm-tokens/post");
         assertThat(fcmRegistration.path("responses").has("400")).isTrue();
@@ -1391,8 +1392,7 @@ class OpenApiDocumentationValidationTest {
     private boolean isPublicPath(String path) {
         return "/".equals(path)
                 || path.startsWith("/auth/")
-                || "/consultations/intro".equals(path)
-                || path.startsWith("/analysis/reports/");
+                || "/consultations/intro".equals(path);
     }
 
     private void assertLimitParameter(JsonNode parameter) {

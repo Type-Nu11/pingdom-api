@@ -14,7 +14,7 @@ public class ApiAuthorizationRules {
         auth.dispatcherTypeMatchers(DispatcherType.ERROR).permitAll()
                 .requestMatchers("/", "/auth/**", "/error", "/actuator/health", "/actuator/health/**",
                         "/swagger-ui", "/swagger-ui.html", "/swagger-ui/**", "/v3/api-docs/**").permitAll()
-                .requestMatchers("/consultations/intro", "/analysis/reports/**").permitAll()
+                .requestMatchers("/consultations/intro").permitAll()
                 .requestMatchers("/actuator/**").hasRole("ADMIN")
                 .requestMatchers("/admin/**").hasRole("ADMIN")
                 .anyRequest().authenticated();
