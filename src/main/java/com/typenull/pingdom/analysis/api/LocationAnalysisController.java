@@ -1,11 +1,14 @@
 package com.typenull.pingdom.analysis.api;
 
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
+import com.typenull.pingdom.analysis.application.LocationAnalysisReportAccessPolicy;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportArchiveService;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportResponse;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportUpdateRequest;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -36,6 +39,7 @@ public class LocationAnalysisController {
 
     private final LocationAnalysisReportService reportService;
     private final LocationAnalysisReportArchiveService archiveService;
+    private final LocationAnalysisReportAccessPolicy accessPolicy;
 
     @PostMapping(value = "/location", produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "입지 분석 PDF 보고서 생성", description = "입력 조건을 AI/MCP 분석 인터페이스로 전달하고 HTML 분석 결과를 PDF로 반환합니다.")
@@ -45,8 +49,10 @@ public class LocationAnalysisController {
             @ApiResponse(responseCode = "502", description = "AI 분석 응답 처리 실패", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<byte[]> generate(
-            @Valid @RequestBody LocationAnalysisRequest request
+            @Valid @RequestBody LocationAnalysisRequest request,
+            @CurrentUser JwtAuthenticatedUser user
     ) {
+        accessPolicy.requireOwnedEmail(userId(user), request.getEmail());
         LocationAnalysisReportService.LocationAnalysisPdf report = reportService.generate(request);
         archiveService.archive(request, report);
         String filename = downloadFilename(report.reportName(), report.publishedDate(), 0);
@@ -59,26 +65,34 @@ public class LocationAnalysisController {
 
     @GetMapping
     @Operation(summary = "보관된 입지 분석 보고서 목록 조회")
-    public List<LocationAnalysisReportResponse> list(@RequestParam String email) {
-        return archiveService.list(email);
+    public List<LocationAnalysisReportResponse> list(
+            @RequestParam String email,
+            @CurrentUser JwtAuthenticatedUser user
+    ) {
+        return archiveService.list(accessPolicy.requireOwnedEmail(userId(user), email));
     }
 
     @GetMapping("/{reportId}")
     @Operation(summary = "보관된 입지 분석 보고서 상세 조회")
     public LocationAnalysisReportResponse get(
             @PathVariable String reportId,
-            @RequestParam String email
+            @RequestParam String email,
+            @CurrentUser JwtAuthenticatedUser user
     ) {
-        return archiveService.get(reportId, email);
+        return archiveService.get(reportId, accessPolicy.requireOwnedEmail(userId(user), email));
     }
 
     @GetMapping(value = "/{reportId}/download", produces = MediaType.APPLICATION_PDF_VALUE)
     @Operation(summary = "보관된 입지 분석 PDF 다운로드")
     public ResponseEntity<byte[]> download(
             @PathVariable String reportId,
-            @RequestParam String email
+            @RequestParam String email,
+            @CurrentUser JwtAuthenticatedUser user
     ) {
-        var report = archiveService.download(reportId, email);
+        var report = archiveService.download(
+                reportId,
+                accessPolicy.requireOwnedEmail(userId(user), email)
+        );
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)
                 .header(HttpHeaders.CONTENT_DISPOSITION, contentDisposition(
@@ -115,11 +129,15 @@ public class LocationAnalysisController {
     @Operation(summary = "보관된 입지 분석 HTML 디버그 조회")
     public ResponseEntity<String> html(
             @PathVariable String reportId,
-            @RequestParam String email
+            @RequestParam String email,
+            @CurrentUser JwtAuthenticatedUser user
     ) {
         return ResponseEntity.ok()
                 .contentType(new MediaType(MediaType.TEXT_HTML, StandardCharsets.UTF_8))
-                .body(archiveService.html(reportId, email));
+                .body(archiveService.html(
+                        reportId,
+                        accessPolicy.requireOwnedEmail(userId(user), email)
+                ));
     }
 
     @PatchMapping("/{reportId}")
@@ -127,18 +145,26 @@ public class LocationAnalysisController {
     public LocationAnalysisReportResponse update(
             @PathVariable String reportId,
             @RequestParam String email,
-            @Valid @RequestBody LocationAnalysisReportUpdateRequest request
+            @Valid @RequestBody LocationAnalysisReportUpdateRequest request,
+            @CurrentUser JwtAuthenticatedUser user
     ) {
-        return archiveService.update(reportId, email, request);
+        String accountEmail = accessPolicy.requireOwnedEmail(userId(user), email);
+        accessPolicy.requireOwnedEmail(userId(user), request.email());
+        return archiveService.update(reportId, accountEmail, request);
     }
 
     @DeleteMapping("/{reportId}")
     @Operation(summary = "보관된 입지 분석 보고서 삭제")
     public ResponseEntity<Void> delete(
             @PathVariable String reportId,
-            @RequestParam String email
+            @RequestParam String email,
+            @CurrentUser JwtAuthenticatedUser user
     ) {
-        archiveService.delete(reportId, email);
+        archiveService.delete(reportId, accessPolicy.requireOwnedEmail(userId(user), email));
         return ResponseEntity.noContent().build();
+    }
+
+    private Long userId(JwtAuthenticatedUser user) {
+        return user == null ? null : user.userId();
     }
 }
