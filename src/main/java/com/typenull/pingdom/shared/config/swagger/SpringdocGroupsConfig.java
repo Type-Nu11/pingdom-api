@@ -108,8 +108,7 @@ public class SpringdocGroupsConfig {
     private boolean isPublicPath(String path) {
         return "/".equals(path)
                 || path.startsWith("/auth/")
-                || "/consultations/intro".equals(path)
-                || path.startsWith("/analysis/reports/");
+                || "/consultations/intro".equals(path);
     }
 
     private void ensureErrorResponseSchema(OpenAPI openApi) {
