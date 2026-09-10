@@ -1,7 +1,9 @@
 package com.typenull.pingdom.menu.api;
 
-import com.typenull.pingdom.menu.api.dto.PlaceMenuResponse;
+import com.typenull.pingdom.menu.api.dto.PlaceMenuPublicResponse;
 import com.typenull.pingdom.menu.application.PlaceMenuService;
+import com.typenull.pingdom.shared.security.annotation.CurrentUser;
+import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -21,11 +23,14 @@ public class PlaceMenuController {
 
     @GetMapping
     @Operation(summary = "관광객용 장소 메뉴 목록 조회",
-            description = "AVAILABLE와 SOLD_OUT 메뉴만 displayOrder 오름차순으로 반환합니다. 메뉴가 없으면 빈 목록을 반환합니다.")
+            description = "AVAILABLE와 SOLD_OUT 메뉴만 displayOrder 오름차순으로 반환합니다. 로그인 사용자는 국가 코드에 따른 참고 환산 가격을 함께 받으며, 환율 조회에 실패하면 원래 가격만 반환합니다.")
     @ApiResponse(responseCode = "200", description = "공개 메뉴 목록 조회 성공")
     @ApiResponse(responseCode = "404", description = "장소를 찾을 수 없음",
             content = @Content(schema = @Schema(implementation = com.typenull.pingdom.shared.api.dto.ErrorResponse.class)))
-    public ResponseEntity<List<PlaceMenuResponse>> list(@PathVariable Long placeId) {
-        return ResponseEntity.ok(service.listPublic(placeId));
+    public ResponseEntity<List<PlaceMenuPublicResponse>> list(
+            @PathVariable Long placeId,
+            @CurrentUser JwtAuthenticatedUser user
+    ) {
+        return ResponseEntity.ok(service.listPublic(placeId, user == null ? null : user.userId()));
     }
 }
