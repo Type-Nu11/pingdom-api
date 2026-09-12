@@ -11,7 +11,7 @@ public record MenuConvertedPriceResponse(
         BigDecimal amount,
         @Schema(description = "환산 통화", example = "USD")
         MenuCurrency currency,
-        @Schema(description = "환율 기준 일자. 원래 통화와 표시 통화가 같으면 null입니다.", nullable = true)
+        @Schema(description = "환산에 사용한 환율 기준 일자", example = "2026-09-10")
         LocalDate rateDate
 ) {
 }
