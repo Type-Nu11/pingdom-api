@@ -10,14 +10,20 @@ import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.community.api.dto.CommunityPostListResponse;
 import com.typenull.pingdom.community.api.dto.CommunityPostDetailResponse;
+import com.typenull.pingdom.community.api.dto.CommunityPostCommentListResponse;
 import com.typenull.pingdom.community.domain.CommunityPost;
+import com.typenull.pingdom.community.domain.CommunityPostComment;
 import com.typenull.pingdom.community.domain.CommunityPostPlace;
 import com.typenull.pingdom.community.domain.exception.CommunityException;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostRepository;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostPlaceRepository;
+import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostCommentRepository;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import java.util.List;
 import java.util.Optional;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
@@ -26,9 +32,13 @@ class CommunityPostQueryServiceTest {
 
     private final CommunityPostRepository communityPostRepository = mock(CommunityPostRepository.class);
     private final CommunityPostPlaceRepository communityPostPlaceRepository = mock(CommunityPostPlaceRepository.class);
+    private final CommunityPostCommentRepository communityPostCommentRepository = mock(CommunityPostCommentRepository.class);
+    private final UserRepository userRepository = mock(UserRepository.class);
     private final CommunityPostQueryService service = new CommunityPostQueryService(
             communityPostRepository,
-            communityPostPlaceRepository
+            communityPostPlaceRepository,
+            communityPostCommentRepository,
+            userRepository
     );
 
     @Test
@@ -107,5 +117,31 @@ class CommunityPostQueryServiceTest {
 
         assertThat(response.places())
                 .containsExactly(new CommunityPostDetailResponse.Place(7L, "삭제된 장소입니다", true));
+    }
+
+    @Test
+    void 게시글의_댓글만_최신순_페이지로_조회하고_작성자_정보를_일괄_결합한다() {
+        CommunityPost post = mock(CommunityPost.class);
+        CommunityPostComment comment = mock(CommunityPostComment.class);
+        User author = mock(User.class);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 9, 12, 12, 0);
+        when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(comment.getId()).thenReturn(20L);
+        when(comment.getContent()).thenReturn("댓글 내용");
+        when(comment.getUserId()).thenReturn(7L);
+        when(comment.getCreatedAt()).thenReturn(createdAt);
+        when(author.getId()).thenReturn(7L);
+        when(author.getUsername()).thenReturn("pingdom");
+        when(communityPostCommentRepository.findByCommunityPost_Id(any(), any()))
+                .thenReturn(new PageImpl<>(List.of(comment), PageRequest.of(0, 20), 1));
+        when(userRepository.findAllById(List.of(7L))).thenReturn(List.of(author));
+
+        CommunityPostCommentListResponse response = service.findComments(10L, 1, 20);
+
+        assertThat(response.comments()).containsExactly(
+                new CommunityPostCommentListResponse.Item(20L, "댓글 내용", 7L, "pingdom", createdAt)
+        );
+        verify(communityPostCommentRepository).findByCommunityPost_Id(any(), any());
+        verify(userRepository).findAllById(List.of(7L));
     }
 }

@@ -2,13 +2,18 @@ package com.typenull.pingdom.community.application;
 
 import com.typenull.pingdom.community.api.dto.CommunityPostListResponse;
 import com.typenull.pingdom.community.api.dto.CommunityPostDetailResponse;
+import com.typenull.pingdom.community.api.dto.CommunityPostCommentListResponse;
 import com.typenull.pingdom.community.domain.CommunityPost;
 import com.typenull.pingdom.community.domain.CommunityPostCategory;
+import com.typenull.pingdom.community.domain.CommunityPostComment;
 import com.typenull.pingdom.community.domain.CommunityPostPlace;
 import com.typenull.pingdom.community.domain.exception.CommunityErrorCode;
 import com.typenull.pingdom.community.domain.exception.CommunityException;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostPlaceRepository;
+import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostCommentRepository;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostRepository;
+import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
@@ -17,6 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Map;
+import java.util.function.Function;
 
 @Service
 @RequiredArgsConstructor
@@ -26,6 +33,8 @@ public class CommunityPostQueryService {
 
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostPlaceRepository communityPostPlaceRepository;
+    private final CommunityPostCommentRepository communityPostCommentRepository;
+    private final UserRepository userRepository;
 
     @Transactional(readOnly = true)
     public CommunityPostListResponse findByCategory(String categoryId, int page, int limit) {
@@ -61,6 +70,53 @@ public class CommunityPostQueryService {
                 .toList();
 
         return new CommunityPostDetailResponse(post.getId(), post.getTitle(), post.getContent(), places);
+    }
+
+    @Transactional(readOnly = true)
+    public CommunityPostCommentListResponse findComments(long postId, int page, int limit) {
+        requirePost(postId);
+        Page<CommunityPostComment> result = communityPostCommentRepository.findByCommunityPost_Id(
+                postId,
+                PageRequest.of(page - 1, limit, Sort.by(
+                        Sort.Order.desc("createdAt"),
+                        Sort.Order.desc("id")
+                ))
+        );
+        List<Long> authorIds = result.getContent().stream()
+                .map(CommunityPostComment::getUserId)
+                .distinct()
+                .toList();
+        Map<Long, User> usersById = authorIds.isEmpty()
+                ? Map.of()
+                : userRepository.findAllById(authorIds).stream()
+                        .collect(java.util.stream.Collectors.toMap(User::getId, Function.identity()));
+        List<CommunityPostCommentListResponse.Item> comments = result.getContent().stream()
+                .map(comment -> toCommentItem(comment, usersById.get(comment.getUserId())))
+                .toList();
+
+        return new CommunityPostCommentListResponse(
+                comments,
+                page,
+                limit,
+                result.getTotalElements(),
+                result.getTotalPages(),
+                result.hasNext()
+        );
+    }
+
+    private CommunityPost requirePost(long postId) {
+        return communityPostRepository.findById(postId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
+    }
+
+    private CommunityPostCommentListResponse.Item toCommentItem(CommunityPostComment comment, User author) {
+        return new CommunityPostCommentListResponse.Item(
+                comment.getId(),
+                comment.getContent(),
+                comment.getUserId(),
+                author == null ? "알 수 없는 사용자" : author.getUsername(),
+                comment.getCreatedAt()
+        );
     }
 
     private CommunityPostDetailResponse.Place toPlace(CommunityPostPlace postPlace) {
