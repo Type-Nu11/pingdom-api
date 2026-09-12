@@ -3,6 +3,7 @@ package com.typenull.pingdom.community.domain;
 import java.util.Arrays;
 import java.util.Comparator;
 import java.util.List;
+import java.util.Optional;
 
 /**
  * 커뮤니티 게시글 작성과 조회에서 공통으로 사용하는 카테고리 목록이다.
@@ -47,5 +48,11 @@ public enum CommunityPostCategory {
                 .filter(CommunityPostCategory::isEnabled)
                 .sorted(Comparator.comparingInt(CommunityPostCategory::getDisplayOrder))
                 .toList();
+    }
+
+    public static Optional<CommunityPostCategory> findEnabledById(String categoryId) {
+        return enabledCategories().stream()
+                .filter(category -> category.id.equals(categoryId))
+                .findFirst();
     }
 }
