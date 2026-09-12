@@ -90,6 +90,34 @@ class PlaceMenuServiceTest {
     }
 
     @Test
+    void isolatesConvertedMenuPriceByRequestingUsersCountry() {
+        PlaceMenu menu = PlaceMenu.create(10L, 7L, "짜장면", null, 9000L, MenuCurrency.KRW, null, 0,
+                LocalDateTime.now(clock));
+        User usUser = mock(User.class);
+        User jpUser = mock(User.class);
+        when(menuRepository.findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(eq(10L), anyCollection()))
+                .thenReturn(List.of(menu));
+        when(userRepository.findById(99L)).thenReturn(Optional.of(usUser));
+        when(userRepository.findById(100L)).thenReturn(Optional.of(jpUser));
+        when(usUser.getCountry()).thenReturn("US");
+        when(jpUser.getCountry()).thenReturn("JP");
+        when(displayCurrencyResolver.resolve("US")).thenReturn(MenuCurrency.USD);
+        when(displayCurrencyResolver.resolve("JP")).thenReturn(MenuCurrency.JPY);
+        when(priceConversionService.convert(menu, MenuCurrency.USD)).thenReturn(
+                new MenuConvertedPriceResponse(new BigDecimal("6.43"), MenuCurrency.USD, LocalDate.of(2026, 9, 10)));
+        when(priceConversionService.convert(menu, MenuCurrency.JPY)).thenReturn(
+                new MenuConvertedPriceResponse(new BigDecimal("1025"), MenuCurrency.JPY, LocalDate.of(2026, 9, 10)));
+
+        PlaceMenuPublicResponse usResponse = service.listPublic(10L, 99L).getFirst();
+        PlaceMenuPublicResponse jpResponse = service.listPublic(10L, 100L).getFirst();
+
+        assertThat(usResponse.convertedPrice().currency()).isEqualTo(MenuCurrency.USD);
+        assertThat(jpResponse.convertedPrice().currency()).isEqualTo(MenuCurrency.JPY);
+        verify(priceConversionService).convert(menu, MenuCurrency.USD);
+        verify(priceConversionService).convert(menu, MenuCurrency.JPY);
+    }
+
+    @Test
     void rejectsMenuAccessWhenActorLacksPlaceCapability() {
         doThrow(new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED)).when(capabilityPolicy)
                 .require(99L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
