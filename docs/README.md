@@ -31,6 +31,7 @@
 - [로컬 개발 환경 부트스트랩 Runbook](operations/development-bootstrap-runbook.md)
 - [v1 API 경로 정책](api-path-policy.md)
 - [API 오류 코드 및 재시도 정책](api-error-code-retry-policy.md): HTTP 오류 응답, Outbox 재시도, notification delivery 기록의 책임 경계를 정리합니다.
+- [커뮤니티 게시글 입력 및 장소 선택 정책](community-post-input-place-policy.md)
 - [운영 관측성](observability.md)
 - [#1057 조회 인덱스 운영 검증](operations/query-index-verification-1057.md)
 - [DB 마이그레이션 운영 Runbook](database-migration.md)
