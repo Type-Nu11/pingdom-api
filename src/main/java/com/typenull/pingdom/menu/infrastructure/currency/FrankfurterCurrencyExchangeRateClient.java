@@ -10,6 +10,7 @@ import java.time.DateTimeException;
 import java.time.Instant;
 import java.time.LocalDate;
 import java.util.Optional;
+import java.util.concurrent.CompletableFuture;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -23,6 +24,8 @@ public class FrankfurterCurrencyExchangeRateClient implements CurrencyExchangeRa
     private final FrankfurterCurrencyExchangeProperties properties;
     private final Clock clock;
     private final ConcurrentHashMap<CurrencyPair, CachedRate> cache = new ConcurrentHashMap<>();
+    private final ConcurrentHashMap<CurrencyPair, CompletableFuture<Optional<CurrencyExchangeRate>>> inFlightRequests
+            = new ConcurrentHashMap<>();
 
     public FrankfurterCurrencyExchangeRateClient(
             @Qualifier("menuCurrencyExchangeRestClient") RestClient menuCurrencyExchangeRestClient,
@@ -46,9 +49,24 @@ public class FrankfurterCurrencyExchangeRateClient implements CurrencyExchangeRa
             return Optional.of(cached.exchangeRate());
         }
 
-        Optional<CurrencyExchangeRate> fetched = requestRate(sourceCurrency, targetCurrency);
-        fetched.ifPresent(rate -> cache.put(pair, new CachedRate(rate, now.plus(properties.cacheTtl()))));
-        return fetched;
+        CompletableFuture<Optional<CurrencyExchangeRate>> newRequest = new CompletableFuture<>();
+        CompletableFuture<Optional<CurrencyExchangeRate>> inFlight = inFlightRequests.putIfAbsent(pair, newRequest);
+        if (inFlight != null) {
+            return inFlight.join();
+        }
+
+        try {
+            Optional<CurrencyExchangeRate> fetched = requestRate(sourceCurrency, targetCurrency);
+            fetched.ifPresent(rate -> cache.put(pair, new CachedRate(rate, now.plus(properties.cacheTtl()))));
+            newRequest.complete(fetched);
+            return fetched;
+        } catch (RuntimeException exception) {
+            Optional<CurrencyExchangeRate> unavailable = Optional.empty();
+            newRequest.complete(unavailable);
+            return unavailable;
+        } finally {
+            inFlightRequests.remove(pair, newRequest);
+        }
     }
 
     private Optional<CurrencyExchangeRate> requestRate(MenuCurrency sourceCurrency, MenuCurrency targetCurrency) {
