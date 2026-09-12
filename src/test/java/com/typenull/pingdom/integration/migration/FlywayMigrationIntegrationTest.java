@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "130";
+    private static final String LATEST_MIGRATION_VERSION = "131";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,9 +76,38 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(130);
+        assertThat(result.migrationsExecuted).isEqualTo(131);
 
         assertPostMigrationSchema();
+    }
+
+    @Test
+    void initializesCommunityPlaceViewCountAndPreventsDailyDuplicateViews() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO map_place (
+                        map_place_id, place_name, address, latitude, longitude, registrant, photo_count
+                    ) VALUES (131001, '커뮤니티 조회 장소', '서울시 중구', 37.5, 127.0, 'migration-test', 0)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_place_daily_view (user_id, map_place_id, viewed_on)
+                    VALUES (131001, 131001, DATE '2026-09-12')
+                    """);
+
+            assertThat(queryBoolean(statement, """
+                    SELECT community_view_count = 0
+                    FROM map_place
+                    WHERE map_place_id = 131001
+                    """)).isTrue();
+            assertThatThrownBy(() -> statement.executeUpdate("""
+                    INSERT INTO community_place_daily_view (user_id, map_place_id, viewed_on)
+                    VALUES (131001, 131001, DATE '2026-09-12')
+                    """))
+                    .isInstanceOf(java.sql.SQLException.class);
+        }
     }
 
     @Test
@@ -339,7 +368,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(41);
+        assertThat(result.migrationsExecuted).isEqualTo(42);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -440,7 +469,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(128);
+        assertThat(result.migrationsExecuted).isEqualTo(129);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -554,7 +583,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(103);
+        assertThat(result.migrationsExecuted).isEqualTo(104);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -790,7 +819,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(75);
+        assertThat(result.migrationsExecuted).isEqualTo(76);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """

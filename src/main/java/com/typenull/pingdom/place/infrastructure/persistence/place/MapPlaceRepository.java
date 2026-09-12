@@ -94,6 +94,11 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
     // 장소를 비관적 쓰기 잠금으로 조회합니다.
     Optional<MapPlace> findByIdForUpdate(@Param("placeId") Long placeId);
 
+    @Modifying(clearAutomatically = true, flushAutomatically = true)
+    @Query("UPDATE MapPlace m SET m.communityViewCount = m.communityViewCount + 1 WHERE m.id = :placeId")
+    // 커뮤니티 유입 조회수는 읽기-수정-쓰기 경쟁 없이 DB에서 원자적으로 증가시킨다.
+    int increaseCommunityViewCount(@Param("placeId") Long placeId);
+
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT m FROM MapPlace m WHERE m.id IN :placeIds ORDER BY m.id ASC")
     // 여러 장소를 ID 순서로 비관적 쓰기 잠금 조회합니다.
