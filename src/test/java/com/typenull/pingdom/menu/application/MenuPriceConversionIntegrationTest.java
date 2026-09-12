@@ -1,4 +1,4 @@
-package com.typenull.pingdom.menu.integration;
+package com.typenull.pingdom.menu.application;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.anyCollection;
@@ -9,7 +9,6 @@ import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceC
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.menu.api.dto.PlaceMenuPublicResponse;
-import com.typenull.pingdom.menu.application.PlaceMenuService;
 import com.typenull.pingdom.menu.application.currency.CurrencyExchangeRate;
 import com.typenull.pingdom.menu.application.currency.CurrencyExchangeRateClient;
 import com.typenull.pingdom.menu.application.currency.MenuDisplayCurrencyResolver;
