@@ -45,6 +45,10 @@ public class CommunityPostPlace {
     @JoinColumn(name = "map_place_id", nullable = false)
     private MapPlace mapPlace;
 
+    /** 삭제된 장소에도 연결 식별자를 유지해 상세 응답에서 삭제 안내를 제공한다. */
+    @Column(name = "map_place_id", insertable = false, updatable = false)
+    private Long mapPlaceId;
+
     private CommunityPostPlace(CommunityPost communityPost, MapPlace mapPlace) {
         this.communityPost = Objects.requireNonNull(communityPost, "communityPost must not be null");
         this.mapPlace = Objects.requireNonNull(mapPlace, "mapPlace must not be null");
