@@ -73,6 +73,8 @@ public record PlaceDetailResponse(
         Double longitude,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         String registrant,
+        @Schema(description = "커뮤니티 게시글을 통해 유입된 일별 중복 제거 조회수", example = "12", requiredMode = Schema.RequiredMode.REQUIRED)
+        long communityViewCount,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         MerchantOwnerPublicResponse merchantOwner
 ) {

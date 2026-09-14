@@ -271,6 +271,14 @@ gemini:
   connect-timeout: ${GEMINI_CONNECT_TIMEOUT:PT2S}
   read-timeout: ${GEMINI_READ_TIMEOUT:PT5S}
 
+menu:
+  currency-exchange:
+    enabled: ${MENU_CURRENCY_EXCHANGE_ENABLED:true}
+    base-url: ${MENU_CURRENCY_EXCHANGE_BASE_URL:https://api.frankfurter.dev/v2}
+    connect-timeout: ${MENU_CURRENCY_EXCHANGE_CONNECT_TIMEOUT:2s}
+    read-timeout: ${MENU_CURRENCY_EXCHANGE_READ_TIMEOUT:3s}
+    cache-ttl: ${MENU_CURRENCY_EXCHANGE_CACHE_TTL:10m}
+
 place:
   local-hot:
     backfill:

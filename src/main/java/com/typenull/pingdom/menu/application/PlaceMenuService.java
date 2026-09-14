@@ -2,8 +2,11 @@ package com.typenull.pingdom.menu.application;
 
 import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapability;
 import com.typenull.pingdom.identity.application.service.merchant.MerchantPlaceCapabilityPolicy;
+import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.identity.domain.exception.MerchantOwnerException;
 import com.typenull.pingdom.menu.api.dto.*;
+import com.typenull.pingdom.menu.application.currency.MenuDisplayCurrencyResolver;
+import com.typenull.pingdom.menu.application.currency.MenuPriceConversionService;
 import com.typenull.pingdom.menu.domain.*;
 import com.typenull.pingdom.menu.domain.exception.*;
 import com.typenull.pingdom.menu.infrastructure.PlaceMenuRepository;
@@ -26,6 +29,9 @@ public class PlaceMenuService {
     private final PlaceMenuRepository menuRepository;
     private final MapPlaceRepository placeRepository;
     private final MerchantPlaceCapabilityPolicy capabilityPolicy;
+    private final UserRepository userRepository;
+    private final MenuDisplayCurrencyResolver displayCurrencyResolver;
+    private final MenuPriceConversionService priceConversionService;
     private final Clock clock;
 
     @Transactional
@@ -103,14 +109,23 @@ public class PlaceMenuService {
     }
 
     @Transactional(readOnly = true)
-    public List<PlaceMenuResponse> listPublic(Long placeId) {
+    public List<PlaceMenuPublicResponse> listPublic(Long placeId) {
+        return listPublic(placeId, null);
+    }
+
+    @Transactional(readOnly = true)
+    public List<PlaceMenuPublicResponse> listPublic(Long placeId, Long userId) {
         MapPlace place = requirePlace(placeId);
         if (place.getDiscoveryStatus() != PlaceDiscoveryStatus.VISIBLE
                 || place.getOperatingStatus() != PlaceOperatingStatus.OPERATING) {
             throw new PlaceMenuException(PlaceMenuErrorCode.MENU_PLACE_NOT_FOUND);
         }
+        String country = userId == null ? null : userRepository.findById(userId)
+                .map(user -> user.getCountry())
+                .orElse(null);
+        MenuCurrency displayCurrency = displayCurrencyResolver.resolve(country);
         return menuRepository.findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(placeId, PUBLIC_STATUSES).stream()
-                .map(PlaceMenuResponse::from).toList();
+                .map(menu -> PlaceMenuPublicResponse.from(menu, priceConversionService.convert(menu, displayCurrency))).toList();
     }
 
     private MapPlace requirePlace(Long placeId) {

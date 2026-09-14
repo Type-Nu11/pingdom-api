@@ -201,6 +201,16 @@ public class MapPlace {
     @Column(name = "photo_count", nullable = false)
     private Long photoCount = 0L;
 
+    /** 커뮤니티 게시글에서 이 장소로 이동한 사용자 수를 일 단위 중복 없이 집계합니다. */
+    @Builder.Default
+    @ColumnDefault("0")
+    @Column(name = "community_view_count", nullable = false)
+    private Long communityViewCount = 0L;
+
+    public long currentCommunityViewCount() {
+        return communityViewCount == null ? 0L : communityViewCount;
+    }
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;

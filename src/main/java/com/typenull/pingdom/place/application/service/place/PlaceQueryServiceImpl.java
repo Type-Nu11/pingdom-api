@@ -328,6 +328,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 mapPlace.getLatitude(),
                 mapPlace.getLongitude(),
                 mapPlace.getRegistrant(),
+                mapPlace.currentCommunityViewCount(),
                 merchantOwner
         );
     }
