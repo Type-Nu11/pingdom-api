@@ -15,6 +15,17 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
 
     Optional<CommunityPost> findByIdAndHiddenFalse(Long postId);
 
+    @Query("""
+            select post from CommunityPost post
+            where (:categoryId is null or post.categoryId = :categoryId)
+              and (:hidden is null or post.hidden = :hidden)
+            """)
+    Page<CommunityPost> findAllForAdmin(
+            @Param("categoryId") String categoryId,
+            @Param("hidden") Boolean hidden,
+            Pageable pageable
+    );
+
     boolean existsByIdAndHiddenFalse(Long postId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
