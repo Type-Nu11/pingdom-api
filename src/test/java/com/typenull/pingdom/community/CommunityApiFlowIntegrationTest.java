@@ -18,6 +18,7 @@ import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.post.infrastructure.persistence.MapImageRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
@@ -39,6 +40,7 @@ class CommunityApiFlowIntegrationTest {
     @Autowired private JwtTokenProvider jwtTokenProvider;
     @Autowired private UserRepository userRepository;
     @Autowired private MapPlaceRepository mapPlaceRepository;
+    @Autowired private MapImageRepository mapImageRepository;
     @Autowired private CommunityPostRepository postRepository;
     @Autowired private CommunityPostCommentRepository commentRepository;
     @Autowired private CommunityPostLikeRepository likeRepository;
@@ -52,6 +54,7 @@ class CommunityApiFlowIntegrationTest {
         likeRepository.deleteAllInBatch();
         postPlaceRepository.deleteAllInBatch();
         postRepository.deleteAllInBatch();
+        mapImageRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }

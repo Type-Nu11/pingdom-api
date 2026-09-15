@@ -6,10 +6,13 @@ import com.typenull.pingdom.moderation.api.dto.community.AdminCommunityReportAct
 import com.typenull.pingdom.moderation.api.dto.community.AdminCommunityReportPageResponse;
 import com.typenull.pingdom.moderation.api.dto.community.AdminCommunityReportResponse;
 import com.typenull.pingdom.moderation.application.service.community.AdminCommunityReportService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -49,7 +52,8 @@ public class AdminCommunityReportController {
     @Operation(summary = "관리자 커뮤니티 신고 상세 조회")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "신고 상세 조회 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "404", description = "커뮤니티 신고를 찾을 수 없음")
+            @ApiResponse(responseCode = "404", description = "커뮤니티 신고를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public AdminCommunityReportResponse get(@PathVariable Long reportId) {
         return adminCommunityReportService.get(reportId);
@@ -59,8 +63,10 @@ public class AdminCommunityReportController {
     @Operation(summary = "관리자 커뮤니티 신고 수락", description = "수락한 신고 대상 글 또는 댓글을 숨깁니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "신고 수락 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "404", description = "커뮤니티 신고 또는 대상 콘텐츠를 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 처리된 신고")
+            @ApiResponse(responseCode = "404", description = "커뮤니티 신고 또는 대상 콘텐츠를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 처리된 신고",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public AdminCommunityReportActionResponse accept(
             @PathVariable Long reportId,
@@ -73,8 +79,10 @@ public class AdminCommunityReportController {
     @Operation(summary = "관리자 커뮤니티 신고 반려", description = "반려는 신고 상태만 변경하고 대상 노출 상태를 바꾸지 않습니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "신고 반려 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "404", description = "커뮤니티 신고를 찾을 수 없음"),
-            @ApiResponse(responseCode = "409", description = "이미 처리된 신고")
+            @ApiResponse(responseCode = "404", description = "커뮤니티 신고를 찾을 수 없음",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "409", description = "이미 처리된 신고",
+                    content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public AdminCommunityReportActionResponse decline(
             @PathVariable Long reportId,
