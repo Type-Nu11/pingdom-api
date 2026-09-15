@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "132";
+    private static final String LATEST_MIGRATION_VERSION = "133";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(132);
+        assertThat(result.migrationsExecuted).isEqualTo(133);
 
         assertPostMigrationSchema();
     }
@@ -181,6 +181,44 @@ class FlywayMigrationIntegrationTest {
                         AND tablename = 'community_report'
                         AND indexname IN ('idx_community_report_status_created',
                             'idx_community_report_post_status', 'idx_community_report_comment_status')
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void addsCommunityReportVisibilityColumnsAndIndexes() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO community_post (community_post_id, category_id, title, content, user_id)
+                    VALUES (133001, 'travel', '숨김 대상 글', '내용', 1)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_post_comment (community_post_comment_id, community_post_id, user_id, content)
+                    VALUES (133001, 133001, 1, '숨김 대상 댓글')
+                    """);
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT hidden AND hidden_by_admin_user_id IS NULL AND hidden_at IS NULL
+                    FROM community_post WHERE community_post_id = 133001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT hidden AND hidden_by_admin_user_id IS NULL AND hidden_at IS NULL
+                    FROM community_post_comment WHERE community_post_comment_id = 133001
+                    """)).isTrue();
+            statement.executeUpdate("""
+                    UPDATE community_post SET hidden = TRUE, hidden_by_admin_user_id = 9,
+                        hidden_at = CURRENT_TIMESTAMP WHERE community_post_id = 133001
+                    """);
+            statement.executeUpdate("""
+                    UPDATE community_post_comment SET hidden = TRUE, hidden_by_admin_user_id = 9,
+                        hidden_at = CURRENT_TIMESTAMP WHERE community_post_comment_id = 133001
+                    """);
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2 FROM pg_indexes WHERE schemaname = 'public'
+                      AND indexname IN ('idx_community_post_visible_category_created_at',
+                          'idx_community_post_comment_visible_post_created_at')
                     """)).isTrue();
         }
     }
@@ -472,7 +510,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(43);
+        assertThat(result.migrationsExecuted).isEqualTo(44);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -573,7 +611,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(130);
+        assertThat(result.migrationsExecuted).isEqualTo(131);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -687,7 +725,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(105);
+        assertThat(result.migrationsExecuted).isEqualTo(106);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -923,7 +961,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(77);
+        assertThat(result.migrationsExecuted).isEqualTo(78);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """

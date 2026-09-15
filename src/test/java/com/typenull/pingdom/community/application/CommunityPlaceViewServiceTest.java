@@ -57,7 +57,7 @@ class CommunityPlaceViewServiceTest {
 
     @Test
     void 연결되지_않은_장소는_조회_기록을_남기지_않는다() {
-        when(postRepository.existsById(10L)).thenReturn(true);
+        when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(postPlaceRepository.existsByCommunityPost_IdAndMapPlace_Id(10L, 20L)).thenReturn(false);
 
         assertThatThrownBy(() -> service.record(10L, 20L, 7L)).isInstanceOf(CommunityException.class);
@@ -66,7 +66,7 @@ class CommunityPlaceViewServiceTest {
     }
 
     private void givenLinkedPlace() {
-        when(postRepository.existsById(10L)).thenReturn(true);
+        when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(postPlaceRepository.existsByCommunityPost_IdAndMapPlace_Id(10L, 20L)).thenReturn(true);
         when(mapPlaceRepository.existsByIdAndOperatingStatusAndDiscoveryStatus(anyLong(), any(), any()))
                 .thenReturn(true);
