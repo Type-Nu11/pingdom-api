@@ -12,6 +12,8 @@ import jakarta.persistence.LockModeType;
 
 public interface CommunityPostCommentRepository extends JpaRepository<CommunityPostComment, Long> {
 
+    Optional<CommunityPostComment> findByIdAndCommunityPost_Id(Long commentId, Long postId);
+
     Optional<CommunityPostComment> findByIdAndCommunityPost_IdAndHiddenFalseAndCommunityPost_HiddenFalse(
             Long commentId,
             Long postId
@@ -22,4 +24,15 @@ public interface CommunityPostCommentRepository extends JpaRepository<CommunityP
     Optional<CommunityPostComment> findByIdForUpdate(@Param("commentId") Long commentId);
 
     Page<CommunityPostComment> findByCommunityPost_IdAndHiddenFalse(Long postId, Pageable pageable);
+
+    @Query("""
+            select comment from CommunityPostComment comment
+            where comment.communityPost.id = :postId
+              and (:hidden is null or comment.hidden = :hidden)
+            """)
+    Page<CommunityPostComment> findAllForAdmin(
+            @Param("postId") Long postId,
+            @Param("hidden") Boolean hidden,
+            Pageable pageable
+    );
 }
