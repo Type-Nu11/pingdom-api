@@ -61,8 +61,7 @@ public class CommunityPostQueryService {
 
     @Transactional(readOnly = true)
     public CommunityPostDetailResponse findDetail(long postId) {
-        CommunityPost post = communityPostRepository.findById(postId)
-                .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
+        CommunityPost post = requirePost(postId);
         List<CommunityPostDetailResponse.Place> places = communityPostPlaceRepository
                 .findAllWithMapPlaceByCommunityPostId(postId)
                 .stream()
@@ -75,7 +74,7 @@ public class CommunityPostQueryService {
     @Transactional(readOnly = true)
     public CommunityPostCommentListResponse findComments(long postId, int page, int limit) {
         requirePost(postId);
-        Page<CommunityPostComment> result = communityPostCommentRepository.findByCommunityPost_Id(
+        Page<CommunityPostComment> result = communityPostCommentRepository.findByCommunityPost_IdAndHiddenFalse(
                 postId,
                 PageRequest.of(page - 1, limit, Sort.by(
                         Sort.Order.desc("createdAt"),
@@ -105,7 +104,7 @@ public class CommunityPostQueryService {
     }
 
     private CommunityPost requirePost(long postId) {
-        return communityPostRepository.findById(postId)
+        return communityPostRepository.findByIdAndHiddenFalse(postId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
     }
 

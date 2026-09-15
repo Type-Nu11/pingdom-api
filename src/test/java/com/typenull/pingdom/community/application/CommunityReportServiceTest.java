@@ -36,7 +36,8 @@ class CommunityReportServiceTest {
     @BeforeEach
     void setup() {
         service = new CommunityReportService(posts, comments, reports, Clock.systemUTC());
-        when(posts.findById(1L)).thenReturn(Optional.of(CommunityPost.create("TRAVEL", "제목", "내용", 1L)));
+        when(posts.findByIdAndHiddenFalse(1L))
+                .thenReturn(Optional.of(CommunityPost.create("TRAVEL", "제목", "내용", 1L)));
     }
 
     @ParameterizedTest

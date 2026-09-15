@@ -34,7 +34,7 @@ class CommunityPostCommentCommandServiceTest {
         when(post.getId()).thenReturn(10L);
         when(savedComment.getId()).thenReturn(20L);
         when(savedComment.getContent()).thenReturn("댓글 내용");
-        when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
         when(communityPostCommentRepository.save(any(CommunityPostComment.class))).thenReturn(savedComment);
 
         CommunityPostCommentCreateResponse response = service.create(
@@ -50,7 +50,7 @@ class CommunityPostCommentCommandServiceTest {
 
     @Test
     void 존재하지_않는_게시글에는_댓글을_저장하지_않는다() {
-        when(communityPostRepository.findById(10L)).thenReturn(Optional.empty());
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(10L, 7L, new CommunityPostCommentCreateRequest("댓글 내용")))
                 .isInstanceOf(CommunityException.class)

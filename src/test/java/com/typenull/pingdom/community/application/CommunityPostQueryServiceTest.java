@@ -79,7 +79,7 @@ class CommunityPostQueryServiceTest {
         when(postPlace.getMapPlace()).thenReturn(place);
         when(place.getId()).thenReturn(7L);
         when(place.getName()).thenReturn("대소고");
-        when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
         when(communityPostPlaceRepository.findAllWithMapPlaceByCommunityPostId(10L)).thenReturn(List.of(postPlace));
 
         CommunityPostDetailResponse response = service.findDetail(10L);
@@ -92,7 +92,7 @@ class CommunityPostQueryServiceTest {
 
     @Test
     void 존재하지_않는_게시글은_장소를_조회하지_않는다() {
-        when(communityPostRepository.findById(10L)).thenReturn(Optional.empty());
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findDetail(10L))
                 .isInstanceOf(CommunityException.class)
@@ -110,7 +110,7 @@ class CommunityPostQueryServiceTest {
         when(post.getContent()).thenReturn("게시글 본문");
         when(deletedPlace.getMapPlace()).thenReturn(null);
         when(deletedPlace.getMapPlaceId()).thenReturn(7L);
-        when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
         when(communityPostPlaceRepository.findAllWithMapPlaceByCommunityPostId(10L)).thenReturn(List.of(deletedPlace));
 
         CommunityPostDetailResponse response = service.findDetail(10L);
@@ -125,14 +125,14 @@ class CommunityPostQueryServiceTest {
         CommunityPostComment comment = mock(CommunityPostComment.class);
         User author = mock(User.class);
         LocalDateTime createdAt = LocalDateTime.of(2026, 9, 12, 12, 0);
-        when(communityPostRepository.findById(10L)).thenReturn(Optional.of(post));
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
         when(comment.getId()).thenReturn(20L);
         when(comment.getContent()).thenReturn("댓글 내용");
         when(comment.getUserId()).thenReturn(7L);
         when(comment.getCreatedAt()).thenReturn(createdAt);
         when(author.getId()).thenReturn(7L);
         when(author.getUsername()).thenReturn("pingdom");
-        when(communityPostCommentRepository.findByCommunityPost_Id(any(), any()))
+        when(communityPostCommentRepository.findByCommunityPost_IdAndHiddenFalse(any(), any()))
                 .thenReturn(new PageImpl<>(List.of(comment), PageRequest.of(0, 20), 1));
         when(userRepository.findAllById(List.of(7L))).thenReturn(List.of(author));
 
@@ -141,7 +141,7 @@ class CommunityPostQueryServiceTest {
         assertThat(response.comments()).containsExactly(
                 new CommunityPostCommentListResponse.Item(20L, "댓글 내용", 7L, "pingdom", createdAt)
         );
-        verify(communityPostCommentRepository).findByCommunityPost_Id(any(), any());
+        verify(communityPostCommentRepository).findByCommunityPost_IdAndHiddenFalse(any(), any());
         verify(userRepository).findAllById(List.of(7L));
     }
 }
