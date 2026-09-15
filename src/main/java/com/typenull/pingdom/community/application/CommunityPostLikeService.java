@@ -37,7 +37,7 @@ public class CommunityPostLikeService {
     }
 
     private void requirePost(long postId) {
-        if (!communityPostRepository.existsById(postId)) {
+        if (!communityPostRepository.existsByIdAndHiddenFalse(postId)) {
             throw new CommunityException(CommunityErrorCode.POST_NOT_FOUND);
         }
     }

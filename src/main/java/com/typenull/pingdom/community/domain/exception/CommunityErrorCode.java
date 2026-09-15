@@ -9,6 +9,7 @@ import org.springframework.http.HttpStatus;
 @RequiredArgsConstructor
 public enum CommunityErrorCode implements ErrorCode {
     COMMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "댓글을 찾을 수 없습니다."),
+    REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "커뮤니티 신고를 찾을 수 없습니다."),
     ALREADY_REPORTED(HttpStatus.CONFLICT, "이미 신고한 대상입니다."),
     INVALID_REPORT(HttpStatus.BAD_REQUEST, "커뮤니티 신고 요청이 올바르지 않습니다."),
     REPORT_ALREADY_PROCESSED(HttpStatus.CONFLICT, "이미 처리된 커뮤니티 신고입니다."),

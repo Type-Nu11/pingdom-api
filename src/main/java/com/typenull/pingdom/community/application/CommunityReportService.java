@@ -34,7 +34,7 @@ public class CommunityReportService {
     // 인증 사용자를 신고자로 지정하고 동일 대상 재신고를 차단한다.
     @Transactional
     public CommunityReportCreateResponse reportPost(long postId, long reporterUserId, CommunityReportCreateRequest request) {
-        CommunityPost post = postRepository.findById(postId)
+        CommunityPost post = postRepository.findByIdAndHiddenFalse(postId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
         if (reportRepository.existsByReporterUserIdAndPost_Id(reporterUserId, postId)) {
             throw new CommunityException(CommunityErrorCode.ALREADY_REPORTED);
@@ -46,10 +46,10 @@ public class CommunityReportService {
     @Transactional
     public CommunityReportCreateResponse reportComment(long postId, long commentId, long reporterUserId,
                                                       CommunityReportCreateRequest request) {
-        if (!postRepository.existsById(postId)) {
+        if (!postRepository.existsByIdAndHiddenFalse(postId)) {
             throw new CommunityException(CommunityErrorCode.POST_NOT_FOUND);
         }
-        CommunityPostComment comment = commentRepository.findByIdAndCommunityPost_Id(commentId, postId)
+        CommunityPostComment comment = commentRepository.findByIdAndCommunityPost_IdAndHiddenFalseAndCommunityPost_HiddenFalse(commentId, postId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.COMMENT_NOT_FOUND));
         if (reportRepository.existsByReporterUserIdAndComment_Id(reporterUserId, commentId)) {
             throw new CommunityException(CommunityErrorCode.ALREADY_REPORTED);

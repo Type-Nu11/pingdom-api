@@ -36,6 +36,15 @@ public class CommunityPostComment {
     @Column(name = "content", nullable = false, length = 1000)
     private String content;
 
+    @Column(name = "hidden", nullable = false)
+    private boolean hidden;
+
+    @Column(name = "hidden_by_admin_user_id")
+    private Long hiddenByAdminUserId;
+
+    @Column(name = "hidden_at")
+    private LocalDateTime hiddenAt;
+
     @CreationTimestamp
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
@@ -48,5 +57,13 @@ public class CommunityPostComment {
 
     public static CommunityPostComment create(CommunityPost communityPost, Long userId, String content) {
         return new CommunityPostComment(communityPost, userId, content);
+    }
+
+    public void hide(Long adminUserId, LocalDateTime hiddenAt) {
+        if (!hidden) {
+            this.hidden = true;
+            this.hiddenByAdminUserId = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
+            this.hiddenAt = Objects.requireNonNull(hiddenAt, "hiddenAt must not be null");
+        }
     }
 }

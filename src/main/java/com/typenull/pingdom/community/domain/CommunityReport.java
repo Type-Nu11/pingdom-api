@@ -96,6 +96,14 @@ public class CommunityReport {
         return new CommunityReport(reporterUserId, null, comment, reason, description, createdAt);
     }
 
+    public CommunityReportTargetType getTargetType() {
+        return post == null ? CommunityReportTargetType.COMMENT : CommunityReportTargetType.POST;
+    }
+
+    public Long getTargetId() {
+        return post == null ? comment.getId() : post.getId();
+    }
+
     public void accept(Long adminUserId, LocalDateTime processedAt) {
         process(CommunityReportStatus.ACCEPTED, adminUserId, processedAt);
     }
