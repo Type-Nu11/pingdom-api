@@ -73,8 +73,10 @@ class MerchantPlaceReviewModerationControllerTest {
                         10L,
                         30L,
                         "추천 이유",
+                        java.util.List.of(),
                         "리뷰 내용",
                         java.util.List.of("https://example.com/review.jpg"),
+                        java.util.List.of(),
                         java.time.LocalDateTime.of(2026, 8, 31, 10, 0),
                         PlaceReviewVisibilityStatus.HIDDEN,
                         null

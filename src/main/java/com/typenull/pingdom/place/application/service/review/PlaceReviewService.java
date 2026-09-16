@@ -5,6 +5,7 @@ import com.typenull.pingdom.place.api.dto.review.MyPlaceReviewResponse;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewCreateRequest;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewResponse;
 import com.typenull.pingdom.place.domain.review.PlaceReview;
+import com.typenull.pingdom.place.domain.review.PlaceReviewRecommendReason;
 import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewRepository;
@@ -31,20 +32,30 @@ public class PlaceReviewService {
 
     private final MapPlaceRepository placeRepository;
     private final PlaceReviewRepository reviewRepository;
+    private final PlaceReviewMediaService reviewMediaService;
     private final Clock clock;
 
     @Transactional
     public PlaceReviewResponse create(Long userId, Long placeId, PlaceReviewCreateRequest request) {
         var place = placeRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
-        return PlaceReviewResponse.from(reviewRepository.save(PlaceReview.create(
+        List<PlaceReviewRecommendReason> recommendReasons = request.recommendReasons() == null
+                ? List.of()
+                : request.recommendReasons();
+        String legacyRecommendReason = recommendReasons.isEmpty()
+                ? request.recommendReason()
+                : recommendReasons.getFirst().name();
+        PlaceReview review = reviewRepository.save(PlaceReview.create(
                 place,
                 userId,
-                request.recommendReason(),
+                legacyRecommendReason,
+                recommendReasons,
                 request.content(),
-                request.imageUrls() == null ? List.of() : request.imageUrls(),
+                List.of(),
                 LocalDateTime.now(clock)
-        )));
+        ));
+        reviewMediaService.connect(userId, placeId, review, request.reviewMediaIds());
+        return PlaceReviewResponse.from(review);
     }
 
     @Transactional(readOnly = true)

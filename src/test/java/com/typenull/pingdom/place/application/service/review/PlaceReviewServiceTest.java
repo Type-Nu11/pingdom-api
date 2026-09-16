@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.application.service.review;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -7,7 +8,10 @@ import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.place.domain.review.PlaceReview;
+import com.typenull.pingdom.place.domain.review.PlaceReviewRecommendReason;
 import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
+import com.typenull.pingdom.place.api.dto.review.PlaceReviewCreateRequest;
+import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewRepository;
 import java.time.Clock;
@@ -22,10 +26,38 @@ import org.junit.jupiter.api.Test;
 class PlaceReviewServiceTest {
 
     @Test
+    void createUsesStructuredReasonsAndLinksOnlyUploadedMediaIds() {
+        MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
+        PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
+        PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
+        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, Clock.systemUTC());
+        MapPlace place = mock(MapPlace.class);
+        when(place.getId()).thenReturn(10L);
+        when(placeRepository.findById(10L)).thenReturn(java.util.Optional.of(place));
+        when(reviewRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
+        PlaceReviewCreateRequest request = new PlaceReviewCreateRequest(
+                null,
+                List.of(PlaceReviewRecommendReason.FRIENDLY, PlaceReviewRecommendReason.MULTILINGUAL_SUPPORT),
+                "친절하고 영어 안내가 있어요.",
+                List.of(5L, 3L),
+                List.of()
+        );
+
+        var response = service.create(7L, 10L, request);
+
+        assertThat(response.recommendReason()).isEqualTo("FRIENDLY");
+        assertThat(response.recommendReasons()).containsExactly(
+                PlaceReviewRecommendReason.FRIENDLY, PlaceReviewRecommendReason.MULTILINGUAL_SUPPORT);
+        assertThat(response.imageUrls()).isEmpty();
+        verify(reviewMediaService).connect(eq(7L), eq(10L), any(PlaceReview.class), eq(List.of(5L, 3L)));
+    }
+
+    @Test
     void publicListLoadsOnlyVisibleReviews() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
-        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, Clock.systemUTC());
+        PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
+        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, Clock.systemUTC());
         when(placeRepository.existsById(1L)).thenReturn(true);
         when(reviewRepository.findAllByPlace_IdAndVisibilityStatus(eq(1L), eq(PlaceReviewVisibilityStatus.VISIBLE), any()))
                 .thenReturn(new PageImpl<PlaceReview>(java.util.List.of()));
@@ -40,7 +72,8 @@ class PlaceReviewServiceTest {
     void myReviewListIncludesVisibleAndHiddenReviewsButExcludesDeletedReviews() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
-        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, Clock.systemUTC());
+        PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
+        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, Clock.systemUTC());
         when(reviewRepository.findAllByUserIdAndVisibilityStatusIn(eq(7L), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), org.springframework.data.domain.PageRequest.of(1, 20), 23));
 
