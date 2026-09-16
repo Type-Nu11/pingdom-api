@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "133";
+    private static final String LATEST_MIGRATION_VERSION = "135";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,7 +76,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(133);
+        assertThat(result.migrationsExecuted).isEqualTo(135);
 
         assertPostMigrationSchema();
     }
@@ -510,7 +510,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(44);
+        assertThat(result.migrationsExecuted).isEqualTo(46);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -611,7 +611,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(131);
+        assertThat(result.migrationsExecuted).isEqualTo(133);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -725,7 +725,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(106);
+        assertThat(result.migrationsExecuted).isEqualTo(108);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -961,7 +961,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(78);
+        assertThat(result.migrationsExecuted).isEqualTo(80);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1643,6 +1643,41 @@ class FlywayMigrationIntegrationTest {
                     SELECT EXISTS (
                         SELECT 1 FROM pg_indexes
                         WHERE indexname = 'idx_place_review_user_visibility_created_at'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'place_review_recommend_reason'
+                    )
+                    AND EXISTS (
+                        SELECT 1 FROM information_schema.tables
+                        WHERE table_name = 'place_review_media_upload'
+                    )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 12
+                    FROM information_schema.columns
+                    WHERE table_name = 'place_review_media_upload'
+                      AND column_name IN (
+                          'place_review_media_upload_id', 'place_id', 'user_id', 's3_key', 'image_url',
+                          'content_type', 'file_size', 'status', 'expires_at', 'review_id', 'display_order', 'connected_at'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3
+                    FROM pg_constraint
+                    WHERE conrelid = 'place_review_media_upload'::regclass
+                      AND conname IN (
+                          'ck_place_review_media_upload_status',
+                          'ck_place_review_media_upload_connection',
+                          'uq_place_review_media_upload_order'
+                      )
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT EXISTS (
+                        SELECT 1 FROM pg_indexes
+                        WHERE indexname = 'idx_place_review_media_upload_expiry'
                     )
                     """)).isTrue();
             assertThat(queryBoolean(statement, """

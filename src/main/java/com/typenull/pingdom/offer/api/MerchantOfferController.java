@@ -8,9 +8,11 @@ import com.typenull.pingdom.offer.api.dto.OfferCreateRequest;
 import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
 import com.typenull.pingdom.offer.api.dto.OfferResponse;
 import com.typenull.pingdom.offer.application.MerchantOfferService;
+import com.typenull.pingdom.offer.domain.OfferStatus;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
@@ -55,7 +57,11 @@ public class MerchantOfferController {
     }
 
     @GetMapping
-    @Operation(summary = "내 관광객 전용 Offer 목록 조회")
+    @Operation(
+            summary = "내 관광객 전용 Offer 목록 조회",
+            description = "placeId는 로그인한 Merchant Owner가 소유한 장소의 Offer만 조회합니다. "
+                    + "소유하지 않은 장소 ID를 전달하면 빈 목록을 반환합니다."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "Offer 목록 조회 성공", content = @Content(schema = @Schema(implementation = OfferPageResponse.class))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -63,9 +69,11 @@ public class MerchantOfferController {
     public OfferPageResponse list(
             @RequestParam(defaultValue = "1") int page,
             @RequestParam(defaultValue = "20") int limit,
+            @Parameter(description = "소유 장소 ID") @RequestParam(required = false) Long placeId,
+            @Parameter(description = "Offer 상태") @RequestParam(required = false) OfferStatus status,
             @CurrentUser JwtAuthenticatedUser user
     ) {
-        return offerService.list(user.userId(), page, limit);
+        return offerService.list(user.userId(), page, limit, placeId, status);
     }
 
     @GetMapping("/{offerId}")

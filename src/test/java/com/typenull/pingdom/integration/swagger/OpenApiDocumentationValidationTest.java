@@ -630,6 +630,20 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
+    void merchantOfferListFiltersAreDocumented() throws Exception {
+        JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
+        JsonNode operation = merchantDocument.at("/paths/~1merchant-owner~1offers/get");
+        JsonNode placeIdParameter = parameter(operation, "placeId");
+        JsonNode statusParameter = parameter(operation, "status");
+
+        assertThat(placeIdParameter.path("schema").path("type").asText()).isEqualTo("integer");
+        assertThat(statusParameter.path("schema").path("enum"))
+                .extracting(JsonNode::asText)
+                .containsExactlyInAnyOrder("DRAFT", "PUBLISHED", "CLOSED");
+        assertThat(operation.path("description").asText()).contains("소유", "빈 목록");
+    }
+
+    @Test
     void touristInformationSchemasDeclareNullableStringFields() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 

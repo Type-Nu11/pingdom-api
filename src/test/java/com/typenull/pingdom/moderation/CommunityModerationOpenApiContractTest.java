@@ -85,6 +85,15 @@ class CommunityModerationOpenApiContractTest {
         }
     }
 
+    @Test
+    void 관리자_커뮤니티_목록_항목은_각각_고유한_OpenAPI_스키마를_사용한다() throws Exception {
+        JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
+
+        assertItemSchema(adminDocument, "AdminCommunityPostPageResponse", "posts", "AdminCommunityPostItem", "postId", "title");
+        assertItemSchema(adminDocument, "AdminCommunityCommentPageResponse", "comments", "AdminCommunityCommentItem", "commentId", "content");
+        assertItemSchema(adminDocument, "AdminCommunityReportPageResponse", "reports", "AdminCommunityReportItem", "reportId", "targetType", "status");
+    }
+
     private JsonNode operation(JsonNode document, String path, String method) {
         return document.path("paths").path(path).path(method);
     }
@@ -107,6 +116,21 @@ class CommunityModerationOpenApiContractTest {
 
         assertThat(schema.path("$ref").asText())
                 .isEqualTo("#/components/schemas/ErrorResponse");
+    }
+
+    private void assertItemSchema(
+            JsonNode document,
+            String pageSchemaName,
+            String listField,
+            String itemSchemaName,
+            String... expectedFields
+    ) {
+        JsonNode itemSchema = document.at("/components/schemas/" + pageSchemaName + "/properties/" + listField + "/items");
+        assertThat(itemSchema.path("$ref").asText()).isEqualTo("#/components/schemas/" + itemSchemaName);
+        for (String expectedField : expectedFields) {
+            assertThat(document.at("/components/schemas/" + itemSchemaName + "/properties/" + expectedField).isMissingNode())
+                    .isFalse();
+        }
     }
 
     private JsonNode readApiDocs(String path) throws Exception {

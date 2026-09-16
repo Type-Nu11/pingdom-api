@@ -17,6 +17,7 @@ public record AdminCommunityReportPageResponse(
         boolean hasNext
 ) {
 
+    @Schema(name = "AdminCommunityReportItem", description = "관리자 커뮤니티 신고 목록 항목")
     public record Item(
             Long reportId,
             CommunityReportTargetType targetType,

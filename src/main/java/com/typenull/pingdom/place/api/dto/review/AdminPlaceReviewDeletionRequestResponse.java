@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.api.dto.review;
 import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequest;
 import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequestStatus;
 import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
+import com.typenull.pingdom.place.domain.review.PlaceReviewRecommendReason;
 import java.time.LocalDateTime;
 import java.util.List;
 
@@ -19,8 +20,10 @@ public record AdminPlaceReviewDeletionRequestResponse(
         Long placeId,
         Long reviewAuthorUserId,
         String recommendReason,
+        List<PlaceReviewRecommendReason> recommendReasons,
         String content,
         List<String> imageUrls,
+        List<PlaceReviewMediaResponse> reviewMedia,
         PlaceReviewVisibilityStatus reviewVisibilityStatus,
         LocalDateTime reviewCreatedAt
 ) {
@@ -39,8 +42,10 @@ public record AdminPlaceReviewDeletionRequestResponse(
                 review.getPlace().getId(),
                 review.getUserId(),
                 review.getRecommendReason(),
+                review.getRecommendReasons() == null ? List.of() : List.copyOf(review.getRecommendReasons()),
                 review.getContent(),
                 List.copyOf(review.getImageUrls()),
+                review.getMediaUploads() == null ? List.of() : review.getMediaUploads().stream().map(PlaceReviewMediaResponse::from).toList(),
                 review.getVisibilityStatus(),
                 review.getCreatedAt()
         );
