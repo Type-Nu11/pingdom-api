@@ -68,6 +68,9 @@ class AdminMerchantPlaceApplicationControllerTest {
                 99L,
                 statuses,
                 MerchantPlaceApplicationType.NEW_PLACE,
+                "서울",
+                java.time.LocalDateTime.parse("2026-09-01T00:00:00"),
+                java.time.LocalDateTime.parse("2026-09-30T23:59:59"),
                 2,
                 10
         )).thenReturn(new AdminMerchantPlaceApplicationPageResponse(List.of(), 2, 10, 21, 3, true));
@@ -75,6 +78,9 @@ class AdminMerchantPlaceApplicationControllerTest {
         mockMvc.perform(get("/admin/merchant-place-applications")
                         .param("status", "APPROVED", "COMPLETED", "REJECTED", "CANCELED")
                         .param("applicationType", "NEW_PLACE")
+                        .param("keyword", "서울")
+                        .param("submittedFrom", "2026-09-01T00:00:00")
+                        .param("submittedTo", "2026-09-30T23:59:59")
                         .param("page", "2")
                         .param("limit", "10"))
                 .andExpect(status().isOk())
@@ -86,6 +92,9 @@ class AdminMerchantPlaceApplicationControllerTest {
                 eq(99L),
                 eq(statuses),
                 eq(MerchantPlaceApplicationType.NEW_PLACE),
+                eq("서울"),
+                eq(java.time.LocalDateTime.parse("2026-09-01T00:00:00")),
+                eq(java.time.LocalDateTime.parse("2026-09-30T23:59:59")),
                 eq(2),
                 eq(10)
         );

@@ -63,6 +63,7 @@ public enum AdminErrorCode implements ErrorCode {
     USER_NOT_BANNED(HttpStatus.CONFLICT, "제재 중인 사용자가 아닙니다."),
     INVALID_SANCTION_PERIOD(HttpStatus.BAD_REQUEST, "제재 종료 시각 또는 기간이 올바르지 않습니다."),
     INVALID_SANCTION_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "제재 이력 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
+    INVALID_MERCHANT_PLACE_APPLICATION_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "장소 신청 조회 종료 시각은 시작 시각보다 빠를 수 없습니다."),
     INVALID_AUDIT_LOG_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "감사 로그 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
     INVALID_NOTIFICATION_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "알림 조회 종료 시각은 시작 시각보다 이후여야 합니다."),
     INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD(HttpStatus.BAD_REQUEST, "알림 발송 결과 조회 종료 시각은 시작 시각보다 이후여야 합니다."),

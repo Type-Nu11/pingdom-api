@@ -110,18 +110,23 @@ class MerchantPlaceApplicationAdminServiceTest {
         PlaceRegistrationApplication application = application(12L);
         when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
-        when(applicationRepository.findAllByStatusIn(
+        when(applicationRepository.searchForAdmin(
                 eq(List.of(PlaceRegistrationStatus.PENDING)),
+                eq(null),
+                eq(null),
+                eq(null),
+                eq(null),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(0, 20), 41));
 
-        var response = service.listForAdmin(99L, List.of(PlaceRegistrationStatus.PENDING), null, 1, 20);
+        var response = service.listForAdmin(99L, List.of(PlaceRegistrationStatus.PENDING), null, null, null, null, 1, 20);
 
         assertThat(response.total()).isEqualTo(41);
         assertThat(response.totalPages()).isEqualTo(3);
         assertThat(response.hasNext()).isTrue();
-        verify(applicationRepository).findAllByStatusIn(
+        verify(applicationRepository).searchForAdmin(
                 eq(List.of(PlaceRegistrationStatus.PENDING)),
+                eq(null), eq(null), eq(null), eq(null),
                 org.mockito.ArgumentMatchers.any()
         );
     }
@@ -137,9 +142,14 @@ class MerchantPlaceApplicationAdminServiceTest {
         );
         when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
-        when(applicationRepository.findAllByStatusInAndApplicationType(
+        LocalDateTime from = LocalDateTime.of(2026, 8, 1, 0, 0);
+        LocalDateTime to = LocalDateTime.of(2026, 8, 31, 23, 59, 59);
+        when(applicationRepository.searchForAdmin(
                 eq(statuses),
                 eq(MerchantPlaceApplicationType.NEW_PLACE),
+                eq("서울"),
+                eq(from),
+                eq(to),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(1, 10), 21));
 
@@ -147,6 +157,9 @@ class MerchantPlaceApplicationAdminServiceTest {
                 99L,
                 statuses,
                 MerchantPlaceApplicationType.NEW_PLACE,
+                "서울",
+                from,
+                to,
                 2,
                 10
         );
@@ -156,9 +169,12 @@ class MerchantPlaceApplicationAdminServiceTest {
         assertThat(response.total()).isEqualTo(21);
         assertThat(response.totalPages()).isEqualTo(3);
         assertThat(response.hasNext()).isTrue();
-        verify(applicationRepository).findAllByStatusInAndApplicationType(
+        verify(applicationRepository).searchForAdmin(
                 eq(statuses),
                 eq(MerchantPlaceApplicationType.NEW_PLACE),
+                eq("서울"),
+                eq(from),
+                eq(to),
                 org.mockito.ArgumentMatchers.any()
         );
     }
@@ -166,9 +182,10 @@ class MerchantPlaceApplicationAdminServiceTest {
     @Test
     void adminListKeepsFilteredMetadataForAnOutOfRangePage() {
         List<PlaceRegistrationStatus> statuses = List.of(PlaceRegistrationStatus.APPROVED);
-        when(applicationRepository.findAllByStatusInAndApplicationType(
+        when(applicationRepository.searchForAdmin(
                 eq(statuses),
                 eq(MerchantPlaceApplicationType.NEW_PLACE),
+                eq(null), eq(null), eq(null),
                 org.mockito.ArgumentMatchers.any()
         )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(3, 10), 21));
 
@@ -176,6 +193,9 @@ class MerchantPlaceApplicationAdminServiceTest {
                 99L,
                 statuses,
                 MerchantPlaceApplicationType.NEW_PLACE,
+                null,
+                null,
+                null,
                 4,
                 10
         );
@@ -185,6 +205,20 @@ class MerchantPlaceApplicationAdminServiceTest {
         assertThat(response.total()).isEqualTo(21);
         assertThat(response.totalPages()).isEqualTo(3);
         assertThat(response.hasNext()).isFalse();
+    }
+
+    @Test
+    void adminListRejectsReversedSubmittedPeriod() {
+        assertThatThrownBy(() -> service.listForAdmin(
+                99L,
+                null,
+                null,
+                null,
+                LocalDateTime.of(2026, 8, 2, 0, 0),
+                LocalDateTime.of(2026, 8, 1, 23, 59, 59),
+                1,
+                20
+        )).isInstanceOf(com.typenull.pingdom.moderation.domain.exception.AdminException.class);
     }
 
     @Test
