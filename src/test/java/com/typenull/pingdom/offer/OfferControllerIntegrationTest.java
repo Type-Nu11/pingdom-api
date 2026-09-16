@@ -375,6 +375,63 @@ class OfferControllerIntegrationTest {
     }
 
     @Test
+    void merchantFiltersOwnOffersByPlaceAndStatusWithoutLeakingOtherMerchantsOffers() throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        User merchant = saveUser("offerFilterMerchant", UserRole.MERCHANT_OWNER);
+        User otherMerchant = saveUser("offerFilterOtherMerchant", UserRole.MERCHANT_OWNER);
+        MapPlace firstPlace = savePlace(merchant, "첫 번째 필터 장소");
+        MapPlace secondPlace = savePlace(merchant, "두 번째 필터 장소");
+        MapPlace inaccessiblePlace = savePlace(merchant, "권한 없는 장소");
+        MapPlace otherPlace = savePlace(otherMerchant, "다른 사장님 장소");
+        activateMerchant(merchant, firstPlace, now);
+        activateMerchant(merchant, secondPlace, now);
+        activateMerchant(otherMerchant, otherPlace, now);
+
+        saveOffer(merchant, firstPlace, "첫 번째 초안", OfferStatus.DRAFT, now);
+        saveOffer(merchant, firstPlace, "첫 번째 게시", OfferStatus.PUBLISHED, now);
+        saveOffer(merchant, secondPlace, "두 번째 게시", OfferStatus.PUBLISHED, now);
+        saveOffer(merchant, inaccessiblePlace, "접근 불가 Offer", OfferStatus.DRAFT, now);
+        saveOffer(otherMerchant, otherPlace, "다른 사장님 게시", OfferStatus.PUBLISHED, now);
+
+        mockMvc.perform(get("/merchant-owner/offers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(merchant)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(3));
+
+        mockMvc.perform(get("/merchant-owner/offers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(merchant))
+                        .param("placeId", firstPlace.getId().toString())
+                        .param("status", "PUBLISHED"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.totalElements").value(1))
+                .andExpect(jsonPath("$.offers[0].title").value("첫 번째 게시"));
+
+        mockMvc.perform(get("/merchant-owner/offers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(merchant))
+                        .param("status", "PUBLISHED")
+                        .param("page", "2")
+                        .param("limit", "1"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.totalElements").value(2))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(false))
+                .andExpect(jsonPath("$.offers[0].title").value("첫 번째 게시"));
+
+        mockMvc.perform(get("/merchant-owner/offers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(merchant))
+                        .param("placeId", otherPlace.getId().toString()))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.offers.length()").value(0))
+                .andExpect(jsonPath("$.totalElements").value(0));
+
+        mockMvc.perform(get("/merchant-owner/offers")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(merchant))
+                        .param("status", "UNKNOWN"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
     void merchantWithdrawalClosesOffersWithoutDeletingTouristCoupons() {
         WithdrawalFixture fixture = withdrawalFixture();
 
@@ -532,6 +589,39 @@ class OfferControllerIntegrationTest {
                 .country("KR")
                 .role(role)
                 .build());
+    }
+
+    private MapPlace savePlace(User merchant, String name) {
+        return mapPlaceRepository.saveAndFlush(MapPlace.builder()
+                .name(name)
+                .address("서울시 중구")
+                .latitude(37.5665)
+                .longitude(126.9780)
+                .userId(merchant.getId())
+                .registrant(merchant.getUsername())
+                .build());
+    }
+
+    private void saveOffer(User merchant, MapPlace place, String title, OfferStatus status, LocalDateTime now) {
+        TouristOffer offer = TouristOffer.draft(
+                merchant.getId(),
+                place.getId(),
+                title,
+                "설명",
+                "혜택",
+                now.minusHours(1),
+                now.plusDays(3),
+                10,
+                1,
+                now.minusDays(1)
+        );
+        if (status == OfferStatus.PUBLISHED || status == OfferStatus.CLOSED) {
+            offer.publish(now);
+        }
+        if (status == OfferStatus.CLOSED) {
+            offer.close(now);
+        }
+        offerRepository.saveAndFlush(offer);
     }
 
     private void activateMerchant(User merchant, MapPlace place, LocalDateTime now) {

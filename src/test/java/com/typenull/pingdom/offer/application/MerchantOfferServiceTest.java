@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
+import static org.mockito.Mockito.lenient;
 
 import com.typenull.pingdom.offer.api.dto.CouponRedeemRequest;
 import com.typenull.pingdom.offer.api.dto.OfferCreateRequest;
@@ -12,6 +13,7 @@ import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
 import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
 import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
 import com.typenull.pingdom.offer.domain.CouponStatus;
+import com.typenull.pingdom.offer.domain.OfferStatus;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
@@ -23,6 +25,7 @@ import java.time.Instant;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import java.util.Optional;
+import java.util.List;
 import org.mockito.ArgumentCaptor;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -30,6 +33,8 @@ import org.junit.jupiter.api.extension.ExtendWith;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantOfferServiceTest {
@@ -46,8 +51,8 @@ class MerchantOfferServiceTest {
 
     @BeforeEach
     void setUpClock() {
-        when(clock.instant()).thenReturn(Instant.parse("2026-07-16T12:00:00Z"));
-        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+        lenient().when(clock.instant()).thenReturn(Instant.parse("2026-07-16T12:00:00Z"));
+        lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
     @Test
@@ -135,6 +140,34 @@ class MerchantOfferServiceTest {
         assertThat(saved.getInventoryPolicy()).isEqualTo(CouponInventoryPolicy.UNLIMITED);
         assertThat(saved.getExpiryPolicy()).isEqualTo(CouponExpiryPolicy.OFFER_END);
         assertThat(response.remainingQuantity()).isNull();
+    }
+
+    @Test
+    void listAppliesPlaceAndStatusFiltersBeforePagination() {
+        TouristOffer offer = offer();
+        when(offerRepository.findAllByMerchantOwnerUserIdWithFilters(
+                org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.eq(100L),
+                org.mockito.ArgumentMatchers.eq(OfferStatus.PUBLISHED),
+                org.mockito.ArgumentMatchers.any(Pageable.class)
+        )).thenReturn(new PageImpl<>(List.of(offer)));
+
+        var response = offerService.list(10L, 1, 20, 100L, OfferStatus.PUBLISHED);
+
+        ArgumentCaptor<Pageable> pageableCaptor = ArgumentCaptor.forClass(Pageable.class);
+        verify(offerRepository).findAllByMerchantOwnerUserIdWithFilters(
+                org.mockito.ArgumentMatchers.eq(10L),
+                org.mockito.ArgumentMatchers.eq(100L),
+                org.mockito.ArgumentMatchers.eq(OfferStatus.PUBLISHED),
+                pageableCaptor.capture()
+        );
+        assertThat(pageableCaptor.getValue().getPageNumber()).isZero();
+        assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(20);
+        assertThat(pageableCaptor.getValue().getSort().toList())
+                .extracting(order -> order.getProperty() + ":" + order.getDirection())
+                .containsExactly("createdAt:DESC", "id:DESC");
+        assertThat(response.totalElements()).isOne();
+        assertThat(response.offers()).extracting(OfferResponse::placeId).containsExactly(100L);
     }
 
     private TouristOffer offer() {
