@@ -17,6 +17,7 @@ import java.security.MessageDigest;
 import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import org.springframework.stereotype.Service;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -32,6 +33,7 @@ public class VoiceAiSessionService {
     private final Clock clock;
     private final ProviderEnvelopeValidator envelopeValidator;
 
+    @Autowired
     public VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, VoiceAiReplayRepository replayRepository,
                                  GeminiProperties geminiProperties, GeminiVoiceClient geminiVoiceClient,
                                  ProviderEnvelopeValidator envelopeValidator) {
