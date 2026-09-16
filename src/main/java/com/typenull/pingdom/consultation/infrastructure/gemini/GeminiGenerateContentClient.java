@@ -47,7 +47,7 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
                 .body(new GenerateContentRequest(
                         List.of(new Content(List.of(new Part(message)))),
                         new Content(List.of(new Part(SYSTEM_INSTRUCTION))),
-                        new GenerationConfig(MAX_OUTPUT_TOKENS, CANDIDATE_COUNT)
+                        new GenerationConfig(MAX_OUTPUT_TOKENS, CANDIDATE_COUNT, null)
                 ))
                 .retrieve()
                 .body(JsonNode.class);
@@ -79,7 +79,7 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
                 .body(new GenerateContentRequest(
                         List.of(new Content(List.of(new Part(message)))),
                         new Content(List.of(new Part(VOICE_SYSTEM_INSTRUCTION + "\\nrequest id: " + requestId))),
-                        new GenerationConfig(512, CANDIDATE_COUNT)
+                        new GenerationConfig(512, CANDIDATE_COUNT, MediaType.APPLICATION_JSON_VALUE)
                 ))
                 .retrieve()
                 .body(JsonNode.class);
@@ -122,6 +122,6 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
     private record Part(String text) {
     }
 
-    private record GenerationConfig(int maxOutputTokens, int candidateCount) {
+    private record GenerationConfig(int maxOutputTokens, int candidateCount, String responseMimeType) {
     }
 }

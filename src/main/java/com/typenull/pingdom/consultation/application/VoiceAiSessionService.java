@@ -1,17 +1,21 @@
 package com.typenull.pingdom.consultation.application;
 
 import com.fasterxml.jackson.databind.JsonNode;
-import com.typenull.pingdom.consultation.api.dto.VoiceAiEnvelopeResponse;
 import com.typenull.pingdom.consultation.api.dto.VoiceAiSessionResponse;
 import com.typenull.pingdom.consultation.domain.VoiceAiSession;
+import com.typenull.pingdom.consultation.domain.VoiceAiReplay;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiErrorCode;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiSessionRepository;
+import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiReplayRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.UUID;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
+import java.util.HexFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
@@ -22,20 +26,26 @@ public class VoiceAiSessionService {
     private static final int MAX_ENVELOPE_BYTES = 16 * 1024;
 
     private final VoiceAiSessionRepository sessionRepository;
+    private final VoiceAiReplayRepository replayRepository;
     private final GeminiProperties geminiProperties;
     private final GeminiVoiceClient geminiVoiceClient;
     private final Clock clock;
+    private final ProviderEnvelopeValidator envelopeValidator;
 
-    public VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, GeminiProperties geminiProperties,
-                                 GeminiVoiceClient geminiVoiceClient) {
-        this(sessionRepository, geminiProperties, geminiVoiceClient, Clock.systemDefaultZone());
+    public VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, VoiceAiReplayRepository replayRepository,
+                                 GeminiProperties geminiProperties, GeminiVoiceClient geminiVoiceClient,
+                                 ProviderEnvelopeValidator envelopeValidator) {
+        this(sessionRepository, replayRepository, geminiProperties, geminiVoiceClient, envelopeValidator, Clock.systemDefaultZone());
     }
 
-    VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, GeminiProperties geminiProperties,
-                          GeminiVoiceClient geminiVoiceClient, Clock clock) {
+    VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, VoiceAiReplayRepository replayRepository,
+                          GeminiProperties geminiProperties, GeminiVoiceClient geminiVoiceClient,
+                          ProviderEnvelopeValidator envelopeValidator, Clock clock) {
         this.sessionRepository = sessionRepository;
+        this.replayRepository = replayRepository;
         this.geminiProperties = geminiProperties;
         this.geminiVoiceClient = geminiVoiceClient;
+        this.envelopeValidator = envelopeValidator;
         this.clock = clock;
     }
 
@@ -61,17 +71,26 @@ public class VoiceAiSessionService {
         requireSession(sessionId, userId).close(now());
     }
 
-    @Transactional(readOnly = true)
-    public VoiceAiEnvelopeResponse send(String sessionId, Long userId, String text, String requestId) {
+    @Transactional
+    public JsonNode send(String sessionId, Long userId, String text, String requestId) {
         VoiceAiSession session = requireSession(sessionId, userId);
         requireUsable(session);
+        String payloadHash = sha256(text);
+        VoiceAiReplay replay = replayRepository.findBySessionIdAndRequestId(sessionId, requestId).orElse(null);
+        if (replay != null) {
+            if (!replay.hasSamePayload(payloadHash)) {
+                throw new VoiceAiException(VoiceAiErrorCode.REPLAY_CONFLICT);
+            }
+            return replay.getEnvelope();
+        }
         if (!geminiProperties.enabled() || !StringUtils.hasText(geminiProperties.apiKey())) {
             throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE);
         }
         try {
             JsonNode envelope = geminiVoiceClient.generateEnvelope(text, requestId);
             validateEnvelope(envelope, requestId);
-            return new VoiceAiEnvelopeResponse(envelope);
+            replayRepository.save(VoiceAiReplay.create(sessionId, requestId, payloadHash, envelope, now()));
+            return envelope;
         } catch (VoiceAiException exception) {
             throw exception;
         } catch (RuntimeException exception) {
@@ -101,15 +120,18 @@ public class VoiceAiSessionService {
                 || envelope.toString().getBytes(StandardCharsets.UTF_8).length > MAX_ENVELOPE_BYTES
                 || envelope.path("schemaVersion").asInt() != 1
                 || !requestId.equals(envelope.path("id").asText())
-                || !isAllowedKind(envelope.path("kind").asText())
                 || envelope.has("source") || envelope.has("command_result")) {
             throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
         }
+        envelopeValidator.validate(envelope, requestId);
     }
 
-    private boolean isAllowedKind(String kind) {
-        return "command_request".equals(kind) || "clarification_request".equals(kind)
-                || "assistant_message".equals(kind) || "protocol_error".equals(kind);
+    private String sha256(String value) {
+        try {
+            return HexFormat.of().formatHex(MessageDigest.getInstance("SHA-256").digest(value.getBytes(StandardCharsets.UTF_8)));
+        } catch (NoSuchAlgorithmException exception) {
+            throw new IllegalStateException("SHA-256 algorithm is unavailable", exception);
+        }
     }
 
     private LocalDateTime now() {

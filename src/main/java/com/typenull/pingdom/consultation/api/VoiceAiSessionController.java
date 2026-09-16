@@ -1,6 +1,6 @@
 package com.typenull.pingdom.consultation.api;
 
-import com.typenull.pingdom.consultation.api.dto.VoiceAiEnvelopeResponse;
+import com.fasterxml.jackson.databind.JsonNode;
 import com.typenull.pingdom.consultation.api.dto.VoiceAiMessageRequest;
 import com.typenull.pingdom.consultation.api.dto.VoiceAiSessionResponse;
 import com.typenull.pingdom.consultation.application.VoiceAiSessionService;
@@ -52,7 +52,7 @@ public class VoiceAiSessionController {
             @ApiResponse(responseCode = "410", description = "만료 또는 종료된 세션", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "502", description = "provider 장애 또는 계약 위반", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class)))
     })
-    public VoiceAiEnvelopeResponse send(
+    public JsonNode send(
             @PathVariable String sessionId,
             @Valid @RequestBody VoiceAiMessageRequest request,
             @CurrentUser JwtAuthenticatedUser user
