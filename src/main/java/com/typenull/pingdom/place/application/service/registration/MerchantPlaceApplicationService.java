@@ -24,6 +24,8 @@ import com.typenull.pingdom.identity.infrastructure.crypto.MerchantVerificationC
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
+import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
+import com.typenull.pingdom.moderation.domain.exception.AdminException;
 import com.typenull.pingdom.offer.infrastructure.TouristOfferRepository;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationAttachmentResponse;
@@ -124,21 +126,27 @@ public class MerchantPlaceApplicationService {
             Long adminUserId,
             List<PlaceRegistrationStatus> statuses,
             MerchantPlaceApplicationType applicationType,
+            String keyword,
+            LocalDateTime submittedFrom,
+            LocalDateTime submittedTo,
             int page,
             int limit
     ) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
-        var pageable = pageable(page, limit);
-        Page<PlaceRegistrationApplication> result;
-        if (statuses != null && !statuses.isEmpty() && applicationType != null) {
-            result = applicationRepository.findAllByStatusInAndApplicationType(statuses, applicationType, pageable);
-        } else if (statuses != null && !statuses.isEmpty()) {
-            result = applicationRepository.findAllByStatusIn(statuses, pageable);
-        } else if (applicationType != null) {
-            result = applicationRepository.findAllByApplicationType(applicationType, pageable);
-        } else {
-            result = applicationRepository.findAll(pageable);
+        if (submittedFrom != null && submittedTo != null && submittedTo.isBefore(submittedFrom)) {
+            throw new AdminException(AdminErrorCode.INVALID_MERCHANT_PLACE_APPLICATION_FILTER_PERIOD);
         }
+        List<PlaceRegistrationStatus> effectiveStatuses = statuses == null || statuses.isEmpty()
+                ? List.of(PlaceRegistrationStatus.values())
+                : statuses;
+        Page<PlaceRegistrationApplication> result = applicationRepository.searchForAdmin(
+                effectiveStatuses,
+                applicationType,
+                normalizeKeyword(keyword),
+                submittedFrom,
+                submittedTo,
+                pageable(page, limit)
+        );
         return new AdminMerchantPlaceApplicationPageResponse(
                 result.getContent().stream()
                         .map(application -> AdminMerchantPlaceApplicationListItemResponse.from(
@@ -620,6 +628,14 @@ public class MerchantPlaceApplicationService {
 
     private String normalizedReason(MerchantPlaceApplicationReviewRequest request) {
         return request.reason() == null ? "" : request.reason().trim();
+    }
+
+    private String normalizeKeyword(String keyword) {
+        if (keyword == null) {
+            return null;
+        }
+        String trimmedKeyword = keyword.trim();
+        return trimmedKeyword.isEmpty() ? null : trimmedKeyword;
     }
 
     private String normalizeBusinessRegistrationNumber(String value) {
