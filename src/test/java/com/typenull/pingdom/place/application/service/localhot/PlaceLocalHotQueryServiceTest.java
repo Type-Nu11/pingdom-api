@@ -20,6 +20,29 @@ import org.springframework.data.domain.Pageable;
 class PlaceLocalHotQueryServiceTest {
 
     @Test
+    void 지역에_장소가_없으면_정상_빈_목록을_반환한다() {
+        PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
+        PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
+        PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
+        when(regionResolver.resolve(37.5172d, 127.0473d)).thenReturn(
+                new ResolvedPlaceAdministrativeRegion("11680", "서울특별시", "강남구", "서울특별시 강남구"));
+        when(queryRepository.countLocalHotPlaces("11680")).thenReturn(0L);
+        when(queryRepository.findLocalHotPlaces(eq("11680"), eq(7L), any(Pageable.class)))
+                .thenReturn(List.of());
+        PlaceLocalHotQueryService service = new PlaceLocalHotQueryService(
+                regionResolver, regionRepository, queryRepository);
+
+        PlaceLocalHotResponse response = service.find(
+                new PlaceLocalHotQuery(37.5172d, 127.0473d, null, 1, 20), 7L);
+
+        assertThat(response.region().regionCode()).isEqualTo("11680");
+        assertThat(response.places()).isEmpty();
+        assertThat(response.totalElements()).isZero();
+        assertThat(response.totalPages()).isEqualTo(1);
+        assertThat(response.hasNext()).isFalse();
+    }
+
+    @Test
     void 좌표로_법정동_시군구를_판정하고_페이지_순위를_유지한다() {
         PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
         PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
