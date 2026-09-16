@@ -17,7 +17,25 @@ import org.springframework.data.repository.query.Param;
 
 public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long> {
 
-    Page<TouristOffer> findAllByMerchantOwnerUserId(Long merchantOwnerUserId, Pageable pageable);
+    @Query("""
+            SELECT offer
+            FROM TouristOffer offer
+            WHERE offer.merchantOwnerUserId = :merchantOwnerUserId
+              AND EXISTS (
+                  SELECT ownerPlace.placeId
+                  FROM MerchantOwnerPlace ownerPlace
+                  WHERE ownerPlace.merchantOwnerUserId = :merchantOwnerUserId
+                    AND ownerPlace.placeId = offer.placeId
+              )
+              AND (:placeId IS NULL OR offer.placeId = :placeId)
+              AND (:status IS NULL OR offer.status = :status)
+            """)
+    Page<TouristOffer> findAllByMerchantOwnerUserIdWithFilters(
+            @Param("merchantOwnerUserId") Long merchantOwnerUserId,
+            @Param("placeId") Long placeId,
+            @Param("status") OfferStatus status,
+            Pageable pageable
+    );
 
     List<TouristOffer> findAllByMerchantOwnerUserIdOrderByCreatedAtDescIdDesc(Long merchantOwnerUserId);
 

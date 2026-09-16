@@ -8,6 +8,7 @@ import com.typenull.pingdom.offer.api.dto.OfferResponse;
 import com.typenull.pingdom.offer.domain.CouponEligibilityPolicy;
 import com.typenull.pingdom.offer.domain.CouponExpiryPolicy;
 import com.typenull.pingdom.offer.domain.CouponInventoryPolicy;
+import com.typenull.pingdom.offer.domain.OfferStatus;
 import com.typenull.pingdom.offer.domain.TouristCoupon;
 import com.typenull.pingdom.offer.domain.TouristOffer;
 import com.typenull.pingdom.offer.domain.exception.OfferErrorCode;
@@ -69,9 +70,11 @@ public class MerchantOfferService {
     }
 
     @Transactional(readOnly = true)
-    public OfferPageResponse list(Long merchantOwnerUserId, int page, int limit) {
-        Page<TouristOffer> result = offerRepository.findAllByMerchantOwnerUserId(
+    public OfferPageResponse list(Long merchantOwnerUserId, int page, int limit, Long placeId, OfferStatus status) {
+        Page<TouristOffer> result = offerRepository.findAllByMerchantOwnerUserIdWithFilters(
                 merchantOwnerUserId,
+                placeId,
+                status,
                 pageRequest(page, limit, "createdAt")
         );
         return offerPage(result);
