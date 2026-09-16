@@ -5,6 +5,8 @@ import com.typenull.pingdom.consultation.api.dto.VoiceAiMessageRequest;
 import com.typenull.pingdom.consultation.api.dto.VoiceAiSessionResponse;
 import com.typenull.pingdom.consultation.application.VoiceAiSessionService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
+import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
@@ -43,6 +45,7 @@ public class VoiceAiSessionController {
     }
 
     @PostMapping("/{sessionId}/messages")
+    @RateLimited(RateLimitAction.CONSULTATION_INTRO)
     @Operation(summary = "음성 AI 메시지 전송", description = "ProviderEnvelope v1 최종 JSON만 반환합니다. requestId는 앱 재전송 시 동일하게 유지해야 합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "최종 envelope 반환"),
