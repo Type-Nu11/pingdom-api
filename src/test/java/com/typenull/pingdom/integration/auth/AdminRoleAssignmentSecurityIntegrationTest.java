@@ -40,6 +40,9 @@ class AdminRoleAssignmentSecurityIntegrationTest extends AuthRegressionIntegrati
 
     @Test
     void roleEndpointsRejectUnauthenticatedRequests() throws Exception {
+        mockMvc.perform(get("/admin/users/role-targets"))
+                .andExpect(status().isUnauthorized())
+                .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
         mockMvc.perform(get("/admin/users/20/roles"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
@@ -57,8 +60,12 @@ class AdminRoleAssignmentSecurityIntegrationTest extends AuthRegressionIntegrati
     void nonAdminCannotAccessRoleEndpoints() throws Exception {
         User user = saveUser("role-normal-user", UserRole.USER);
 
-        mockMvc.perform(get("/admin/users/20/roles")
+        mockMvc.perform(get("/admin/users/role-targets")
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(user)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
+        mockMvc.perform(get("/admin/users/20/roles")
+                .header(HttpHeaders.AUTHORIZATION, bearerToken(user)))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
@@ -122,12 +129,76 @@ class AdminRoleAssignmentSecurityIntegrationTest extends AuthRegressionIntegrati
                 actor.getId(), AdminRole.ANALYST, actor.getId(), LocalDateTime.now()
         ));
 
+        mockMvc.perform(get("/admin/users/role-targets")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(actor)))
+                .andExpect(status().isForbidden())
+                .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
         mockMvc.perform(post("/admin/users/{userId}/roles", target.getId())
-                        .header(HttpHeaders.AUTHORIZATION, bearerToken(actor))
+                .header(HttpHeaders.AUTHORIZATION, bearerToken(actor))
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("{\"role\":\"SUPPORT_OPERATOR\"}"))
                 .andExpect(status().isForbidden())
                 .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
+    }
+
+    @Test
+    void superAdminCanSearchRoleAssignmentTargetsWithPagination() throws Exception {
+        User actor = saveUser("role-search-super-admin", UserRole.ADMIN);
+        assignmentRepository.saveAndFlush(AdminRoleAssignment.assign(
+                actor.getId(), AdminRole.SUPER_ADMIN, actor.getId(), LocalDateTime.now()
+        ));
+        User alpha = saveUser("roleSearchAlpha", UserRole.ADMIN);
+        User banned = saveUser("roleSearchBanned", UserRole.ADMIN);
+        banned.ban("검색 대상 포함 확인", LocalDateTime.now());
+        userRepository.saveAndFlush(banned);
+        User beta = saveUser("roleSearchBeta", UserRole.ADMIN);
+        saveUser("roleSearchNormalUser", UserRole.USER);
+
+        mockMvc.perform(get("/admin/users/role-targets")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(actor))
+                        .param("keyword", "roleSearch")
+                        .param("page", "1")
+                        .param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(2))
+                .andExpect(jsonPath("$.users[0].userId").value(alpha.getId()))
+                .andExpect(jsonPath("$.users[0].username").value("roleSearchAlpha"))
+                .andExpect(jsonPath("$.users[1].userId").value(banned.getId()))
+                .andExpect(jsonPath("$.users[0].email").doesNotExist())
+                .andExpect(jsonPath("$.totalCount").value(3))
+                .andExpect(jsonPath("$.totalPages").value(2))
+                .andExpect(jsonPath("$.hasNext").value(true));
+
+        mockMvc.perform(get("/admin/users/role-targets")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(actor))
+                        .param("keyword", "roleSearch")
+                        .param("page", "2")
+                        .param("limit", "2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(1))
+                .andExpect(jsonPath("$.users[0].userId").value(beta.getId()))
+                .andExpect(jsonPath("$.page").value(2))
+                .andExpect(jsonPath("$.hasNext").value(false));
+
+        mockMvc.perform(get("/admin/users/role-targets")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(actor))
+                        .param("keyword", "not-found"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(0))
+                .andExpect(jsonPath("$.totalCount").value(0))
+                .andExpect(jsonPath("$.hasNext").value(false));
+
+        mockMvc.perform(get("/admin/users/role-targets")
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(actor))
+                        .param("keyword", "   ")
+                        .param("page", "0")
+                        .param("limit", "101"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.users.length()").value(4))
+                .andExpect(jsonPath("$.page").value(1))
+                .andExpect(jsonPath("$.limit").value(100))
+                .andExpect(jsonPath("$.totalCount").value(4))
+                .andExpect(jsonPath("$.hasNext").value(false));
     }
 
     @Test

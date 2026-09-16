@@ -2,6 +2,7 @@ package com.typenull.pingdom.identity.domain.repository;
 
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserBanType;
+import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.UserStatus;
 import com.typenull.pingdom.identity.domain.travel.TravelSchedule;
 import com.typenull.pingdom.identity.domain.travel.UserCurrentActivityIntent;
@@ -42,6 +43,21 @@ public interface UserRepository extends JpaRepository<User, Long> {
     Optional<User> findByEmailIgnoreCase(String email);
 
     Optional<User> findByEmailAndEmailVerificationCode(String email, String emailVerificationCode);
+
+    @Query("""
+            SELECT u
+            FROM User u
+            WHERE u.role = :role
+              AND (
+                    :keyword IS NULL
+                    OR LOWER(u.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+            """)
+    Page<User> findAllRoleAssignmentTargets(
+            @Param("role") UserRole role,
+            @Param("keyword") String keyword,
+            Pageable pageable
+    );
 
     @Query("""
             SELECT u

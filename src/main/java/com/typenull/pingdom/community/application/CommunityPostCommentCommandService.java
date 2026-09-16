@@ -21,7 +21,7 @@ public class CommunityPostCommentCommandService {
 
     @Transactional
     public CommunityPostCommentCreateResponse create(long postId, long userId, CommunityPostCommentCreateRequest request) {
-        CommunityPost post = communityPostRepository.findById(postId)
+        CommunityPost post = communityPostRepository.findByIdAndHiddenFalse(postId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
         CommunityPostComment comment = communityPostCommentRepository.save(CommunityPostComment.create(
                 post,

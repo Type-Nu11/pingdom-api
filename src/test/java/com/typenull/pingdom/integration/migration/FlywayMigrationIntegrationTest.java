@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "131";
+    private static final String LATEST_MIGRATION_VERSION = "133";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -76,9 +76,151 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(131);
+        assertThat(result.migrationsExecuted).isEqualTo(133);
 
         assertPostMigrationSchema();
+    }
+
+    @Test
+    void enforcesCommunityReportConstraintsAndIndexes() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO community_post (community_post_id, category_id, title, content, user_id)
+                    VALUES (132001, 'travel', '제목', '내용', 1)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_post_comment (community_post_comment_id, community_post_id, user_id, content)
+                    VALUES (132001, 132001, 1, '댓글')
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_report (reporter_user_id, community_post_id, reason, description)
+                    VALUES (2, 132001, 'SPAM', '도배')
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_report (reporter_user_id, community_post_comment_id, reason, description)
+                    VALUES (2, 132001, 'ABUSE', '욕설')
+                    """);
+            // 다른 신고자는 같은 대상을 신고할 수 있다.
+            statement.executeUpdate("""
+                    INSERT INTO community_report (reporter_user_id, community_post_id, reason, description)
+                    VALUES (3, 132001, 'OTHER', '기타')
+                    """);
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3 FROM community_report
+                    WHERE status = 'PENDING' AND processed_at IS NULL
+                        AND processed_by_admin_user_id IS NULL AND version = 0
+                    """)).isTrue();
+
+            String duplicatePost = """
+                    INSERT INTO community_report (reporter_user_id, community_post_id, reason, description)
+                    VALUES (2, 132001, 'OTHER', '다른 사유')
+                    """;
+            String duplicateComment = """
+                    INSERT INTO community_report (reporter_user_id, community_post_comment_id, reason, description)
+                    VALUES (2, 132001, 'OTHER', '다른 사유')
+                    """;
+            assertThatThrownBy(() -> statement.executeUpdate(duplicatePost))
+                    .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23505");
+            assertThatThrownBy(() -> statement.executeUpdate(duplicateComment))
+                    .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23505");
+            statement.executeUpdate("""
+                    UPDATE community_report SET status = 'ACCEPTED', processed_by_admin_user_id = 9,
+                        processed_at = CURRENT_TIMESTAMP WHERE community_post_id IS NOT NULL
+                    """);
+            statement.executeUpdate("""
+                    UPDATE community_report SET status = 'DECLINED', processed_by_admin_user_id = 9,
+                        processed_at = CURRENT_TIMESTAMP WHERE community_post_comment_id IS NOT NULL
+                    """);
+            // 수락·반려 후에도 동일 신고자의 재신고는 금지한다.
+            assertThatThrownBy(() -> statement.executeUpdate(duplicatePost))
+                    .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23505");
+            assertThatThrownBy(() -> statement.executeUpdate(duplicateComment))
+                    .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23505");
+
+            for (String invalidValues : new String[] {
+                    "(4, NULL, NULL, 'SPAM', '설명')",
+                    "(4, 132001, 132001, 'SPAM', '설명')",
+                    "(0, 132001, NULL, 'SPAM', '설명')",
+                    "(4, 132001, NULL, 'UNKNOWN', '설명')",
+                    "(4, 132001, NULL, 'SPAM', '   ')"
+            }) {
+                assertThatThrownBy(() -> statement.executeUpdate("""
+                        INSERT INTO community_report
+                            (reporter_user_id, community_post_id, community_post_comment_id, reason, description)
+                        VALUES """ + invalidValues))
+                        .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23514");
+            }
+            for (String invalidUpdate : new String[] {
+                    "status = 'UNKNOWN'",
+                    "status = 'PENDING'",
+                    "processed_at = NULL",
+                    "processed_by_admin_user_id = NULL",
+                    "processed_by_admin_user_id = 0",
+                    "processed_at = created_at - INTERVAL '1 second'"
+            }) {
+                assertThatThrownBy(() -> statement.executeUpdate("UPDATE community_report SET " + invalidUpdate))
+                        .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23514");
+            }
+            assertThatThrownBy(() -> statement.executeUpdate("""
+                    INSERT INTO community_report (reporter_user_id, community_post_id, reason, description)
+                    VALUES (4, 999999, 'SPAM', '설명')
+                    """)).isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23503");
+            assertThatThrownBy(() -> statement.executeUpdate("""
+                    INSERT INTO community_report (reporter_user_id, community_post_comment_id, reason, description)
+                    VALUES (4, 999999, 'SPAM', '설명')
+                    """)).isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23503");
+            assertThatThrownBy(() -> statement.executeUpdate("DELETE FROM community_post WHERE community_post_id = 132001"))
+                    .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23503");
+            assertThatThrownBy(() -> statement.executeUpdate("DELETE FROM community_post_comment WHERE community_post_comment_id = 132001"))
+                    .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23503");
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 3 FROM pg_indexes WHERE schemaname = 'public'
+                        AND tablename = 'community_report'
+                        AND indexname IN ('idx_community_report_status_created',
+                            'idx_community_report_post_status', 'idx_community_report_comment_status')
+                    """)).isTrue();
+        }
+    }
+
+    @Test
+    void addsCommunityReportVisibilityColumnsAndIndexes() throws Exception {
+        migrate(false);
+
+        try (Connection connection = postgres.createConnection("");
+             Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO community_post (community_post_id, category_id, title, content, user_id)
+                    VALUES (133001, 'travel', '숨김 대상 글', '내용', 1)
+                    """);
+            statement.executeUpdate("""
+                    INSERT INTO community_post_comment (community_post_comment_id, community_post_id, user_id, content)
+                    VALUES (133001, 133001, 1, '숨김 대상 댓글')
+                    """);
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT hidden AND hidden_by_admin_user_id IS NULL AND hidden_at IS NULL
+                    FROM community_post WHERE community_post_id = 133001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT NOT hidden AND hidden_by_admin_user_id IS NULL AND hidden_at IS NULL
+                    FROM community_post_comment WHERE community_post_comment_id = 133001
+                    """)).isTrue();
+            statement.executeUpdate("""
+                    UPDATE community_post SET hidden = TRUE, hidden_by_admin_user_id = 9,
+                        hidden_at = CURRENT_TIMESTAMP WHERE community_post_id = 133001
+                    """);
+            statement.executeUpdate("""
+                    UPDATE community_post_comment SET hidden = TRUE, hidden_by_admin_user_id = 9,
+                        hidden_at = CURRENT_TIMESTAMP WHERE community_post_comment_id = 133001
+                    """);
+            assertThat(queryBoolean(statement, """
+                    SELECT COUNT(*) = 2 FROM pg_indexes WHERE schemaname = 'public'
+                      AND indexname IN ('idx_community_post_visible_category_created_at',
+                          'idx_community_post_comment_visible_post_created_at')
+                    """)).isTrue();
+        }
     }
 
     @Test
@@ -368,7 +510,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(42);
+        assertThat(result.migrationsExecuted).isEqualTo(44);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -469,7 +611,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(129);
+        assertThat(result.migrationsExecuted).isEqualTo(131);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -583,7 +725,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(104);
+        assertThat(result.migrationsExecuted).isEqualTo(106);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -819,7 +961,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(76);
+        assertThat(result.migrationsExecuted).isEqualTo(78);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """

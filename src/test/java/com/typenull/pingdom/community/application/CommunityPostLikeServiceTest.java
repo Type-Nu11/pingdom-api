@@ -17,7 +17,7 @@ class CommunityPostLikeServiceTest {
 
     @Test
     void 중복_좋아요도_하나의_좋아요_상태로_반환한다() {
-        when(postRepository.existsById(10L)).thenReturn(true);
+        when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(likeRepository.countByCommunityPostId(10L)).thenReturn(3L);
         when(likeRepository.existsByCommunityPostIdAndUserId(10L, 7L)).thenReturn(true);
 
@@ -29,7 +29,7 @@ class CommunityPostLikeServiceTest {
 
     @Test
     void 이미_취소한_좋아요도_취소된_상태를_반환한다() {
-        when(postRepository.existsById(10L)).thenReturn(true);
+        when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(likeRepository.countByCommunityPostId(10L)).thenReturn(2L);
         when(likeRepository.existsByCommunityPostIdAndUserId(10L, 7L)).thenReturn(false);
 
@@ -38,7 +38,7 @@ class CommunityPostLikeServiceTest {
 
     @Test
     void 없는_게시글에는_좋아요를_등록하지_않는다() {
-        when(postRepository.existsById(10L)).thenReturn(false);
+        when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(false);
         assertThatThrownBy(() -> service.like(10L, 7L)).isInstanceOf(CommunityException.class);
         verifyNoInteractions(likeRepository);
     }

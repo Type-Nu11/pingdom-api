@@ -534,6 +534,9 @@ class OpenApiDocumentationValidationTest {
         JsonNode operation = adminDocument.at("/paths/~1admin~1merchant-place-applications/get");
         JsonNode statusParameter = parameter(operation, "status");
         JsonNode applicationTypeParameter = parameter(operation, "applicationType");
+        JsonNode keywordParameter = parameter(operation, "keyword");
+        JsonNode submittedFromParameter = parameter(operation, "submittedFrom");
+        JsonNode submittedToParameter = parameter(operation, "submittedTo");
 
         assertThat(statusParameter.path("in").asText()).isEqualTo("query");
         assertThat(statusParameter.path("style").asText()).isEqualTo("form");
@@ -547,6 +550,9 @@ class OpenApiDocumentationValidationTest {
         assertThat(applicationTypeParameter.path("schema").path("enum"))
                 .extracting(JsonNode::asText)
                 .containsExactlyInAnyOrder("NEW_PLACE", "EXISTING_PLACE_CLAIM");
+        assertThat(keywordParameter.path("description").asText()).contains("username", "공백");
+        assertThat(submittedFromParameter.path("schema").path("format").asText()).isEqualTo("date-time");
+        assertThat(submittedToParameter.path("schema").path("format").asText()).isEqualTo("date-time");
     }
 
     @Test

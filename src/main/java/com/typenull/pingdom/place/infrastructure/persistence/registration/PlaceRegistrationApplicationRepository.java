@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.infrastructure.persistence.registration;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
+import java.time.LocalDateTime;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.Optional;
@@ -37,6 +38,31 @@ public interface PlaceRegistrationApplicationRepository extends JpaRepository<Pl
     Page<PlaceRegistrationApplication> findAllByStatusInAndApplicationType(
             Collection<PlaceRegistrationStatus> statuses,
             MerchantPlaceApplicationType applicationType,
+            Pageable pageable
+    );
+
+    @Query("""
+            SELECT application
+            FROM PlaceRegistrationApplication application
+            LEFT JOIN User applicant ON applicant.id = application.applicantUserId
+            LEFT JOIN MapPlace existingPlace ON existingPlace.id = application.existingPlaceId
+            WHERE application.status IN :statuses
+              AND (:applicationType IS NULL OR application.applicationType = :applicationType)
+              AND (
+                    :keyword IS NULL
+                    OR LOWER(application.placeName) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(applicant.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                    OR LOWER(existingPlace.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
+                  )
+              AND (:submittedFrom IS NULL OR application.submittedAt >= :submittedFrom)
+              AND (:submittedTo IS NULL OR application.submittedAt <= :submittedTo)
+            """)
+    Page<PlaceRegistrationApplication> searchForAdmin(
+            @Param("statuses") Collection<PlaceRegistrationStatus> statuses,
+            @Param("applicationType") MerchantPlaceApplicationType applicationType,
+            @Param("keyword") String keyword,
+            @Param("submittedFrom") LocalDateTime submittedFrom,
+            @Param("submittedTo") LocalDateTime submittedTo,
             Pageable pageable
     );
     long countByStatus(PlaceRegistrationStatus status);
