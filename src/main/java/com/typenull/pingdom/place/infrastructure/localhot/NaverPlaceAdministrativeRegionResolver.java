@@ -6,6 +6,8 @@ import com.typenull.pingdom.place.domain.place.region.ResolvedPlaceAdministrativ
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import lombok.RequiredArgsConstructor;
+import java.time.Instant;
+import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
@@ -20,6 +22,7 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
     @Qualifier("naverLocalRegionRestClient")
     private final RestClient restClient;
     private final NaverLocalRegionProperties properties;
+    private final ConcurrentHashMap<String, CachedRegion> cache = new ConcurrentHashMap<>();
 
     @Override
     public boolean isConfigured() {
@@ -28,9 +31,10 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
 
     @Override
     public ResolvedPlaceAdministrativeRegion resolve(double latitude, double longitude) {
-        if (!isConfigured()) {
-            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_UNAVAILABLE);
-        }
+        if (!isConfigured()) throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_UNAVAILABLE);
+        String cacheKey = cacheKey(latitude, longitude);
+        CachedRegion cached = cache.get(cacheKey);
+        if (cached != null && cached.expiresAt().isAfter(Instant.now())) return cached.region();
         try {
             JsonNode response = restClient.get()
                     .uri(uri -> uri.path("/map-reversegeocode/v2/gc")
@@ -43,14 +47,13 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
                     .header("x-ncp-apigw-api-key-id", properties.clientId())
                     .header("x-ncp-apigw-api-key", properties.clientSecret())
                     .header(HttpHeaders.ACCEPT, "application/json")
-                    .retrieve()
-                    .body(JsonNode.class);
-            return toRegion(response);
-        } catch (MapException exception) {
-            throw exception;
-        } catch (RestClientException exception) {
-            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED);
-        }
+                    .retrieve().body(JsonNode.class);
+            ResolvedPlaceAdministrativeRegion region = toRegion(response);
+            if (cache.size() >= properties.cacheMaxEntries()) cache.clear();
+            cache.put(cacheKey, new CachedRegion(region, Instant.now().plus(properties.cacheTtl())));
+            return region;
+        } catch (MapException e) { throw e;
+        } catch (RestClientException e) { throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED); }
     }
 
     private ResolvedPlaceAdministrativeRegion toRegion(JsonNode response) {
@@ -98,4 +101,10 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
         }
         return null;
     }
+
+    private String cacheKey(double latitude, double longitude) {
+        return Math.round(latitude * 1_000_000d) + ":" + Math.round(longitude * 1_000_000d);
+    }
+
+    private record CachedRegion(ResolvedPlaceAdministrativeRegion region, Instant expiresAt) {}
 }
