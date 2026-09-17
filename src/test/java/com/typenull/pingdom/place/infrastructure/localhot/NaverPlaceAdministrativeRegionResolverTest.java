@@ -82,6 +82,18 @@ class NaverPlaceAdministrativeRegionResolverTest {
     }
 
     @Test
+    void 정상_조회_결과는_캐시되어_같은_좌표의_재요청을_보내지_않는다() {
+        server.expect(requestTo(REQUEST_URL))
+                .andRespond(withSuccess(successResponse("1168010100", "서울특별시", "강남구"), MediaType.APPLICATION_JSON));
+
+        var resolver = resolver(true, "test-client-id", "test-client-secret");
+        assertThat(resolver.resolve(37.5172, 127.0473).code()).isEqualTo("11680");
+        assertThat(resolver.resolve(37.5172, 127.0473).code()).isEqualTo("11680");
+
+        server.verify();
+    }
+
+    @Test
     void 인증_정보가_누락되면_외부_요청없이_사용불가로_처리한다() {
         assertFailure(resolver(true, "test-client-id", null),
                 MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_UNAVAILABLE, HttpStatus.SERVICE_UNAVAILABLE);
