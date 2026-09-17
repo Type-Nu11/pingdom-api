@@ -1,6 +1,7 @@
 package com.typenull.pingdom.place.application.service.localhot;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
@@ -15,6 +16,8 @@ import com.typenull.pingdom.place.domain.place.region.PlaceAdministrativeRegionR
 import com.typenull.pingdom.place.domain.place.region.ResolvedPlaceAdministrativeRegion;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceAdministrativeRegionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceLocalHotQueryRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import java.util.List;
 import java.util.Optional;
 import org.junit.jupiter.api.Test;
@@ -102,6 +105,22 @@ class PlaceLocalHotQueryServiceTest {
 
         assertThat(response.region().regionCode()).isEqualTo("11680");
         verifyNoInteractions(regionResolver);
+    }
+
+    @Test
+    void 좌표_조회에서_Resolver_실패는_조회_저장소를_호출하지_않고_전파한다() {
+        PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
+        PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
+        PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
+        MapException resolutionFailure = new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED);
+        when(regionResolver.resolve(37.5172d, 127.0473d)).thenThrow(resolutionFailure);
+        PlaceLocalHotQueryService service = new PlaceLocalHotQueryService(
+                regionResolver, regionRepository, queryRepository);
+
+        assertThatThrownBy(() -> service.find(new PlaceLocalHotQuery(37.5172d, 127.0473d, null, 1, 20), 7L))
+                .isSameAs(resolutionFailure);
+
+        verifyNoInteractions(regionRepository, queryRepository);
     }
 
     private PlaceLocalHotQueryRepository.PlaceLocalHotProjection projection(
