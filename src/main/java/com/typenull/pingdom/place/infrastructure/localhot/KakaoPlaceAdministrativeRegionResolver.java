@@ -7,6 +7,7 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.http.HttpHeaders;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.stereotype.Component;
@@ -14,6 +15,12 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Component
+@ConditionalOnProperty(
+        prefix = "place.local-hot.naver",
+        name = "enabled",
+        havingValue = "false",
+        matchIfMissing = true
+)
 public class KakaoPlaceAdministrativeRegionResolver implements PlaceAdministrativeRegionResolver {
 
     private final RestClient restClient;
