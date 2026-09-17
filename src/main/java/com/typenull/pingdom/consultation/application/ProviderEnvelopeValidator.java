@@ -27,7 +27,10 @@ public class ProviderEnvelopeValidator {
 
     public void validate(JsonNode envelope, String requestId) {
         if (envelope == null || !envelope.isObject()
-                || envelope.path("schemaVersion").asInt() != 1
+                || !integer(envelope.path("schemaVersion"))
+                || !envelope.path("schemaVersion").canConvertToInt()
+                || envelope.path("schemaVersion").intValue() != 1
+                || !envelope.path("id").isTextual()
                 || !requestId.equals(envelope.path("id").asText())
                 || !envelope.path("id").asText().matches("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")) {
             invalid();
@@ -101,10 +104,39 @@ public class ProviderEnvelopeValidator {
     }
 
     private void required(JsonNode node, String... fields) { for (String field : fields) if (node.path(field).isMissingNode() || node.path(field).isNull()) invalid(); }
-    private void positiveId(JsonNode node) { if (!node.canConvertToLong() || node.asLong() < 1 || node.asLong() > 9_007_199_254_740_991L) invalid(); }
-    private boolean quantity(JsonNode node) { return node.canConvertToInt() && node.asInt() >= 1 && node.asInt() <= 12; }
-    private void validDate(String value) { try { LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE); } catch (DateTimeParseException exception) { invalid(); } }
-    private LocalTime validTime(String value) { try { return LocalTime.parse(value, DateTimeFormatter.ofPattern("HH:mm")); } catch (DateTimeParseException exception) { invalid(); return LocalTime.MIDNIGHT; } }
+    private boolean integer(JsonNode node) {
+        // JSON Schema와 JavaScript number의 정수 의미에 맞춰 1.0은 허용하되 1.5는 거부한다.
+        return node.isNumber() && node.decimalValue().stripTrailingZeros().scale() <= 0;
+    }
+
+    private void positiveId(JsonNode node) {
+        if (!integer(node) || !node.canConvertToLong() || node.asLong() < 1
+                || node.asLong() > 9_007_199_254_740_991L) invalid();
+    }
+
+    private boolean quantity(JsonNode node) {
+        return integer(node) && node.canConvertToInt() && node.asInt() >= 1 && node.asInt() <= 12;
+    }
+
+    private void validDate(String value) {
+        try {
+            if (!value.matches("^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$")) invalid();
+            LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
+        } catch (DateTimeParseException exception) {
+            invalid();
+        }
+    }
+
+    private LocalTime validTime(String value) {
+        try {
+            if (!value.matches("^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")) invalid();
+            return LocalTime.parse(value, DateTimeFormatter.ISO_LOCAL_TIME);
+        } catch (DateTimeParseException exception) {
+            invalid();
+            return LocalTime.MIDNIGHT;
+        }
+    }
+
     private void validText(JsonNode node) { if (!node.isTextual() || node.asText().isBlank() || node.asText().length() > 2_000) invalid(); }
     private void invalid() { throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID); }
 }

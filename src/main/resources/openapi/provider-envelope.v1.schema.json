@@ -1,0 +1,370 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Pingdom provider envelope v1",
+  "$comment": "Provider input only. After structural validation, ALWAYS use parseVoiceAssistantEnvelope: Gregorian calendar validity, same-day startTime < endTime, UTF-16 text length, whitespace-only text rejection, and own-data-property checks are normative runtime constraints. No app result is accepted.",
+  "oneOf": [
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "command",
+        "args"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "command_request"
+        },
+        "command": {
+          "const": "searchNearbyReservablePlaces"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "date",
+            "startTime",
+            "endTime",
+            "quantity",
+            "useCurrentLocation"
+          ],
+          "properties": {
+            "touristCategory": {
+              "enum": [
+                "K_POP",
+                "BEAUTY",
+                "FASHION",
+                "CAFE",
+                "FOOD",
+                "POP_UP",
+                "EXHIBITION",
+                "NIGHTLIFE",
+                "OTHER"
+              ]
+            },
+            "date": {
+              "$ref": "#/$defs/localDate"
+            },
+            "startTime": {
+              "$ref": "#/$defs/localTime"
+            },
+            "endTime": {
+              "$ref": "#/$defs/localTime"
+            },
+            "quantity": {
+              "$ref": "#/$defs/quantity"
+            },
+            "useCurrentLocation": {
+              "type": "boolean"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "command",
+        "args"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "command_request"
+        },
+        "command": {
+          "const": "getPlaceDetails"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "placeId"
+          ],
+          "properties": {
+            "placeId": {
+              "$ref": "#/$defs/resourceId"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "command",
+        "args"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "command_request"
+        },
+        "command": {
+          "const": "getAvailabilities"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "placeId",
+            "date",
+            "quantity"
+          ],
+          "properties": {
+            "placeId": {
+              "$ref": "#/$defs/resourceId"
+            },
+            "date": {
+              "$ref": "#/$defs/localDate"
+            },
+            "quantity": {
+              "$ref": "#/$defs/quantity"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "command",
+        "args"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "command_request"
+        },
+        "command": {
+          "const": "prepareReservation"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [
+            "placeId",
+            "availabilityId",
+            "quantity"
+          ],
+          "properties": {
+            "placeId": {
+              "$ref": "#/$defs/resourceId"
+            },
+            "availabilityId": {
+              "$ref": "#/$defs/resourceId"
+            },
+            "quantity": {
+              "$ref": "#/$defs/quantity"
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "command",
+        "args"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "command_request"
+        },
+        "command": {
+          "const": "cancelVoiceSession"
+        },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": [],
+          "properties": {}
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "field",
+        "text"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "clarification_request"
+        },
+        "field": {
+          "enum": [
+            "touristCategory",
+            "date",
+            "timeRange",
+            "quantity",
+            "useCurrentLocation",
+            "placeId",
+            "availabilityId"
+          ]
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "text"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "assistant_message"
+        },
+        "text": {
+          "$ref": "#/$defs/text"
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "schemaVersion",
+        "id",
+        "kind",
+        "code"
+      ],
+      "properties": {
+        "schemaVersion": {
+          "const": 1
+        },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": {
+          "const": "protocol_error"
+        },
+        "code": {
+          "enum": [
+            "UNSUPPORTED_REQUEST",
+            "PROVIDER_UNAVAILABLE",
+            "INVALID_RESPONSE"
+          ]
+        }
+      }
+    }
+  ],
+  "$defs": {
+    "resourceId": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 9007199254740991
+    },
+    "quantity": {
+      "type": "integer",
+      "minimum": 1,
+      "maximum": 12
+    },
+    "localDate": {
+      "type": "string",
+      "format": "date",
+      "pattern": "^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$"
+    },
+    "localTime": {
+      "type": "string",
+      "pattern": "^(?:[01][0-9]|2[0-3]):[0-5][0-9]$"
+    },
+    "text": {
+      "type": "string",
+      "minLength": 1,
+      "maxLength": 2000,
+      "pattern": "\\S"
+    }
+  }
+}
