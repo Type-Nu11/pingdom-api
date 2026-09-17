@@ -2,7 +2,12 @@ package com.typenull.pingdom.place.application.service.localhot;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import com.typenull.pingdom.place.domain.place.region.PlaceAdministrativeRegion;
+import com.typenull.pingdom.place.domain.place.region.ResolvedPlaceAdministrativeRegion;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceAdministrativeRegionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceLocalHotQueryRepository;
+import java.time.LocalDateTime;
 import java.util.List;
 import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Tag;
@@ -50,6 +55,8 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     @Autowired private PlaceLocalHotQueryRepository queryRepository;
+    @Autowired private MapPlaceRepository mapPlaceRepository;
+    @Autowired private PlaceAdministrativeRegionRepository regionRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
 
     @AfterEach
@@ -89,6 +96,44 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
                 .containsOnly(2L);
         assertThat(result).extracting(PlaceLocalHotQueryRepository.PlaceLocalHotProjection::getBookmarked)
                 .containsExactly(true, true);
+    }
+
+    @Test
+    void 지역_신규_저장과_기존_갱신_그리고_장소_regionCode_저장이_PostgreSQL에_반영된다() {
+        Long placeId = insertPlace("행정구역 저장 장소", null);
+        LocalDateTime createdAt = LocalDateTime.of(2026, 9, 17, 10, 0);
+        regionRepository.saveAndFlush(PlaceAdministrativeRegion.from(
+                new ResolvedPlaceAdministrativeRegion("11680", "서울특별시", "강남구", "서울특별시 강남구"),
+                createdAt
+        ));
+
+        PlaceAdministrativeRegion savedRegion = regionRepository.findById("11680").orElseThrow();
+        LocalDateTime refreshedAt = createdAt.plusMinutes(1);
+        savedRegion.refresh(
+                new ResolvedPlaceAdministrativeRegion("11680", "서울특별시", "강남구", "강남구"),
+                refreshedAt
+        );
+        regionRepository.saveAndFlush(savedRegion);
+        jdbcTemplate.update("UPDATE map_place SET region_code = ? WHERE map_place_id = ?", "11680", placeId);
+
+        assertThat(regionRepository.findById("11680").orElseThrow()).satisfies(region -> {
+            assertThat(region.getSido()).isEqualTo("서울특별시");
+            assertThat(region.getSigungu()).isEqualTo("강남구");
+            assertThat(region.getRegionName()).isEqualTo("강남구");
+            assertThat(region.getUpdatedAt()).isEqualTo(refreshedAt);
+        });
+        assertThat(mapPlaceRepository.findById(placeId).orElseThrow().getRegionCode()).isEqualTo("11680");
+    }
+
+    @Test
+    void backfill_대상은_regionCode가_없는_기존_장소로만_제한된다() {
+        Long missingRegionCodePlaceId = insertPlace("backfill 대상", null);
+        Long assignedRegionCodePlaceId = insertPlace("backfill 제외", "11680");
+
+        assertThat(mapPlaceRepository.findByRegionCodeIsNullOrderByIdAsc(PageRequest.of(0, 20)))
+                .extracting(place -> place.getId())
+                .containsExactly(missingRegionCodePlaceId)
+                .doesNotContain(assignedRegionCodePlaceId);
     }
 
     private void insertRegion(String code, String sido, String sigungu) {
