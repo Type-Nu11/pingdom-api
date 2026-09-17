@@ -22,11 +22,15 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
     private final NaverLocalRegionProperties properties;
 
     @Override
-    public boolean isConfigured() { return properties.isConfigured(); }
+    public boolean isConfigured() {
+        return properties.isConfigured();
+    }
 
     @Override
     public ResolvedPlaceAdministrativeRegion resolve(double latitude, double longitude) {
-        if (!isConfigured()) throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_UNAVAILABLE);
+        if (!isConfigured()) {
+            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_UNAVAILABLE);
+        }
         try {
             JsonNode response = restClient.get()
                     .uri(uri -> uri.path("/map-reversegeocode/v2/gc")
@@ -34,31 +38,64 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
                             .queryParam("coords", longitude + "," + latitude)
                             .queryParam("sourcecrs", "epsg:4326")
                             .queryParam("orders", "legalcode")
-                            .queryParam("output", "json").build())
+                            .queryParam("output", "json")
+                            .build())
                     .header("x-ncp-apigw-api-key-id", properties.clientId())
                     .header("x-ncp-apigw-api-key", properties.clientSecret())
                     .header(HttpHeaders.ACCEPT, "application/json")
-                    .retrieve().body(JsonNode.class);
+                    .retrieve()
+                    .body(JsonNode.class);
             return toRegion(response);
-        } catch (MapException e) { throw e;
-        } catch (RestClientException e) { throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED); }
+        } catch (MapException exception) {
+            throw exception;
+        } catch (RestClientException exception) {
+            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED);
+        }
     }
 
     private ResolvedPlaceAdministrativeRegion toRegion(JsonNode response) {
-        JsonNode result = response == null ? null : findLegalCode(response.path("results"));
-        if (result == null) throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);
+        if (response == null || !response.isObject()) {
+            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED);
+        }
+
+        int statusCode = response.path("status").path("code").asInt(-1);
+        if (statusCode == 3) {
+            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);
+        }
+        if (statusCode != 0) {
+            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED);
+        }
+
+        JsonNode result = findLegalCode(response.path("results"));
+        if (result == null) {
+            throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);
+        }
         String code = result.path("code").path("id").asText();
         String sido = result.path("region").path("area1").path("name").asText();
         String sigungu = result.path("region").path("area2").path("name").asText();
-        if (code.length() < 5 || sido.isBlank() || sigungu.isBlank()) {
+        if (!code.matches("\\d{10}") || sido.isBlank()) {
             throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);
+        }
+
+        // 세종특별자치시는 네이버 응답의 area2가 비어 있으므로 시·도명을 지역 표시와 시군구 값으로 사용한다.
+        if (sigungu.isBlank()) {
+            if (!"세종특별자치시".equals(sido)) {
+                throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);
+            }
+            return new ResolvedPlaceAdministrativeRegion(code.substring(0, 5), sido, sido, sido);
         }
         return new ResolvedPlaceAdministrativeRegion(code.substring(0, 5), sido, sigungu, sido + " " + sigungu);
     }
 
     private JsonNode findLegalCode(JsonNode results) {
-        if (!results.isArray()) return null;
-        for (JsonNode result : results) if ("legalcode".equals(result.path("name").asText())) return result;
+        if (!results.isArray()) {
+            return null;
+        }
+        for (JsonNode result : results) {
+            if ("legalcode".equals(result.path("name").asText())) {
+                return result;
+            }
+        }
         return null;
     }
 }
