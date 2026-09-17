@@ -94,6 +94,27 @@ class CommunityModerationOpenApiContractTest {
         assertItemSchema(adminDocument, "AdminCommunityReportPageResponse", "reports", "AdminCommunityReportItem", "reportId", "targetType", "status");
     }
 
+    @Test
+    void 신고_상세의_원문_ID는_필수이며_대상_유형별_예시를_제공한다() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs/admin");
+        JsonNode schema = document.at("/components/schemas/AdminCommunityReportResponse");
+        assertThat(schema.path("required")).contains(objectMapper.getNodeFactory().textNode("postId"));
+        assertThat(schema.at("/properties/postId/type").asText()).isEqualTo("integer");
+        assertThat(schema.at("/properties/postId/nullable").asBoolean(false)).isFalse();
+        JsonNode examples = operation(document, ADMIN_REPORT_DETAIL_PATH, "get")
+                .at("/responses/200/content/*~1*/examples");
+        JsonNode post = examples.path("POST").path("value");
+        JsonNode comment = examples.path("COMMENT").path("value");
+        assertThat(post.path("targetType").asText()).isEqualTo("POST");
+        assertThat(post.path("postId").asLong()).isEqualTo(101L);
+        assertThat(post.path("targetId")).isEqualTo(post.path("postId"));
+        assertThat(comment.path("targetType").asText()).isEqualTo("COMMENT");
+        assertThat(comment.path("postId").asLong()).isEqualTo(101L);
+        assertThat(comment.path("targetId").asLong()).isEqualTo(202L);
+        assertThat(document.at("/components/schemas/AdminCommunityReportItem/properties").has("postId")).isFalse();
+        assertThat(document.at("/components/schemas/AdminCommunityReportActionResponse/properties").has("postId")).isFalse();
+    }
+
     private JsonNode operation(JsonNode document, String path, String method) {
         return document.path("paths").path(path).path(method);
     }

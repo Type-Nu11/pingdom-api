@@ -159,8 +159,11 @@ public class AdminCommunityReportService {
     }
 
     private AdminCommunityReportResponse toResponse(CommunityReport report) {
+        Long postId = report.getTargetType() == CommunityReportTargetType.POST
+                ? report.getPost().getId()
+                : report.getComment().getCommunityPost().getId();
         return new AdminCommunityReportResponse(
-                report.getId(), report.getTargetType(), report.getTargetId(), isTargetHidden(report),
+                report.getId(), report.getTargetType(), report.getTargetId(), postId, isTargetHidden(report),
                 report.getReporterUserId(), report.getReason(), report.getDescription(), report.getStatus(),
                 report.getCreatedAt(), report.getProcessedByAdminUserId(), report.getProcessedAt()
         );

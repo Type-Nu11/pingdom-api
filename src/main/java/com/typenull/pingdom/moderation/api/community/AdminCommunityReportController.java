@@ -12,6 +12,7 @@ import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.ExampleObject;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -51,7 +52,24 @@ public class AdminCommunityReportController {
     @GetMapping("/{reportId}")
     @Operation(summary = "관리자 커뮤니티 신고 상세 조회")
     @ApiResponses({
-            @ApiResponse(responseCode = "200", description = "신고 상세 조회 성공", useReturnTypeSchema = true),
+            @ApiResponse(responseCode = "200", description = "신고 상세 조회 성공",
+                    content = @Content(schema = @Schema(implementation = AdminCommunityReportResponse.class),
+                            examples = {
+                                    @ExampleObject(name = "POST", summary = "글 신고: postId와 targetId가 동일",
+                                            value = """
+                                                    {"reportId":1,"targetType":"POST","targetId":101,"postId":101,
+                                                     "targetHidden":false,"reporterUserId":10,"reason":"SPAM",
+                                                     "description":"글 신고","status":"PENDING","createdAt":"2026-09-17T10:00:00",
+                                                     "processedByAdminUserId":null,"processedAt":null}
+                                                    """),
+                                    @ExampleObject(name = "COMMENT", summary = "댓글 신고: postId는 원문 글, targetId는 댓글",
+                                            value = """
+                                                    {"reportId":2,"targetType":"COMMENT","targetId":202,"postId":101,
+                                                     "targetHidden":false,"reporterUserId":10,"reason":"ABUSE",
+                                                     "description":"댓글 신고","status":"PENDING","createdAt":"2026-09-17T10:00:00",
+                                                     "processedByAdminUserId":null,"processedAt":null}
+                                                    """)
+                            })),
             @ApiResponse(responseCode = "404", description = "커뮤니티 신고를 찾을 수 없음",
                     content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
