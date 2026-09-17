@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.RestController;
  * 현재 전송 방식은 단일 최종 JSON 응답(request-response)이며 stream chunk는 계약에 포함하지 않습니다.
  */
 @RestController
-@RequestMapping("/voice-ai/sessions")
+@RequestMapping(value = "/voice-ai/sessions", produces = "application/json")
 @Tag(name = "Voice AI", description = "인증 사용자 음성 AI Gateway API")
 public class VoiceAiSessionController {
     private final VoiceAiSessionService voiceAiSessionService;
@@ -46,7 +46,18 @@ public class VoiceAiSessionController {
 
     @PostMapping("/{sessionId}/messages")
     @RateLimited(RateLimitAction.CONSULTATION_INTRO)
-    @Operation(summary = "음성 AI 메시지 전송", description = "ProviderEnvelope v1 최종 JSON만 반환합니다. requestId는 앱 재전송 시 동일하게 유지해야 합니다.")
+    @Operation(summary = "음성 AI 메시지 전송", description = """
+            ProviderEnvelope v1 최종 JSON 1개만 반환합니다. SSE/WebSocket/reconnect cursor는 지원하지 않습니다.
+            최종 envelope는 UTF-8 16 KiB 이하이며 id는 requestId와 정확히 일치합니다.
+            활성 세션 내 requestId를 대소문자 구분하여 비교합니다. 동일 ID·동일 text(UTF-8 SHA-256)는 저장된 결과를
+            반환하고 다른 text는 409 REPLAY_CONFLICT입니다. 세션 단위로 전송·갱신·종료를 직렬화하므로 진행 중 재요청은
+            선행 트랜잭션 완료 후 재검사합니다. 실패하여 결과가 저장되지 않았다면 재시도에서 provider를 다시 호출합니다.
+            결과는 세션이 활성인 동안 재사용하며 refresh는 이 기간을 연장합니다. 만료·종료 후에는 replay도 410입니다.
+            현재 저장 데이터의 자동 삭제 기간은 설정되어 있지 않습니다. 앱의 epoch/generation 및 256개 ledger는 앱 소유입니다.
+            앱의 30초 deadline이나 연결 종료는 서버/provider 취소를 보장하지 않습니다. 서버 처리가 커밋되었다면
+            동일 ID/text 재시도로 결과를 회수할 수 있습니다. DELETE는 진행 중 전송 완료 후 세션을 종료하며 호출을 취소하지 않습니다.
+            provider 연결/read timeout은 gemini 설정(기본 2초/5초)이며 서버 전체 deadline을 의미하지 않습니다.
+            """)
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "최종 envelope 반환"),
             @ApiResponse(responseCode = "410", description = "만료 또는 종료된 세션", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
