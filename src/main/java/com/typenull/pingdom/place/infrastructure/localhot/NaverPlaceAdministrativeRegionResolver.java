@@ -5,7 +5,6 @@ import com.typenull.pingdom.place.domain.place.region.PlaceAdministrativeRegionR
 import com.typenull.pingdom.place.domain.place.region.ResolvedPlaceAdministrativeRegion;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
-import lombok.RequiredArgsConstructor;
 import java.time.Instant;
 import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.beans.factory.annotation.Qualifier;
@@ -17,12 +16,18 @@ import org.springframework.web.client.RestClientException;
 
 @Component
 @ConditionalOnProperty(prefix = "place.local-hot.naver", name = "enabled", havingValue = "true")
-@RequiredArgsConstructor
 public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrativeRegionResolver {
-    @Qualifier("naverLocalRegionRestClient")
     private final RestClient restClient;
     private final NaverLocalRegionProperties properties;
     private final ConcurrentHashMap<String, CachedRegion> cache = new ConcurrentHashMap<>();
+
+    public NaverPlaceAdministrativeRegionResolver(
+            @Qualifier("naverLocalRegionRestClient") RestClient naverLocalRegionRestClient,
+            NaverLocalRegionProperties properties
+    ) {
+        this.restClient = naverLocalRegionRestClient;
+        this.properties = properties;
+    }
 
     @Override
     public boolean isConfigured() {
