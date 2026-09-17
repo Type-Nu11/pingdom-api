@@ -9,10 +9,12 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.http.HttpHeaders;
 import org.springframework.stereotype.Component;
+import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
 @Component
+@ConditionalOnProperty(prefix = "place.local-hot.naver", name = "enabled", havingValue = "true")
 @RequiredArgsConstructor
 public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrativeRegionResolver {
     @Qualifier("naverLocalRegionRestClient")
