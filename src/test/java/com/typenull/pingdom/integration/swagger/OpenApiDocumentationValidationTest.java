@@ -860,6 +860,8 @@ class OpenApiDocumentationValidationTest {
         assertThat(conversionOperation.at("/responses/204/content").isMissingNode()).isTrue();
         assertThat(requiredFields(appDocument.at("/components/schemas/MapLinkConversionRequest")))
                 .containsExactlyInAnyOrder("linkType", "provider", "requestId");
+        assertThat(appDocument.at("/components/schemas/MapLinkConversionRequest/properties/provider/example").asText())
+                .isEqualTo("NAVER");
 
         JsonNode mapOperation = appDocument.at("/paths/~1places~1map/get");
         assertParameterRange(mapOperation, "west", -180.0, 180.0);
