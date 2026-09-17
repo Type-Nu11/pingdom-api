@@ -56,7 +56,7 @@ public class VoiceAiSessionService {
         LocalDateTime expiresAt = now().plus(SESSION_TTL);
         VoiceAiSession session = VoiceAiSession.create(UUID.randomUUID().toString(), userId, expiresAt);
         sessionRepository.save(session);
-        return new VoiceAiSessionResponse(session.getSessionId(), expiresAt);
+        return response(session.getSessionId(), expiresAt);
     }
 
     @Transactional
@@ -65,7 +65,7 @@ public class VoiceAiSessionService {
         requireUsable(session);
         LocalDateTime expiresAt = now().plus(SESSION_TTL);
         session.refresh(expiresAt);
-        return new VoiceAiSessionResponse(sessionId, expiresAt);
+        return response(sessionId, expiresAt);
     }
 
     @Transactional
@@ -100,8 +100,14 @@ public class VoiceAiSessionService {
         }
     }
 
+    private VoiceAiSessionResponse response(String sessionId, LocalDateTime expiresAt) {
+        // 기존 DB의 서버 로컬 시각 해석을 유지하고 API 경계에서 offset을 명시한다.
+        return new VoiceAiSessionResponse(sessionId, expiresAt.atZone(clock.getZone()).toOffsetDateTime());
+    }
+
+    // provider 처리와 replay 저장이 커밋될 때까지 갱신·종료·후속 전송도 같은 행에서 대기한다.
     private VoiceAiSession requireSession(String sessionId, Long userId) {
-        return sessionRepository.findById(sessionId)
+        return sessionRepository.findByIdForUpdate(sessionId)
                 .map(session -> {
                     if (!session.belongsTo(userId)) {
                         throw new VoiceAiException(VoiceAiErrorCode.SESSION_FORBIDDEN);
