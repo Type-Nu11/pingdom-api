@@ -60,6 +60,46 @@ class NaverPlaceAdministrativeRegionResolverTest {
     }
 
     @Test
+    void 세종이_아닌_빈_area2_응답은_지역없음으로_처리한다() {
+        server.expect(requestTo(REQUEST_URL))
+                .andRespond(withSuccess(successResponse("1168010100", "서울특별시", ""), MediaType.APPLICATION_JSON));
+
+        assertFailure(resolver(true, "test-client-id", "test-client-secret"),
+                MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND, HttpStatus.NOT_FOUND);
+        server.verify();
+    }
+
+    @Test
+    void legalcode_코드가_불완전하면_지역없음으로_처리한다() {
+        server.expect(requestTo(REQUEST_URL))
+                .andRespond(withSuccess("""
+                        {"status":{"code":0},"results":[{
+                          "name":"legalcode",
+                          "code":{"id":"361101070"},
+                          "region":{"area1":{"name":"세종특별자치시"},"area2":{"name":""}}
+                        }]}""", MediaType.APPLICATION_JSON));
+
+        assertFailure(resolver(true, "test-client-id", "test-client-secret"),
+                MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND, HttpStatus.NOT_FOUND);
+        server.verify();
+    }
+
+    @Test
+    void legalcode_결과가_없으면_지역없음으로_처리한다() {
+        server.expect(requestTo(REQUEST_URL))
+                .andRespond(withSuccess("""
+                        {"status":{"code":0},"results":[{
+                          "name":"addr",
+                          "code":{"id":"1168010100"},
+                          "region":{"area1":{"name":"서울특별시"},"area2":{"name":"강남구"}}
+                        }]}""", MediaType.APPLICATION_JSON));
+
+        assertFailure(resolver(true, "test-client-id", "test-client-secret"),
+                MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND, HttpStatus.NOT_FOUND);
+        server.verify();
+    }
+
+    @Test
     void 네이버_내부_상태가_결과없음이면_지역없음으로_처리한다() {
         server.expect(requestTo(REQUEST_URL))
                 .andRespond(withSuccess("{\"status\":{\"code\":3,\"name\":\"no results\"},\"results\":[]}",
