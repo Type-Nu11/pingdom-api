@@ -280,6 +280,14 @@ menu:
     cache-ttl: ${MENU_CURRENCY_EXCHANGE_CACHE_TTL:10m}
 
 place:
+  registration:
+    naver-search:
+      enabled: ${NAVER_PLACE_SEARCH_ENABLED:false}
+      client-id: ${NAVER_PLACE_SEARCH_CLIENT_ID:}
+      client-secret: ${NAVER_PLACE_SEARCH_CLIENT_SECRET:}
+      base-url: ${NAVER_PLACE_SEARCH_BASE_URL:https://openapi.naver.com}
+      connect-timeout: ${NAVER_PLACE_SEARCH_CONNECT_TIMEOUT:2s}
+      read-timeout: ${NAVER_PLACE_SEARCH_READ_TIMEOUT:3s}
   local-hot:
     backfill:
       enabled: ${LOCAL_HOT_REGION_BACKFILL_ENABLED:false}

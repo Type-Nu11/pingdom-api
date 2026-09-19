@@ -3,6 +3,8 @@ package com.typenull.pingdom.place.api.registration;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationRequest;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationResponse;
+import com.typenull.pingdom.place.api.dto.registration.NaverPlaceSearchResponse;
+import com.typenull.pingdom.place.application.service.registration.NaverPlaceSearchService;
 import com.typenull.pingdom.place.application.service.registration.MerchantPlaceApplicationService;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -20,6 +22,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.constraints.Size;
 
 /** Web에서 사업자와 장소를 함께 신청하는 API입니다. */
 @RestController
@@ -28,6 +31,16 @@ import org.springframework.web.bind.annotation.RestController;
 @Tag(name = "Merchant", description = "Merchant 전용 API")
 public class MerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
+    private final NaverPlaceSearchService naverPlaceSearchService;
+
+    @GetMapping("/naver-place-search")
+    @Operation(summary = "신규 장소 등록용 네이버 업체명 검색", description = "네이버 Local Search 결과를 최대 5건의 장소명·도로명 주소·지번 주소·WGS84 좌표로 반환합니다.")
+    public NaverPlaceSearchResponse searchNaverPlace(
+            @RequestParam @Size(min = 1, max = 100) String query,
+            @CurrentUser JwtAuthenticatedUser user
+    ) {
+        return naverPlaceSearchService.search(query, user.userId());
+    }
 
     @PostMapping
     @Operation(summary = "Merchant 장소 신청 생성")

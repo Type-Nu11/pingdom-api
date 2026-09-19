@@ -63,6 +63,8 @@ public enum MapErrorCode implements ErrorCode {
     LOCAL_HOT_REGION_NOT_FOUND(HttpStatus.NOT_FOUND, "좌표에 해당하는 시·군·구를 찾을 수 없습니다."),
     LOCAL_HOT_REGION_RESOLUTION_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "지역 판정 서비스를 사용할 수 없습니다."),
     LOCAL_HOT_REGION_RESOLUTION_FAILED(HttpStatus.BAD_GATEWAY, "지역 판정 서비스 호출에 실패했습니다."),
+    NAVER_PLACE_SEARCH_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "네이버 장소 검색 서비스를 사용할 수 없습니다."),
+    NAVER_PLACE_SEARCH_FAILED(HttpStatus.BAD_GATEWAY, "네이버 장소 검색 호출에 실패했습니다."),
     FAVORITE_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 즐겨찾기한 장소입니다."),
     BOOKMARK_ALREADY_EXISTS(HttpStatus.CONFLICT, "이미 북마크한 장소입니다."),
     BOOKMARK_NOT_FOUND(HttpStatus.NOT_FOUND, "북마크 되어있지 않습니다."),
