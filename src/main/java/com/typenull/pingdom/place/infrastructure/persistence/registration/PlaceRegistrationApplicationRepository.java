@@ -3,7 +3,6 @@ package com.typenull.pingdom.place.infrastructure.persistence.registration;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplication;
 import com.typenull.pingdom.place.domain.registration.MerchantPlaceApplicationType;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
-import java.time.LocalDateTime;
 import jakarta.persistence.LockModeType;
 import java.util.Collection;
 import java.util.Optional;
@@ -12,9 +11,11 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
+import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.query.Param;
 
-public interface PlaceRegistrationApplicationRepository extends JpaRepository<PlaceRegistrationApplication, Long> {
+public interface PlaceRegistrationApplicationRepository extends JpaRepository<PlaceRegistrationApplication, Long>,
+        JpaSpecificationExecutor<PlaceRegistrationApplication> {
 
     Page<PlaceRegistrationApplication> findByStatusAndCompletedPlaceIdIsNotNull(
             PlaceRegistrationStatus status,
@@ -41,30 +42,6 @@ public interface PlaceRegistrationApplicationRepository extends JpaRepository<Pl
             Pageable pageable
     );
 
-    @Query("""
-            SELECT application
-            FROM PlaceRegistrationApplication application
-            LEFT JOIN User applicant ON applicant.id = application.applicantUserId
-            LEFT JOIN MapPlace existingPlace ON existingPlace.id = application.existingPlaceId
-            WHERE application.status IN :statuses
-              AND (:applicationType IS NULL OR application.applicationType = :applicationType)
-              AND (
-                    :keyword IS NULL
-                    OR LOWER(application.placeName) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                    OR LOWER(applicant.username) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                    OR LOWER(existingPlace.name) LIKE LOWER(CONCAT('%', :keyword, '%'))
-                  )
-              AND (:submittedFrom IS NULL OR application.submittedAt >= :submittedFrom)
-              AND (:submittedTo IS NULL OR application.submittedAt <= :submittedTo)
-            """)
-    Page<PlaceRegistrationApplication> searchForAdmin(
-            @Param("statuses") Collection<PlaceRegistrationStatus> statuses,
-            @Param("applicationType") MerchantPlaceApplicationType applicationType,
-            @Param("keyword") String keyword,
-            @Param("submittedFrom") LocalDateTime submittedFrom,
-            @Param("submittedTo") LocalDateTime submittedTo,
-            Pageable pageable
-    );
     long countByStatus(PlaceRegistrationStatus status);
     Optional<PlaceRegistrationApplication> findByIdAndApplicantUserId(Long id, Long userId);
     @Lock(LockModeType.PESSIMISTIC_WRITE)
