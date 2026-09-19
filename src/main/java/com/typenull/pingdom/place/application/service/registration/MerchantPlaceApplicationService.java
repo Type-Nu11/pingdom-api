@@ -53,8 +53,10 @@ import com.typenull.pingdom.place.infrastructure.persistence.registration.PlaceR
 import com.typenull.pingdom.place.infrastructure.persistence.registration.MerchantPlaceApplicationReviewHistoryRepository;
 import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
+import jakarta.persistence.criteria.Predicate;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.LinkedHashMap;
 import java.util.List;
 import java.util.Map;
@@ -64,6 +66,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
+import org.springframework.data.jpa.domain.Specification;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -139,12 +142,8 @@ public class MerchantPlaceApplicationService {
         List<PlaceRegistrationStatus> effectiveStatuses = statuses == null || statuses.isEmpty()
                 ? List.of(PlaceRegistrationStatus.values())
                 : statuses;
-        Page<PlaceRegistrationApplication> result = applicationRepository.searchForAdmin(
-                effectiveStatuses,
-                applicationType,
-                normalizeKeyword(keyword),
-                submittedFrom,
-                submittedTo,
+        Page<PlaceRegistrationApplication> result = applicationRepository.findAll(
+                adminListSpecification(effectiveStatuses, applicationType, normalizeKeyword(keyword), submittedFrom, submittedTo),
                 pageable(page, limit)
         );
         return new AdminMerchantPlaceApplicationPageResponse(
@@ -614,6 +613,49 @@ public class MerchantPlaceApplicationService {
 
     private String decryptRegistrationNumber(PlaceRegistrationApplication application) {
         return verificationCipher.decrypt(application.getEncryptedBusinessRegistrationNumber());
+    }
+
+    private Specification<PlaceRegistrationApplication> adminListSpecification(
+            List<PlaceRegistrationStatus> statuses,
+            MerchantPlaceApplicationType applicationType,
+            String keyword,
+            LocalDateTime submittedFrom,
+            LocalDateTime submittedTo
+    ) {
+        return (root, query, builder) -> {
+            List<Predicate> predicates = new ArrayList<>();
+            predicates.add(root.get("status").in(statuses));
+            if (applicationType != null) {
+                predicates.add(builder.equal(root.get("applicationType"), applicationType));
+            }
+            if (keyword != null) {
+                String pattern = "%" + keyword.toLowerCase() + "%";
+                var applicantSubquery = query.subquery(User.class);
+                var applicant = applicantSubquery.from(User.class);
+                applicantSubquery.select(applicant).where(builder.and(
+                        builder.equal(applicant.get("id"), root.get("applicantUserId")),
+                        builder.like(builder.lower(applicant.get("username")), pattern)
+                ));
+                var existingPlaceSubquery = query.subquery(MapPlace.class);
+                var existingPlace = existingPlaceSubquery.from(MapPlace.class);
+                existingPlaceSubquery.select(existingPlace).where(builder.and(
+                        builder.equal(existingPlace.get("id"), root.get("existingPlaceId")),
+                        builder.like(builder.lower(existingPlace.get("name")), pattern)
+                ));
+                predicates.add(builder.or(
+                        builder.like(builder.lower(root.get("placeName")), pattern),
+                        builder.exists(applicantSubquery),
+                        builder.exists(existingPlaceSubquery)
+                ));
+            }
+            if (submittedFrom != null) {
+                predicates.add(builder.greaterThanOrEqualTo(root.get("submittedAt"), submittedFrom));
+            }
+            if (submittedTo != null) {
+                predicates.add(builder.lessThanOrEqualTo(root.get("submittedAt"), submittedTo));
+            }
+            return builder.and(predicates.toArray(Predicate[]::new));
+        };
     }
 
     private MerchantPlaceApplicationPageResponse page(Page<PlaceRegistrationApplication> result) {

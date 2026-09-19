@@ -9,7 +9,7 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record MapLinkConversionRequest(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "지도 링크 전환 유형")
         @NotNull MapLinkConversionType linkType,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "지도 제공자", example = "KAKAO")
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, description = "지도 제공자 (예: NAVER)", example = "NAVER")
         @NotBlank @Size(max = 30) String provider,
         @Schema(
                 requiredMode = Schema.RequiredMode.REQUIRED,

@@ -280,6 +280,14 @@ menu:
     cache-ttl: ${MENU_CURRENCY_EXCHANGE_CACHE_TTL:10m}
 
 place:
+  registration:
+    naver-search:
+      enabled: ${NAVER_PLACE_SEARCH_ENABLED:false}
+      client-id: ${NAVER_PLACE_SEARCH_CLIENT_ID:}
+      client-secret: ${NAVER_PLACE_SEARCH_CLIENT_SECRET:}
+      base-url: ${NAVER_PLACE_SEARCH_BASE_URL:https://openapi.naver.com}
+      connect-timeout: ${NAVER_PLACE_SEARCH_CONNECT_TIMEOUT:2s}
+      read-timeout: ${NAVER_PLACE_SEARCH_READ_TIMEOUT:3s}
   local-hot:
     backfill:
       enabled: ${LOCAL_HOT_REGION_BACKFILL_ENABLED:false}
@@ -292,6 +300,15 @@ place:
       read-timeout: ${KAKAO_LOCAL_READ_TIMEOUT:3s}
       cache-ttl: ${KAKAO_LOCAL_REGION_CACHE_TTL:10m}
       cache-max-entries: ${KAKAO_LOCAL_REGION_CACHE_MAX_ENTRIES:10000}
+    naver:
+      enabled: ${NAVER_LOCAL_REGION_ENABLED:false}
+      client-id: ${NAVER_MAP_CLIENT_ID:}
+      client-secret: ${NAVER_MAP_CLIENT_SECRET:}
+      base-url: ${NAVER_MAP_BASE_URL:https://naveropenapi.apigw.ntruss.com}
+      connect-timeout: ${NAVER_MAP_CONNECT_TIMEOUT:2s}
+      read-timeout: ${NAVER_MAP_READ_TIMEOUT:3s}
+      cache-ttl: ${NAVER_MAP_REGION_CACHE_TTL:10m}
+      cache-max-entries: ${NAVER_MAP_REGION_CACHE_MAX_ENTRIES:10000}
   recommendation:
     verified-boost:
       score: ${VERIFIED_BOOST_SCORE:0.08}

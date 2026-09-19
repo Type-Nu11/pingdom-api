@@ -6,6 +6,8 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.community.domain.CommunityPost;
 import com.typenull.pingdom.community.domain.CommunityPostComment;
 import com.typenull.pingdom.community.domain.CommunityReport;
@@ -18,11 +20,14 @@ import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
+import jakarta.persistence.EntityManager;
 import java.time.LocalDateTime;
 import java.time.ZoneOffset;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.CsvSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
@@ -37,6 +42,8 @@ import org.springframework.transaction.annotation.Transactional;
 class AdminCommunityReportApiIntegrationTest {
 
     @Autowired private MockMvc mockMvc;
+    @Autowired private ObjectMapper objectMapper;
+    @Autowired private EntityManager entityManager;
     @Autowired private UserRepository userRepository;
     @Autowired private CommunityPostRepository postRepository;
     @Autowired private CommunityPostCommentRepository commentRepository;
@@ -58,6 +65,12 @@ class AdminCommunityReportApiIntegrationTest {
         CommunityPostComment comment = commentRepository.saveAndFlush(
                 CommunityPostComment.create(post, reporter.getId(), "댓글")
         );
+        // 글과 댓글 ID가 우연히 같아 잘못된 매핑을 놓치지 않도록 구분한다.
+        if (comment.getId().equals(post.getId())) {
+            commentRepository.delete(comment);
+            commentRepository.flush();
+            comment = commentRepository.saveAndFlush(CommunityPostComment.create(post, reporter.getId(), "댓글"));
+        }
         postId = post.getId();
         commentId = comment.getId();
         postReportId = reportRepository.saveAndFlush(CommunityReport.reportPost(
@@ -86,6 +99,49 @@ class AdminCommunityReportApiIntegrationTest {
                 .andExpect(jsonPath("$.reportId").value(commentReportId))
                 .andExpect(jsonPath("$.targetType").value("COMMENT"))
                 .andExpect(jsonPath("$.description").value("댓글 신고"));
+    }
+
+    @ParameterizedTest
+    @CsvSource({"false,false", "true,false", "false,true", "true,true"})
+    void 신고_상세의_원문_ID로_숨김_여부와_관계없이_대상_댓글을_조회한다(
+            boolean postHidden, boolean commentHidden
+    ) throws Exception {
+        LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
+        if (postHidden) {
+            postRepository.findById(postId).orElseThrow().hide(1L, now);
+            postRepository.flush();
+        }
+        if (commentHidden) {
+            commentRepository.findById(commentId).orElseThrow().hide(1L, now);
+            commentRepository.flush();
+        }
+
+        entityManager.clear();
+        mockMvc.perform(get("/admin/community-reports/{reportId}", postReportId)
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetType").value("POST"))
+                .andExpect(jsonPath("$.targetId").value(postId))
+                .andExpect(jsonPath("$.postId").value(postId))
+                .andExpect(jsonPath("$.targetHidden").value(postHidden));
+
+        String body = mockMvc.perform(get("/admin/community-reports/{reportId}", commentReportId)
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.targetType").value("COMMENT"))
+                .andExpect(jsonPath("$.targetId").value(commentId))
+                .andExpect(jsonPath("$.postId").value(postId))
+                .andExpect(jsonPath("$.targetHidden").value(commentHidden))
+                .andReturn().getResponse().getContentAsString();
+        JsonNode report = objectMapper.readTree(body);
+        mockMvc.perform(get("/admin/community/posts/{postId}/comments/{commentId}",
+                        report.path("postId").asLong(), report.path("targetId").asLong())
+                        .header(HttpHeaders.AUTHORIZATION, adminBearer))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.postId").value(postId))
+                .andExpect(jsonPath("$.commentId").value(commentId))
+                .andExpect(jsonPath("$.content").value("댓글"))
+                .andExpect(jsonPath("$.hidden").value(commentHidden));
     }
 
     @Test

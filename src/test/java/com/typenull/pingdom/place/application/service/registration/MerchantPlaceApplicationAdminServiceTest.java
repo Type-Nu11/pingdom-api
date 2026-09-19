@@ -2,6 +2,7 @@ package com.typenull.pingdom.place.application.service.registration;
 
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
+import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
@@ -47,7 +48,9 @@ import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.domain.PageRequest;
+import org.springframework.data.jpa.domain.Specification;
 
 @ExtendWith(MockitoExtension.class)
 class MerchantPlaceApplicationAdminServiceTest {
@@ -110,24 +113,18 @@ class MerchantPlaceApplicationAdminServiceTest {
         PlaceRegistrationApplication application = application(12L);
         when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
-        when(applicationRepository.searchForAdmin(
-                eq(List.of(PlaceRegistrationStatus.PENDING)),
-                eq(null),
-                eq(null),
-                eq(null),
-                eq(null),
-                org.mockito.ArgumentMatchers.any()
-        )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(0, 20), 41));
+        when(applicationRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<PlaceRegistrationApplication>>any(), any(Pageable.class)
+        ))
+                .thenReturn(new PageImpl<>(List.of(application), PageRequest.of(0, 20), 41));
 
         var response = service.listForAdmin(99L, List.of(PlaceRegistrationStatus.PENDING), null, null, null, null, 1, 20);
 
         assertThat(response.total()).isEqualTo(41);
         assertThat(response.totalPages()).isEqualTo(3);
         assertThat(response.hasNext()).isTrue();
-        verify(applicationRepository).searchForAdmin(
-                eq(List.of(PlaceRegistrationStatus.PENDING)),
-                eq(null), eq(null), eq(null), eq(null),
-                org.mockito.ArgumentMatchers.any()
+        verify(applicationRepository).findAll(
+                org.mockito.ArgumentMatchers.<Specification<PlaceRegistrationApplication>>any(), any(Pageable.class)
         );
     }
 
@@ -144,14 +141,10 @@ class MerchantPlaceApplicationAdminServiceTest {
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
         LocalDateTime from = LocalDateTime.of(2026, 8, 1, 0, 0);
         LocalDateTime to = LocalDateTime.of(2026, 8, 31, 23, 59, 59);
-        when(applicationRepository.searchForAdmin(
-                eq(statuses),
-                eq(MerchantPlaceApplicationType.NEW_PLACE),
-                eq("서울"),
-                eq(from),
-                eq(to),
-                org.mockito.ArgumentMatchers.any()
-        )).thenReturn(new PageImpl<>(List.of(application), PageRequest.of(1, 10), 21));
+        when(applicationRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<PlaceRegistrationApplication>>any(), any(Pageable.class)
+        ))
+                .thenReturn(new PageImpl<>(List.of(application), PageRequest.of(1, 10), 21));
 
         var response = service.listForAdmin(
                 99L,
@@ -169,25 +162,18 @@ class MerchantPlaceApplicationAdminServiceTest {
         assertThat(response.total()).isEqualTo(21);
         assertThat(response.totalPages()).isEqualTo(3);
         assertThat(response.hasNext()).isTrue();
-        verify(applicationRepository).searchForAdmin(
-                eq(statuses),
-                eq(MerchantPlaceApplicationType.NEW_PLACE),
-                eq("서울"),
-                eq(from),
-                eq(to),
-                org.mockito.ArgumentMatchers.any()
+        verify(applicationRepository).findAll(
+                org.mockito.ArgumentMatchers.<Specification<PlaceRegistrationApplication>>any(), any(Pageable.class)
         );
     }
 
     @Test
     void adminListKeepsFilteredMetadataForAnOutOfRangePage() {
         List<PlaceRegistrationStatus> statuses = List.of(PlaceRegistrationStatus.APPROVED);
-        when(applicationRepository.searchForAdmin(
-                eq(statuses),
-                eq(MerchantPlaceApplicationType.NEW_PLACE),
-                eq(null), eq(null), eq(null),
-                org.mockito.ArgumentMatchers.any()
-        )).thenReturn(new PageImpl<>(List.of(), PageRequest.of(3, 10), 21));
+        when(applicationRepository.findAll(
+                org.mockito.ArgumentMatchers.<Specification<PlaceRegistrationApplication>>any(), any(Pageable.class)
+        ))
+                .thenReturn(new PageImpl<>(List.of(), PageRequest.of(3, 10), 21));
 
         var response = service.listForAdmin(
                 99L,

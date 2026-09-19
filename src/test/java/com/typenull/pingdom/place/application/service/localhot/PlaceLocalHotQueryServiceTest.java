@@ -1,19 +1,25 @@
 package com.typenull.pingdom.place.application.service.localhot;
 
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.verify;
+import static org.mockito.Mockito.verifyNoInteractions;
 import static org.mockito.Mockito.when;
 
 import com.typenull.pingdom.place.api.dto.localhot.PlaceLocalHotQuery;
 import com.typenull.pingdom.place.api.dto.localhot.PlaceLocalHotResponse;
+import com.typenull.pingdom.place.domain.place.region.PlaceAdministrativeRegion;
 import com.typenull.pingdom.place.domain.place.region.PlaceAdministrativeRegionResolver;
 import com.typenull.pingdom.place.domain.place.region.ResolvedPlaceAdministrativeRegion;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceAdministrativeRegionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceLocalHotQueryRepository;
+import com.typenull.pingdom.shared.exception.MapErrorCode;
+import com.typenull.pingdom.shared.exception.MapException;
 import java.util.List;
+import java.util.Optional;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.domain.Pageable;
 
@@ -76,6 +82,45 @@ class PlaceLocalHotQueryServiceTest {
             assertThat(item.bookmarked()).isTrue();
         });
         verify(queryRepository).findLocalHotPlaces(eq("11680"), eq(7L), any(Pageable.class));
+    }
+
+    @Test
+    void regionCode_직접_조회는_외부_행정구역_Resolver를_호출하지_않는다() {
+        PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
+        PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
+        PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
+        PlaceAdministrativeRegion region = mock(PlaceAdministrativeRegion.class);
+        when(region.getCode()).thenReturn("11680");
+        when(region.getSido()).thenReturn("서울특별시");
+        when(region.getSigungu()).thenReturn("강남구");
+        when(region.getRegionName()).thenReturn("서울특별시 강남구");
+        when(regionRepository.findById("11680")).thenReturn(Optional.of(region));
+        when(queryRepository.countLocalHotPlaces("11680")).thenReturn(0L);
+        when(queryRepository.findLocalHotPlaces(eq("11680"), eq(7L), any(Pageable.class)))
+                .thenReturn(List.of());
+        PlaceLocalHotQueryService service = new PlaceLocalHotQueryService(
+                regionResolver, regionRepository, queryRepository);
+
+        PlaceLocalHotResponse response = service.find(new PlaceLocalHotQuery(null, null, "11680", 1, 20), 7L);
+
+        assertThat(response.region().regionCode()).isEqualTo("11680");
+        verifyNoInteractions(regionResolver);
+    }
+
+    @Test
+    void 좌표_조회에서_Resolver_실패는_조회_저장소를_호출하지_않고_전파한다() {
+        PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
+        PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
+        PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
+        MapException resolutionFailure = new MapException(MapErrorCode.LOCAL_HOT_REGION_RESOLUTION_FAILED);
+        when(regionResolver.resolve(37.5172d, 127.0473d)).thenThrow(resolutionFailure);
+        PlaceLocalHotQueryService service = new PlaceLocalHotQueryService(
+                regionResolver, regionRepository, queryRepository);
+
+        assertThatThrownBy(() -> service.find(new PlaceLocalHotQuery(37.5172d, 127.0473d, null, 1, 20), 7L))
+                .isSameAs(resolutionFailure);
+
+        verifyNoInteractions(regionRepository, queryRepository);
     }
 
     private PlaceLocalHotQueryRepository.PlaceLocalHotProjection projection(
