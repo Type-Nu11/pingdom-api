@@ -42,3 +42,6 @@ out/
 
 ### Mac OS ###
 .DS_Store
+
+# 로컬 분석 과정에서 생성되는 PDF 및 렌더링 산출물
+tmp/
