@@ -31,6 +31,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 신고자 점수 이상 징후의 해결과 개입 규칙 관리·수동 평가를 수행하고 감사 기록을 남깁니다.
+ * 규칙 평가는 저장된 점수·집계를 사용하며 현재 점수를 원본 신고에서 다시 산출하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminTrustScoreService {
@@ -45,6 +49,9 @@ public class AdminTrustScoreService {
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
 
+    /**
+     * 신고자 ID와 미해결 여부를 선택적으로 적용해 이상 징후를 탐지 시각·ID 내림차순으로 반환합니다. page는 1 이상·limit는 1~100으로 보정합니다.
+     */
     @Transactional(readOnly = true)
     public AdminTrustScoreAnomalyResponse listAnomalies(int page, int limit, Long reporterUserId, boolean unresolvedOnly) {
         int safePage = Math.max(page, 1);
@@ -76,6 +83,10 @@ public class AdminTrustScoreService {
         );
     }
 
+    /**
+     * 저장된 이상 징후에 현재 해결 시각과 사유를 반영하고 감사 기록을 같은 트랜잭션에 저장합니다.
+     * 이상 징후가 없으면 TRUST_SCORE_ANOMALY_NOT_FOUND이며 신고자 점수나 제한 정책을 재계산하지 않습니다.
+     */
     @Transactional
     public AdminTrustScoreAnomalyItem resolveAnomaly(
             Long anomalyId,
@@ -101,6 +112,9 @@ public class AdminTrustScoreService {
         return AdminTrustScoreAnomalyItem.from(anomaly);
     }
 
+    /**
+     * enabledOnly이면 활성 규칙만, 아니면 전체 규칙을 priority·ID 오름차순으로 반환하며 규칙을 실행하지 않습니다.
+     */
     @Transactional(readOnly = true)
     public AdminTrustScoreInterventionRuleResponse listRules(boolean enabledOnly) {
         List<TrustScoreInterventionRule> rules = enabledOnly
@@ -112,6 +126,10 @@ public class AdminTrustScoreService {
                 .toList());
     }
 
+    /**
+     * 최소·최대 점수 순서와 조치별 기간을 검증하고 이름이 중복되지 않는 규칙을 활성 상태로 생성합니다.
+     * 임시 제한은 1~365일만 허용하고 다른 조치는 기간을 받지 않으며 규칙과 감사 기록을 같은 트랜잭션에 저장합니다.
+     */
     @Transactional
     public AdminTrustScoreInterventionRuleItem createRule(
             AdminTrustScoreInterventionRuleRequest request,
@@ -150,6 +168,10 @@ public class AdminTrustScoreService {
         return afterState;
     }
 
+    /**
+     * 점수·기간 조건을 검증하고 존재하는 규칙의 이름이 다른 규칙과 중복되지 않을 때 내용을 교체합니다.
+     * 활성 여부는 유지하며 변경 전후 감사 기록을 함께 저장합니다. 규칙 없음·이름 중복·잘못된 조건은 오류입니다.
+     */
     @Transactional
     public AdminTrustScoreInterventionRuleItem updateRule(
             Long ruleId,
@@ -208,6 +230,11 @@ public class AdminTrustScoreService {
         return new AdminTrustScoreInterventionRuleToggleResponse(rule.getId(), false, "Trust Score 개입 규칙을 비활성화했습니다.");
     }
 
+    /**
+     * 활성 규칙을 priority·ID 오름차순으로 검사해 첫 일치 규칙 하나를 적용합니다.
+     * TEMPORARY_RESTRICT만 실제 제한 만료를 변경하고 다른 조치는 평가 결과와 감사 기록만 남깁니다.
+     * 반복 평가 시 임시 제한 기준은 기존 만료가 아닌 현재 시각입니다.
+     */
     @Transactional
     public AdminTrustScoreInterventionEvaluationResponse evaluateReporter(Long reporterUserId, Long adminUserId) {
         ReporterModerationPolicy policy = reporterModerationPolicyRepository.findById(reporterUserId)
