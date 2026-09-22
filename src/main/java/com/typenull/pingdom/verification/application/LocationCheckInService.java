@@ -18,9 +18,12 @@ import org.springframework.data.domain.*;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 일반 관광객 계정의 관측 정확도·시각·장소 공개 상태·거리를 확인해 근접 체크인을 생성한다.
+ * 서울 날짜 기준 사용자·장소별 하루 한 건으로 제한하며 DB 유일 제약으로 경합 시 중복도 처리한다.
+ */
 @Service
 @RequiredArgsConstructor
-/** 위치·시간·중복 조건을 검증해 방문 인증용 check-in 상태를 생성하고 조회합니다. */
 public class LocationCheckInService {
     private static final double EARTH_RADIUS_METERS = 6_371_000.0;
     private static final ZoneId CHECK_IN_ZONE = ZoneId.of("Asia/Seoul");
@@ -31,8 +34,12 @@ public class LocationCheckInService {
     private final Clock clock;
     private final LocationCheckInProperties properties;
 
+    /**
+     * 접근 가능한 장소의 허용 반경 안에 있는 관측으로 PROXIMITY_MATCHED 체크인을 저장한다.
+     * 요청 관측 날짜가 아닌 현재 서버 시각의 서울 날짜로 일일 중복을 판정한다.
+     * 알려진 일일 유일 제약 위반만 도메인 중복 오류로 변환하며 다른 DB 오류는 전파한다.
+     */
     @Transactional
-    /** 요청 좌표가 장소 반경과 허용 시간 조건을 만족하는지 검증한 뒤 check-in을 저장합니다. */
     public LocationCheckInResponse checkIn(Long userId, LocationCheckInRequest request) {
         requireTourist(userId);
         Instant now = clock.instant();
@@ -52,6 +59,7 @@ public class LocationCheckInService {
         if (checkInRepository.existsByTouristUserIdAndPlaceIdAndCheckInDate(userId, request.placeId(), checkInDate)) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.DAILY_CHECK_IN_ALREADY_EXISTS);
         }
+        // 사전 조회 뒤 동시 요청이 들어올 수 있으므로 flush 시점의 유일 제약도 확인한다.
         try {
             LocationCheckIn saved = checkInRepository.saveAndFlush(LocationCheckIn.proximityMatched(userId,
                     request.placeId(), checkInDate, request.observedAt(), now, distance));
@@ -64,6 +72,10 @@ public class LocationCheckInService {
         }
     }
 
+    /**
+     * 관광객 본인의 체크인을 기록 시각·ID 역순으로 조회한다.
+     * 외부 페이지 번호는 1부터 시작하며 내부 PageRequest에는 1을 뺀 값을 전달한다.
+     */
     @Transactional(readOnly = true)
     public LocationCheckInPageResponse listMine(Long userId, int page, int limit) {
         requireTourist(userId);
@@ -73,6 +85,7 @@ public class LocationCheckInService {
                 page, limit, checkIns.getTotalElements(), checkIns.getTotalPages(), checkIns.hasNext());
     }
 
+    /** 정확도 상한과 현재 시각 기준 과거 TTL·미래 허용 오차를 확인한다. 경계 시각과 정확도 상한은 허용한다. */
     private void validateObservation(LocationCheckInRequest request, Instant now) {
         if (request.accuracyMeters() > properties.maxAccuracyMeters()) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.LOCATION_TOO_INACCURATE);
@@ -83,6 +96,7 @@ public class LocationCheckInService {
         }
     }
 
+    /** 존재하는 USER 역할 중 탈퇴·현재 정지 계정을 제외한다. 모두 같은 관광객 계정 필요 오류로 거부한다. */
     private void requireTourist(Long userId) {
         User user = userRepository.findById(userId).orElse(null);
         LocalDateTime now = LocalDateTime.now(clock);
@@ -91,6 +105,7 @@ public class LocationCheckInService {
         }
     }
 
+    /** 위·경도(도)를 라디안으로 변환해 구면 Haversine 거리(미터)를 계산한다. 도로 경로 거리는 아니다. */
     static double distanceMeters(double latitude, double longitude, double placeLatitude, double placeLongitude) {
         double lat1 = Math.toRadians(latitude);
         double lat2 = Math.toRadians(placeLatitude);
@@ -101,6 +116,7 @@ public class LocationCheckInService {
         return EARTH_RADIUS_METERS * 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1 - a));
     }
 
+    /** 원인 체인에 지정한 Hibernate 제약 이름이 있는지 확인해 중복 오류 변환 대상을 좁힌다. */
     private boolean hasConstraint(Throwable throwable, String constraintName) {
         Throwable current = throwable;
         while (current != null) {

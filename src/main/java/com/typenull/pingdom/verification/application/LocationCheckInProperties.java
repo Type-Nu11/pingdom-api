@@ -5,6 +5,11 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+/**
+ * 근접 체크인의 반경·관측 정확도는 미터 단위다.
+ * 기본값은 반경 100m, 정확도 50m, 관측 TTL 5분, 미래 시각 허용 30초다.
+ * 반경 상한 1,000m는 설정 바인딩의 Bean Validation에서 검사한다.
+ */
 @Validated
 @ConfigurationProperties(prefix = "verification.location-check-in")
 public record LocationCheckInProperties(
@@ -18,6 +23,7 @@ public record LocationCheckInProperties(
     private static final Duration DEFAULT_OBSERVATION_TTL = Duration.ofMinutes(5);
     private static final Duration DEFAULT_FUTURE_TOLERANCE = Duration.ofSeconds(30);
 
+    /** 누락값을 기본값으로 채우며 관측 TTL은 양수, 미래 허용 오차는 0 이상이어야 한다. */
     public LocationCheckInProperties {
         if (maxDistanceMeters == null) maxDistanceMeters = DEFAULT_MAX_DISTANCE_METERS;
         if (maxAccuracyMeters == null) maxAccuracyMeters = DEFAULT_MAX_ACCURACY_METERS;
