@@ -20,6 +20,11 @@ import java.util.ArrayList;
 import java.util.Iterator;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
+import java.util.TreeSet;
+import com.typenull.pingdom.shared.config.swagger.ApiAudience.Group;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+import org.springframework.core.io.ClassPathResource;
 import java.util.Map.Entry;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -42,13 +47,6 @@ class OpenApiDocumentationValidationTest {
             "/v3/api-docs/consulting",
             "/v3/api-docs/admin",
             "/v3/api-docs/merchant"
-    );
-    private static final Map<String, String> GROUP_TAGS = Map.of(
-            "/v3/api-docs/app", "App",
-            "/v3/api-docs/common", "Common",
-            "/v3/api-docs/consulting", "Consulting",
-            "/v3/api-docs/admin", "Admin",
-            "/v3/api-docs/merchant", "Merchant"
     );
     private static final List<String> ADMIN_PLACE_CATEGORIES = List.of(
             PlaceCategoryPolicy.RESTAURANT,
@@ -183,14 +181,48 @@ class OpenApiDocumentationValidationTest {
     }
 
     @Test
-    void groupedDocumentsMatchSwaggerTagsWithoutOmittingTaggedOperations() throws Exception {
-        JsonNode allDocument = readApiDocs("/v3/api-docs");
-
-        for (Entry<String, String> group : GROUP_TAGS.entrySet()) {
-            JsonNode groupDocument = readApiDocs(group.getKey());
-            assertGroupedDocumentContainsOnlyTag(groupDocument, group.getValue(), group.getKey());
-            assertAllTaggedOperationsAreIncluded(allDocument, groupDocument, group.getValue(), group.getKey());
+    void groupedDocumentsKeepAudienceMembershipAndExactlyOneFunctionalSection() throws Exception {
+        for (Group audience : Group.values()) {
+            String docPath = "/v3/api-docs/" + audience.documentName();
+            JsonNode document = readApiDocs(docPath);
+            JsonNode baseline;
+            try (var input = new ClassPathResource("openapi-baseline/" + audience.documentName() + ".json").getInputStream()) {
+                baseline = objectMapper.readTree(input);
+            }
+            assertThat(operationKeys(document)).as("%s 소속 operation 집합", docPath)
+                    .isEqualTo(operationKeys(baseline));
+            List<String> allowed = SwaggerTagCatalog.sections(audience).stream()
+                    .map(SwaggerTagCatalog.Section::name).toList();
+            Set<String> used = new TreeSet<>();
+            document.path("paths").fields().forEachRemaining(path ->
+                    path.getValue().fields().forEachRemaining(entry -> {
+                        if (isHttpMethod(entry.getKey())) {
+                            JsonNode tags = entry.getValue().path("tags");
+                            assertThat(tags.size()).as("%s %s %s 단일 분류", docPath, entry.getKey(), path.getKey()).isEqualTo(1);
+                            assertThat(tags.get(0).asText()).isIn(allowed);
+                            assertThat(tags).isEqualTo(baseline.path("paths").path(path.getKey()).path(entry.getKey()).path("tags"));
+                            used.add(tags.get(0).asText());
+                        }
+                    }));
+            List<String> documentedTags = new ArrayList<>();
+            document.path("tags").forEach(tag -> {
+                documentedTags.add(tag.path("name").asText());
+                assertThat(tag.path("description").asText()).isNotBlank();
+            });
+            assertThat(documentedTags).containsExactlyElementsOf(allowed.stream().filter(used::contains).toList());
+            assertThat(document.path("paths").has("/voice-ai/sessions")).isFalse();
         }
+    }
+
+    private Set<String> operationKeys(JsonNode document) {
+        Set<String> keys = new TreeSet<>();
+        document.path("paths").fields().forEachRemaining(path ->
+                path.getValue().fieldNames().forEachRemaining(method -> {
+                    if (isHttpMethod(method)) {
+                        keys.add(method + " " + path.getKey());
+                    }
+                }));
+        return keys;
     }
 
     @Test
@@ -1349,59 +1381,6 @@ class OpenApiDocumentationValidationTest {
                     mismatches
             );
         }
-    }
-
-    private void assertGroupedDocumentContainsOnlyTag(JsonNode document, String expectedTag, String apiDocPath) {
-        JsonNode paths = document.path("paths");
-        for (Iterator<Entry<String, JsonNode>> pathIterator = paths.fields(); pathIterator.hasNext(); ) {
-            Entry<String, JsonNode> pathEntry = pathIterator.next();
-            for (Iterator<Entry<String, JsonNode>> operationIterator = pathEntry.getValue().fields(); operationIterator.hasNext(); ) {
-                Entry<String, JsonNode> operationEntry = operationIterator.next();
-                if (!isHttpMethod(operationEntry.getKey())) {
-                    continue;
-                }
-
-                assertThat(hasTag(operationEntry.getValue(), expectedTag))
-                        .as("%s %s %s는 %s 태그만 포함해야 한다",
-                                apiDocPath, operationEntry.getKey().toUpperCase(), pathEntry.getKey(), expectedTag)
-                        .isTrue();
-            }
-        }
-    }
-
-    private void assertAllTaggedOperationsAreIncluded(
-            JsonNode allDocument,
-            JsonNode groupDocument,
-            String tagName,
-            String groupPath
-    ) {
-        JsonNode allPaths = allDocument.path("paths");
-        for (Iterator<Entry<String, JsonNode>> pathIterator = allPaths.fields(); pathIterator.hasNext(); ) {
-            Entry<String, JsonNode> pathEntry = pathIterator.next();
-            for (Iterator<Entry<String, JsonNode>> operationIterator = pathEntry.getValue().fields(); operationIterator.hasNext(); ) {
-                Entry<String, JsonNode> operationEntry = operationIterator.next();
-                if (!isHttpMethod(operationEntry.getKey()) || !hasTag(operationEntry.getValue(), tagName)) {
-                    continue;
-                }
-
-                JsonNode groupedOperation = groupDocument.path("paths")
-                        .path(pathEntry.getKey())
-                        .path(operationEntry.getKey());
-                assertThat(groupedOperation.isObject())
-                        .as("%s %s %s는 %s에 포함되어야 한다",
-                                operationEntry.getKey().toUpperCase(), pathEntry.getKey(), tagName, groupPath)
-                        .isTrue();
-            }
-        }
-    }
-
-    private boolean hasTag(JsonNode operation, String expectedTag) {
-        for (JsonNode tag : operation.path("tags")) {
-            if (expectedTag.equals(tag.asText())) {
-                return true;
-            }
-        }
-        return false;
     }
 
     private boolean isHttpMethod(String method) {
