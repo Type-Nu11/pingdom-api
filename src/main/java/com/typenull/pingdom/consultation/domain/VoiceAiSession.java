@@ -13,7 +13,7 @@ import lombok.NoArgsConstructor;
 
 /**
  * AI provider와 분리된 인증 사용자 세션입니다.
- * 대화 원문과 provider 응답은 개인정보 보호를 위해 저장하지 않습니다.
+ * 이 엔티티는 대화 원문과 provider 응답을 갖지 않습니다. 응답 재전송용 envelope와 원문 해시는 VoiceAiReplay에 별도로 저장됩니다.
  */
 @Getter
 @Entity
