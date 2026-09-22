@@ -14,8 +14,9 @@ class PlaceInformationReverificationRequestTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 21, 12, 0);
 
+    /** 소유자 응답 후 완료하면 COMPLETED 상태와 응답·완료 시각이 기록되는지 확인한다. 관리자 권한은 도메인 테스트에서 검증하지 않는다. */
     @Test
-    void ownerRespondsAndAdminCompletesRequest() {
+    void completesRespondedReverification() {
         PlaceInformationReverificationRequest request = request();
 
         request.respond(20L, "영업시간과 주소를 재확인했습니다.", evidence(), NOW.plusHours(1));
@@ -26,6 +27,7 @@ class PlaceInformationReverificationRequestTest {
         assertThat(request.getCompletedAt()).isEqualTo(NOW.plusHours(2));
     }
 
+    /** 소유자 응답 전 재확인 요청을 바로 완료할 수 없는지 확인한다. */
     @Test
     void rejectsInvalidCompletion() {
         PlaceInformationReverificationRequest request = request();
@@ -33,8 +35,9 @@ class PlaceInformationReverificationRequestTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    /** 알림 횟수·시각을 기록하고 응답 기한 후에는 예외와 함께 REQUESTED 상태를 유지하는지 확인한다. */
     @Test
-    void reminderTracksCountAndExpiredRequestCannotRespond() {
+    void tracksReminderAndRejectsLateResponse() {
         PlaceInformationReverificationRequest request = request();
         request.remind(NOW.plusHours(1));
 
@@ -45,16 +48,19 @@ class PlaceInformationReverificationRequestTest {
         assertThat(request.getStatus()).isEqualTo(PlaceInformationReverificationStatus.REQUESTED);
     }
 
+    /** 응답 기한이 하루 뒤인 소유자 20번의 재확인 요청을 만든다. */
     private PlaceInformationReverificationRequest request() {
         return PlaceInformationReverificationRequest.create(place(), 20L, "정보 최신성 확인", 7L,
                 NOW.plusDays(1), NOW);
     }
 
+    /** 재확인 요청과 근거가 공유할 10번 장소 값을 만든다. */
     private MapPlace place() {
         return MapPlace.builder().id(10L).name("테스트 장소").address("서울시 테스트로 1")
                 .latitude(37.5d).longitude(127.0d).registrant("admin").build();
     }
 
+    /** 소유자가 제출한 사업자 근거를 OWNER_SUBMITTED로 준비해 응답 완료 조건에 사용한다. */
     private PlaceInformationEvidence evidence() {
         PlaceInformationEvidence evidence = PlaceInformationEvidence.submit(
                 place(), PlaceInformationSourceType.MERCHANT_OWNER,
