@@ -12,6 +12,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 점주가 특정 장소에 선택한 부스트 상품과 공백 제거된 멱등 키를 보관합니다.
+ * 선택의 중복 검사와 상품 활성 여부 검증은 서비스가 담당합니다.
+ */
 @Entity
 @Getter
 @Table(name = "merchant_verified_boost_selection")
