@@ -17,13 +17,20 @@ class PaymentCommandServiceTest {
     private final PaymentProvider provider = mock(PaymentProvider.class);
     private PaymentCommandService service;
 
+    /**
+     * 결제 공급자 조회와 원장 기록을 mock으로 분리한 결제 명령 서비스를 구성한다.
+     */
     @BeforeEach
     void setUp() {
         service = new PaymentCommandService(registry, writer);
     }
 
+    /**
+     * 처리 중 결제에 공급자 명령을 전달하고 완료 기록에서 반환한 15,000 금액을 응답하는지 검증한다.
+     * 실제 DB 저장이나 공급자 결제 실행은 포함하지 않는다.
+     */
     @Test
-    void providerResultIsPersistedAsAuthoritativeAmount() {
+    void usesProviderResultAmount() {
         PaymentCreateRequest request = new PaymentCreateRequest(10L, "TOSS", "token", "idem-1");
         PaymentProviderResult result = new PaymentProviderResult("provider-1", 15_000L, 450L, "KRW");
         PaymentResponse completed = response(PaymentStatus.PAID, 15_000L);
@@ -38,8 +45,11 @@ class PaymentCommandServiceTest {
         verify(provider).authorize(new PaymentProviderCommand(100L, 10L, "token", "idem-1"));
     }
 
+    /**
+     * 공급자가 DECLINED 실패를 반환하면 FAILED 응답으로 처리하고 결제 완료 기록을 호출하지 않는지 검증한다.
+     */
     @Test
-    void providerFailureIsRecordedWithoutCompletingPayment() {
+    void recordsDeclinedProviderPayment() {
         PaymentCreateRequest request = new PaymentCreateRequest(10L, "TOSS", "token", "idem-1");
         PaymentResponse failed = response(PaymentStatus.FAILED, null);
         when(registry.require("TOSS")).thenReturn(provider);
@@ -54,8 +64,11 @@ class PaymentCommandServiceTest {
         verify(writer, never()).complete(anyLong(), any());
     }
 
+    /**
+     * 공급자 TIMEOUT으로 결과가 UNKNOWN이면 PROVIDER_RESULT_UNKNOWN을 던지고 실패로 확정 기록하지 않는지 검증한다.
+     */
     @Test
-    void unknownProviderResultKeepsPaymentProcessing() {
+    void preservesUnknownPaymentResult() {
         PaymentCreateRequest request = new PaymentCreateRequest(10L, "TOSS", "token", "idem-1");
         when(registry.require("TOSS")).thenReturn(provider);
         when(writer.prepare(1L, request)).thenReturn(new PaymentPreparation(100L, 10L, PaymentStatus.PROCESSING));
@@ -69,8 +82,12 @@ class PaymentCommandServiceTest {
         verify(writer, never()).fail(anyLong(), anyString());
     }
 
+    /**
+     * 환불 준비 결과의 공급자 결제 ID·금액·통화와 refund-100 키로 공급자를 호출하고 REFUNDED 응답을 반환하는지 검증한다.
+     * 호출 순서를 직접 assertion하는 테스트는 아니다.
+     */
     @Test
-    void refundClaimsStateBeforeCallingProvider() {
+    void forwardsPreparedRefund() {
         PaymentResponse processing = response(PaymentStatus.REFUND_PROCESSING, 15_000L);
         PaymentResponse refunded = new PaymentResponse(100L, 10L, "TOSS", "provider-1", 15_000L,
                 "KRW", PaymentStatus.REFUNDED, null, LocalDateTime.of(2026, 7, 26, 12, 0),
@@ -85,8 +102,11 @@ class PaymentCommandServiceTest {
         verify(provider).refund("provider-1", 15_000L, "KRW", "refund-100");
     }
 
+    /**
+     * 멱등 키가 포함된 요청의 준비 결과가 PAID이면 응답 상태도 PAID이며 결제 공급자를 호출하지 않는지 검증한다.
+     */
     @Test
-    void completedIdempotentRequestDoesNotCallProviderAgain() {
+    void reusesCompletedIdempotentPayment() {
         PaymentCreateRequest request = new PaymentCreateRequest(10L, "TOSS", "token", "idem-1");
         PaymentResponse paid = response(PaymentStatus.PAID, 15_000L);
         when(registry.require("TOSS")).thenReturn(provider);
@@ -99,6 +119,9 @@ class PaymentCommandServiceTest {
         verifyNoInteractions(provider);
     }
 
+    /**
+     * 결제 상태·금액에 따라 공급자 ID·통화·실패 코드·결제 시각을 채운 응답 대역을 만든다.
+     */
     private PaymentResponse response(PaymentStatus status, Long amount) {
         return new PaymentResponse(100L, 10L, "TOSS", amount == null ? null : "provider-1", amount,
                 amount == null ? null : "KRW", status, status == PaymentStatus.FAILED ? "DECLINED" : null,
