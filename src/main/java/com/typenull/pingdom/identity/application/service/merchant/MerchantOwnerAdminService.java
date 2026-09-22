@@ -48,6 +48,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사업자 프로필 심사와 장소 배정, 온보딩·운영 품질의 관리 작업을 조정합니다.
+ * 거절·권한 회수 시 혜택을 종료하고 장소 연결을 제거하며, 변경 전후 값은 감사 로그에 남깁니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class MerchantOwnerAdminService {
@@ -64,6 +68,10 @@ public class MerchantOwnerAdminService {
     private final AdminRoleAuthorizationService authorizationService;
     private final PlaceRegistrationApplicationRepository applicationRepository;
 
+    /**
+     * 점주 프로필을 선택한 상태로 걸러 수정 시각·사용자 ID 내림차순의 페이지로 반환합니다.
+     * 페이지는 최소 1, 크기는 1~100으로 보정하고 각 프로필에 연결 장소 ID를 포함합니다.
+     */
     @Transactional(readOnly = true)
     public MerchantOwnerProfilePageResponse list(MerchantOwnerStatus status, int page, int limit) {
         PageRequest pageable = PageRequest.of(
@@ -100,6 +108,11 @@ public class MerchantOwnerAdminService {
                 .toList();
     }
 
+    /**
+     * 심사 권한을 확인하고 사용자·프로필을 쓰기 잠금으로 읽어 Merchant 프로필과 사용자 역할을 활성화합니다.
+     * 통합 신청 심사 대기, 탈퇴·현재 정지 계정, 승인 불가능한 프로필 상태는 거절합니다.
+     * 접근 상태 로컬 캐시를 즉시 비우고 상태 변경 감사 로그를 기록한 프로필 응답을 반환합니다.
+     */
     @Transactional
     public MerchantOwnerProfileResponse approve(
             Long adminUserId,
@@ -134,6 +147,11 @@ public class MerchantOwnerAdminService {
         return response(profile);
     }
 
+    /**
+     * 심사 권한과 필수 반려 사유를 검증하고 사용자·프로필을 잠가 통합 신청 대기가 없는 프로필을 반려합니다.
+     * Merchant 역할을 회수하고 해당 사용자의 혜택을 종료하며 모든 장소 소유 연결을 삭제합니다.
+     * 같은 DB 트랜잭션에 감사 기록을 남기고 접근 상태 로컬 캐시는 즉시 제거합니다.
+     */
     @Transactional
     public MerchantOwnerProfileResponse reject(
             Long adminUserId,
@@ -168,6 +186,11 @@ public class MerchantOwnerAdminService {
         return response(profile);
     }
 
+    /**
+     * 심사 권한을 확인하고 사용자·프로필을 잠가 회수 가능한 프로필을 REVOKED로 전이합니다.
+     * Merchant 역할·장소 소유 연결을 회수하고 모든 혜택을 종료하며 감사 기록을 같은 DB 트랜잭션에 남깁니다.
+     * 접근 상태 캐시는 현재 인스턴스에서 즉시 제거되며 다른 인스턴스 캐시까지 무효화하지는 않습니다.
+     */
     @Transactional
     public MerchantOwnerProfileResponse revoke(
             Long adminUserId,
