@@ -11,6 +11,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 관리자 지표 목록을 전체/버전 스냅샷 또는 기간 내 원본 이벤트 집계로 정렬합니다.
+ * 장소명 LIKE 필터 외에 운영·공개 상태 제한은 없으며 데이터가 없는 장소도 LEFT JOIN으로 포함합니다.
+ * 노출 0인 CTR·전환율은 0으로 두고 지표별 동률 조건 후 장소 ID 오름차순으로 정렬합니다.
+ */
 public interface AdminPlaceRecommendationMetricRepository extends Repository<MapPlace, Long> {
 
     interface PeriodMetricCountProjection {
@@ -397,6 +402,10 @@ public interface AdminPlaceRecommendationMetricRepository extends Repository<Map
             Pageable pageable
     );
 
+    /**
+     * cutoff 시각을 포함한 이후의 노출·클릭을 집계하며 상한 시각은 지정하지 않습니다.
+     * recommendationVersion이 빈 문자열이면 버전 전체를 포함하고 장소명 필터 범위로 합계를 제한합니다.
+     */
     @Query(value = """
             SELECT COALESCE(SUM(COALESCE(e.exposure_count, 0)), 0) AS exposureCount,
                    COALESCE(SUM(COALESCE(c.click_count, 0)), 0) AS clickCount
