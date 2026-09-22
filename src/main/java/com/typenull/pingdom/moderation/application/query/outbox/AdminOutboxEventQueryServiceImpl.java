@@ -19,6 +19,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * OUTBOX_RECOVERY 권한을 검사하고 payload를 제외한 처리 상태·시도 횟수·오류를 조회합니다.
+ * 조회 기간이 역전되면 거절하고 공백 집계 식별자 필터는 생략합니다. 이벤트 처리 자체는 실행하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminOutboxEventQueryServiceImpl implements AdminOutboxEventQueryService {
@@ -26,6 +30,10 @@ public class AdminOutboxEventQueryServiceImpl implements AdminOutboxEventQuerySe
     private final AdminRoleAuthorizationService authorizationService;
     private final OutboxEventRepository outboxEventRepository;
 
+    /**
+     * OUTBOX_RECOVERY 권한을 확인하고 상태·이벤트 유형·집계 식별자·생성 기간에 맞는 이벤트의 운영 정보를 반환합니다.
+     * 역전된 기간은 거절하고 page는 1 이상·limit는 1~100으로 보정하며 공백 집계 필터는 적용하지 않습니다.
+     */
     @Override
     @Transactional(readOnly = true)
     public AdminOutboxEventResponse list(
