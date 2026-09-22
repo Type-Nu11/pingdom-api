@@ -14,6 +14,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * Naver legalcode 결과를 시·군·구로 변환하고 프로세스 내부 TTL 캐시에 보관합니다.
+ * 네이버 사용 설정이 켜진 경우 선택되며 인증 정보 누락이나 요청 실패 시 Kakao로 자동 전환하지 않습니다.
+ */
 @Component
 @ConditionalOnProperty(prefix = "place.local-hot.naver", name = "enabled", havingValue = "true")
 public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrativeRegionResolver {
