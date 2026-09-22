@@ -30,6 +30,10 @@ import org.springframework.data.jpa.domain.Specification;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관광객에게 현재 발급 가능한 혜택을 조회하고, 혜택 재고와 사용자별 쿠폰 발급을 함께 처리합니다.
+ * 발급 시 혜택 행을 잠그고 사용자 자격·현재 점주 자격을 다시 확인하며, 쿠폰에는 발급 당시 표시 정보를 보관합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class TouristOfferService {
@@ -42,6 +46,10 @@ public class TouristOfferService {
     private final PlaceConversionEventService conversionEventService;
     private final Clock clock;
 
+    /**
+     * 공개 기간·재고·현재 점주 자격과 소유 관계를 만족하는 혜택을 선택 장소 조건으로 조회합니다.
+     * 페이지는 최소 1, 크기는 1~100으로 보정하고 종료 시각·ID 오름차순의 발급 가능 목록을 반환합니다.
+     */
     @Transactional(readOnly = true)
     public OfferPageResponse list(Long placeId, int page, int limit) {
         Page<TouristOffer> result = offerRepository.findAvailable(
@@ -70,6 +78,10 @@ public class TouristOfferService {
                 .orElseThrow(() -> new OfferException(OfferErrorCode.OFFER_NOT_FOUND)));
     }
 
+    /**
+     * 혜택 행 잠금 안에서 재고를 차감하고 쿠폰을 저장한 뒤 전환 이벤트를 발행합니다.
+     * 동일 혜택·사용자 조합은 사전 조회와 DB 유일 제약으로 거절하며, 다른 무결성 오류는 그대로 전파합니다.
+     */
     @Transactional
     public CouponResponse issue(Long userId, Long offerId) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -125,6 +137,10 @@ public class TouristOfferService {
         }
     }
 
+    /**
+     * 본인 쿠폰을 발급 기간의 양 끝을 포함해 조회하고 현재 시각 기준 사용·만료 상태로 필터링해 반환합니다.
+     * 역전된 기간은 거절하며 만료 상태는 DB를 갱신하지 않고 계산하고, 발급 시각·ID 내림차순으로 페이지를 구성합니다.
+     */
     @Transactional(readOnly = true)
     public CouponPageResponse listCoupons(
             Long userId,
@@ -164,6 +180,10 @@ public class TouristOfferService {
         return pageRequest(page, limit, sortProperty, Sort.Direction.ASC);
     }
 
+    /**
+     * 발급 시각 범위는 양 끝을 포함합니다. 만료는 저장 상태를 바꾸지 않고 조회 시각으로 계산하므로,
+     * ISSUED와 EXPIRED를 나눌 때 expiresAt과 now의 동일 시각은 EXPIRED에 포함합니다.
+     */
     private Specification<TouristCoupon> couponListSpecification(
             Long userId,
             CouponStatus status,
