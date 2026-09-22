@@ -11,6 +11,11 @@ import java.util.Comparator;
 import java.util.List;
 import org.springframework.stereotype.Component;
 
+/**
+ * 노출을 분모로 CTR·전환율을 소수 비율로 계산하며 노출이 0 이하면 비율은 0입니다.
+ * 장소별 보정 CTR은 전체 CTR에 prior 가중치 8을 적용하고, 요약 CTR은 총 클릭/총 노출로 다시 계산합니다.
+ * 비율을 1로 제한하지 않으며 버전 차이는 상대 증가율이 아닌 target 값에서 baseline 값을 뺀 결과입니다.
+ */
 @Component
 public class AdminPlaceRecommendationMetricMapper {
 

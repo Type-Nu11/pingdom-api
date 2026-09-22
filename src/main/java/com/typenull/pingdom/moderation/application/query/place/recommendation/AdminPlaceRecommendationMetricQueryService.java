@@ -22,6 +22,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 기간 이벤트 집계, 전체 누적 스냅샷, 버전 누적 스냅샷 중 조건에 맞는 지표 조회를 선택합니다.
+ * days가 null 또는 0 이하이면 누적 조회이며 기간 지표의 snapshotUpdatedAt은 null입니다.
+ * 정렬·페이지는 저장소에서 결정하고 페이지에 해당하는 장소의 상세 수치를 배치로 조합합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminPlaceRecommendationMetricQueryService {
@@ -34,6 +39,10 @@ public class AdminPlaceRecommendationMetricQueryService {
     private final AdminPlaceRecommendationMetricCompareQueryService compareQueryService;
     private final Clock clock;
 
+    /**
+     * 양수 days가 있으면 원본 이벤트의 기간 집계를, 없으면 전체 또는 지정 버전의 누적 스냅샷을 조회합니다.
+     * 조건과 페이지를 정규화하고 저장소의 지표 정렬 순서에 맞춰 세부 수치를 조합하며 집계 데이터는 변경하지 않습니다.
+     */
     @Transactional(readOnly = true)
     public AdminPlaceRecommendationMetricsResponse listRecommendationMetrics(
             int page,
@@ -52,6 +61,7 @@ public class AdminPlaceRecommendationMetricQueryService {
                 days
         );
 
+        // 기간 지정은 누적 스냅샷으로 재현할 수 없으므로 원본 이벤트의 cutoff 집계를 우선합니다.
         if (condition.days() != null) {
             return listPeriodMetrics(condition);
         }
