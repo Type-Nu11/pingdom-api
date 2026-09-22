@@ -2,11 +2,20 @@ package com.typenull.pingdom.integration.swagger.fixture;
 
 import java.util.List;
 
+/**
+ * 도메인별 정상·경계·실패·재시도 계약을 저장된 OpenAPI baseline과 대조할 설명으로 제공한다.
+ */
 public final class OpenApiCompatibilityFixtures {
 
+    /**
+     * 문서 그룹별 baseline 대조 시나리오를 정적으로 제공하므로 문서나 검증 상태를 가진 인스턴스의 생성을 막는다.
+     */
     private OpenApiCompatibilityFixtures() {
     }
 
+    /**
+     * 네 문서 그룹의 정상·경계·실패·재시도 계약 fixture를 제공한다. 실제 API 실행 없이 baseline 경로·응답 존재 검증에 쓰인다.
+     */
     public static List<OpenApiCompatibilityScenario> scenarios() {
         return List.of(
                 new OpenApiCompatibilityScenario(
