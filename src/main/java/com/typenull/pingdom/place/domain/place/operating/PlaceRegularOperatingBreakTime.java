@@ -11,6 +11,10 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 요일별 반복 휴게 구간을 저장하는 값 객체입니다.
+ * 생성자는 전달값을 그대로 보관하며 null·시간 순서 검증을 수행하지 않습니다.
+ */
 @Embeddable
 @Getter
 @EqualsAndHashCode
