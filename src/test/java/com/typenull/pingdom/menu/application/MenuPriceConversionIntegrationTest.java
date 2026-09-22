@@ -39,6 +39,9 @@ class MenuPriceConversionIntegrationTest {
     private final PlaceMenu menu = PlaceMenu.create(10L, 7L, "짜장면", null, 9000L, MenuCurrency.KRW,
             null, 0, LocalDateTime.now(clock));
 
+    /**
+     * 장소 10과 메뉴 조회 결과를 고정해 실제 통화 선택·환산 서비스 조합을 검증할 공통 입력을 구성한다.
+     */
     @BeforeEach
     void setUp() {
         when(placeRepository.findById(10L)).thenReturn(Optional.of(MapPlace.builder().id(10L).build()));
@@ -46,8 +49,12 @@ class MenuPriceConversionIntegrationTest {
                 .thenReturn(List.of(menu));
     }
 
+    /**
+     * 미국·일본 사용자가 같은 메뉴를 조회하면 원가격을 유지하며 각각 USD 6.43·JPY 1,025로 환산되는지 검증한다.
+     * 저장소와 환율 입력은 대역이며 외부 API 통합 실행은 아니다.
+     */
     @Test
-    void convertsMenuPriceUsingEachAuthenticatedUsersCountryCurrency() {
+    void convertsPricePerUserCountry() {
         User usUser = mock(User.class);
         User jpUser = mock(User.class);
         when(userRepository.findById(99L)).thenReturn(Optional.of(usUser));
@@ -74,8 +81,11 @@ class MenuPriceConversionIntegrationTest {
         assertThat(jpResponse.convertedPrice().currency()).isEqualTo(MenuCurrency.JPY);
     }
 
+    /**
+     * 비로그인 또는 알 수 없는 국가 사용자는 원가격 9,000 KRW와 null 환산 값을 받고 환율 조회가 호출되지 않는지 검증한다.
+     */
     @Test
-    void keepsOriginalPriceWithoutRateLookupForUnauthenticatedOrDefaultCurrency() {
+    void skipsDefaultCurrencyRateLookup() {
         CurrencyExchangeRateClient exchangeRateClient = mock(CurrencyExchangeRateClient.class);
         User unknownCountryUser = mock(User.class);
         when(userRepository.findById(99L)).thenReturn(Optional.of(unknownCountryUser));
@@ -94,11 +104,17 @@ class MenuPriceConversionIntegrationTest {
         verifyNoInteractions(exchangeRateClient);
     }
 
+    /**
+     * 지정된 환율 클라이언트를 실제 국가 통화 해석기·환산 서비스와 조합해 메뉴 서비스를 만든다.
+     */
     private PlaceMenuService serviceWith(CurrencyExchangeRateClient exchangeRateClient) {
         return new PlaceMenuService(menuRepository, placeRepository, capabilityPolicy, userRepository,
                 new MenuDisplayCurrencyResolver(), new MenuPriceConversionService(exchangeRateClient), clock);
     }
 
+    /**
+     * 2026-09-10 기준일의 통화 쌍 환율을 문자열 기반 BigDecimal로 만들어 반올림 테스트 입력을 제공한다.
+     */
     private CurrencyExchangeRate rate(MenuCurrency sourceCurrency, MenuCurrency targetCurrency, String value) {
         return new CurrencyExchangeRate(sourceCurrency, targetCurrency, new BigDecimal(value), LocalDate.of(2026, 9, 10));
     }
