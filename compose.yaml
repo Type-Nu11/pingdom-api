@@ -35,8 +35,10 @@ services:
 
   app:
     image: ${PINGDOM_APP_IMAGE:?PINGDOM_APP_IMAGE is required}
+    # 호스트 리버스 프록시와 배포 readiness probe만 앱 포트에 접근한다.
+    # 전체 인터페이스에 공개하면 TLS·접근 정책을 거치지 않고 애플리케이션에 직접 연결될 수 있다.
     ports:
-      - '8080:8080'
+      - '127.0.0.1:8080:8080'
     env_file:
       - .env
     environment:
