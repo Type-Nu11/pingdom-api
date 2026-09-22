@@ -10,22 +10,31 @@ class DevProfileGuardConfigTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(DevProfileGuardConfig.class);
 
+    /**
+     * dev 프로필만 선택하고 별도 허용 설정이 없으면 컨텍스트 시작이 실패하는지 검증한다.
+     */
     @Test
-    void dev_프로필은_명시적_활성화_환경_변수가_필요하다() {
+    void requiresExplicitDevProfileEnablement() {
         contextRunner
                 .withPropertyValues("spring.profiles.active=dev")
                 .run(context -> assertThat(context).hasFailed());
     }
 
+    /**
+     * 활성 프로필이 비어 있으면 DevProfileGuardConfig 빈이 등록되지 않는지 검증한다.
+     */
     @Test
-    void 활성_프로필이_비어_있으면_dev_프로필_가드를_등록하지_않는다() {
+    void skipsGuardWithoutDevProfile() {
         contextRunner
                 .withPropertyValues("spring.profiles.active=")
                 .run(context -> assertThat(context).doesNotHaveBean(DevProfileGuardConfig.class));
     }
 
+    /**
+     * dev와 pingdom.dev-profile.enabled=true를 함께 설정하면 컨텍스트가 정상 시작하는지 검증한다.
+     */
     @Test
-    void dev_프로필은_명시적으로_활성화하면_시작할_수_있다() {
+    void startsExplicitlyEnabledDevProfile() {
         contextRunner
                 .withPropertyValues(
                         "spring.profiles.active=dev",
