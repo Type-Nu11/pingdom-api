@@ -8,6 +8,9 @@ import org.junit.jupiter.api.Test;
 
 class MerchantBrandTest {
 
+    /**
+     * 이름·설명 양끝의 공백은 제거하고 선택 로고 URL의 null은 유지하는지 검증한다.
+     */
     @Test
     void trimsBrandFields() {
         MerchantBrand brand = MerchantBrand.create(
@@ -23,6 +26,9 @@ class MerchantBrandTest {
         assertThat(brand.getLogoUrl()).isNull();
     }
 
+    /**
+     * 공백만 있는 브랜드 이름으로 생성하면 IllegalArgumentException이 발생하는지 검증한다.
+     */
     @Test
     void blankNameIsRejected() {
         assertThatThrownBy(() -> MerchantBrand.create(
