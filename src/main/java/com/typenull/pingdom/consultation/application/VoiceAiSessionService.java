@@ -21,6 +21,10 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 인증 사용자별 5분 세션과 요청 ID별 응답 재전송 기록을 관리합니다.
+ * 세션 행 잠금은 외부 생성 호출과 응답 저장까지 유지되며, 외부 호출 자체를 DB 롤백으로 되돌릴 수는 없습니다.
+ */
 @Service
 public class VoiceAiSessionService {
     private static final java.time.Duration SESSION_TTL = java.time.Duration.ofMinutes(5);
@@ -73,6 +77,11 @@ public class VoiceAiSessionService {
         requireSession(sessionId, userId).close(now());
     }
 
+    /**
+     * 사용 가능한 세션에서 같은 requestId와 원문 SHA-256이면 저장된 응답을 반환합니다.
+     * 다른 원문은 충돌로 거절하고, 신규 응답은 16KiB 및 허용 스키마 검증 후 저장합니다.
+     * 외부 생성 후 저장이 실패하면 재요청에서 다시 생성될 수 있으므로 외부 호출의 exactly-once를 보장하지 않습니다.
+     */
     @Transactional
     public JsonNode send(String sessionId, Long userId, String text, String requestId) {
         VoiceAiSession session = requireSession(sessionId, userId);
