@@ -59,6 +59,9 @@ class MapImageS3OrphanReportServiceTest {
 
     private MapImageS3OrphanReportService service;
 
+    /**
+     * S3·Redis·사진 저장소·작업 executor를 대역으로 연결해 고아 객체 보고와 삭제 판단을 분리 검증한다.
+     */
     @BeforeEach
     void setUp() {
         service = new MapImageS3OrphanReportService(
@@ -69,8 +72,11 @@ class MapImageS3OrphanReportServiceTest {
         );
     }
 
+    /**
+     * S3 3개 키를 원본·썸네일 DB 참조와 함께 비교해 DB 2건·고아 1건 및 고아 키 목록을 계산하는지 검증한다.
+     */
     @Test
-    void reportOrphanObjectsComparesOriginalAndThumbnailKeysWithSharedCriteria() {
+    void comparesOriginalAndThumbnailUsage() {
         List<String> listedKeys = List.of("map/used.jpg", "map/orphan.jpg", "map/thumbnails/used-thumb.jpg");
         when(s3ObjectStorage.listKeys("map/", 100)).thenReturn(new S3ObjectStorage.S3ListResult(listedKeys, false));
         when(mapImageRepository.findUsedOriginalS3Keys(listedKeys)).thenReturn(List.of("map/used.jpg"));
@@ -88,8 +94,11 @@ class MapImageS3OrphanReportServiceTest {
         assertEquals(List.of("map/orphan.jpg"), report.orphanKeys());
     }
 
+    /**
+     * 완료 Redis 메타데이터와 첫 후보 2건을 읽어 전체 후보 3건·2페이지·다음 있음 및 후보 키를 응답하는지 검증한다.
+     */
     @Test
-    void getMapImageS3OrphanReportReadsCachedReportPage() {
+    void readsCachedOrphanReportPage() {
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         when(redisTemplate.opsForList()).thenReturn(listOperations);
         when(hashOperations.get(any(), any())).thenAnswer(invocation -> switch (String.valueOf((Object) invocation.getArgument(1))) {
@@ -113,8 +122,11 @@ class MapImageS3OrphanReportServiceTest {
         assertEquals("map/orphan-1.jpg", report.deleteCandidates().getFirst().key());
     }
 
+    /**
+     * 보고서 후보 2개 중 현재 DB가 사용하는 키는 사유와 함께 실패로 남기고 미사용 키만 S3에서 삭제하는지 검증한다.
+     */
     @Test
-    void deleteMapImageS3CandidatesRechecksDatabaseUsageBeforeDeleting() {
+    void rechecksUsageBeforeOrphanDeletion() {
         stubCompletedReport();
         when(redisTemplate.opsForSet()).thenReturn(setOperations);
         when(setOperations.isMember(any(), eq("map/orphan.jpg"))).thenReturn(true);
@@ -135,8 +147,11 @@ class MapImageS3OrphanReportServiceTest {
         verify(s3ObjectStorage, never()).delete("map/active.jpg");
     }
 
+    /**
+     * 보고서 후보 집합에 없는 키는 실패 처리하고 S3 삭제·DB 사용 여부 조회를 하지 않는지 검증한다.
+     */
     @Test
-    void deleteMapImageS3CandidatesRejectsKeysMissingFromReportCandidates() {
+    void rejectsKeysOutsideReportCandidates() {
         stubCompletedReport();
         when(redisTemplate.opsForSet()).thenReturn(setOperations);
         when(setOperations.isMember(any(), eq("map/expired.jpg"))).thenReturn(false);
@@ -152,8 +167,12 @@ class MapImageS3OrphanReportServiceTest {
         verify(mapImageRepository, never()).findUsedOriginalS3Keys(any());
     }
 
+    /**
+     * 실행 중 새로고침은 같은 RUNNING 보고서를 반환하고 작업은 한 번만 제출하는지 검증한다.
+     * 보관한 Runnable을 완료한 뒤에는 새 보고서 ID로 다음 작업을 제출해야 한다.
+     */
     @Test
-    void refreshReturnsRunningReportWithoutSubmittingDuplicateTask() {
+    void reusesRunningOrphanReport() {
         stubReportMetadata();
         List<Runnable> submittedTasks = new ArrayList<>();
         doAnswer(invocation -> {
@@ -180,8 +199,11 @@ class MapImageS3OrphanReportServiceTest {
         assertEquals(2, submittedTasks.size());
     }
 
+    /**
+     * executor 대기열 거절 시 FAILED와 포화 메시지를 기록하고 다음 시도는 새 ID로 다시 제출하는지 검증한다.
+     */
     @Test
-    void refreshMarksRejectedTaskAsFailedAndAllowsRetry() {
+    void failsRejectedReportAndRetries() {
         stubReportMetadata();
         doThrow(new TaskRejectedException("queue full"))
                 .when(orphanReportExecutor)
@@ -199,11 +221,17 @@ class MapImageS3OrphanReportServiceTest {
         verify(orphanReportExecutor, org.mockito.Mockito.times(2)).execute(any(Runnable.class));
     }
 
+    /**
+     * 삭제 후보 검증이 실행될 수 있도록 Redis 보고서 상태를 COMPLETED로 설정한다.
+     */
     private void stubCompletedReport() {
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
         when(hashOperations.get(any(), eq("status"))).thenReturn("COMPLETED");
     }
 
+    /**
+     * Redis hash 쓰기·읽기를 메모리 맵으로 연결해 비동기 보고서 상태 변경을 테스트 안에서 재현한다.
+     */
     private void stubReportMetadata() {
         Map<String, Map<Object, Object>> metadata = new HashMap<>();
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
