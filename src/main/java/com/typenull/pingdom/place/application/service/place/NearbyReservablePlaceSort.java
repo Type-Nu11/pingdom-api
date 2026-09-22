@@ -5,6 +5,9 @@ import com.typenull.pingdom.shared.exception.MapException;
 import java.util.Locale;
 import org.springframework.util.StringUtils;
 
+/**
+ * 주변 예약 가능 장소의 정렬 선택값입니다. 공백·미입력은 NEAREST이며 미지원 값은 검색 조건 오류로 처리합니다.
+ */
 public enum NearbyReservablePlaceSort {
     NEAREST,
     EARLIEST_AVAILABLE,
