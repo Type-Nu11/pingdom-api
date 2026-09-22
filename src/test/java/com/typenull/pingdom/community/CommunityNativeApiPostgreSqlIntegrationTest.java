@@ -39,7 +39,11 @@ class CommunityNativeApiPostgreSqlIntegrationTest {
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres")
     ).withDatabaseName("pingdom").withUsername("pingdom").withPassword("pingdom");
 
-    @DynamicPropertySource static void databaseProperties(DynamicPropertyRegistry registry) {
+    /**
+     * native 쿼리와 마이그레이션이 실제 PostGIS 컨테이너를 사용하도록 PostgreSQL 접속 정보를 등록한다.
+     */
+    @DynamicPropertySource
+    static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
         registry.add("spring.datasource.username", postgres::getUsername);
         registry.add("spring.datasource.password", postgres::getPassword);
@@ -51,7 +55,11 @@ class CommunityNativeApiPostgreSqlIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
-    @AfterEach void cleanup() {
+    /**
+     * 조회·좋아요·연결 기록을 먼저 제거한 뒤 게시글·장소·사용자를 정리해 외래 키 충돌을 방지한다.
+     */
+    @AfterEach
+    void cleanup() {
         jdbcTemplate.update("DELETE FROM community_place_daily_view");
         jdbcTemplate.update("DELETE FROM community_post_like");
         jdbcTemplate.update("DELETE FROM community_post_place");
@@ -60,8 +68,12 @@ class CommunityNativeApiPostgreSqlIntegrationTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * PostgreSQL에 연결된 게시글과 장소를 준비해 좋아요 요청이 수 1과 true를 반환하는지 검증한다.
+     * 동일 사용자의 장소 진입을 반복해도 조회수가 1이며 일반 장소 상세에도 같은 집계가 노출되는지 확인한다.
+     */
     @Test
-    void 좋아요와_게시글_경유_장소_조회가_PostgreSQL에서_연결된다() throws Exception {
+    void connectsNativeCommunityInteractions() throws Exception {
         User user = userRepository.saveAndFlush(User.builder().username("community-native-user")
                 .email("community-native-user@example.com").emailVerified(true).password("password")
                 .birthYear(1995).language("ko").country("KR").role(UserRole.USER).build());
