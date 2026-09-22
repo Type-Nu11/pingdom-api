@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api.registration;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationRequest;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationResponse;
@@ -28,7 +31,8 @@ import jakarta.validation.constraints.Size;
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.APPLICATION)
 public class MerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
     private final NaverPlaceSearchService naverPlaceSearchService;
