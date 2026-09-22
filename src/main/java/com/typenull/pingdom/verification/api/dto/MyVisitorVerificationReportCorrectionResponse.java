@@ -28,6 +28,10 @@ public record MyVisitorVerificationReportCorrectionResponse(
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime reviewedAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt
 ) {
+    /**
+     * 정정 거절 사유만 사용자에게 노출하고 원본 제보의 현재 상태를 함께 반환한다.
+     * 원본 연관 객체를 읽으므로 필요한 조회 범위 안에서 호출한다.
+     */
     public static MyVisitorVerificationReportCorrectionResponse from(
             VisitorVerificationReportCorrection correction
     ) {
