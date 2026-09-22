@@ -20,9 +20,16 @@ public final class PingdomPerformanceLoadFixtures {
     public static final int BOUNDARY_PAGE_LIMIT = 100;
     public static final int RETRY_EVENT_ATTEMPTS = 3;
 
+    /**
+     * 정적 생성 메서드로 제공하는 성능 시나리오 fixture 모음의 인스턴스화를 막는다.
+     */
     private PingdomPerformanceLoadFixtures() {
     }
 
+    /**
+     * 사용자·장소·신고·재시도 이벤트와 부하 시나리오를 하나로 조합한다.
+     * 실제 부하를 발생시키지 않고 다른 테스트가 사용할 요청 수와 기대 결과를 제공한다.
+     */
     public static PingdomPerformanceLoadFixture realisticPlaceDiscoveryFixture() {
         return new PingdomPerformanceLoadFixture(
                 users(),
@@ -33,6 +40,9 @@ public final class PingdomPerformanceLoadFixtures {
         );
     }
 
+    /**
+     * 관광객·점주·관리자 및 탈퇴 사용자를 서로 다른 ID로 구성해 역할과 활성 여부의 경계를 제공한다.
+     */
     private static List<FixtureUser> users() {
         return List.of(
                 new FixtureUser(1L, "tourist-normal", UserRole.USER, true),
@@ -43,6 +53,10 @@ public final class PingdomPerformanceLoadFixtures {
         );
     }
 
+    /**
+     * 서로 다른 좌표·정렬 기준과 운영 상태를 가진 공개 장소 3개를 구성한다.
+     * 출처·검증 상태·반응 수치를 함께 지정해 탐색 및 추천 입력을 재현한다.
+     */
     private static List<FixturePlace> places() {
         return List.of(
                 new FixturePlace(
@@ -99,6 +113,9 @@ public final class PingdomPerformanceLoadFixtures {
         );
     }
 
+    /**
+     * 반박된 운영 상태 신고와 접수된 관광 정보 신고를 구성해 상태·신고자·반박자 관계를 제공한다.
+     */
     private static List<FixtureReport> reports() {
         return List.of(
                 new FixtureReport(
@@ -126,6 +143,9 @@ public final class PingdomPerformanceLoadFixtures {
         );
     }
 
+    /**
+     * 장소 정보 반박 이벤트의 집계 ID·3회 시도·재시도 가능 여부와 원인 문구를 제공한다.
+     */
     private static List<FixtureRetryEvent> retryEvents() {
         return List.of(
                 new FixtureRetryEvent(
@@ -140,6 +160,10 @@ public final class PingdomPerformanceLoadFixtures {
         );
     }
 
+    /**
+     * 검색·페이징·숨김 제외·추천·잘못된 좌표·반박 권한·Outbox 재시도의 요청 수와 기대 계약을 정의한다.
+     * 시나리오 정의 자체는 API 실행 성공이나 성능 측정 결과를 의미하지 않는다.
+     */
     private static List<PerformanceLoadScenario> scenarios() {
         return List.of(
                 new PerformanceLoadScenario(
