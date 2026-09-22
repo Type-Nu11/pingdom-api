@@ -23,6 +23,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 게시글 좋아요 이력과 집계, 장소 추천 스냅샷 및 알림 Outbox 발행을 연결합니다.
+ * 중복 좋아요는 특정 유일 제약 오류로 변환하며, 좋아요 취소는 이미 없는 요청을 성공으로 간주하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class MapImageLikeService {
@@ -37,6 +41,10 @@ public class MapImageLikeService {
     private final PlaceRecommendationConversionService placeRecommendationConversionService;
     private final NotificationsRepository notificationsRepository;
 
+    /**
+     * 좋아요를 저장·flush한 뒤 집계를 증가시키고 연결 장소가 있으면 추천 스냅샷과 전환을 갱신합니다.
+     * 푸시를 즉시 전송하지 않고 저장된 좋아요 ID를 중복 방지 키로 사용하는 Outbox 이벤트를 남깁니다.
+     */
     @Transactional
     public MapImageLikeResult like(Long mapImageId, Long userId) {
         if (mapImageLikeRepository.existsByUserIdAndMapImageId(
@@ -76,6 +84,10 @@ public class MapImageLikeService {
         return new MapImageLikeResult(userId, mapImageId, "좋아요 추가되었습니다.");
     }
 
+    /**
+     * 기존 좋아요와 게시글을 확인한 뒤 반응 행을 삭제하고 좋아요 수와 연결 장소의 추천 snapshot을 갱신한다.
+     * 이미 취소된 요청은 NOT_LIKED로 거절하며 기존 추천 전환 이력이나 알림을 되돌리지는 않는다.
+     */
     @Transactional
     public MapImageLikeResult notLike(Long mapImageId, Long userId) {
         if (!mapImageLikeRepository.existsByUserIdAndMapImageId(
@@ -96,8 +108,11 @@ public class MapImageLikeService {
         return new MapImageLikeResult(userId, mapImageId, "좋아요 취소되었습니다.");
     }
 
+    /**
+     * 게시글 상세 접근 가능 여부와 요청자 소유 알림의 존재를 확인한 뒤 읽음 처리한다.
+     * 전달한 게시글과 알림의 대상이 서로 일치하는지는 이 메서드에서 검사하지 않는다.
+     */
     @Transactional
-    //좋아요 알림을 눌렀을때 처리
     public void likeReturn(Long postId, Long notificationsId, Long userId) {
         postQueryService.getPost(postId, userId);
 

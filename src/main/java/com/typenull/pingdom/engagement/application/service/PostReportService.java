@@ -15,9 +15,9 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** 게시글 신고 중복·권한 정책을 검증하고 신고 상태를 생성합니다. */
 @Service
 @RequiredArgsConstructor
-/** 게시글 신고 중복·권한 정책을 검증하고 신고 상태를 생성합니다. */
 public class PostReportService {
 
     private final MapImageRepository mapImageRepository;
@@ -26,6 +26,10 @@ public class PostReportService {
     private final ReportPolicyService reportPolicyService;
     private final Clock clock;
 
+    /**
+     * 공개 이미지에 대한 신고를 저장하고 동기 이벤트를 발행한 뒤 신고 통계와 자동 숨김 조건을 평가합니다.
+     * 현재 구현은 saveAndFlush 및 이벤트 발행 중 DataIntegrityViolationException을 모두 중복 신고로 변환합니다.
+     */
     @Transactional
     public void report(Long imageId, Long reporterUserId, String reporterUsername, String reason) {
         LocalDateTime now = LocalDateTime.now(clock);
