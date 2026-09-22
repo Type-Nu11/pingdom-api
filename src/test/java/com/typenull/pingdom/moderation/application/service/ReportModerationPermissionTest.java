@@ -83,20 +83,30 @@ class ReportModerationPermissionTest {
         final boolean changesSanction;
         final AdminErrorCode missingTarget;
 
+        /**
+         * 작업의 제재 변경 여부와 권한 통과 후 기대할 대상 없음 오류를 연결한다.
+         */
         Operation(boolean changesSanction, AdminErrorCode missingTarget) {
             this.changesSanction = changesSanction;
             this.missingTarget = missingTarget;
         }
     }
 
+    /**
+     * 모든 신고·게시글·이의 제기 작업과 역할 조합의 곱을 공급해 권한 누락 및 회수 상태까지 검사한다.
+     */
     static Stream<Arguments> permissionCases() {
         return Stream.of(Operation.values()).flatMap(operation ->
                 Stream.of(Actor.values()).map(actor -> Arguments.of(operation, actor)));
     }
 
+    /**
+     * 실제 역할 권한 서비스로 각 작업의 접근을 판정해 허용 시 대상 없음 오류까지 도달하고 거부 시 대상 저장소조차 호출하지 않는지 검증한다.
+     * 제재를 바꾸는 작업의 복합 권한과 모든 조합에서 부수 효과가 없는 결과도 확인한다.
+     */
     @ParameterizedTest(name = "{0}: {1}")
     @MethodSource("permissionCases")
-    void checksRealRolePermissionsBeforeAccessingTargetOrProducingSideEffects(Operation operation, Actor actor) {
+    void checksPermissionsBeforeModerationAccess(Operation operation, Actor actor) {
         when(users.findById(ADMIN_ID)).thenReturn(Optional.of(User.builder()
                 .id(ADMIN_ID).username("admin").role(UserRole.ADMIN).build()));
         List<AdminRoleAssignment> roles = switch (actor) {
@@ -128,10 +138,16 @@ class ReportModerationPermissionTest {
         }
     }
 
+    /**
+     * 고정 시각에 활성 관리자 역할을 할당해 역할 조합별 실제 권한 판정에 사용한다.
+     */
     private AdminRoleAssignment assignment(AdminRole role) {
         return AdminRoleAssignment.assign(ADMIN_ID, role, ADMIN_ID, LocalDateTime.now(CLOCK));
     }
 
+    /**
+     * 작업 enum을 신고 수락·거절, 게시글 삭제·숨김·복원, 이의 제기 승인·반려 서비스 호출에 연결한다.
+     */
     private void invoke(Operation operation) {
         switch (operation) {
             case ACCEPT -> reportService.acceptReport(1L, ADMIN_ID);
