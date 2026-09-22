@@ -25,8 +25,11 @@ import org.junit.jupiter.api.Test;
 
 class PlaceReviewServiceTest {
 
+    /**
+     * 복수 추천 사유의 순서와 대표 사유를 유지하고 업로드 ID 목록을 미디어 연결 서비스로 전달하는지 확인합니다.
+     */
     @Test
-    void createUsesStructuredReasonsAndLinksOnlyUploadedMediaIds() {
+    void createsStructuredReview() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
@@ -52,8 +55,11 @@ class PlaceReviewServiceTest {
         verify(reviewMediaService).connect(eq(7L), eq(10L), any(PlaceReview.class), eq(List.of(5L, 3L)));
     }
 
+    /**
+     * 공개 리뷰 목록이 VISIBLE 조건으로만 저장소를 조회하는지 확인합니다.
+     */
     @Test
-    void publicListLoadsOnlyVisibleReviews() {
+    void loadsVisiblePublicReviews() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
@@ -68,8 +74,11 @@ class PlaceReviewServiceTest {
                 eq(1L), eq(PlaceReviewVisibilityStatus.VISIBLE), any());
     }
 
+    /**
+     * 내 리뷰 조회가 공개·숨김만 포함하고 삭제는 제외하며 1부터 시작하는 페이지와 최신순 정렬을 유지하는지 확인합니다.
+     */
     @Test
-    void myReviewListIncludesVisibleAndHiddenReviewsButExcludesDeletedReviews() {
+    void listsOwnNonDeletedReviews() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);

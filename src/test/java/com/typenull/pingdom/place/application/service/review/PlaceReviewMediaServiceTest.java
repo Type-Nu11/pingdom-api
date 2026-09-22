@@ -35,8 +35,11 @@ class PlaceReviewMediaServiceTest {
 
     private static final Clock FIXED_CLOCK = Clock.fixed(Instant.parse("2026-09-16T01:00:00Z"), ZoneOffset.UTC);
 
+    /**
+     * 처리된 이미지의 URL·MIME·바이트 크기를 반환하고 요청 사용자·장소에 귀속된 24시간 임시 업로드를 저장하는지 확인합니다.
+     */
     @Test
-    void uploadStoresProcessedImageAsTemporaryReviewMedia() {
+    void storesTemporaryReviewMedia() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewMediaUploadRepository mediaRepository = mock(PlaceReviewMediaUploadRepository.class);
         ImageUploadProcessor processor = mock(ImageUploadProcessor.class);
@@ -65,8 +68,11 @@ class PlaceReviewMediaServiceTest {
         assertThat(mediaCaptor.getValue().getStatus()).isEqualTo(PlaceReviewMediaUploadStatus.UPLOADED);
     }
 
+    /**
+     * 같은 장소라도 다른 사용자가 올린 임시 이미지는 FORBIDDEN으로 연결을 거절하는지 확인합니다.
+     */
     @Test
-    void connectRejectsMediaUploadedForAnotherPlaceOrUser() {
+    void rejectsOtherUserMedia() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewMediaUploadRepository mediaRepository = mock(PlaceReviewMediaUploadRepository.class);
         PlaceReviewMediaService service = service(placeRepository, mediaRepository, mock(ImageUploadProcessor.class), mock(S3ObjectStorage.class));
@@ -82,8 +88,11 @@ class PlaceReviewMediaServiceTest {
                 .isEqualTo(MapErrorCode.PLACE_REVIEW_MEDIA_FORBIDDEN);
     }
 
+    /**
+     * 요청 ID 순서대로 이미지 URL과 표시 순서를 반영하고 연결한 이미지는 다시 사용할 수 없는지 확인합니다.
+     */
     @Test
-    void connectPreservesRequestOrderAndMakesMediaSingleUse() {
+    void preservesSingleUseMediaOrder() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewMediaUploadRepository mediaRepository = mock(PlaceReviewMediaUploadRepository.class);
         PlaceReviewMediaService service = service(placeRepository, mediaRepository, mock(ImageUploadProcessor.class), mock(S3ObjectStorage.class));
@@ -105,6 +114,9 @@ class PlaceReviewMediaServiceTest {
                 .isEqualTo(MapErrorCode.PLACE_REVIEW_MEDIA_ALREADY_CONNECTED);
     }
 
+    /**
+     * 만료 시간 검증을 위해 고정 UTC 시계와 모의 저장소를 사용하는 서비스를 만듭니다.
+     */
     private PlaceReviewMediaService service(
             MapPlaceRepository placeRepository,
             PlaceReviewMediaUploadRepository mediaRepository,
@@ -121,6 +133,9 @@ class PlaceReviewMediaServiceTest {
         );
     }
 
+    /**
+     * 임시 이미지 연결 대상인 사용자 7의 빈 이미지 리뷰를 만듭니다.
+     */
     private PlaceReview review() {
         MapPlace place = mock(MapPlace.class);
         return PlaceReview.create(
@@ -128,6 +143,9 @@ class PlaceReviewMediaServiceTest {
                 LocalDateTime.of(2026, 9, 16, 1, 0));
     }
 
+    /**
+     * 사용자·장소·키를 지정한 미연결 임시 이미지를 준비합니다.
+     */
     private PlaceReviewMediaUpload upload(Long placeId, Long userId, String key) {
         return PlaceReviewMediaUpload.upload(
                 placeId, userId, key, "https://cdn.test/" + key + ".jpg", "image/jpeg", 10,
