@@ -29,6 +29,10 @@ class LocationCheckInServiceTest {
     private final MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
     private LocationCheckInService service;
 
+    /**
+     * 시각과 반경 100m·정확도 50m·TTL 5분을 고정한다.
+     * 활성 일반 사용자와 좌표가 알려진 장소를 제공하고 저장 mock은 입력 체크인을 그대로 반환한다.
+     */
     @BeforeEach
     void setUp() {
         service = new LocationCheckInService(checkInRepository, userRepository, placeRepository,
@@ -42,8 +46,12 @@ class LocationCheckInServiceTest {
         when(checkInRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    /**
+     * 30초 전의 정확도 10m 관측이 근접 인증 상태와 서울 기준 2026-07-20 날짜로 저장되는지 확인한다.
+     * 위도 차이로 계산한 거리는 10~12m여야 하며 flush 저장을 호출해야 한다.
+     */
     @Test
-    void verifiesCheckInWithinRadiusWithFreshAccurateLocation() {
+    void acceptNearbyObservation() {
         var response = service.checkIn(1L, request(35.1802, 128.1078, 10, NOW.minusSeconds(30)));
 
         assertThat(response.status()).isEqualTo(LocationCheckInStatus.PROXIMITY_MATCHED);
@@ -52,39 +60,45 @@ class LocationCheckInServiceTest {
         verify(checkInRepository).saveAndFlush(any(LocationCheckIn.class));
     }
 
+    /** 100m 반경 밖의 위치는 반경 초과 오류로 거부하고 DB 저장을 호출하지 않아야 한다. */
     @Test
-    void rejectsLocationOutsideOneHundredMeterRadius() {
+    void rejectOutsideRadius() {
         assertError(request(35.1820, 128.1078, 10, NOW), VisitorVerificationErrorCode.OUTSIDE_CHECK_IN_RADIUS);
         verify(checkInRepository, never()).saveAndFlush(any());
     }
 
+    /** 관측 TTL 300초를 1초 넘긴 관측은 만료 오류로 거부한다. */
     @Test
-    void rejectsObservationOlderThanFiveMinutes() {
+    void rejectStaleObservation() {
         assertError(request(35.1801, 128.1078, 10, NOW.minusSeconds(301)),
                 VisitorVerificationErrorCode.LOCATION_OBSERVATION_EXPIRED);
     }
 
+    /** 허용 정확도 50m보다 0.1m 큰 값은 위치 부정확 오류로 거부한다. */
     @Test
-    void rejectsAccuracyWorseThanFiftyMeters() {
+    void rejectPoorAccuracy() {
         assertError(request(35.1801, 128.1078, 50.1, NOW),
                 VisitorVerificationErrorCode.LOCATION_TOO_INACCURATE);
     }
 
+    /** 정확도 50m와 관측 나이 300초의 정확한 상한을 동시에 만족하면 근접 체크인을 허용한다. */
     @Test
-    void acceptsExactAccuracyAndObservationAgeBoundaries() {
+    void acceptObservationBoundaries() {
         var response = service.checkIn(1L, request(35.1801, 128.1078, 50, NOW.minusSeconds(300)));
 
         assertThat(response.status()).isEqualTo(LocationCheckInStatus.PROXIMITY_MATCHED);
     }
 
+    /** 미래 허용 오차 30초보다 1초 먼 관측 시각은 만료 오류로 처리한다. */
     @Test
-    void rejectsObservationBeyondFutureTolerance() {
+    void rejectFutureObservation() {
         assertError(request(35.1801, 128.1078, 10, NOW.plusSeconds(31)),
                 VisitorVerificationErrorCode.LOCATION_OBSERVATION_EXPIRED);
     }
 
+    /** HIDDEN 장소는 조회되더라도 PLACE_NOT_FOUND로 거부해 체크인 대상에서 제외한다. */
     @Test
-    void hidesUnavailablePlaceFromCheckIn() {
+    void hideUnavailablePlace() {
         when(placeRepository.findById(2L)).thenReturn(Optional.of(MapPlace.builder()
                 .id(2L).name("숨김 장소").address("주소").latitude(35.1801).longitude(128.1078)
                 .discoveryStatus(PlaceDiscoveryStatus.HIDDEN)
@@ -93,8 +107,9 @@ class LocationCheckInServiceTest {
         assertError(request(35.1801, 128.1078, 10, NOW), VisitorVerificationErrorCode.PLACE_NOT_FOUND);
     }
 
+    /** 같은 사용자·장소·서울 날짜에 기존 기록이 있으면 일일 중복 오류로 거부한다. */
     @Test
-    void rejectsSecondVerifiedCheckInAtSamePlaceOnSameDay() {
+    void rejectDailyDuplicate() {
         when(checkInRepository.existsByTouristUserIdAndPlaceIdAndCheckInDate(
                 1L, 2L, LocalDate.of(2026, 7, 20))).thenReturn(true);
 
@@ -102,8 +117,12 @@ class LocationCheckInServiceTest {
                 VisitorVerificationErrorCode.DAILY_CHECK_IN_ALREADY_EXISTS);
     }
 
+    /**
+     * 사전 중복 조회를 통과한 뒤 DB flush가 일일 유일 제약 위반으로 실패하는 상황을 구성한다.
+     * 경합으로 발생한 중복도 동일한 DAILY_CHECK_IN_ALREADY_EXISTS 오류로 전달해야 한다.
+     */
     @Test
-    void mapsDatabaseDailyUniqueConstraintRaceToConflict() {
+    void mapDailyConstraintConflict() {
         ConstraintViolationException constraint = new ConstraintViolationException(
                 "duplicate", new SQLException(), "uq_location_check_in_daily");
         when(checkInRepository.saveAndFlush(any()))
@@ -113,8 +132,9 @@ class LocationCheckInServiceTest {
                 VisitorVerificationErrorCode.DAILY_CHECK_IN_ALREADY_EXISTS);
     }
 
+    /** ADMIN 계정은 관광객 계정 필요 오류로 거부하고 장소 조회까지 진행하지 않아야 한다. */
     @Test
-    void rejectsNonTouristAccount() {
+    void rejectNonTouristAccount() {
         when(userRepository.findById(1L)).thenReturn(Optional.of(
                 User.builder().id(1L).role(UserRole.ADMIN).status(UserStatus.ACTIVE).build()));
 
@@ -123,10 +143,12 @@ class LocationCheckInServiceTest {
         verify(placeRepository, never()).findById(anyLong());
     }
 
+    /** 장소 2를 대상으로 좌표·정확도·관측 시각을 주입한 요청을 만든다. */
     private LocationCheckInRequest request(double latitude, double longitude, double accuracy, Instant observedAt) {
         return new LocationCheckInRequest(2L, latitude, longitude, accuracy, observedAt);
     }
 
+    /** 사용자 1의 체크인 요청이 지정한 방문 인증 오류 코드로 실패하는지 확인한다. */
     private void assertError(LocationCheckInRequest request, VisitorVerificationErrorCode errorCode) {
         assertThatThrownBy(() -> service.checkIn(1L, request))
                 .isInstanceOf(VisitorVerificationException.class)
