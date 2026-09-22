@@ -14,6 +14,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소·추천 버전별 클릭·노출·전환 집계입니다.
+ * 콘텐츠 개수는 전체 장소 스냅샷에서 다루며 이 엔티티 자체에는 잠금이나 버전 검사가 없습니다.
+ */
 @Entity
 @Table(
         name = "place_recommendation_version_snapshot",
