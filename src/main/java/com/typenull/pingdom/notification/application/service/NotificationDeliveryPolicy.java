@@ -12,10 +12,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** 알림 유형별 수신 설정과 사용자 시간대의 방해금지 구간으로 발송 가능 여부를 결정합니다. 설정이 없으면 허용합니다. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-/** 알림 유형과 사용자 설정을 대조해 전달 가능 채널을 결정합니다. */
 public class NotificationDeliveryPolicy {
 
     private final NotificationSettingRepository notificationSettingRepository;
@@ -37,7 +37,10 @@ public class NotificationDeliveryPolicy {
         return !isInQuietHours(setting);
     }
 
-    // 사용자 시간대 기준 현재 시각이 방해금지 시간에 포함되는지 확인합니다.
+    /**
+     * 사용자 시간대에서 시작 포함·종료 제외의 방해금지 구간을 판정하며 자정을 넘는 구간도 처리합니다.
+     * 시작·종료가 같거나 누락된 기존 설정은 하루 종일 차단하지 않고 방해금지를 적용하지 않습니다.
+     */
     private boolean isInQuietHours(NotificationSetting setting) {
         if (!setting.isQuietHoursEnabled()
                 || setting.getQuietHoursStart() == null
@@ -56,7 +59,7 @@ public class NotificationDeliveryPolicy {
         return !now.isBefore(start) || now.isBefore(end);
     }
 
-    // 잘못된 시간대 설정은 기본 시간대인 UTC로 대체합니다.
+    // 파싱할 수 없는 시간대는 NotificationSetting의 기본값인 Asia/Seoul로 대체합니다.
     private ZoneId resolveZoneId(NotificationSetting setting) {
         try {
             return ZoneId.of(setting.getTimezone());

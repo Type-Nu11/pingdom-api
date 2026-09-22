@@ -20,15 +20,19 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/** 사용자별 알림 채널과 수신 설정을 조회·변경합니다. */
 @Service
 @RequiredArgsConstructor
-/** 사용자별 알림 채널과 수신 설정을 조회·변경합니다. */
 public class NotificationSettingService {
 
     private final UserRepository userRepository;
     private final NotificationSettingRepository notificationSettingRepository;
     private final Clock clock;
 
+    /**
+     * 사용자의 존재·탈퇴 여부를 확인하고 저장된 수신 설정을 반환한다.
+     * 설정이 없으면 새 핫플·좋아요 알림 허용, 방해금지 해제 및 기본 시간대 응답을 만들되 DB에 저장하지 않는다.
+     */
     @Transactional(readOnly = true)
     public NotificationSettingResponse getSetting(Long userId) {
         ensureActiveUser(userId);
@@ -44,6 +48,10 @@ public class NotificationSettingService {
                 ));
     }
 
+    /**
+     * null 필드는 기존 값을 유지하는 부분 변경입니다. 시간 값의 null 전달로 기존 구간을 지울 수는 없습니다.
+     * 방해금지를 켠 결과가 유효한지 전체 조합을 검사한 뒤 명시된 값만 반영합니다.
+     */
     @Transactional
     public NotificationSettingResponse updateSetting(Long userId, NotificationSettingUpdateRequest request) {
         NotificationSetting setting = findOrCreateSetting(userId);
