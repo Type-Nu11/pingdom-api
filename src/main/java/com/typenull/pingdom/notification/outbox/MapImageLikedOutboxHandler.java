@@ -9,6 +9,10 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 좋아요 Outbox를 FCM 서비스에 전달하고 남은 일시 실패를 재시도 예외로 전파합니다.
+ * FCM 서비스 호출이 반환된 후 예외를 던지므로 서비스의 DB 트랜잭션과 Outbox 재시도 판정을 구분합니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class MapImageLikedOutboxHandler implements OutboxEventHandler {
