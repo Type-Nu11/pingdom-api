@@ -12,8 +12,9 @@ class ScoutActivityEligibilityTest {
     private static final LocalDateTime ELIGIBLE_FROM = LocalDateTime.of(2026, 8, 2, 9, 0);
     private static final LocalDateTime ELIGIBLE_UNTIL = LocalDateTime.of(2026, 9, 2, 9, 0);
 
+    /** 활동 자격 시작 1ns 전은 거부하고 시작 시각은 허용하되 종료 시각은 제외한다. */
     @Test
-    void eligibilityIsAvailableOnlyInsideTheConfiguredPeriod() {
+    void checkEligibilityPeriod() {
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
         eligibility.grant(99L, ELIGIBLE_FROM, ELIGIBLE_UNTIL, ELIGIBLE_FROM);
 
@@ -22,16 +23,18 @@ class ScoutActivityEligibilityTest {
         assertThat(eligibility.isEligibleAt(ELIGIBLE_UNTIL)).isFalse();
     }
 
+    /** 시작과 종료 시각이 같으면 활동 자격 부여를 인자 오류로 거부한다. */
     @Test
-    void eligibilityRejectsAZeroLengthPeriod() {
+    void rejectEmptyEligibilityPeriod() {
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
 
         assertThatThrownBy(() -> eligibility.grant(99L, ELIGIBLE_FROM, ELIGIBLE_FROM, ELIGIBLE_FROM))
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    /** 종료 시각에 만료 처리하면 EXPIRED 상태가 되고 1ns 뒤 활동 자격도 인정되지 않아야 한다. */
     @Test
-    void expiredEligibilityCannotBeUsed() {
+    void rejectExpiredEligibility() {
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(10L, CREATED_AT);
         eligibility.grant(99L, ELIGIBLE_FROM, ELIGIBLE_UNTIL, ELIGIBLE_FROM);
 
