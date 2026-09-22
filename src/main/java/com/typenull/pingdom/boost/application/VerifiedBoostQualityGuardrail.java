@@ -9,6 +9,10 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 신규 부스트 집행 전에 장소 소유 관계의 HEALTHY 품질 상태와 장소의 운영·탐색 노출 상태를 검사합니다.
+ * 이 검사는 조회 시점의 조건이며 이후 품질 변화나 추천 결과 노출을 보장하지 않습니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class VerifiedBoostQualityGuardrail {
