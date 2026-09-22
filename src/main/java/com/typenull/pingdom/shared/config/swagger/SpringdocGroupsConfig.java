@@ -25,6 +25,10 @@ import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * ApiAudience에 따른 문서 그룹·기능 태그를 구성하고 생성된 명세의 인증·검증 오류 계약을 보완한다.
+ * 요청 라우팅이나 Spring Security의 실행 권한은 변경하지 않는다.
+ */
 @Configuration
 public class SpringdocGroupsConfig {
 
@@ -98,6 +102,7 @@ public class SpringdocGroupsConfig {
         return api -> applyDisplayTags(api, null);
     }
 
+    /** 실제 operation이 사용하는 태그만 카탈로그 순서로 노출한다. 그룹 미지정 전체 명세는 동명 태그의 설명을 합친다. */
     private void applyDisplayTags(OpenAPI api, Group audience) {
         if (api.getPaths() == null) {
             return;
@@ -181,6 +186,7 @@ public class SpringdocGroupsConfig {
         });
     }
 
+    /** 요청 본문이 있거나 직접 파라미터에 수치·길이·정규식 제약이 있으면 문서의 400 응답 보완 대상으로 분류한다. */
     private boolean hasValidationInput(io.swagger.v3.oas.models.Operation operation) {
         if (operation.getRequestBody() != null) {
             return true;
@@ -224,6 +230,7 @@ public class SpringdocGroupsConfig {
                 ));
     }
 
+    /** 누락된 오류 응답과 빈 설명을 보완한다. 기존 content에 직접 ErrorResponse 참조가 없으면 schema를 공통 오류로 교체한다. */
     private void ensureErrorResponse(
             io.swagger.v3.oas.models.Operation operation,
             String status,
