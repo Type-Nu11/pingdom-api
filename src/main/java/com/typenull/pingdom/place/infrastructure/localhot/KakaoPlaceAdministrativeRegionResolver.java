@@ -14,6 +14,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * Naver resolver가 비활성인 구성에서 Kakao 법정동 응답을 시·군·구 코드로 해석합니다.
+ * 좌표를 소수 6자리 수준으로 반올림한 키로 캐시하며 동시 miss의 외부 요청을 합치지는 않습니다.
+ */
 @Component
 @ConditionalOnProperty(
         prefix = "place.local-hot.naver",
