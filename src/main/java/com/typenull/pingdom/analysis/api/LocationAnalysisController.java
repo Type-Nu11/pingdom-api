@@ -7,11 +7,14 @@ import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportAccessPolicy;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportArchiveService;
+import com.typenull.pingdom.analysis.application.LocationAnalysisReportGenerationLimiter;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportResponse;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisReportUpdateRequest;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.ratelimit.annotation.RateLimited;
+import com.typenull.pingdom.shared.ratelimit.core.RateLimitAction;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -48,21 +51,32 @@ public class LocationAnalysisController {
     private final LocationAnalysisReportService reportService;
     private final LocationAnalysisReportArchiveService archiveService;
     private final LocationAnalysisReportAccessPolicy accessPolicy;
+    private final LocationAnalysisReportGenerationLimiter generationLimiter;
 
     @PostMapping(value = "/location", produces = MediaType.APPLICATION_PDF_VALUE)
-    @Operation(summary = "입지 분석 PDF 보고서 생성", description = "입력 조건을 AI/MCP 분석 인터페이스로 전달하고 HTML 분석 결과를 PDF로 반환합니다.")
+    @Operation(
+            summary = "입지 분석 PDF 보고서 생성",
+            description = "입력 조건을 AI/MCP 분석 인터페이스로 전달하고 HTML 분석 결과를 PDF로 반환합니다. "
+                    + "사용자·IP별 호출 한도는 Redis로 모든 인스턴스에 공유되며, 생성 동시 실행·대기열 상한은 인스턴스별로 적용됩니다. "
+                    + "429 응답 시 즉시 반복하지 말고 backoff 후 재시도하세요. Retry-After 헤더는 제공하지 않습니다."
+    )
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "PDF 보고서 생성 성공"),
             @ApiResponse(responseCode = "400", description = "지역 누락 또는 입력값 검증 실패", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "429", description = "사용자·IP 호출 한도 또는 인스턴스별 생성 동시 실행·대기열 상한 초과", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class))),
             @ApiResponse(responseCode = "502", description = "AI 분석 응답 처리 실패", content = @io.swagger.v3.oas.annotations.media.Content(schema = @io.swagger.v3.oas.annotations.media.Schema(implementation = ErrorResponse.class)))
     })
+    @RateLimited(RateLimitAction.LOCATION_ANALYSIS_REPORT)
     public ResponseEntity<byte[]> generate(
             @Valid @RequestBody LocationAnalysisRequest request,
             @CurrentUser JwtAuthenticatedUser user
     ) {
         accessPolicy.requireOwnedEmail(userId(user), request.getEmail());
-        LocationAnalysisReportService.LocationAnalysisPdf report = reportService.generate(request);
-        archiveService.archive(request, report);
+        LocationAnalysisReportService.LocationAnalysisPdf report = generationLimiter.execute(() -> {
+            LocationAnalysisReportService.LocationAnalysisPdf generated = reportService.generate(request);
+            archiveService.archive(request, generated);
+            return generated;
+        });
         String filename = downloadFilename(report.reportName(), report.publishedDate(), 0);
         return ResponseEntity.ok()
                 .contentType(MediaType.APPLICATION_PDF)

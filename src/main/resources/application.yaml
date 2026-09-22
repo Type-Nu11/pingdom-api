@@ -8,6 +8,9 @@ server:
       protocol-header: X-Forwarded-Proto
 
 analysis:
+  location-report-generation:
+    max-concurrent: ${LOCATION_REPORT_MAX_CONCURRENT:2}
+    max-queue: ${LOCATION_REPORT_MAX_QUEUE:4}
   pdf:
     font-path: ${ANALYSIS_PDF_FONT_PATH:/usr/share/fonts/truetype/nanum/NanumGothic.ttf}
   ai:
@@ -270,6 +273,12 @@ abuse:
     consultation-intro-ip:
       limit: 10
       window: PT1M
+    location-analysis-report-user:
+      limit: ${LOCATION_ANALYSIS_REPORT_USER_LIMIT:3}
+      window: ${LOCATION_ANALYSIS_REPORT_USER_WINDOW:PT1H}
+    location-analysis-report-ip:
+      limit: ${LOCATION_ANALYSIS_REPORT_IP_LIMIT:20}
+      window: ${LOCATION_ANALYSIS_REPORT_IP_WINDOW:PT1H}
 
 gemini:
   enabled: ${GEMINI_ENABLED:false}

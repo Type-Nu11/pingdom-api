@@ -68,6 +68,8 @@ class AbuseRateLimitServiceTest {
                 new WindowPolicy(1, Duration.ofHours(1)),
                 new WindowPolicy(100, Duration.ofHours(1)),
                 new WindowPolicy(2, Duration.ofMinutes(1)),
+                new WindowPolicy(2, Duration.ofHours(1)),
+                new WindowPolicy(100, Duration.ofHours(1)),
                 "test:rate-limit:",
                 true
         );
@@ -198,6 +200,20 @@ class AbuseRateLimitServiceTest {
         );
 
         assertDoesNotThrow(() -> abuseRateLimitService.checkImageUpload(2L, "203.0.113.32"));
+    }
+
+    /** 같은 사용자 보고서 생성은 IP가 달라도 시간 창을 공유하며, 다른 사용자는 독립적으로 허용. */
+    @Test
+    void locationAnalysisReportLimitUsesUserWindow() {
+        abuseRateLimitService.checkLocationAnalysisReport(1L, "203.0.113.30");
+        abuseRateLimitService.checkLocationAnalysisReport(1L, "203.0.113.31");
+
+        assertThrows(RateLimitException.class, () ->
+                abuseRateLimitService.checkLocationAnalysisReport(1L, "203.0.113.32")
+        );
+        assertDoesNotThrow(() ->
+                abuseRateLimitService.checkLocationAnalysisReport(2L, "203.0.113.32")
+        );
     }
 
     /**
