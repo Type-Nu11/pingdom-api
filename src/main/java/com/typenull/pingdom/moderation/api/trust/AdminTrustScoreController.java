@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.trust;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.trust.AdminTrustScoreAnomalyItem;
@@ -44,7 +47,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/trust-score")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.TRUST)
 /** Trust Score 조회·재계산·이상 징후 및 개입 규칙 관리 API의 진입점입니다. */
 public class AdminTrustScoreController {
 
