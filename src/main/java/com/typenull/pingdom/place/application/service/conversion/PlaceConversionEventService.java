@@ -11,6 +11,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 유형과 원천 ID를 기준으로 장소 전환 이력과 후속 처리 outbox 이벤트를 함께 저장합니다.
+ * 사전 조회에서 찾은 중복은 생략하며 동시 insert의 제약 위반을 여기서 별도로 복구하지는 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceConversionEventService {
@@ -18,6 +22,11 @@ public class PlaceConversionEventService {
     private final PlaceConversionEventRepository conversionEventRepository;
     private final OutboxEventPublisher outboxEventPublisher;
 
+    /**
+     * 전환 유형과 원본 ID로 중복 키를 만들고 이미 기록된 전환이면 아무 작업 없이 반환합니다.
+     * 새 전환 행과 전달용 outbox 이벤트를 같은 트랜잭션에 저장하며 outbox 소비 완료까지 기다리지는 않습니다.
+     * 중복 사전 조회만으로 동시 삽입을 직렬화하지 않으며 저장·발행 실패는 호출자에게 전파합니다.
+     */
     @Transactional
     public void publish(
             Long userId,
