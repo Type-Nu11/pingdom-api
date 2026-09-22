@@ -3,6 +3,10 @@ package com.typenull.pingdom.moderation.api.dto.place.recommendation.metric;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
+/**
+ * 추천 노출을 분모로 계산한 장소별 지표입니다. CTR·전환율은 100을 곱하지 않은 소수 비율이고,
+ * 기간 이벤트 조회에서는 snapshotUpdatedAt이 null입니다.
+ */
 @Schema(description = "관리자 추천 성과 항목")
 public record AdminPlaceRecommendationMetricItem(
         @Schema(description = "장소 ID", example = "1")
