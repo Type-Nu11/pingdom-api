@@ -3,6 +3,7 @@ package com.typenull.pingdom.verification.api.dto;
 import com.typenull.pingdom.verification.domain.*;
 import java.time.LocalDateTime;
 
+/** 관리자용 방문 제보 상세로 작성자 ID와 심사자·메모를 포함한다. 구조화 값은 제보 유형에 따라 null일 수 있다. */
 public record VisitorVerificationReportResponse(
         Long id,
         Long reporterUserId,
