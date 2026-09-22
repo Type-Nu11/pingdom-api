@@ -8,6 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 좌표 보강·근접 중복 후보·동종 업종·분석 보고서용 장소 조회를 구분합니다.
+ * PostGIS geography의 구면 거리 단위는 미터이며 공개·운영 필터는 업종·분석 조회에만 적용됩니다.
+ */
 public interface MapPlaceCoordinateQueryRepository extends Repository<MapPlace, Long> {
 
     @Query(
