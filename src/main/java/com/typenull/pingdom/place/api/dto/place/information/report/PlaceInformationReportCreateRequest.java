@@ -6,6 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
+/**
+ * 장소 정보 신고 대상·사유와 선택적인 검증 근거 ID를 전달합니다.
+ * 근거가 있다면 같은 장소에 속해야 하고 설명의 공백 여부는 도메인 생성 시 추가 확인합니다.
+ */
 @Schema(description = "장소 정보 신고 생성 요청")
 public record PlaceInformationReportCreateRequest(
         @Schema(nullable = true, description = "신고 대상 증빙 ID")
