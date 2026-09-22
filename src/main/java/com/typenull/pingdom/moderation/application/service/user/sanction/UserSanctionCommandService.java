@@ -26,6 +26,11 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사용자 정지 상태·제재 이력·관리자 알림 outbox를 변경하고 현재 JVM의 접근 상태 캐시를 비웁니다.
+ * 호출자의 관리자 업무 권한 검증을 전제로 하며 이 서비스의 관리자 조회는 계정 존재만 확인합니다.
+ * 캐시 제거는 즉시 수행되어 DB 커밋과 원자적이지 않고 다른 JVM의 캐시까지 무효화하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -42,8 +47,8 @@ public class UserSanctionCommandService {
 
     private volatile Boolean postgreSQL;
 
+    /** 기존 정지 상태를 새 사유·기간으로 교체하고 refresh token을 비운 뒤 이력과 알림을 저장합니다. 기간·권한 검증은 호출자 책임입니다. */
     @Transactional
-    /** 대상 사용자의 기존 제재 상태와 기간을 검증한 뒤 새 제재를 적용합니다. */
     public void applyBan(User targetUser, String reason, LocalDateTime now, LocalDateTime expiresAt, Long adminUserId) {
         User adminUser = findAdminUser(adminUserId);
         targetUser.ban(reason, now, expiresAt);
@@ -69,6 +74,11 @@ public class UserSanctionCommandService {
         userAccessStatusService.evict(targetUser.getId());
     }
 
+    /**
+     * 만료 시각과 별도로 저장된 banned 플래그가 참인 사용자만 수동 해제하고 기존 유형·기간을 RELEASED 이력에 보존합니다.
+     * 정지 상태가 아니거나 관리자 계정이 없으면 거절하며 상태·이력·알림 outbox는 같은 트랜잭션, 로컬 접근 캐시 제거는 즉시 수행합니다.
+     * 관리자의 업무 권한 검증은 호출자가 담당합니다.
+     */
     @Transactional
     public void releaseBan(User targetUser, String reason, LocalDateTime now, Long adminUserId) {
         if (!targetUser.isBanned()) {
@@ -113,6 +123,10 @@ public class UserSanctionCommandService {
         return true;
     }
 
+    /**
+     * 한 번에 첫 배치의 만료 정지만 해제합니다. PostgreSQL은 트랜잭션 advisory lock 획득 실패 시 0을 반환하고,
+     * 다른 DB 또는 DB 종류 판별 실패 시에는 분산 잠금 없이 실행합니다. 배치 크기 하한은 1입니다.
+     */
     @Transactional
     public int expireExpiredTemporaryBans(LocalDateTime now, int batchSize) {
         if (!tryAcquireExpirationLock()) {
