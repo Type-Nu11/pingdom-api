@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "135";
+    private static final String LATEST_MIGRATION_VERSION = "136";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -77,7 +77,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     /**
-     * 빈 PostGIS 스키마에 전체 135개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
+     * 빈 PostGIS 스키마에 전체 136개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
      */
     @Test
     @Tag("migration-smoke")
@@ -86,7 +86,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(135);
+        assertThat(result.migrationsExecuted).isEqualTo(136);
 
         assertPostMigrationSchema();
     }
@@ -525,7 +525,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     /**
-     * V89의 실패 Outbox 이벤트에 나머지 46개 마이그레이션을 적용해 최신 버전에 도달하고 실패 상태·시도 횟수·최근 오류를 보존하는지 검증.
+     * V89의 실패 Outbox 이벤트에 나머지 47개 마이그레이션을 적용해 최신 버전에 도달하고 실패 상태·시도 횟수·최근 오류를 보존하는지 검증.
      */
     @Test
     void preservesLegacyFailedOutboxState() throws Exception {
@@ -553,7 +553,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(46);
+        assertThat(result.migrationsExecuted).isEqualTo(47);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -629,7 +629,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     /**
-     * 기존 V1 스키마를 baseline으로 등록하고 V2 이후 133개 마이그레이션을 적용해 최신 버전에 도달하는지 검증.
+     * 기존 V1 스키마를 baseline으로 등록하고 V2 이후 134개 마이그레이션을 적용해 최신 버전에 도달하는지 검증.
      * 기존 좌표의 PostGIS location 보정, 추천 점수 컬럼·제약 및 전체 후속 스키마 계약도 확인.
      */
     @Test
@@ -662,7 +662,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(133);
+        assertThat(result.migrationsExecuted).isEqualTo(134);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -783,7 +783,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(108);
+        assertThat(result.migrationsExecuted).isEqualTo(109);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1023,7 +1023,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(80);
+        assertThat(result.migrationsExecuted).isEqualTo(81);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """

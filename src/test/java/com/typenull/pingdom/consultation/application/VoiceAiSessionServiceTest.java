@@ -8,12 +8,15 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 import com.fasterxml.jackson.datatype.jsr310.JavaTimeModule;
 import com.typenull.pingdom.consultation.domain.VoiceAiReplay;
+import com.typenull.pingdom.consultation.domain.VoiceAiReplayStatus;
 import com.typenull.pingdom.consultation.domain.VoiceAiSession;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiReplayRepository;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiSessionRepository;
 import java.time.*;
+import java.util.HashMap;
+import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -24,8 +27,11 @@ class VoiceAiSessionServiceTest {
     private final GeminiVoiceClient provider = mock(GeminiVoiceClient.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-17T03:00:00Z"), ZoneId.of("Asia/Seoul"));
     private final ObjectMapper mapper = JsonMapper.builder().addModule(new JavaTimeModule()).build();
-    private final VoiceAiSessionService service = new VoiceAiSessionService(sessions, replays,
-            new GeminiProperties(true, "test-key", null, null, null), provider, new ProviderEnvelopeValidator(), clock);
+    private final Map<String, VoiceAiReplay> replayStore = new HashMap<>();
+    private final VoiceAiReplayTransactionService transactions = new VoiceAiReplayTransactionService(sessions, replays);
+    private final VoiceAiSessionService service = new VoiceAiSessionService(sessions,
+            new GeminiProperties(true, "test-key", null, null, null), provider, new ProviderEnvelopeValidator(),
+            transactions, clock);
     private VoiceAiSession session;
 
     /**
@@ -35,6 +41,22 @@ class VoiceAiSessionServiceTest {
     void setup() {
         session = VoiceAiSession.create("session", 1L, LocalDateTime.now(clock).plusMinutes(5));
         when(sessions.findByIdForUpdate("session")).thenReturn(Optional.of(session));
+        when(replays.findBySessionIdAndRequestId(eq("session"), anyString()))
+                .thenAnswer(call -> Optional.ofNullable(replayStore.get(call.getArgument(1))));
+        when(replays.findFirstBySessionIdAndStatusOrderByCreatedAtDesc("session", VoiceAiReplayStatus.PROCESSING))
+                .thenAnswer(call -> replayStore.values().stream()
+                        .filter(replay -> replay.getStatus() == VoiceAiReplayStatus.PROCESSING)
+                        .findFirst());
+        when(replays.save(any())).thenAnswer(call -> {
+            VoiceAiReplay replay = call.getArgument(0);
+            replayStore.put(replay.getRequestId(), replay);
+            return replay;
+        });
+        doAnswer(call -> {
+            VoiceAiReplay replay = call.getArgument(0);
+            replayStore.remove(replay.getRequestId());
+            return null;
+        }).when(replays).delete(any(VoiceAiReplay.class));
     }
 
     /**
@@ -58,11 +80,6 @@ class VoiceAiSessionServiceTest {
     void replaysOnlyMatchingSessionRequest() throws Exception {
         JsonNode envelope = mapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"안내\"}");
         when(provider.generateEnvelope("hello", "r1")).thenReturn(envelope);
-        when(replays.save(any())).thenAnswer(call -> {
-            VoiceAiReplay saved = call.getArgument(0);
-            when(replays.findBySessionIdAndRequestId("session", "r1")).thenReturn(Optional.of(saved));
-            return saved;
-        });
         assertThat(service.send("session", 1L, "hello", "r1")).isEqualTo(envelope);
         assertThat(service.send("session", 1L, "hello", "r1")).isEqualTo(envelope);
         assertCode(() -> service.send("session", 1L, "changed", "r1"), "REPLAY_CONFLICT");
@@ -86,7 +103,7 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 공급자 예외는 PROVIDER_UNAVAILABLE, 잘못된 envelope는 PROVIDER_RESPONSE_INVALID로 변환하고 replay 저장은 하지 않는지 검증.
+     * 공급자 실패·잘못된 envelope는 502로 변환하고 PROCESSING 소유권을 해제해 같은 requestId를 재시도할 수 있는지 검증.
      */
     @Test
     void skipsFailedProviderReplayStorage() throws Exception {
@@ -95,7 +112,7 @@ class VoiceAiSessionServiceTest {
         reset(provider);
         when(provider.generateEnvelope(anyString(), anyString())).thenReturn(mapper.readTree("{\"id\":\"wrong\"}"));
         assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_RESPONSE_INVALID");
-        verify(replays, never()).save(any());
+        assertThat(replayStore).isEmpty();
     }
 
     /**
@@ -107,7 +124,37 @@ class VoiceAiSessionServiceTest {
                 .put("kind", "assistant_message").put("text", "가".repeat(6_000));
         when(provider.generateEnvelope("hello", "r1")).thenReturn(envelope);
         assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_RESPONSE_INVALID");
-        verify(replays, never()).save(any());
+        assertThat(replayStore).isEmpty();
+    }
+
+    /**
+     * 프로세스 중단처럼 기존 worker가 lease를 넘긴 경우 새 worker만 결과를 확정하고,
+     * 늦게 도착한 기존 worker의 결과는 덮어쓰지 못하는지 검증.
+     */
+    @Test
+    void fencesLateProviderResultAfterProcessingLeaseTakeover() throws Exception {
+        LocalDateTime now = LocalDateTime.now(clock);
+        var first = transactions.claim("session", 1L, "r1", "hash", now, Duration.ofSeconds(30));
+        var second = transactions.claim("session", 1L, "r1", "hash", now.plusSeconds(30), Duration.ofSeconds(30));
+        JsonNode oldEnvelope = mapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"old\"}");
+        JsonNode newEnvelope = mapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"new\"}");
+
+        assertThat(first.type()).isEqualTo(VoiceAiReplayClaim.Type.OWNER);
+        assertThat(second.type()).isEqualTo(VoiceAiReplayClaim.Type.OWNER);
+        assertThat(transactions.complete("session", 1L, "r1", first.processingToken(), oldEnvelope)).isNull();
+        assertThat(transactions.complete("session", 1L, "r1", second.processingToken(), newEnvelope)).isEqualTo(newEnvelope);
+        assertThat(replayStore.get("r1").getEnvelope()).isEqualTo(newEnvelope);
+    }
+
+    /** 같은 세션의 다른 requestId도 선행 provider 호출이 끝날 때까지 소유권을 얻지 못하는지 검증. */
+    @Test
+    void serializesDifferentRequestsInSameSessionWhileProviderIsProcessing() {
+        LocalDateTime now = LocalDateTime.now(clock);
+        var first = transactions.claim("session", 1L, "r1", "hash-1", now, Duration.ofSeconds(30));
+        var later = transactions.claim("session", 1L, "r2", "hash-2", now, Duration.ofSeconds(30));
+
+        assertThat(first.type()).isEqualTo(VoiceAiReplayClaim.Type.OWNER);
+        assertThat(later.type()).isEqualTo(VoiceAiReplayClaim.Type.PROCESSING);
     }
 
     /**

@@ -37,8 +37,11 @@ DB의 기존 LocalDateTime 의미와 JVM 기본 시간대를 유지하며 API에
 requestId는 세션 내 대소문자를 구분하며 최종 envelope.id와 동일하다.
 text 원문 UTF-8 SHA-256을 비교하므로 공백 차이도 다른 요청이다.
 동일 ID/text의 성공 결과는 재사용하며 다른 text는 409이다.
-전송·갱신·종료는 세션 행의 DB 쓰기 잠금으로 직렬화한다.
-진행 중 재요청은 앞선 트랜잭션 종료 후 세션 상태와 replay를 다시 검사한다.
+전송 시작·결과 저장·갱신·종료는 세션 행의 DB 쓰기 잠금으로 짧게 직렬화한다.
+provider 호출 중에는 `PROCESSING` replay 소유권만 DB에 남기고 트랜잭션·행 잠금을 해제한다.
+진행 중 재요청은 provider를 중복 호출하지 않고 결과 저장까지 잠금 없이 replay를 재조회한다.
+소유권은 provider connect/read timeout과 여유 시간을 반영한 lease(최소 30초) 이후에만 인계한다.
+인계 뒤 늦게 완료한 기존 worker는 token 비교를 통과하지 못해 결과를 덮어쓸 수 없다.
 provider 호출 실패/롤백 후에는 저장 결과가 없으므로 다시 호출할 수 있다.
 외부 provider 호출과 DB 커밋은 원자적이지 않으므로 프로세스 장애까지 포함한 exactly-once를 보장하지 않는다.
 
@@ -59,7 +62,7 @@ provider connect/read timeout은 기본 2초/5초이며 설정 가능하다.
 이 값은 DB 잠금 대기 등을 포함한 서버 전체 deadline이 아니다.
 앱 30초 deadline/네트워크 단절은 서버 작업 취소를 보장하지 않는다.
 이미 커밋한 결과는 동일 ID/text로 회수할 수 있다. DELETE는 진행 중 전송이 완료된 후 종료한다.
-세션 잠금은 provider 호출 중에도 DB 연결을 점유하므로 장시간 provider 지연 시 대기 증가에 유의한다.
+provider 지연 중에는 DB 커넥션과 세션 행 잠금을 점유하지 않는다.
 
 ## 배포 인계
 
