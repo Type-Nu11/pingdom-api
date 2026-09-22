@@ -20,8 +20,11 @@ class NaverPlaceSearchServiceTest {
     @Mock private NaverPlaceSearchClient client;
     @InjectMocks private NaverPlaceSearchService service;
 
+    /**
+     * 검색어 공백과 결과 제목 HTML을 제거하고 한 건의 네이버 정수 좌표를 도 단위 위경도로 변환하는지 확인합니다.
+     */
     @Test
-    void 네이버_업체명_검색_결과를_최대_다섯건의_WGS84_좌표로_변환한다() throws Exception {
+    void normalizesNaverPlaceResult() throws Exception {
         when(client.search("핑덤 카페")).thenReturn(objectMapper.readTree("""
                 [{"title":"<b>핑덤</b> 카페","roadAddress":"서울시 도로명","address":"서울시 지번",
                   "mapx":"1271234567","mapy":"371234567"}]
@@ -38,8 +41,11 @@ class NaverPlaceSearchServiceTest {
         });
     }
 
+    /**
+     * 공백 검색어에 MapException이 발생하는지 확인합니다.
+     */
     @Test
-    void 빈_검색어는_외부_호출_전에_거부한다() {
+    void rejectsBlankSearchQuery() {
         assertThatThrownBy(() -> service.search("  ", 1L)).isInstanceOf(MapException.class);
     }
 }
