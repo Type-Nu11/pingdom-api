@@ -13,7 +13,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportAccessPolicy;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportArchiveService;
+import com.typenull.pingdom.analysis.application.LocationAnalysisReportGenerationLimiter;
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
+import com.typenull.pingdom.analysis.infrastructure.LocationAnalysisReportGenerationProperties;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandler;
@@ -155,7 +157,10 @@ class LocationAnalysisControllerTest {
                 .standaloneSetup(new LocationAnalysisController(
                         reportService,
                         archiveService,
-                        accessPolicy
+                        accessPolicy,
+                        new LocationAnalysisReportGenerationLimiter(
+                                new LocationAnalysisReportGenerationProperties(2, 4)
+                        )
                 ))
                 .setCustomArgumentResolvers(currentUserResolver);
     }
