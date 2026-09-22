@@ -53,6 +53,9 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * 관리자 알림 필터와 중복 무시 삽입을 검증할 PostgreSQL 컨테이너 접속 정보를 등록한다.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -64,13 +67,19 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     @Autowired
     private NotificationsRepository notificationsRepository;
 
+    /**
+     * 기간 필터와 멱등 삽입의 행 수를 정확히 확인하도록 기존 알림을 제거한다.
+     */
     @BeforeEach
     void cleanDatabase() {
         notificationsRepository.deleteAllInBatch();
     }
 
+    /**
+     * 관리자 알림 조회의 선택적 시작·종료 조건과 최신순 결과를 PostgreSQL에서 검증한다.
+     */
     @Test
-    void adminFilterQuerySupportsOptionalPeriodFiltersOnPostgreSql() {
+    void filtersAdminNotificationsByOptionalPeriod() {
         Notifications older = notification("older", NOW.minusDays(10));
         Notifications newer = notification("newer", NOW.minusDays(2));
         notificationsRepository.saveAllAndFlush(List.of(older, newer));
@@ -88,9 +97,12 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
                 .containsExactly("older");
     }
 
+    /**
+     * 같은 수신자·이벤트의 두 번째 삽입은 0건이고 다른 수신자 삽입은 허용되어 총 두 행이 저장되는지 검증한다.
+     */
     @Test
     @Transactional
-    void adminNotificationInsertIsIdempotentPerRecipientAndEvent() {
+    void deduplicatesAdminNotificationsPerRecipient() {
         int firstInsert = insertAdminNotification(10L, "ADMIN_NOTIFICATION:REPORT_RECEIVED:1");
         int duplicateInsert = insertAdminNotification(10L, "ADMIN_NOTIFICATION:REPORT_RECEIVED:1");
         int otherRecipientInsert = insertAdminNotification(11L, "ADMIN_NOTIFICATION:REPORT_RECEIVED:1");
@@ -101,6 +113,9 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
         assertThat(notificationsRepository.count()).isEqualTo(2);
     }
 
+    /**
+     * 사용자 10의 관리자 알림 유형에 선택적 기간 조건을 적용하고 최신 생성 시각·ID 순으로 조회한다.
+     */
     private Page<Notifications> findByPeriod(
             boolean hasFrom,
             LocalDateTime from,
@@ -123,6 +138,9 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
         );
     }
 
+    /**
+     * 수신자와 이벤트 키를 바꾸어 신고 접수 알림의 중복 무시 삽입 결과를 확인한다.
+     */
     private int insertAdminNotification(Long userId, String eventKey) {
         return notificationsRepository.insertAdminNotificationIfAbsent(
                 userId,
@@ -135,6 +153,9 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
         );
     }
 
+    /**
+     * 기간 조회에 필요한 제목과 생성 시각을 지정해 읽지 않은 관리자 신고 알림을 만든다.
+     */
     private Notifications notification(String title, LocalDateTime createdAt) {
         return Notifications.builder()
                 .userId(10L)
