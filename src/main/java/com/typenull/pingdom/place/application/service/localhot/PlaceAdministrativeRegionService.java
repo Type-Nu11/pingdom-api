@@ -12,6 +12,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 외부 좌표 해석 결과로 행정구역 이름을 갱신하고 장소에 구역 코드를 연결합니다.
+ * 설정 조건부 메서드는 resolver 미설정 시 false를 반환하며 외부 조회와 DB 갱신 사이의 원자성은 제공하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceAdministrativeRegionService {
@@ -30,6 +34,10 @@ public class PlaceAdministrativeRegionService {
         return true;
     }
 
+    /**
+     * 지역 판별 설정이 없으면 조회 없이 false를 반환하고, 설정이 있으면 장소 행을 쓰기 잠금으로 읽어 지역을 동기화합니다.
+     * 장소가 없으면 예외를 발생시키며 정상 동기화는 true를 반환합니다. 외부 지역 판별 실패는 전파합니다.
+     */
     @Transactional
     public boolean synchronizeByIdIfConfigured(long placeId) {
         if (!resolver.isConfigured()) {
@@ -41,6 +49,10 @@ public class PlaceAdministrativeRegionService {
         return true;
     }
 
+    /**
+     * 장소 좌표로 행정구역을 판별하여 지역 사전 행을 생성·갱신하고 장소의 지역 코드를 변경합니다.
+     * 설정·장소 null 여부와 잠금은 호출자가 관리하며, 관리 상태 장소의 변경 저장에는 호출 트랜잭션이 필요합니다.
+     */
     public void synchronize(MapPlace place) {
         ResolvedPlaceAdministrativeRegion region = resolver.resolve(place.getLatitude(), place.getLongitude());
         LocalDateTime now = LocalDateTime.now(clock);
