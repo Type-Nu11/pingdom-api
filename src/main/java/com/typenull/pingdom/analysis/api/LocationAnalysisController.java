@@ -1,5 +1,8 @@
 package com.typenull.pingdom.analysis.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportAccessPolicy;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
@@ -34,7 +37,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/analysis/reports")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.ANALYSIS)
 public class LocationAnalysisController {
 
     private final LocationAnalysisReportService reportService;
