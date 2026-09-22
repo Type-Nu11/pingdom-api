@@ -10,6 +10,10 @@ import lombok.Getter;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 
+/**
+ * OAuth 제공자 속성과 로컬 회원 ID·역할을 함께 보관하는 인증 principal입니다.
+ * 식별 이름은 지정한 제공자 속성에서 읽고 없는 값은 null로 반환합니다.
+ */
 @Getter
 public class CustomOAuth2User implements OAuth2User, Serializable {
 

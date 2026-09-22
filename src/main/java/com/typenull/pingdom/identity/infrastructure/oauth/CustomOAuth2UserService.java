@@ -13,6 +13,10 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.user.OAuth2User;
 import org.springframework.stereotype.Service;
 
+/**
+ * Google 사용자 정보의 sub·email을 확인한 뒤 로컬 회원 연결을 해석합니다.
+ * 일반 OAuth2 응답은 로컬 회원 역할로 ROLE_ authority를 구성합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomOAuth2UserService extends DefaultOAuth2UserService {
