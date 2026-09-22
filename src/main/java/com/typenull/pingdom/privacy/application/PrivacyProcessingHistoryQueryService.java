@@ -13,12 +13,20 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 개인정보 처리 주체·행위와 발생 시각 범위로 감사 이력을 최신순 조회합니다.
+ * 시각 범위 양 끝은 포함하며 페이지는 최소 1, 크기는 1~100으로 보정합니다. 역전된 기간을 별도 예외로 거절하지는 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class PrivacyProcessingHistoryQueryService {
 
     private final PrivacyProcessingHistoryRepository privacyProcessingHistoryRepository;
 
+    /**
+     * 대상 사용자·행위자·행위와 양 끝을 포함한 선택 기간 조건으로 이력을 조회한다.
+     * null 필터는 생략하고 생성 시각·ID 내림차순으로 페이지를 반환한다. 여기서는 조회자 권한을 검사하지 않으므로 호출자가 제한해야 한다.
+     */
     @Transactional(readOnly = true)
     public PrivacyProcessingHistoryResponse listHistories(
             Long subjectUserId,

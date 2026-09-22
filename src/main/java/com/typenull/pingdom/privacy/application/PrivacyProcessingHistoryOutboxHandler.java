@@ -23,6 +23,10 @@ public class PrivacyProcessingHistoryOutboxHandler implements OutboxEventHandler
         return OutboxEventType.PRIVACY_PROCESSING_RECORDED;
     }
 
+    /**
+     * Outbox 이벤트 ID와 대상 사용자 조합을 사전 조회해 재처리를 건너뜁니다.
+     * 동시 삽입은 DB 유일 제약에 의존하고 오류는 상위 Outbox 처리기로 전파하므로, 검사만으로 경합 예외까지 제거하지는 않습니다.
+     */
     @Override
     @Transactional
     public void handle(String eventId, String payload) {
