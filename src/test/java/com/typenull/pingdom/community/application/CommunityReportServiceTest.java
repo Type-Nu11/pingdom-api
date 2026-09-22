@@ -33,6 +33,9 @@ class CommunityReportServiceTest {
     private CommunityReportService service;
     private final CommunityReportCreateRequest request = new CommunityReportCreateRequest(CommunityReportReason.SPAM, "설명");
 
+    /**
+     * 조회 가능한 게시글과 모의 신고 저장소를 연결해 저장 시 제약 위반의 오류 변환을 확인한다.
+     */
     @BeforeEach
     void setup() {
         service = new CommunityReportService(posts, comments, reports, Clock.systemUTC());
@@ -40,23 +43,32 @@ class CommunityReportServiceTest {
                 .thenReturn(Optional.of(CommunityPost.create("TRAVEL", "제목", "내용", 1L)));
     }
 
+    /**
+     * 신고 저장 중 게시글·댓글 신고자의 유일 제약 충돌이 발생하면 ALREADY_REPORTED 도메인 오류로 변환하는지 검증한다.
+     */
     @ParameterizedTest
     @ValueSource(strings = {"uk_community_report_reporter_post", "uk_community_report_reporter_comment"})
-    void 사전_조회_이후_중복_충돌도_도메인_오류로_변환한다(String constraint) {
+    void mapsDuplicateReportConstraints(String constraint) {
         when(reports.saveAndFlush(any())).thenThrow(failure(constraint));
         assertThatThrownBy(() -> service.reportPost(1L, 2L, request))
                 .isInstanceOf(CommunityException.class).extracting("errorCode").isEqualTo(CommunityErrorCode.ALREADY_REPORTED);
     }
 
+    /**
+     * 외래 키·체크 제약 또는 제약명이 없는 무결성 오류는 중복 신고로 바꾸지 않고 원래 예외 그대로 전달하는지 검증한다.
+     */
     @ParameterizedTest
     @NullSource
     @ValueSource(strings = {"fk_community_report_post", "ck_community_report_target"})
-    void 다른_DB_오류를_중복_신고로_오인하지_않는다(String constraint) {
+    void preservesOtherReportDatabaseFailures(String constraint) {
         DataIntegrityViolationException failure = failure(constraint);
         when(reports.saveAndFlush(any())).thenThrow(failure);
         assertThatThrownBy(() -> service.reportPost(1L, 2L, request)).isSameAs(failure);
     }
 
+    /**
+     * 지정 제약명을 가진 Hibernate 예외를 Spring 무결성 예외로 감싸 실제 오류 원인 탐색 형태를 재현한다.
+     */
     private DataIntegrityViolationException failure(String constraint) {
         return new DataIntegrityViolationException("constraint", new ConstraintViolationException("constraint", new SQLException(), constraint));
     }
