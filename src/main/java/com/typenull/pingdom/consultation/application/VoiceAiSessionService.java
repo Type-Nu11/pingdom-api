@@ -3,14 +3,13 @@ package com.typenull.pingdom.consultation.application;
 import com.fasterxml.jackson.databind.JsonNode;
 import com.typenull.pingdom.consultation.api.dto.VoiceAiSessionResponse;
 import com.typenull.pingdom.consultation.domain.VoiceAiSession;
-import com.typenull.pingdom.consultation.domain.VoiceAiReplay;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiErrorCode;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiSessionRepository;
-import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiReplayRepository;
 import java.nio.charset.StandardCharsets;
 import java.time.Clock;
+import java.time.Duration;
 import java.time.LocalDateTime;
 import java.util.UUID;
 import java.security.MessageDigest;
@@ -18,12 +17,13 @@ import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
 import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
+import java.util.concurrent.locks.LockSupport;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
  * 인증 사용자별 5분 세션과 요청 ID별 응답 재전송 기록을 관리.
- * 세션 행 잠금은 외부 생성 호출과 응답 저장까지 유지. 외부 호출 자체는 DB 롤백의 보상 범위에서 제외.
+ * provider 호출 전후에만 짧은 트랜잭션을 사용한다. 외부 호출은 DB 잠금 및 커넥션 점유 범위에서 제외한다.
  */
 @Service
 public class VoiceAiSessionService {
@@ -31,27 +31,30 @@ public class VoiceAiSessionService {
     private static final int MAX_ENVELOPE_BYTES = 16 * 1024;
 
     private final VoiceAiSessionRepository sessionRepository;
-    private final VoiceAiReplayRepository replayRepository;
     private final GeminiProperties geminiProperties;
     private final GeminiVoiceClient geminiVoiceClient;
     private final Clock clock;
     private final ProviderEnvelopeValidator envelopeValidator;
+    private final VoiceAiReplayTransactionService replayTransactionService;
 
     @Autowired
-    public VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, VoiceAiReplayRepository replayRepository,
-                                 GeminiProperties geminiProperties, GeminiVoiceClient geminiVoiceClient,
-                                 ProviderEnvelopeValidator envelopeValidator) {
-        this(sessionRepository, replayRepository, geminiProperties, geminiVoiceClient, envelopeValidator, Clock.systemDefaultZone());
+    public VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, GeminiProperties geminiProperties,
+                                 GeminiVoiceClient geminiVoiceClient,
+                                 ProviderEnvelopeValidator envelopeValidator,
+                                 VoiceAiReplayTransactionService replayTransactionService) {
+        this(sessionRepository, geminiProperties, geminiVoiceClient, envelopeValidator,
+                replayTransactionService, Clock.systemDefaultZone());
     }
 
-    VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, VoiceAiReplayRepository replayRepository,
-                          GeminiProperties geminiProperties, GeminiVoiceClient geminiVoiceClient,
-                          ProviderEnvelopeValidator envelopeValidator, Clock clock) {
+    VoiceAiSessionService(VoiceAiSessionRepository sessionRepository, GeminiProperties geminiProperties,
+                          GeminiVoiceClient geminiVoiceClient,
+                          ProviderEnvelopeValidator envelopeValidator,
+                          VoiceAiReplayTransactionService replayTransactionService, Clock clock) {
         this.sessionRepository = sessionRepository;
-        this.replayRepository = replayRepository;
         this.geminiProperties = geminiProperties;
         this.geminiVoiceClient = geminiVoiceClient;
         this.envelopeValidator = envelopeValidator;
+        this.replayTransactionService = replayTransactionService;
         this.clock = clock;
     }
 
@@ -63,73 +66,65 @@ public class VoiceAiSessionService {
         return response(session.getSessionId(), expiresAt);
     }
 
-    @Transactional
     public VoiceAiSessionResponse refresh(String sessionId, Long userId) {
-        VoiceAiSession session = requireSession(sessionId, userId);
-        requireUsable(session);
-        LocalDateTime expiresAt = now().plus(SESSION_TTL);
-        session.refresh(expiresAt);
-        return response(sessionId, expiresAt);
+        while (true) {
+            LocalDateTime now = now();
+            LocalDateTime expiresAt = now.plus(SESSION_TTL);
+            if (replayTransactionService.refreshWhenNoProcessing(sessionId, userId, now, expiresAt,
+                    processingLease())) {
+                return response(sessionId, expiresAt);
+            }
+            waitForReplayCompletion();
+        }
     }
 
-    @Transactional
     public void close(String sessionId, Long userId) {
-        requireSession(sessionId, userId).close(now());
+        while (!replayTransactionService.closeWhenNoProcessing(sessionId, userId, now(), processingLease())) {
+            waitForReplayCompletion();
+        }
     }
 
     /**
-     * 사용 가능한 세션에서 같은 requestId와 원문 SHA-256이면 저장된 응답 반환.
-     * 다른 원문은 충돌로 거절하고 신규 응답은 16KiB 및 허용 스키마 검증 후 저장.
-     * 외부 생성 후 저장 실패 시 재요청에서 다시 생성될 수 있어 외부 호출의 exactly-once 보장 불가.
+     * 짧은 트랜잭션에서 requestId별 provider 호출 소유권을 먼저 확보한 뒤 외부 호출을 수행한다.
+     * 동일 요청은 결과가 저장될 때까지 잠금 없이 조회 대기하며, 만료된 소유권만 다른 요청이 인계한다.
      */
-    @Transactional
     public JsonNode send(String sessionId, Long userId, String text, String requestId) {
-        VoiceAiSession session = requireSession(sessionId, userId);
-        requireUsable(session);
         String payloadHash = sha256(text);
-        VoiceAiReplay replay = replayRepository.findBySessionIdAndRequestId(sessionId, requestId).orElse(null);
-        if (replay != null) {
-            if (!replay.hasSamePayload(payloadHash)) {
-                throw new VoiceAiException(VoiceAiErrorCode.REPLAY_CONFLICT);
+        while (true) {
+            VoiceAiReplayClaim claim = replayTransactionService.claim(sessionId, userId, requestId, payloadHash,
+                    now(), processingLease());
+            if (claim.type() == VoiceAiReplayClaim.Type.COMPLETED) {
+                return claim.envelope();
             }
-            return replay.getEnvelope();
-        }
-        if (!geminiProperties.enabled() || !StringUtils.hasText(geminiProperties.apiKey())) {
-            throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE);
-        }
-        try {
-            JsonNode envelope = geminiVoiceClient.generateEnvelope(text, requestId);
-            validateEnvelope(envelope, requestId);
-            replayRepository.save(VoiceAiReplay.create(sessionId, requestId, payloadHash, envelope, now()));
-            return envelope;
-        } catch (VoiceAiException exception) {
-            throw exception;
-        } catch (RuntimeException exception) {
-            throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE, exception);
+            if (claim.type() == VoiceAiReplayClaim.Type.PROCESSING) {
+                waitForReplayCompletion();
+                continue;
+            }
+            if (!geminiProperties.enabled() || !StringUtils.hasText(geminiProperties.apiKey())) {
+                replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
+                throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE);
+            }
+            try {
+                JsonNode envelope = geminiVoiceClient.generateEnvelope(text, requestId);
+                validateEnvelope(envelope, requestId);
+                JsonNode completed = replayTransactionService.complete(sessionId, userId, requestId,
+                        claim.processingToken(), envelope);
+                if (completed != null) {
+                    return completed;
+                }
+            } catch (VoiceAiException exception) {
+                replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
+                throw exception;
+            } catch (RuntimeException exception) {
+                replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
+                throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE, exception);
+            }
         }
     }
 
     private VoiceAiSessionResponse response(String sessionId, LocalDateTime expiresAt) {
         // 기존 DB의 서버 로컬 시각 해석을 유지하고 API 경계에서 offset을 명시.
         return new VoiceAiSessionResponse(sessionId, expiresAt.atZone(clock.getZone()).toOffsetDateTime());
-    }
-
-    // provider 처리와 replay 저장이 커밋될 때까지 갱신·종료·후속 전송도 같은 행에서 대기.
-    private VoiceAiSession requireSession(String sessionId, Long userId) {
-        return sessionRepository.findByIdForUpdate(sessionId)
-                .map(session -> {
-                    if (!session.belongsTo(userId)) {
-                        throw new VoiceAiException(VoiceAiErrorCode.SESSION_FORBIDDEN);
-                    }
-                    return session;
-                })
-                .orElseThrow(() -> new VoiceAiException(VoiceAiErrorCode.SESSION_NOT_FOUND));
-    }
-
-    private void requireUsable(VoiceAiSession session) {
-        if (!session.isUsableAt(now())) {
-            throw new VoiceAiException(VoiceAiErrorCode.SESSION_EXPIRED);
-        }
     }
 
     private void validateEnvelope(JsonNode envelope, String requestId) {
@@ -153,5 +148,15 @@ public class VoiceAiSessionService {
 
     private LocalDateTime now() {
         return LocalDateTime.now(clock);
+    }
+
+    private Duration processingLease() {
+        Duration providerTimeout = geminiProperties.connectTimeout().plus(geminiProperties.readTimeout()).plusSeconds(5);
+        return providerTimeout.compareTo(Duration.ofSeconds(30)) < 0 ? Duration.ofSeconds(30) : providerTimeout;
+    }
+
+    private void waitForReplayCompletion() {
+        // DB 연결을 잡지 않은 채 재전송 결과만 확인한다. HTTP 동기 응답 계약을 유지하기 위한 짧은 polling이다.
+        LockSupport.parkNanos(Duration.ofMillis(100).toNanos());
     }
 }
