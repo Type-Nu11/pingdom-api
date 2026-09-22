@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.localhot.PlaceLocalHotQuery;
 import com.typenull.pingdom.place.api.dto.localhot.PlaceLocalHotResponse;
 import com.typenull.pingdom.place.application.service.localhot.PlaceLocalHotQueryService;
@@ -28,7 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RequestMapping("/places/local-hot")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PLACE_DISCOVERY)
 public class PlaceLocalHotController {
 
     private final PlaceLocalHotQueryService placeLocalHotQueryService;

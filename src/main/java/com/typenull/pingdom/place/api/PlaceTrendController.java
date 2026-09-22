@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.trend.PlaceTrendPeriod;
 import com.typenull.pingdom.place.api.dto.trend.PlaceTrendResponse;
 import com.typenull.pingdom.place.application.service.place.PlaceTrendQueryService;
@@ -26,7 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @RequestMapping("/places/trends")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PLACE_DISCOVERY)
 public class PlaceTrendController {
 
     private final PlaceTrendQueryService placeTrendQueryService;
