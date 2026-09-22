@@ -8,6 +8,10 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 저장된 알림 payload를 복원해 현재 권한 보유 관리자에게 DB 알림을 생성합니다.
+ * 파싱·저장 실패는 작업자에게 전파하며 중복 방지는 outbox eventId가 아닌 payload의 eventKey와 수신자 조합에 따릅니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class AdminNotificationOutboxHandler implements OutboxEventHandler {

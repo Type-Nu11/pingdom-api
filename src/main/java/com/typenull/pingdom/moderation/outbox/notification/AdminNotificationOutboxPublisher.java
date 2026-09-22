@@ -9,6 +9,10 @@ import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 신고·후보·제재 식별자로 안정된 이벤트 키를 만들어 관리자 알림 요청을 outbox에 저장합니다.
+ * 신고 처리 키에는 처리 상태가 포함되지 않으므로 같은 신고의 후속 상태 변화마다 별도 처리 알림을 생성하는 계약은 아닙니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class AdminNotificationOutboxPublisher {
