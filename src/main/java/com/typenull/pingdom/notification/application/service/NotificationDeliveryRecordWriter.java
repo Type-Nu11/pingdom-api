@@ -18,6 +18,10 @@ import org.springframework.transaction.annotation.Propagation;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 발송 결과를 REQUIRES_NEW 트랜잭션으로 남겨 호출 작업의 롤백과 분리합니다.
+ * Outbox·채널·수신자 해시별 기록을 갱신하며 원본 이메일/토큰 대신 채널을 포함한 SHA-256을 저장합니다.
+ */
 @Service
 @RequiredArgsConstructor
 class NotificationDeliveryRecordWriter {
@@ -26,6 +30,10 @@ class NotificationDeliveryRecordWriter {
     private final OutboxProperties outboxProperties;
     private final Clock clock;
 
+    /**
+     * Outbox ID가 있는 결과는 채널·수신자 해시로 기존 기록을 찾아 시도 수를 증가시키고, 없으면 새 기록을 만든다.
+     * 최대 재시도 도달 여부를 결과 상태에 반영하여 독립 트랜잭션으로 저장한다. 외부 발송이나 실제 재시도 예약을 수행하지 않는다.
+     */
     @Transactional(propagation = Propagation.REQUIRES_NEW)
     public void record(NotificationDeliveryRecordRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -61,6 +69,7 @@ class NotificationDeliveryRecordWriter {
         notificationDeliveryRepository.save(delivery);
     }
 
+    /** Outbox ID와 토큰으로 찾은 FCM 발송 기록이 SUCCEEDED인지 확인한다. 입력이 비어 있거나 기록이 없으면 false로 반환해 발송 생략 근거로 쓰지 않는다. */
     @Transactional(readOnly = true)
     public boolean isFcmDeliverySucceeded(String outboxEventId, String token) {
         if (!StringUtils.hasText(outboxEventId) || !StringUtils.hasText(token)) {
@@ -76,6 +85,10 @@ class NotificationDeliveryRecordWriter {
                 .orElse(false);
     }
 
+    /**
+     * 같은 Outbox 이벤트의 FCM 기록 중 알림 ID가 있는 가장 이른 기록을 찾아 재전송에 재사용한다.
+     * 발송 성공 상태로 제한하지 않으며 이벤트 ID나 해당 기록이 없으면 null을 반환한다.
+     */
     @Transactional(readOnly = true)
     public Long findFcmNotificationId(String outboxEventId) {
         if (!StringUtils.hasText(outboxEventId)) {
@@ -105,6 +118,10 @@ class NotificationDeliveryRecordWriter {
         );
     }
 
+    /**
+     * 요청 상태가 RETRY_SCHEDULED인 경우에만 누적 시도 수와 Outbox 최대 횟수를 비교해 FINAL_FAILED로 표현합니다.
+     * 실제 재시도를 예약하거나 원본 Outbox 상태를 변경하지는 않습니다.
+     */
     private NotificationDeliveryStatus resolveStatus(NotificationDeliveryStatus requestedStatus, int nextAttemptCount) {
         if (requestedStatus == NotificationDeliveryStatus.RETRY_SCHEDULED
                 && nextAttemptCount >= Math.max(outboxProperties.maxAttempts(), 1)) {
