@@ -25,6 +25,7 @@ import org.junit.jupiter.api.Test;
 
 class MapPlaceTest {
 
+    /** 출처를 생략해 생성한 장소의 geocoding 기본값이 LEGACY인지 확인한다. */
     @Test
     void defaultsGeocodingSourceToLegacy() {
         MapPlace mapPlace = MapPlace.builder().build();
@@ -32,8 +33,9 @@ class MapPlaceTest {
         assertThat(mapPlace.getGeocodingSource()).isEqualTo(GeocodingSource.LEGACY);
     }
 
+    /** 기본 OPERATING·미확인 시각에서 임시 휴업으로 변경하면 상태와 확인 시각을 함께 저장하고 null 상태를 거부하는지 확인한다. */
     @Test
-    void defaultsOperatingStatusToOperatingAndUpdatesConfirmationTime() {
+    void updatesOperatingStatusAndTimestamp() {
         MapPlace mapPlace = MapPlace.builder().build();
         LocalDateTime checkedAt = LocalDateTime.of(2026, 7, 13, 10, 30);
 
@@ -52,8 +54,9 @@ class MapPlaceTest {
                 .hasMessage("operatingStatus must not be null");
     }
 
+    /** 기본 VISIBLE에서 HIDDEN으로 전환하면 탐색 노출 판단이 바뀌고 null 상태는 거부하는지 확인한다. */
     @Test
-    void defaultsDiscoveryStatusToVisibleAndUpdatesStatus() {
+    void updatesDiscoveryVisibility() {
         MapPlace mapPlace = MapPlace.builder().build();
 
         assertThat(mapPlace.getDiscoveryStatus()).isEqualTo(PlaceDiscoveryStatus.VISIBLE);
@@ -68,8 +71,9 @@ class MapPlaceTest {
                 .hasMessage("discoveryStatus must not be null");
     }
 
+    /** 기본 LEGACY·UNVERIFIED에서 관리자 검증으로 변경하면 검증자·시각·근거 갱신 시각을 기록하고 필수 상태의 null을 거부하는지 확인한다. */
     @Test
-    void defaultsInformationVerificationToLegacyUnverifiedAndUpdatesSummary() {
+    void updatesInformationVerificationSummary() {
         MapPlace mapPlace = MapPlace.builder().build();
         LocalDateTime verifiedAt = LocalDateTime.of(2026, 7, 20, 11, 0);
 
@@ -113,8 +117,9 @@ class MapPlaceTest {
                 .hasMessage("informationVerificationStatus must not be null");
     }
 
+    /** 영업시간과 예외 원본 컬렉션을 비워도 저장된 일정이 유지되고 반환 컬렉션은 변경할 수 없는지 확인한다. */
     @Test
-    void replaceOperatingScheduleDefensivelyCopiesRegularHoursAndExceptions() {
+    void copiesOperatingScheduleCollections() {
         MapPlace mapPlace = MapPlace.builder().build();
         Set<PlaceRegularOperatingHour> regularHours = new LinkedHashSet<>(Set.of(
                 PlaceRegularOperatingHour.of(DayOfWeek.MONDAY, LocalTime.of(9, 0), LocalTime.of(18, 0))
@@ -146,8 +151,9 @@ class MapPlaceTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
+    /** geocoding 갱신 시 일반·도로명·지번 주소, 우편번호, 위경도, 출처가 새 값으로 함께 바뀌는지 확인한다. */
     @Test
-    void updateGeocodingReplacesAddressCoordinatesAndSourceTogether() {
+    void updatesGeocodingFieldsTogether() {
         MapPlace mapPlace = MapPlace.builder()
                 .address("기존 주소")
                 .latitude(35.0)
@@ -174,8 +180,9 @@ class MapPlaceTest {
         assertThat(mapPlace.getGeocodingSource()).isEqualTo(GeocodingSource.ADMIN);
     }
 
+    /** 카테고리 생략·null 모두 빈 집합을 반환하고 반환된 기본 집합에 값을 추가할 수 없는지 확인한다. */
     @Test
-    void currentTouristCategoriesReturnsEmptyImmutableSetForDefaultAndNullValues() {
+    void defaultsToImmutableEmptyCategories() {
         MapPlace defaultMapPlace = MapPlace.builder().build();
         MapPlace nullCategoriesMapPlace = MapPlace.builder()
                 .touristCategories(null)
@@ -189,8 +196,9 @@ class MapPlaceTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
+    /** 관광 정보를 갱신한 뒤 원본 카테고리를 비워도 복사된 값과 영어 정보·가드가 유지되며 반환 집합 변경을 거부하는지 확인한다. */
     @Test
-    void updateTouristInformationReplacesCategoriesWithDefensiveCopy() {
+    void copiesUpdatedTouristCategories() {
         MapPlace mapPlace = MapPlace.builder()
                 .touristCategories(new LinkedHashSet<>(List.of(
                         TouristCategory.K_POP,
@@ -218,8 +226,9 @@ class MapPlaceTest {
                 .isInstanceOf(UnsupportedOperationException.class);
     }
 
+    /** 관광 정보 전체를 null로 갱신하면 기존 카테고리를 비우고 정보 가드가 해제되는지 확인한다. */
     @Test
-    void updateTouristInformationTreatsNullCategoriesAsEmptySet() {
+    void clearsNullTouristCategories() {
         MapPlace mapPlace = MapPlace.builder()
                 .touristCategories(Set.of(TouristCategory.EXHIBITION))
                 .build();
@@ -230,8 +239,9 @@ class MapPlaceTest {
         assertThat(mapPlace.hasTouristInformationGuard()).isFalse();
     }
 
+    /** 영문명만 있어도 카테고리가 빈 상태에서 관광 정보 보존 가드가 켜지는지 확인한다. */
     @Test
-    void updateTouristInformationActivatesRollbackGuardForScalarOnlyInformation() {
+    void guardsScalarTouristInformation() {
         MapPlace mapPlace = MapPlace.builder().build();
 
         mapPlace.updateTouristInformation("Jinju Castle", null, Set.of());
