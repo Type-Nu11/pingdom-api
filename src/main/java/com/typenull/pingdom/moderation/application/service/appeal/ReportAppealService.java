@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.application.service.appeal;
 
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
+
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.application.service.user.sanction.UserSanctionCommandService;
 
@@ -49,6 +52,7 @@ public class ReportAppealService {
     private final AdminPostService adminPostService;
     private final UserSanctionCommandService userSanctionCommandService;
     private final AdminAuditLogService adminAuditLogService;
+    private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
     @Transactional
@@ -122,6 +126,9 @@ public class ReportAppealService {
 
     @Transactional
     public AdminReportAppealActionResponse approve(Long appealId, String reason, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
+        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가한다.
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         ReportAppeal appeal = getSubmittedAppeal(appealId);
         PostReport report = postReportRepository.findById(appeal.getReportId())
                 .orElseThrow(() -> new AdminException(AdminErrorCode.REPORT_NOT_FOUND));
@@ -150,6 +157,7 @@ public class ReportAppealService {
 
     @Transactional
     public AdminReportAppealActionResponse reject(Long appealId, String reason, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         ReportAppeal appeal = getSubmittedAppeal(appealId);
         LocalDateTime now = LocalDateTime.now(clock);
         Map<String, Object> beforeState = appealState(appeal);

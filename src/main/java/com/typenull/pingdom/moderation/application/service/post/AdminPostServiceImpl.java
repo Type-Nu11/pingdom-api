@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.application.service.post;
 
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
+
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 
 import com.typenull.pingdom.moderation.domain.exception.AdminErrorCode;
@@ -33,11 +36,13 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final PlaceGrowthService placeGrowthService;
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final AdminAuditLogService adminAuditLogService;
+    private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
     @Override
     @Transactional
     public void deletePost(Long postId, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
@@ -69,6 +74,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Override
     @Transactional
     public void hidePost(Long postId, String reason, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
@@ -91,6 +97,7 @@ public class AdminPostServiceImpl implements AdminPostService {
     @Override
     @Transactional
     public void restorePost(Long postId, String reason, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         MapImage mapImage = mapImageRepository.findWithMapPlaceById(postId)
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);

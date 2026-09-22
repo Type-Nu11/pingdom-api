@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.application.service.report;
 
+import com.typenull.pingdom.identity.application.service.admin.AdminRoleAuthorizationService;
+import com.typenull.pingdom.identity.domain.admin.AdminPermission;
+
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.application.service.user.sanction.UserSanctionCommandService;
 
@@ -51,12 +54,16 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final AdminAuditLogService adminAuditLogService;
     private final ReportPolicyService reportPolicyService;
     private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
+    private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
     @Override
     @Transactional
     /** 신고를 승인하고 대상 콘텐츠의 운영 상태 및 처리 이력을 갱신합니다. */
     public AdminReportActionResponse acceptReport(Long reportId, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
+        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가한다.
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
                 .orElseThrow(() -> new AuthException(AuthErrorCode.USER_NOT_FOUND));
@@ -99,6 +106,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     @Transactional
     public AdminReportActionResponse declineReport(Long reportId, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         PostReport postReport = getPendingReport(reportId);
         LocalDateTime now = LocalDateTime.now(clock);
         User reporter = userRepository.findById(postReport.getReporterUserId())
@@ -143,6 +151,9 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     @Transactional
     public AdminPostReportBulkActionResponse acceptPostReports(Long postId, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
+        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가한다.
+        authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         MapImage mapImage = getPost(postId);
         List<PostReport> pendingReports = getPendingReports(postId);
         if (pendingReports.isEmpty()) {
@@ -194,6 +205,7 @@ public class AdminReportServiceImpl implements AdminReportService {
     @Override
     @Transactional
     public AdminPostReportBulkActionResponse declinePostReports(Long postId, Long adminUserId) {
+        authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
         MapImage mapImage = getPost(postId);
         List<PostReport> pendingReports = getPendingReports(postId);
         if (pendingReports.isEmpty()) {
