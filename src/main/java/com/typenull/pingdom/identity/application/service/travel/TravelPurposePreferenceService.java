@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 회원의 장기 여행 목적 집합을 조회하거나 요청한 집합으로 전체 교체합니다.
+ * null 집합을 빈 선호로 바꾸고 읽기 전용 복사본을 만드는 규칙은 User에 위임합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class TravelPurposePreferenceService {
