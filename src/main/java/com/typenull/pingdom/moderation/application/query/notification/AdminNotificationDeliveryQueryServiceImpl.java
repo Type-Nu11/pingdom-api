@@ -19,12 +19,20 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 채널·상태·사용자와 생성 기간으로 발송 결과 원장을 조회합니다.
+ * 원장의 현재 결과를 반환하므로 각 전송 시도의 개별 이력을 재구성하거나 재전송하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminNotificationDeliveryQueryServiceImpl implements AdminNotificationDeliveryQueryService {
 
     private final NotificationDeliveryRepository notificationDeliveryRepository;
 
+    /**
+     * 사용자·전송 채널·현재 처리 상태·알림 종류·생성 기간으로 발송 원장을 최신순 조회합니다.
+     * 역전된 기간은 거절하고 page는 1 이상·limit는 1~100으로 보정하며, 원장 조회로 재전송을 실행하지는 않습니다.
+     */
     @Override
     @Transactional(readOnly = true)
     public AdminNotificationDeliveryResponse listDeliveries(
