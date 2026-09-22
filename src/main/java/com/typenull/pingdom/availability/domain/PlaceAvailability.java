@@ -7,6 +7,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 시간 구간의 총 수용량과 잔여 수용량을 보유하며 예약으로 배정된 양은 두 값의 차이로 계산합니다.
+ * 재고 변경의 동시성은 호출 서비스의 잠금 또는 엔티티 버전 검사에 의존하고, 사용자·상품 자격은 직접 조회하지 않습니다.
+ */
 @Entity
 @Getter
 @Table(name = "place_availability")
@@ -93,6 +97,10 @@ public class PlaceAvailability {
         update(productId, productType, startsAt, endsAt, totalCapacity, now);
     }
 
+    /**
+     * 이미 배정된 수량을 보존하면서 총량과 잔여량을 함께 바꿉니다.
+     * 배정량이 양수이면 상품·시간은 고정하고, 총량은 배정량 이상이어야 합니다.
+     */
     public void update(Long productId, AvailabilityProductType productType, LocalDateTime startsAt,
             LocalDateTime endsAt, int totalCapacity, LocalDateTime now) {
         validatePeriod(startsAt, endsAt);
@@ -134,6 +142,10 @@ public class PlaceAvailability {
         updatedAt = now;
     }
 
+    /**
+     * 기존 예약 해제량을 잔여량에 돌려놓되 총 수용량을 넘는 반환은 거절합니다.
+     * 비활성·종료 슬롯에도 반환은 허용하며 동일 반환 요청의 중복 여부는 호출자가 보장해야 합니다.
+     */
     public void release(int quantity, LocalDateTime now) {
         if (quantity <= 0 || remainingCapacity + quantity > totalCapacity) {
             throw new IllegalStateException("복구할 재고가 올바르지 않습니다.");
