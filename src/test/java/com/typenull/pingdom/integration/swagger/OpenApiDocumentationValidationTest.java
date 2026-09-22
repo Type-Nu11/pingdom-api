@@ -34,6 +34,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * 생성된 OpenAPI의 그룹·인증·스키마·예시를 검증한다. 내장 예시 검사기는 JSON Schema 전체 규칙을 구현하지 않는다.
+ */
 @Tag("integration")
 @SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
@@ -78,8 +81,11 @@ class OpenApiDocumentationValidationTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * 여섯 문서의 요청·응답 예시를 순회해 helper가 지원하는 타입·enum·필수 필드 불일치를 모아 확인한다. 전체 JSON Schema 규격 검증은 아니다.
+     */
     @Test
-    void documentedExamplesMatchDeclaredSchemas() throws Exception {
+    void examplesMatchSchemas() throws Exception {
         List<String> mismatches = new ArrayList<>();
 
         for (String apiDocPath : API_DOC_PATHS) {
@@ -118,8 +124,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(mismatches).isEmpty();
     }
 
+    /**
+     * 통합 문서의 bearerAuth가 HTTP Bearer 및 JWT 형식으로 선언됐는지 확인한다.
+     */
     @Test
-    void apiDocsExposeJwtBearerSecurityScheme() throws Exception {
+    void jwtSecurityScheme() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
         JsonNode bearerAuth = document.path("components").path("securitySchemes").path("bearerAuth");
 
@@ -128,8 +137,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(bearerAuth.path("bearerFormat").asText()).isEqualTo("JWT");
     }
 
+    /**
+     * 가용량·리뷰·입지 분석의 인증 오류와 FCM 등록의 일반·검증 오류 oneOf 계약을 확인한다.
+     */
     @Test
-    void authorizationRulesAreReflectedInEveryGroupedOpenApiDocument() throws Exception {
+    void groupAuthorizationContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode availability = appDocument.at("/paths/~1places~1{placeId}~1availabilities/get");
 
@@ -154,8 +166,11 @@ class OpenApiDocumentationValidationTest {
                 .contains("ErrorResponse", "ValidationErrorResponse");
     }
 
+    /**
+     * 공개 경로 목록을 제외한 모든 문서 operation이 Bearer 및 공통 401·403 오류 스키마를 선언하는지 확인한다.
+     */
     @Test
-    void allProtectedOperationsDeclareJwtAndCommonAuthorizationFailures() throws Exception {
+    void protectedOperationSecurity() throws Exception {
         for (String apiDocPath : API_DOC_PATHS) {
             JsonNode paths = readApiDocs(apiDocPath).path("paths");
             for (Iterator<Entry<String, JsonNode>> pathIterator = paths.fields(); pathIterator.hasNext(); ) {
@@ -180,8 +195,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 각 그룹의 operation과 태그를 baseline에 비교하고 허용 기능 분류 하나 및 태그 순서·설명을 확인한다.
+     */
     @Test
-    void groupedDocumentsKeepAudienceMembershipAndExactlyOneFunctionalSection() throws Exception {
+    void audienceAndSectionContracts() throws Exception {
         for (Group audience : Group.values()) {
             String docPath = "/v3/api-docs/" + audience.documentName();
             JsonNode document = readApiDocs(docPath);
@@ -214,6 +232,9 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * path 수준 메타데이터를 제외하고 HTTP 메서드와 경로 조합을 정렬된 집합으로 만든다.
+     */
     private Set<String> operationKeys(JsonNode document) {
         Set<String> keys = new TreeSet<>();
         document.path("paths").fields().forEachRemaining(path ->
@@ -225,8 +246,11 @@ class OpenApiDocumentationValidationTest {
         return keys;
     }
 
+    /**
+     * 최근 활동·대기 항목이 admin에만 있고 operation ID·응답 스키마·limit 범위·nullable 필드가 기대 계약인지 확인한다.
+     */
     @Test
-    void adminDashboardRecentActivitiesAndPendingItemsAreDocumentedInWebGroup() throws Exception {
+    void adminDashboardContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -280,8 +304,11 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("integer");
     }
 
+    /**
+     * 탐색과 추천의 필터·limit 상한 100/20·오류 예시 및 영업·혜택·예약·추천 사유 필드를 확인한다.
+     */
     @Test
-    void discoveryAndRecommendationContractsExposeFiltersBoundsAndFailureResponses() throws Exception {
+    void discoveryRecommendationContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode discovery = appDocument.at("/paths/~1places/get");
         JsonNode recommendation = appDocument.at("/paths/~1places~1recommendations/get");
@@ -348,8 +375,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(explanationItem.has("availabilityScore")).isTrue();
     }
 
+    /**
+     * 관리자 장소의 표준 카테고리·한글 이름·nullable 분류·필수 레벨과 빈 페이지 최소 페이지 수를 확인한다.
+     */
     @Test
-    void adminPlaceContractsExposeCanonicalCategoryAndLevel() throws Exception {
+    void adminPlaceCategoryContract() throws Exception {
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode operation = webDocument.at("/paths/~1admin~1places/get");
         JsonNode categoryParameter = parameter(operation, "category");
@@ -394,8 +424,11 @@ class OpenApiDocumentationValidationTest {
                 .asLong()).isEqualTo(1L);
     }
 
+    /**
+     * app 체크인 생성의 요청·201 응답과 명시된 여섯 실패 상태의 공통 오류 스키마를 확인한다.
+     */
     @Test
-    void locationCheckInApisAreExposedInAppGroup() throws Exception {
+    void checkInContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
         assertThat(appDocument.path("paths").has("/location-check-ins")).isTrue();
@@ -409,8 +442,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 증빙 업로드의 multipart binary·인증·201·실패 응답과 증빙 파일 조회의 byte 형식을 확인한다.
+     */
     @Test
-    void visitEvidenceApisExposeSecuritySuccessAndFailureContracts() throws Exception {
+    void visitEvidenceContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode evidence = appDocument.at("/paths/~1location-check-ins~1{checkInId}~1evidence");
         assertThat(evidence.path("post").at("/requestBody/content/multipart~1form-data/schema/properties/file/format")
@@ -431,8 +467,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(evidenceFile.path("security").toString()).contains("bearerAuth");
     }
 
+    /**
+     * scout 사용자 제출과 관리자 검토 경로의 그룹 분리·요청/응답 참조·제보 유형 enum을 확인한다.
+     */
     @Test
-    void scoutFieldReportApisAreSeparatedIntoAppAndWebGroups() throws Exception {
+    void scoutReportGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -459,8 +498,11 @@ class OpenApiDocumentationValidationTest {
                 .contains("PLACE_INFORMATION", "SAFETY", "OTHER");
     }
 
+    /**
+     * app 문서에서 구형 단수 FCM·장소·사용자 북마크 경로가 제거됐는지 확인한다.
+     */
     @Test
-    void removedDeprecatedEndpointsAreAbsentFromApiDocs() throws Exception {
+    void removedAliases() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
         assertThat(appDocument.path("paths").has("/firebase/fcm-token")).isFalse();
@@ -468,8 +510,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(appDocument.path("paths").has("/users/bookmarks")).isFalse();
     }
 
+    /**
+     * 여행 목적 GET/PUT 스키마와 업데이트 요청의 travelPurposes 필수 표시를 확인한다.
+     */
     @Test
-    void travelPurposePreferenceApiIsExposedInAppGroup() throws Exception {
+    void travelPurposeContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
         assertThat(appDocument.path("paths").has("/users/me/travel-purposes")).isTrue();
@@ -488,8 +533,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(travelPurposesRequired).isTrue();
     }
 
+    /**
+     * 여행 일정·취소·현재 활동 의도 경로 및 요청/응답 스키마와 일정 생성·변경의 오류 상태를 확인한다.
+     */
     @Test
-    void travelScheduleAndCurrentActivityIntentApisAreExposedInAppGroup() throws Exception {
+    void travelIntentContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
         assertThat(appDocument.path("paths").has("/users/me/travel-schedules")).isTrue();
@@ -510,8 +558,11 @@ class OpenApiDocumentationValidationTest {
                 .asText()).isEqualTo("#/components/schemas/CurrentActivityIntentResponse");
     }
 
+    /**
+     * 상점 소유자·장소 신청·첨부 경로는 merchant에, 운영 심사 경로는 admin에 포함하고 구형 app 경로는 제외하는지 확인한다.
+     */
     @Test
-    void merchantOwnerAndPlaceRegistrationApisAreSeparatedIntoGroups() throws Exception {
+    void merchantRegistrationGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
@@ -547,8 +598,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 상점 소유자 승인 요청 스키마에 reason이 있고 placeIds는 없는지 확인한다. 나머지 필드 전체를 제한하지는 않는다.
+     */
     @Test
-    void merchantOwnerReviewRequestExposesOnlyReviewReason() throws Exception {
+    void merchantReviewReason() throws Exception {
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode reviewRequest = resolveSchema(
                 adminDocument,
@@ -560,8 +614,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(reviewRequest.path("properties").has("placeIds")).isFalse();
     }
 
+    /**
+     * 신청 상태가 반복 query 배열(form/explode)로 문서화되고 유형·검색어·제출 기간 필터가 제공되는지 확인한다.
+     */
     @Test
-    void adminMerchantPlaceApplicationStatusFilterSupportsRepeatedEnumValues() throws Exception {
+    void applicationFilterContract() throws Exception {
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode operation = adminDocument.at("/paths/~1admin~1merchant-place-applications/get");
         JsonNode statusParameter = parameter(operation, "status");
@@ -587,8 +644,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(submittedToParameter.path("schema").path("format").asText()).isEqualTo("date-time");
     }
 
+    /**
+     * 구형 추천·지도·상점 심사·광고 경로 및 관리자 알림 사용자 ID, 구형 제재 기간 파라미터가 문서에서 빠졌는지 확인한다.
+     */
     @Test
-    void removedLegacyApiDocumentationDoesNotAppear() throws Exception {
+    void removedLegacyContracts() throws Exception {
         JsonNode defaultDocument = readApiDocs("/v3/api-docs");
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
@@ -640,8 +700,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 관광객 혜택·쿠폰 경로와 상점 혜택 관리·사용 처리 경로가 서로의 그룹에 노출되지 않는지 확인한다.
+     */
     @Test
-    void touristOfferAndCouponApisAreSeparatedIntoAppAndMerchantGroups() throws Exception {
+    void offerCouponGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
@@ -661,8 +724,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 상점 혜택 목록의 장소 ID 타입·상태 enum과 소유 범위·빈 목록 설명을 확인한다.
+     */
     @Test
-    void merchantOfferListFiltersAreDocumented() throws Exception {
+    void merchantOfferFilters() throws Exception {
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
         JsonNode operation = merchantDocument.at("/paths/~1merchant-owner~1offers/get");
         JsonNode placeIdParameter = parameter(operation, "placeId");
@@ -675,8 +741,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(operation.path("description").asText()).contains("소유", "빈 목록");
     }
 
+    /**
+     * 관광 정보 요청·응답의 영문명·요약 및 자동완성 영문명이 null을 허용하는지 확인한다.
+     */
     @Test
-    void touristInformationSchemasDeclareNullableStringFields() throws Exception {
+    void nullableTouristStrings() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
         for (String schemaName : List.of(
@@ -691,8 +760,11 @@ class OpenApiDocumentationValidationTest {
         assertNullableProperty(document, "PlaceAutocompleteItem", "englishName");
     }
 
+    /**
+     * 관리자 장소 게시물의 표시 상태는 VISIBLE/HIDDEN이고 숨김 사유는 nullable인지 확인한다.
+     */
     @Test
-    void adminPlacePostVisibilityContractIsDocumented() throws Exception {
+    void postVisibilityContract() throws Exception {
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode postSchema = webDocument.at("/components/schemas/AdminMapPlaceImageItem");
 
@@ -702,8 +774,11 @@ class OpenApiDocumentationValidationTest {
         assertNullableProperty(webDocument, "AdminMapPlaceImageItem", "hiddenReason");
     }
 
+    /**
+     * 성장 응답 참조와 노출·숨김 사진의 성장 반영 여부를 구분한 설명을 확인한다.
+     */
     @Test
-    void adminPlaceGrowthPhotoCountsAreDocumented() throws Exception {
+    void growthPhotoCountContract() throws Exception {
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
         JsonNode detailSchema = webDocument.at("/components/schemas/AdminMapPlaceDetailResponse");
         JsonNode growthSchema = webDocument.at("/components/schemas/AdminMapPlaceGrowthResponse");
@@ -716,8 +791,11 @@ class OpenApiDocumentationValidationTest {
                 .contains("성장에 반영되지 않는", "숨김");
     }
 
+    /**
+     * 탐색 정렬·관광 카테고리·거리와 클릭 필수 필드, 관리자 노출 상태 변경의 그룹·enum·사유 필수 계약을 확인한다.
+     */
     @Test
-    void placeDiscoveryFilterSortContractsAreDocumented() throws Exception {
+    void discoveryFilterSortContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -762,8 +840,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 관광객 카드의 필수 int64 장소 ID, 정상·404 응답과 영업·출처·검증 요약 필드를 확인한다.
+     */
     @Test
-    void touristPlaceCardContractIsDocumentedInAppGroup() throws Exception {
+    void touristCardContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode operation = appDocument.at("/paths/~1places~1{placeId}~1card/get");
 
@@ -793,8 +874,11 @@ class OpenApiDocumentationValidationTest {
                 .containsExactlyInAnyOrder("OPERATING", "TEMPORARILY_CLOSED", "PERMANENTLY_CLOSED");
     }
 
+    /**
+     * 방문 결정 문서의 장소 ID·응답·오류 스키마 및 행사·가용량·혜택·판정 시각 필드를 확인한다.
+     */
     @Test
-    void placeVisitDecisionContractIsDocumentedInAppGroup() throws Exception {
+    void visitDecisionContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode operation = appDocument.at("/paths/~1places~1{placeId}~1visit-decision/get");
 
@@ -816,8 +900,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(responseSchema.at("/checkedAt/format").asText()).isEqualTo("date-time");
     }
 
+    /**
+     * 방문 결정 경로가 app에는 있고 admin에는 없는지 확인한다.
+     */
     @Test
-    void placeVisitDecisionContractIsNotExposedInWebGroup() throws Exception {
+    void visitDecisionGroup() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -825,8 +912,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("paths").has("/places/{placeId}/visit-decision")).isFalse();
     }
 
+    /**
+     * 관광객용 상점 정보 스키마는 설명·예약 URL·갱신 시각을 노출하고 편집자 ID는 제외하는지 확인한다.
+     */
     @Test
-    void placeVisitDecisionMerchantSchemaDoesNotExposeEditorIdentity() throws Exception {
+    void merchantEditorPrivacy() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode merchantSchema = appDocument.at(
                 "/components/schemas/PlaceVisitDecisionMerchantInformationResponse/properties"
@@ -838,8 +928,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(merchantSchema.has("updatedByUserId")).isFalse();
     }
 
+    /**
+     * 지도·카드·방문 결정·공지·검증 사진·추천 설명·전환 문서의 인증·범위·필수/nullable 필드를 확인한다.
+     */
     @Test
-    void placeExplorationContractsExposeSecurityErrorsAndStableSchemas() throws Exception {
+    void explorationContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
 
         assertAuthenticatedOperation(appDocument, "/places/map", "get", "200", "400", "401");
@@ -947,8 +1040,11 @@ class OpenApiDocumentationValidationTest {
         ).asText()).isEqualTo("PERSONAL");
     }
 
+    /**
+     * 정기 영업시간·날짜 예외의 배열/불리언 구조, 시간 문자열 형식과 변경 실패 응답을 확인한다.
+     */
     @Test
-    void operatingScheduleSchemasExposeRegularHoursAndDateExceptions() throws Exception {
+    void operatingScheduleContract() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
         assertThat(document.path("paths").has("/admin/places/{id}/operating-schedule")).isTrue();
@@ -974,8 +1070,11 @@ class OpenApiDocumentationValidationTest {
                 .asText()).isEqualTo("#/components/schemas/ErrorResponse");
     }
 
+    /**
+     * 행사 공개 조회와 관리자 작성·게시·취소 경로의 스키마, 필수 필드 수와 오류 계약을 확인한다.
+     */
     @Test
-    void periodEventSchemasExposePublicAndAdminContracts() throws Exception {
+    void periodEventContract() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
         assertThat(document.path("paths").has("/events")).isTrue();
@@ -1006,8 +1105,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * app 행사 조회 문서와 admin 행사 관리 문서가 분리되는지 확인한다.
+     */
     @Test
-    void periodEventApiGroupsSeparatePublicAndAdminPaths() throws Exception {
+    void periodEventGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -1016,8 +1118,11 @@ class OpenApiDocumentationValidationTest {
         assertThat(webDocument.path("paths").has("/admin/place-events")).isTrue();
     }
 
+    /**
+     * 정보 신고·반박 사용자 경로와 관리자 검토 경로를 분리하고 대상·사유·처리 상태 enum을 확인한다.
+     */
     @Test
-    void placeInformationReportDisputeContractsAreSeparatedIntoAppAndWebGroups() throws Exception {
+    void informationDisputeGroups() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -1070,8 +1175,11 @@ class OpenApiDocumentationValidationTest {
                 .contains("SUBMITTED", "ACCEPTED", "REJECTED");
     }
 
+    /**
+     * 알림 설정 요청·응답의 방해 금지 시작/종료가 time 형식 문자열인지 확인한다.
+     */
     @Test
-    void notificationSettingSchemasExposeQuietHoursAsTimeStrings() throws Exception {
+    void quietHoursContract() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs");
 
         for (String schemaName : List.of("NotificationSettingUpdateRequest", "NotificationSettingResponse")) {
@@ -1086,8 +1194,11 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 연쇄 내부 참조의 JSON Pointer에서 ~1과 ~0을 복원해 최종 객체 스키마를 찾는지 확인한다.
+     */
     @Test
-    void resolveSchemaFollowsNestedRefsAndUnescapesJsonPointer() throws Exception {
+    void nestedSchemaReferences() throws Exception {
         JsonNode document = objectMapper.readTree("""
                 {
                   "components": {
@@ -1119,6 +1230,9 @@ class OpenApiDocumentationValidationTest {
         assertThat(resolved.path("properties").path("name").path("type").asText()).isEqualTo("string");
     }
 
+    /**
+     * operation 존재·Bearer·성공 상태와 지정 실패 상태의 공통 오류 참조를 확인한다.
+     */
     private void assertAuthenticatedOperation(
             JsonNode document,
             String path,
@@ -1144,6 +1258,9 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 이름으로 찾은 파라미터 스키마의 최솟값과 최댓값을 비교한다.
+     */
     private void assertParameterRange(
             JsonNode operation,
             String parameterName,
@@ -1159,6 +1276,9 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo(expectedMaximum);
     }
 
+    /**
+     * MockMvc 응답 본문을 UTF-8 JSON으로 읽는다. HTTP 상태 assertion은 이 helper에 포함하지 않는다.
+     */
     private JsonNode readApiDocs(String apiDocPath) throws Exception {
         String body = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(apiDocPath))
                 .andReturn()
@@ -1167,6 +1287,9 @@ class OpenApiDocumentationValidationTest {
         return objectMapper.readTree(body);
     }
 
+    /**
+     * 지정 속성의 존재와 nullable=true 선언을 함께 확인한다.
+     */
     private void assertNullableProperty(JsonNode document, String schemaName, String propertyName) {
         JsonNode property = document.path("components")
                 .path("schemas")
@@ -1182,6 +1305,9 @@ class OpenApiDocumentationValidationTest {
                 .isTrue();
     }
 
+    /**
+     * 이름이 같은 첫 파라미터를 반환하고 누락 시 MissingNode를 반환한다.
+     */
     private JsonNode parameter(JsonNode operation, String parameterName) {
         for (JsonNode parameter : operation.path("parameters")) {
             if (parameterName.equals(parameter.path("name").asText())) {
@@ -1191,12 +1317,18 @@ class OpenApiDocumentationValidationTest {
         return objectMapper.missingNode();
     }
 
+    /**
+     * required 배열의 선언 순서를 유지한 필드 이름 목록을 만든다.
+     */
     private List<String> requiredFields(JsonNode schema) {
         List<String> fields = new ArrayList<>();
         schema.path("required").forEach(field -> fields.add(field.asText()));
         return fields;
     }
 
+    /**
+     * 각 미디어 타입의 단일 example과 이름별 examples.value를 검증하고 오류 위치를 함께 누적한다. content가 없으면 생략한다.
+     */
     private void validateContentExamples(
             JsonNode document,
             JsonNode content,
@@ -1239,6 +1371,9 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 내부 참조를 해석해 enum·복합 스키마·기본 타입을 검사한다. null은 생략하고 oneOf는 하나 이상 일치하면 통과하므로 배타성·범위·format은 보장하지 않는다.
+     */
     private void validateAgainstSchema(
             JsonNode document,
             JsonNode schema,
@@ -1325,6 +1460,9 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 객체 타입과 required 이름의 존재를 확인하고 null이 아닌 선언 속성을 재귀 검사한다. 추가 속성 및 null 허용 여부는 검사하지 않는다.
+     */
     private void validateObject(
             JsonNode document,
             JsonNode schema,
@@ -1360,6 +1498,9 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * 배열 타입을 확인한 뒤 인덱스를 오류 경로에 붙여 모든 원소를 items 스키마로 검사한다.
+     */
     private void validateArray(
             JsonNode document,
             JsonNode schema,
@@ -1383,6 +1524,9 @@ class OpenApiDocumentationValidationTest {
         }
     }
 
+    /**
+     * path 항목 중 OpenAPI의 HTTP operation으로 취급할 메서드 이름을 판별한다.
+     */
     private boolean isHttpMethod(String method) {
         return switch (method) {
             case "get", "post", "put", "patch", "delete", "head", "options", "trace" -> true;
@@ -1390,12 +1534,18 @@ class OpenApiDocumentationValidationTest {
         };
     }
 
+    /**
+     * 이 검증에서 공개로 간주하는 루트·auth 하위·상담 intro를 제외한다. 런타임 보안 설정을 읽는 메서드는 아니다.
+     */
     private boolean isPublicPath(String path) {
         return "/".equals(path)
                 || path.startsWith("/auth/")
                 || "/consultations/intro".equals(path);
     }
 
+    /**
+     * 대시보드 limit이 선택 query 정수이며 기본 10, 범위 1~50으로 문서화됐는지 확인한다.
+     */
     private void assertLimitParameter(JsonNode parameter) {
         assertThat(parameter.path("name").asText()).isEqualTo("limit");
         assertThat(parameter.path("in").asText()).isEqualTo("query");
@@ -1406,6 +1556,9 @@ class OpenApiDocumentationValidationTest {
         assertThat(parameter.path("schema").path("maximum").asInt()).isEqualTo(50);
     }
 
+    /**
+     * 응답 상태가 존재하고 application/json 또는 와일드카드 미디어 타입이 ErrorResponse를 참조하는지 확인한다.
+     */
     private void assertErrorResponse(JsonNode operation, String status) {
         assertThat(operation.path("responses").has(status)).isTrue();
         JsonNode content = operation.path("responses").path(status).path("content");
@@ -1417,6 +1570,9 @@ class OpenApiDocumentationValidationTest {
                 .isEqualTo("#/components/schemas/ErrorResponse");
     }
 
+    /**
+     * 내부 JSON Pointer 참조를 반복 해석하되 외부 참조·누락·직접 자기 참조에서 멈춘다. 여러 스키마 사이의 순환을 별도로 탐지하지 않는다.
+     */
     private JsonNode resolveSchema(JsonNode document, JsonNode schema) {
         if (schema == null || schema.isMissingNode()) {
             return objectMapper.createObjectNode();
