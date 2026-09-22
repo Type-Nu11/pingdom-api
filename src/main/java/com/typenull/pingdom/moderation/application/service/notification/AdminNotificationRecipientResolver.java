@@ -17,6 +17,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 알림 유형별 업무 권한을 허용하는 활성 역할 할당에서 관리자 수신자를 찾습니다.
+ * 탈퇴·현재 정지 계정은 제외하고 사용자 ID를 중복 제거해 정렬합니다. 역할 할당 없는 ADMIN 계정은 자동 포함하지 않습니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class AdminNotificationRecipientResolver {
@@ -25,6 +29,10 @@ public class AdminNotificationRecipientResolver {
     private final UserRepository userRepository;
     private final Clock clock;
 
+    /**
+     * 알림 종류에 필요한 업무 권한을 허용하는 활성 역할 할당을 찾고 현재 ADMIN인 미탈퇴·미정지 계정 ID를 정렬해 반환합니다.
+     * 역할이 여러 개여도 수신자는 중복 제거하며 지원하지 않는 알림 종류는 IllegalArgumentException으로 거절합니다.
+     */
     @Transactional(readOnly = true)
     public List<Long> resolve(NotificationType type) {
         AdminPermission permission = requiredPermission(type);

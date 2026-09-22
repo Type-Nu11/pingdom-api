@@ -18,10 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** 최종 실패 outbox를 다시 처리할 상태로 바꾸고 같은 트랜잭션에 관리자 감사 기록을 남깁니다. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-// 관리자 요청에 따른 outbox 이벤트 재처리와 재시도 이력 기록을 담당합니다.
 public class AdminOutboxEventRecoveryService {
 
     private static final int MAX_REASON_LENGTH = 500;
@@ -31,8 +31,11 @@ public class AdminOutboxEventRecoveryService {
     private final AdminAuditLogService adminAuditLogService;
     private final OutboxMetrics outboxMetrics;
 
+    /**
+     * OUTBOX_RECOVERY 권한과 사유를 확인하고 잠긴 FAILED 이벤트를 재시도 가능 상태로 전환합니다.
+     * 반환은 예약 상태 변경 결과이며 핸들러의 즉시 실행이나 최종 성공을 의미하지 않습니다.
+     */
     @Transactional
-    // 권한을 확인한 뒤 재처리 가능한 outbox 이벤트를 수동 재시도하고 감사 이력을 남깁니다.
     public AdminOutboxEventItem retry(Long adminUserId, String eventId, String reason) {
         authorizationService.requirePermission(adminUserId, AdminPermission.OUTBOX_RECOVERY);
         String normalizedReason = normalizeReason(reason);
