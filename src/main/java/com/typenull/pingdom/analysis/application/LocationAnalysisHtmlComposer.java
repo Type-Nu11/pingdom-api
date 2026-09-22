@@ -7,7 +7,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/** 구조화된 AI 응답을 고정된 7페이지 XHTML 디자인으로 변환한다. */
+/**
+ * 구조화된 분석을 일곱 보고서 구역의 XHTML과 표·차트 표시값으로 조립합니다.
+ * 상위 추천은 다섯 곳, 주변 시설은 종류를 합쳐 여섯 곳까지 표시하며 실제 PDF 쪽수는 렌더링 결과에 따릅니다.
+ */
 @Component
 public class LocationAnalysisHtmlComposer {
 
@@ -15,6 +18,10 @@ public class LocationAnalysisHtmlComposer {
     private static final int MAX_TABLE_ROWS = 5;
     private static final int MAX_FACILITY_ROWS = 2;
 
+    /**
+     * 검증된 분석 내용을 입력받아 표지와 여섯 본문 구역을 XHTML 문자열로 조립한다.
+     * 선택 구역의 누락 값은 표시용 기본 문구로 처리하며, PDF 변환이나 외부 리소스 조회는 수행하지 않는다.
+     */
     public String compose(
             String reportId,
             String reportName,
