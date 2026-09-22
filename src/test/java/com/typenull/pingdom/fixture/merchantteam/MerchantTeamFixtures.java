@@ -3,9 +3,15 @@ package com.typenull.pingdom.fixture.merchantteam;
 import java.util.List;
 
 public final class MerchantTeamFixtures {
+    /**
+     * 팀 시나리오는 정적 팩토리로 제공하므로 fixture 모음의 인스턴스화를 막는다.
+     */
     private MerchantTeamFixtures() {
     }
 
+    /**
+     * 점주·편집자·열람자·외부자·탈퇴자와 소유 장소를 조합해 목록·초대·중복·권한·비활성 사용자 수정의 HTTP 기대값을 제공한다.
+     */
     public static MerchantTeamFixture realistic() {
         return new MerchantTeamFixture(
                 List.of(new MerchantTeamActor(101L, "merchant-owner", "OWNER", true),
