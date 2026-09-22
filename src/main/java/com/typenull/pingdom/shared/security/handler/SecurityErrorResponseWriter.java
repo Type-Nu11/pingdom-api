@@ -11,9 +11,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 
+/** 인증·인가 오류를 HTTP 상태와 UTF-8 JSON으로 기록하고 허용 Origin의 CORS 헤더를 함께 설정한다. */
 @Component
 @RequiredArgsConstructor
-/** 인증·인가 단계에서 발생한 보안 오류를 공통 JSON 응답으로 기록합니다. */
 public class SecurityErrorResponseWriter {
 
     private final ObjectMapper objectMapper;
