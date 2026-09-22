@@ -39,15 +39,24 @@ class AdminOutboxEventControllerTest {
 
     private MockMvc mockMvc;
 
+    /**
+     * 관리자 Outbox HTTP 계약을 검사하도록 조회·복구 서비스와 고정 관리자 인증 인자를 연결한다.
+     */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AdminOutboxEventController(queryService, recoveryService))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    /**
+                     * CurrentUser 인자만 테스트용 관리자 인증 객체로 해석한다.
+                     */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
                         return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
+                    /**
+                     * 조회 및 재시도 서비스로 전달할 관리자 사용자 ID를 10으로 고정한다.
+                     */
                     @Override
                     public Object resolveArgument(
                             MethodParameter parameter,
@@ -61,8 +70,12 @@ class AdminOutboxEventControllerTest {
                 .build();
     }
 
+    /**
+     * 상태·유형·집계 필터로 조회한 응답에는 이벤트 ID와 실패 상태를 담고 payload는 노출하지 않는지 검증한다.
+     * 사유를 전달한 재시도 응답이 RETRY와 시도 횟수 0을 반환하는지도 확인한다.
+     */
     @Test
-    void exposesFilteredListAndRetryContracts() throws Exception {
+    void exposesFilteredOutboxAndRetry() throws Exception {
         AdminOutboxEventItem failed = item(OutboxEventStatus.FAILED, 5, "provider failed");
         AdminOutboxEventItem retried = item(OutboxEventStatus.RETRY, 0, null);
         when(queryService.list(
@@ -96,6 +109,9 @@ class AdminOutboxEventControllerTest {
                 .andExpect(jsonPath("$.attemptCount").value(0));
     }
 
+    /**
+     * 공백뿐인 수동 재시도 사유는 요청 검증에서 400으로 거절되는지 검증한다.
+     */
     @Test
     void rejectsBlankRetryReason() throws Exception {
         mockMvc.perform(post("/admin/outbox-events/event-1/retry")
@@ -104,6 +120,9 @@ class AdminOutboxEventControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * 컨트롤러 응답 비교를 위해 같은 이벤트의 상태·시도 횟수·오류만 달리한 항목을 만든다.
+     */
     private AdminOutboxEventItem item(OutboxEventStatus status, int attemptCount, String lastError) {
         LocalDateTime now = LocalDateTime.of(2026, 8, 10, 10, 0);
         return new AdminOutboxEventItem(
