@@ -13,6 +13,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 회원의 본인·사업자 검증 상태와 암호화된 사업자등록번호를 함께 저장합니다.
+ * 두 검증이 모두 승인되어야 완전 승인으로 보며 상호 변경은 두 상태와 심사 이력을 초기화합니다.
+ */
 @Getter
 @Entity
 @Table(name = "merchant_verification")
@@ -119,6 +123,9 @@ public class MerchantVerification {
         reviewedAt = null;
     }
 
+    /**
+     * 두 심사 결과를 함께 적용합니다. 이미 심사된 결과와 같은 재요청은 이력을 변경하지 않고 반환하며 다른 결과는 거부합니다.
+     */
     public void review(
             Long adminUserId,
             boolean identityApproved,

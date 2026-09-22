@@ -15,6 +15,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소 팀원의 역할과 활성 상태를 관리합니다.
+ * 일반 역할 변경·재활성화에서는 OWNER를 부여할 수 없고 소유권 이전용 전용 메서드로 구분합니다.
+ */
 @Getter
 @Entity
 @Table(name = "merchant_place_member")
