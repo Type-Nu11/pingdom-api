@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.post;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.report.AdminPostReportBulkActionResponse;
@@ -36,7 +39,8 @@ import org.springframework.web.server.ResponseStatusException;
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.REPORT_APPEAL)
 public class AdminPostController {
 
     private final AdminPostService adminPostService;
@@ -177,6 +181,7 @@ public class AdminPostController {
         return ResponseEntity.noContent().build();
     }
 
+    @Tag(name = SwaggerTagCatalog.OPERATIONS)
     @GetMapping("/posts/s3/orphans/report")
     @Operation(
             summary = "MapImage S3 고아 파일 삭제 후보 리포트 생성",
@@ -197,6 +202,7 @@ public class AdminPostController {
         }
     }
 
+    @Tag(name = SwaggerTagCatalog.OPERATIONS)
     @PostMapping("/posts/s3/orphans/report/refresh")
     @Operation(
             summary = "MapImage S3 고아 파일 리포트 생성 시작",
@@ -206,6 +212,7 @@ public class AdminPostController {
         return mapImageS3OrphanReportService.refreshMapImageS3OrphanReport();
     }
 
+    @Tag(name = SwaggerTagCatalog.OPERATIONS)
     @GetMapping("/posts/s3/orphans/report/status")
     @Operation(
             summary = "MapImage S3 고아 파일 리포트 생성 상태 조회",
@@ -222,6 +229,7 @@ public class AdminPostController {
         }
     }
 
+    @Tag(name = SwaggerTagCatalog.OPERATIONS)
     @DeleteMapping("/posts/s3/orphans")
     @Operation(
             summary = "MapImage S3 고아 파일 삭제",
