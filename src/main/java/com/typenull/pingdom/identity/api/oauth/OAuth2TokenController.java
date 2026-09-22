@@ -13,6 +13,10 @@ import org.springframework.util.StringUtils;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * OAuth 성공 핸들러가 남긴 짧은 수명 쿠키를 읽어 access token을 응답 본문으로 전달합니다.
+ * 쿠키는 응답에서 즉시 만료시키며 쿠키 값의 JWT 검증은 이 전달 API에서 수행하지 않습니다.
+ */
 @RestController
 public class OAuth2TokenController {
 
