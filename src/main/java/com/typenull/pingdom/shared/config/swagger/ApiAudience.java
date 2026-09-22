@@ -20,6 +20,7 @@ public @interface ApiAudience {
             return name().toLowerCase(Locale.ROOT);
         }
 
+        /** 메서드 선언을 먼저 확인하고 없으면 선언 클래스의 소속을 사용한다. 둘 다 없으면 문서 그룹 미지정인 null을 반환한다. */
         public static Group resolve(Method method) {
             ApiAudience audience = method.getAnnotation(ApiAudience.class);
             if (audience == null) {
