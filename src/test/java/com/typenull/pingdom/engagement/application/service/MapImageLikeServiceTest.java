@@ -58,6 +58,9 @@ class MapImageLikeServiceTest {
     @InjectMocks
     private MapImageLikeService mapImageLikeService;
 
+    /**
+     * 사진 좋아요 저장 결과의 ID로 MAP_IMAGE_LIKED 이벤트 키를 만들고 사진 집계 ID와 알림 payload를 Outbox에 발행하는지 검증한다.
+     */
     @Test
     void likeStoresFcmOutboxEvent() {
         long mapImageId = 10L;
@@ -91,8 +94,12 @@ class MapImageLikeServiceTest {
         );
     }
 
+    /**
+     * 사전 조회 후 좋아요 고유 제약이 발생하면 ALREADY_LIKED로 변환하고 카운터 증가·Outbox 발행은 하지 않는지 검증한다.
+     * 실제 동시 요청 실행 대신 제약 위반을 주입해 경합 실패 경로를 재현한다.
+     */
     @Test
-    void likeConvertsConcurrentDuplicateConstraintToAlreadyLiked() {
+    void mapsDuplicateLikeConstraint() {
         long mapImageId = 10L;
         long likerId = 30L;
         MapImage mapImage = MapImage.builder()
