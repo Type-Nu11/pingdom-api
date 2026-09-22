@@ -13,6 +13,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 점주별 브랜드 이름과 선택 설명·로고 URL을 보관합니다.
+ * 선택 문자열의 공백 입력은 null로 정규화하고 길이를 제한하지만 URL 형식이나 외부 리소스 존재 여부는 검사하지 않습니다.
+ */
 @Entity
 @Getter
 @Table(name = "merchant_brand")
