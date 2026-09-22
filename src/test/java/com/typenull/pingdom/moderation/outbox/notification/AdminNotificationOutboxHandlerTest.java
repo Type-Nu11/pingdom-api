@@ -25,6 +25,9 @@ class AdminNotificationOutboxHandlerTest {
     @InjectMocks
     private AdminNotificationOutboxHandler handler;
 
+    /**
+     * 신고 접수 알림 JSON을 처리하면 유형·이벤트 키·이동 토큰·본문 인자를 생성 서비스에 그대로 전달하는지 검증한다.
+     */
     @Test
     void deserializesPayloadAndCreatesNotifications() throws Exception {
         AdminNotificationOutboxPayload payload = new AdminNotificationOutboxPayload(
