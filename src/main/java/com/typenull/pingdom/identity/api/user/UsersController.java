@@ -41,6 +41,10 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 현재 인증 회원의 프로필·선호·데이터 내보내기 요청을 각 전담 서비스로 연결합니다.
+ * 회원 ID는 요청 본문 대신 principal에서 얻고 principal이 없으면 INVALID_TOKEN으로 처리합니다.
+ */
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
