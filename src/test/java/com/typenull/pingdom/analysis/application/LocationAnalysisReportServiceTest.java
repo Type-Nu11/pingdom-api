@@ -22,8 +22,12 @@ import org.junit.jupiter.api.Test;
 
 class LocationAnalysisReportServiceTest {
 
+    /**
+     * 프롬프트·AI·검증·경쟁 보강·HTML·PDF 의존성을 대역으로 구성한 생성 결과가 PDF 헤더와 AI 보고서명을 반환하는지 검증한다.
+     * 조합된 HTML이 PDF 변환기로 전달되는지 확인하며 실제 AI 호출·PDF 렌더링은 포함하지 않는다.
+     */
     @Test
-    void sendsPromptToAiComposesMetadataAndConvertsHtmlToPdf() {
+    void generatesNamedPdfReport() {
         LocationAnalysisPromptFactory promptFactory = mock(LocationAnalysisPromptFactory.class);
         AiAnalysisClient aiClient = mock(AiAnalysisClient.class);
         LocationAnalysisResponseValidator validator = mock(LocationAnalysisResponseValidator.class);
