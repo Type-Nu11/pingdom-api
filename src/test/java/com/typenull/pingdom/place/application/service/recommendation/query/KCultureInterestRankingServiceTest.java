@@ -30,8 +30,11 @@ class KCultureInterestRankingServiceTest {
     @Mock
     private MapPlaceRecommendationCandidateRepository candidateRepository;
 
+    /**
+     * K_POP 관심사와 일치한 후보에 0.10을 더해 카페보다 우선하고 적용 관심사에 포함하는지 확인합니다.
+     */
     @Test
-    void 관심사와_일치하는_장소의_순위를_높인다() {
+    void boostsMatchingInterest() {
         User user = User.builder()
                 .id(7L)
                 .travelPurposes(Set.of(TravelPurpose.K_POP))
@@ -50,8 +53,11 @@ class KCultureInterestRankingServiceTest {
         assertThat(result.candidates().getFirst().contextScore()).isEqualTo(0.10d);
     }
 
+    /**
+     * OTHER만 선택하면 점수를 유지하고 카테고리 조회를 생략하는지 확인합니다.
+     */
     @Test
-    void OTHER만_선택한_사용자는_기존_순위를_유지한다() {
+    void ignoresOtherOnlyInterest() {
         User user = User.builder()
                 .id(8L)
                 .travelPurposes(Set.of(TravelPurpose.OTHER))
@@ -66,8 +72,11 @@ class KCultureInterestRankingServiceTest {
         verify(candidateRepository, never()).findTouristCategoriesByPlaceIds(anyList());
     }
 
+    /**
+     * 후보에 해당 카테고리가 없으면 관심사를 적용 목록에 넣지 않고 점수를 유지하는지 확인합니다.
+     */
     @Test
-    void 후보와_일치하지_않는_관심사는_적용_목록에서_제외한다() {
+    void excludesUnmatchedAppliedInterest() {
         User user = User.builder()
                 .id(9L)
                 .travelPurposes(Set.of(TravelPurpose.K_POP))
@@ -83,8 +92,11 @@ class KCultureInterestRankingServiceTest {
         assertThat(result.candidates()).extracting(ScoredCandidate::finalScore).containsExactly(0.50d);
     }
 
+    /**
+     * 가점 설정 0이면 사용자 조회 없이 기존 점수와 빈 적용 관심사를 반환하는지 확인합니다.
+     */
     @Test
-    void 버전_정책이_비활성화하면_관심사_랭킹을_적용하지_않는다() {
+    void skipsDisabledInterestBoost() {
         MapPlace place = place(1L, TouristCategory.K_POP);
 
         var result = service().apply(7L, List.of(candidate(place, 0.50d)), 0d);
@@ -94,8 +106,11 @@ class KCultureInterestRankingServiceTest {
         verify(userRepository, never()).findById(org.mockito.ArgumentMatchers.anyLong());
     }
 
+    /**
+     * 익명 추천은 사용자·카테고리를 조회하지 않고 적용 관심사를 비우는지 확인합니다.
+     */
     @Test
-    void 익명_사용자는_사용자와_카테고리를_조회하지_않는다() {
+    void skipsAnonymousInterestLookup() {
         MapPlace place = place(1L, TouristCategory.K_POP);
 
         var result = service().apply(null, List.of(candidate(place, 0.50d)), 0.10d);
@@ -105,20 +120,28 @@ class KCultureInterestRankingServiceTest {
         verify(candidateRepository, never()).findTouristCategoriesByPlaceIds(anyList());
     }
 
+    /**
+     * 관심사와 카테고리 모의 저장소를 사용하는 서비스를 만듭니다.
+     */
     private KCultureInterestRankingService service() {
         return new KCultureInterestRankingService(userRepository, candidateRepository);
     }
 
+    /**
+     * 후보 카테고리 일치 판단에 사용할 projection을 만듭니다.
+     */
     private MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow row(
             Long placeId,
             TouristCategory category
     ) {
         return new MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow() {
+            /** 관심사 가점을 부여할 후보 장소 ID를 반환한다. */
             @Override
             public Long getPlaceId() {
                 return placeId;
             }
 
+            /** 사용자의 K-컬처 관심사와 비교할 장소 카테고리를 반환한다. */
             @Override
             public TouristCategory getCategory() {
                 return category;
@@ -126,6 +149,9 @@ class KCultureInterestRankingServiceTest {
         };
     }
 
+    /**
+     * 관광 카테고리가 정해진 관심사 후보를 만듭니다.
+     */
     private MapPlace place(Long id, TouristCategory category) {
         return MapPlace.builder()
                 .id(id)
@@ -134,6 +160,9 @@ class KCultureInterestRankingServiceTest {
                 .build();
     }
 
+    /**
+     * 관심사 가점만 관찰할 수 있도록 다른 신호를 고정한 후보를 만듭니다.
+     */
     private ScoredCandidate candidate(MapPlace place, double score) {
         return new ScoredCandidate(
                 place,
