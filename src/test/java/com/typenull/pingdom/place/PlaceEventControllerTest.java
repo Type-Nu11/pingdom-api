@@ -67,6 +67,9 @@ class PlaceEventControllerTest {
 
     private MapPlace place;
 
+    /**
+     * 감사 로그·행사·장소·사용자를 의존 순서대로 비우고 모든 요청에서 사용할 장소를 저장한다.
+     */
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
@@ -82,8 +85,11 @@ class PlaceEventControllerTest {
                 .build());
     }
 
+    /**
+     * 초안은 앱 상세에서 숨기고 관리자 공개 후 목록·상세·UTC 시간 응답과 생성·공개 감사 로그가 기록되는지 확인한다.
+     */
     @Test
-    void adminPublishesEventAndAppReadsOnlyPublishedEvent() throws Exception {
+    void exposesEventAfterAdminPublishes() throws Exception {
         String accessToken = createAdminAndLogin();
         LocalDateTime startAt = LocalDateTime.now().plusDays(1).withNano(0);
         LocalDateTime endAt = startAt.plusDays(7);
@@ -133,8 +139,11 @@ class PlaceEventControllerTest {
                 .containsExactlyInAnyOrder(AdminAuditAction.PLACE_EVENT_CREATED, AdminAuditAction.PLACE_EVENT_PUBLISHED);
     }
 
+    /**
+     * 공개된 행사를 수정하면 409와 PLACE_EVENT_UPDATE_NOT_ALLOWED 코드를 반환하는지 확인한다.
+     */
     @Test
-    void doesNotAllowUpdatingPublishedEvent() throws Exception {
+    void rejectsPublishedEventUpdate() throws Exception {
         String accessToken = createAdminAndLogin();
         LocalDateTime startAt = LocalDateTime.now().plusDays(1).withNano(0);
         long eventId = createAndPublish(accessToken, startAt, startAt.plusDays(2));
@@ -147,8 +156,11 @@ class PlaceEventControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_EVENT_UPDATE_NOT_ALLOWED"));
     }
 
+    /**
+     * 공개 행사를 취소하면 CANCELLED 상태를 반환하고 앱 상세 조회가 404가 되는지 확인한다.
+     */
     @Test
-    void cancellingPublishedEventRemovesItFromAppDiscovery() throws Exception {
+    void hidesCancelledEventFromApp() throws Exception {
         String accessToken = createAdminAndLogin();
         LocalDateTime startAt = LocalDateTime.now().plusDays(1).withNano(0);
         long eventId = createAndPublish(accessToken, startAt, startAt.plusDays(2));
@@ -165,8 +177,11 @@ class PlaceEventControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 공개 행사가 연결된 장소 삭제를 409와 PLACE_EVENT_CONNECTED 코드로 거절하는지 확인한다.
+     */
     @Test
-    void doesNotDeletePlaceWithLinkedEvent() throws Exception {
+    void rejectsDeletingEventLinkedPlace() throws Exception {
         String accessToken = createAdminAndLogin();
         LocalDateTime startAt = LocalDateTime.now().plusDays(1).withNano(0);
         createAndPublish(accessToken, startAt, startAt.plusDays(2));
@@ -177,6 +192,9 @@ class PlaceEventControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_EVENT_CONNECTED"));
     }
 
+    /**
+     * 최대 정수 페이지 요청을 허용 상한인 10,000으로 정규화하여 응답하는지 확인한다.
+     */
     @Test
     void capsOversizedEventListPage() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -188,8 +206,11 @@ class PlaceEventControllerTest {
                 .andExpect(jsonPath("$.page").value(10_000));
     }
 
+    /**
+     * 역전된 기간과 알 수 없는 행사 유형을 각각 400 및 동일한 검색 조건 오류 코드로 반환하는지 확인한다.
+     */
     @Test
-    void rejectsInvalidPublicEventSearchConditionWithStableErrorCode() throws Exception {
+    void rejectsInvalidEventSearchConditions() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(get("/events")
@@ -206,8 +227,11 @@ class PlaceEventControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_EVENT_SEARCH_CONDITION_INVALID"));
     }
 
+    /**
+     * 빈 관리자 목록도 전체 페이지를 1로 표시하고 행사 저장 후 목록 건수·제목·페이지 정보가 반영되는지 확인한다.
+     */
     @Test
-    void adminListsEventsAndReturnsNormalizedEmptyPage() throws Exception {
+    void normalizesAdminEventListPages() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(get("/admin/place-events")
@@ -243,6 +267,9 @@ class PlaceEventControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /**
+     * 관리자 API로 행사를 생성하고 공개까지 성공시킨 뒤 수정·취소·삭제 검증에 사용할 행사 ID를 반환한다.
+     */
     private long createAndPublish(String accessToken, LocalDateTime startAt, LocalDateTime endAt) throws Exception {
         MvcResult createResult = mockMvc.perform(post("/admin/place-events")
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken)
@@ -259,6 +286,9 @@ class PlaceEventControllerTest {
         return eventId;
     }
 
+    /**
+     * 공통 장소·전시 내용에 테스트별 시작·종료 시각을 넣은 관리자 행사 등록 JSON을 만든다.
+     */
     private ObjectNode eventRequest(LocalDateTime startAt, LocalDateTime endAt) {
         ObjectNode request = objectMapper.createObjectNode();
         request.put("placeId", place.getId());
@@ -271,11 +301,17 @@ class PlaceEventControllerTest {
         return request;
     }
 
+    /**
+     * 행사 생성 응답에서 이후 요청 경로에 사용할 eventId를 읽는다.
+     */
     private long readEventId(MvcResult result) throws Exception {
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
         return response.get("eventId").longValue();
     }
 
+    /**
+     * 충돌하지 않는 ADMIN 계정을 저장한 뒤 실제 로그인 API가 발급한 accessToken을 반환한다.
+     */
     private String createAdminAndLogin() throws Exception {
         String username = "eventAdmin" + ADMIN_SEQUENCE.incrementAndGet();
         userRepository.save(User.builder()
