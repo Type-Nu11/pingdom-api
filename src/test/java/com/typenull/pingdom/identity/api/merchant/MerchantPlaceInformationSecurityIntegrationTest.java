@@ -21,8 +21,11 @@ class MerchantPlaceInformationSecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /**
+     * 인증 없는 장소 정보 GET·PUT 요청은 보안 필터에서 401과 INVALID_TOKEN 코드로 거부되는지 검증한다.
+     */
     @Test
-    void informationEndpointsRejectUnauthenticatedRequests() throws Exception {
+    void rejectsUnauthenticatedInformationRequests() throws Exception {
         mockMvc.perform(get("/merchant-owner/places/10/information"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
