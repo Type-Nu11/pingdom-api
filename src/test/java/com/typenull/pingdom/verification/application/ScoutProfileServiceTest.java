@@ -53,6 +53,7 @@ class ScoutProfileServiceTest {
     private final ApplicationEventPublisher eventPublisher = org.mockito.Mockito.mock(ApplicationEventPublisher.class);
     private ScoutProfileService service;
 
+    /** 고정 시계와 mock 의존성으로 서비스를 구성하고 프로필·자격 저장 mock은 입력 객체를 그대로 반환한다. */
     @BeforeEach
     void setUp() {
         service = new ScoutProfileService(
@@ -71,8 +72,12 @@ class ScoutProfileServiceTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    /**
+     * 최초 신청은 사용자 1의 프로필과 활동 자격을 모두 PENDING으로 반환한다.
+     * 프로필 변경 이벤트와 초기 상태 메트릭 호출을 확인한다.
+     */
     @Test
-    void userCanApplyOnceAndStartsWithPendingProfileAndEligibility() {
+    void createPendingApplication() {
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
         when(profileRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.empty());
 
@@ -85,8 +90,9 @@ class ScoutProfileServiceTest {
         verify(metrics).recordProfileStatusUpdate(isNull(), eq(ScoutProfileStatus.PENDING));
     }
 
+    /** 프로필이 이미 있으면 중복 신청 오류로 거부하고 프로필·자격 어느 쪽도 저장하지 않는다. */
     @Test
-    void duplicateApplicationIsRejectedBeforeSavingEitherModel() {
+    void rejectDuplicateApplication() {
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
         when(profileRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(
                 ScoutProfile.pending(1L, "기존 Scout", null, NOW)
@@ -101,8 +107,12 @@ class ScoutProfileServiceTest {
         verify(eligibilityRepository, never()).save(any(ScoutActivityEligibility.class));
     }
 
+    /**
+     * 관리자 승인은 SCOUT_REVIEW 권한 확인과 감사 기록을 호출한다.
+     * 프로필만 ACTIVE로 바뀌며 활동 자격은 PENDING을 유지해야 한다.
+     */
     @Test
-    void adminApprovalRequiresPermissionAndActivatesOnlyTheProfile() {
+    void approveProfileOnly() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(1L, NOW);
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
@@ -127,8 +137,12 @@ class ScoutProfileServiceTest {
         );
     }
 
+    /**
+     * 활성 프로필에 30일 활동 자격을 부여하면 ELIGIBLE이 된다.
+     * 자격 변경 이벤트와 PENDING → ELIGIBLE 메트릭 호출을 확인한다.
+     */
     @Test
-    void adminCanGrantEligibilityOnlyAfterProfileApproval() {
+    void grantApprovedProfileEligibility() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(1L, NOW);
         profile.activate(9L, NOW);
@@ -151,8 +165,12 @@ class ScoutProfileServiceTest {
         );
     }
 
+    /**
+     * 미승인 프로필에 자격 부여를 요청하면 활성 프로필 필요 오류로 거부한다.
+     * 자격 잠금 조회까지 진행하지 않아야 한다.
+     */
     @Test
-    void activityEligibilityCannotBeGrantedForPendingProfile() {
+    void rejectPendingProfileGrant() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(user(1L)));
         when(profileRepository.findByUserIdForUpdate(1L)).thenReturn(Optional.of(profile));
@@ -168,6 +186,7 @@ class ScoutProfileServiceTest {
         verify(eligibilityRepository, never()).findByScoutUserIdForUpdate(1L);
     }
 
+    /** 지정 ID의 활성·미정지 일반 계정을 만들어 신청자/심사 대상 조건을 제공한다. */
     private User user(Long id) {
         return User.builder()
                 .id(id)
