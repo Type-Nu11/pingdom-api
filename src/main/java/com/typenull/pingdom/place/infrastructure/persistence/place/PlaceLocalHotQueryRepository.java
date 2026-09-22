@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 지정 행정구역의 공개·운영 장소를 현재 북마크 수와 장소 ID 내림차순으로 조회합니다.
+ * 대표 이미지가 없으면 최근 활성 게시물 이미지로 보완하며 북마크 0건 장소도 후보에 포함합니다.
+ */
 public interface PlaceLocalHotQueryRepository extends Repository<MapPlace, Long> {
 
     @Query(value = """
