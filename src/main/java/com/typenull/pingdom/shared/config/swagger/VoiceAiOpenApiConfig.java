@@ -18,6 +18,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+/**
+ * Voice AI 경로가 포함된 명세에 고정 ProviderEnvelope v1과 오류 응답을 덧씌운다.
+ * 실제 provider 응답 검증이나 런타임 예외 처리는 수행하지 않는다.
+ */
 @Configuration
 public class VoiceAiOpenApiConfig {
     private static final String BASE = "/voice-ai/sessions";
@@ -64,6 +68,10 @@ public class VoiceAiOpenApiConfig {
         }
     }
 
+    /**
+     * 앱의 고정 JSON Schema를 OAS 3.0 표현으로 변환한다. 로컬 ref를 펼치고 const를 단일 enum으로 바꾼다.
+     * 임의의 외부 참조나 순환 schema를 처리하는 범용 변환기는 아니다.
+     */
     private JsonNode toOpenApi(JsonNode node, JsonNode root) {
         if (node.isArray()) {
             ArrayNode result = Json.mapper().createArrayNode();
