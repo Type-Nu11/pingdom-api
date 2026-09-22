@@ -1,5 +1,8 @@
 package com.typenull.pingdom.reservation.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
@@ -26,7 +29,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.RESERVATION)
 @org.springframework.validation.annotation.Validated
 /** 관광객 예약 생성·조회·취소 요청을 예약 서비스로 전달합니다. */
 public class ReservationController {

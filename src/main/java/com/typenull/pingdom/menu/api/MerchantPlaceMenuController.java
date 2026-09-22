@@ -1,5 +1,8 @@
 package com.typenull.pingdom.menu.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.menu.api.dto.*;
 import com.typenull.pingdom.menu.application.PlaceMenuService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -23,7 +26,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.MENU_NOTICE)
 public class MerchantPlaceMenuController {
     private final PlaceMenuService service;
 

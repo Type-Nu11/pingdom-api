@@ -1,5 +1,8 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentCreateRequest;
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentCreateResponse;
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentListResponse;
@@ -31,7 +34,8 @@ import jakarta.validation.constraints.Min;
 @RestController
 @RequestMapping("/community/posts/{postId}/comments")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.COMMUNITY_REACTION)
 public class CommunityPostCommentController {
 
     private final CommunityPostCommentCommandService communityPostCommentCommandService;

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.oauth;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountDisconnectRequest;
 import com.typenull.pingdom.identity.api.dto.oauth.OAuthAccountLinkStartResponse;
@@ -31,7 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users/me/oauth-accounts")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.ACCOUNT)
 public class OAuthAccountController {
 
     private static final String GOOGLE_AUTHORIZATION_URL = "/oauth2/authorization/google";

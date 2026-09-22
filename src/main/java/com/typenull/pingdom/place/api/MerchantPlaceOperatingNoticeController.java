@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.operating.notice.PlaceOperatingNoticeCancelRequest;
@@ -38,7 +41,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/merchant-owner/places/{placeId}/operating-notices")
 @RequiredArgsConstructor
 @AuthenticatedOnly
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.MENU_NOTICE)
 @SecurityRequirement(name = "bearerAuth")
 public class MerchantPlaceOperatingNoticeController {
 

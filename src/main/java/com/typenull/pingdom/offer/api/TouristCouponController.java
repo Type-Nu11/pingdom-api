@@ -1,5 +1,8 @@
 package com.typenull.pingdom.offer.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.offer.api.dto.CouponPageResponse;
 import com.typenull.pingdom.offer.api.dto.CouponResponse;
@@ -30,7 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/coupons")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.OFFER)
 /** 관광 쿠폰 발급·조회·사용 요청의 API 진입점입니다. */
 public class TouristCouponController {
 

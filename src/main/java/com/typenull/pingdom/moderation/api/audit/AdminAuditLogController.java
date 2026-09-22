@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.audit;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.audit.AdminAuditLogResponse;
@@ -22,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/audit-logs")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.AUDIT)
 public class AdminAuditLogController {
 
     private final AdminAuditLogQueryService adminAuditLogQueryService;

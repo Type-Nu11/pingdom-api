@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place.lookup;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceDetailResponse;
 import com.typenull.pingdom.moderation.api.dto.place.query.AdminMapPlaceResponse;
@@ -26,7 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.PLACE_LOOKUP)
 public class AdminPlaceLookupController {
 
     private final AdminMapPlaceLookupQueryService adminMapPlaceLookupQueryService;

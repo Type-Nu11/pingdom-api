@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place.quality;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.quality.basic.AdminMapPlaceBasicInformationUpdateRequest;
@@ -53,7 +56,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @Slf4j
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.PLACE_QUALITY)
 /** 관리자 장소의 좌표·식별자·운영·관광·검증 품질을 수정하는 API 진입점입니다. */
 public class AdminPlaceQualityController {
 

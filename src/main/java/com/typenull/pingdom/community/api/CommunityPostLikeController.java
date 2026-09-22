@@ -1,5 +1,8 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.api.dto.CommunityPostLikeResponse;
 import com.typenull.pingdom.community.application.CommunityPostLikeService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
@@ -21,7 +24,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/community/posts/{postId}/likes")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.COMMUNITY_REACTION)
 public class CommunityPostLikeController {
 
     private final CommunityPostLikeService communityPostLikeService;

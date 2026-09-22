@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationAttachmentResponse;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationResponse;
@@ -39,7 +42,8 @@ import org.springframework.format.annotation.DateTimeFormat;
 @RequiredArgsConstructor
 @AdminOnly
 @RequestMapping("/admin/merchant-place-applications")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.APPLICATION_REVIEW)
 public class AdminMerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 

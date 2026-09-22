@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.merchant;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOnboardingUpdateRequest;
@@ -30,7 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/merchant-owners")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.MERCHANT_MANAGEMENT)
 public class AdminMerchantOwnerController {
 
     private final MerchantOwnerAdminService adminService;

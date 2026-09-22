@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewMediaUploadResponse;
 import com.typenull.pingdom.place.application.service.review.PlaceReviewMediaService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -30,7 +33,8 @@ import org.springframework.web.multipart.MultipartFile;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Common", description = "공통 API")
+@ApiAudience(ApiAudience.Group.COMMON)
+@Tag(name = SwaggerTagCatalog.REVIEW_MEDIA)
 public class PlaceReviewMediaController {
 
     private final PlaceReviewMediaService mediaService;
