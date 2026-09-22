@@ -19,8 +19,11 @@ import org.mockito.ArgumentCaptor;
 
 class PostmarkEmailSenderTest {
 
+    /**
+     * 기본 재설정 URL에 쿼리가 있으면 앰퍼샌드로 이어 붙이고 이메일을 URL 인코딩한 링크를 생성하는지 검증한다.
+     */
     @Test
-    void passwordResetLinkAppendsParametersWithAmpersandWhenBaseUrlAlreadyHasQuery() {
+    void appendsResetLinkQueryParameters() {
         PostmarkEmailSender sender = new PostmarkEmailSender(new PostmarkProperties(
                 "test-token",
                 "no-reply@example.com",
@@ -36,8 +39,11 @@ class PostmarkEmailSenderTest {
         );
     }
 
+    /**
+     * 모의 Postmark 발송 응답의 메시지 ID를 이메일 발송 결과에 그대로 반환하는지 검증한다.
+     */
     @Test
-    void sendVerificationEmailReturnsPostmarkMessageId() throws Exception {
+    void returnsPostmarkVerificationMessageId() throws Exception {
         ApiClient apiClient = mock(ApiClient.class);
         MessageResponse response = new MessageResponse();
         response.setMessageId("postmark-message-id");
@@ -50,8 +56,11 @@ class PostmarkEmailSenderTest {
         assertEquals("postmark-message-id", result.providerMessageId());
     }
 
+    /**
+     * 인증 메일의 From에 설정된 발신 주소를 사용하며 공급자 메시지 ID도 결과에 유지하는지 검증한다.
+     */
     @Test
-    void sendVerificationEmailUsesConfiguredFromEmail() throws Exception {
+    void usesConfiguredVerificationSender() throws Exception {
         ApiClient apiClient = mock(ApiClient.class);
         MessageResponse response = new MessageResponse();
         response.setMessageId("postmark-message-id");
@@ -72,8 +81,11 @@ class PostmarkEmailSenderTest {
         assertEquals("support@example.com", messageCaptor.getValue().getFrom());
     }
 
+    /**
+     * 공백뿐인 발신 주소 설정을 조회하면 설정 필요 메시지를 가진 PostmarkConfigurationException이 발생하는지 검증한다.
+     */
     @Test
-    void postmarkPropertiesRejectsMissingFromEmailAtConfigurationBoundary() {
+    void rejectsBlankPostmarkSender() {
         PostmarkProperties properties = new PostmarkProperties(
                 "test-token",
                 " ",
@@ -89,8 +101,11 @@ class PostmarkEmailSenderTest {
         assertEquals("postmark.from-email 설정이 필요합니다.", exception.getMessage());
     }
 
+    /**
+     * Postmark 422 오류를 이메일 발송 실패 코드·공급자 코드 422·재시도 불가 상태로 변환하는지 검증한다.
+     */
     @Test
-    void sendVerificationEmailMapsPostmarkErrorCode() throws Exception {
+    void mapsPostmarkVerificationFailure() throws Exception {
         ApiClient apiClient = mock(ApiClient.class);
         when(apiClient.deliverMessage(any(Message.class))).thenThrow(new PostmarkException("invalid", 422));
 
@@ -106,6 +121,9 @@ class PostmarkEmailSenderTest {
         assertFalse(exception.isRetryable());
     }
 
+    /**
+     * 외부 호출 없이 발송 매핑을 확인할 테스트 토큰·발신자·인증 및 재설정 URL 설정을 제공한다.
+     */
     private PostmarkProperties properties() {
         return new PostmarkProperties(
                 "test-token",
