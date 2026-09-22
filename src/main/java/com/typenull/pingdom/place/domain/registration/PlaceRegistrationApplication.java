@@ -27,6 +27,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 신규 장소와 기존 장소 Claim의 초안·제출·심사·완료 상태를 관리합니다.
+ * 첨부와 제출 내용은 신청에 귀속되며, JPA version은 낙관적 잠금·심사 비교에 쓰고 submissionVersion은 제출 횟수를 셉니다.
+ * 소유권 이전, 사업자 활성화, 실제 장소 생성은 서비스가 이 상태 전이와 함께 조정합니다.
+ */
 @Getter
 @Entity
 @Table(name = "place_registration_application")
@@ -285,6 +290,10 @@ public class PlaceRegistrationApplication {
         this.updatedAt = now;
     }
 
+    /**
+     * 기존 태그를 모두 교체하며 null은 비우기로 처리합니다.
+     * 예약·쿠폰처럼 실제 운영 상태에서 계산하는 동적 태그는 신청자가 지정할 수 없어 제외합니다.
+     */
     public void replaceTags(Set<PlaceRegistrationTag> tags) {
         this.tags.clear();
         if (tags != null) {
@@ -348,6 +357,10 @@ public class PlaceRegistrationApplication {
         this.updatedAt = now;
     }
 
+    /**
+     * 초안이며 보존 기한 내 사업자등록증·신분증 각 1개와 대표 이미지 1개 이상이 있어야 제출할 수 있습니다.
+     * 제출 횟수를 증가시키고 전달받은 내용 해시를 보존하며 장소 생성은 수행하지 않습니다.
+     */
     public void submit(LocalDateTime now, String contentHash) {
         if (status != PlaceRegistrationStatus.DRAFT || !hasRequiredFiles(now)) {
             throw new IllegalStateException("필수 장소 정보와 파일이 있는 초안만 제출할 수 있습니다.");
