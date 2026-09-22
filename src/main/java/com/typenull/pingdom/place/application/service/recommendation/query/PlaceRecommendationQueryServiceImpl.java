@@ -313,6 +313,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         ));
     }
 
+    /**
+     * 현재 영업 중, 영업 여부 미상, 영업 중 아님 순으로 결과를 채웁니다.
+     * 각 등급 안에서 포트폴리오와 MMR을 적용하므로 낮은 등급의 높은 점수보다 상위 영업 등급을 우선합니다.
+     */
     private List<ScoredCandidate> selectOperationallyPrioritizedCandidates(
             List<ScoredCandidate> candidates,
             int limit,
@@ -379,6 +383,10 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
         return placeIndex;
     }
 
+    /**
+     * GEO 후보의 반경을 최대 20km까지 배로 늘리고, 개인·추세 후보는 반경과 무관하게 유지합니다.
+     * 이미 반응한 장소를 제외한 뒤 후보가 전혀 없을 때만 전체 수집 후보 폴백을 사용합니다.
+     */
     private CandidateSelection selectCandidates(
             List<PlaceDistance> placeDistances,
             int limit,
