@@ -1,5 +1,8 @@
 package com.typenull.pingdom.menu.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.menu.api.dto.PlaceMenuPublicResponse;
 import com.typenull.pingdom.menu.application.PlaceMenuService;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
@@ -17,7 +20,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/places/{placeId}/menus")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
 public class PlaceMenuController {
     private final PlaceMenuService service;
 
