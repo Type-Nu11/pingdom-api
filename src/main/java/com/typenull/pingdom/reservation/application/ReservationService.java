@@ -35,8 +35,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관광객 예약과 관리자 심사를 가용 재고·상태 이력·감사 기록에 연결합니다.
+ * 생성은 사용자 잠금으로 멱등 키를 검사하고, 상태 변경은 예약 잠금으로 직렬화합니다. 결제 승인 검증은 수행하지 않습니다.
+ */
 @Service
-/** 예약 생성·조회·확정·취소를 가용성, 상품, 결제 정책과 연결합니다. */
 public class ReservationService {
     private final ReservationRepository reservationRepository;
     private final ReservationStatusHistoryRepository reservationStatusHistoryRepository;
@@ -93,8 +96,11 @@ public class ReservationService {
         this.clock = clock;
     }
 
+    /**
+     * 같은 사용자·멱등 키의 요청 값이 같으면 기존 예약을 반환합니다.
+     * 신규 요청은 재고를 먼저 예약하고 PENDING 예약·이력을 저장한 뒤 전환 이벤트를 발행합니다.
+     */
     @Transactional
-    // 관광객과 재고를 검증하고 멱등 예약을 생성한 뒤 전환 이벤트를 발행합니다.
     public ReservationResponse create(Long userId, ReservationCreateRequest request) {
         User user = userRepository.findByIdForUpdate(userId).orElse(null);
         requireTourist(user);
@@ -199,6 +205,10 @@ public class ReservationService {
         }
     }
 
+    /**
+     * 상태·장소·점주·예약자·상품·예약 기간으로 예약을 조회하고 관련 이름과 상태 이력을 포함한 관리자 페이지를 반환합니다.
+     * 기간 양 끝이 있으면 시작이 종료보다 앞서야 하며 누락된 경계는 저장소 필터를 비활성화합니다.
+     */
     @Transactional(readOnly = true)
     public AdminReservationPageResponse listForAdmin(ReservationStatus status, Long placeId, Long ownerId,
             Long touristUserId, Long productId, LocalDateTime reservationFrom, LocalDateTime reservationTo,
@@ -216,6 +226,10 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public AdminReservationResponse getForAdmin(Long reservationId) { return toAdminResponse(find(reservationId)); }
 
+    /**
+     * 예약 행을 잠가 관리자 ID·사유로 확정하고 상태 이력과 변경 전후 상태의 감사 로그를 기록합니다.
+     * 없는 예약·확정 불가 상태는 거절하며 관련 이름과 심사 이력을 포함한 관리자 응답을 반환합니다.
+     */
     @Transactional
     public AdminReservationResponse confirmByAdmin(Long adminUserId, Long reservationId, String reason) {
         Reservation reservation = findForUpdate(reservationId);
@@ -230,6 +244,10 @@ public class ReservationService {
         }
     }
 
+    /**
+     * PENDING 예약을 사유와 함께 반려하고 선점한 재고를 반환한 뒤 상태 이력과 감사 기록을 남깁니다.
+     * 이 과정의 DB 변경은 호출 트랜잭션에 참여하며, 반복 반려는 현재 상태 검사에서 거절합니다.
+     */
     @Transactional
     public AdminReservationResponse rejectByAdmin(Long adminUserId, Long reservationId, String reason) {
         Reservation reservation = findForUpdate(reservationId);
