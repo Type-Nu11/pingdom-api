@@ -38,6 +38,9 @@ class PaymentQueryServiceTest {
     private final AvailabilityAccessPolicy availabilityAccessPolicy = mock(AvailabilityAccessPolicy.class);
     private PaymentQueryService service;
 
+    /**
+     * 고정 Clock과 조회 의존성을 연결하고 사용자 1을 활성 관광객으로 구성한다.
+     */
     @BeforeEach
     void setUp() {
         service = new PaymentQueryService(
@@ -51,8 +54,11 @@ class PaymentQueryServiceTest {
         when(userRepository.findById(1L)).thenReturn(Optional.of(tourist));
     }
 
+    /**
+     * 다른 관광객 2의 결제를 사용자 1이 조회하면 PAYMENT_FORBIDDEN인지 검증한다.
+     */
     @Test
-    void getMineRejectsAnotherTouristPayment() {
+    void rejectsAnotherTouristPayment() {
         when(paymentRepository.findById(100L)).thenReturn(Optional.of(processingPayment(2L)));
 
         assertThatThrownBy(() -> service.getMine(1L, 100L))
@@ -60,8 +66,11 @@ class PaymentQueryServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(PaymentErrorCode.PAYMENT_FORBIDDEN));
     }
 
+    /**
+     * 없는 결제 단건 조회가 PAYMENT_NOT_FOUND로 거절되는지 검증한다.
+     */
     @Test
-    void getMineReturnsNotFoundForUnknownPayment() {
+    void rejectsUnknownPayment() {
         when(paymentRepository.findById(100L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getMine(1L, 100L))
@@ -69,6 +78,9 @@ class PaymentQueryServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(PaymentErrorCode.PAYMENT_NOT_FOUND));
     }
 
+    /**
+     * 활성 계정이라도 MERCHANT_OWNER가 내 결제 목록을 요청하면 PAYMENT_FORBIDDEN인지 검증한다.
+     */
     @Test
     void listMineRequiresTouristAccount() {
         User merchantOwner = User.builder().id(2L).role(UserRole.MERCHANT_OWNER).status(UserStatus.ACTIVE).build();
@@ -79,8 +91,11 @@ class PaymentQueryServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(PaymentErrorCode.PAYMENT_FORBIDDEN));
     }
 
+    /**
+     * 내 결제가 없으면 빈 배열과 페이지 1·크기 20·전체 0·다음 없음으로 응답하는지 검증한다.
+     */
     @Test
-    void listMineReturnsEmptyPageInsteadOfNotFound() {
+    void returnsEmptyPaymentPage() {
         when(paymentRepository.findAllByTouristUserId(eq(1L), any()))
                 .thenReturn(Page.empty(PageRequest.of(0, 20)));
 
@@ -94,8 +109,11 @@ class PaymentQueryServiceTest {
         assertThat(response.hasNext()).isFalse();
     }
 
+    /**
+     * 실패 결제 조회가 FAILED·DECLINED·실패 시각을 포함하고 공급자 ID·금액·통화·결제/환불 시각은 null인지 검증한다.
+     */
     @Test
-    void getMineExposesFailureTimestampOnlyForFailedPayment() {
+    void mapsFailedPaymentFields() {
         LocalDateTime failedAt = LocalDateTime.of(2026, 7, 20, 13, 5);
         PaymentTransaction payment = processingPayment(1L);
         payment.fail("DECLINED", failedAt);
@@ -113,8 +131,11 @@ class PaymentQueryServiceTest {
         assertThat(response.refundedAt()).isNull();
     }
 
+    /**
+     * 성공 결제 조회가 공급자 ID·15,000 KRW·결제 시각을 포함하며 실패 코드·실패/환불 시각은 null인지 검증한다.
+     */
     @Test
-    void getMineDoesNotExposeFailureFieldsForPaidPayment() {
+    void mapsPaidPaymentFields() {
         LocalDateTime paidAt = LocalDateTime.of(2026, 7, 20, 13, 5);
         PaymentTransaction payment = processingPayment(1L);
         payment.succeed("provider-1", 15_000L, "KRW", paidAt);
@@ -132,6 +153,9 @@ class PaymentQueryServiceTest {
         assertThat(response.refundedAt()).isNull();
     }
 
+    /**
+     * 주어진 관광객의 예약 10에 대해 고정된 생성 시각과 멱등 키로 PROCESSING 결제를 만든다.
+     */
     private PaymentTransaction processingPayment(Long touristUserId) {
         return PaymentTransaction.processing(
                 10L,
