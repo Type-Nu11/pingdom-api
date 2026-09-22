@@ -19,6 +19,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 공개 게시글 또는 해당 글의 공개 댓글에 대한 사용자별 신고를 접수합니다.
+ * 같은 대상 재신고는 사전 조회와 대상별 DB 유일 제약으로 차단하고, 다른 무결성 오류는 원인 보존을 위해 전파합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class CommunityReportService {
@@ -43,6 +47,10 @@ public class CommunityReportService {
     }
 
     // 다른 게시글의 댓글 ID를 사용한 요청은 없는 댓글로 처리한다.
+    /**
+     * 공개 게시글에 속한 공개 댓글인지 확인해 사용자 신고를 저장·flush하고 신고 ID와 상태를 반환합니다.
+     * 다른 글의 댓글은 없는 대상으로 처리하고 기존 신고 또는 대상별 고유 제약 충돌은 ALREADY_REPORTED로 거절합니다.
+     */
     @Transactional
     public CommunityReportCreateResponse reportComment(long postId, long commentId, long reporterUserId,
                                                       CommunityReportCreateRequest request) {
