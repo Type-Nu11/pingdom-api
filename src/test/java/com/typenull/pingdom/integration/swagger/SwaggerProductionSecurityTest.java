@@ -22,8 +22,12 @@ class SwaggerProductionSecurityTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /**
+     * Springdoc를 활성화해도 운영 공개 접근 토글이 꺼져 있으면 Swagger UI와 기본·그룹 OpenAPI 문서가 인증 없이 노출되지 않는지 검증한다.
+     * UI 진입점과 swagger-config를 포함한 모든 문서 경로는 401 응답이어야 한다.
+     */
     @Test
-    void requiresAuthenticationForSwaggerUiAndApiDocs() throws Exception {
+    void blocksPublicDocs() throws Exception {
         for (String path : new String[]{
                 "/swagger-ui",
                 "/swagger-ui/index.html",
