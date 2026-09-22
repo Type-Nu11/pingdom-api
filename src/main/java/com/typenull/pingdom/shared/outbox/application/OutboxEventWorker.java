@@ -8,6 +8,10 @@ import org.springframework.core.task.TaskRejectedException;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * 주기적으로 오래된 선점을 복구하고 준비 이벤트를 전용 executor에 전달한다.
+ * 성공 이력 정리는 별도 주기로 실행되며 프로세스 중단 시 진행 이벤트는 timeout 복구에 맡긴다.
+ */
 @Component
 @ConditionalOnProperty(prefix = "outbox", name = "enabled", havingValue = "true", matchIfMissing = true)
 @Slf4j
@@ -33,6 +37,7 @@ public class OutboxEventWorker {
         this.outboxExecutor = outboxExecutor;
     }
 
+    /** 이전 실행 종료 후 기본 5초 간격으로 복구를 먼저 수행하고 새 배치를 선점한다. */
     @Scheduled(
             fixedDelayString = "${outbox.poll-delay:PT5S}",
             initialDelayString = "${outbox.initial-delay:PT5S}"
@@ -45,6 +50,7 @@ public class OutboxEventWorker {
         claimService.claimReadyEvents().forEach(this::submit);
     }
 
+    /** 기본 최초 1시간 뒤 시작해 24시간 간격으로 성공 이력 한 배치를 정리한다. */
     @Scheduled(
             fixedDelayString = "${outbox.cleanup-delay:PT24H}",
             initialDelayString = "${outbox.cleanup-initial-delay:PT1H}"
@@ -56,6 +62,10 @@ public class OutboxEventWorker {
         }
     }
 
+    /**
+     * processor 밖으로 나온 예외를 기록해 executor 작업 실패가 다른 작업에 전파되지 않게 한다.
+     * 이 catch 자체는 이벤트 상태를 갱신하지 않는다.
+     */
     private void processSafely(String eventId) {
         try {
             processor.process(eventId);
@@ -64,6 +74,7 @@ public class OutboxEventWorker {
         }
     }
 
+    /** 선점된 ID를 executor에 제출한다. 제출이 거절되면 실패 횟수를 반영해 재시도 또는 최종 실패 상태로 전환한다. */
     private void submit(String eventId) {
         try {
             outboxExecutor.execute(() -> processSafely(eventId));
