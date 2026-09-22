@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/** 방문 판단 정보 조회를 영업 상태별로 집계한다. 장소 식별자 없이 상태만 태그로 사용한다. */
 @Component
 public class PlaceVisitDecisionMetrics {
 
