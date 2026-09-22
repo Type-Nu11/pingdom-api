@@ -23,6 +23,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** 결제 내역과 결제 상태 조회 API의 진입점입니다. */
 @RestController
 @RequestMapping("/payments")
 @RequiredArgsConstructor
@@ -31,7 +32,6 @@ import org.springframework.web.bind.annotation.*;
 @ApiAudience(ApiAudience.Group.APP)
 @Tag(name = SwaggerTagCatalog.PAYMENT)
 @org.springframework.validation.annotation.Validated
-/** 결제 내역과 결제 상태 조회 API의 진입점입니다. */
 public class PaymentController {
     private final PaymentQueryService queryService;
 
