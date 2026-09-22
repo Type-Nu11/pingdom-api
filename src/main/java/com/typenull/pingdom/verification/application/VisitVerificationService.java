@@ -35,6 +35,10 @@ public class VisitVerificationService {
     private final VisitVerificationProperties properties;
     private final VisitVerificationPolicyResolver policyResolver;
 
+    /**
+     * 관광객 계정을 확인하고 지정 장소의 체류 인증을 시작하거나 당일 기존 세션을 반환한다.
+     * 새 세션에만 현재 정책을 확정하므로 설정이 바뀌어도 기존 세션의 반경·체류 시간은 유지된다.
+     */
     @Transactional
     public VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request) {
         requireTourist(userId);
@@ -83,6 +87,10 @@ public class VisitVerificationService {
         return nearest.getPlaceId();
     }
 
+    /**
+     * 당일 진행 세션을 최근 서버 확인 시각 순으로 검사해 재사용 가능한 첫 세션을 반환한다.
+     * 재사용 검사 과정에서 오래된 세션을 만료 상태로 바꿀 수 있다.
+     */
     private VisitVerificationSession findExistingForegroundSession(Long userId,
             ForegroundVisitVerificationStartRequest request, Instant now) {
         LocalDate verificationDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
@@ -93,6 +101,10 @@ public class VisitVerificationService {
                 .orElse(null);
     }
 
+    /**
+     * TTL 또는 관측 공백을 넘긴 세션은 만료 처리한다.
+     * 그 밖에는 현재 공개·운영 장소의 저장된 반경 안에 있을 때만 재사용한다.
+     */
     private boolean isReusableForegroundSession(VisitVerificationSession session,
             ForegroundVisitVerificationStartRequest request, Instant now) {
         if (session.isExpiredAt(now) || session.hasObservationGapExceeded(now, properties.maxObservationGap())) {
@@ -109,6 +121,11 @@ public class VisitVerificationService {
         return distanceMeters <= session.getRequiredRadiusMeters();
     }
 
+    /**
+     * 같은 사용자·장소·서울 날짜의 완료 세션을 우선하고 이어 진행 세션을 찾는다.
+     * 기존 세션 반환 경로에서는 관측 정확도·시각만 검증하며 장소 상태·거리·세션 만료는 다시 판정하지 않는다.
+     * 새 세션이면 장소 및 반경을 확인하고 활동 세션 유일 제약 위반을 별도 중복 오류로 변환한다.
+     */
     private VisitVerificationSessionResponse start(Long userId, VisitVerificationStartRequest request,
             VisitVerificationPolicy requestedPolicy) {
         requireTourist(userId);
@@ -151,6 +168,11 @@ public class VisitVerificationService {
         }
     }
 
+    /**
+     * 소유자 조건과 쓰기 잠금으로 세션을 조회해 동시 관측 처리를 직렬화한다.
+     * 종료 상태는 그대로 반환하고 TTL·공백 초과는 만료, 반경 이탈은 이탈 상태로 기록한다.
+     * 충분한 서버 경과 시간이 쌓이면 같은 트랜잭션에서 체류 체크인을 저장하고 세션을 완료한다.
+     */
     @Transactional
     public VisitVerificationSessionResponse submitObservation(Long userId, Long sessionId,
             VisitVerificationObservationRequest request) {
@@ -174,6 +196,7 @@ public class VisitVerificationService {
             session.loseProximity(request.observedAt(), now, distanceMeters);
             return VisitVerificationSessionResponse.from(session, properties);
         }
+        // 클라이언트 관측 시각은 순서·유효성 검증에 사용하고 체류 누적은 서버 시각을 기준으로 한다.
         session.recordObservation(request.observedAt(), now, distanceMeters);
         if (session.getVerifiedDwellSeconds() < session.getRequiredDwellSeconds()) {
             return VisitVerificationSessionResponse.from(session, properties);
@@ -183,6 +206,10 @@ public class VisitVerificationService {
         return VisitVerificationSessionResponse.from(session, properties);
     }
 
+    /**
+     * 본인 세션 조회 시에도 쓰기 잠금을 잡고 만료 조건이면 상태를 갱신한다.
+     * 조회 API지만 만료 처리가 있으므로 readOnly 트랜잭션이 아니다.
+     */
     @Transactional
     public VisitVerificationSessionResponse get(Long userId, Long sessionId) {
         requireTourist(userId);
@@ -195,6 +222,10 @@ public class VisitVerificationService {
         return VisitVerificationSessionResponse.from(session, properties);
     }
 
+    /**
+     * 완료 시점의 서울 날짜로 DWELL_VERIFIED 체크인을 저장한다.
+     * 당일 체류 인증 유일 제약 위반만 전용 중복 오류로 변환하며 다른 DB 실패는 그대로 전달한다.
+     */
     private LocationCheckIn completeCheckIn(VisitVerificationSession session, Instant observedAt, Instant now,
             double distanceMeters) {
         LocalDate completedDate = LocalDate.ofInstant(now, VERIFICATION_ZONE);
@@ -209,6 +240,7 @@ public class VisitVerificationService {
         }
     }
 
+    /** 운영 중이며 공개된 장소만 허용하고, 미존재·비공개·비운영을 같은 장소 부재 오류로 처리한다. */
     private MapPlace requireAvailablePlace(Long placeId) {
         MapPlace place = placeRepository.findById(placeId)
                 .orElseThrow(() -> new VisitorVerificationException(VisitorVerificationErrorCode.PLACE_NOT_FOUND));
@@ -219,6 +251,10 @@ public class VisitVerificationService {
         return place;
     }
 
+    /**
+     * 정확도는 전역 상한과 세션 반경 중 작은 값 이하만 허용한다.
+     * 관측 시각은 과거 TTL부터 미래 허용 오차까지 경계를 포함해 인정한다.
+     */
     private void validateObservation(double accuracyMeters, Instant observedAt, Instant now, double radiusMeters) {
         if (accuracyMeters > Math.min(properties.maxAccuracyMeters(), radiusMeters)) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.LOCATION_TOO_INACCURATE);
@@ -229,6 +265,7 @@ public class VisitVerificationService {
         }
     }
 
+    /** USER 역할의 미탈퇴·현재 미정지 계정만 체류 인증에 참여할 수 있다. */
     private void requireTourist(Long userId) {
         User user = userRepository.findById(userId).orElse(null);
         LocalDateTime now = LocalDateTime.now(clock);
@@ -237,6 +274,7 @@ public class VisitVerificationService {
         }
     }
 
+    /** 원인 예외 체인에서 제약 이름을 찾아 알려진 중복 오류만 변환하도록 구분한다. */
     private boolean hasConstraint(Throwable throwable, String constraintName) {
         Throwable current = throwable;
         while (current != null) {
