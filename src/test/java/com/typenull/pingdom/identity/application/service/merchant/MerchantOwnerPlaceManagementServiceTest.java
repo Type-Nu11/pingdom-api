@@ -54,6 +54,9 @@ class MerchantOwnerPlaceManagementServiceTest {
 
     private MerchantOwnerPlaceManagementService service;
 
+    /**
+     * 업로드 만료와 등록 시각을 검증할 수 있도록 고정 Clock과 모의 의존성을 가진 장소 관리 서비스를 만든다.
+     */
     @BeforeEach
     void setUp() {
         service = new MerchantOwnerPlaceManagementService(
@@ -68,8 +71,11 @@ class MerchantOwnerPlaceManagementServiceTest {
         );
     }
 
+    /**
+     * 업로드 URL 발급 시 저장하는 이력의 장소·발급자·만료 시각과 ISSUED 상태를 검증한다.
+     */
     @Test
-    void createUploadUrlRecordsTheIssuanceScope() {
+    void recordsMediaUploadIssuance() {
         MerchantOwnerMediaUploadRequest request = new MerchantOwnerMediaUploadRequest("store.jpg", "image/jpeg", 1_024L);
         LocalDateTime expiresAt = NOW.plusMinutes(10);
         when(mapPlaceRepository.findById(PLACE_ID)).thenReturn(Optional.of(place()));
@@ -88,8 +94,12 @@ class MerchantOwnerPlaceManagementServiceTest {
         assertThat(upload.getStatus()).isEqualTo(MerchantPlaceMediaUploadStatus.ISSUED);
     }
 
+    /**
+     * 유효한 발급 이력과 업로드된 객체로 미디어를 등록하면 공개 URL·키·다음 순서가 응답에 담기는지 검증한다.
+     * 발급 이력도 현재 시각의 REGISTERED 상태로 전환되는지 확인한다.
+     */
     @Test
-    void createMediaRegistersOnlyTheIssuedUploadedObject() {
+    void registersIssuedMediaObject() {
         String s3Key = "places/10/exploration/20/new.jpg";
         MerchantPlaceMediaUpload upload = MerchantPlaceMediaUpload.issue(
                 PLACE_ID, USER_ID, s3Key, "image/jpeg", NOW.plusMinutes(10), NOW.minusMinutes(1)
@@ -110,8 +120,11 @@ class MerchantOwnerPlaceManagementServiceTest {
         assertThat(upload.getRegisteredAt()).isEqualTo(NOW);
     }
 
+    /**
+     * 만료 시각에 도달한 업로드 키는 잘못된 미디어 요청으로 거절하고 S3를 조회하지 않는지 검증한다.
+     */
     @Test
-    void createMediaRejectsExpiredIssuanceBeforeReadingS3() {
+    void rejectsExpiredMediaIssuance() {
         String s3Key = "places/10/exploration/20/expired.jpg";
         MerchantPlaceMediaUpload upload = MerchantPlaceMediaUpload.issue(
                 PLACE_ID, USER_ID, s3Key, "image/jpeg", NOW, NOW.minusMinutes(10)
@@ -125,8 +138,11 @@ class MerchantOwnerPlaceManagementServiceTest {
         verifyNoInteractions(s3ObjectStorage);
     }
 
+    /**
+     * 다른 점주에게 발급된 키는 잘못된 미디어 요청으로 거절하고 S3를 호출하지 않는지 검증한다.
+     */
     @Test
-    void createMediaRejectsObjectIssuedForAnotherMerchant() {
+    void rejectsForeignMediaIssuance() {
         String s3Key = "places/10/exploration/21/other.jpg";
         MerchantPlaceMediaUpload upload = MerchantPlaceMediaUpload.issue(
                 PLACE_ID, 21L, s3Key, "image/jpeg", NOW.plusMinutes(10), NOW.minusMinutes(1)
@@ -140,8 +156,12 @@ class MerchantOwnerPlaceManagementServiceTest {
         verifyNoInteractions(s3ObjectStorage);
     }
 
+    /**
+     * 마지막 미디어를 맨 앞으로 옮기면 세 항목의 순서가 0·1·2로 재배치되는지 검증한다.
+     * 유일성 충돌을 피하기 위한 임시 순서 증가 호출도 확인한다.
+     */
     @Test
-    void updateMediaOrderMovesMediaAndNormalizesDisplayOrders() {
+    void movesAndNormalizesMediaOrder() {
         PlaceMedia first = explorationMedia(101L, 0);
         PlaceMedia second = explorationMedia(102L, 1);
         PlaceMedia third = explorationMedia(103L, 2);
@@ -165,8 +185,11 @@ class MerchantOwnerPlaceManagementServiceTest {
         verify(placeMediaRepository).increaseDisplayOrder(PLACE_ID, PlaceMediaPurpose.EXPLORATION, 6);
     }
 
+    /**
+     * 미디어 한 개의 순서를 허용 범위 밖인 1로 바꾸면 잘못된 미디어 요청 오류를 반환하는지 검증한다.
+     */
     @Test
-    void updateMediaOrderRejectsPositionOutsideCurrentMediaRange() {
+    void rejectsOutOfRangeMediaOrder() {
         PlaceMedia media = explorationMedia(101L, 0);
         when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place()));
         when(placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
@@ -183,8 +206,11 @@ class MerchantOwnerPlaceManagementServiceTest {
                 assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_INVALID_REQUEST));
     }
 
+    /**
+     * 해당 장소 목록에 없는 미디어 ID로 순서를 바꾸면 PLACE_MEDIA_NOT_FOUND를 반환하는지 검증한다.
+     */
     @Test
-    void updateMediaOrderRejectsMediaFromAnotherPlace() {
+    void rejectsMissingPlaceMedia() {
         when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place()));
         when(placeMediaRepository.findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
                 PLACE_ID,
@@ -200,6 +226,9 @@ class MerchantOwnerPlaceManagementServiceTest {
                 assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
     }
 
+    /**
+     * 순서 재배치 전후를 직접 비교할 수 있도록 식별자와 초기 순서를 가진 탐색용 미디어를 만든다.
+     */
     private PlaceMedia explorationMedia(Long id, int displayOrder) {
         PlaceMedia media = PlaceMedia.exploration(
                 place(),
@@ -214,6 +243,9 @@ class MerchantOwnerPlaceManagementServiceTest {
         return media;
     }
 
+    /**
+     * 업로드 경로 및 장소 잠금 조회의 기준이 되는 점주 소유 장소를 만든다.
+     */
     private MapPlace place() {
         return MapPlace.builder()
                 .id(PLACE_ID)
