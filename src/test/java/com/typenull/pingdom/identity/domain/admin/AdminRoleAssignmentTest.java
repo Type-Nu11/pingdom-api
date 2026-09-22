@@ -10,8 +10,11 @@ class AdminRoleAssignmentTest {
 
     private static final LocalDateTime ASSIGNED_AT = LocalDateTime.of(2026, 8, 5, 12, 0);
 
+    /**
+     * SUPER_ADMIN 부여 시 사용자·감사 조회 권한을 허용하고 해제하면 비활성·해제 시각과 사용자 조회 거절을 반영하는지 검증한다.
+     */
     @Test
-    void superAdminAllowsEveryPermissionAndRoleCanBeRevoked() {
+    void revokesSuperAdminPermissions() {
         AdminRoleAssignment assignment = AdminRoleAssignment.assign(
                 10L,
                 AdminRole.SUPER_ADMIN,
@@ -30,8 +33,11 @@ class AdminRoleAssignmentTest {
         assertThat(assignment.allows(AdminPermission.USER_READ)).isFalse();
     }
 
+    /**
+     * CONTENT_MODERATOR는 장소 검토를 허용하지만 사용자 제재 권한은 주지 않는지 검증한다.
+     */
     @Test
-    void specializedRoleDoesNotReceiveUnrelatedPermission() {
+    void limitsSpecializedAdminPermissions() {
         AdminRoleAssignment assignment = AdminRoleAssignment.assign(
                 10L,
                 AdminRole.CONTENT_MODERATOR,
@@ -43,8 +49,11 @@ class AdminRoleAssignmentTest {
         assertThat(assignment.allows(AdminPermission.USER_SANCTION)).isFalse();
     }
 
+    /**
+     * 역할 부여 시각보다 이른 해제는 IllegalStateException으로 거절되는지 검증한다.
+     */
     @Test
-    void cannotRevokeAssignmentBeforeItsAssignedAt() {
+    void rejectsRevocationBeforeAssignment() {
         AdminRoleAssignment assignment = AdminRoleAssignment.assign(
                 10L,
                 AdminRole.ANALYST,
