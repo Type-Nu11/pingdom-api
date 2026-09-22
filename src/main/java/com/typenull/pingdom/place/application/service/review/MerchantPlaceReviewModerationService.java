@@ -29,6 +29,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소 소유자의 리뷰 관리 목록과 삭제 심사 요청을 처리합니다.
+ * 목록은 숨김·삭제 이력도 포함하고 삭제 요청은 리뷰를 먼저 숨긴 뒤 관리자 심사를 기다립니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class MerchantPlaceReviewModerationService {
@@ -44,6 +48,10 @@ public class MerchantPlaceReviewModerationService {
     private final PlaceReviewDeletionRequestRepository deletionRequestRepository;
     private final Clock clock;
 
+    /**
+     * 현재 장소 소유 연결을 확인하고 공개·숨김·삭제 리뷰를 생성 시각·ID 역순으로 조회합니다.
+     * 각 리뷰의 최신 삭제 요청을 일괄 조합하며 페이지는 1 이상, 크기는 1~100으로 보정합니다.
+     */
     @Transactional(readOnly = true)
     public MerchantPlaceReviewPageResponse list(Long merchantOwnerUserId, Long placeId, int page, int limit) {
         requireOwner(merchantOwnerUserId, placeId);
@@ -73,6 +81,10 @@ public class MerchantPlaceReviewModerationService {
         );
     }
 
+    /**
+     * 현재 장소 소유자만 해당 장소의 리뷰를 잠가 숨기고 관리자 삭제 심사를 요청할 수 있습니다.
+     * 진행 중 요청은 사전 조회와 지정 유일 제약 위반으로 거절하며 상태·사유 오류를 구분해 반환합니다. 요청 실패 시 숨김 변경도 같은 트랜잭션에서 롤백됩니다.
+     */
     @Transactional
     public MerchantPlaceReviewDeletionRequestResponse requestDeletion(
             Long merchantOwnerUserId,
