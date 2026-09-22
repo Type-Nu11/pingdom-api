@@ -45,6 +45,11 @@ public class MerchantPlaceApplicationAttachmentService {
     private final MerchantPlaceAttachmentMalwareScanner malwareScanner;
     private final Clock clock;
 
+    /**
+     * 신청자 본인의 초안을 잠근 뒤 MIME·시그니처·20MiB 제한과 악성 파일 검사를 통과한 내용을 private S3에 저장합니다.
+     * 같은 유형의 동일 해시는 거절하고 민감 문서는 교체하며 기존 객체 삭제를 Outbox에 기록합니다.
+     * 새 객체는 저장 실패 또는 트랜잭션 롤백 시 보상 삭제를 시도하고, 민감 문서 보존 기한은 업로드 후 30일입니다.
+     */
     @org.springframework.transaction.annotation.Transactional
     public MerchantPlaceApplicationAttachmentResponse upload(
             Long userId,
@@ -109,6 +114,10 @@ public class MerchantPlaceApplicationAttachmentService {
                 .toList();
     }
 
+    /**
+     * 본인 초안 신청을 잠가 확인한 뒤 해당 신청에 속한 첨부 메타데이터를 삭제합니다.
+     * S3 객체 삭제는 outbox 발행에 위임하므로 이 메서드 반환이 객체 삭제 완료를 의미하지는 않습니다.
+     */
     @org.springframework.transaction.annotation.Transactional
     public void delete(Long userId, Long applicationId, Long attachmentId) {
         ownedDraft(userId, applicationId);
@@ -118,6 +127,10 @@ public class MerchantPlaceApplicationAttachmentService {
         deletePublisher.publish(attachment.getStorageKey(), OUTBOX_AGGREGATE_TYPE, applicationId.toString(), "DELETED");
     }
 
+    /**
+     * 대표 이미지 전체 ID를 중복 없이 받아 0부터 표시 순서를 다시 부여합니다.
+     * 부분 목록이나 다른 신청의 첨부 ID는 거절하며 신청 행 잠금으로 이 서비스의 초안 편집과 조정합니다.
+     */
     @org.springframework.transaction.annotation.Transactional
     public void reorder(Long userId, Long applicationId, List<Long> attachmentIds) {
         ownedDraft(userId, applicationId);
