@@ -31,6 +31,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관리자 세부 역할과 감사 로그 필터·페이지 계약을 실제 로그인 및 저장 데이터로 검증한다.
+ */
 @Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -55,6 +58,9 @@ class AdminAuditLogControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    /**
+     * 감사 로그와 관리자 역할을 사용자보다 먼저 비워 조회 결과를 격리한다.
+     */
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
@@ -62,8 +68,11 @@ class AdminAuditLogControllerTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * ANALYST는 감사 로그를 조회하지만 SUPPORT_OPERATOR는 ADMIN_PERMISSION_REQUIRED로 거절되는지 확인한다.
+     */
     @Test
-    void analystCanReadAuditLogsButSupportOperatorIsRejected() throws Exception {
+    void auditReadPermissions() throws Exception {
         String analystAccessToken = createAdminAndLogin("auditAnalyst", AdminRole.ANALYST);
         String supportAccessToken = createAdminAndLogin("auditSupport", AdminRole.SUPPORT_OPERATOR);
 
@@ -77,8 +86,11 @@ class AdminAuditLogControllerTest {
                 .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
+    /**
+     * 행위·대상 종류·대상 ID·기간을 함께 적용한 결과가 해당 감사 로그 한 건인지 확인한다.
+     */
     @Test
-    void listAuditLogsFiltersByActionTargetAndPeriod() throws Exception {
+    void combinedAuditFilters() throws Exception {
         String adminAccessToken = createUserAndLogin("auditAdmin", UserRole.ADMIN);
 
         adminAuditLogRepository.save(AdminAuditLog.builder()
@@ -121,8 +133,11 @@ class AdminAuditLogControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /**
+     * 선택 필터를 생략한 조회와 전체 삭제 후 빈 페이지의 건수·페이지 수·다음 페이지 여부를 확인한다.
+     */
     @Test
-    void listAuditLogsSupportsDefaultFiltersAndEmptyResult() throws Exception {
+    void defaultAndEmptyAuditPage() throws Exception {
         String adminAccessToken = createUserAndLogin("auditDefaultAdmin", UserRole.ADMIN);
 
         adminAuditLogRepository.save(AdminAuditLog.builder()
@@ -160,8 +175,11 @@ class AdminAuditLogControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /**
+     * 시작이 종료보다 늦은 기간이 INVALID_AUDIT_LOG_FILTER_PERIOD로 거절되는지 확인한다.
+     */
     @Test
-    void listAuditLogsRejectsInvalidPeriod() throws Exception {
+    void reversedAuditPeriod() throws Exception {
         String adminAccessToken = createUserAndLogin("auditPeriodAdmin", UserRole.ADMIN);
 
         mockMvc.perform(get("/admin/audit-logs")
@@ -172,8 +190,11 @@ class AdminAuditLogControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_AUDIT_LOG_FILTER_PERIOD"));
     }
 
+    /**
+     * 일반 사용자 토큰으로 감사 로그 조회 시 403과 ACCESS_DENIED를 확인한다.
+     */
     @Test
-    void listAuditLogsRejectsNonAdminUser() throws Exception {
+    void auditRejectsUser() throws Exception {
         String userAccessToken = createUserAndLogin("auditNormalUser", UserRole.USER);
 
         mockMvc.perform(get("/admin/audit-logs")
@@ -182,6 +203,9 @@ class AdminAuditLogControllerTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 지정 역할의 사용자를 저장하며 ADMIN이면 SUPER_ADMIN을 배정한 뒤 실제 로그인 토큰을 반환한다.
+     */
     private String createUserAndLogin(String username, UserRole role) throws Exception {
         User user = userRepository.save(User.builder()
                 .username(username)
@@ -201,6 +225,9 @@ class AdminAuditLogControllerTest {
         return login(username);
     }
 
+    /**
+     * 지정한 세부 관리자 역할을 배정해 권한 경계를 검증할 로그인 토큰을 만든다.
+     */
     private String createAdminAndLogin(String username, AdminRole adminRole) throws Exception {
         User admin = userRepository.save(User.builder()
                 .username(username)
@@ -218,6 +245,9 @@ class AdminAuditLogControllerTest {
         return login(username);
     }
 
+    /**
+     * 공통 비밀번호로 로그인 성공을 확인하고 JSON 접근 토큰을 추출한다.
+     */
     private String login(String username) throws Exception {
         LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
