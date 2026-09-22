@@ -30,8 +30,11 @@ class CommunityPostCommandServiceTest {
             mapPlaceRepository
     );
 
+    /**
+     * 두 장소를 연결해 게시글을 생성하면 게시글·연결 목록 저장을 호출하고 생성 ID와 요청 장소 순서를 응답하는지 검증한다.
+     */
     @Test
-    void 인증된_작성자의_게시글과_연결_장소를_함께_저장한다() {
+    void savesPostWithLinkedPlaces() {
         CommunityPost savedPost = mock(CommunityPost.class);
         MapPlace firstPlace = mock(MapPlace.class);
         MapPlace secondPlace = mock(MapPlace.class);
@@ -47,8 +50,11 @@ class CommunityPostCommandServiceTest {
         verify(communityPostPlaceRepository).saveAll(any());
     }
 
+    /**
+     * PLACE 카테고리에 연결 장소가 없으면 필수 장소 오류 메시지를 반환하고 게시글을 저장하지 않는지 검증한다.
+     */
     @Test
-    void 장소_카테고리는_연결_장소가_없으면_저장하지_않는다() {
+    void rejectsPlacePostWithoutLinks() {
         assertThatThrownBy(() -> service.create(7L, request("PLACE", List.of())))
                 .isInstanceOf(CommunityException.class)
                 .hasMessage("장소 카테고리 게시글은 연결 장소를 1개 이상 선택해야 합니다.");
@@ -56,8 +62,11 @@ class CommunityPostCommandServiceTest {
         verify(communityPostRepository, never()).save(any());
     }
 
+    /**
+     * 알 수 없는 카테고리는 오류로 거절하고 장소 조회와 게시글 저장을 진행하지 않는지 검증한다.
+     */
     @Test
-    void 사용할_수_없는_카테고리면_게시글을_저장하지_않는다() {
+    void rejectsUnsupportedPostCategory() {
         assertThatThrownBy(() -> service.create(7L, request("UNKNOWN", List.of())))
                 .isInstanceOf(CommunityException.class)
                 .hasMessage("사용할 수 없는 게시글 카테고리입니다.");
@@ -66,8 +75,11 @@ class CommunityPostCommandServiceTest {
         verify(communityPostRepository, never()).save(any());
     }
 
+    /**
+     * 동일한 장소 ID가 반복된 생성 요청은 중복 연결 오류로 거절하고 장소 조회·게시글 저장을 생략하는지 검증한다.
+     */
     @Test
-    void 동일한_장소를_중복_연결하면_저장하지_않는다() {
+    void rejectsDuplicatePlaceLinks() {
         assertThatThrownBy(() -> service.create(7L, request("TRAVEL", List.of(1L, 1L))))
                 .isInstanceOf(CommunityException.class)
                 .hasMessage("같은 장소를 중복해서 연결할 수 없습니다.");
@@ -76,8 +88,11 @@ class CommunityPostCommandServiceTest {
         verify(communityPostRepository, never()).save(any());
     }
 
+    /**
+     * 요청한 장소 중 일부가 조회되지 않으면 장소 없음 오류를 반환하고 게시글을 저장하지 않는지 검증한다.
+     */
     @Test
-    void 존재하지_않는_장소가_포함되면_게시글을_저장하지_않는다() {
+    void rejectsMissingLinkedPlace() {
         when(mapPlaceRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(mock(MapPlace.class)));
 
         assertThatThrownBy(() -> service.create(7L, request("TRAVEL", List.of(1L, 2L))))
@@ -87,6 +102,9 @@ class CommunityPostCommandServiceTest {
         verify(communityPostRepository, never()).save(any());
     }
 
+    /**
+     * 카테고리와 장소 목록만 바꾸어 생성 규칙을 검사하도록 고정 제목·본문의 요청을 만든다.
+     */
     private CommunityPostCreateRequest request(String categoryId, List<Long> placeIds) {
         return new CommunityPostCreateRequest(categoryId, "게시글 제목", "게시글 본문", placeIds);
     }
