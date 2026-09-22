@@ -17,6 +17,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 비밀번호 재설정 토큰의 해시·만료·사용 시점을 저장.
+ * 만료 시각과 같은 시점도 만료로 판정하며 최초 사용 시각은 유지.
+ */
 @Getter
 @Entity
 @Table(

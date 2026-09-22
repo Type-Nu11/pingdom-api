@@ -5,6 +5,10 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+/**
+ * 탈퇴 회원의 최종 삭제 보존 기간과 한 번에 삭제할 회원 수.
+ * 미설정 값은 30일·100명이며 기간의 양수 여부는 이 record의 별도 검증 대상에서 제외.
+ */
 @Validated
 @ConfigurationProperties(prefix = "user.withdrawal")
 public record UserWithdrawalProperties(

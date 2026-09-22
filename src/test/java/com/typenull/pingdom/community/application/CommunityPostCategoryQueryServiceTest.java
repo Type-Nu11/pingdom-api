@@ -9,8 +9,11 @@ class CommunityPostCategoryQueryServiceTest {
 
     private final CommunityPostCategoryQueryService service = new CommunityPostCategoryQueryService();
 
+    /**
+     * 카테고리 조회가 장소·여행·돈의 식별자와 한국어 이름을 정해진 표시 순서대로 반환하는지 검증.
+     */
     @Test
-    void 활성_카테고리를_표시_순서대로_식별자와_이름으로_반환한다() {
+    void returnsOrderedActiveCategories() {
         CommunityPostCategoryListResponse response = service.findCategories();
 
         assertThat(response.categories()).extracting(

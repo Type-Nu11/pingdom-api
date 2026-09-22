@@ -10,6 +10,10 @@ import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 외부 해석 결과를 5자리 시·군·구 코드로 저장하는 지역 사전.
+ * 갱신은 기존 코드의 이름·갱신 시각만 바꾸며 장소와의 연결은 장소 엔티티가 보관.
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

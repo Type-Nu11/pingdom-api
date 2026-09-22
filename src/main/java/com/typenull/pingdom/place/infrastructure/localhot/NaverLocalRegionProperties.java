@@ -3,6 +3,10 @@ package com.typenull.pingdom.place.infrastructure.localhot;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * Naver 역지오코딩의 인증·타임아웃과 프로세스 내 캐시 설정.
+ * 기본 연결/읽기 제한은 2초/3초이고 캐시는 10분·10,000개. 잘못된 기간·개수는 기본값으로 보정.
+ */
 @ConfigurationProperties(prefix = "place.local-hot.naver")
 public record NaverLocalRegionProperties(
         Boolean enabled,

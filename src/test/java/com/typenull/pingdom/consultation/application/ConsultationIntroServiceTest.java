@@ -20,8 +20,11 @@ class ConsultationIntroServiceTest {
     @Mock
     private GeminiIntroClient geminiIntroClient;
 
+    /**
+     * Gemini가 안내 문구를 반환하면 같은 문구와 source=gemini를 응답하는지 검증.
+     */
     @Test
-    void returnsGeminiResponseWhenClientReturnsText() {
+    void returnsGeminiIntroText() {
         ConsultationIntroService service = service(true, "test-key");
         given(geminiIntroClient.generateIntro("카페를 열고 싶어요"))
                 .willReturn(Optional.of("카페 창업을 고민하고 계시는군요. 업종을 선택해 주세요."));
@@ -32,8 +35,11 @@ class ConsultationIntroServiceTest {
                 "카페 창업을 고민하고 계시는군요. 업종을 선택해 주세요.", "gemini"));
     }
 
+    /**
+     * Gemini가 비활성이면 고정 안내·fallback 출처를 반환하고 클라이언트를 호출하지 않는지 검증.
+     */
     @Test
-    void returnsFallbackWithoutCallingClientWhenDisabled() {
+    void disabledGeminiUsesFallback() {
         ConsultationIntroService service = service(false, null);
 
         ConsultationIntroResponse response = service.createIntro("카페를 열고 싶어요");
@@ -43,8 +49,11 @@ class ConsultationIntroServiceTest {
         verify(geminiIntroClient, never()).generateIntro("카페를 열고 싶어요");
     }
 
+    /**
+     * Gemini의 빈 결과와 예외 모두 fallback 출처로 처리해 상담 시작이 실패하지 않는지 검증.
+     */
     @Test
-    void returnsFallbackForEmptyOrFailedGeminiResponse() {
+    void fallsBackForUnavailableIntro() {
         ConsultationIntroService service = service(true, "test-key");
         given(geminiIntroClient.generateIntro("빈 응답"))
                 .willReturn(Optional.empty());
@@ -55,6 +64,9 @@ class ConsultationIntroServiceTest {
         assertThat(service.createIntro("실패 응답").source()).isEqualTo("fallback");
     }
 
+    /**
+     * 활성 플래그·API 키와 짧은 시간 제한을 지정해 안내 생성 분기를 검증할 서비스를 구성.
+     */
     private ConsultationIntroService service(boolean enabled, String apiKey) {
         return new ConsultationIntroService(
                 new GeminiProperties(enabled, apiKey, null, Duration.ofSeconds(2), Duration.ofSeconds(5)),

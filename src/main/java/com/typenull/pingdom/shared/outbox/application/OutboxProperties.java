@@ -6,6 +6,10 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+/**
+ * 선점/정리 배치 크기, worker 동시성·큐 용량, 실패 한도와 시간 간격 설정.
+ * Duration 값은 null만 검증하며 양수 및 상호 크기 관계는 이 record의 검증 대상에서 제외.
+ */
 @Validated
 @ConfigurationProperties(prefix = "outbox")
 public record OutboxProperties(

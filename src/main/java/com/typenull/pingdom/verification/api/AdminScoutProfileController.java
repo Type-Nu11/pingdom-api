@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -28,12 +31,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 관리자 프로필 심사와 활동 자격 부여·정지·회수 API를 제공.
+ * 프로필 상태와 활동 자격은 별개 요청이며 권한·잠금·상태 전이는 서비스가 담당.
+ */
 @RestController
 @RequestMapping("/admin/scout-profiles")
 @RequiredArgsConstructor
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.VISIT_SCOUT)
 @Validated
 public class AdminScoutProfileController {
 

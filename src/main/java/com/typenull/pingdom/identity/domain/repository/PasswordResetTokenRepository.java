@@ -12,6 +12,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 재설정 토큰 사용을 위한 잠금 조회와 남은 활성 토큰 일괄 무효화를 제공.
+ * 활성 토큰 갱신은 미사용이면서 now보다 늦게 만료되는 행만 포함하고 실행 전 변경 내용을 flush함.
+ */
 public interface PasswordResetTokenRepository extends JpaRepository<PasswordResetToken, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

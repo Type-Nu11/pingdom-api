@@ -6,9 +6,9 @@ import java.util.List;
 import java.util.Optional;
 
 /**
- * 커뮤니티 게시글 작성과 조회에서 공통으로 사용하는 카테고리 목록이다.
+ * 커뮤니티 게시글 작성과 조회에서 공통으로 사용하는 카테고리 목록.
  *
- * <p>카테고리 식별자는 게시글 저장 시 사용할 안정적인 값이며, 화면에는 displayName만 노출한다.</p>
+ * <p>카테고리 식별자는 게시글 저장 시 사용할 안정적인 값이며, 화면에는 displayName만 노출.</p>
  */
 public enum CommunityPostCategory {
     PLACE("PLACE", "장소", 1, true),

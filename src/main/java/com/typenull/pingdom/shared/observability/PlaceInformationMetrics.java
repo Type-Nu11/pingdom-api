@@ -10,6 +10,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/** 장소 정보의 근거·신고·반박·재확인 요청과 상태 변경을 종류 및 전이별 카운터로 집계. */
 @Component
 public class PlaceInformationMetrics {
 

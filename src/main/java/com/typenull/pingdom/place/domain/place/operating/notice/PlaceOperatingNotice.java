@@ -21,6 +21,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
+/**
+ * 운영 공지 내용·게시 기간·예약 공개·취소·만료 상태를 관리.
+ * ACTIVE이며 시작 포함·종료 제외 구간에 있어야 노출되고 종결된 공지는 재변경 불가.
+ */
 @Entity
 @Getter
 @Table(name = "place_operating_notice")

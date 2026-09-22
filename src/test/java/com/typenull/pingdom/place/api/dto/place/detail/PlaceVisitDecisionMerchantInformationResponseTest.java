@@ -8,8 +8,9 @@ import org.junit.jupiter.api.Test;
 
 class PlaceVisitDecisionMerchantInformationResponseTest {
 
+    /** 사업자 정보의 설명·연락처·웹사이트·예약 URL·갱신 시각이 방문 판단 응답에 반영되는지 확인. 편집자 필드 직렬화는 검증 범위에서 제외. */
     @Test
-    void omitsInternalEditorIdentityFromPublicMerchantInformation() {
+    void mapsMerchantVisitInformation() {
         LocalDateTime updatedAt = LocalDateTime.of(2026, 8, 5, 10, 0);
         MerchantPlaceInformation information = MerchantPlaceInformation.create(
                 1L,

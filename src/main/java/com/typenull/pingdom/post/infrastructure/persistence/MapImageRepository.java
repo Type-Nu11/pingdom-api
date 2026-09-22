@@ -18,6 +18,11 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
+/**
+ * 공개 목록·본인 목록·관리자 검색과 장소별 사진 집계를 제공.
+ * 북마크 목록은 장소마다 공개 게시글 중 ID가 가장 큰 하나만 선택하지만, 장소 집계는 숨김 상태도 포함.
+ * 좋아요 증감 등 bulk 갱신 시 영속성 컨텍스트의 기존 엔티티 값 자동 갱신은 미수행.
+ */
 @Repository
 public interface MapImageRepository extends JpaRepository<MapImage,Long> {
 

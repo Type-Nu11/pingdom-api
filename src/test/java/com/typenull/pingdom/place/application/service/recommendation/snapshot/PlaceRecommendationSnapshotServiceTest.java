@@ -38,6 +38,9 @@ class PlaceRecommendationSnapshotServiceTest {
 
     private PlaceRecommendationSnapshotService placeRecommendationSnapshotService;
 
+    /**
+     * 전체 장소 집계 갱신의 잠금·재조회 호출을 모의로 관찰할 서비스를 준비.
+     */
     @BeforeEach
     void setUp() {
         placeRecommendationSnapshotService = new PlaceRecommendationSnapshotService(
@@ -48,8 +51,11 @@ class PlaceRecommendationSnapshotServiceTest {
         );
     }
 
+    /**
+     * 최초 조회에는 없고 장소 잠금 뒤 발견된 스냅샷을 재사용해 노출을 3에서 4로 늘리고 콘텐츠 집계를 새로 조회하지 않는지 확인.
+     */
     @Test
-    void increaseExposureCountsUsesSnapshotCreatedAfterPlaceLock() {
+    void reusesSnapshotAfterPlaceLock() {
         PlaceRecommendationSnapshot snapshot = PlaceRecommendationSnapshot.builder()
                 .placeId(1L)
                 .photoCount(1L)
@@ -75,8 +81,11 @@ class PlaceRecommendationSnapshotServiceTest {
         verify(mapImageRepository, never()).sumLikeCountByPlaceId(1L);
     }
 
+    /**
+     * 중복·역순 장소 입력을 정렬한 고유 ID 일괄 잠금으로 처리하고 개별 장소 잠금은 호출하지 않는지 확인.
+     */
     @Test
-    void increaseExposureCountsLocksMissingPlacesWithSingleSortedBulkQuery() {
+    void bulkLocksSortedMissingPlaces() {
         when(placeRecommendationSnapshotRepository.findByPlaceIdIn(any())).thenReturn(List.of());
         when(placeRecommendationSnapshotRepository.findByPlaceIdInForReadLock(any())).thenReturn(List.of());
         when(mapPlaceRepository.findAllByIdInForUpdate(List.of(1L, 2L, 3L)))
@@ -88,6 +97,9 @@ class PlaceRecommendationSnapshotServiceTest {
         verify(mapPlaceRepository, never()).findByIdForUpdate(any());
     }
 
+    /**
+     * 누락 스냅샷의 초기 사진 수를 제공할 장소 fixture를 생성.
+     */
     private MapPlace createPlace(Long placeId) {
         return MapPlace.builder()
                 .id(placeId)

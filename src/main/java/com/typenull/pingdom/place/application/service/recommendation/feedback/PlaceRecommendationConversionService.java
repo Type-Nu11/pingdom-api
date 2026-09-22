@@ -14,6 +14,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 최근 7일 이내의 동일 사용자·장소 클릭이 있는 북마크/좋아요를 추천 전환으로 기록.
+ * 가장 최근 클릭의 추천 버전과 선택적 특성 로그에 귀속하며 사용자·장소·전환 유형별로 최초 1건만 집계.
+ * 사전 중복 조회 후 경쟁하는 삽입은 DB 유일 제약으로 실패할 수 있으며 해당 예외는 호출자에게 전파.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -28,6 +33,11 @@ public class PlaceRecommendationConversionService {
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
     private final Clock clock;
 
+    /**
+     * 사용자·장소·전환 유형의 첫 기록에 한해 최근 7일 내 가장 최근 클릭으로 전환을 귀속.
+     * 기존 전환이나 적격 클릭이 없으면 건너뛰고, 있으면 선택적 특성 로그 ID와 클릭 버전을 저장한 뒤 전체·버전 스냅샷을 증가시킴.
+     * 중복 검사와 클릭 조회는 일반 조회이므로 동시 기록 경쟁의 직렬화는 보장 범위에서 제외.
+     */
     @Transactional
     public void recordConversionIfEligible(
             Long userId,

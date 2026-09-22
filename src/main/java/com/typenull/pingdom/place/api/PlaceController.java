@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.autocomplete.PlaceAutocompleteResponse;
 import com.typenull.pingdom.place.api.dto.place.detail.PlaceDetailResponse;
@@ -59,12 +62,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 장소 조회, 추천, 방문 판단, 운영 공지 및 장소 미디어 API의 진입점. */
 @RestController
 @RequestMapping("/places")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "App", description = "앱 전용 API")
-/** 장소 조회, 추천, 방문 판단, 운영 공지 및 장소 미디어 API의 진입점입니다. */
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PLACE_DISCOVERY)
 public class PlaceController {
 
     private final PlaceQueryService placeQueryService;
@@ -272,6 +276,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeQueryService.autocompletePlaces(keyword, limit, latitude, longitude));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @GetMapping("/{placeId}/card")
     @Operation(summary = "관광객용 장소 카드 조회", description = "관광객의 장소 탐색과 방문 결정을 위한 요약 정보를 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -296,6 +301,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeQueryService.getTouristPlaceCard(placeId));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @GetMapping("/{placeId}/visit-decision")
     @Operation(
             summary = "관광객용 장소 방문 결정 정보 조회",
@@ -325,6 +331,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeQueryService.getPlaceVisitDecision(placeId));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @GetMapping("/{placeId}/operating-notices")
     @Operation(summary = "장소 활성 운영 상태 공지 조회", description = "현재 영업시간 기준 운영 여부와 활성 운영 상태 공지를 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -514,6 +521,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeRecommendationExplanationQueryService.getExplanation(user.userId(), requestId));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @GetMapping("/{id:\\d+}")
     @Operation(summary = "장소 상세 조회", description = "특정 장소의 상세 정보를 조회합니다.")
     @ApiResponses({
@@ -558,6 +566,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeQueryService.getPlace(placeId));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @PostMapping("/{id}/media/exploration")
     @Operation(summary = "장소 탐색용 미디어 등록", description = "장소 소유자가 탐색 화면에 노출할 미디어를 등록합니다.")
     @ApiResponses({
@@ -590,6 +599,7 @@ public class PlaceController {
                 .body(placeMediaService.createExplorationMedia(placeId, user.userId(), request));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @GetMapping("/{id}/media/exploration")
     @Operation(summary = "장소 탐색용 미디어 조회", description = "탐색 화면에 노출할 장소 미디어만 조회합니다.")
     @ApiResponse(
@@ -603,6 +613,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeMediaService.getExplorationMedia(placeId));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @GetMapping("/{id}/media/verification")
     @Operation(summary = "장소 검증용 미디어 조회", description = "장소 소유자가 검증 출처로 기록된 미디어를 조회합니다.")
     @SecurityRequirement(name = "bearerAuth")
@@ -635,6 +646,7 @@ public class PlaceController {
         return ResponseEntity.ok(placeMediaService.getVerificationMedia(placeId, user.userId()));
     }
 
+    @Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
     @DeleteMapping("/{id}/media/exploration/{mediaId}")
     @Operation(summary = "장소 탐색용 미디어 삭제", description = "장소 소유자가 탐색용 미디어를 삭제합니다.")
     @ApiResponse(

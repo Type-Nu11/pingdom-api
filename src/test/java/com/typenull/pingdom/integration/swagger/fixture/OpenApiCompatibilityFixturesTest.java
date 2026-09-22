@@ -12,12 +12,18 @@ import java.util.List;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
+/**
+ * 호환성 fixture의 유형 범위와 저장 baseline의 경로·상태·오류 예시를 검증.
+ */
 class OpenApiCompatibilityFixturesTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
+    /**
+     * 각 OpenAPI 그룹에 정상·경계·실패·재시도 fixture가 모두 존재하는지 확인.
+     */
     @Test
-    void coversAllRequiredScenarioTypesForEachDomain() {
+    void scenarioTypesPerDomain() {
         List<OpenApiCompatibilityScenario> scenarios = OpenApiCompatibilityFixtures.scenarios();
 
         for (OpenApiCompatibilityDomain domain : OpenApiCompatibilityDomain.values()) {
@@ -30,8 +36,11 @@ class OpenApiCompatibilityFixturesTest {
         }
     }
 
+    /**
+     * 검증 설명이 비어 있지 않고 실패 fixture에는 명시적 오류 코드 또는 오류 응답 설명이 있는지 확인.
+     */
     @Test
-    void hasDiagnosticAssertionsAndFailureCodes() {
+    void compatibilityDiagnostics() {
         assertThat(OpenApiCompatibilityFixtures.scenarios())
                 .as("모든 계약 시나리오는 실패 원인을 식별할 assertion을 가져야 한다")
                 .allSatisfy(scenario -> assertThat(scenario.assertions())
@@ -47,8 +56,11 @@ class OpenApiCompatibilityFixturesTest {
                                 .isTrue()));
     }
 
+    /**
+     * 저장된 baseline에서 fixture의 경로·메서드·응답 상태와 명시된 오류 코드가 존재하는지 확인. 실행 중인 API 응답 비교는 검증 범위에서 제외.
+     */
     @Test
-    void pointsToExistingPathsInEachDomainBaseline() throws IOException {
+    void baselineOperations() throws IOException {
         for (OpenApiCompatibilityScenario scenario : OpenApiCompatibilityFixtures.scenarios()) {
             JsonNode document = readBaseline(scenario.domain());
             JsonNode operation = document.path("paths").path(scenario.path()).path(scenario.method().toLowerCase());
@@ -68,8 +80,11 @@ class OpenApiCompatibilityFixturesTest {
         }
     }
 
+    /**
+     * fixture 이름과 그룹·시나리오 유형 조합의 유일성을 확인. 경로 자체의 유일성은 검증 범위에서 제외.
+     */
     @Test
-    void fixtureIdentifiersAndPathsAreUniquePerDomainAndScenarioType() {
+    void uniqueCompatibilityFixtures() {
         List<OpenApiCompatibilityScenario> scenarios = OpenApiCompatibilityFixtures.scenarios();
         assertThat(scenarios.stream().map(OpenApiCompatibilityScenario::name).toList())
                 .as("fixture 이름은 실패 원인 추적을 위해 중복되면 안 된다")
@@ -83,6 +98,9 @@ class OpenApiCompatibilityFixturesTest {
                         .toList()));
     }
 
+    /**
+     * 그룹에 해당하는 클래스패스 baseline JSON을 읽으며 리소스 누락 시 assertion으로 실패.
+     */
     private JsonNode readBaseline(OpenApiCompatibilityDomain domain) throws IOException {
         String resource = "/openapi-baseline/" + domain.specName() + ".json";
         try (InputStream inputStream = getClass().getResourceAsStream(resource)) {

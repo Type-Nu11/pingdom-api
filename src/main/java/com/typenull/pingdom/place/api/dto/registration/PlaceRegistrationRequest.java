@@ -11,6 +11,10 @@ import jakarta.validation.Valid;
 import java.util.Set;
 import java.util.List;
 
+/**
+ * 신규 장소 초안의 입력값. 위도·경도는 도 단위이며 전화번호는 서비스에서 국제 형식으로 검증.
+ * 시간대 누락은 Asia/Seoul, tags 누락은 빈 집합이며 영업일은 서비스에서 7개 요일 전체를 요구.
+ */
 public record PlaceRegistrationRequest(
         @NotBlank @Size(max = 100) String placeName,
         @NotNull PlaceRegistrationCategory category,

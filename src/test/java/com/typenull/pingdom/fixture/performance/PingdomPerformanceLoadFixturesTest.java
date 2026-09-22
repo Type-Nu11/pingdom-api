@@ -12,8 +12,11 @@ import static org.assertj.core.api.Assertions.assertThat;
 
 class PingdomPerformanceLoadFixturesTest {
 
+    /**
+     * 사용자 역할·장소 3개 이상·반박자 있는 신고와 원인 문구가 있는 재시도 가능 반박 이벤트를 검증.
+     */
     @Test
-    void definesRealisticActorsPlacesReportsAndRetryEvents() {
+    void definesPerformanceFixtureRelationships() {
         PingdomPerformanceLoadFixture fixture = PingdomPerformanceLoadFixtures.realisticPlaceDiscoveryFixture();
 
         assertThat(fixture.users())
@@ -38,8 +41,11 @@ class PingdomPerformanceLoadFixturesTest {
                 });
     }
 
+    /**
+     * 정상·경계·실패·재시도 분류와 빈칸 없는 검증 라벨을 확인하고 실패 시나리오의 오류 코드 누락을 방지.
+     */
     @Test
-    void scenarioDefinitionsCoverNormalBoundaryFailureAndRetryCases() {
+    void coversPerformanceScenarioCategories() {
         PingdomPerformanceLoadFixture fixture = PingdomPerformanceLoadFixtures.realisticPlaceDiscoveryFixture();
 
         assertThat(fixture.scenarios())
@@ -63,8 +69,11 @@ class PingdomPerformanceLoadFixturesTest {
                 .allSatisfy(scenario -> assertThat(scenario.expectedErrorCode()).isNotBlank());
     }
 
+    /**
+     * 사용자·장소·신고 ID가 각 목록에서 유일한지 검증해 권한과 정렬·상태 assertion의 대상 혼동을 방지.
+     */
     @Test
-    void fixtureIdentifiersAreUniqueForDeterministicAssertions() {
+    void usesUniquePerformanceIdentifiers() {
         PingdomPerformanceLoadFixture fixture = PingdomPerformanceLoadFixtures.realisticPlaceDiscoveryFixture();
 
         assertThat(fixture.users().stream().map(FixtureUser::id).toList())
@@ -78,8 +87,12 @@ class PingdomPerformanceLoadFixturesTest {
                 .hasSameSizeAs(new HashSet<>(fixture.reports().stream().map(FixtureReport::id).toList()));
     }
 
+    /**
+     * 공개 및 임시 휴업 장소, 중복되지 않는 정렬 기준, 추천 시나리오 2건과 검증 항목을 확인.
+     * 실제 숨김 장소 제외와 추천 API 실행은 검증 범위에서 제외.
+     */
     @Test
-    void discoveryAndRecommendationFixtureCoversVisibleHiddenAndOperatingBoundaryPlaces() {
+    void coversDiscoveryRecommendationBoundaries() {
         PingdomPerformanceLoadFixture fixture = PingdomPerformanceLoadFixtures.realisticPlaceDiscoveryFixture();
 
         assertThat(fixture.places())

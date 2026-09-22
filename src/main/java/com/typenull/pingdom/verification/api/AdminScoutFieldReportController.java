@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -26,12 +29,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 관리자 현장 제보 조회·심사 요청을 ScoutFieldReportService에 전달.
+ * 인증 principal을 사용하고 상세 SCOUT_REVIEW 권한은 서비스에서 확인.
+ */
 @RestController
 @RequestMapping("/admin/scout-field-reports")
 @RequiredArgsConstructor
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.VISIT_SCOUT)
 @Validated
 public class AdminScoutFieldReportController {
 

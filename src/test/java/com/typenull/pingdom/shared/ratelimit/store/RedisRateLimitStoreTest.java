@@ -37,13 +37,19 @@ class RedisRateLimitStoreTest {
 
     private RedisRateLimitStore redisRateLimitStore;
 
+    /**
+     * Redis 대역과 fail-open=true 설정을 연결해 Lua 결과·장애 처리 분기를 검증.
+     */
     @BeforeEach
     void setUp() {
         redisRateLimitStore = new RedisRateLimitStore(redisTemplate, properties(true));
     }
 
+    /**
+     * Redis script가 0을 반환하면 RateLimitException으로 요청을 거절하는지 검증.
+     */
     @Test
-    void acquireThrowsRateLimitExceptionWhenRedisScriptDeniesRequest() {
+    void rejectsDeniedRedisRequest() {
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(0L);
 
@@ -54,8 +60,11 @@ class RedisRateLimitStoreTest {
         ));
     }
 
+    /**
+     * Redis script가 1을 반환하면 예외 없이 요청을 허용하는지 검증.
+     */
     @Test
-    void acquireAllowsRequestWhenRedisScriptAllowsRequest() {
+    void allowsAcceptedRedisRequest() {
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(1L);
 
@@ -66,8 +75,11 @@ class RedisRateLimitStoreTest {
         ));
     }
 
+    /**
+     * fail-open=false에서 Redis 결과가 null이면 RateLimitUnavailableException으로 차단하는지 검증.
+     */
     @Test
-    void acquireFailsClosedWhenRedisScriptReturnsUnexpectedResult() {
+    void failsClosedOnUnexpectedResult() {
         RedisRateLimitStore failClosedStore = new RedisRateLimitStore(redisTemplate, properties(false));
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(null);
@@ -79,8 +91,11 @@ class RedisRateLimitStoreTest {
         ));
     }
 
+    /**
+     * 명시적 fail-open 설정에서는 Redis 장애 예외에도 요청을 허용하는지 검증.
+     */
     @Test
-    void acquireFailsOpenWhenRedisThrowsException() {
+    void failsOpenOnRedisFailure() {
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenThrow(new IllegalStateException("redis unavailable"));
 
@@ -91,8 +106,11 @@ class RedisRateLimitStoreTest {
         ));
     }
 
+    /**
+     * fail-open=false에서 Redis 장애는 RATE_LIMIT_UNAVAILABLE 코드의 예외로 변환되는지 검증.
+     */
     @Test
-    void acquireReturnsRateLimitUnavailableWhenRedisThrowsExceptionWithFailClosed() {
+    void failsClosedOnRedisFailure() {
         RedisRateLimitStore failClosedStore = new RedisRateLimitStore(redisTemplate, properties(false));
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenThrow(new IllegalStateException("redis unavailable"));
@@ -106,8 +124,11 @@ class RedisRateLimitStoreTest {
         assertEquals("RATE_LIMIT_UNAVAILABLE", exception.getCode());
     }
 
+    /**
+     * fail-open 값을 생략하면 Redis 장애 시 기본적으로 요청을 차단하는지 검증.
+     */
     @Test
-    void acquireUsesFailClosedWhenFailOpenIsNotConfigured() {
+    void defaultsToFailClosed() {
         RedisRateLimitStore defaultStore = new RedisRateLimitStore(redisTemplate, properties(null));
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenThrow(new IllegalStateException("redis unavailable"));
@@ -119,8 +140,11 @@ class RedisRateLimitStoreTest {
         ));
     }
 
+    /**
+     * login 사용자명·IP 키가 같은 {login} hash tag와 설정 접두사를 사용해 Lua 키가 같은 Redis Cluster 슬롯에 배치되도록 하는지 검증.
+     */
     @Test
-    void acquireUsesHashTagByRateLimitGroupForClusterCompatibility() {
+    void groupsRedisClusterHashTags() {
         when(redisTemplate.execute(any(DefaultRedisScript.class), anyList(), any(Object[].class)))
                 .thenReturn(1L);
 
@@ -145,6 +169,9 @@ class RedisRateLimitStoreTest {
         );
     }
 
+    /**
+     * 창·쿨다운·키 접두사는 고정하고 failOpen만 가변으로 하여 저장소 장애 정책의 비교 입력을 생성.
+     */
     private AbuseRateLimitProperties properties(Boolean failOpen) {
         return new AbuseRateLimitProperties(
                 StorageType.REDIS,

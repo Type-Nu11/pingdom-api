@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.merchant;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.ApprovedMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerProfileResponse;
@@ -16,7 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/merchant-owner")
 @RequiredArgsConstructor
 @ApprovedMerchantOwnerOnly
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.BUSINESS)
 public class MerchantOwnerController {
 
     private final MerchantOwnerProfileService profileService;

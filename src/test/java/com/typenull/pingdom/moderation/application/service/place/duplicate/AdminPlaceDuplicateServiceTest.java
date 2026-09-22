@@ -50,6 +50,9 @@ class AdminPlaceDuplicateServiceTest {
 
     private AdminPlaceDuplicateService service;
 
+    /**
+     * 중복 후보의 판정·병합 위임·감사·알림 협력을 검사할 서비스를 고정 Clock으로 구성.
+     */
     @BeforeEach
     void setUp() {
         service = new AdminPlaceDuplicateService(
@@ -61,8 +64,11 @@ class AdminPlaceDuplicateServiceTest {
         );
     }
 
+    /**
+     * 없는 장소 쌍을 역순으로 탐지하면 새 후보 ID를 응답하고 정규화된 장소 순서로 탐지 알림을 발행하는지 검증.
+     */
     @Test
-    void detectStoresNewCandidateAndPublishesNotification() {
+    void detectsCandidateAndPublishesNotification() {
         when(candidateRepository.findByLeftPlaceIdAndRightPlaceId(1L, 2L)).thenReturn(Optional.empty());
         when(candidateRepository.save(any())).thenAnswer(invocation -> {
             PlaceDuplicateCandidate candidate = invocation.getArgument(0);
@@ -82,8 +88,11 @@ class AdminPlaceDuplicateServiceTest {
         verify(adminNotificationOutboxPublisher).publishDuplicatePlaceDetected(11L, 1L, 2L);
     }
 
+    /**
+     * 잠금 조회한 대기 후보를 확인하면 CONFIRMED 상태·심사자를 응답하고 후보 대상 감사 기록을 남기는지 검증.
+     */
     @Test
-    void confirmLocksCandidateAndRecordsAuditLog() {
+    void confirmsLockedCandidateWithAudit() {
         PlaceDuplicateCandidate candidate = candidate();
         when(candidateRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(candidate));
 
@@ -102,8 +111,11 @@ class AdminPlaceDuplicateServiceTest {
         );
     }
 
+    /**
+     * 이미 기각된 후보를 다시 확인하면 판정 완료 오류를 반환하고 감사 기록을 추가하지 않는지 검증.
+     */
     @Test
-    void completedDecisionCannotBeProcessedAgain() {
+    void rejectsRepeatedCandidateDecision() {
         PlaceDuplicateCandidate candidate = candidate();
         candidate.reject(7L, "서로 다른 장소", LocalDateTime.now(CLOCK));
         when(candidateRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(candidate));
@@ -116,6 +128,9 @@ class AdminPlaceDuplicateServiceTest {
         verify(adminAuditLogService, never()).record(any(), any(), any(), any(), any(), any(), any());
     }
 
+    /**
+     * 확인된 후보에서 유지할 장소를 지정하면 반대편 장소를 source로 삼고 후보 ID를 포함한 병합 요청을 위임하는지 검증.
+     */
     @Test
     void mergeUsesConfirmedCandidatePair() {
         PlaceDuplicateCandidate candidate = candidate();
@@ -136,6 +151,9 @@ class AdminPlaceDuplicateServiceTest {
         assertThat(captor.getValue().candidateId()).isEqualTo(10L);
     }
 
+    /**
+     * 대기 후보는 병합 불가 오류로 거절하고 실제 병합 서비스를 호출하지 않는지 검증.
+     */
     @Test
     void pendingCandidateCannotBeMerged() {
         when(candidateRepository.findByIdForUpdate(10L)).thenReturn(Optional.of(candidate()));
@@ -147,6 +165,9 @@ class AdminPlaceDuplicateServiceTest {
         verify(adminPlaceMergeService, never()).mergePlaces(any(), any());
     }
 
+    /**
+     * 역순 장소 쌍을 정규화한 ID 10의 대기 후보를 만들고 초기 상태도 확인.
+     */
     private PlaceDuplicateCandidate candidate() {
         PlaceDuplicateCandidate candidate = PlaceDuplicateCandidate.detect(
                 2L,

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place.event;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.event.AdminPlaceEventActionRequest;
@@ -37,7 +40,8 @@ import com.typenull.pingdom.place.domain.event.PlaceEventScheduleStatus;
 @RequestMapping("/admin/place-events")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.EVENT_NOTICE)
 public class AdminPlaceEventController {
 
     private final AdminPlaceEventService adminPlaceEventService;

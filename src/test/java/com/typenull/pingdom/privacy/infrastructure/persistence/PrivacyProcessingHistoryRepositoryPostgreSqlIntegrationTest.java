@@ -49,6 +49,9 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * PostGIS 컨테이너의 JDBC 접속값과 PostgreSQL 드라이버를 Spring 테스트 데이터소스에 등록.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -60,13 +63,20 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
     @Autowired
     private PrivacyProcessingHistoryRepository privacyProcessingHistoryRepository;
 
+    /**
+     * 각 테스트 전에 개인정보 감사 이력을 일괄 삭제해 조회 순서와 중복 제약 검증을 격리.
+     */
     @BeforeEach
     void cleanDatabase() {
         privacyProcessingHistoryRepository.deleteAllInBatch();
     }
 
+    /**
+     * PostgreSQL에 시각이 다른 이력 2건을 저장하고 기간 없음·시작만·종료만 조건의 내림차순 결과를 검증.
+     * nullable 시각 바인딩과 각 적용 플래그가 올바르게 동작하는지 고정.
+     */
     @Test
-    void filterQuerySupportsOptionalPeriodFiltersOnPostgreSql() {
+    void queriesOptionalPrivacyPeriods() {
         PrivacyProcessingHistory older = history(10L, NOW.minusDays(10));
         PrivacyProcessingHistory newer = history(20L, NOW.minusDays(2));
         privacyProcessingHistoryRepository.saveAllAndFlush(List.of(older, newer));
@@ -84,8 +94,11 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
                 .containsExactly(10L);
     }
 
+    /**
+     * 같은 Outbox 이벤트 ID·대상 사용자 조합을 두 번 저장하면 PostgreSQL 고유 제약으로 DataIntegrityViolationException이 발생하는지 검증.
+     */
     @Test
-    void 동일_Outbox_이벤트와_대상_사용자_조합은_한_번만_저장된다() {
+    void rejectsDuplicatePrivacyOutboxSubject() {
         privacyProcessingHistoryRepository.saveAndFlush(history(10L, NOW, "outbox-event-1"));
 
         assertThatThrownBy(() -> privacyProcessingHistoryRepository.saveAndFlush(
@@ -94,6 +107,9 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
                 .isInstanceOf(DataIntegrityViolationException.class);
     }
 
+    /**
+     * 사용자·행위자·행위 필터를 생략하고 주어진 기간 적용 플래그와 시각으로 최신 이력 20건을 조회.
+     */
     private Page<PrivacyProcessingHistory> findByPeriod(
             boolean hasFrom,
             LocalDateTime from,
@@ -115,10 +131,12 @@ class PrivacyProcessingHistoryRepositoryPostgreSqlIntegrationTest {
         );
     }
 
+    /** Outbox 연결이 없는 관리자 export 이력을 주어진 대상 사용자와 시각으로 생성. */
     private PrivacyProcessingHistory history(Long subjectUserId, LocalDateTime createdAt) {
         return history(subjectUserId, createdAt, null);
     }
 
+    /** 대상 사용자·발생 시각·선택적 Outbox ID를 지정해 관리자 export 이력의 조회/고유 제약 입력을 생성. */
     private PrivacyProcessingHistory history(Long subjectUserId, LocalDateTime createdAt, String outboxEventId) {
         return PrivacyProcessingHistory.builder()
                 .subjectUserId(subjectUserId)

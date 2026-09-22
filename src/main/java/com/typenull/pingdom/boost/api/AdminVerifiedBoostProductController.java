@@ -1,5 +1,8 @@
 package com.typenull.pingdom.boost.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductCreateRequest;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostProductPageResponse;
@@ -23,7 +26,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/verified-boost-products")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.ADMIN_BOOST)
 public class AdminVerifiedBoostProductController {
 
     private final VerifiedBoostProductService service;

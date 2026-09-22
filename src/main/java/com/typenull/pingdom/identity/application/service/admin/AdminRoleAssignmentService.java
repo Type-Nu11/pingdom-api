@@ -24,6 +24,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * ADMIN_ROLE_MANAGE 권한을 확인한 뒤 관리자 역할을 부여·회수하고 감사 로그와 변경 이벤트를 남김.
+ * 역할 할당 대상은 ADMIN 회원으로 제한하며 목록에는 회수된 이력도 포함됨.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminRoleAssignmentService {
@@ -44,6 +48,11 @@ public class AdminRoleAssignmentService {
                 .toList();
     }
 
+    /**
+     * 관리 권한과 대상 ADMIN 계정을 확인하고 아직 활성 할당이 없는 관리자 역할을 부여.
+     * 요청·역할 누락 또는 기존 활성 할당은 거절하며 저장된 할당과 감사 로그·역할 변경 이벤트를 함께 생성.
+     * 중복 여부는 일반 조회로 사전 확인하므로 동시 할당 경쟁의 직렬화는 이 검사의 보장 범위에서 제외.
+     */
     @Transactional
     public AdminRoleAssignmentResponse assign(
             Long actorUserId,
@@ -80,6 +89,11 @@ public class AdminRoleAssignmentService {
         return response;
     }
 
+    /**
+     * 역할 관리 권한과 대상 ADMIN 계정을 확인한 뒤 지정한 ACTIVE 역할 할당을 REVOKED로 변경.
+     * 역할 누락·활성 할당 부재는 거절하고 저장 결과와 함께 감사 로그 및 역할 변경 이벤트를 생성.
+     * 일반 조회 후 갱신하는 경로이며 이 메서드 자체에 대상 행의 비관적 잠금은 없음.
+     */
     @Transactional
     public AdminRoleAssignmentResponse revoke(
             Long actorUserId,

@@ -20,6 +20,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 선택한 상품의 기간으로 장소 부스트를 시작·중단하고 시점별 상태 조회.
+ * 시작은 장소 소유 행, 중단은 집행 행과 장소 소유 행 잠금. 실제 결제 승인·추천 점수 계산은 처리 범위에서 제외.
+ */
 @Service
 @RequiredArgsConstructor
 public class VerifiedBoostExecutionService {
@@ -31,6 +35,10 @@ public class VerifiedBoostExecutionService {
     private final VerifiedBoostQualityGuardrail qualityGuardrail;
     private final Clock clock;
 
+    /**
+     * 동일 선택의 기존 집행이 있으면 만료·중단 여부와 무관하게 현재 상태를 반환.
+     * 신규 집행만 운영 품질과 같은 장소의 활성 집행 중복을 검사하고, 상품의 현재 durationDays를 적용.
+     */
     @Transactional
     public VerifiedBoostExecutionResponse start(Long ownerId, VerifiedBoostExecutionStartRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -54,6 +62,10 @@ public class VerifiedBoostExecutionService {
         return VerifiedBoostExecutionResponse.from(executionRepository.save(execution), now);
     }
 
+    /**
+     * 요청 점주의 집행 행을 잠그고 현재 장소 소유 자격을 재확인한 뒤 집행을 중단해 현재 시점의 응답을 반환.
+     * 대상 부재·소유권 오류는 거절하며 중단 불가 상태는 INVALID_EXECUTION_STATE로 변환.
+     */
     @Transactional
     public VerifiedBoostExecutionResponse stop(Long ownerId, Long executionId) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -68,6 +80,10 @@ public class VerifiedBoostExecutionService {
         return VerifiedBoostExecutionResponse.from(execution, now);
     }
 
+    /**
+     * 지정 점주의 부스트 집행을 시작 시각·ID 내림차순으로 조회하고 동일 Clock 시각으로 계산한 집행 상태를 반환.
+     * 페이지는 최소 1, 크기는 1~100으로 보정하며 종료·중단 이력도 조회 대상에 포함.
+     */
     @Transactional(readOnly = true)
     public VerifiedBoostExecutionPageResponse list(Long ownerId, int page, int limit) {
         LocalDateTime now = LocalDateTime.now(clock);

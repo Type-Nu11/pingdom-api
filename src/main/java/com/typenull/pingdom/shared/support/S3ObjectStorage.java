@@ -30,6 +30,10 @@ import software.amazon.awssdk.services.s3.model.PutObjectRequest;
 import software.amazon.awssdk.services.s3.model.S3Exception;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
+/**
+ * 선택적으로 구성된 S3 client·presigner로 객체 입출력과 목록 조회를 수행.
+ * 객체 접근 공개 여부는 버킷 정책에 달려 있으며 공개 접근과 객체 존재는 URL 생성만으로 보장 불가.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -41,6 +45,7 @@ public class S3ObjectStorage {
     @Value("${spring.cloud.aws.s3.bucket:}")
     private String bucket;
 
+    /** multipart 스트림을 열어 업로드하고 닫음. 원본 파일명은 UUID 뒤에 붙이며 빈 파일은 거부. */
     public S3PutResult put(MultipartFile file, String keyPrefix) throws IOException {
         if (file == null || file.isEmpty()) {
             throw new IllegalArgumentException("파일이 비어있거나 존재하지 않습니다.");
@@ -57,6 +62,7 @@ public class S3ObjectStorage {
         }
     }
 
+    /** 메모리의 파일 내용을 지정 prefix 아래 새 UUID key로 업로드. DB 저장 실패에 대한 보상 삭제는 호출자 책임. */
     public S3PutResult put(byte[] content, String originalFilename, String contentType, String keyPrefix) {
         if (content == null || content.length == 0) {
             throw new IllegalArgumentException("파일이 비어있거나 존재하지 않습니다.");
@@ -71,6 +77,7 @@ public class S3ObjectStorage {
         );
     }
 
+    /** 원본 파일명 없이 업로드. 별도 private ACL을 지정하지 않으므로 호출자가 private prefix와 버킷 정책을 사용해야 함. */
     public S3PutResult putPrivate(byte[] content, String contentType, String keyPrefix) {
         if (content == null || content.length == 0) {
             throw new IllegalArgumentException("파일이 비어있거나 존재하지 않습니다.");
@@ -78,6 +85,7 @@ public class S3ObjectStorage {
         return put(new java.io.ByteArrayInputStream(content), content.length, null, contentType, keyPrefix);
     }
 
+    /** 지정 key·Content-Type의 PUT 서명을 10분간 발급. expiresAt은 UTC이며 URL 발급 시 객체 업로드는 별도. */
     public PresignedPutResult presignedPut(String key, String contentType) {
         S3Presigner presigner = s3PresignerProvider.getIfAvailable();
         if (presigner == null || !StringUtils.hasText(bucket)) {
@@ -137,6 +145,7 @@ public class S3ObjectStorage {
         }
     }
 
+    /** 공백 key는 무시하고 나머지는 DeleteObject로 제거. S3 응답 오류와 SDK 연결 오류를 구분해 전파. */
     public void delete(String key) {
         if (!StringUtils.hasText(key)) {
             return;
@@ -156,9 +165,8 @@ public class S3ObjectStorage {
     }
 
     /**
-     * private 신청 첨부를 공개 장소 미디어 prefix로 복사합니다.
-     * 객체 공개 범위는 ACL이 아니라 bucket policy의 key prefix로 결정하므로,
-     * 원본 key를 그대로 노출하지 않고 공개 prefix에 별도 객체를 둡니다.
+     * 같은 버킷의 sourceKey 객체를 targetKey로 복사. 비어 있는 key는 거절하고 양끝 공백을 제거.
+     * 공개 prefix 선택은 호출자가 담당하며 ACL·버킷 정책 변경과 공개 접근 확인은 이 메서드의 처리 범위 외.
      */
     public void copy(String sourceKey, String targetKey) {
         if (!StringUtils.hasText(sourceKey) || !StringUtils.hasText(targetKey)) {
@@ -182,6 +190,7 @@ public class S3ObjectStorage {
         }
     }
 
+    /** 객체 본문 없이 길이(바이트)와 Content-Type을 조회. 존재하지 않는 객체도 S3 오류로 변환. */
     public S3ObjectMetadata headObject(String key) {
         if (!StringUtils.hasText(key)) {
             throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
@@ -203,6 +212,7 @@ public class S3ObjectStorage {
         }
     }
 
+    /** key의 S3 URL을 계산. 객체 존재·익명 접근 가능 여부는 조회 대상에서 제외. */
     public String publicUrl(String key) {
         if (!StringUtils.hasText(key)) {
             throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
@@ -212,6 +222,7 @@ public class S3ObjectStorage {
                 .toExternalForm();
     }
 
+    /** 객체 전체를 메모리에 읽음. 크기 제한은 적용하지 않으므로 호출자가 대상 크기를 통제해야 함. */
     public byte[] getBytes(String key) {
         if (!StringUtils.hasText(key)) {
             throw new IllegalArgumentException("S3 객체 key가 비어 있습니다.");
@@ -229,6 +240,7 @@ public class S3ObjectStorage {
         }
     }
 
+    /** prefix를 폴더 경계로 정규화하고 최대 limit개 key를 페이지별로 수집. 남은 continuation token이 있으면 truncated는 true. */
     public S3ListResult listKeys(String keyPrefix, int limit) {
         if (limit < 1) {
             throw new IllegalArgumentException("조회 제한은 1 이상이어야 합니다.");
@@ -265,8 +277,9 @@ public class S3ObjectStorage {
         }
     }
 
+    /** 모든 페이지의 key를 메모리에 수집. 대량 객체 처리는 제한 조회 또는 listKeysPage 사용을 고려해야 함. */
     public List<String> listKeys(String keyPrefix) {
-        // 지정한 prefix 아래의 모든 S3 객체 key를 페이지 단위로 모은다.
+        // 지정한 prefix 아래의 모든 S3 객체 key를 페이지 단위로 수집.
         S3Client s3Client = s3Client();
         String prefix = normalizePrefix(keyPrefix);
         List<String> keys = new ArrayList<>();
@@ -292,6 +305,7 @@ public class S3ObjectStorage {
         }
     }
 
+    /** 한 페이지만 조회하고 다음 continuation token을 그대로 반환. null 토큰은 목록 종료를 의미. */
     public S3KeyPage listKeysPage(String keyPrefix, String continuationToken) {
         S3Client s3Client = s3Client();
         String prefix = normalizePrefix(keyPrefix);
@@ -328,6 +342,7 @@ public class S3ObjectStorage {
         return s3Client;
     }
 
+    /** 주변 공백을 제거하고 비어 있지 않은 prefix에 슬래시를 붙여 이름 일부가 같은 다른 폴더를 제외. */
     private String normalizePrefix(String keyPrefix) {
         String prefix = StringUtils.hasText(keyPrefix) ? keyPrefix.trim() : "";
         if (StringUtils.hasText(prefix) && !prefix.endsWith("/")) {
@@ -345,12 +360,15 @@ public class S3ObjectStorage {
     public record S3PutResult(String key, String url) {
     }
 
+    /** 업로드 서명 URL과 계산된 객체 URL, UTC 기준 만료 시각. uploadUrl은 만료 전 민감한 쓰기 권한을 포함. */
     public record PresignedPutResult(String key, String uploadUrl, String imageUrl, LocalDateTime expiresAt) {
     }
 
+    /** S3가 응답한 콘텐츠 길이(바이트)와 MIME 유형. */
     public record S3ObjectMetadata(Long contentLength, String contentType) {
     }
 
+    /** 제한 개수까지 모은 key와 미조회 페이지 존재 여부. 전체 버킷 개수와 재개 토큰은 포함 대상에서 제외. */
     public record S3ListResult(List<String> keys, boolean truncated) {
     }
 

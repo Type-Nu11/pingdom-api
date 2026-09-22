@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.information.report.PlaceInformationDisputeCreateRequest;
@@ -35,7 +38,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.INFORMATION_REPORT)
 public class PlaceInformationReportController {
 
     private final PlaceInformationReportService placeInformationReportService;

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.merchant;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantPlaceInformationResponse;
@@ -25,12 +28,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 인증 회원에게 장소 추가 정보 조회·수정 경로를 제공.
+ * 로그인만으로 접근을 허용하지 않고 서비스가 PLACE_INFO_EDIT 권한을 조회와 수정 모두에 적용.
+ */
 @RestController
 @RequestMapping("/merchant-owner/places/{placeId}/information")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.PLACE_MANAGEMENT)
 public class MerchantPlaceInformationController {
 
     private final MerchantPlaceInformationService informationService;

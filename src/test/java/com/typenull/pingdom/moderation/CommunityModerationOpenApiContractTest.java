@@ -35,8 +35,59 @@ class CommunityModerationOpenApiContractTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    /** 앱 목록 항목이 다른 도메인의 Item 스키마와 충돌하지 않고 실제 필드를 유지하는지 검증. */
     @Test
-    void 신고와_관리자_처리_API의_요청_응답_오류_계약을_문서화한다() throws Exception {
+    void usesDistinctAppCommunityItemSchemas() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs/app");
+
+        assertItemSchema(document, "CommunityPostCategoryListResponse", "categories", "CommunityCategoryItem",
+                "categoryId", "categoryName");
+        assertItemSchema(document, "CommunityPostListResponse", "posts", "CommunityPostSummary", "postId", "title");
+        assertItemSchema(document, "CommunityPostCommentListResponse", "comments", "CommunityCommentSummary",
+                "commentId", "content", "authorId", "authorName", "createdAt");
+        for (String name : List.of("CommunityCategoryItem", "CommunityPostSummary", "CommunityCommentSummary")) {
+            JsonNode properties = document.at("/components/schemas/" + name + "/properties");
+            assertThat(properties.has("rank")).isFalse();
+            assertThat(properties.has("placeId")).isFalse();
+            assertThat(properties.has("bookmarkCount")).isFalse();
+        }
+        assertSuccessResponse(operation(document, "/community/categories", "get"), "200", "CommunityPostCategoryListResponse");
+    }
+
+    /** 성공 응답은 유지하면서 400의 도메인·검증 오류와 404의 공통 오류 계약을 구분. */
+    @Test
+    void documentsAppCommunityErrorResponses() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs/app");
+        JsonNode posts = operation(document, "/community/categories/{categoryId}/posts", "get");
+        JsonNode detail = operation(document, "/community/posts/{postId}", "get");
+        JsonNode createPost = operation(document, "/community/posts", "post");
+        JsonNode comments = operation(document, "/community/posts/{postId}/comments", "get");
+        JsonNode createComment = operation(document, "/community/posts/{postId}/comments", "post");
+
+        assertSuccessResponse(posts, "200", "CommunityPostListResponse");
+        assertSuccessResponse(detail, "200", "CommunityPostDetailResponse");
+        assertSuccessResponse(createPost, "201", "CommunityPostCreateResponse");
+        assertSuccessResponse(comments, "200", "CommunityPostCommentListResponse");
+        assertSuccessResponse(createComment, "201", "CommunityPostCommentCreateResponse");
+        for (JsonNode operation : List.of(detail, createPost, comments, createComment)) {
+            assertErrorResponse(operation, "404");
+        }
+        for (JsonNode operation : List.of(posts, createPost, createComment)) {
+            JsonNode schema = operation.at("/responses/400/content/*~1*/schema");
+            assertThat(schema.has("$ref")).isFalse();
+            assertThat(schema.path("oneOf")).hasSize(2);
+            assertThat(schema.path("oneOf").findValuesAsText("$ref"))
+                    .containsExactlyInAnyOrder("#/components/schemas/ErrorResponse",
+                            "#/components/schemas/ValidationErrorResponse");
+        }
+    }
+
+    /**
+     * 일반 신고와 관리자 심사 경로가 각 OpenAPI 그룹에 분리되는지 검증.
+     * 신고 생성·관리자 목록·상세·수락·반려의 성공 스키마, Bearer 인증, 요청 본문과 상태별 오류 스키마도 확인.
+     */
+    @Test
+    void documentsCommunityModerationContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -85,8 +136,11 @@ class CommunityModerationOpenApiContractTest {
         }
     }
 
+    /**
+     * 관리자 글·댓글·신고 페이지가 서로 다른 항목 스키마를 참조하고 각 항목의 필수 식별 필드를 문서화하는지 검증.
+     */
     @Test
-    void 관리자_커뮤니티_목록_항목은_각각_고유한_OpenAPI_스키마를_사용한다() throws Exception {
+    void usesDistinctAdminContentItemSchemas() throws Exception {
         JsonNode adminDocument = readApiDocs("/v3/api-docs/admin");
 
         assertItemSchema(adminDocument, "AdminCommunityPostPageResponse", "posts", "AdminCommunityPostItem", "postId", "title");
@@ -94,8 +148,12 @@ class CommunityModerationOpenApiContractTest {
         assertItemSchema(adminDocument, "AdminCommunityReportPageResponse", "reports", "AdminCommunityReportItem", "reportId", "targetType", "status");
     }
 
+    /**
+     * 신고 상세의 postId가 필수 정수이며 null을 허용하지 않고 글·댓글 예시가 원문 ID와 대상 ID를 구분하는지 검증.
+     * 목록 항목과 처리 응답에는 postId 필드가 추가되지 않는지도 확인.
+     */
     @Test
-    void 신고_상세의_원문_ID는_필수이며_대상_유형별_예시를_제공한다() throws Exception {
+    void documentsRequiredReportPostId() throws Exception {
         JsonNode document = readApiDocs("/v3/api-docs/admin");
         JsonNode schema = document.at("/components/schemas/AdminCommunityReportResponse");
         assertThat(schema.path("required")).contains(objectMapper.getNodeFactory().textNode("postId"));
@@ -115,19 +173,31 @@ class CommunityModerationOpenApiContractTest {
         assertThat(document.at("/components/schemas/AdminCommunityReportActionResponse/properties").has("postId")).isFalse();
     }
 
+    /**
+     * OpenAPI 문서에서 지정 경로와 HTTP 메서드의 operation 노드를 선택.
+     */
     private JsonNode operation(JsonNode document, String path, String method) {
         return document.path("paths").path(path).path(method);
     }
 
+    /**
+     * 성공 응답 코드의 와일드카드 콘텐츠가 기대 DTO 스키마를 참조하는지 검사.
+     */
     private void assertSuccessResponse(JsonNode operation, String responseCode, String schemaName) {
         assertThat(operation.at("/responses/" + responseCode + "/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/" + schemaName);
     }
 
+    /**
+     * operation이 Bearer 보안 요구사항을 배열 형태로 선언하는지 확인.
+     */
     private void assertBearerSecurity(JsonNode operation) {
         assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
+    /**
+     * 와일드카드 또는 JSON 콘텐츠의 오류 응답이 공통 ErrorResponse 스키마를 참조하는지 확인.
+     */
     private void assertErrorResponse(JsonNode operation, String responseCode) {
         JsonNode content = operation.path("responses").path(responseCode).path("content");
         JsonNode schema = content.path("*/*").path("schema");
@@ -139,6 +209,9 @@ class CommunityModerationOpenApiContractTest {
                 .isEqualTo("#/components/schemas/ErrorResponse");
     }
 
+    /**
+     * 페이지 목록 필드가 고유 항목 스키마를 참조하고 그 스키마에 필요한 필드가 실제로 존재하는지 확인.
+     */
     private void assertItemSchema(
             JsonNode document,
             String pageSchemaName,
@@ -154,6 +227,9 @@ class CommunityModerationOpenApiContractTest {
         }
     }
 
+    /**
+     * OpenAPI HTTP 응답이 200인지 확인하고 UTF-8 본문을 JSON 트리로 읽음.
+     */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())

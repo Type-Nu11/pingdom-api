@@ -15,6 +15,10 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 기한 내 현재 활동 의도와 장소 관광 카테고리가 하나라도 일치하면 정해진 가점을 한 번 더함.
+ * 만료·익명·가점 비활성 상태는 적용 의도를 null로 반환하며, 관심사 단계가 읽은 카테고리는 재사용.
+ */
 @Service
 @RequiredArgsConstructor
 class CurrentActivityIntentRankingService {

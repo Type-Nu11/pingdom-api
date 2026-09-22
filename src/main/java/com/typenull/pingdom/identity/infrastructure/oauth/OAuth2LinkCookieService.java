@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
+/**
+ * 계정 연결 대상 회원을 담은 토큰을 5분 수명의 HttpOnly 쿠키로 운반.
+ * 요청의 Secure 여부에 맞춰 SameSite를 선택하며 요청 컨텍스트가 없으면 토큰이 없는 것으로 처리.
+ */
 @Component
 public class OAuth2LinkCookieService {
 

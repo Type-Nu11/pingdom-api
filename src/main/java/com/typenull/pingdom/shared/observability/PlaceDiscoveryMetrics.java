@@ -5,6 +5,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/** 장소 노출 상태의 from/to 전이 호출 횟수를 기록. null 상태는 unknown 태그로 구분. */
 @Component
 public class PlaceDiscoveryMetrics {
 

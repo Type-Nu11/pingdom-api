@@ -11,8 +11,9 @@ class PlaceOperatingNoticeTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 21, 12, 0);
 
+    /** 시작 시각이 지난 유효 공지는 생성 즉시 ACTIVE이며 현재 시각에 노출 가능한지 확인. */
     @Test
-    void createsActiveNoticeWhenStartTimeHasArrived() {
+    void activatesAlreadyStartedNotice() {
         PlaceOperatingNotice notice = createNotice(NOW.minusMinutes(10), NOW.plusHours(2));
 
         assertThat(notice.getStatus())
@@ -23,8 +24,9 @@ class PlaceOperatingNoticeTest {
                 .isTrue();
     }
 
+    /** 미래 공지는 SCHEDULED로 시작하고 시작 전 활성화를 거부하되 정확한 시작 시각에는 ACTIVE로 바뀌는지 확인. */
     @Test
-    void createsScheduledNoticeWhenStartTimeIsInFutureAndActivatesLater() {
+    void activatesNoticeAtScheduledStart() {
         PlaceOperatingNotice notice = createNotice(NOW.plusMinutes(30), NOW.plusHours(2));
 
         assertThat(notice.getStatus()).isEqualTo(PlaceOperatingNoticeStatus.SCHEDULED);
@@ -37,6 +39,7 @@ class PlaceOperatingNoticeTest {
         assertThat(notice.getStatus()).isEqualTo(PlaceOperatingNoticeStatus.ACTIVE);
     }
 
+    /** 만료 전 전환은 거부하고 정확한 만료 시각에는 EXPIRED·만료 시각을 저장하여 이후 노출되지 않는지 확인. */
     @Test
     void expiresOnlyAfterExpirationTime() {
         PlaceOperatingNotice notice = createNotice(NOW.minusMinutes(10), NOW.plusMinutes(1));
@@ -52,8 +55,9 @@ class PlaceOperatingNoticeTest {
         assertThat(notice.isVisibleAt(NOW.plusMinutes(2))).isFalse();
     }
 
+    /** 공백 취소 사유를 거부하고 정상 취소 후 사유·상태를 기록하며 종료 공지 수정을 막는지 확인. */
     @Test
-    void cancelRequiresReasonAndLocksTerminalState() {
+    void guardsCanceledNoticeState() {
         PlaceOperatingNotice notice = createNotice(NOW.minusMinutes(10), NOW.plusHours(2));
 
         assertThatThrownBy(() -> notice.cancel(2L, " ", NOW))
@@ -74,8 +78,9 @@ class PlaceOperatingNoticeTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    /** 시작과 종료가 같은 기간 및 공백 메시지를 각 오류 메시지로 거부하는지 확인. */
     @Test
-    void rejectsInvalidPeriodAndBlankMessage() {
+    void rejectsInvalidNoticeInput() {
         assertThatThrownBy(() -> createNotice(NOW.plusHours(1), NOW.plusHours(1)))
                 .as("공지 시작/종료 시간이 같으면 DB 제약 전에 도메인에서 거절해야 한다")
                 .isInstanceOf(IllegalArgumentException.class)
@@ -96,6 +101,7 @@ class PlaceOperatingNoticeTest {
                 .hasMessage("message must not be blank");
     }
 
+    /** 전달된 기간과 고정 현재 시각으로 임시 휴업 공지를 생성. */
     private PlaceOperatingNotice createNotice(LocalDateTime startsAt, LocalDateTime expiresAt) {
         return PlaceOperatingNotice.create(
                 place(),
@@ -109,6 +115,7 @@ class PlaceOperatingNoticeTest {
         );
     }
 
+    /** 공지와 연결할 소유자·위치 정보가 있는 테스트 상점을 생성. */
     private MapPlace place() {
         return MapPlace.builder()
                 .id(10L)

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -18,12 +21,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 인증 principal의 사용자 ID와 검증한 관측 입력을 근접 체크인 서비스에 전달.
+ * 생성 응답은 201이며 본인 목록은 1부터 시작하는 페이지와 최대 100건 크기를 받음.
+ */
 @RestController
 @RequestMapping("/location-check-ins")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.VISIT)
 @org.springframework.validation.annotation.Validated
 public class LocationCheckInController {
     private final LocationCheckInService service;

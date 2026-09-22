@@ -9,6 +9,10 @@ import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.stereotype.Component;
 
+/**
+ * 현재 요청의 연결 쿠키 존재 여부로 기존 회원 연결과 일반 Google 로그인·가입을 분기.
+ * 연결 실패를 OAuth 인증 예외로 변환하며 신규 가입으로의 대체 처리는 미수행.
+ */
 @Component
 @RequiredArgsConstructor
 public class OAuth2UserResolver {

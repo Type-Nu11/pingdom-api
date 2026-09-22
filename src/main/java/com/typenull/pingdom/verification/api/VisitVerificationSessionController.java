@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
@@ -17,13 +20,14 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-/** 체류 인증은 원본 위치 좌표를 보관하지 않고 서버가 판정한 거리와 시각만 저장합니다. */
+/** 체류 인증은 원본 위치 좌표를 보관하지 않고 서버가 판정한 거리와 시각만 저장. */
 @RestController
 @RequestMapping("/visit-verification-sessions")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.VISIT)
 public class VisitVerificationSessionController {
     private final VisitVerificationService service;
 
@@ -90,6 +94,7 @@ public class VisitVerificationSessionController {
         return service.submitObservation(user.userId(), sessionId, request);
     }
 
+    /** 본인 세션의 현재 상태를 조회. 서비스는 이 조회 중 기한 초과 세션을 만료로 갱신할 수 있음. */
     @GetMapping("/{sessionId}")
     @Operation(summary = "내 체류 기반 방문 인증 상태 조회")
     @ApiResponse(responseCode = "200", description = "현재 인증 세션 상태",

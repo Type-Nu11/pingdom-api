@@ -2,24 +2,33 @@ package com.typenull.pingdom.shared.config.swagger;
 
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.typenull.pingdom.shared.config.swagger.ApiAudience.Group;
 import io.swagger.v3.core.converter.ModelConverters;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.ComposedSchema;
+import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
-import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
-import org.springdoc.core.models.GroupedOpenApi;
+import java.util.Set;
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
+import org.springdoc.core.customizers.GlobalOperationCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/**
+ * ApiAudience에 따른 문서 그룹·기능 태그를 구성하고 생성된 명세의 인증·검증 오류 계약을 보완.
+ * 요청 라우팅과 Spring Security의 실행 권한은 변경 범위 외.
+ */
 @Configuration
 public class SpringdocGroupsConfig {
 
@@ -28,32 +37,32 @@ public class SpringdocGroupsConfig {
             @Qualifier("placeExplorationNullableReferenceCustomizer")
             OpenApiCustomizer placeExplorationNullableReferenceCustomizer
     ) {
-        return apiGroup("App")
+        return apiGroup(Group.APP)
                 .addOpenApiCustomizer(placeExplorationNullableReferenceCustomizer)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi adminApi() {
-        return apiGroup("Admin")
+        return apiGroup(Group.ADMIN)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi merchantApi() {
-        return apiGroup("Merchant")
+        return apiGroup(Group.MERCHANT)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi commonApi() {
-        return apiGroup("Common")
+        return apiGroup(Group.COMMON)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi consultingApi() {
-        return apiGroup("Consulting")
+        return apiGroup(Group.CONSULTING)
                 .build();
     }
 
@@ -62,25 +71,69 @@ public class SpringdocGroupsConfig {
         return this::applyAuthorizationContract;
     }
 
-    private GroupedOpenApi.Builder apiGroup(String tagName) {
+    private GroupedOpenApi.Builder apiGroup(Group audience) {
         return GroupedOpenApi.builder()
-                .group(tagName.toLowerCase())
-                .addOpenApiMethodFilter(method -> hasTag(method, tagName));
+                .group(audience.documentName())
+                .addOpenApiMethodFilter(method -> Group.resolve(method) == audience)
+                .addOpenApiCustomizer(api -> applyDisplayTags(api, audience));
     }
 
-    private boolean hasTag(Method method, String tagName) {
-        Tag methodTag = method.getAnnotation(Tag.class);
-        if (methodTag != null) {
-            return tagName.equals(methodTag.name());
+    @Bean
+    public GlobalOperationCustomizer functionalTagCustomizer() {
+        return (operation, handlerMethod) -> {
+            if (Group.resolve(handlerMethod.getMethod()) == null) {
+                return operation;
+            }
+            // Springdoc가 합친 클래스/메서드 태그 대신 가장 구체적인 분류 하나만 표시.
+            Tag tag = handlerMethod.getMethodAnnotation(Tag.class);
+            if (tag == null) {
+                tag = handlerMethod.getBeanType().getAnnotation(Tag.class);
+            }
+            if (tag == null || tag.name().isBlank()) {
+                throw new IllegalStateException("기능 분류가 없는 API: " + handlerMethod);
+            }
+            operation.setTags(List.of(tag.name()));
+            return operation;
+        };
+    }
+
+    @Bean
+    public GlobalOpenApiCustomizer functionalTagDescriptionsCustomizer() {
+        return api -> applyDisplayTags(api, null);
+    }
+
+    /** 실제 operation이 사용하는 태그만 카탈로그 순서로 노출. 그룹 미지정 전체 명세는 동명 태그의 설명을 통합. */
+    private void applyDisplayTags(OpenAPI api, Group audience) {
+        if (api.getPaths() == null) {
+            return;
         }
-        Tag tag = method.getDeclaringClass().getAnnotation(Tag.class);
-        return tag != null && tagName.equals(tag.name());
+        Set<String> used = new LinkedHashSet<>();
+        api.getPaths().values().forEach(path -> path.readOperations().forEach(operation -> {
+            if (operation.getTags() != null) {
+                used.addAll(operation.getTags());
+            }
+        }));
+        Map<String, io.swagger.v3.oas.models.tags.Tag> tags = new LinkedHashMap<>();
+        List<SwaggerTagCatalog.Section> sections = audience == null
+                ? SwaggerTagCatalog.SECTIONS : SwaggerTagCatalog.sections(audience);
+        sections.stream().filter(section -> used.contains(section.name())).forEach(section -> {
+            io.swagger.v3.oas.models.tags.Tag tag = tags.computeIfAbsent(section.name(),
+                    name -> new io.swagger.v3.oas.models.tags.Tag().name(name));
+            // 전체 문서에서는 여러 소속이 공유하는 기능명의 설명을 함께 보존.
+            tag.setDescription(tag.getDescription() == null ? section.description()
+                    : tag.getDescription() + " / " + section.description());
+        });
+        if (api.getTags() != null) {
+            api.getTags().stream().filter(tag -> used.contains(tag.getName()))
+                    .forEach(tag -> tags.putIfAbsent(tag.getName(), tag));
+        }
+        api.setTags(List.copyOf(tags.values()));
     }
 
     /**
-     * SecurityConfig의 URL 인가 규칙을 OpenAPI에도 반영한다.
+     * SecurityConfig의 URL 인가 규칙을 OpenAPI에도 반영.
      * 공개 경로를 제외한 모든 API는 JWT가 필요하므로 개별 Controller의 누락으로
-     * 인증 계약이 달라지지 않도록 401/403 공통 응답을 보완한다.
+     * 인증 계약이 달라지지 않도록 401/403 공통 응답을 보완.
      */
     private void applyAuthorizationContract(OpenAPI openApi) {
         if (openApi.getPaths() == null) {
@@ -133,6 +186,7 @@ public class SpringdocGroupsConfig {
         });
     }
 
+    /** 요청 본문이 있거나 직접 파라미터에 수치·길이·정규식 제약이 있으면 문서의 400 응답 보완 대상으로 분류. */
     private boolean hasValidationInput(io.swagger.v3.oas.models.Operation operation) {
         if (operation.getRequestBody() != null) {
             return true;
@@ -176,6 +230,7 @@ public class SpringdocGroupsConfig {
                 ));
     }
 
+    /** 누락된 오류 응답과 빈 설명을 보완. 기존 content에 직접 ErrorResponse 참조가 없으면 schema를 공통 오류로 교체. */
     private void ensureErrorResponse(
             io.swagger.v3.oas.models.Operation operation,
             String status,

@@ -75,18 +75,28 @@ class OfferControllerIntegrationTest {
     @Autowired private UserWithdrawalDataService userWithdrawalDataService;
     @Autowired private TouristOfferService touristOfferService;
 
+    /**
+     * 각 Offer 통합 테스트 전에 이전 쿠폰·Offer·여행·점주·장소·사용자 데이터를 정리.
+     */
     @BeforeEach
     void setUp() {
         cleanup();
     }
 
+    /**
+     * 테스트 결과와 무관하게 생성 데이터를 정리해 다음 Spring 통합 테스트에 상태가 누적되지 않게 함.
+     */
     @AfterEach
     void tearDown() {
         cleanup();
     }
 
+    /**
+     * 점주가 초안 생성·게시하고 여행 중 관광객이 한정 쿠폰을 발급받은 뒤 점주가 사용하는 API 흐름을 검증.
+     * 품절 목록 제외·Offer 종료 후 쿠폰 부가 정보 유지·중복 발급 409·재사용 409를 함께 확인.
+     */
     @Test
-    void merchantCreatesOfferAndEligibleTouristIssuesAndRedeemsCoupon() throws Exception {
+    void completesOfferCouponLifecycle() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("offerMerchant", UserRole.MERCHANT_OWNER);
         User tourist = saveUser("offerTourist", UserRole.USER);
@@ -183,8 +193,12 @@ class OfferControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COUPON_NOT_REDEEMABLE"));
     }
 
+    /**
+     * 현재 시각 기준 ISSUED/EXPIRED 및 발급 기간 필터 결과를 검증하고 연결 Offer가 없는 쿠폰의 부가 정보는 null인지 확인.
+     * 역전된 발급 기간은 400 COUPON_LIST_FILTER_INVALID여야 함.
+     */
     @Test
-    void listsCouponsByCalculatedStatusAndIssuedAtRange() throws Exception {
+    void filtersCouponStatusAndPeriod() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User tourist = saveUser("couponListTourist", UserRole.USER);
 
@@ -233,8 +247,11 @@ class OfferControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COUPON_LIST_FILTER_INVALID"));
     }
 
+    /**
+     * 내 쿠폰 상세가 발급·사용·만료 상태와 사용 시각을 반환하고 타인 쿠폰 및 없는 ID는 모두 404 COUPON_NOT_FOUND인지 검증.
+     */
     @Test
-    void getsOwnedCouponWithItsCurrentStatusAndHidesOtherUsersCoupon() throws Exception {
+    void returnsOwnedCouponCurrentStatus() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User tourist = saveUser("couponDetailTourist", UserRole.USER);
         User otherTourist = saveUser("couponDetailOtherTourist", UserRole.USER);
@@ -279,8 +296,11 @@ class OfferControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("COUPON_NOT_FOUND"));
     }
 
+    /**
+     * 진행 중 여행 일정이 없는 관광객의 발급 요청이 403 TOURIST_ELIGIBILITY_REQUIRED이며 쿠폰·발급 수가 증가하지 않는지 검증.
+     */
     @Test
-    void userWithoutOngoingTravelScheduleCannotIssueCoupon() throws Exception {
+    void rejectsIssuanceWithoutTravelSchedule() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("ineligibleTouristMerchant", UserRole.MERCHANT_OWNER);
         User tourist = saveUser("ineligibleTourist", UserRole.USER);
@@ -319,8 +339,11 @@ class OfferControllerIntegrationTest {
                 ).isZero();
     }
 
+    /**
+     * PUBLIC·UNLIMITED·OFFER_END 정책은 여행 일정 없이 목록 조회·발급이 가능하고 수량 필드를 생략하며 Offer 종료일에 만료되는지 검증.
+     */
     @Test
-    void publicUnlimitedOfferCanBeViewedAndIssuedWithoutTravelSchedule() throws Exception {
+    void issuesPublicOfferWithoutTravel() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("publicOfferMerchant", UserRole.MERCHANT_OWNER);
         User tourist = saveUser("publicOfferTourist", UserRole.USER);
@@ -367,6 +390,9 @@ class OfferControllerIntegrationTest {
                 .andExpect(jsonPath("$.expiresAt").value(offer.getEndsAt().toString()));
     }
 
+    /**
+     * Authorization 없는 Offer·쿠폰·점주 Offer 목록 요청이 모두 401로 거절되는지 검증.
+     */
     @Test
     void offerEndpointsRequireAuthentication() throws Exception {
         mockMvc.perform(get("/offers")).andExpect(status().isUnauthorized());
@@ -374,8 +400,12 @@ class OfferControllerIntegrationTest {
         mockMvc.perform(get("/merchant-owner/offers")).andExpect(status().isUnauthorized());
     }
 
+    /**
+     * 점주가 접근 가능한 장소의 Offer만 조회하고 장소·게시 상태·페이지 조건이 적용되는지 검증.
+     * 타 점주 장소 필터는 빈 목록, 잘못된 상태 문자열은 400이어야 함.
+     */
     @Test
-    void merchantFiltersOwnOffersByPlaceAndStatusWithoutLeakingOtherMerchantsOffers() throws Exception {
+    void filtersOwnedOffersWithoutLeaks() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("offerFilterMerchant", UserRole.MERCHANT_OWNER);
         User otherMerchant = saveUser("offerFilterOtherMerchant", UserRole.MERCHANT_OWNER);
@@ -431,8 +461,11 @@ class OfferControllerIntegrationTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * 점주 탈퇴 데이터 정리 후 Offer는 CLOSED가 되고 다른 관광객의 쿠폰 1건은 보존되는지 검증.
+     */
     @Test
-    void merchantWithdrawalClosesOffersWithoutDeletingTouristCoupons() {
+    void merchantWithdrawalPreservesTouristCoupons() {
         WithdrawalFixture fixture = withdrawalFixture();
 
         userWithdrawalDataService.cleanupUserOwnedData(fixture.merchant().getId());
@@ -443,8 +476,11 @@ class OfferControllerIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).hasSize(1);
     }
 
+    /**
+     * 관광객 탈퇴 데이터 정리 후 본인 쿠폰은 삭제하고 점주의 Offer는 PUBLISHED로 유지되는지 검증.
+     */
     @Test
-    void touristWithdrawalDeletesOwnCouponsWithoutClosingMerchantOffer() {
+    void touristWithdrawalPreservesMerchantOffer() {
         WithdrawalFixture fixture = withdrawalFixture();
 
         userWithdrawalDataService.cleanupUserOwnedData(fixture.tourist().getId());
@@ -455,6 +491,9 @@ class OfferControllerIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(couponRepository.findAll()).isEmpty();
     }
 
+    /**
+     * 활성 점주·관광객·게시 Offer·발급 쿠폰 관계를 DB에 만들어 탈퇴 주체별 정리 범위를 재현.
+     */
     private WithdrawalFixture withdrawalFixture() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("withdrawOfferMerchant", UserRole.MERCHANT_OWNER);
@@ -492,8 +531,12 @@ class OfferControllerIntegrationTest {
         return new WithdrawalFixture(merchant, tourist, offer);
     }
 
+    /**
+     * 수량 1 Offer에 두 관광객이 barrier 이후 동시에 발급을 시도하면 성공 1건·OFFER_SOLD_OUT 1건과 저장 쿠폰/발급 수 1을 검증.
+     * Future 대기 시간을 제한하고 executor를 종료해 경합 실패 시에도 자원을 회수.
+     */
     @Test
-    void concurrentCouponIssueDoesNotExceedOfferQuantityForDifferentUsers() throws Exception {
+    void limitsConcurrentCouponIssuance() throws Exception {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         User merchant = saveUser("concurrentOfferMerchant", UserRole.MERCHANT_OWNER);
         User firstTourist = saveUser("firstConcurrentOfferTourist", UserRole.USER);
@@ -567,6 +610,9 @@ class OfferControllerIntegrationTest {
         }
     }
 
+    /**
+     * 두 발급 작업을 barrier에서 맞춘 뒤 서비스를 호출하고 OfferException은 오류 코드로 반환해 경합 결과를 함께 비교.
+     */
     private Object issueAfterBarrier(CyclicBarrier barrier, Long userId, Long offerId) throws Exception {
         barrier.await(10, TimeUnit.SECONDS);
         try {
@@ -579,6 +625,9 @@ class OfferControllerIntegrationTest {
     private record WithdrawalFixture(User merchant, User tourist, TouristOffer offer) {
     }
 
+    /**
+     * 주어진 사용자명·역할로 한국어·한국 국가의 테스트 사용자를 저장하고 JWT 발급 대상을 제공.
+     */
     private User saveUser(String username, UserRole role) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -591,6 +640,9 @@ class OfferControllerIntegrationTest {
                 .build());
     }
 
+    /**
+     * 점주가 등록한 고정 좌표의 장소를 주어진 이름으로 저장. 실제 소유 관계는 활성화 helper에서 별도로 설정.
+     */
     private MapPlace savePlace(User merchant, String name) {
         return mapPlaceRepository.saveAndFlush(MapPlace.builder()
                 .name(name)
@@ -602,6 +654,9 @@ class OfferControllerIntegrationTest {
                 .build());
     }
 
+    /**
+     * 점주·장소의 유효 기간 내 Offer를 생성하고 요청 상태에 맞게 게시·종료한 후 저장.
+     */
     private void saveOffer(User merchant, MapPlace place, String title, OfferStatus status, LocalDateTime now) {
         TouristOffer offer = TouristOffer.draft(
                 merchant.getId(),
@@ -624,6 +679,9 @@ class OfferControllerIntegrationTest {
         offerRepository.saveAndFlush(offer);
     }
 
+    /**
+     * 점주 프로필 승인·본인/사업자 검증 승인·장소 소유 관계를 저장해 Offer 운영 자격 조건을 충족시킴.
+     */
     private void activateMerchant(User merchant, MapPlace place, LocalDateTime now) {
         MerchantOwnerProfile profile = MerchantOwnerProfile.pending(
                 merchant.getId(),
@@ -653,6 +711,9 @@ class OfferControllerIntegrationTest {
                 .build());
     }
 
+    /**
+     * 저장된 사용자의 ID·이름·역할로 액세스 토큰을 만들고 Authorization 헤더용 Bearer 접두사를 붙임.
+     */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(
                 user.getId(),
@@ -661,6 +722,9 @@ class OfferControllerIntegrationTest {
         );
     }
 
+    /**
+     * 외래 참조의 종속 데이터를 먼저 지우도록 쿠폰·Offer·여행 일정·점주 관계·장소·사용자 순서로 정리.
+     */
     private void cleanup() {
         couponRepository.deleteAllInBatch();
         offerRepository.deleteAllInBatch();

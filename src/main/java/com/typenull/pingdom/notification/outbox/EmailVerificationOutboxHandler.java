@@ -10,6 +10,10 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 인증 메일 Outbox를 역직렬화해 발송하고 성공/실패를 기록.
+ * 전송 예외는 상위 Outbox 처리기로 다시 던지며, 이미 성공한 동일 이벤트의 자체 조회·생략은 처리 범위 외.
+ */
 @Component
 @RequiredArgsConstructor
 public class EmailVerificationOutboxHandler implements OutboxEventHandler {

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.user;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.domain.UserBanType;
@@ -40,12 +43,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리. */
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
-/** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리합니다. */
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.MEMBER)
 public class AdminUserController {
 
     private final AdminUserService adminUserService;

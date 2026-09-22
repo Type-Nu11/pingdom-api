@@ -18,10 +18,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** 최종 실패 outbox를 다시 처리할 상태로 바꾸고 같은 트랜잭션에 관리자 감사 기록을 남김. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-// 관리자 요청에 따른 outbox 이벤트 재처리와 재시도 이력 기록을 담당합니다.
 public class AdminOutboxEventRecoveryService {
 
     private static final int MAX_REASON_LENGTH = 500;
@@ -31,8 +31,11 @@ public class AdminOutboxEventRecoveryService {
     private final AdminAuditLogService adminAuditLogService;
     private final OutboxMetrics outboxMetrics;
 
+    /**
+     * OUTBOX_RECOVERY 권한과 사유를 확인하고 잠긴 FAILED 이벤트를 재시도 가능 상태로 전환.
+     * 반환 범위는 예약 상태 변경 결과로 한정하며 핸들러 실행·최종 성공 여부는 이후 worker 처리에 의존.
+     */
     @Transactional
-    // 권한을 확인한 뒤 재처리 가능한 outbox 이벤트를 수동 재시도하고 감사 이력을 남깁니다.
     public AdminOutboxEventItem retry(Long adminUserId, String eventId, String reason) {
         authorizationService.requirePermission(adminUserId, AdminPermission.OUTBOX_RECOVERY);
         String normalizedReason = normalizeReason(reason);
@@ -72,7 +75,7 @@ public class AdminOutboxEventRecoveryService {
         return AdminOutboxEventItem.from(result.after());
     }
 
-    // 감사 로그에 사용할 재시도 사유의 존재 여부와 최대 길이를 검증합니다.
+    // 감사 로그에 사용할 재시도 사유의 존재 여부와 최대 길이를 검증.
     private String normalizeReason(String reason) {
         if (reason == null || reason.isBlank() || reason.length() > MAX_REASON_LENGTH) {
             throw new AdminException(AdminErrorCode.OUTBOX_EVENT_RETRY_REASON_REQUIRED);
@@ -87,7 +90,7 @@ public class AdminOutboxEventRecoveryService {
             String lastError,
             LocalDateTime updatedAt
     ) {
-        // 이벤트 처리 전후 상태에서 감사 기록용 불변 스냅샷을 생성합니다.
+        // 이벤트 처리 전후 상태에서 감사 기록용 불변 스냅샷을 생성.
         private static RetryAuditState from(OutboxEventOperationSnapshot event) {
             return new RetryAuditState(
                     event.status(),

@@ -27,8 +27,11 @@ class CommunityPostCommentCommandServiceTest {
             communityPostCommentRepository
     );
 
+    /**
+     * 조회 가능한 게시글에 댓글을 생성하면 저장소를 호출하고 저장된 댓글 ID와 게시글 ID를 응답하는지 검증.
+     */
     @Test
-    void 인증된_사용자를_작성자로_댓글을_저장한다() {
+    void savesCommentForVisiblePost() {
         CommunityPost post = mock(CommunityPost.class);
         CommunityPostComment savedComment = mock(CommunityPostComment.class);
         when(post.getId()).thenReturn(10L);
@@ -48,8 +51,11 @@ class CommunityPostCommentCommandServiceTest {
         verify(communityPostCommentRepository).save(any(CommunityPostComment.class));
     }
 
+    /**
+     * 게시글을 조회할 수 없으면 게시글 없음 오류를 반환하고 댓글을 저장하지 않는지 검증.
+     */
     @Test
-    void 존재하지_않는_게시글에는_댓글을_저장하지_않는다() {
+    void rejectsCommentForMissingPost() {
         when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.create(10L, 7L, new CommunityPostCommentCreateRequest("댓글 내용")))

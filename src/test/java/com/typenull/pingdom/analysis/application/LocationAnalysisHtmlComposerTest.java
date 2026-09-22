@@ -11,8 +11,12 @@ class LocationAnalysisHtmlComposerTest {
 
     private final LocationAnalysisHtmlComposer composer = new LocationAnalysisHtmlComposer();
 
+    /**
+     * 고정 보고서 HTML에 서버 메타데이터·7개 섹션·페이지 표기·폰트·75점 표시와 데이터 부재 문구가 포함되는지 검증.
+     * 기존 영문 섹션·원시 등급·Markdown·script 문자열의 혼입 방지 확인. 실제 렌더링은 검증 범위에서 제외.
+     */
     @Test
-    void rendersFixedReportDesignAndServerMetadata() {
+    void rendersReportDesignAndMetadata() {
         String html = composer.compose(
                 "report-1",
                 "강남 카페 입지 분석",
@@ -56,8 +60,11 @@ class LocationAnalysisHtmlComposerTest {
         assertThat(html).doesNotContain("주변 시설 데이터 없음");
     }
 
+    /**
+     * 비중이 없는 평균 활동 시간 지표도 행동 지표 카드에 값 18.5 시로 출력되는지 검증.
+     */
     @Test
-    void rendersBehaviorCardWithValueWhenTheMetricHasNoSharePercent() {
+    void rendersBehaviorMetricWithoutShare() {
         String html = composer.compose(
                 "report-1", "강남 카페 입지 분석", LocalDate.of(2026, 8, 18), LocalDate.of(2026, 8, 17),
                 new LocationAnalysisContent(

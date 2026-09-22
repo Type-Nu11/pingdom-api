@@ -26,8 +26,11 @@ class OllamaAiAnalysisClientTest {
             "ollama", "http://ollama.test", "qwen2.5:7b", Duration.ofSeconds(1), Duration.ofSeconds(2)
     );
 
+    /**
+     * 비스트리밍 /api/chat 요청에 단일 user 프롬프트와 모델을 전달하고 분석 JSON의 이름·기준일·데이터 부족 등급을 복원하는지 검증.
+     */
     @Test
-    void sendsSinglePromptToOllamaAndParsesAnalysisJson() {
+    void sendsAndParsesOllamaAnalysis() {
         RestClient.Builder builder = RestClient.builder();
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("/api/chat"))
@@ -55,6 +58,9 @@ class OllamaAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * Ollama 응답 content가 공백뿐이면 AI_RESPONSE_INVALID로 처리하는지 검증.
+     */
     @Test
     void rejectsEmptyOllamaContent() {
         RestClient.Builder builder = RestClient.builder();

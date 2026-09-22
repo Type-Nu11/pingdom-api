@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewMediaUploadResponse;
 import com.typenull.pingdom.place.application.service.review.PlaceReviewMediaService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -25,12 +28,17 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 리뷰 작성 전 사진을 임시 업로드하거나 취소하는 인증 API.
+ * 장소·현재 사용자 ID를 함께 넘기며 리뷰 연결과 소유권·만료 검사는 미디어 서비스가 담당.
+ */
 @RestController
 @RequestMapping("/places/{placeId}/reviews/media")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Common", description = "공통 API")
+@ApiAudience(ApiAudience.Group.COMMON)
+@Tag(name = SwaggerTagCatalog.REVIEW_MEDIA)
 public class PlaceReviewMediaController {
 
     private final PlaceReviewMediaService mediaService;

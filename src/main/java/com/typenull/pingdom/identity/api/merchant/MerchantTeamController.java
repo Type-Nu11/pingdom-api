@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.merchant;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantTeamInvitationResponse;
@@ -33,12 +36,17 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 장소 팀 관리와 초대 수락 요청에 현재 회원 ID를 전달.
+ * 초대 수락자는 아직 사업자 역할이 아닐 수 있어 공통 인증을 요구하고 장소 권한은 서비스에서 검사.
+ */
 @RestController
 @RequestMapping("/merchant-owner")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.TEAM)
 public class MerchantTeamController {
     private final MerchantTeamService teamService;
 

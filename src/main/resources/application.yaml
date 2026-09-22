@@ -110,10 +110,12 @@ postmark:
 
 springdoc:
   api-docs:
-    enabled: true
+    enabled: false
   swagger-ui:
-    enabled: true
+    enabled: false
     path: /swagger-ui
+    doc-expansion: none
+    filter: true
     urls-primary-name: admin
     urls:
       - name: app
@@ -126,6 +128,11 @@ springdoc:
         url: /v3/api-docs/admin
       - name: merchant
         url: /v3/api-docs/merchant
+
+pingdom:
+  openapi:
+    public-access:
+      enabled: false
 
 management:
   endpoints:
@@ -288,6 +295,13 @@ place:
       base-url: ${NAVER_PLACE_SEARCH_BASE_URL:https://openapi.naver.com}
       connect-timeout: ${NAVER_PLACE_SEARCH_CONNECT_TIMEOUT:2s}
       read-timeout: ${NAVER_PLACE_SEARCH_READ_TIMEOUT:3s}
+    naver-geocoding:
+      enabled: ${NAVER_ADDRESS_SEARCH_ENABLED:false}
+      client-id: ${NAVER_ADDRESS_SEARCH_CLIENT_ID:}
+      client-secret: ${NAVER_ADDRESS_SEARCH_CLIENT_SECRET:}
+      base-url: ${NAVER_ADDRESS_SEARCH_BASE_URL:https://naveropenapi.apigw.ntruss.com}
+      connect-timeout: ${NAVER_ADDRESS_SEARCH_CONNECT_TIMEOUT:2s}
+      read-timeout: ${NAVER_ADDRESS_SEARCH_READ_TIMEOUT:3s}
   local-hot:
     backfill:
       enabled: ${LOCAL_HOT_REGION_BACKFILL_ENABLED:false}

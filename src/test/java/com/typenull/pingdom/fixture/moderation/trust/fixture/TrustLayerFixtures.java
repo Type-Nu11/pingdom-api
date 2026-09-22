@@ -15,13 +15,22 @@ public final class TrustLayerFixtures {
 
     private static final LocalDateTime DETECTED_AT = LocalDateTime.of(2026, 7, 20, 18, 0);
 
+    /**
+     * 정적 생성 메서드로 공유하는 신뢰도 fixture 모음의 인스턴스화를 차단.
+     */
     private TrustLayerFixtures() {
     }
 
+    /**
+     * 신고자 정책·이상 징후·개입 규칙·HTTP 시나리오를 묶어 신뢰도 검증의 입력 관계를 제공.
+     */
     public static TrustReporterFixture realisticReporterFixture() {
         return new TrustReporterFixture(policies(), anomalies(), interventionRules(), scenarios());
     }
 
+    /**
+     * 정상 신고자와 낮은 점수의 경계·제한 신고자를 구성하고 신고 누적 수와 제한 만료를 지정.
+     */
     private static List<ReporterModerationPolicy> policies() {
         return List.of(
                 ReporterModerationPolicy.builder().reporterUserId(1001L).reporterUsername("normal-reporter")
@@ -34,6 +43,9 @@ public final class TrustLayerFixtures {
         );
     }
 
+    /**
+     * 경계 신고자의 허위 신고 급증과 제한 신고자의 급락을 고정된 감지 시각·심각도·점수로 구성.
+     */
     private static List<TrustScoreAnomaly> anomalies() {
         return List.of(
                 TrustScoreAnomaly.builder().id(2001L).reporterUserId(1002L).reporterUsername("boundary-reporter")
@@ -47,6 +59,10 @@ public final class TrustLayerFixtures {
         );
     }
 
+    /**
+     * 허위 신고 3회 이상에 대한 활성 7일 제한과 비활성 저점수 경고 규칙을 제공.
+     * 조건 경계와 활성 여부에 따른 개입 선택을 재현하기 위한 데이터.
+     */
     private static List<TrustScoreInterventionRule> interventionRules() {
         return List.of(
                 TrustScoreInterventionRule.builder().id(3001L).ruleName("false report restriction")
@@ -61,6 +77,9 @@ public final class TrustLayerFixtures {
         );
     }
 
+    /**
+     * 신고자 조회·경계 개입 평가·없는 신고자·잘못된 규칙 기간의 HTTP 상태와 도메인 오류 계약을 제공.
+     */
     private static List<TrustScenario> scenarios() {
         return List.of(
                 new TrustScenario("trust-score-normal-report", TrustScenarioType.NORMAL,

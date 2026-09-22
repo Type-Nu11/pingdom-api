@@ -39,6 +39,9 @@ class FlywayMigrationIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * 마이그레이션이 공간 타입과 유사 문자열 인덱스를 사용할 수 있도록 공용 PostGIS·pg_trgm 확장을 먼저 설치.
+     */
     @BeforeAll
     static void ensureRequiredExtensions() throws Exception {
         try (Connection connection = postgres.createConnection("");
@@ -48,6 +51,10 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 각 시나리오가 원하는 버전에서 시작하도록 public 테이블을 의존 객체와 함께 제거.
+     * PostGIS의 spatial_ref_sys는 보존해 컨테이너 확장을 재사용.
+     */
     @BeforeEach
     void resetDatabase() throws Exception {
         try (Connection connection = postgres.createConnection("");
@@ -69,6 +76,9 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 빈 PostGIS 스키마에 전체 135개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
+     */
     @Test
     @Tag("migration-smoke")
     void appliesAllMigrationsToPostgisDatabase() throws Exception {
@@ -81,8 +91,13 @@ class FlywayMigrationIntegrationTest {
         assertPostMigrationSchema();
     }
 
+    /**
+     * 글·댓글 신고를 저장해 초기 대기 상태와 처리 메타데이터 기본값을 확인하고 다른 신고자의 접수를 허용하는지 검증.
+     * 동일 신고자의 글·댓글 재신고는 처리 후에도 유일 제약으로 거절하고, 잘못된 대상·사유·상태·처리 정보는 체크 제약, 없는 대상과 대상 삭제는 외래 키로 차단하는지 확인.
+     * 신고 상태와 대상별 조회 인덱스 세 개가 생성되는지도 검사.
+     */
     @Test
-    void enforcesCommunityReportConstraintsAndIndexes() throws Exception {
+    void enforcesCommunityReportDatabaseContracts() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -103,7 +118,7 @@ class FlywayMigrationIntegrationTest {
                     INSERT INTO community_report (reporter_user_id, community_post_comment_id, reason, description)
                     VALUES (2, 132001, 'ABUSE', '욕설')
                     """);
-            // 다른 신고자는 같은 대상을 신고할 수 있다.
+            // 다른 신고자는 같은 대상을 신고할 수 있음.
             statement.executeUpdate("""
                     INSERT INTO community_report (reporter_user_id, community_post_id, reason, description)
                     VALUES (3, 132001, 'OTHER', '기타')
@@ -134,7 +149,7 @@ class FlywayMigrationIntegrationTest {
                     UPDATE community_report SET status = 'DECLINED', processed_by_admin_user_id = 9,
                         processed_at = CURRENT_TIMESTAMP WHERE community_post_comment_id IS NOT NULL
                     """);
-            // 수락·반려 후에도 동일 신고자의 재신고는 금지한다.
+            // 수락·반려 후에도 동일 신고자의 재신고는 금지.
             assertThatThrownBy(() -> statement.executeUpdate(duplicatePost))
                     .isInstanceOf(java.sql.SQLException.class).extracting("SQLState").isEqualTo("23505");
             assertThatThrownBy(() -> statement.executeUpdate(duplicateComment))
@@ -185,8 +200,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 글·댓글의 숨김 기본값이 false이고 숨김 처리자가 비어 있는지 확인한 뒤 숨김 메타데이터 갱신이 가능한지 검증.
+     * 공개 글·댓글 조회용 인덱스 두 개의 생성도 확인.
+     */
     @Test
-    void addsCommunityReportVisibilityColumnsAndIndexes() throws Exception {
+    void createsCommunityVisibilitySchema() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -223,8 +242,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 새 장소의 커뮤니티 조회수 기본값이 0이며 같은 사용자·장소·날짜의 일일 조회 기록을 두 번 삽입할 수 없는지 검증.
+     */
     @Test
-    void initializesCommunityPlaceViewCountAndPreventsDailyDuplicateViews() throws Exception {
+    void enforcesDailyCommunityViewUniqueness() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -252,8 +274,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V114의 정상·고아 북마크를 최신 버전으로 올리면 실제 장소가 있는 북마크만 BASELINE_ACTIVE 추세 이벤트로 이관되는지 검증.
+     * 이관에서 제외한 고아 북마크 원본 행은 삭제하지 않는지도 확인.
+     */
     @Test
-    void skipsOrphanBookmarksWhenBackfillingTrendEvents() throws Exception {
+    void skipsOrphanBookmarkTrendBackfill() throws Exception {
         migrateTo("114");
 
         try (Connection connection = postgres.createConnection("");
@@ -300,8 +326,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 동일 MCP 계정의 이동 행 두 개를 저장하고 좌표로 SRID 4326 geometry가 생성되는지 검증.
+     * 좌표 수정 시 geometry 갱신·생성 시각 기본값·허용 위도 범위 밖 입력 거절도 확인.
+     */
     @Test
-    void createsMcpSpatialMovementHistoryWithGeneratedGeometry() throws Exception {
+    void generatesMcpSpatialHistoryGeometry() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -373,8 +403,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 장소 등록 신청의 사업장·신청자·점주 연락처에 E.164 전화번호를 저장할 수 있고 세 값이 그대로 유지되는지 검증.
+     */
     @Test
-    void acceptsE164ContactPhonesForPlaceRegistrationApplications() throws Exception {
+    void acceptsE164ApplicationContactPhones() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -413,8 +446,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V102의 기존 MCP 위치 행을 최신 버전으로 올리면 식별자와 created_at·observed_at이 모두 채워지는지 검증.
+     */
     @Test
-    void addsCreatedAtToExistingMcpSpatialRawData() throws Exception {
+    void backfillsExistingMcpObservationTimestamps() throws Exception {
         migrateTo("102");
 
         try (Connection connection = postgres.createConnection("");
@@ -442,8 +478,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V85의 기존 ADMIN만 활성 SUPER_ADMIN 역할로 이관하고 부여자는 null, 부여 시각은 사용자 생성 시각으로 보존하는지 검증.
+     * 일반 사용자에게 관리자 역할을 만들지 않는지도 확인.
+     */
     @Test
-    void backfillsLegacyAdminUsersAsSuperAdminAssignments() throws Exception {
+    void backfillsLegacySuperAdminAssignments() throws Exception {
         migrateTo("85");
 
         try (Connection connection = postgres.createConnection("");
@@ -484,8 +524,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V89의 실패 Outbox 이벤트에 나머지 46개 마이그레이션을 적용해 최신 버전에 도달하고 실패 상태·시도 횟수·최근 오류를 보존하는지 검증.
+     */
     @Test
-    void preservesExistingOutboxEventsWhenAddingRecoveryConstraintsAndIndexes() throws Exception {
+    void preservesLegacyFailedOutboxState() throws Exception {
         migrateTo("89");
 
         try (Connection connection = postgres.createConnection("");
@@ -523,8 +566,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V86의 기존 Scout 제보자를 활성 프로필과 무기한 ELIGIBLE 자격으로 이관하는지 검증.
+     * 표시 이름은 사용자명, 자격 시작은 기존 제보 생성 시각이며 별도 심사자·사유는 없는지 확인.
+     */
     @Test
-    void backfillsExistingScoutReportersAsActiveProfilesAndEligibleScouts() throws Exception {
+    void backfillsLegacyScoutEligibility() throws Exception {
         migrateTo("86");
 
         try (Connection connection = postgres.createConnection("");
@@ -581,8 +628,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 기존 V1 스키마를 baseline으로 등록하고 V2 이후 133개 마이그레이션을 적용해 최신 버전에 도달하는지 검증.
+     * 기존 좌표의 PostGIS location 보정, 추천 점수 컬럼·제약 및 전체 후속 스키마 계약도 확인.
+     */
     @Test
-    void baselinesExistingVersionOneSchemaAndAppliesIncrementalMigrations() throws Exception {
+    void upgradesBaselinedVersionOneSchema() throws Exception {
         executeBaselineSchemaScript();
 
         Flyway.configure()
@@ -655,8 +706,11 @@ class FlywayMigrationIntegrationTest {
         assertPostMigrationSchema();
     }
 
+    /**
+     * V54에 검증·미검증 근거를 함께 저장한 뒤 업그레이드하면 검증된 근거만 집계하고 최근 근거 ID·출처·심사 시각을 요약에 반영하는지 검증.
+     */
     @Test
-    void backfillsVerificationSummaryFromExistingVerifiedEvidence() throws Exception {
+    void backfillsExistingVerifiedEvidenceSummary() throws Exception {
         migrateTo("54");
 
         try (Connection connection = postgres.createConnection("");
@@ -699,8 +753,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V27의 자유 입력 카테고리 장소를 최신 버전으로 올려도 이름·카테고리를 보존하고 새 관광·주소·검증 필드를 안전한 초기값으로 두는지 검증.
+     * 관련 자식 데이터가 임의로 생성되지 않으며 점주 소유·혜택 정책·검증 요약·체크인·리뷰의 테이블·제약·인덱스도 구성되는지 확인.
+     */
     @Test
-    void preservesExistingPlacesWhenApplyingTouristInformationMigration() throws Exception {
+    void preservesLegacyPlaceTouristDefaults() throws Exception {
         Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
                 .locations("classpath:db/migration")
@@ -927,8 +985,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V55의 장소 대표 사진은 EXPLORATION, 기존 인증 사진은 VERIFICATION 미디어로 이관되는지 검증.
+     * 원본·썸네일 S3 키, 원본 게시글 ID와 생성 시각을 보존하고 후속 브랜드·팝업 캠페인 스키마도 생성되는지 확인.
+     */
     @Test
-    void backfillsExistingPlaceImagesIntoSeparatedPlaceMedia() throws Exception {
+    void backfillsSeparatedPlaceMedia() throws Exception {
         migrateTo("55");
 
         try (Connection connection = postgres.createConnection("");
@@ -1016,8 +1078,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 이미지 URL이 null 또는 공백인 V55 장소를 업그레이드하면 미디어를 만들지 않고 원래 장소 두 행은 보존하는지 시나리오 근거와 함께 검증.
+     */
     @Test
-    void skipsLegacyPlacesWithoutUsableImagesDuringBackfill() throws Exception {
+    void skipsUnusableLegacyPlaceImages() throws Exception {
         FlywayBackfillScenario scenario = scenario("legacy-place-without-image-is-skipped");
         migrateTo("55");
 
@@ -1057,8 +1122,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 대표 이미지가 있는 장소를 최신 버전으로 이관한 뒤 migrate를 다시 실행하면 적용 마이그레이션 수가 0이며 탐색 미디어 한 행만 남는지 검증.
+     */
     @Test
-    void retryingMigrationDoesNotDuplicateBackfilledMedia() throws Exception {
+    void avoidsDuplicateMediaOnMigrationRetry() throws Exception {
         FlywayBackfillScenario scenario = scenario("legacy-place-image-to-exploration-media");
         migrateTo("55");
 
@@ -1097,8 +1165,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V41의 기존 소유권 신청을 V43까지 올리면 INITIAL 유형과 이전 소유자 null을 채워 소유권 제약 검증을 통과하는지 확인.
+     */
     @Test
-    void backfillsExistingMerchantPlaceClaimBeforeValidatingOwnershipConstraints() throws Exception {
+    void backfillsClaimBeforeOwnershipValidation() throws Exception {
         migrateTo("41");
 
         try (Connection connection = postgres.createConnection("");
@@ -1123,8 +1194,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V111의 기존 장소 신청·소유권 신청과 첨부 파일을 최신 버전으로 올리면 신청·심사 이력 및 레거시 claim 테이블이 제거되는지 검증.
+     * 두 첨부 키는 레거시 심사 정리 사유의 S3 삭제 Outbox에 남아 후속 정리가 가능해야 함.
+     */
     @Test
-    void removesLegacyMerchantReviewRowsAfterQueuingAttachmentDeletion() throws Exception {
+    void cleansLegacyMerchantReviewData() throws Exception {
         migrateTo("111");
 
         try (Connection connection = postgres.createConnection("");
@@ -1206,8 +1281,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V115의 REGISTERED 신청을 COMPLETED로 이관하며 장소 ID와 완료 시각을 보존하는지 검증.
+     * registered 컬럼은 제거되고 상태 체크 제약에서도 REGISTERED가 사라지는지 확인.
+     */
     @Test
-    void migratesRegisteredPlaceApplicationsToCompleted() throws Exception {
+    void migratesRegisteredApplicationsToCompleted() throws Exception {
         migrateTo("115");
 
         try (Connection connection = postgres.createConnection("");
@@ -1270,8 +1349,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 이전 소유자가 있는 INITIAL 신청과 NOT VALID 제약을 V42에 준비하면 후속 제약 검증이 해당 제약명과 SQL 원인 오류를 드러내며 실패하는지 검증.
+     */
     @Test
-    void validationMigrationRejectsExistingOwnershipConstraintViolation() throws Exception {
+    void rejectsLegacyOwnershipConstraintViolation() throws Exception {
         migrateTo("42");
 
         try (Connection connection = postgres.createConnection("");
@@ -1298,8 +1380,11 @@ class FlywayMigrationIntegrationTest {
                 .hasStackTraceContaining("ck_merchant_place_claim_transfer_owner");
     }
 
+    /**
+     * 영문 이름만 있는 장소에도 관광 guard 행이 있으면 직접 삭제가 외래 키 오류로 차단되고 영문 이름을 가진 원본 장소가 남는지 검증.
+     */
     @Test
-    void touristGuardPreventsLegacyDeleteForScalarOnlyInformation() throws Exception {
+    void guardsTouristPlaceAgainstLegacyDeletion() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -1334,8 +1419,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 쿠폰 사용 처리자를 삭제해도 사용 완료 상태와 사용 시각은 보존하고 redeemed_by 참조만 null로 바뀌는지 검증.
+     */
     @Test
-    void deletingCouponRedeemerPreservesRedemptionHistory() throws Exception {
+    void preservesHistoryAfterCouponRedeemerDeletion() throws Exception {
         migrate(false);
 
         try (Connection connection = postgres.createConnection("");
@@ -1402,8 +1490,11 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * V66의 기존 전환을 attribution 없이 보존하고, 최신 스키마에서 관측 로그와 연결한 전환도 로그 삭제 시 참조만 null로 해제되어 두 전환 행이 남는지 검증.
+     */
     @Test
-    void preservesLegacyConversionsAndDetachesAttributionWhenFeatureLogIsDeleted() throws Exception {
+    void preservesConversionsWhenAttributionDisappears() throws Exception {
         migrateTo("66");
 
         long featureLogId;
@@ -1472,6 +1563,10 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 공용 컨테이너에 최신 버전까지 마이그레이션을 적용.
+     * 기존 스키마 경로는 V1 baseline을 허용하고, PostgreSQL 잠금 설정은 동시 인덱스 생성과 호환되도록 유지.
+     */
     private MigrateResult migrate(boolean baselineOnMigrate) {
         Flyway flyway = Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -1484,6 +1579,9 @@ class FlywayMigrationIntegrationTest {
         return flyway.migrate();
     }
 
+    /**
+     * 지정 버전까지만 스키마를 올려 후속 이관의 입력이 될 과거 데이터 구조를 재현.
+     */
     private MigrateResult migrateTo(String target) {
         return Flyway.configure()
                 .dataSource(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword())
@@ -1494,6 +1592,10 @@ class FlywayMigrationIntegrationTest {
                 .migrate();
     }
 
+    /**
+     * 두 점주·프로필과 장소를 저장하고 대기 소유권 신청을 만들어 과거 신청 이관 및 정리를 검증.
+     * 플래그가 true이면 유형·이전 소유자 컬럼이 있는 버전용 INSERT를 사용하되 값은 INITIAL·null로 둠.
+     */
     private void insertMerchantPlaceClaimFixture(Statement statement, boolean includePreviousOwner) throws Exception {
         statement.executeUpdate("""
                 INSERT INTO users (
@@ -1541,6 +1643,9 @@ class FlywayMigrationIntegrationTest {
                 """);
     }
 
+    /**
+     * 이름으로 공용 backfill 시나리오를 찾아 기대 결과와 assertion 진단 문구를 연결하며 누락 시 명시적인 AssertionError를 냄.
+     */
     private FlywayBackfillScenario scenario(String name) {
         return FlywayBackfillFixtures.scenarios().stream()
                 .filter(scenario -> scenario.name().equals(name))
@@ -1548,6 +1653,9 @@ class FlywayMigrationIntegrationTest {
                 .orElseThrow(() -> new AssertionError("Missing Flyway backfill fixture: " + name));
     }
 
+    /**
+     * Flyway 이력 없이 V1 SQL만 직접 실행해 이미 운영 중인 스키마를 baseline 등록하는 경로를 준비.
+     */
     private void executeBaselineSchemaScript() throws Exception {
         try (Connection connection = postgres.createConnection("")) {
             ScriptUtils.executeSqlScript(
@@ -1557,6 +1665,12 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * 신규 설치와 기존 V1 업그레이드가 같은 최신 스키마 계약에 도달했는지 PostgreSQL 카탈로그로 확인.
+     * 방문 인증·북마크 추세·MCP 위치·점주 신청과 권한·결제·예약·관광 정보·추천 관측·신고 및 미디어의 테이블, 컬럼 타입·길이·null·기본값을 검사.
+     * 유일/체크/외래 키 제약의 검증 상태와 삭제 정책, 조건부·공간·검색 인덱스를 확인하고 폐기된 컬럼·테이블·임시 제약이 남지 않게 함.
+     * 데이터 이관 결과와 실제 제약 위반 동작은 각각의 별도 테스트에서 확인.
+     */
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -4309,6 +4423,10 @@ class FlywayMigrationIntegrationTest {
         }
     }
 
+    /**
+     * SQL 결과에 최소 한 행이 존재하는지 확인하고 첫 행·첫 컬럼의 boolean을 반환.
+     * 카탈로그 조회의 조건 충족 여부를 상위 assertion으로 전달하며 ResultSet은 호출마다 닫음.
+     */
     private boolean queryBoolean(Statement statement, String sql) throws Exception {
         try (ResultSet resultSet = statement.executeQuery(sql)) {
             assertThat(resultSet.next()).isTrue();

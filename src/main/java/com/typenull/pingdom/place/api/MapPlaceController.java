@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.application.service.place.MapPlaceService;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
@@ -18,7 +21,8 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 @RestController
 @RequestMapping("/places")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
 public class MapPlaceController {
 
     private final MapPlaceService mapPlaceService;

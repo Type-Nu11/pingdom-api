@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.review.MyPlaceReviewPageResponse;
 import com.typenull.pingdom.place.application.service.review.PlaceReviewService;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -29,7 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.MY_REVIEW)
 public class MyPlaceReviewController {
 
     private final PlaceReviewService placeReviewService;

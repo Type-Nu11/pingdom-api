@@ -1,5 +1,8 @@
 package com.typenull.pingdom.privacy.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.privacy.api.dto.PrivacyProcessingHistoryResponse;
 
@@ -20,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/privacy-processing-histories")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.AUDIT)
 public class AdminPrivacyProcessingHistoryController {
 
     private final PrivacyProcessingHistoryQueryService queryService;

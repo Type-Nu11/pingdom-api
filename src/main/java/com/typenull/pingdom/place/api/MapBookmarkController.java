@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateRequest;
 import com.typenull.pingdom.place.api.dto.bookmark.BookmarkCreateResponse;
@@ -24,10 +27,14 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 현재 인증 회원의 북마크 추가·삭제 API. 삭제 경로의 ID는 북마크 ID가 아닌 장소 ID.
+ */
 @RestController
 @RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.BOOKMARK)
 public class MapBookmarkController {
 
     private final MapBookmarkService mapBookmarkService;

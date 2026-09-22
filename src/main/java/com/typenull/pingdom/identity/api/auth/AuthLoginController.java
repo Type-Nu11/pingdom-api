@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.auth;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.api.dto.login.LoginResponse;
 import com.typenull.pingdom.identity.application.service.auth.AuthService;
@@ -25,11 +28,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 사용자와 관리자 로그인 요청을 인증 서비스로 전달하고 토큰 응답을 구성. */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "Common", description = "앱/웹 공통")
-/** 사용자와 관리자 로그인 요청을 인증 서비스로 전달하고 토큰 응답을 구성합니다. */
+@ApiAudience(ApiAudience.Group.COMMON)
+@Tag(name = SwaggerTagCatalog.LOGIN)
 public class AuthLoginController {
 
     private final AuthService authService;

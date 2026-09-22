@@ -64,6 +64,9 @@ class PlaceSimilaritySnapshotResyncServiceTest {
     @InjectMocks
     private PlaceSimilaritySnapshotResyncService placeSimilaritySnapshotResyncService;
 
+    /**
+     * 집계 컨텍스트와 유사도 점수를 고정하여 재동기화의 저장 방식·범위·배치 크기를 분리해 검증.
+     */
     @BeforeEach
     void setUp() {
         when(placeRecommendationSimilarityService.cachedTotalBookmarkUserCount()).thenReturn(0L);
@@ -87,8 +90,11 @@ class PlaceSimilaritySnapshotResyncServiceTest {
                 ));
     }
 
+    /**
+     * 기존 유사도 쌍을 모두 재동기화할 때 삭제 없이 JDBC 배치 갱신을 호출하고 JPA saveAll을 사용하지 않는지 확인.
+     */
     @Test
-    void 기존_snapshot은_saveAll_대신_update_배치로_처리한다() {
+    void updatesExistingSnapshotsInBatches() {
         List<MapPlace> places = createPlaces(34);
         List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
 
@@ -111,9 +117,12 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         verify(jdbcTemplate, atLeastOnce()).batchUpdate(anyString(), any(BatchPreparedStatementSetter.class));
     }
 
+    /**
+     * 33개 장소의 528개 쌍을 500건 이하의 두 JDBC 배치로 나누고 전체 갱신 건수를 유지하는지 확인.
+     */
     @Test
-    void update_snapshot이_500건을_초과하면_배치_크기를_나눠서_처리한다() {
-        // 33개 장소는 33 * 32 / 2 = 528개의 스냅샷 쌍을 만들어 500건 배치 분할을 검증하기에 충분하다.
+    void splitsUpdatesAtBatchLimit() {
+        // 33개 장소는 33 * 32 / 2 = 528개의 스냅샷 쌍을 만들어 500건 배치 분할을 검증하기에 충분.
         List<MapPlace> places = createPlaces(33);
         List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
         List<Integer> batchSizes = new ArrayList<>();
@@ -145,8 +154,11 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         verify(placeSimilaritySnapshotRepository, never()).saveAll(any());
     }
 
+    /**
+     * 528개 기존 쌍을 두 번의 커서 슬라이스 조회로 읽고 유사도 컨텍스트를 한 번만 만드는지 확인.
+     */
     @Test
-    void existing_snapshot조회는_pair별_개별조회없이_slice_페이지로_처리한다() {
+    void loadsSnapshotsWithCursorSlices() {
         List<MapPlace> places = createPlaces(33);
         List<PlaceSimilaritySnapshot> existingSnapshots = createExistingSnapshots(places);
 
@@ -167,8 +179,11 @@ class PlaceSimilaritySnapshotResyncServiceTest {
                 .buildContext(anyCollection(), anyMap(), anyBoolean(), anyLong());
     }
 
+    /**
+     * 주변 조회가 반환한 쌍은 충돌 처리 SQL로 저장하고 이탈한 기존 쌍만 삭제하며 전체 좌표 페이지 조회를 하지 않는지 확인.
+     */
     @Test
-    void 단건_재동기화는_반경_내_pair만_upsert하고_이탈_pair를_삭제한다() {
+    void upsertsNearbyAndDeletesStalePairs() {
         List<MapPlace> places = createPlaces(3);
         MapPlace targetPlace = places.get(0);
         MapPlace nearbyPlace = places.get(1);
@@ -201,8 +216,11 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         verify(mapPlaceCoordinateQueryRepository, never()).findCoordinatePage(any(PageRequest.class));
     }
 
+    /**
+     * 주변 장소가 없으면 기존 쌍만 삭제하고 upsert 배치를 실행하지 않는지 확인.
+     */
     @Test
-    void 단건_재동기화는_주변_장소가_없으면_기존_pair만_정리한다() {
+    void deletesPairsWhenNeighborsMissing() {
         MapPlace targetPlace = createPlaces(1).getFirst();
         PlaceSimilaritySnapshot staleSnapshot = PlaceSimilaritySnapshot.builder()
                 .id(101L)
@@ -225,6 +243,9 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         verify(placeSimilaritySnapshotRepository).deleteAllByIdInBatch(List.of(101L));
     }
 
+    /**
+     * 첫 페이지에 모든 장소를 반환하고 이후 페이지를 비워 좌표 페이지 순회를 모의.
+     */
     private Page<MapPlace> coordinatePage(List<MapPlace> places, PageRequest pageable) {
         if (pageable.getPageNumber() > 0) {
             return Page.empty(pageable);
@@ -232,6 +253,9 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         return new PageImpl<>(places, pageable, places.size());
     }
 
+    /**
+     * 마지막 조회 ID보다 큰 쌍을 페이지 크기만큼 반환하고 남은 데이터로 hasNext를 계산.
+     */
     private Slice<PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection> snapshotSlice(
             List<PlaceSimilaritySnapshot> snapshots,
             long lastSeenSnapshotId,
@@ -248,6 +272,9 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         return new SliceImpl<>(content, pageable, hasNext);
     }
 
+    /**
+     * 모든 쌍이 가까운 범위에 위치하도록 위도를 조금씩 늘린 장소 목록을 생성.
+     */
     private List<MapPlace> createPlaces(int count) {
         List<MapPlace> places = new ArrayList<>(count);
         for (int index = 0; index < count; index++) {
@@ -266,6 +293,9 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         return places;
     }
 
+    /**
+     * 장소의 중복 없는 모든 ID 쌍에 순차 스냅샷 ID를 부여해 배치 경계 입력을 생성.
+     */
     private List<PlaceSimilaritySnapshot> createExistingSnapshots(List<MapPlace> places) {
         List<PlaceSimilaritySnapshot> snapshots = new ArrayList<>();
         long snapshotId = 1L;
@@ -289,18 +319,30 @@ class PlaceSimilaritySnapshotResyncServiceTest {
         return snapshots;
     }
 
+    /**
+     * 기존 스냅샷에서 식별자와 양쪽 장소 ID만 노출하는 저장소 조회 투영을 생성.
+     */
     private PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection toProjection(PlaceSimilaritySnapshot snapshot) {
         return new PlaceSimilaritySnapshotRepository.ExistingSnapshotProjection() {
+            /**
+             * 슬라이스 커서 비교에 사용할 기존 스냅샷 ID를 반환.
+             */
             @Override
             public Long getId() {
                 return snapshot.getId();
             }
 
+            /**
+             * 기존 유사도 쌍의 작은 쪽 장소 ID를 조회 투영에 제공.
+             */
             @Override
             public Long getLeftPlaceId() {
                 return snapshot.getLeftPlaceId();
             }
 
+            /**
+             * 기존 유사도 쌍의 큰 쪽 장소 ID를 조회 투영에 제공.
+             */
             @Override
             public Long getRightPlaceId() {
                 return snapshot.getRightPlaceId();

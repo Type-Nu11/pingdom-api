@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place.duplicate;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.place.duplicate.AdminMapPlaceDuplicateDetailResponse;
@@ -31,12 +34,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
+/** 중복 장소 후보의 판정·병합·복구 관리 요청을 관리자 서비스로 전달. */
 @RestController
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
-/** 중복 장소 후보의 판정·병합·복구 관리 요청을 관리자 서비스로 전달합니다. */
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.DUPLICATE_RECOMMENDATION)
 public class AdminPlaceDuplicateController {
 
     private final AdminMapPlaceQueryService adminMapPlaceQueryService;

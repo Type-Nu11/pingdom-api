@@ -169,6 +169,7 @@ class AdminMapPlaceControllerTest {
     @Autowired
     private MeterRegistry meterRegistry;
 
+    /** Outbox·감사·추천·게시글·체크인·근거와 영업 일정 등을 참조 순서대로 비운 뒤 장소와 사용자를 삭제해 테스트 간 DB 상태를 격리. */
     @BeforeEach
     void setUp() {
         outboxEventRepository.deleteAllInBatch();
@@ -192,17 +193,20 @@ class AdminMapPlaceControllerTest {
         userRepository.deleteAllInBatch();
     }
 
+    /** 각 테스트 뒤 영업시간 자식 행을 제거해 뒤따르는 장소 정리에 외래 키 잔여가 남지 않게 함. */
     @AfterEach
     void tearDownOperatingScheduleRows() {
         clearOperatingScheduleRows();
     }
 
+    /** 예외 시간→예외 날짜→정기 영업시간 순서로 테스트 DB의 해당 테이블 전체를 비움. */
     private void clearOperatingScheduleRows() {
         jdbcTemplate.update("DELETE FROM map_place_operating_exception_hour");
         jdbcTemplate.update("DELETE FROM map_place_operating_exception");
         jdbcTemplate.update("DELETE FROM map_place_regular_operating_hour");
     }
 
+    /** 관리자 목록에서 영문명 키워드로 저장 장소를 찾고 정규 카테고리·관광 정보·성장 레벨·페이지 메타데이터를 반환하는지 확인. */
     @Test
     void listPlacesReturnsRegisteredPlaces() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -241,6 +245,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /** 한국어 문화재로 저장된 장소가 정규 CULTURAL_HERITAGE 필터에 포함되고 카페는 제외되는지 확인. */
     @Test
     void listPlacesFiltersByCategory() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -274,8 +279,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /** 공백·소문자 카테고리와 키워드·오래된 순·페이지 조건을 함께 적용해 카페 두 건 중 두 번째만 반환하는지 확인. */
     @Test
-    void listPlacesCombinesCategoryKeywordSortAndPagination() throws Exception {
+    void combinesPlaceListFilters() throws Exception {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
                 .name("복합검색 카페 A")
@@ -322,8 +328,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /** 일치하지 않는 카테고리 조회는 빈 목록·총 0건·총 1페이지·다음 페이지 없음으로 응답하는지 확인. */
     @Test
-    void listPlacesReturnsNormalizedEmptyPageWhenCategoryDoesNotMatch() throws Exception {
+    void returnsEmptyCategoryPage() throws Exception {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
                 .name("카페 장소")
@@ -345,8 +352,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /** 카테고리 없는 장소를 null 코드·미분류 표시명·기본 레벨로 조회하는지 확인. */
     @Test
-    void listPlacesReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+    void listsMissingCategoryAsUncategorized() throws Exception {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
                 .name("미분류 장소")
@@ -365,8 +373,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].level").value(1));
     }
 
+    /** OTHER로 저장한 장소가 OTHER 코드와 기타 표시명을 유지하는지 확인. */
     @Test
-    void listPlacesReturnsOtherNameOnlyForOtherCategory() throws Exception {
+    void labelsOtherCategoryExplicitly() throws Exception {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
                 .name("기타 장소")
@@ -385,8 +394,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].categoryName").value("기타"));
     }
 
+    /** 지원하지 않는 기존 자유 문자열 카테고리는 목록 응답에서 null 코드와 미분류 표시명으로 나타나는지 확인. */
     @Test
-    void listPlacesTreatsUnsupportedLegacyCategoryAsUncategorized() throws Exception {
+    void listsUnknownCategoryAsUncategorized() throws Exception {
         String accessToken = createAdminAndLogin();
         mapPlaceRepository.save(MapPlace.builder()
                 .name("기존 자유 문자열 장소")
@@ -406,8 +416,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].categoryName").value("미분류"));
     }
 
+    /** 사진 수로 계산한 레벨 내림차순을 확인하고 레벨이 같은 두 장소는 나중 ID가 먼저 오는지 검사. */
     @Test
-    void listPlacesSortsByPlaceLevelDesc() throws Exception {
+    void sortsPlacesByDescendingLevel() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace firstHighLevelPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("고레벨 장소 A")
@@ -462,8 +473,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.places[3].placeGrowth.level").value(1));
     }
 
+    /** 카테고리·대표 이미지가 없는 상세 조회에서 null 값·미분류 표시명·레벨 1을 반환하는지 확인. */
     @Test
-    void getPlaceReturnsUncategorizedNameWhenCategoryIsMissing() throws Exception {
+    void defaultsMissingPlaceDetailFields() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("미분류 상세 장소")
@@ -483,8 +495,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.level").value(1));
     }
 
+    /** 대표 이미지를 첫 값·수정 값·null로 저장할 때마다 상세 응답이 현재 값을 반영하는지 확인. */
     @Test
-    void getPlaceReflectsCurrentCanonicalRepresentativeImageUrl() throws Exception {
+    void reflectsRepresentativeImageChanges() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("대표 이미지 갱신 장소")
@@ -520,6 +533,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.imageUrl").value(nullValue()));
     }
 
+    /** 장소 목록에 게시글용 MOST_LIKED 정렬을 보내면 전용 미지원 정렬 오류로 거부하는지 확인. */
     @Test
     void listPlacesRejectsMostLikedSort() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -531,8 +545,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SORT_PARAM"));
     }
 
+    /** 주소 일부와 등록자 숫자 ID 각각으로 검색해 대응하는 장소 한 건만 조회되는지 확인. */
     @Test
-    void listPlacesFiltersByKeywordAcrossAddressAndRegistrantUserId() throws Exception {
+    void searchesAddressAndRegistrantId() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace matchingPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -570,8 +585,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /** 저장된 추천 feature 로그를 요청 ID로 조회해 장소·사용자·버전·실험 단계·후보 출처·순위·혜택 점수를 반환하는지 확인. */
     @Test
-    void getRecommendationExplanationReturnsFeatureLogsForAdmin() throws Exception {
+    void returnsAdminRecommendationExplanation() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("관리자 설명 장소")
@@ -619,8 +635,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.items[0].availabilityScore").value(0.04d));
     }
 
+    /** 추천 설명이 없는 요청 ID는 전용 오류 코드와 404로 응답하는지 확인. */
     @Test
-    void getRecommendationExplanationReturnsNotFoundWhenMissing() throws Exception {
+    void rejectsMissingRecommendationExplanation() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(get("/admin/places/recommendations/{requestId}/explanation", "missing-request-id")
@@ -629,8 +646,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_EXPLANATION_NOT_FOUND"));
     }
 
+    /** 숫자 키워드 7이 등록자 7에는 일치하고 77에는 부분 일치하지 않는지 확인. */
     @Test
-    void listPlacesMatchesRegistrantUserIdExactlyWhenKeywordIsNumeric() throws Exception {
+    void matchesRegistrantIdExactly() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace firstPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -660,8 +678,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /** 숨겨진 장소도 관리자가 상세 조회할 수 있고 대표 이미지·관광 정보·작성자 및 연결 게시글 상태를 반환하는지 확인. */
     @Test
-    void getPlaceReturnsPlaceAndLinkedPosts() throws Exception {
+    void returnsPlaceWithLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
         User placeOwner = userRepository.save(User.builder()
                 .username("placeOwner")
@@ -724,8 +743,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.posts[0].hiddenReason").value(nullValue()));
     }
 
+    /** 숨김 게시글의 사유·작성자·제목·생성 시각은 관리자에게 제공하고 공개 사진 수와 숨김 사진 수는 구분하는지 확인. */
     @Test
-    void getPlaceReturnsHiddenPostStatusReasonAndIdentity() throws Exception {
+    void returnsHiddenPostDetails() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("숨김 게시글 장소")
@@ -763,8 +783,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.posts[0].createdAt").isNotEmpty());
     }
 
+    /** 상세의 게시글 MOST_LIKED 정렬은 좋아요 9개 사진을 2개 사진보다 먼저 반환하는지 확인. */
     @Test
-    void getPlaceSortsPostsByMostLiked() throws Exception {
+    void sortsPlacePostsByLikes() throws Exception {
         String accessToken = createAdminAndLogin();
         User placeOwner = userRepository.save(User.builder()
                 .username("placeSortOwner")
@@ -817,8 +838,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.posts[1].title").value("좋아요 적은 사진"));
     }
 
+    /** 존재하지 않는 장소 상세 조회가 PLACE_NOT_FOUND와 404를 반환하는지 확인. */
     @Test
-    void getPlaceReturnsNotFoundWhenPlaceDoesNotExist() throws Exception {
+    void rejectsMissingPlaceDetail() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(get("/admin/places/{id}", 9999L)
@@ -827,6 +849,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /** 장소 삭제 시 연결 게시글과 관광 정보 가드 행을 제거하고 장소·게시글 감사 기록 및 삭제 건수를 남기는지 확인. */
     @Test
     void deletePlaceDeletesLinkedPosts() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -892,8 +915,9 @@ class AdminMapPlaceControllerTest {
                 .anyMatch(log -> log.getBeforeState().contains("\"operatingStatus\":\"OPERATING\"")));
     }
 
+    /** 장소에 연결된 두 사용자의 북마크와 추세 이벤트를 제거하고 감사 기록의 삭제 북마크 수를 확인. */
     @Test
-    void deletePlaceDeletesAllUserBookmarksAndBookmarkTrendEvents() throws Exception {
+    void deletesPlaceBookmarkReferences() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
                 .name("즐겨찾기 삭제 대상 장소")
@@ -930,8 +954,9 @@ class AdminMapPlaceControllerTest {
                 .anyMatch(log -> log.getAfterState().contains("\"deletedBookmarkCount\":2")));
     }
 
+    /** 체크인이 연결된 장소 삭제는 409로 거부하고 장소와 체크인 이력을 보존하는지 확인. */
     @Test
-    void deletePlaceReturnsConflictWhenLocationCheckInExists() throws Exception {
+    void blocksDeletionWithCheckIn() throws Exception {
         String accessToken = createAdminAndLogin();
         String touristUsername = "checkInTourist" + ADMIN_SEQUENCE.incrementAndGet();
         User tourist = userRepository.saveAndFlush(User.builder()
@@ -970,8 +995,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(locationCheckInRepository.existsByPlaceId(mapPlace.getId()));
     }
 
+    /** 좌표 API가 위경도·ADMIN 출처와 공간 좌표의 X=경도·Y=위도를 일관되게 저장하는지 확인. */
     @Test
-    void updatePlaceCoordinatesUpdatesLatitudeLongitudeAndLocation() throws Exception {
+    void updatesPlaceSpatialCoordinates() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -1005,8 +1031,9 @@ class AdminMapPlaceControllerTest {
         assertEquals(35.1796, updatedPlace.getLocation().getY());
     }
 
+    /** 이름·카테고리·사유를 정규화해 저장하고 감사 기록에 대상 ID 및 변경 전후 값을 보존하는지 확인. */
     @Test
-    void updatePlaceBasicInformationUpdatesValuesAndRecordsAuditLog() throws Exception {
+    void auditsBasicInformationUpdate() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("기존 장소명")
@@ -1050,8 +1077,9 @@ class AdminMapPlaceControllerTest {
         assertNotNull(auditLog.getCreatedAt());
     }
 
+    /** 기본 정보 변경의 공백 장소명을 400과 name 필드 검증 메시지로 거부하는지 확인. */
     @Test
-    void updatePlaceBasicInformationRejectsBlankName() throws Exception {
+    void rejectsBlankPlaceName() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("기본 정보 검증 장소")
@@ -1073,8 +1101,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.errors.name").value("장소명은 필수입니다."));
     }
 
+    /** 정의되지 않은 카테고리 변경은 400으로 거부하고 기존 카테고리와 빈 감사 기록을 유지하는지 확인. */
     @Test
-    void updatePlaceBasicInformationRejectsInvalidCategory() throws Exception {
+    void rejectsInvalidPlaceCategory() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("카테고리 검증 장소")
@@ -1101,8 +1130,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(adminAuditLogRepository.findAll().isEmpty());
     }
 
+    /** 같은 장소 좌표를 두 번 연속 갱신해도 추천 재동기화 Outbox 행이 하나만 등록되는지 확인. 이벤트 상태별 필터는 직접 검증 대상에서 제외. */
     @Test
-    void repeatedCoordinateUpdatesCoalesceWaitingRecommendationResyncEvent() throws Exception {
+    void coalescesCoordinateResyncEvents() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("좌표 연속 수정 장소")
@@ -1131,8 +1161,9 @@ class AdminMapPlaceControllerTest {
         assertEquals(1L, waitingResyncEventCount);
     }
 
+    /** 주소 공백을 정리하고 관리자 출처로 저장하며 주소 검수 감사 기록과 추천 재동기화 Outbox 등록을 확인. */
     @Test
-    void updatePlaceGeocodingUpdatesNormalizedAddressAndWritesAuditLog() throws Exception {
+    void auditsNormalizedGeocodingUpdate() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("주소 보정 장소")
@@ -1174,8 +1205,9 @@ class AdminMapPlaceControllerTest {
                 .anyMatch(event -> event.getEventType() == OutboxEventType.PLACE_RECOMMENDATION_RESYNC_REQUESTED));
     }
 
+    /** Kakao 장소 ID를 교체하면 응답·저장 값과 ID 변경 감사 기록이 반영되는지 확인. */
     @Test
-    void updatePlaceKakaoPlaceIdReconnectsPlace() throws Exception {
+    void reconnectsKakaoPlaceIdentifier() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -1205,8 +1237,9 @@ class AdminMapPlaceControllerTest {
         assertEquals(AdminAuditAction.PLACE_KAKAO_PLACE_ID_UPDATED, adminAuditLogRepository.findAll().getFirst().getAction());
     }
 
+    /** 다른 장소가 사용하는 Kakao ID로 변경하면 전용 충돌 코드와 409를 반환하는지 확인. */
     @Test
-    void updatePlaceKakaoPlaceIdRejectsDuplicateId() throws Exception {
+    void rejectsDuplicateKakaoIdentifier() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mapPlaceRepository.save(MapPlace.builder()
@@ -1237,8 +1270,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_KAKAO_PLACE_ID_CONFLICT"));
     }
 
+    /** 영문명·설명·사유의 공백을 정리하고 카테고리를 갱신하며 관광 정보의 변경 전후를 감사 로그에 남기는지 확인. */
     @Test
-    void updatePlaceTouristInfoNormalizesValuesAndRecordsAuditLog() throws Exception {
+    void auditsTouristInformationUpdate() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -1285,8 +1319,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(auditLog.getAfterState().contains("\"touristCategories\":[\"K_POP\",\"CAFE\"]"));
     }
 
+    /** 임시 휴업 상태·확인 시각을 저장하고 감사 로그에 변경 전후 상태와 확인 사유를 기록하는지 확인. */
     @Test
-    void updatePlaceOperatingStatusRecordsConfirmationAndAuditLog() throws Exception {
+    void auditsOperatingStatusUpdate() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("운영 상태 확인 장소")
@@ -1321,8 +1356,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(auditLog.getAfterState().contains("\"operatingStatus\":\"TEMPORARILY_CLOSED\""));
     }
 
+    /** 관리자의 노출 숨김 요청이 저장 상태·감사 로그·전이 카운터 증가에 반영되는지 확인. 일반 사용자 거부는 별도 테스트가 담당. */
     @Test
-    void updatePlaceDiscoveryStatusRequiresAdminAndRecordsAuditLogAndMetrics() throws Exception {
+    void auditsDiscoveryStatusUpdate() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("탐색 노출 검수 장소")
@@ -1366,8 +1402,9 @@ class AdminMapPlaceControllerTest {
         );
     }
 
+    /** 일반 사용자의 관리자 노출 상태 변경을 403으로 막는지 확인. */
     @Test
-    void updatePlaceDiscoveryStatusRejectsNormalUser() throws Exception {
+    void rejectsUserDiscoveryUpdate() throws Exception {
         String accessToken = createUserAndLogin("normalDiscoveryUser", UserRole.USER);
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("일반 사용자 접근 차단 장소")
@@ -1388,8 +1425,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isForbidden());
     }
 
+    /** 근거 생성·목록·관리자 검토를 HTTP로 연결해 장소 검증 요약과 시각, 제출·검토 메트릭, Outbox와 감사 기록을 확인. */
     @Test
-    void managePlaceInformationEvidenceCreatesListsReviewsAndRecordsSideEffects() throws Exception {
+    void reviewsEvidenceWithTrackedEffects() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("정보 출처 검증 장소")
@@ -1482,8 +1520,9 @@ class AdminMapPlaceControllerTest {
                         && log.getReason().equals("관리자 검수 완료")));
     }
 
+    /** 출처와 유형만 있고 참조·설명 payload가 없는 근거 등록 요청을 400으로 거부하는지 확인. */
     @Test
-    void createPlaceInformationEvidenceRejectsEmptyPayload() throws Exception {
+    void rejectsEmptyPlaceEvidence() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("빈 증빙 거부 장소")
@@ -1504,8 +1543,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /** 관리자 검토에서 허용하지 않는 SOURCE_CONFIRMED는 400, 존재하지 않는 근거 ID는 404로 구분하는지 확인. */
     @Test
-    void reviewPlaceInformationEvidenceRejectsInvalidStatusAndMissingEvidence() throws Exception {
+    void rejectsInvalidEvidenceReview() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("검토 실패 장소")
@@ -1550,8 +1590,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /** 일반 사용자의 근거 생성은 403으로 막고 관리자의 없는 장소 근거 조회는 404로 응답하는지 확인. */
     @Test
-    void placeInformationEvidenceApiRequiresAdminAndExistingPlace() throws Exception {
+    void guardsPlaceEvidenceAccess() throws Exception {
         String userToken = createUserAndLogin("normalInformationEvidenceUser", UserRole.USER);
         String adminToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -1578,8 +1619,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /** 일반·야간 영업시간과 휴무·변경시간 예외를 저장해 DB 행 개수, 상세 조회, 감사 로그에 일정이 반영되는지 확인. */
     @Test
-    void updatePlaceOperatingSchedulePersistsExceptionsAndRecordsAuditLog() throws Exception {
+    void persistsAuditedOperatingSchedule() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("영업시간 수정 장소")
@@ -1646,8 +1688,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.operatingExceptions", hasSize(2)));
     }
 
+    /** 같은 월요일의 09~18시와 17~21시 구간 중복을 일정 입력 오류로 거부하는지 확인. */
     @Test
-    void updatePlaceOperatingScheduleRejectsOverlappingRegularHours() throws Exception {
+    void rejectsOverlappingRegularHours() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("영업시간 검증 장소")
@@ -1672,8 +1715,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
     }
 
+    /** 전날 22~02시 예외와 다음날 01~03시 예외가 날짜를 넘어 겹치면 거부하는지 확인. */
     @Test
-    void updatePlaceOperatingScheduleRejectsExceptionHoursThatOverlapAcrossDates() throws Exception {
+    void rejectsOvernightExceptionOverlap() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("익일 예외 일정 검증 장소")
@@ -1706,8 +1750,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
     }
 
+    /** 전날부터 다음날 02시까지 이어지는 예외와 다음날 전일 휴무의 충돌을 거부하는지 확인. */
     @Test
-    void updatePlaceOperatingScheduleRejectsClosedExceptionThatConflictsWithPreviousOvernightHours() throws Exception {
+    void rejectsClosureAfterOvernightException() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("휴무 예외 일정 검증 장소")
@@ -1736,8 +1781,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_OPERATING_SCHEDULE_INVALID_REQUEST"));
     }
 
+    /** 사유만 전달해 선택 관광 정보를 생략하면 영문명·설명·카테고리와 관광 정보 가드 행이 제거되는지 확인. */
     @Test
-    void updatePlaceTouristInfoClearsOptionalValuesWhenOmitted() throws Exception {
+    void clearsOmittedTouristInformation() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace mapPlace = MapPlace.builder()
@@ -1787,8 +1833,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.touristCategories").isEmpty());
     }
 
+    /** 관광 정보 변경에 공백 사유를 보내면 reason 필드 오류로 400 응답하는지 확인. */
     @Test
-    void updatePlaceTouristInfoRejectsBlankReason() throws Exception {
+    void rejectsBlankTouristUpdateReason() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("관광 정보 검증 장소")
@@ -1810,8 +1857,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.errors.reason").value("수정 사유는 필수입니다."));
     }
 
+    /** 관광 카테고리 배열 내부의 null 원소를 400으로 거부하는지 확인. */
     @Test
-    void updatePlaceTouristInfoRejectsNullCategoryElement() throws Exception {
+    void rejectsNullTouristCategoryElement() throws Exception {
         String accessToken = createAdminAndLogin();
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
                 .name("관광 카테고리 검증 장소")
@@ -1832,8 +1880,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /** 두 버전의 70/30 비율과 비활성 fallback 정책을 저장하고 정책 수와 kill switch 감사 기록을 확인. */
     @Test
-    void updateRecommendationTrafficOverridesTrafficPercentages() throws Exception {
+    void updatesRecommendationTrafficPolicy() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MvcResult result = mockMvc.perform(patch("/admin/places/recommendation-traffic")
@@ -1884,8 +1933,9 @@ class AdminMapPlaceControllerTest {
         );
     }
 
+    /** 활성 버전 비율 합계가 80이면 합계 오류로 400을 반환하는지 확인. */
     @Test
-    void updateRecommendationTrafficRejectsInvalidTotal() throws Exception {
+    void rejectsIncompleteTrafficTotal() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(patch("/admin/places/recommendation-traffic")
@@ -1902,8 +1952,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID"));
     }
 
+    /** 전체 버전 중 하나만 전달한 정책 갱신을 합계 오류로 거부하는지 확인. */
     @Test
-    void updateRecommendationTrafficRejectsPartialPolicyUpdate() throws Exception {
+    void rejectsPartialTrafficPolicies() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(patch("/admin/places/recommendation-traffic")
@@ -1919,8 +1970,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_TOTAL_INVALID"));
     }
 
+    /** 비활성 버전에서 fallback을 생략하면 정책 입력 오류로 거부하는지 확인. */
     @Test
-    void updateRecommendationTrafficRejectsDisabledPolicyWithoutFallbackVersion() throws Exception {
+    void requiresDisabledVersionFallback() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(patch("/admin/places/recommendation-traffic")
@@ -1937,8 +1989,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST"));
     }
 
+    /** 비활성 두 버전이 서로를 fallback으로 지정한 순환을 입력 오류로 거부하는지 확인. */
     @Test
-    void updateRecommendationTrafficRejectsFallbackCycle() throws Exception {
+    void rejectsTrafficFallbackCycle() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mockMvc.perform(patch("/admin/places/recommendation-traffic")
@@ -1965,6 +2018,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST"));
     }
 
+    /** 이름·주소와 가까운 좌표가 같은 두 장소만 중복 그룹으로 묶고 대표 ID와 판정 이유를 반환하는지 확인. */
     @Test
     void listDuplicatePlacesReturnsDuplicateGroups() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -2007,6 +2061,7 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.groups[0].reasons[0]").value("NAME_ADDRESS_COORDINATE"));
     }
 
+    /** 지정 장소의 상세 중복 후보로 가까운 동명·동주소 장소 한 건과 판정 이유를 반환하는지 확인. */
     @Test
     void getDuplicatePlaceReturnsCandidates() throws Exception {
         String accessToken = createAdminAndLogin();
@@ -2039,8 +2094,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.candidates[0].reason").value("NAME_ADDRESS_COORDINATE"));
     }
 
+    /** 장소 병합이 원본 삭제·Kakao ID 이전·게시글 이동·북마크/전환 중복 정리·추천 snapshot 재집계와 감사/복구 이력을 함께 남기는지 확인. */
     @Test
-    void mergePlacesMovesReferencesAndDeletesSourcePlace() throws Exception {
+    void mergesPlaceReferencesAndMetrics() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace sourcePlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2190,8 +2246,9 @@ class AdminMapPlaceControllerTest {
         assertEquals(1, adminPlaceMergeHistoryRepository.findAll().size());
     }
 
+    /** 원본에 체크인이 있으면 병합을 409로 막고 두 장소와 원본 체크인을 보존하는지 확인. */
     @Test
-    void mergePlacesReturnsConflictWhenSourcePlaceHasLocationCheckIn() throws Exception {
+    void blocksMergeWithSourceCheckIn() throws Exception {
         String accessToken = createAdminAndLogin();
         String touristUsername = "mergeCheckInTourist" + ADMIN_SEQUENCE.incrementAndGet();
         User tourist = userRepository.saveAndFlush(User.builder()
@@ -2244,8 +2301,9 @@ class AdminMapPlaceControllerTest {
         assertTrue(locationCheckInRepository.existsByPlaceId(sourcePlace.getId()));
     }
 
+    /** 병합 이력 snapshot에서 photoCount를 제거한 구형 데이터를 복구해 게시글·북마크·추천 참조, 관광 정보와 영업 일정을 되돌리는지 확인. */
     @Test
-    void listMergeHistoriesAndRestoreMergeWork() throws Exception {
+    void restoresLegacyMergeSnapshot() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace sourcePlace = MapPlace.builder()
@@ -2407,8 +2465,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.operatingExceptions[0].closed").value(true));
     }
 
+    /** 저장 snapshot을 smoothed CTR 순으로 조회하고 원시 CTR 및 북마크·좋아요·전체 전환율을 노출 수 기준으로 계산하는지 확인. */
     @Test
-    void listRecommendationMetricsReturnsSortedCtrMetrics() throws Exception {
+    void sortsMetricsBySmoothedCtr() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace highCtrPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2475,8 +2534,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[1].name").value("CTR 낮은 장소"));
     }
 
+    /** 노출 수가 다른 두 snapshot을 총 전환율 0.2와 0.05 순으로 반환하는지 확인. */
     @Test
-    void listRecommendationMetricsSortsByTotalConversionRate() throws Exception {
+    void sortsMetricsByConversionRate() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace highConversionPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2533,8 +2593,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[1].totalConversionRate").value(0.05d));
     }
 
+    /** 갱신 시각 정렬에서 최신·이전 snapshot을 먼저 반환하고 snapshot 없는 장소는 마지막에 두는지 확인. */
     @Test
-    void listRecommendationMetricsSortsUpdatedAtWithNullSnapshotsLast() throws Exception {
+    void sortsMissingSnapshotsLast() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace recentPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2594,8 +2655,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[2].name").value("미갱신 장소"));
     }
 
+    /** 버전별 이벤트를 재동기화한 후 v1 필터가 다른 버전의 전환을 제외하고 클릭 순·노출·전환 수를 반영하는지 확인. */
     @Test
-    void listRecommendationMetricsFiltersByRecommendationVersion() throws Exception {
+    void filtersMetricsByVersion() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace versionOnePlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2698,8 +2760,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[1].likeConversionCount").value(1));
     }
 
+    /** 최근 1일 조회는 오래된 누적 snapshot 대신 기간 내 이벤트를 집계해 과거 반응만 있는 장소의 클릭을 0으로 처리하는지 확인. */
     @Test
-    void listRecommendationMetricsFiltersByRecentDays() throws Exception {
+    void filtersMetricsByRecentDays() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace recentPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2763,8 +2826,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[1].clickCount").value(0));
     }
 
+    /** 기간·버전·키워드·클릭 정렬·페이지 조건을 함께 적용하고 범위 밖 이벤트를 제외한 두 번째 장소와 페이지 총계를 확인. */
     @Test
-    void listRecommendationMetricsCombinesDaysVersionSortAndPagination() throws Exception {
+    void combinesPeriodMetricFilters() throws Exception {
         String accessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now();
 
@@ -2803,8 +2867,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[0].likeConversionCount").value(1));
     }
 
+    /** 클릭 수가 순차 감소하는 다섯 장소에서 크기 2의 두 번째 페이지가 세 번째·네 번째 장소를 반환하는지 확인. */
     @Test
-    void listRecommendationMetricsPaginatesStableOrderForPeriodClickSort() throws Exception {
+    void paginatesPeriodClickMetrics() throws Exception {
         String accessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now();
 
@@ -2839,8 +2904,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.metrics[1].clickCount").value(7));
     }
 
+    /** 두 추천 버전의 최근 노출·클릭·전환 요약과 target-minus-baseline 차이를 HTTP 응답으로 확인. */
     @Test
-    void compareRecommendationMetricsReturnsVersionSummaryAndDelta() throws Exception {
+    void comparesVersionMetricDeltas() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace comparePlace = mapPlaceRepository.save(MapPlace.builder()
@@ -2930,8 +2996,9 @@ class AdminMapPlaceControllerTest {
                 .andExpect(jsonPath("$.delta.likeConversionCount").value(1));
     }
 
+    /** 현재 장소의 사진·좋아요·노출·클릭·전환을 다시 집계하고 존재하지 않는 장소의 일반·유사도 snapshot을 제거하는지 확인. */
     @Test
-    void resyncRecommendationSnapshotsRebuildsCurrentPlacesAndRemovesOrphans() throws Exception {
+    void rebuildsSnapshotsAndRemovesOrphans() throws Exception {
         String accessToken = createAdminAndLogin();
 
         MapPlace mapPlace = mapPlaceRepository.save(MapPlace.builder()
@@ -3055,8 +3122,9 @@ class AdminMapPlaceControllerTest {
         assertEquals(0L, placeSimilaritySnapshotRepository.count());
     }
 
+    /** 인접한 두 장소를 재동기화하면 유사도 쌍 하나가 저장되고 응답 건수와 일치하는지 확인. */
     @Test
-    void resyncRecommendationSnapshotsSynchronizesPlaceSimilaritySnapshots() throws Exception {
+    void rebuildsPlaceSimilaritySnapshot() throws Exception {
         String accessToken = createAdminAndLogin();
 
         mapPlaceRepository.save(MapPlace.builder()
@@ -3088,11 +3156,13 @@ class AdminMapPlaceControllerTest {
         assertEquals(1L, placeSimilaritySnapshotRepository.count());
     }
 
+    /** 증가하는 이름의 관리자 계정을 생성하고 실제 로그인 API로 access token을 발급받음. */
     private String createAdminAndLogin() throws Exception {
         String username = "adminPlaceTester" + ADMIN_SEQUENCE.incrementAndGet();
         return createUserAndLogin(username, UserRole.ADMIN);
     }
 
+    /** 지정 역할 계정을 DB에 저장하고 HTTP 로그인 성공 응답의 access token을 반환. refresh token 등 로그인 부작용도 발생. */
     private String createUserAndLogin(String username, UserRole role) throws Exception {
         userRepository.save(User.builder()
                 .username(username)
@@ -3116,6 +3186,7 @@ class AdminMapPlaceControllerTest {
                 .textValue();
     }
 
+    /** 지정 전후 노출 상태의 누적 카운터를 읽음. 미등록이면 0으로 취급해 요청 전후 증가량을 비교. */
     private double discoveryStatusUpdateCount(PlaceDiscoveryStatus fromStatus, PlaceDiscoveryStatus toStatus) {
         var counter = meterRegistry.find("pingdom.place.discovery_status_updates")
                 .tag("from_status", fromStatus.name())
@@ -3124,6 +3195,7 @@ class AdminMapPlaceControllerTest {
         return counter == null ? 0.0d : counter.count();
     }
 
+    /** 출처별 근거 제출 카운터를 읽고 아직 생성되지 않은 계측기는 0으로 반환. */
     private double informationEvidenceSubmittedCount(PlaceInformationSourceType sourceType) {
         var counter = meterRegistry.find("pingdom.place.information_evidence_submitted")
                 .tag("source_type", sourceType.name())
@@ -3131,6 +3203,7 @@ class AdminMapPlaceControllerTest {
         return counter == null ? 0.0d : counter.count();
     }
 
+    /** 검증 상태 전이 카운터의 현재값을 읽어 공유 registry의 누적값에 의존하지 않고 증가분을 검사. */
     private double informationVerificationStatusUpdateCount(
             PlaceInformationVerificationStatus fromStatus,
             PlaceInformationVerificationStatus toStatus
@@ -3142,6 +3215,7 @@ class AdminMapPlaceControllerTest {
         return counter == null ? 0.0d : counter.count();
     }
 
+    /** 추천 지표 비교에 필요한 장소명·등록자·좌표·사진 수를 실제 저장소에 저장. */
     private MapPlace saveMetricPlace(String name, Long userId, double latitude, double longitude, Long photoCount) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
@@ -3154,6 +3228,7 @@ class AdminMapPlaceControllerTest {
                 .build());
     }
 
+    /** 지정 시각부터 초 단위로 차이를 둔 노출·클릭·북마크/좋아요 전환을 DB에 저장. sequenceSeed로 사용자와 연결 식별자 충돌을 회피. */
     private void seedPeriodMetric(
             Long placeId,
             String recommendationVersion,

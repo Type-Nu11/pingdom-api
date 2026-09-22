@@ -20,6 +20,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 게시된 미종료 장소 행사를 검색하고 조회 시점 기준의 진행 상태를 반환.
+ * 검색 기간은 시작보다 종료가 늦어야 하며 응답 날짜에는 UTC offset을 붙임.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceEventQueryService {
@@ -29,6 +33,11 @@ public class PlaceEventQueryService {
     private final PlaceEventRepository placeEventRepository;
     private final Clock clock;
 
+    /**
+     * 종료 전 공개 행사를 선택적 유형·기간 겹침 조건으로 조회하고 시작 시각·ID 오름차순으로 반환.
+     * 양쪽 기간이 주어지면 종료가 시작보다 뒤여야 하며 페이지는 1~10,000, 크기는 1~100으로 보정.
+     * 아직 시작하지 않은 행사도 포함하고 진행 상태는 같은 조회 시각으로 계산.
+     */
     @Transactional(readOnly = true)
     public PlaceEventListResponse listDiscoverableEvents(
             PlaceEventType eventType,
@@ -65,6 +74,10 @@ public class PlaceEventQueryService {
         );
     }
 
+    /**
+     * 공개 상태이고 종료 시각이 현재보다 뒤인 행사의 장소 정보와 상세를 반환.
+     * 해당 조건에 맞지 않으면 PLACE_EVENT_NOT_FOUND로 처리하며 저장된 행사 시각에는 UTC 오프셋을 붙임.
+     */
     @Transactional(readOnly = true)
     public PlaceEventDetailResponse getDiscoverableEvent(Long eventId) {
         LocalDateTime now = LocalDateTime.now(clock);

@@ -11,6 +11,10 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 관광객·현재 장소 소유자별 예약과 관리자 검색을 제공.
+ * 관리자 예약 시각 필터는 시작 이상·종료 미만이며, ForUpdate 조회의 잠금은 호출 트랜잭션에 종속됨.
+ */
 public interface ReservationRepository extends JpaRepository<Reservation, Long> {
     @Query("""
             select count(reservation)

@@ -15,7 +15,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
-/** Presigned URL로 발급한 탐색 미디어 객체의 등록 가능 범위를 보존합니다. */
+/** Presigned URL로 발급한 탐색 미디어 객체의 등록 가능 범위를 보존. */
 @Getter
 @Entity
 @Table(name = "merchant_place_media_upload")

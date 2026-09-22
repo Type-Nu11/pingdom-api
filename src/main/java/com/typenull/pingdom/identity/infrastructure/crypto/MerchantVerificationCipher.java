@@ -9,6 +9,10 @@ import javax.crypto.spec.GCMParameterSpec;
 import javax.crypto.spec.SecretKeySpec;
 import org.springframework.stereotype.Component;
 
+/**
+ * 사업자 검증 정보를 AES-256-GCM으로 암호화하고 버전·IV·암호문을 하나의 문자열로 저장.
+ * 매 암호화마다 새 12바이트 IV를 사용하며 키 형식·길이는 생성 시 확인.
+ */
 @Component
 public class MerchantVerificationCipher {
 

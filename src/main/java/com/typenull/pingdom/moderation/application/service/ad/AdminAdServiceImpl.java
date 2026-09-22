@@ -25,6 +25,11 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 
+/**
+ * 관리자 광고의 조회·등록·삭제와 감사 기록 조정.
+ * 노출 기간의 시작 이상·종료 미만이면 별도 상태 저장 없이 ACTIVE로 계산.
+ * 등록 시 기간 순서만 검증하며 URL의 실제 접근 가능성은 검증 범위에서 제외.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminAdServiceImpl implements AdminAdService {
@@ -33,6 +38,10 @@ public class AdminAdServiceImpl implements AdminAdService {
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
 
+    /**
+     * 제목 검색·시작 기간·현재 노출 상태에 맞는 광고를 최신 생성순으로 조회.
+     * page는 1~10,000, limit는 1~100으로 보정하고 같은 Clock 시각으로 조회 조건과 응답의 노출 상태를 계산.
+     */
     @Override
     @Transactional(readOnly = true)
     public AdminAdListResponse list(String keyword, AdminAdDisplayStatus displayStatus,
@@ -70,6 +79,10 @@ public class AdminAdServiceImpl implements AdminAdService {
                 ad.getStartAt(), ad.getEndAt(), status, ad.getCreatedAt(), ad.getUpdatedAt());
     }
 
+    /**
+     * 시작·종료 시각이 존재하고 종료가 더 늦은 광고만 생성해 새 ID와 기간을 반환.
+     * 기간 오류는 AD_INVALID_PERIOD이며 광고와 생성 감사 기록은 같은 DB 트랜잭션에 저장.
+     */
     @Override
     @Transactional
     public AdminAdCreateResponse create(AdminAdCreateRequest request, Long adminUserId) {
@@ -104,6 +117,10 @@ public class AdminAdServiceImpl implements AdminAdService {
         );
     }
 
+    /**
+     * 존재하는 광고의 삭제와 삭제 전후 감사 기록을 같은 DB 트랜잭션에서 처리.
+     * 광고 부재 시 AD_NOT_FOUND. imageUrl이 가리키는 외부 객체는 유지.
+     */
     @Override
     @Transactional
     public void delete(Long adId, Long adminUserId) {

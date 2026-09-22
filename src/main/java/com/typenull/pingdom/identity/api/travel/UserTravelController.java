@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.travel;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentResponse;
 import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentUpdateRequest;
@@ -33,10 +36,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 현재 회원의 여행 일정과 단기 활동 의도를 관리하는 API.
+ * 일정 목록은 한 번 계산한 기준일로 표시 상태를 맞추고 소유권·기간·만료 판정은 서비스에 위임.
+ */
 @RestController
 @RequestMapping("/users/me")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.TRAVEL)
 public class UserTravelController {
 
     private final TravelScheduleService travelScheduleService;

@@ -259,4 +259,6 @@ jobs:
             done
 
             persist_deployment_image "$expected_image"
-            docker image prune -f
+            # 배포 성공 후 중지 컨테이너와 이전 SHA 태그 이미지를 정리해 EBS 사용량 누적을 방지한다.
+            docker container prune -f
+            docker image prune -af

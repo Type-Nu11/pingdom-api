@@ -4,6 +4,10 @@ import java.util.List;
 import java.util.Map;
 import org.springframework.stereotype.Service;
 
+/**
+ * 조회된 혜택·예약 가능 여부를 각각 정책 가점으로 바꾸어 최종 점수에 더함.
+ * 이 단계는 후보 순서를 유지하며 최종 정렬과 후보 선택은 포트폴리오 단계가 담당.
+ */
 @Service
 class PlaceRecommendationCommerceRankingService {
 

@@ -8,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.jdbc.core.namedparam.NamedParameterJdbcTemplate;
 import org.springframework.stereotype.Repository;
 
+/**
+ * PostGIS 경계 상자 안의 공개·운영 장소를 마커 또는 위경도 격자로 조회.
+ * 클러스터 중심은 포함 좌표의 평균이고 격자 크기는 도 단위이며 마커는 사진 수·ID 내림차순.
+ */
 @Repository
 @RequiredArgsConstructor
 public class MapViewportQueryRepository {

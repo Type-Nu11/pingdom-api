@@ -5,7 +5,7 @@ import com.typenull.pingdom.verification.domain.*;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.Instant;
 
-/** 앱이 체류 진행 상황을 표시하고 재관측 시점을 결정하는 응답입니다. */
+/** 앱이 체류 진행 상황을 표시하고 재관측 시점을 결정하는 응답. */
 public record VisitVerificationSessionResponse(
         Long id,
         Long touristUserId,
@@ -23,6 +23,10 @@ public record VisitVerificationSessionResponse(
         @Schema(nullable = true) Long completedCheckInId,
         boolean reviewEligible
 ) {
+    /**
+     * 활성 세션에만 다음 관측 권장 시각을 제공하고 남은 초의 최솟값은 0으로 제한.
+     * reviewEligible은 세션 COMPLETED 여부를 뜻하며 별도 리뷰 존재 여부는 조회 대상에서 제외.
+     */
     public static VisitVerificationSessionResponse from(VisitVerificationSession session,
             VisitVerificationProperties properties) {
         boolean completed = session.getStatus() == VisitVerificationSessionStatus.COMPLETED;

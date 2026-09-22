@@ -11,8 +11,12 @@ class ScoutProfileTest {
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 8, 1, 9, 0);
     private static final LocalDateTime REVIEWED_AT = LocalDateTime.of(2026, 8, 2, 9, 0);
 
+    /**
+     * 공백을 포함한 이름·소개로 생성한 대기 프로필을 관리자가 활성화.
+     * 사용자 ID와 정규화된 문자열, ACTIVE 상태, 심사자·심사 시각을 확인.
+     */
     @Test
-    void pendingProfileCanBeActivatedByAnAdmin() {
+    void activatePendingProfile() {
         ScoutProfile profile = ScoutProfile.pending(10L, " 현장 Scout ", " 장소 정보를 확인합니다. ", CREATED_AT);
 
         profile.activate(99L, REVIEWED_AT);
@@ -25,8 +29,12 @@ class ScoutProfileTest {
         assertThat(profile.getReviewedAt()).isEqualTo(REVIEWED_AT);
     }
 
+    /**
+     * 활성 프로필 정지 시 공백 사유는 거부하고 정상 사유로는 SUSPENDED 상태와 사유를 기록.
+     * 검증 범위는 정지 동작으로 한정하며 회수 동작은 제외.
+     */
     @Test
-    void suspendedAndRevokedProfilesRequireAReason() {
+    void requireSuspensionReason() {
         ScoutProfile profile = ScoutProfile.pending(10L, "Scout", null, CREATED_AT);
         profile.activate(99L, REVIEWED_AT);
 

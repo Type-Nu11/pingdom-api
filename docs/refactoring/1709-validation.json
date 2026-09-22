@@ -1,0 +1,215 @@
+{
+  "issue": 1709,
+  "baseline": "0388d61b90344c880f4e720d3163b36ce71e3474",
+  "executedTestClasses": 56,
+  "executedTestCases": 334,
+  "failedTests": 0,
+  "testBatches": [
+    {
+      "scope": "verification 정책·증빙 대표 단위 테스트",
+      "classes": 2,
+      "tests": 6,
+      "selectedClasses": [
+        "com.typenull.pingdom.verification.application.VisitVerificationPolicyResolverTest",
+        "com.typenull.pingdom.verification.application.VisitEvidenceServiceTest"
+      ],
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "scope": "verification 저장·파일·상태 전이 단위 테스트",
+      "classes": 10,
+      "tests": 47,
+      "selectedClasses": [
+        "com.typenull.pingdom.verification.application.VisitEvidencePersistenceServiceTest",
+        "com.typenull.pingdom.verification.application.VisitEvidenceFileValidatorTest",
+        "com.typenull.pingdom.verification.application.VisitEvidenceRetentionServiceTest",
+        "com.typenull.pingdom.verification.application.LocationCheckInServiceTest",
+        "com.typenull.pingdom.verification.domain.ScoutProfileTest",
+        "com.typenull.pingdom.verification.domain.ScoutProfileTransitionBoundaryTest",
+        "com.typenull.pingdom.verification.domain.ScoutActivityEligibilityTest",
+        "com.typenull.pingdom.verification.domain.ScoutEligibilityTransitionBoundaryTest",
+        "com.typenull.pingdom.verification.application.VisitVerificationServiceTest",
+        "com.typenull.pingdom.verification.application.VisitVerificationPropertiesBindingTest"
+      ],
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "scope": "verification 서비스·DTO·도메인 단위 테스트",
+      "classes": 13,
+      "tests": 81,
+      "selectedClasses": [
+        "com.typenull.pingdom.verification.api.dto.VisitorVerificationReportCorrectionRequestValidationTest",
+        "com.typenull.pingdom.verification.api.dto.ScoutFieldReportCreateRequestValidationTest",
+        "com.typenull.pingdom.verification.api.dto.ScoutProfileRequestValidationTest",
+        "com.typenull.pingdom.verification.api.dto.VisitorVerificationReportCreateRequestValidationTest",
+        "com.typenull.pingdom.verification.application.ScoutEligibilityPolicyBoundaryTest",
+        "com.typenull.pingdom.verification.application.ScoutEligibilityPolicyTest",
+        "com.typenull.pingdom.verification.application.ScoutFieldReportServiceTest",
+        "com.typenull.pingdom.verification.application.ScoutProfileServiceScenarioTest",
+        "com.typenull.pingdom.verification.application.ScoutProfileServiceTest",
+        "com.typenull.pingdom.verification.application.VisitorVerificationReportCorrectionServiceTest",
+        "com.typenull.pingdom.verification.application.VisitorVerificationReportServiceTest",
+        "com.typenull.pingdom.verification.domain.ScoutFieldReportTest",
+        "com.typenull.pingdom.verification.domain.VisitorVerificationReportTest"
+      ],
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0
+    },
+    {
+      "scope": "shared 보안·rate limit·Outbox 및 place API·도메인 단위 테스트",
+      "classes": 19,
+      "tests": 74,
+      "failures": 0,
+      "errors": 0,
+      "selectedClasses": [
+        "com.typenull.pingdom.shared.ratelimit.store.RedisRateLimitStoreTest",
+        "com.typenull.pingdom.shared.security.access.UserAccessStatusServiceTest",
+        "com.typenull.pingdom.place.domain.place.core.MapPlaceTest",
+        "com.typenull.pingdom.place.api.dto.conversion.MapLinkConversionRequestTest",
+        "com.typenull.pingdom.place.api.PlaceReviewMediaControllerTest",
+        "com.typenull.pingdom.place.domain.place.category.PlaceCategoryPolicyTest",
+        "com.typenull.pingdom.shared.ratelimit.service.AbuseRateLimitServiceTest",
+        "com.typenull.pingdom.shared.outbox.application.OutboxEventWorkerTest",
+        "com.typenull.pingdom.shared.security.jwt.JwtTokenProviderTest",
+        "com.typenull.pingdom.place.api.dto.review.ReviewResponseImageSnapshotTest",
+        "com.typenull.pingdom.place.api.MyPlaceReviewControllerTest",
+        "com.typenull.pingdom.shared.outbox.domain.OutboxEventTest",
+        "com.typenull.pingdom.shared.outbox.application.OutboxEventProcessorTest",
+        "com.typenull.pingdom.shared.outbox.application.OutboxEventStateServiceTest",
+        "com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisherTest",
+        "com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandlerTest",
+        "com.typenull.pingdom.shared.outbox.application.OutboxEventPublisherTest",
+        "com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxHandlerTest",
+        "com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplicationTest"
+      ],
+      "skipped": 0
+    },
+    {
+      "scope": "아키텍처·MethodSource·응답 검증·Kakao/Naver 지역 해석기 단위 테스트",
+      "classes": 12,
+      "tests": 126,
+      "failures": 0,
+      "errors": 0,
+      "skipped": 0,
+      "selectedClasses": [
+        "com.typenull.pingdom.place.infrastructure.localhot.NaverPlaceAdministrativeRegionResolverCacheTest",
+        "com.typenull.pingdom.architecture.ControllerConventionTest",
+        "com.typenull.pingdom.architecture.EntityRepositoryConventionTest",
+        "com.typenull.pingdom.architecture.ExceptionConventionTest",
+        "com.typenull.pingdom.architecture.PackageConventionTest",
+        "com.typenull.pingdom.architecture.SensitiveLoggingConventionTest",
+        "com.typenull.pingdom.architecture.ServiceTransactionConventionTest",
+        "com.typenull.pingdom.architecture.TestSourceConventionTest",
+        "com.typenull.pingdom.consultation.application.ProviderEnvelopeValidatorTest",
+        "com.typenull.pingdom.moderation.application.service.ReportModerationPermissionTest",
+        "com.typenull.pingdom.place.infrastructure.localhot.KakaoPlaceAdministrativeRegionResolverTest",
+        "com.typenull.pingdom.place.infrastructure.localhot.NaverPlaceAdministrativeRegionResolverTest"
+      ]
+    }
+  ],
+  "staticChecks": {
+    "testJavadocAndReferences": {
+      "javaFiles": 402,
+      "filesWithMethods": 377,
+      "methods": 2369,
+      "missingKoreanJavadoc": 0,
+      "emptyConstructorsWithoutJavadoc": 0,
+      "duplicateSignatures": 0,
+      "longTestNamesOver65": 0,
+      "methodSources": 9,
+      "unresolvedMethodSources": 0,
+      "oldNameReferenceCandidates": 1
+    },
+    "testDeclarationComparison": {
+      "methodDeclarationsBefore": 2369,
+      "methodDeclarationsAfter": 2369,
+      "methodAnnotationsBefore": {
+        "Test": 1461,
+        "Override": 79,
+        "DisplayName": 25,
+        "BeforeEach": 145,
+        "AfterEach": 13,
+        "DynamicPropertySource": 23,
+        "ParameterizedTest": 27,
+        "ValueSource": 12,
+        "NullSource": 1,
+        "EnumSource": 4,
+        "NullAndEmptySource": 1,
+        "MethodSource": 9,
+        "Bean": 7,
+        "Primary": 5,
+        "AfterAll": 2,
+        "BeforeAll": 5,
+        "Tag": 2,
+        "CsvSource": 2,
+        "Transactional": 1,
+        "ApiAudience": 1
+      },
+      "methodAnnotationsAfter": {
+        "Test": 1461,
+        "Override": 79,
+        "DisplayName": 25,
+        "BeforeEach": 145,
+        "AfterEach": 13,
+        "DynamicPropertySource": 23,
+        "ParameterizedTest": 27,
+        "ValueSource": 12,
+        "NullSource": 1,
+        "EnumSource": 4,
+        "NullAndEmptySource": 1,
+        "MethodSource": 9,
+        "Bean": 7,
+        "Primary": 5,
+        "AfterAll": 2,
+        "BeforeAll": 5,
+        "Tag": 2,
+        "CsvSource": 2,
+        "Transactional": 1,
+        "ApiAudience": 1
+      },
+      "errors": []
+    },
+    "oldNameReferenceAssessment": "rejectionRequiresReviewNote 후보 1건은 PlaceReviewDeletionRequestTest에 그대로 유지한 별도 정상 메서드 선언이다. 변경한 테스트 메서드의 잔여 참조가 아니다.",
+    "methodOrderAssessment": "테스트명 기반 MethodOrderer/TestMethodOrder 사용 없음.",
+    "scopePreservation": "기준 커밋 대비 Java 토큰 비교로 운영 코드의 주석·공백 외 변경이 없고 테스트는 기록된 메서드 식별자 변경만 존재함을 확인한다. annotation·문자열·assertion·fixture는 유지한다.",
+    "productionJavadocPlacement": {
+      "declarations": 5263,
+      "misplacedJavadocs": 0,
+      "files": 0
+    },
+    "tokenComparison": {
+      "changedJavaFiles": 992,
+      "renamedTestFiles": 335,
+      "renamedTestMethods": 1297,
+      "unexpectedDifferences": 0
+    },
+    "gitDiffCheck": "passed"
+  },
+  "notExecuted": [
+    "전체 테스트 suite",
+    "통합·PostgreSQL/Testcontainers·Docker 테스트",
+    "OpenAPI 실행 환경의 HTTP 계약 테스트",
+    "후속 결함 후보 재현 테스트"
+  ],
+  "notExecutedReason": "#1709 승인 범위에서 직접 관련 단위 테스트와 전체 테스트 소스 컴파일만 수행했다. 고비용 검증은 별도 승인 대상이다.",
+  "buildEnvironmentNote": "기존 build/classes의 잔여 class 산출물을 읽는 단계에서 Gradle 해시 계산이 정체되어 해당 실행을 중단했다. 기존 산출물은 보존하고 임시 buildDirectory와 별도 project-cache-dir로 재실행해 성공했다. 이는 assertion 실패가 아니며 build 설정 파일은 변경하지 않았다.",
+  "finalSourceCompile": {
+    "task": "compileTestJava",
+    "result": "BUILD SUCCESSFUL",
+    "durationSeconds": 11,
+    "command": [
+      "./gradlew",
+      "--no-daemon",
+      "-I",
+      "/private/tmp/pingdom-1709/isolated-build.gradle",
+      "--project-cache-dir",
+      "/private/tmp/pingdom-1709/gradle-cache",
+      "compileTestJava"
+    ]
+  }
+}

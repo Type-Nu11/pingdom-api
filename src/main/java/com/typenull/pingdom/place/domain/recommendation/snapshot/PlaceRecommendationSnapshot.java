@@ -11,6 +11,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소의 전체 콘텐츠·상호작용 집계를 추천 조회용으로 보관.
+ * 재동기화는 원본 집계로 덮어쓰고 증분 메서드는 전달한 delta를 더하므로 동시 갱신 제어는 호출 서비스 책임.
+ */
 @Entity
 @Table(name = "place_recommendation_snapshot")
 @Getter

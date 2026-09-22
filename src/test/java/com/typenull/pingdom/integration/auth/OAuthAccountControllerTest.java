@@ -43,6 +43,9 @@ import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.oauth2.client.authentication.OAuth2AuthenticationToken;
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
+/**
+ * Google 연동·해제 권한과 성공 핸들러의 토큰 전달을 검증. 실제 Google 서버 호출은 검증 범위에서 제외.
+ */
 @Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -69,8 +72,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     @Autowired
     private OAuth2LinkTokenService oAuth2LinkTokenService;
 
+    /**
+     * 인증된 연동 시작 요청이 연동 쿠키와 Google 인가 경로를 반환하는지 확인.
+     */
     @Test
-    void startGoogleLinkSetsLinkCookieAndReturnsAuthorizationUrl() throws Exception {
+    void startGoogleLink() throws Exception {
         User user = createUser("oauthLinkStartUser");
 
         mockMvc.perform(post("/users/me/oauth-accounts/google/link")
@@ -81,8 +87,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
                 .andExpect(jsonPath("$.authorizationUrl").value("/oauth2/authorization/google"));
     }
 
+    /**
+     * 로컬 사용자와 이메일이 일치하면 Google provider ID 연관관계가 저장되는지 확인.
+     */
     @Test
-    void linkGoogleAccountCreatesOAuthAccountWhenEmailMatches() {
+    void linkMatchingEmail() {
         User user = createUser("oauthLinkUser");
 
         oAuthAccountCommandService.linkGoogleAccount(user.getId(), "google-sub-1", user.getEmail());
@@ -90,8 +99,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "google-sub-1").isPresent());
     }
 
+    /**
+     * 다른 사용자에게 이미 연결된 provider ID는 OAUTH_ACCOUNT_ALREADY_LINKED로 거절되는지 확인.
+     */
     @Test
-    void linkGoogleAccountRejectsProviderIdAlreadyLinkedToAnotherUser() {
+    void linkOwnedProviderId() {
         User owner = createUser("oauthOwnerUser");
         User target = createUser("oauthTargetUser");
         oAuthAccountRepository.saveAndFlush(OAuthAccount.builder()
@@ -106,8 +118,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertEquals(AuthErrorCode.OAUTH_ACCOUNT_ALREADY_LINKED, exception.getErrorCode());
     }
 
+    /**
+     * 로컬 사용자 이메일과 다른 Google 이메일의 연결을 OAUTH_EMAIL_MISMATCH로 거절하는지 확인.
+     */
     @Test
-    void linkGoogleAccountRejectsEmailMismatch() {
+    void linkMismatchedEmail() {
         User user = createUser("oauthEmailMismatchUser");
 
         AuthException exception = assertThrows(AuthException.class, () ->
@@ -116,8 +131,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertEquals(AuthErrorCode.OAUTH_EMAIL_MISMATCH, exception.getErrorCode());
     }
 
+    /**
+     * 기존 로컬 이메일로 새 Google 사용자를 만들 때 계정 충돌 안내 코드를 반환하는지 확인.
+     */
     @Test
-    void oauthLoginRejectsLocalEmailConflictWithGuidanceCode() {
+    void localEmailConflict() {
         User user = createUser("oauthEmailConflictUser");
 
         OAuth2AuthenticationException exception = assertThrows(OAuth2AuthenticationException.class, () ->
@@ -126,8 +144,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertEquals(AuthErrorCode.OAUTH_EMAIL_CONFLICT.name(), exception.getError().getErrorCode());
     }
 
+    /**
+     * 비밀번호 확인 없는 마지막 Google 연결 해제를 거절하고 연관관계를 보존하는지 확인.
+     */
     @Test
-    void unlinkGoogleRejectsLastOAuthAccountWithoutPasswordConfirmation() throws Exception {
+    void unlinkWithoutPassword() throws Exception {
         User user = createUser("oauthUnlinkRequiredUser");
         linkAccount(user, "unlink-required-sub");
 
@@ -139,8 +160,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "unlink-required-sub").isPresent());
     }
 
+    /**
+     * 로컬 비밀번호가 활성화되지 않은 OAuth 전용 계정은 비밀번호를 제출해도 연결을 유지하는지 확인.
+     */
     @Test
-    void unlinkGoogleRejectsOAuthOnlyUserUntilLocalPasswordIsSet() throws Exception {
+    void unlinkOAuthOnlyUser() throws Exception {
         User user = oAuthUserService.provisionGoogleUser("oauth-only-sub", "oauth-only@example.com");
         assertFalse(user.isLocalPasswordEnabled());
         OAuthAccountDisconnectRequest request = new OAuthAccountDisconnectRequest("password123");
@@ -155,8 +179,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "oauth-only-sub").isPresent());
     }
 
+    /**
+     * 잘못된 비밀번호로 연결 해제 시 INVALID_CREDENTIALS를 반환하고 연결 행을 보존하는지 확인.
+     */
     @Test
-    void unlinkGoogleRejectsInvalidPassword() throws Exception {
+    void unlinkWrongPassword() throws Exception {
         User user = createUser("oauthUnlinkInvalidUser");
         linkAccount(user, "unlink-invalid-password-sub");
 
@@ -172,8 +199,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "unlink-invalid-password-sub").isPresent());
     }
 
+    /**
+     * 올바른 로컬 비밀번호 확인 후 linked=false 응답과 연결 행 삭제를 확인.
+     */
     @Test
-    void unlinkGoogleDeletesOAuthAccountWhenPasswordMatches() throws Exception {
+    void unlinkMatchingPassword() throws Exception {
         User user = createUser("oauthUnlinkUser");
         linkAccount(user, "unlink-success-sub");
         OAuthAccountDisconnectRequest request = new OAuthAccountDisconnectRequest("password123");
@@ -189,8 +219,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertTrue(oAuthAccountRepository.findByProviderAndProviderId(AuthProvider.GOOGLE, "unlink-success-sub").isEmpty());
     }
 
+    /**
+     * 연동 쿠키가 있는 OAuth 성공 콜백은 연동 완료로 리다이렉트하고 기존 갱신 토큰을 유지하는지 확인.
+     */
     @Test
-    void oauthLinkSuccessDoesNotRotateRefreshToken() throws Exception {
+    void linkPreservesRefreshToken() throws Exception {
         User user = createUser("oauthLinkSuccessUser");
         user.issueRefreshToken("existing-refresh-token");
         userRepository.saveAndFlush(user);
@@ -208,8 +241,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
                 .matchesRefreshToken("existing-refresh-token"));
     }
 
+    /**
+     * OAuth 로그인 후 공통 갱신 쿠키의 /auth 경로·HttpOnly 속성과 구형 쿠키 부재를 확인.
+     */
     @Test
-    void oauthLoginIssuesPersistentRefreshTokenCookie() throws Exception {
+    void oauthRefreshCookie() throws Exception {
         User user = createUser("oauthRefreshCookieUser");
         MockHttpServletResponse response = new MockHttpServletResponse();
 
@@ -231,8 +267,11 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
                 .anyMatch(header -> header.startsWith("OAUTH2_REFRESH_TOKEN=")));
     }
 
+    /**
+     * 임시 접근 쿠키 교환 시 본문에는 접근 토큰만 포함하고 응답에 쿠키 변경 헤더가 있는지 확인.
+     */
     @Test
-    void oauthTokenExchangeReturnsOnlyAccessToken() {
+    void oauthAccessTokenExchange() {
         MockHttpServletRequest request = new MockHttpServletRequest();
         request.setCookies(new Cookie("OAUTH2_ACCESS_TOKEN", "oauth-access-token"));
         MockHttpServletResponse response = new MockHttpServletResponse();
@@ -246,6 +285,9 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         assertTrue(response.getHeader(HttpHeaders.SET_COOKIE).contains("OAUTH2_ACCESS_TOKEN="));
     }
 
+    /**
+     * 연결 해제 검증을 위해 사용자와 Google provider ID의 관계를 직접 저장.
+     */
     private void linkAccount(User user, String providerId) {
         oAuthAccountRepository.saveAndFlush(OAuthAccount.builder()
                 .provider(AuthProvider.GOOGLE)
@@ -254,6 +296,9 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
                 .build());
     }
 
+    /**
+     * 사용자 역할과 Google sub 속성을 가진 인증 객체를 만들어 성공 핸들러 호출에 사용.
+     */
     private OAuth2AuthenticationToken googleAuthentication(User user, String providerId) {
         return new OAuth2AuthenticationToken(
                 new CustomOAuth2User(
@@ -271,6 +316,9 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
         );
     }
 
+    /**
+     * 저장된 사용자 정보로 API 호출용 접근 토큰을 직접 발급.
+     */
     private String accessToken(User user) {
         return jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
     }

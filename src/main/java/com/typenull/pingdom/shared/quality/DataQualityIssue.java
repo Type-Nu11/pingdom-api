@@ -6,6 +6,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** 데이터 품질 규칙 위반의 대상·심각도·발견 시각을 기록. 현재 생성 경로는 OPEN이며 해결 전 resolvedAt은 null. */
 @Entity @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "data_quality_issue")
 public class DataQualityIssue {
@@ -20,6 +21,7 @@ public class DataQualityIssue {
     @Column(name = "detected_at", nullable = false) private LocalDateTime detectedAt;
     @Column(name = "resolved_at") private LocalDateTime resolvedAt;
 
+    /** 대상 식별자와 필수 규칙 정보를 검증해 OPEN 이슈를 생성. 동일 대상·규칙의 중복 탐지는 처리 범위 외. */
     public static DataQualityIssue open(String entityType, long entityId, String ruleCode,
                                         DataQualityIssueSeverity severity, String details, LocalDateTime detectedAt) {
         if (entityType == null || entityType.isBlank() || entityId <= 0 || ruleCode == null || ruleCode.isBlank()

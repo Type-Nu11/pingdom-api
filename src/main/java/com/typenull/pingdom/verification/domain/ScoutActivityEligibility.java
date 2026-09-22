@@ -12,6 +12,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * Scout 활동 자격의 상태와 적용 기간, 마지막 심사 이력을 보관.
+ * 프로필 활성 여부와는 별도로 관리되며 version으로 동시 갱신을 감지.
+ */
 @Entity
 @Getter
 @Table(name = "scout_activity_eligibility")
@@ -51,6 +55,7 @@ public class ScoutActivityEligibility {
     @Column(nullable = false)
     private long version;
 
+    /** 양수 Scout 사용자 ID로 아직 기간이 부여되지 않은 대기 자격을 생성. */
     public static ScoutActivityEligibility pending(Long scoutUserId, LocalDateTime now) {
         ScoutActivityEligibility eligibility = new ScoutActivityEligibility();
         eligibility.scoutUserId = requirePositive(scoutUserId, "scoutUserId");
@@ -60,6 +65,10 @@ public class ScoutActivityEligibility {
         return eligibility;
     }
 
+    /**
+     * 대기 또는 만료 자격에 시작 시각을 포함하고 종료 시각을 제외하는 기간을 부여.
+     * 종료 시각 null은 무기한을 뜻하며 유한 종료는 시작보다 뒤여야 함. 이전 사유는 삭제.
+     */
     public void grant(
             Long adminUserId,
             LocalDateTime eligibleFrom,
@@ -79,6 +88,7 @@ public class ScoutActivityEligibility {
         review(reviewer, null, reviewedAt);
     }
 
+    /** ELIGIBLE 상태만 사유와 함께 정지. 기간 자체는 유지하며 활성 상태 판정으로 사용을 차단. */
     public void suspend(Long adminUserId, String reason, LocalDateTime now) {
         if (status != ScoutActivityEligibilityStatus.ELIGIBLE) {
             throw new IllegalStateException("활성 Scout 활동 자격만 정지할 수 있습니다.");
@@ -90,6 +100,10 @@ public class ScoutActivityEligibility {
         review(reviewer, normalizedReason, reviewedAt);
     }
 
+    /**
+     * 유한 종료 시각에 도달한 ELIGIBLE 자격만 만료시킴.
+     * 무기한 자격과 아직 종료되지 않은 자격은 거부하며 심사자 정보는 유지.
+     */
     public void expire(LocalDateTime now) {
         LocalDateTime expiredAt = requireTime(now);
         if (status != ScoutActivityEligibilityStatus.ELIGIBLE
@@ -101,6 +115,7 @@ public class ScoutActivityEligibility {
         updatedAt = expiredAt;
     }
 
+    /** 활성 또는 정지 자격을 필수 사유와 함께 회수하고 마지막 심사 정보를 남김. */
     public void revoke(Long adminUserId, String reason, LocalDateTime now) {
         if (status != ScoutActivityEligibilityStatus.ELIGIBLE
                 && status != ScoutActivityEligibilityStatus.SUSPENDED) {
@@ -113,6 +128,10 @@ public class ScoutActivityEligibility {
         review(reviewer, normalizedReason, reviewedAt);
     }
 
+    /**
+     * ELIGIBLE 상태이며 시작 이상·종료 미만인 시각에만 true를 반환.
+     * 종료가 null이면 상한을 적용하지 않으며 조회 시 기존 상태 유지.
+     */
     public boolean isEligibleAt(LocalDateTime now) {
         LocalDateTime checkedAt = requireTime(now);
         return status == ScoutActivityEligibilityStatus.ELIGIBLE
@@ -121,6 +140,7 @@ public class ScoutActivityEligibility {
                 && (eligibleUntil == null || checkedAt.isBefore(eligibleUntil));
     }
 
+    /** 심사자·시각·사유와 수정 시각을 갱신. 활성화 시 사유 null을 허용. */
     private void review(Long adminUserId, String reason, LocalDateTime now) {
         reviewedByAdminUserId = requirePositive(adminUserId, "adminUserId");
         reviewedAt = requireTime(now);
@@ -128,12 +148,14 @@ public class ScoutActivityEligibility {
         updatedAt = now;
     }
 
+    /** 시작은 필수이며 종료가 주어지면 시작보다 엄격히 뒤여야 함. */
     private static void requirePeriod(LocalDateTime from, LocalDateTime until) {
         if (from == null || (until != null && !until.isAfter(from))) {
             throw new IllegalArgumentException("eligible period is invalid");
         }
     }
 
+    /** 누락되거나 양수가 아닌 사용자·심사자 식별자를 거부. */
     private static Long requirePositive(Long value, String name) {
         if (value == null || value <= 0) {
             throw new IllegalArgumentException(name + " must be positive");
@@ -141,6 +163,7 @@ public class ScoutActivityEligibility {
         return value;
     }
 
+    /** 필수 사유의 null·공백 입력을 거부하고 앞뒤 공백을 제거해 반환. */
     private static String requireText(String value, String name) {
         if (value == null || value.trim().isEmpty()) {
             throw new IllegalArgumentException(name + " must not be blank");
@@ -148,6 +171,7 @@ public class ScoutActivityEligibility {
         return value.trim();
     }
 
+    /** 기간 판정과 상태 변경에 사용할 시각의 null을 거부. */
     private static LocalDateTime requireTime(LocalDateTime value) {
         if (value == null) {
             throw new IllegalArgumentException("time must not be null");

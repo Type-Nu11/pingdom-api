@@ -8,6 +8,7 @@ public record CommunityPostCategoryListResponse(
         @Schema(description = "작성 및 조회에 사용할 활성 카테고리 목록")
         List<Item> categories
 ) {
+    @Schema(name = "CommunityCategoryItem", description = "커뮤니티 카테고리 목록 항목")
     public record Item(
             @Schema(description = "저장과 요청에 사용할 카테고리 식별자", example = "PLACE")
             String categoryId,

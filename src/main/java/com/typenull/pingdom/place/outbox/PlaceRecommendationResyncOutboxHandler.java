@@ -9,6 +9,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+/**
+ * 장소 보정 이벤트의 placeId로 추천 원본 집계 재동기화를 요청.
+ * 필수 ID 누락·역직렬화·재동기화 실패는 전파하여 Outbox 워커의 실패 처리 대상이 되도록 함.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j

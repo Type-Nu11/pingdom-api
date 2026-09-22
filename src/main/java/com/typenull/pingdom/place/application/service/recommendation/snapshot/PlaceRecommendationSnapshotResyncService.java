@@ -27,6 +27,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 원본 북마크·게시물·추천 이벤트를 집계하여 전체 장소 스냅샷을 보정하고 버전·유사도 재동기화를 조정.
+ * 전체 실행은 500개씩 조회하지만 모든 묶음과 후속 재동기화가 같은 트랜잭션에 참여.
+ * 단일 장소 보정은 해당 장소를 잠그며 장소가 없으면 관련 스냅샷을 제거.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceRecommendationSnapshotResyncService {
@@ -43,6 +48,11 @@ public class PlaceRecommendationSnapshotResyncService {
     private final PlaceSimilaritySnapshotResyncService placeSimilaritySnapshotResyncService;
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
+    /**
+     * 전체 장소를 ID 순 페이지로 순회하며 원본 집계로 추천 스냅샷을 덮어쓰고 삭제된 장소의 스냅샷을 정리.
+     * 유사도·버전별 스냅샷 재동기화도 같은 호출 트랜잭션에 연결하고 종류별 갱신·삭제 건수를 반환.
+     * 전체 장소·원본 이벤트의 일괄 잠금 없이 실행하므로 동시 쓰기와 격리된 시점의 전체 재구성은 보장 범위에서 제외.
+     */
     @Transactional
     public SnapshotResyncResult resyncAll() {
         long placeCount = mapPlaceRepository.count();
@@ -114,6 +124,10 @@ public class PlaceRecommendationSnapshotResyncService {
         );
     }
 
+    /**
+     * 장소 행을 쓰기 잠금으로 읽어 해당 장소 집계와 주변 유사도·버전별 집계를 재구성하고 처리 건수를 반환.
+     * 장소가 이미 없으면 오류 대신 해당 ID의 남은 스냅샷들을 정리. 원본 반응 행 전체에 대한 잠금은 미사용.
+     */
     @Transactional
     public SnapshotResyncResult resyncPlace(Long placeId) {
         MapPlace place = mapPlaceRepository.findByIdForUpdate(placeId).orElse(null);
@@ -155,6 +169,10 @@ public class PlaceRecommendationSnapshotResyncService {
         );
     }
 
+    /**
+     * 병합 대상의 전체 집계를 원본에서 다시 만들고 원본 장소의 전체 스냅샷만 제거.
+     * 버전·유사도 스냅샷 재동기화는 이 메서드의 호출 대상에서 제외되므로 병합 호출 흐름에서 별도 조정 필요.
+     */
     @Transactional
     public void resyncMergedPlace(Long sourcePlaceId, Long targetPlaceId) {
         LocalDateTime syncedAt = LocalDateTime.now();

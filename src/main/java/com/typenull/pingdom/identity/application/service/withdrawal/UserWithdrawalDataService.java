@@ -23,6 +23,10 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 탈퇴 즉시의 개인정보 익명화·개인 연관 데이터 정리와 최종 삭제 직전의 작성자 참조 해제를 담당.
+ * 게시물·장소 자체는 보존하고 북마크 제거 이력을 남긴 뒤 북마크를 삭제.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -46,6 +50,10 @@ public class UserWithdrawalDataService {
     private final MerchantVerificationCipher merchantVerificationCipher;
     private final Clock clock;
 
+    /**
+     * 탈퇴 회원의 게시물·장소 표시 이름을 익명화하고 좋아요·북마크·알림·기기 토큰·소유 연결·쿠폰을 정리.
+     * 북마크 제거 이력을 남기고 점주 혜택을 종료하며 프로필·검증 정보를 익명화. 콘텐츠 자체와 작성자 ID는 이 단계에 보존.
+     */
     @Transactional
     public void cleanupUserOwnedData(Long userId) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -91,6 +99,10 @@ public class UserWithdrawalDataService {
         );
     }
 
+    /**
+     * 회원 최종 삭제 전에 보존할 게시물·장소의 작성자 ID를 해제하고 남은 기기 토큰·알림 설정을 삭제.
+     * 대상 ID 목록이 null이거나 비어 있으면 아무 작업 없이 종료.
+     */
     @Transactional
     public void detachContentUserReferences(Collection<Long> userIds) {
         if (userIds == null || userIds.isEmpty()) {

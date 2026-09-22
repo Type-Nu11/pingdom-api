@@ -17,6 +17,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관리자 부스트 상품의 초안·활성 상태 저장과 점주용 활성 목록 제공.
+ * 상품 쓰기 잠금 아래 상태를 변경하며 기존 선택·집행 이력은 유지.
+ */
 @Service
 @RequiredArgsConstructor
 public class VerifiedBoostProductService {
@@ -24,6 +28,10 @@ public class VerifiedBoostProductService {
     private final VerifiedBoostProductRepository repository;
     private final Clock clock;
 
+    /**
+     * 이름·설명·가격·기간을 도메인에서 검증해 부스트 상품 초안을 저장하고 응답 반환.
+     * 입력 조건 위반은 INVALID_PRODUCT_INPUT으로 변환. 생성한 상품의 활성화는 별도 단계.
+     */
     @Transactional
     public VerifiedBoostProductResponse create(VerifiedBoostProductCreateRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -36,6 +44,10 @@ public class VerifiedBoostProductService {
         }
     }
 
+    /**
+     * 활성 여부와 무관하게 부스트 상품을 생성 시각·ID 내림차순으로 조회해 페이지와 전체 건수를 반환.
+     * 외부 페이지는 최소 1, 크기는 1~100으로 보정.
+     */
     @Transactional(readOnly = true)
     public VerifiedBoostProductPageResponse list(int page, int limit) {
         Page<VerifiedBoostProduct> result = repository.findAll(
@@ -47,6 +59,10 @@ public class VerifiedBoostProductService {
                 result.hasNext());
     }
 
+    /**
+     * 점주에게 선택 가능한 ACTIVE 부스트 상품만 생성 시각·ID 내림차순으로 조회해 페이지 정보를 반환.
+     * 외부 페이지는 최소 1, 크기는 1~100으로 보정.
+     */
     @Transactional(readOnly = true)
     public VerifiedBoostProductPageResponse listActive(int page, int limit) {
         Page<VerifiedBoostProduct> result = repository.findAllByStatus(VerifiedBoostProductStatus.ACTIVE,
@@ -64,6 +80,10 @@ public class VerifiedBoostProductService {
                 .orElseThrow(() -> new VerifiedBoostException(VerifiedBoostErrorCode.PRODUCT_NOT_FOUND)));
     }
 
+    /**
+     * 상품 행을 잠가 활성화하고 변경 결과를 반환.
+     * 상품 부재는 PRODUCT_NOT_FOUND, 활성화할 수 없는 상태는 INVALID_PRODUCT_STATE로 거절.
+     */
     @Transactional
     public VerifiedBoostProductResponse activate(Long productId) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -76,6 +96,10 @@ public class VerifiedBoostProductService {
         return VerifiedBoostProductResponse.from(product);
     }
 
+    /**
+     * 상품 행을 잠가 비활성화하고 변경 결과 반환.
+     * 상품 부재와 불가능한 상태 전이는 거절하며 기존 선택·집행 이력은 유지.
+     */
     @Transactional
     public VerifiedBoostProductResponse deactivate(Long productId) {
         LocalDateTime now = LocalDateTime.now(clock);

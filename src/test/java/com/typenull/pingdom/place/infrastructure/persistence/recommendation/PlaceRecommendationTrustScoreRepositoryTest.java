@@ -24,6 +24,7 @@ class PlaceRecommendationTrustScoreRepositoryTest {
             DockerImageName.parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres")
     );
 
+    /** PostGIS·삼중문자 확장을 준비하고 실제 Flyway 마이그레이션으로 쿼리 대상 schema를 생성. */
     @BeforeAll
     static void prepareDatabase() throws Exception {
         try (Connection connection = connection(); Statement statement = connection.createStatement()) {
@@ -37,8 +38,9 @@ class PlaceRecommendationTrustScoreRepositoryTest {
                 .migrate();
     }
 
+    /** PostgreSQL에 중복 승인 제보·정책 없는 제보자·반려 제보를 넣고 실제 신뢰 점수 SQL이 장소 하나에 0.54를 반환하는지 확인. */
     @Test
-    void 승인_제보는_정책이_없는_제보자를_포함하고_제보자별_한_번만_집계한다() throws Exception {
+    void aggregatesDistinctAcceptedReporterTrust() throws Exception {
         try (Connection connection = connection(); Statement statement = connection.createStatement()) {
             insertUsersAndPlace(statement);
             statement.executeUpdate("""
@@ -62,10 +64,12 @@ class PlaceRecommendationTrustScoreRepositoryTest {
         }
     }
 
+    /** 컨테이너의 JDBC 연결을 새로 열기. 호출 측 try-with-resources에서 닫음. */
     private static Connection connection() throws Exception {
         return DriverManager.getConnection(postgres.getJdbcUrl(), postgres.getUsername(), postgres.getPassword());
     }
 
+    /** 저신뢰·신규·반려 제보자와 검토 관리자, 공통 장소를 실제 DB에 삽입. */
     private void insertUsersAndPlace(Statement statement) throws Exception {
         statement.executeUpdate("""
                 INSERT INTO users (
@@ -88,6 +92,7 @@ class PlaceRecommendationTrustScoreRepositoryTest {
                 """);
     }
 
+    /** 유형·제보자가 지정된 승인 제보를 넣어 동일 제보자 중복 집계 여부를 검사. */
     private void insertAcceptedReport(Statement statement, Long id, Long reporterId, String type) throws Exception {
         statement.executeUpdate("""
                 INSERT INTO visitor_verification_report (
@@ -98,6 +103,7 @@ class PlaceRecommendationTrustScoreRepositoryTest {
                 """.formatted(id, reporterId, type));
     }
 
+    /** 승인 집계에서 제외되어야 하는 별도 제보자의 반려 행을 삽입. */
     private void insertRejectedReport(Statement statement) throws Exception {
         statement.executeUpdate("""
                 INSERT INTO visitor_verification_report (

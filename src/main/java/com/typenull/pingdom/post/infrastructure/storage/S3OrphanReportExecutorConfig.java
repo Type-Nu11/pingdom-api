@@ -5,6 +5,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 
+/**
+ * S3 전체 스캔을 작업자 1개·대기 작업 1개로 제한. 포화 시 호출자에게 거절 예외를 전달하며,
+ * 종료 시 작업 완료를 기다리는 시간은 최대 30초.
+ */
 @Configuration
 public class S3OrphanReportExecutorConfig {
 

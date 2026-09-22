@@ -30,8 +30,11 @@ import org.springframework.data.domain.Sort;
 
 class MerchantPlaceReviewModerationServiceTest {
 
+    /**
+     * 소유자 목록에 공개·숨김·삭제 리뷰를 포함하되 리뷰별 최신 삭제 요청만 연결하고 페이지·정렬 계약을 유지하는지 확인.
+     */
     @Test
-    void listReturnsVisibleHiddenAndDeletedReviewsWithOnlyTheLatestDeletionRequest() {
+    void listsLatestReviewDeletionRequests() {
         MerchantOwnerPlaceRepository ownerPlaceRepository = mock(MerchantOwnerPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewDeletionRequestRepository deletionRequestRepository = mock(PlaceReviewDeletionRequestRepository.class);
@@ -115,8 +118,11 @@ class MerchantPlaceReviewModerationServiceTest {
         assertThat(pageable.getValue().getSort().getOrderFor("id").getDirection()).isEqualTo(Sort.Direction.DESC);
     }
 
+    /**
+     * 장소 소유권이 없는 사용자의 리뷰 삭제 요청이 MapException으로 거절되는지 확인.
+     */
     @Test
-    void otherMerchantCannotHideOrRequestDeletionForReview() {
+    void rejectsNonOwnerDeletionRequest() {
         MerchantOwnerPlaceRepository ownerPlaceRepository = mock(MerchantOwnerPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewDeletionRequestRepository deletionRequestRepository = mock(PlaceReviewDeletionRequestRepository.class);
@@ -129,8 +135,11 @@ class MerchantPlaceReviewModerationServiceTest {
                 .isInstanceOf(MapException.class);
     }
 
+    /**
+     * 같은 리뷰에 심사 대기 삭제 요청이 있으면 중복 요청을 거절하는지 확인.
+     */
     @Test
-    void pendingDeletionRequestCannotBeDuplicated() {
+    void rejectsDuplicatePendingDeletion() {
         MerchantOwnerPlaceRepository ownerPlaceRepository = mock(MerchantOwnerPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewDeletionRequestRepository deletionRequestRepository = mock(PlaceReviewDeletionRequestRepository.class);
@@ -147,6 +156,9 @@ class MerchantPlaceReviewModerationServiceTest {
         verify(deletionRequestRepository).existsByReview_IdAndStatus(10L, PlaceReviewDeletionRequestStatus.PENDING);
     }
 
+    /**
+     * 노출 상태와 응답 필드를 갖춘 리뷰 모의를 생성.
+     */
     private PlaceReview review(Long reviewId, Long placeId, PlaceReviewVisibilityStatus visibilityStatus) {
         PlaceReview review = mock(PlaceReview.class);
         MapPlace place = mock(MapPlace.class);
@@ -162,6 +174,9 @@ class MerchantPlaceReviewModerationServiceTest {
         return review;
     }
 
+    /**
+     * 요청·심사 시각과 상태를 지정하여 최신 삭제 요청 선택 사례를 구성.
+     */
     private PlaceReviewDeletionRequest deletionRequest(
             Long deletionRequestId,
             PlaceReview review,

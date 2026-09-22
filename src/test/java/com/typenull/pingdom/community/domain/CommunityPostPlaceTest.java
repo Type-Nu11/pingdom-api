@@ -9,8 +9,11 @@ import org.mockito.Mockito;
 
 class CommunityPostPlaceTest {
 
+    /**
+     * 게시글과 장소를 연결하면 전달한 두 객체 참조를 그대로 보존하는지 검증.
+     */
     @Test
-    void 게시글과_장소를_ID_참조로_연결한다() {
+    void connectsPostAndPlaceReferences() {
         CommunityPost communityPost = Mockito.mock(CommunityPost.class);
         MapPlace mapPlace = Mockito.mock(MapPlace.class);
 
@@ -20,8 +23,11 @@ class CommunityPostPlaceTest {
         assertThat(link.getMapPlace()).isSameAs(mapPlace);
     }
 
+    /**
+     * 게시글 또는 장소가 null이면 연결 생성 시 NullPointerException을 반환하는지 검증.
+     */
     @Test
-    void 게시글_또는_장소_없이_연결할_수_없다() {
+    void rejectsMissingLinkEndpoints() {
         MapPlace mapPlace = Mockito.mock(MapPlace.class);
 
         assertThatNullPointerException()

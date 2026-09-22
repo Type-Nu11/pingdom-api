@@ -1,5 +1,8 @@
 package com.typenull.pingdom.campaign.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.campaign.api.dto.PublicPopupCampaignPageResponse;
 import com.typenull.pingdom.campaign.api.dto.PublicPopupCampaignResponse;
 import com.typenull.pingdom.campaign.application.PopupCampaignQueryService;
@@ -23,12 +26,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/** 노출 가능한 팝업 캠페인을 조회하는 API 진입점. */
 @RestController
 @RequestMapping("/popup-campaigns")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
-/** 노출 가능한 팝업 캠페인을 조회하는 API 진입점입니다. */
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.EVENT)
 public class PopupCampaignController {
 
     private final PopupCampaignQueryService queryService;

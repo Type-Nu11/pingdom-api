@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
@@ -26,12 +29,17 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 인증 사용자 자신의 Scout 프로필 신청·조회·수정을 제공.
+ * 상태와 자격에 따른 허용 여부는 서비스·도메인이 판단하며 신청 생성은 HTTP 201로 반환.
+ */
 @RestController
 @RequestMapping("/users/me/scout-profile")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.SCOUT)
 public class ScoutProfileController {
 
     private final ScoutProfileService service;

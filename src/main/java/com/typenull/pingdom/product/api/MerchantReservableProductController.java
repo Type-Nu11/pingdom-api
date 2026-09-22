@@ -1,5 +1,8 @@
 package com.typenull.pingdom.product.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.product.api.dto.ReservableProductCreateRequest;
@@ -22,7 +25,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.PRODUCT)
 public class MerchantReservableProductController {
     private final ReservableProductService service;
 

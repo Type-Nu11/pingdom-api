@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.information.reverification.*;
@@ -21,7 +24,8 @@ import org.springframework.validation.annotation.Validated;
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @Validated
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.PLACE_MANAGEMENT)
 public class MerchantPlaceInformationReverificationController {
 
     private final PlaceInformationReverificationService service;

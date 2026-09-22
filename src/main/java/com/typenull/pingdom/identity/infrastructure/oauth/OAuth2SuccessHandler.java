@@ -21,6 +21,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * OAuth 인증 성공 후 회원 상태를 재확인하고 로그인 토큰 쿠키 또는 계정 연결 완료 리다이렉트를 전송.
+ * 로그인은 회원 행 잠금 안에서 refresh token을 교체하고 access token은 60초 전달용 쿠키에 저장.
+ */
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
@@ -89,7 +93,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
 
         boolean secureCookie = request.isSecure();
 
-        // Access Token은 짧은 수명의 Cookie로 회수하고, Refresh Token은 공통 HttpOnly Cookie로 발급한다.
+        // Access Token은 짧은 수명의 Cookie로 회수하고, Refresh Token은 공통 HttpOnly Cookie로 발급.
         addShortLivedCookie(response, ACCESS_COOKIE, accessToken, secureCookie);
         response.addHeader(HttpHeaders.SET_COOKIE, refreshTokenCookieService.issue(refreshToken).toString());
         oAuth2LinkCookieService.clearLinkCookieIfPresent(request, response);
@@ -101,7 +105,7 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .path("/auth/oauth2/success")
                 .httpOnly(true)
                 // Cross-site 쿠키 전달을 위해서는 SameSite=None + Secure=true 조합이 필요함.
-                // 단, HTTP(localhost 등)에서는 브라우저가 Secure 쿠키를 거부하므로 요청 스킴에 맞춰 동적으로 설정한다.
+                // 단, HTTP(localhost 등)에서는 브라우저가 Secure 쿠키를 거부하므로 요청 스킴에 맞춰 동적으로 설정.
                 .secure(secureCookie)
                 .sameSite(secureCookie ? "None" : "Lax")
                 .maxAge(COOKIE_EXPIRE_SECONDS)
@@ -134,5 +138,5 @@ public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
                 .toUriString();
     }
 
-    // providerId는 CustomOAuth2UserService에서 nameAttributeKey(sub)로 지정했으므로 getName()으로 가져온다.
+    // providerId는 CustomOAuth2UserService에서 nameAttributeKey(sub)로 지정했으므로 getName()으로 가져옴.
 }

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api.registration;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationAttachmentResponse;
 import com.typenull.pingdom.place.application.service.registration.MerchantPlaceApplicationAttachmentService;
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType;
@@ -21,11 +24,12 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/** 통합 Merchant 장소 신청 초안의 실제 파일 업로드 API입니다. */
+/** 통합 Merchant 장소 신청 초안의 실제 파일 업로드 API. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications/{applicationId}/attachments")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.APPLICATION)
 public class MerchantPlaceApplicationAttachmentController {
 
     private final MerchantPlaceApplicationAttachmentService service;

@@ -21,6 +21,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 공개 기간과 현재 점주 자격을 만족하는 캠페인에 브랜드 정보를 묶어 반환.
+ * 페이지는 1~10000, 크기는 1~100으로 보정하고 종료가 가까운 순서와 ID 역순으로 정렬.
+ */
 @Service
 @RequiredArgsConstructor
 public class PopupCampaignQueryService {
@@ -31,6 +35,10 @@ public class PopupCampaignQueryService {
     private final MerchantBrandRepository brandRepository;
     private final Clock clock;
 
+    /**
+     * 현재 공개 기간과 점주 자격·소유 관계를 만족하는 캠페인만 선택 장소 조건으로 조회해 브랜드 정보를 결합.
+     * 페이지는 1~10000, 크기는 1~100으로 보정하고 종료 시각 오름차순·ID 내림차순의 공개 목록을 반환.
+     */
     @Transactional(readOnly = true)
     public PublicPopupCampaignPageResponse list(Long placeId, int page, int limit) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -62,6 +70,10 @@ public class PopupCampaignQueryService {
         );
     }
 
+    /**
+     * 현재 공개 기간과 점주 자격·소유 관계를 만족하는 캠페인을 브랜드 정보와 함께 반환.
+     * 노출 불가 캠페인이나 연결 브랜드 부재는 모두 CAMPAIGN_NOT_FOUND로 처리.
+     */
     @Transactional(readOnly = true)
     public PublicPopupCampaignResponse get(Long campaignId) {
         LocalDateTime now = LocalDateTime.now(clock);

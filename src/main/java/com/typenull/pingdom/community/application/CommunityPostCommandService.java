@@ -18,6 +18,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 활성 카테고리와 연결 장소를 검증한 뒤 게시글 및 장소 연결을 한 트랜잭션으로 저장.
+ * 장소 카테고리는 한 곳 이상을 요구하며, 중복 ID를 조용히 제거하지 않고 입력 오류로 거절.
+ */
 @Service
 @RequiredArgsConstructor
 public class CommunityPostCommandService {
@@ -26,6 +30,10 @@ public class CommunityPostCommandService {
     private final CommunityPostPlaceRepository communityPostPlaceRepository;
     private final MapPlaceRepository mapPlaceRepository;
 
+    /**
+     * 활성 카테고리와 연결 장소를 검증한 뒤 제목·본문의 앞뒤 공백을 제거해 게시글과 장소 연결을 저장하고 ID를 반환.
+     * 중복·없는 장소를 거절하며 장소 카테고리에는 하나 이상의 장소가 필요.
+     */
     @Transactional
     public CommunityPostCreateResponse create(long userId, CommunityPostCreateRequest request) {
         CommunityPostCategory category = CommunityPostCategory.findEnabledById(request.categoryId())
@@ -64,6 +72,9 @@ public class CommunityPostCommandService {
         }
     }
 
+    /**
+     * 연결 요청의 모든 장소가 존재하는지 건수로 대조. 장소의 운영·탐색 노출 상태는 이 단계의 검사 범위에서 제외.
+     */
     private List<MapPlace> findPlaces(List<Long> placeIds) {
         if (placeIds.isEmpty()) {
             return List.of();

@@ -26,9 +26,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 
+/** 장소별 Merchant 팀원 초대·역할 변경·수락·철회를 권한 정책과 함께 처리. */
 @Service
 @RequiredArgsConstructor
-/** 장소별 Merchant 팀원 초대·역할 변경·수락·철회를 권한 정책과 함께 처리합니다. */
 public class MerchantTeamService {
     private final MerchantPlaceMemberRepository memberRepository;
     private final MerchantPlaceInvitationRepository invitationRepository;
@@ -37,15 +37,19 @@ public class MerchantTeamService {
     private final Clock clock;
 
     @Transactional(readOnly = true)
-    // 관리자 권한을 확인하고 장소의 활성 팀원을 조회합니다.
+    // 관리자 권한을 확인하고 장소의 활성 팀원을 조회.
     public List<MerchantTeamMemberResponse> list(Long actorId, Long placeId) {
         requireManager(actorId, placeId);
         return memberRepository.findAllByPlaceIdAndStatusOrderByIdAsc(placeId, MerchantPlaceMemberStatus.ACTIVE)
                 .stream().map(MerchantTeamMemberResponse::from).toList();
     }
 
+    /**
+     * 장소 소유 행을 잠그고 OWNER·MANAGER 권한을 확인해 기본 7일 유효한 팀 초대를 저장·반환.
+     * OWNER 초대, 탈퇴 회원, 기존 활성 팀원·대기 초대 및 과거 만료 시각은 거절하고 저장 제약 오류는 중복 초대로 변환.
+     */
     @Transactional
-    // 초대 대상과 역할을 검증한 뒤 만료 시각이 있는 팀 초대를 생성합니다.
+    // 초대 대상과 역할을 검증한 뒤 만료 시각이 있는 팀 초대를 생성.
     public MerchantTeamInvitationResponse invite(Long actorId, Long placeId, MerchantTeamInviteRequest request) {
         lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
@@ -79,8 +83,12 @@ public class MerchantTeamService {
         }
     }
 
+    /**
+     * 장소 소유 행을 잠그고 관리 권한과 해당 장소 팀원을 확인한 뒤 역할을 변경해 반환.
+     * 비활성 팀원과 도메인이 허용하지 않는 역할 변경은 각각 팀원 상태·역할 오류로 변환.
+     */
     @Transactional
-    // 장소 팀원의 역할 변경 권한과 도메인 상태를 검증합니다.
+    // 장소 팀원의 역할 변경 권한과 도메인 상태를 검증.
     public MerchantTeamMemberResponse updateRole(Long actorId, Long placeId, Long memberId,
                                                   MerchantTeamRoleUpdateRequest request) {
         lockPlaceOwnership(placeId);
@@ -98,8 +106,12 @@ public class MerchantTeamService {
         return MerchantTeamMemberResponse.from(member);
     }
 
+    /**
+     * 장소 소유 행과 초대를 잠그고 수신자 본인·계정 상태·초대 유효성을 확인해 팀원을 생성하거나 재활성화.
+     * 이미 수락된 초대는 기존 활성 팀원을 반환하고, 만료·잘못된 상태·활성 팀원 충돌은 거절.
+     */
     @Transactional
-    // 초대 수신자 본인인지와 계정 상태를 확인한 뒤 초대를 수락합니다.
+    // 초대 수신자 본인인지와 계정 상태를 확인한 뒤 초대를 수락.
     public MerchantTeamMemberResponse acceptInvitation(Long actorId, Long invitationId) {
         MerchantPlaceInvitation invitationSnapshot = invitationRepository.findById(invitationId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_INVITATION_NOT_FOUND));
@@ -141,8 +153,12 @@ public class MerchantTeamService {
         return MerchantTeamMemberResponse.from(memberRepository.save(member));
     }
 
+    /**
+     * 장소 소유 행을 잠그고 관리 권한과 대상 팀원의 장소 소속을 확인한 뒤 팀원을 비활성화.
+     * OWNER 회수는 권한 오류로 거절하며 다른 장소의 팀원은 없는 대상으로 처리.
+     */
     @Transactional
-    // 관리자가 소유자가 아닌 팀원을 비활성화합니다.
+    // 관리자가 소유자가 아닌 팀원을 비활성화.
     public void revoke(Long actorId, Long placeId, Long memberId) {
         lockPlaceOwnership(placeId);
         requireManager(actorId, placeId);
@@ -155,7 +171,7 @@ public class MerchantTeamService {
         member.revoke(LocalDateTime.now(clock));
     }
 
-    // 장소 소유자 또는 관리자 역할인지 확인하고 아니면 권한 예외를 발생시킵니다.
+    // 장소 소유자 또는 관리자 역할인지 확인하고 미충족 시 권한 예외 발생.
     private void requireManager(Long actorId, Long placeId) {
         MerchantPlaceMember member = memberRepository.findByPlaceIdAndUserId(placeId, actorId)
                 .orElseGet(() -> ownerPlaceRepository.findById(placeId)
@@ -168,6 +184,10 @@ public class MerchantTeamService {
         }
     }
 
+    /**
+     * 팀 변경과 초대 수락이 같은 장소 소유 행을 먼저 잠그도록 잠금 기준을 통일.
+     * 이 잠금을 획득하지 않는 다른 쓰기 경로의 직렬화는 보장 범위에서 제외.
+     */
     private void lockPlaceOwnership(Long placeId) {
         ownerPlaceRepository.findByPlaceIdForUpdate(placeId)
                 .orElseThrow(() -> new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED));

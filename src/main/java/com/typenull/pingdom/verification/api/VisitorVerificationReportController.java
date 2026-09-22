@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -22,12 +25,17 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 인증 사용자의 방문 제보 및 정정 제출·이력 조회를 제공.
+ * 입력 validation 후 principal ID를 서비스에 전달해 관광객 계정·작성자 권한을 확인.
+ */
 @RestController
 @RequestMapping("/visitor-verification-reports")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.VISIT)
 @org.springframework.validation.annotation.Validated
 public class VisitorVerificationReportController {
     private final VisitorVerificationReportService service;

@@ -37,8 +37,11 @@ class CurrentActivityIntentRankingServiceTest {
     @Mock
     private MapPlaceRecommendationCandidateRepository candidateRepository;
 
+    /**
+     * 활성 CAFE 의도와 일치한 후보에 0.15 맥락 가점을 더해 기본 점수가 높던 음식 후보보다 앞서는지 확인.
+     */
     @Test
-    void 활성_의도와_일치하는_장소의_순위를_높인다() {
+    void boostsActiveIntentMatch() {
         Long userId = 7L;
         User user = User.builder().id(userId).build();
         UserCurrentActivityIntent intent = UserCurrentActivityIntent.create(
@@ -62,8 +65,11 @@ class CurrentActivityIntentRankingServiceTest {
         assertThat(result.candidates().getFirst().contextScore()).isEqualTo(0.15d);
     }
 
+    /**
+     * EXPLORE 의도는 적용 의도를 null로 두고 점수를 유지하며 카테고리 조회를 생략하는지 확인.
+     */
     @Test
-    void EXPLORE는_순위와_적용_의도를_변경하지_않는다() {
+    void skipsExploreIntentBoost() {
         Long userId = 9L;
         User user = User.builder().id(userId).build();
         UserCurrentActivityIntent intent = UserCurrentActivityIntent.create(
@@ -81,8 +87,11 @@ class CurrentActivityIntentRankingServiceTest {
         verify(candidateRepository, never()).findTouristCategoriesByPlaceIds(anyList());
     }
 
+    /**
+     * 1초 전에 만료된 활동 의도는 가점이나 순위 변경에 사용하지 않는지 확인.
+     */
     @Test
-    void 만료된_의도는_기존_순위를_유지한다() {
+    void ignoresExpiredActivityIntent() {
         Long userId = 8L;
         User user = User.builder().id(userId).build();
         UserCurrentActivityIntent intent = UserCurrentActivityIntent.create(
@@ -101,6 +110,9 @@ class CurrentActivityIntentRankingServiceTest {
                 .containsExactly(food.getId(), cafe.getId());
     }
 
+    /**
+     * 활동 의도 만료 판단용 고정 시계와 모의 저장소를 주입.
+     */
     private CurrentActivityIntentRankingService service() {
         return new CurrentActivityIntentRankingService(
                 currentActivityIntentRepository,
@@ -109,16 +121,21 @@ class CurrentActivityIntentRankingServiceTest {
         );
     }
 
+    /**
+     * 지정 장소와 관광 카테고리의 projection을 생성.
+     */
     private MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow row(
             Long placeId,
             TouristCategory category
     ) {
         return new MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow() {
+            /** 현재 활동 의도와 비교할 후보 장소 ID를 반환. */
             @Override
             public Long getPlaceId() {
                 return placeId;
             }
 
+            /** 의도의 선호 카테고리와 대조할 장소 카테고리를 반환. */
             @Override
             public TouristCategory getCategory() {
                 return category;
@@ -126,6 +143,9 @@ class CurrentActivityIntentRankingServiceTest {
         };
     }
 
+    /**
+     * 관광 카테고리가 지정된 순위 비교용 장소를 생성.
+     */
     private MapPlace place(Long id, TouristCategory category) {
         return MapPlace.builder()
                 .id(id)
@@ -134,6 +154,9 @@ class CurrentActivityIntentRankingServiceTest {
                 .build();
     }
 
+    /**
+     * 기본 점수만 다르고 다른 신호는 동일한 후보를 생성.
+     */
     private ScoredCandidate candidate(MapPlace place, double score) {
         return new ScoredCandidate(
                 place,

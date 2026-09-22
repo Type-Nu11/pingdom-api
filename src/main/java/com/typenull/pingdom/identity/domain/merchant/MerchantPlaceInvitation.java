@@ -15,6 +15,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소 팀원 초대의 대상·역할·만료·응답 상태를 보관.
+ * 초대는 OWNER를 허용하지 않고 수락·회수는 PENDING 상태에서만 가능.
+ */
 @Getter
 @Entity
 @Table(name = "merchant_place_invitation")
@@ -70,6 +74,10 @@ public class MerchantPlaceInvitation {
                 .build();
     }
 
+    /**
+     * 만료 시각 이상이면 메모리 상태를 EXPIRED로 바꾼 후 예외 발생.
+     * 호출 트랜잭션이 예외로 롤백되면 이 상태 변경도 저장되지 않으므로 만료 표시의 영속화는 보장 범위에서 제외.
+     */
     public void accept(LocalDateTime now) {
         requirePending();
         if (!now.isBefore(expiresAt)) {

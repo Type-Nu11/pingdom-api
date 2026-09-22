@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.user;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.profile.ChangePasswordRequest;
 import com.typenull.pingdom.identity.api.dto.profile.ChangeUsernameRequest;
@@ -38,10 +41,15 @@ import org.springframework.web.bind.annotation.RequestPart;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 현재 인증 회원의 프로필·선호·데이터 내보내기 요청을 각 전담 서비스로 연결.
+ * 회원 ID는 요청 본문 대신 principal에서 얻고 principal이 없으면 INVALID_TOKEN으로 처리.
+ */
 @RestController
 @RequestMapping("/users")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.ACCOUNT)
 public class UsersController {
 
     private final MyPageService myPageService;
@@ -135,6 +143,7 @@ public class UsersController {
         return ResponseEntity.ok(new ProfileImageUploadResponse(profileImageUrl));
     }
 
+    @Tag(name = SwaggerTagCatalog.TRAVEL)
     @GetMapping("/me/travel-purposes")
     @Operation(summary = "여행 목적 선호 조회", description = "현재 인증된 사용자의 여행 목적 선호 목록을 조회합니다.")
     @ApiResponses({
@@ -162,6 +171,7 @@ public class UsersController {
         ));
     }
 
+    @Tag(name = SwaggerTagCatalog.TRAVEL)
     @PutMapping("/me/travel-purposes")
     @Operation(summary = "여행 목적 선호 전체 변경", description = "현재 인증된 사용자의 여행 목적 선호를 요청 목록으로 전체 교체합니다.")
     @ApiResponses({

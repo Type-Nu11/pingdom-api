@@ -5,7 +5,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationApplicati
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import java.time.LocalDateTime;
 
-/** 사업자등록번호를 마스킹한 관리자 통합 신청 목록 항목입니다. */
+/** 사업자등록번호를 마스킹한 관리자 통합 신청 목록 항목. */
 public record AdminMerchantPlaceApplicationListItemResponse(
         Long id,
         Long applicantUserId,

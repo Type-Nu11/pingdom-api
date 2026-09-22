@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 탈퇴하지 않은 사용자의 FCM 토큰 등록·삭제를 관리.
+ * 이미 존재하는 토큰은 현재 사용자로 소유자를 바꾸고 등록 시각을 갱신하며, 동일 토큰 동시 신규 등록의 유일 제약 오류는 재시도 대상에서 제외.
+ */
 @Service
 @RequiredArgsConstructor
 public class FcmDeviceTokenService {
@@ -24,6 +28,10 @@ public class FcmDeviceTokenService {
     private final FcmDeviceTokenRepository fcmDeviceTokenRepository;
     private final Clock clock;
 
+    /**
+     * 존재하며 탈퇴하지 않은 사용자의 토큰을 공백 제거 후 등록. 빈 토큰은 거부.
+     * 같은 토큰이 있으면 소유자와 갱신 시각을 현재 요청으로 바꾸며, 공급자 토큰 유효성은 실제 전송 시 확인.
+     */
     @Transactional
     public void registerToken(Long userId, String token) {
         ensureActiveUser(userId);

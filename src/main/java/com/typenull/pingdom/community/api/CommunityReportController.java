@@ -1,5 +1,8 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.api.dto.CommunityReportCreateRequest;
 import com.typenull.pingdom.community.api.dto.CommunityReportCreateResponse;
 import com.typenull.pingdom.community.application.CommunityReportService;
@@ -29,7 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/community/posts/{postId}")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.REPORT)
 @SecurityRequirement(name = "bearerAuth")
 public class CommunityReportController {
 

@@ -6,6 +6,9 @@ spring:
 pingdom:
   dev-profile:
     enabled: ${PINGDOM_DEV_PROFILE_ENABLED:false}
+  openapi:
+    public-access:
+      enabled: true
 
 springdoc:
   api-docs:

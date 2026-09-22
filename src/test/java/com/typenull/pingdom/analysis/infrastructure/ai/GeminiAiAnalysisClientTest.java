@@ -24,8 +24,12 @@ import org.springframework.web.client.RestClient;
 
 class GeminiAiAnalysisClientTest {
 
+    /**
+     * Gemini interactions 요청이 모델·프롬프트·generation_config의 tool_choice와 MCP URL·허용 도구·인증 헤더를 올바르게 담는지 검증.
+     * 금지된 요청 필드가 없고 완료 응답에서 보고서명과 기준일을 복원하는지 확인.
+     */
     @Test
-    void registersRemoteMcpAndParsesFinalInteractionOutput() {
+    void registersMcpAndParsesOutput() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -65,8 +69,11 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * output_text 없이 steps의 model_output 텍스트에 담긴 분석 JSON에서도 보고서명을 읽을 수 있는지 검증.
+     */
     @Test
-    void extractsTextFromModelOutputStepWhenOutputTextIsAbsent() {
+    void extractsModelOutputStep() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -96,8 +103,11 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * MCP 토큰이 빈 문자열이면 도구 설정의 headers 필드 자체를 보내지 않는지 검증.
+     */
     @Test
-    void omitsMcpAuthorizationHeaderWhenAuthTokenIsBlank() {
+    void omitsBlankMcpAuthorization() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -113,8 +123,11 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * Gemini API 키가 없으면 분석 요청에서 AI_SERVICE_UNAVAILABLE로 실패하는지 검증.
+     */
     @Test
-    void failsBeforeRemoteCallWhenGeminiApiKeyIsMissing() {
+    void rejectsMissingGeminiApiKey() {
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
                 RestClient.create(),
                 new AiAnalysisProperties("gemini", "http://gemini.test/v1beta", null, "", Duration.ZERO, Duration.ZERO),
@@ -128,8 +141,11 @@ class GeminiAiAnalysisClientTest {
                 .isEqualTo(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE);
     }
 
+    /**
+     * MCP 서버 URL이 없으면 분석 요청에서 MCP_SERVICE_UNAVAILABLE로 실패하는지 검증.
+     */
     @Test
-    void failsBeforeRemoteCallWhenMcpServerUrlIsMissing() {
+    void rejectsMissingMcpServerUrl() {
         GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
                 RestClient.create(), properties(), new McpAnalysisProperties("", ""), new ObjectMapper()
         );
@@ -140,8 +156,11 @@ class GeminiAiAnalysisClientTest {
                 .isEqualTo(AnalysisReportErrorCode.MCP_SERVICE_UNAVAILABLE);
     }
 
+    /**
+     * Gemini HTTP 400 응답을 AI_SERVICE_UNAVAILABLE 도메인 오류로 변환하는지 검증.
+     */
     @Test
-    void mapsGeminiBadRequestToAiServiceUnavailable() {
+    void mapsGeminiBadRequest() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -158,8 +177,11 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * HTTP 성공이어도 interaction 상태가 failed이면 AI_SERVICE_UNAVAILABLE로 처리하는지 검증.
+     */
     @Test
-    void mapsFailedGeminiInteractionToAiServiceUnavailable() {
+    void mapsFailedGeminiInteraction() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -176,8 +198,11 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * 완료 출력이 구조화된 분석 대신 html 필드를 반환하면 AI_RESPONSE_INVALID로 거절하는지 검증.
+     */
     @Test
-    void rejectsHtmlReturnedDirectlyByGemini() {
+    void rejectsDirectGeminiHtml() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -195,8 +220,11 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * 완료 상태라도 텍스트 출력 없이 빈 steps만 있으면 AI_RESPONSE_INVALID인지 검증.
+     */
     @Test
-    void rejectsCompletedInteractionWithoutTextOutput() {
+    void rejectsMissingInteractionText() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -213,6 +241,9 @@ class GeminiAiAnalysisClientTest {
         server.verify();
     }
 
+    /**
+     * 가짜 Gemini 주소·키와 짧은 제한 시간을 사용해 HTTP 대역 검증에 필요한 설정을 제공.
+     */
     private AiAnalysisProperties properties() {
         return new AiAnalysisProperties(
                 "gemini", "http://gemini.test/v1beta", null, "test-key",
@@ -220,6 +251,9 @@ class GeminiAiAnalysisClientTest {
         );
     }
 
+    /**
+     * output_text에 최소 분석 JSON이 직렬화된 완료 interaction 응답을 제공해 기본 파싱 경로를 재현.
+     */
     private String interactionResponse() {
         return "{\"status\":\"completed\",\"output_text\":"
                 + "\"{\\\"reportName\\\":\\\"입지 분석\\\","

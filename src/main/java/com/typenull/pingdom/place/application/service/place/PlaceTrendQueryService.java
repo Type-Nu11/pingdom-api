@@ -15,6 +15,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 북마크 추적 시작 이후의 주간 증감 추세를 읽음.
+ * 반복 읽기 트랜잭션에서 같은 생성 시각·기간으로 개수와 목록을 조회하고 빈 결과의 totalPages도 1로 표시.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceTrendQueryService {
@@ -25,6 +29,10 @@ public class PlaceTrendQueryService {
     private final MapBookmarkTrendTrackingRepository trackingRepository;
     private final Clock clock;
 
+    /**
+     * 북마크 추적 시작일과 요청 기간 시작 중 늦은 시각부터 현재까지 순증한 공개·운영 장소의 전국 순위를 반환.
+     * 기간 누락은 WEEK이며 추적 기준 행이 없으면 실패. REPEATABLE_READ에서 건수·목록을 조회하고 빈 목록의 전체 페이지는 1로 표시.
+     */
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PlaceTrendResponse find(PlaceTrendPeriod period, int page, int limit, long userId) {
         PlaceTrendPeriod safePeriod = period == null ? PlaceTrendPeriod.WEEK : period;

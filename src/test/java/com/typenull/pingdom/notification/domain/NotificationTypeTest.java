@@ -6,8 +6,11 @@ import org.junit.jupiter.api.Test;
 
 class NotificationTypeTest {
 
+    /**
+     * 신고 접수·처리, 중복 장소, 사용자 제재 알림 본문에 각 대상 식별자와 처리 결과가 정해진 문구로 삽입되는지 검증.
+     */
     @Test
-    void formatsAdminNotificationBodiesWithTargetIdentifiers() {
+    void formatsAdminNotificationBodies() {
         assertThat(NotificationType.ADMIN_REPORT_RECEIVED.formatBody("30", "12"))
                 .isEqualTo("신고 ID 30 접수가 게시글 ID 12에 등록되었습니다.");
         assertThat(NotificationType.ADMIN_REPORT_PROCESSED.formatBody("12", "30", "수락"))

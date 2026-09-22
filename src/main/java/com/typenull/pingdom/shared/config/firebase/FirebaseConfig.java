@@ -13,6 +13,10 @@ import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
 
+/**
+ * FCM 활성 시 파일의 서비스 계정 자격 증명을 읽어 기본 FirebaseApp을 초기화하거나 기존 앱을 재사용.
+ * 기존 앱이 있어도 먼저 키 파일을 읽으므로 파일 접근·파싱 실패는 빈 생성 실패로 이어짐.
+ */
 @Configuration
 @Slf4j
 public class FirebaseConfig {

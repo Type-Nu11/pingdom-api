@@ -5,6 +5,7 @@ import com.typenull.pingdom.verification.domain.ScoutFieldReportStatus;
 import com.typenull.pingdom.verification.domain.ScoutFieldReportType;
 import java.time.LocalDateTime;
 
+/** 관리자 심사용 제보 응답으로 작성자·심사자 ID와 심사 메모를 함께 제공. */
 public record ScoutFieldReportResponse(
         Long id,
         Long scoutUserId,

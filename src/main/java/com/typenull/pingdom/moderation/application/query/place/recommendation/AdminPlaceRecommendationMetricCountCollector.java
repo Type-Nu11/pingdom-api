@@ -12,6 +12,11 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 장소별 노출·클릭과 BOOKMARK·LIKE 전환 이벤트 수를 수집.
+ * cutoff 이상을 포함하고 공백 버전은 전체 버전으로 취급. 결과에 없는 장소의 수는 0으로 보충.
+ * 누적 객체에 노출·클릭은 덮어쓰고 전환은 합산하므로 장소 배치당 한 번만 호출 필요.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminPlaceRecommendationMetricCountCollector {

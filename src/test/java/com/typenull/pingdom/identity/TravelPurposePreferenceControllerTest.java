@@ -48,20 +48,29 @@ class TravelPurposePreferenceControllerTest {
     @Autowired
     private JdbcTemplate jdbcTemplate;
 
+    /**
+     * 여행 목적 연결 테이블을 먼저 비우고 사용자를 제거해 외래 키와 이전 선호 데이터의 영향을 제거.
+     */
     @BeforeEach
     void setUp() {
         jdbcTemplate.update("DELETE FROM user_travel_purpose");
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 요청으로 저장한 여행 목적 선호와 사용자를 의존 순서대로 정리.
+     */
     @AfterEach
     void tearDown() {
         jdbcTemplate.update("DELETE FROM user_travel_purpose");
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 선호를 등록하지 않은 인증 사용자의 여행 목적 조회가 200과 빈 목록을 반환하는지 검증.
+     */
     @Test
-    void getTravelPurposesReturnsEmptyListForUserWithoutPreferences() throws Exception {
+    void returnsEmptyTravelPreferences() throws Exception {
         User user = saveUser("travelPurposeReader");
 
         mockMvc.perform(get("/users/me/travel-purposes")
@@ -70,8 +79,11 @@ class TravelPurposePreferenceControllerTest {
                 .andExpect(jsonPath("$.travelPurposes").isEmpty());
     }
 
+    /**
+     * 두 여행 목적을 저장한 응답의 항목을 확인한 뒤 빈 목록으로 다시 요청하면 전체 선호가 비워지는지 검증.
+     */
     @Test
-    void replaceTravelPurposesReplacesEntirePreferenceSet() throws Exception {
+    void replacesTravelPreferenceSet() throws Exception {
         User user = saveUser("travelPurposeUpdater");
         TravelPurposePreferenceUpdateRequest request = new TravelPurposePreferenceUpdateRequest(
                 new LinkedHashSet<>(Set.of(TravelPurpose.K_POP, TravelPurpose.FOOD))
@@ -96,8 +108,11 @@ class TravelPurposePreferenceControllerTest {
                 .andExpect(jsonPath("$.travelPurposes").isEmpty());
     }
 
+    /**
+     * 여행 목적 필드가 없는 수정 요청은 400과 필수 목록 검증 메시지를 반환하는지 검증.
+     */
     @Test
-    void replaceTravelPurposesRejectsMissingPreferenceList() throws Exception {
+    void rejectsMissingTravelPreferences() throws Exception {
         User user = saveUser("travelPurposeInvalid");
 
         mockMvc.perform(put("/users/me/travel-purposes")
@@ -108,14 +123,20 @@ class TravelPurposePreferenceControllerTest {
                 .andExpect(jsonPath("$.errors.travelPurposes").value("여행 목적 선호 목록은 필수입니다."));
     }
 
+    /**
+     * 인증 없이 여행 목적 목록을 조회하면 401을 반환하는지 검증.
+     */
     @Test
-    void travelPurposeEndpointsRequireAuthentication() throws Exception {
+    void requiresTravelPreferenceAuthentication() throws Exception {
         mockMvc.perform(get("/users/me/travel-purposes"))
                 .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * 여행 목적을 등록한 사용자가 탈퇴하면 204를 반환하고 연결 테이블의 해당 사용자 선호가 즉시 제거되는지 검증.
+     */
     @Test
-    void withdrawalDeletesTravelPurposesImmediately() throws Exception {
+    void deletesTravelPreferencesOnWithdrawal() throws Exception {
         User user = saveUser("travelPurposeWithdrawal");
         TravelPurposePreferenceUpdateRequest request = new TravelPurposePreferenceUpdateRequest(
                 Set.of(TravelPurpose.BEAUTY)
@@ -139,6 +160,9 @@ class TravelPurposePreferenceControllerTest {
         assertThat(preferenceCount).isZero();
     }
 
+    /**
+     * 여행 목적 API에서 인증하고 조회할 독립 사용자를 저장.
+     */
     private User saveUser(String username) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -150,6 +174,9 @@ class TravelPurposePreferenceControllerTest {
                 .build());
     }
 
+    /**
+     * 사용자 식별자와 현재 역할을 담아 여행 목적 API의 Bearer 인증 토큰을 생성.
+     */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
     }

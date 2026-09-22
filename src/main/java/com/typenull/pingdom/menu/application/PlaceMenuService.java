@@ -21,6 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * PRODUCT_MANAGE 권한으로 장소 메뉴를 관리하고 운영·노출 가능한 장소의 공개 메뉴를 조회.
+ * 공개 목록에는 AVAILABLE과 SOLD_OUT을 포함하며, 국가별 환산 가격은 원본 가격과 별도로 추가.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceMenuService {
@@ -34,6 +38,10 @@ public class PlaceMenuService {
     private final MenuPriceConversionService priceConversionService;
     private final Clock clock;
 
+    /**
+     * 장소 존재와 상품 관리 권한을 확인해 메뉴를 저장하고 생성 응답을 반환.
+     * 도메인의 이름·가격·통화 등 입력 조건 위반은 INVALID_MENU_INPUT으로 변환.
+     */
     @Transactional
     public PlaceMenuResponse create(Long userId, Long placeId, PlaceMenuCreateRequest request) {
         requirePlace(placeId);
@@ -63,6 +71,10 @@ public class PlaceMenuService {
         return PlaceMenuResponse.from(findMenu(menuId, placeId));
     }
 
+    /**
+     * 장소 존재·관리 권한·메뉴 소속을 확인하고 메뉴 행을 잠가 이름·설명·가격·통화·이미지를 갱신.
+     * 비활성 메뉴는 상태 충돌로 거절하고 입력 오류는 메뉴 입력 오류로 변환해 변경 응답을 반환.
+     */
     @Transactional
     public PlaceMenuResponse update(Long userId, Long placeId, Long menuId, PlaceMenuUpdateRequest request) {
         requirePlace(placeId);
@@ -89,6 +101,10 @@ public class PlaceMenuService {
         return PlaceMenuResponse.from(menu);
     }
 
+    /**
+     * 메뉴를 목적 인덱스로 이동한 뒤 장소의 전체 메뉴를 0부터 연속 순서로 다시 기록.
+     * 범위를 넘는 인덱스는 마지막 위치로 보정하며 INACTIVE 메뉴도 재정렬 대상에 포함.
+     */
     @Transactional
     public PlaceMenuResponse reorder(Long userId, Long placeId, Long menuId, PlaceMenuOrderRequest request) {
         requirePlace(placeId);
@@ -113,6 +129,10 @@ public class PlaceMenuService {
         return listPublic(placeId, null);
     }
 
+    /**
+     * 노출 가능하고 영업 중인 장소에서 AVAILABLE·SOLD_OUT 메뉴를 표시 순서·ID 순으로 반환.
+     * 숨김·비영업 장소는 없는 대상으로 처리하며 요청 회원의 국가로 표시 통화를 정해 환산 가격을 함께 제공.
+     */
     @Transactional(readOnly = true)
     public List<PlaceMenuPublicResponse> listPublic(Long placeId, Long userId) {
         MapPlace place = requirePlace(placeId);

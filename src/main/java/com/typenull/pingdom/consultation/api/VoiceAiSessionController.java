@@ -24,8 +24,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 음성 입력을 외부 provider에 직접 노출하지 않는 인증 Gateway입니다.
- * 현재 전송 방식은 단일 최종 JSON 응답(request-response)이며 stream chunk는 계약에 포함하지 않습니다.
+ * 음성 입력의 외부 provider 직접 노출을 차단하는 인증 Gateway.
+ * 현재 전송 계약은 단일 최종 JSON 응답(request-response)으로 한정하며 stream chunk는 제외.
  */
 @RestController
 @RequestMapping(value = "/voice-ai/sessions", produces = "application/json")

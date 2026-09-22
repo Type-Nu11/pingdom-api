@@ -9,6 +9,10 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.*;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 표시 순서와 ID로 메뉴 정렬을 고정하고 개별 변경 또는 전체 재정렬용 쓰기 잠금을 제공.
+ * 잠금 조회의 사용 가능 여부와 수명은 호출 트랜잭션에 의존.
+ */
 public interface PlaceMenuRepository extends JpaRepository<PlaceMenu, Long> {
     List<PlaceMenu> findAllByPlaceIdOrderByDisplayOrderAscIdAsc(Long placeId);
 

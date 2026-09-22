@@ -14,6 +14,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
+/** 허용된 형태의 요청 ID 또는 새 UUID를 응답과 MDC에 연결해 요청 처리 로그를 추적. */
 @Component
 @Order(Ordered.HIGHEST_PRECEDENCE)
 public class RequestIdFilter extends OncePerRequestFilter {
@@ -23,6 +24,7 @@ public class RequestIdFilter extends OncePerRequestFilter {
 
     private static final Pattern SAFE_REQUEST_ID = Pattern.compile("^[A-Za-z0-9._:-]{1,100}$");
 
+    /** 요청 ID를 체인 실행 전에 설정하고 예외가 발생해도 MDC에서 제거해 스레드 재사용 시 누출을 차단. */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,
@@ -40,6 +42,7 @@ public class RequestIdFilter extends OncePerRequestFilter {
         }
     }
 
+    /** 1~100자의 영숫자와 지정 구분자로만 구성된 헤더를 재사용하고 나머지는 UUID로 대체. */
     private String resolveRequestId(HttpServletRequest request) {
         String requestId = request.getHeader(REQUEST_ID_HEADER);
         if (StringUtils.hasText(requestId) && SAFE_REQUEST_ID.matcher(requestId).matches()) {

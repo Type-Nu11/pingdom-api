@@ -11,6 +11,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 
+/**
+ * Gemini 첫 후보의 텍스트 조각을 안내 문구 또는 ProviderEnvelope JSON으로 읽는 HTTP 어댑터.
+ * 안내 문구 누락은 빈 Optional, JSON 해석 실패는 null로 표현하고 전송 예외 및 최종 스키마 검증은 호출 서비스가 처리.
+ */
 @Component
 public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoiceClient {
 

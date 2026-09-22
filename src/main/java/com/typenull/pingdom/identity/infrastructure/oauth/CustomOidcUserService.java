@@ -10,6 +10,10 @@ import org.springframework.security.oauth2.core.OAuth2Error;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 import org.springframework.stereotype.Service;
 
+/**
+ * Google OIDC 사용자 정보를 로드해 sub·email을 검증하고 로컬 회원 연결을 해석.
+ * OIDC claim과 원본 권한은 래핑한 principal에 그대로 위임.
+ */
 @Service
 @RequiredArgsConstructor
 public class CustomOidcUserService extends OidcUserService {

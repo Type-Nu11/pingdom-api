@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationAttachmentResponse;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.AdminMerchantPlaceApplicationResponse;
@@ -34,12 +37,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.format.annotation.DateTimeFormat;
 
-/** Web 통합 신청의 관리자 심사 API입니다. */
+/** Web 통합 신청의 관리자 심사 API. */
 @RestController
 @RequiredArgsConstructor
 @AdminOnly
 @RequestMapping("/admin/merchant-place-applications")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.APPLICATION_REVIEW)
 public class AdminMerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
 

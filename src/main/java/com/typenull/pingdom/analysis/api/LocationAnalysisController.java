@@ -1,5 +1,8 @@
 package com.typenull.pingdom.analysis.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.analysis.api.dto.LocationAnalysisRequest;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportAccessPolicy;
 import com.typenull.pingdom.analysis.application.LocationAnalysisReportService;
@@ -31,10 +34,15 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 로그인 계정의 이메일 소유권을 확인한 뒤 보고서 생성·보관·조회 흐름을 연결.
+ * 생성된 PDF와 HTML이 보관된 후 PDF 응답을 반환하므로, 저장 실패도 생성 요청의 실패로 전달.
+ */
 @RestController
 @RequestMapping("/analysis/reports")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.ANALYSIS)
 public class LocationAnalysisController {
 
     private final LocationAnalysisReportService reportService;

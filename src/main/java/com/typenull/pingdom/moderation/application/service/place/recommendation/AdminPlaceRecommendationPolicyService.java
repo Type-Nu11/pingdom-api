@@ -33,7 +33,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/** 추천 트래픽 정책 변경과 추천 스냅샷 재동기화를 담당한다. */
+/** 추천 트래픽 정책 변경과 추천 스냅샷 재동기화를 담당. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -45,6 +45,11 @@ public class AdminPlaceRecommendationPolicyService {
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
 
+    /**
+     * 지원 버전을 빠짐없이 한 번씩 받고 비율 총합 100과 최소 하나의 활성 버전을 요구.
+     * 비활성 버전의 fallback은 존재하는 다른 버전이어야 하며 순환을 거절. enabled 생략은 true.
+     * 정책 저장과 변경 이력·감사 기록은 같은 트랜잭션에 참여하고 런타임 정책 갱신은 하위 서비스의 커밋 후 동기화에 위임.
+     */
     @Transactional
     public AdminPlaceRecommendationTrafficUpdateResponse updateRecommendationTraffic(
             Long adminUserId,
@@ -75,6 +80,7 @@ public class AdminPlaceRecommendationPolicyService {
                     throw new AdminException(AdminErrorCode.RECOMMENDATION_TRAFFIC_POLICY_INVALID_REQUEST);
                 }
             } else {
+                // 활성 버전은 자체 실행하며 전달된 fallback 값은 저장 대상에서 제외.
                 fallbackVersion = null;
             }
             policyCommands.put(

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -17,15 +20,21 @@ import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 인증 사용자의 체크인 증빙 업로드·메타데이터 조회·파일 다운로드를 제공.
+ * 토큰의 사용자 ID를 서비스에 전달하며 체크인 소유권과 저장소 오류 처리는 서비스가 담당.
+ */
 @RestController
 @RequestMapping("/location-check-ins/{checkInId}/evidence")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.VISIT)
 public class VisitEvidenceController {
     private final VisitEvidenceService service;
 
+    /** multipart file을 인증 사용자와 연결해 등록하고 생성된 증빙 정보를 HTTP 201로 반환. */
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "방문 체크인 증빙 업로드",
             description = "본인의 완료된 체크인에 JPEG 또는 PNG 증빙 이미지 한 개를 등록합니다. 증빙은 보관 기간 만료 후 삭제됩니다.")
@@ -46,6 +55,7 @@ public class VisitEvidenceController {
         return ResponseEntity.status(HttpStatus.CREATED).body(service.upload(user.userId(), checkInId, file));
     }
 
+    /** 인증 사용자가 소유한 체크인의 증빙 메타데이터를 반환. */
     @GetMapping
     @Operation(summary = "내 방문 체크인 증빙 조회")
     @ApiResponse(responseCode = "404", description = "본인 소유 체크인 또는 증빙을 찾을 수 없음",
@@ -55,6 +65,7 @@ public class VisitEvidenceController {
         return service.get(user.userId(), checkInId);
     }
 
+    /** 증빙 바이트를 저장된 MIME 타입으로 반환. no-store와 nosniff로 응답 캐시 저장 및 타입 추측을 제한. */
     @GetMapping("/file")
     @Operation(summary = "내 방문 체크인 증빙 파일 다운로드")
     @ApiResponse(responseCode = "200", description = "증빙 이미지")

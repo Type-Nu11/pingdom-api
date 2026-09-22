@@ -49,14 +49,21 @@ class MerchantOfferServiceTest {
 
     @InjectMocks private MerchantOfferService offerService;
 
+    /**
+     * Offer와 쿠폰의 유효 기간 판단 시각을 UTC로 고정하고 시각을 쓰지 않는 테스트의 공통 stubbing을 허용.
+     */
     @BeforeEach
     void setUpClock() {
         lenient().when(clock.instant()).thenReturn(Instant.parse("2026-07-16T12:00:00Z"));
         lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 대문자 쿠폰 코드를 정규화해 조회하고 장소 소유권 확인 후 REDEEMED와 사용 점주 ID를 기록하는지 검증.
+     * 검증 범위는 첫 사용 요청으로 한정.
+     */
     @Test
-    void owningMerchantCanRedeemCouponOnce() {
+    void redeemsOwnedCoupon() {
         TouristCoupon coupon = TouristCoupon.issue(1L, 2L, CODE, NOW.minusDays(1), NOW.plusDays(1));
         TouristOffer offer = offer();
         when(couponRepository.findByCodeForUpdate(CODE)).thenReturn(Optional.of(coupon));
@@ -69,8 +76,11 @@ class MerchantOfferServiceTest {
         assertThat(coupon.getRedeemedBy()).isEqualTo(10L);
     }
 
+    /**
+     * 소유자 조건의 Offer 조회가 비어 있으면 COUPON_NOT_FOUND이며 쿠폰이 ISSUED 상태로 유지되는지 검증.
+     */
     @Test
-    void merchantCannotRedeemCouponForAnotherOwnersOffer() {
+    void rejectsUnownedCouponRedemption() {
         TouristCoupon coupon = TouristCoupon.issue(1L, 2L, CODE, NOW.minusDays(1), NOW.plusDays(1));
         when(couponRepository.findByCodeForUpdate(CODE)).thenReturn(Optional.of(coupon));
         when(offerRepository.findByIdAndMerchantOwnerUserId(1L, 10L)).thenReturn(Optional.empty());
@@ -82,6 +92,9 @@ class MerchantOfferServiceTest {
         assertThat(coupon.getStatus()).isEqualTo(CouponStatus.ISSUED);
     }
 
+    /**
+     * 만료된 쿠폰 사용 요청을 COUPON_NOT_REDEEMABLE 도메인 오류로 변환하는지 검증.
+     */
     @Test
     void expiredCouponCannotBeRedeemed() {
         TouristCoupon coupon = TouristCoupon.issue(1L, 2L, CODE, NOW.minusDays(2), NOW.minusDays(1));
@@ -94,8 +107,11 @@ class MerchantOfferServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.COUPON_NOT_REDEEMABLE));
     }
 
+    /**
+     * 종료 시각이 지난 Offer 생성 요청이 INVALID_OFFER_PERIOD로 거절되는지 검증.
+     */
     @Test
-    void offerWhoseEndTimeHasPassedCannotBeCreated() {
+    void rejectsEndedOfferCreation() {
         OfferCreateRequest request = new OfferCreateRequest(
                 100L,
                 "Offer",
@@ -112,8 +128,11 @@ class MerchantOfferServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.INVALID_OFFER_PERIOD));
     }
 
+    /**
+     * 공개·무제한·Offer 종료 만료 정책을 명시한 생성이 각 정책과 null 총수량을 저장하고 null 잔여 수량을 응답하는지 검증.
+     */
     @Test
-    void merchantCanCreateUnlimitedPublicOfferWithExplicitPolicies() {
+    void createsUnlimitedPublicOffer() {
         OfferCreateRequest request = new OfferCreateRequest(
                 100L,
                 "상시 웰컴 혜택",
@@ -142,8 +161,11 @@ class MerchantOfferServiceTest {
         assertThat(response.remainingQuantity()).isNull();
     }
 
+    /**
+     * 소유자·장소·게시 상태 필터와 0번 페이지·20건·생성시각/ID 내림차순을 저장소에 전달하고 결과를 매핑하는지 검증.
+     */
     @Test
-    void listAppliesPlaceAndStatusFiltersBeforePagination() {
+    void forwardsOfferFiltersAndPagination() {
         TouristOffer offer = offer();
         when(offerRepository.findAllByMerchantOwnerUserIdWithFilters(
                 org.mockito.ArgumentMatchers.eq(10L),
@@ -170,6 +192,9 @@ class MerchantOfferServiceTest {
         assertThat(response.offers()).extracting(OfferResponse::placeId).containsExactly(100L);
     }
 
+    /**
+     * 점주 10·장소 100의 유효 기간 내 초안 Offer를 만들어 소유권과 쿠폰 처리의 입력으로 제공.
+     */
     private TouristOffer offer() {
         return TouristOffer.draft(
                 10L,

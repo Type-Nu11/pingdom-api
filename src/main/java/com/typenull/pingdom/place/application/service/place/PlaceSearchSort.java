@@ -5,11 +5,18 @@ import com.typenull.pingdom.shared.exception.MapException;
 import java.util.Locale;
 import org.springframework.util.StringUtils;
 
+/**
+ * 일반 장소 검색 정렬값. 공백·미입력은 LATEST이며 알 수 없는 값에는 전용 정렬 오류를 반환.
+ */
 public enum PlaceSearchSort {
     LATEST,
     NEAREST,
     POPULAR;
 
+    /**
+     * null·공백은 LATEST로 처리하고 나머지는 공백 제거·대문자 변환 후 정렬 값으로 해석.
+     * 지원하지 않는 이름은 UNSUPPORTED_PLACE_SEARCH_SORT로 거절.
+     */
     public static PlaceSearchSort from(String value) {
         if (!StringUtils.hasText(value)) {
             return LATEST;

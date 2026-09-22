@@ -10,7 +10,7 @@ public interface CommunityPostPlaceRepository extends JpaRepository<CommunityPos
 
     boolean existsByCommunityPost_IdAndMapPlace_Id(Long communityPostId, Long mapPlaceId);
 
-    /** 게시글 상세에 필요한 연결 장소를 한 번에 조회해 N+1 조회를 방지한다. */
+    /** 게시글 상세에 필요한 연결 장소를 한 번에 조회해 N+1 조회를 방지. */
     @Query("""
             select communityPostPlace
             from CommunityPostPlace communityPostPlace

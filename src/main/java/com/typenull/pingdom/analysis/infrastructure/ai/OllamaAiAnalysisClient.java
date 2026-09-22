@@ -16,7 +16,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.util.StringUtils;
 
-/** Ollama의 로컬 /api/chat 엔드포인트를 보고서 AI 포트에 연결한다. */
+/** Ollama의 로컬 /api/chat 엔드포인트를 보고서 AI 포트에 연결. */
 @RequiredArgsConstructor
 public class OllamaAiAnalysisClient implements AiAnalysisClient {
 
@@ -24,6 +24,10 @@ public class OllamaAiAnalysisClient implements AiAnalysisClient {
     private final AiAnalysisProperties properties;
     private final ObjectMapper objectMapper;
 
+    /**
+     * 한 번의 비스트리밍 chat 요청으로 구조화 응답 수신. 바깥 코드 펜스만 제거하고 일반 설명문은 유지.
+     * 알 수 없는 JSON 필드·빈 응답은 거절하며 외부 실패는 자동 재시도 없이 도메인 오류로 전달.
+     */
     @Override
     public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
         OllamaChatResponse response;

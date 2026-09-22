@@ -1,5 +1,8 @@
 package com.typenull.pingdom.shared.support;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.ExampleObject;
@@ -10,8 +13,10 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.RestController;
 import io.swagger.v3.oas.annotations.tags.Tag;
 
+/** 루트 경로에 고정된 서비스 안내와 주요 인증 경로를 반환. DB·외부 의존성의 정상 여부를 검사하는 health check와는 별도. */
 @RestController
-@Tag(name = "Common", description = "앱/웹 공통")
+@ApiAudience(ApiAudience.Group.COMMON)
+@Tag(name = SwaggerTagCatalog.SERVICE)
 public class HomeController {
 
     @GetMapping("/")

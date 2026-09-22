@@ -14,6 +14,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 예약·혜택 이용 등 원천 데이터에 연결되는 장소 전환 이력.
+ * 양수 식별자·필수 시각·길이가 제한된 중복 키를 요구하며 실제 중복 차단은 저장소 고유 제약에 의존.
+ */
 @Entity
 @Getter
 @Table(name = "place_conversion_event")

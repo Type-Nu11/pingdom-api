@@ -7,6 +7,7 @@ import com.typenull.pingdom.place.domain.place.information.PlaceInformationVerif
 import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingStatus;
 import java.util.Set;
 
+/** 탐색·추천 부하 시나리오에 사용할 장소의 소유자·좌표·공개/운영/검증 상태·반응 지표와 정렬 기준을 담음. */
 public record FixturePlace(
         long id,
         String name,

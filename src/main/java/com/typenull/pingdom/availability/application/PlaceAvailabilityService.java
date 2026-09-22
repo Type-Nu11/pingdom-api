@@ -24,15 +24,22 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소의 시간별 슬롯을 상품 및 현재 점주 자격과 연결하고 예약 수량을 차감·반환.
+ * 예약·반환은 슬롯을 쓰기 잠금으로 읽고 기존 호출 트랜잭션에 참여하며, 슬롯 편집은 엔티티 버전 검사를 사용.
+ */
 @Service
 @RequiredArgsConstructor
-/** 장소별 예약 가능 상품과 시간·재고 상태를 조회하고 예약 가능 여부를 판단합니다. */
 public class PlaceAvailabilityService {
     private final PlaceAvailabilityRepository repository;
     private final AvailabilityAccessPolicy accessPolicy;
     private final ReservableProductRepository productRepository;
     private final Clock clock;
 
+    /**
+     * 현재 점주의 장소 소유권과 연결 상품의 활성 상태·유형 일치를 확인해 예약 슬롯을 저장·flush하고 상품명을 포함해 반환.
+     * 상품이 없는 비일반 유형, 잘못된 기간·정원은 입력 오류로, 슬롯 고유 제약 충돌은 중복 슬롯 오류로 변환.
+     */
     @Transactional
     public AvailabilityResponse create(Long ownerId, AvailabilityUpsertRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -55,6 +62,10 @@ public class PlaceAvailabilityService {
         }
     }
 
+    /**
+     * 기존 슬롯의 장소는 변경할 수 없으며 productId 생략은 기존 상품 참조 유지로 해석.
+     * 배정된 수량이 있으면 상품·시간 변경과 배정량 미만의 총량 축소를 도메인이 거절.
+     */
     @Transactional
     public AvailabilityResponse update(Long ownerId, Long id, AvailabilityUpsertRequest request) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -86,6 +97,10 @@ public class PlaceAvailabilityService {
         }
     }
 
+    /**
+     * 요청 점주 명의의 슬롯과 현재 장소 소유 자격을 확인한 뒤 활성 또는 비활성 상태로 전환해 반환.
+     * 대상 부재와 소유권 오류는 거절하고 도메인의 불가능한 상태 전이는 슬롯 상태 오류로 변환.
+     */
     @Transactional
     public AvailabilityResponse changeStatus(Long ownerId, Long id, boolean active) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -115,6 +130,10 @@ public class PlaceAvailabilityService {
                 placeId, AvailabilityStatus.ACTIVE, LocalDateTime.now(clock)));
     }
 
+    /**
+     * 현재 점주 및 상품 조건을 만족하는 슬롯을 잠그고, 연결 상품도 잠근 뒤 재고를 차감.
+     * 실제 시작 시각 이전인지와 잔여 수량은 도메인이 다시 검사하므로 공개 목록에 보여도 예약은 거절될 수 있음.
+     */
     @Transactional
     public PlaceAvailability reserve(Long id, int quantity) {
         LocalDateTime now = LocalDateTime.now(clock);
@@ -181,6 +200,10 @@ public class PlaceAvailabilityService {
         }
     }
 
+    /**
+     * 예약 취소 경로에서 슬롯 행을 잠그고 요청 수량만큼 잔여 정원을 복구.
+     * 슬롯 부재는 거절하며 양수가 아닌 수량이나 총 정원 초과 복구는 INVALID_AVAILABILITY_STATE로 변환.
+     */
     @Transactional
     public void release(Long id, int quantity) {
         PlaceAvailability availability = repository.findByIdForUpdate(id)

@@ -12,6 +12,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 광고 표시 문자열·URL과 노출 기간 보관. 생성 시 필수 텍스트와 종료가 시작보다 이후인지 검증.
+ * URL 형식·외부 콘텐츠 안전성·현재 노출 상태 판정은 엔티티 검증 범위에서 제외.
+ */
 @Entity
 @Table(name = "admin_ad")
 @Getter

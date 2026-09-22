@@ -6,7 +6,7 @@ import jakarta.validation.constraints.Size;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-// JWT 발급 설정 프로퍼티
+/** HMAC 서명 키 문자열과 토큰 수명(초). 키는 UTF-8 바이트로 변환되며 최소 32자 검증을 거침. */
 @Validated
 @ConfigurationProperties(prefix = "jwt")
 public record JwtProperties(

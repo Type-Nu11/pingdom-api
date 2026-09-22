@@ -4,7 +4,7 @@ import com.fasterxml.jackson.annotation.JsonIgnoreProperties;
 import java.time.LocalDate;
 import java.util.List;
 
-/** AI가 반환하는 분석 데이터 계약이다. HTML은 이 데이터로 서버가 생성한다. */
+/** AI가 반환하는 분석 데이터 계약. HTML은 이 데이터로 서버가 생성. */
 @JsonIgnoreProperties(ignoreUnknown = false)
 public record LocationAnalysisContent(
         String reportName,
@@ -28,12 +28,16 @@ public record LocationAnalysisContent(
         limitations = limitations == null ? List.of() : List.copyOf(limitations);
     }
 
-    /** Backend가 map_place에서 확인한 동일 업종 경쟁업체를 AI 결과에 반영한다. */
+    /** Backend가 map_place에서 확인한 동일 업종 경쟁업체를 AI 결과에 반영. */
     public LocationAnalysisContent withNearbyCompetitors(List<Facility> competitors) {
         return withNearbyPlaces(competitors, List.of(), List.of());
     }
 
-    /** Backend가 map_place에서 확인한 주변 장소를 시설 유형별로 반영한다. */
+    /** Backend가 map_place에서 확인한 주변 장소를 시설 유형별로 반영. */
+    /**
+     * 경쟁업체 목록은 조회 결과로 교체. 편의·교통시설은 보강 목록이 비어 있으면 기존 AI 목록을 유지.
+     * 내부 장소 DB 검증 범위는 조회 결과로 교체한 항목으로 제한.
+     */
     public LocationAnalysisContent withNearbyPlaces(
             List<Facility> competitors,
             List<Facility> convenienceFacilities,
@@ -62,7 +66,10 @@ public record LocationAnalysisContent(
         );
     }
 
-    /** 관측된 유동 데이터가 있지만 AI 사업성 섹션이 비어 있을 때만 서버가 수치를 재사용해 보강한다. */
+    /** 관측된 유동 데이터가 있지만 AI 사업성 섹션이 비어 있을 때만 서버가 수치를 재사용해 보강. */
+    /**
+     * 유동인구와 기존 분석 항목으로 사업성 표시용 설명 보충. 별도 매출 예측 모델 실행은 처리 범위에서 제외.
+     */
     public LocationAnalysisContent withDerivedBusinessPerformance() {
         if (footTrafficAnalysis == null || footTrafficAnalysis.total() == null || footTrafficAnalysis.total() <= 0d) {
             return this;
@@ -91,7 +98,7 @@ public record LocationAnalysisContent(
         );
     }
 
-    /** MCP가 반환한 후보·총량을 비어 있는 보고서 지표에 연결한다. 원천 구분이 없으면 라벨로 범위를 명시한다. */
+    /** MCP가 반환한 후보·총량을 비어 있는 보고서 지표에 연결. 원천 구분이 없으면 라벨로 범위를 명시. */
     public LocationAnalysisContent withDerivedReportMetrics() {
         FootTrafficAnalysis currentTraffic = footTrafficAnalysis;
         CommercialAreaAnalysis currentArea = commercialAreaAnalysis;

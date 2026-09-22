@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.conversion.MapLinkConversionRequest;
 import com.typenull.pingdom.place.application.service.conversion.MapLinkConversionEventService;
@@ -29,7 +32,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/places/{placeId}/map-link-conversions")
 @RequiredArgsConstructor
 @Validated
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PLACE_DETAIL)
 public class MapLinkConversionController {
     private final MapLinkConversionEventService service;
 

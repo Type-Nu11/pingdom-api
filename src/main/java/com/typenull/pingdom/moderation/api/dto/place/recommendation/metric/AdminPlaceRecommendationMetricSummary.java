@@ -2,6 +2,10 @@ package com.typenull.pingdom.moderation.api.dto.place.recommendation.metric;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 검색 대상 장소의 합계 건수와 합계에서 다시 계산한 소수 비율.
+ * 비교 응답의 delta에 쓰일 때는 각 필드가 target - baseline이므로 음수가 될 수 있음.
+ */
 @Schema(description = "관리자 추천 성과 요약")
 public record AdminPlaceRecommendationMetricSummary(
         @Schema(description = "추천 버전", example = "place-rec-v1")

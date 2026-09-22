@@ -27,8 +27,9 @@ class MyPlaceReviewOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /** 내 리뷰 경로가 app 문서에만 포함되고 Bearer 인증, 페이지 필수 필드, 리뷰 노출 상태 enum이 문서화되는지 확인. */
     @Test
-    void exposesMyReviewListInTheAppOpenApiDocument() throws Exception {
+    void documentsMyReviewContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode commonDocument = readApiDocs("/v3/api-docs/common");
         JsonNode operation = appDocument.at("/paths/~1users~1me~1reviews/get");
@@ -44,6 +45,7 @@ class MyPlaceReviewOpenApiContractTest {
                 .contains("VISIBLE", "HIDDEN", "DELETED");
     }
 
+    /** 지정 그룹 OpenAPI의 HTTP 200 응답을 확인하고 UTF-8 본문을 JSON으로 변환. */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())

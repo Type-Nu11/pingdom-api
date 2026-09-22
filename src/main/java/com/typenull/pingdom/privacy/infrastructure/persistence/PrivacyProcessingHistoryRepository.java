@@ -10,6 +10,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 감사 검색은 from/to를 포함하고 보관 기간 정리는 threshold 미만만 선택.
+ * 정리 조회는 오래된 시각·ID 순서이며 행 잠금이 없으므로 여러 작업자의 배치 선택이 겹칠 수 있음.
+ */
 public interface PrivacyProcessingHistoryRepository extends JpaRepository<PrivacyProcessingHistory, Long> {
 
     boolean existsByOutboxEventIdAndSubjectUserId(String outboxEventId, Long subjectUserId);

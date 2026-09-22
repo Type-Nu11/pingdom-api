@@ -15,6 +15,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 혜택의 공개 상태, 발급 수량 및 쿠폰 만료 정책을 보유.
+ * 무제한 정책의 totalQuantity는 null이며, 발급 기간은 시작 포함·종료 제외. 동시 발급 잠금은 저장소 호출자가 담당.
+ */
 @Entity
 @Getter
 @Table(name = "tourist_offer")
@@ -186,6 +190,10 @@ public class TouristOffer {
         updatedAt = now;
     }
 
+    /**
+     * 공개 기간과 제한 재고를 검사한 뒤 발급 수량을 하나 늘리고 정책별 쿠폰 만료 시각 반환.
+     * 발급 불가 상태와 재고 소진은 서로 다른 예외로 구분하며 실제 쿠폰 생성·저장은 호출 서비스 책임.
+     */
     public LocalDateTime issueCoupon(LocalDateTime now) {
         if (!isAvailableAt(now)) {
             throw new IllegalStateException("현재 발급할 수 없는 Offer입니다.");

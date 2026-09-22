@@ -26,6 +26,10 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+/**
+ * 회원 식별 정보, 계정 상태와 현재 refresh 세션을 보관하는 회원 엔티티.
+ * 비밀번호·프로필 변경과 정지·탈퇴 상태 전이를 수행하며 관련 데이터 정리나 외부 저장소 처리는 서비스에 위임.
+ */
 @Getter
 @Entity
 @Table(name = "users")
@@ -102,7 +106,7 @@ public class User {
     @Column(name = "updated_at", nullable = false)
     private LocalDateTime updatedAt;
 
-    // 현재 활성 Refresh Token hash 저장 필드. 기존 refresh_token 컬럼은 점진적으로 hash 값으로 전환한다.
+    // 현재 활성 Refresh Token hash 저장 필드. 기존 refresh_token 컬럼은 점진적으로 hash 값으로 전환.
     @Column(length = 1000)
     private String refreshToken;
 
@@ -159,6 +163,10 @@ public class User {
     }
 
     // 이메일 인증 코드 만료 여부 확인 메서드
+    /**
+     * 만료 시각이 없거나 현재 시각이 그 이후일 때 만료로 판정.
+     * 재설정 토큰과 달리 만료 시각과 정확히 같은 시점은 이 비교의 만료 판정에서 제외.
+     */
     public boolean isEmailVerificationExpired(LocalDateTime now) {
         return this.emailVerificationExpiresAt == null || now.isAfter(this.emailVerificationExpiresAt);
     }
@@ -176,6 +184,10 @@ public class User {
     }
 
     // Refresh Token 일치 여부 확인 메서드
+    /**
+     * 새 세션은 SHA-256 해시와 비교하고 기존 평문 저장값도 호환을 위해 허용.
+     * 평문 호환은 회전 시 해시로 교체되며 JWT 서명·만료 유효성은 이 메서드의 검사 대상에서 제외.
+     */
     public boolean matchesRefreshToken(String refreshToken) {
         if (refreshToken == null || this.refreshToken == null) {
             return false;

@@ -33,7 +33,7 @@ public interface CommunityPostRepository extends JpaRepository<CommunityPost, Lo
     Optional<CommunityPost> findByIdForUpdate(@Param("postId") Long postId);
 
     /**
-     * 목록 화면에는 본문과 연결 장소를 포함하지 않고 식별자와 제목만 조회한다.
+     * 목록 화면에는 본문과 연결 장소를 포함하지 않고 식별자와 제목만 조회.
      */
     @Query("""
             select new com.typenull.pingdom.community.api.dto.CommunityPostListResponse$Item(post.id, post.title)

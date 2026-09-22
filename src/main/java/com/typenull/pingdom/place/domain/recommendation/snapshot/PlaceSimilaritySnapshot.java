@@ -14,6 +14,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소 쌍의 거리·공동 북마크·공동 좋아요·추세 유사도와 가중 합을 저장.
+ * 쌍의 방향 정규화와 점수 계산은 서비스가 맡고 저장 모델은 전달된 점수와 갱신 시각을 보존.
+ */
 @Entity
 @Table(
         name = "place_similarity_snapshot",

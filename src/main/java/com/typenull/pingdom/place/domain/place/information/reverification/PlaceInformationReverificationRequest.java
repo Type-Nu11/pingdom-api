@@ -10,6 +10,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
+/**
+ * 사업자에게 장소 정보를 다시 확인하도록 요청하는 상태와 응답 근거를 보관.
+ * REQUESTED의 기한 이전 응답만 허용하고 RESPONDED에서 완료하며 소유권 판단은 호출 서비스가 담당.
+ */
 @Entity
 @Getter
 @Table(name = "place_information_reverification_request")

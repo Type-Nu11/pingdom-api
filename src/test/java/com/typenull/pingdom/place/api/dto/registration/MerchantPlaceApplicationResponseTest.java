@@ -23,8 +23,9 @@ class MerchantPlaceApplicationResponseTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 27, 12, 0);
 
+    /** 사업자 신규 신청 응답이 유형·장소명·태그와 월요일 영업시간을 보존하는지 확인. */
     @Test
-    void returnsStoredNewPlaceFieldsForNewPlaceApplication() throws Exception {
+    void mapsNewPlaceApplication() throws Exception {
         PlaceRegistrationApplication application = newPlaceDraft();
         application.updateContactPhones("+821012345678", "+821098765432");
         application.updateOperatingSchedule(
@@ -54,8 +55,9 @@ class MerchantPlaceApplicationResponseTest {
         ));
     }
 
+    /** 기존 장소 운영권 신청은 신규 장소 입력 응답을 null로 반환하는지 확인. */
     @Test
-    void omitsNewPlaceFieldsForExistingPlaceClaim() {
+    void omitsClaimNewPlaceDetails() {
         PlaceRegistrationApplication application = newPlaceDraft();
         application.configureMerchantSubmission(
                 MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM,
@@ -69,8 +71,9 @@ class MerchantPlaceApplicationResponseTest {
         assertThat(response.newPlace()).isNull();
     }
 
+    /** 필수 첨부를 갖춘 신청을 제출·승인·완료하면 응답에 COMPLETED와 연결 장소 ID가 반영되는지 확인. */
     @Test
-    void returnsCompletedPlaceIdAfterNewPlaceApproval() {
+    void returnsCompletedApplicationPlace() {
         PlaceRegistrationApplication application = newPlaceDraft();
         application.replaceAttachments(List.of(
                 attachment(application, PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION, "business"),
@@ -87,6 +90,7 @@ class MerchantPlaceApplicationResponseTest {
         assertThat(response.placeId()).isEqualTo(30L);
     }
 
+    /** 고정 장소 정보와 영어 메뉴 태그를 가진 사업자 신규 신청 초안을 생성. */
     private PlaceRegistrationApplication newPlaceDraft() {
         return PlaceRegistrationApplication.merchantPlaceDraft(
                 1L,
@@ -103,10 +107,12 @@ class MerchantPlaceApplicationResponseTest {
         );
     }
 
+    /** 영업일 JSON 직렬화·역직렬화에 필요한 JavaTimeModule을 등록. */
     private ObjectMapper objectMapper() {
         return new ObjectMapper().registerModule(new JavaTimeModule());
     }
 
+    /** 문서 유형마다 다른 해시를 가진 필수 첨부를 만들어 제출 조건을 충족시킴. 파일 저장소 호출 없이 메타데이터만 구성. */
     private PlaceRegistrationAttachment attachment(
             PlaceRegistrationApplication application,
             PlaceRegistrationAttachmentType documentType,

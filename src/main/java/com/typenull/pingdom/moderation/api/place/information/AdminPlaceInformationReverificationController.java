@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.place.information;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.place.api.dto.place.information.reverification.*;
@@ -21,7 +24,8 @@ import org.springframework.validation.annotation.Validated;
 @RequiredArgsConstructor
 @AdminOnly
 @Validated
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.REPORT_REVERIFICATION)
 public class AdminPlaceInformationReverificationController {
 
     private final PlaceInformationReverificationService service;

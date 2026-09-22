@@ -7,7 +7,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** 민감한 사업자등록번호를 제외한 통합 신청 조회 응답입니다. */
+/** 민감한 사업자등록번호를 제외한 통합 신청 조회 응답. */
 public record MerchantPlaceApplicationResponse(
         Long id,
         Long applicantUserId,

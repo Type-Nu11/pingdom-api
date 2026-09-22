@@ -1,5 +1,8 @@
 package com.typenull.pingdom.payment.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.AuthenticatedOnly;
@@ -20,14 +23,15 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** 결제 내역과 결제 상태 조회 API의 진입점. */
 @RestController
 @RequestMapping("/payments")
 @RequiredArgsConstructor
 @AuthenticatedOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.PAYMENT)
 @org.springframework.validation.annotation.Validated
-/** 결제 내역과 결제 상태 조회 API의 진입점입니다. */
 public class PaymentController {
     private final PaymentQueryService queryService;
 

@@ -1,5 +1,8 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentCreateRequest;
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentCreateResponse;
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentListResponse;
@@ -9,7 +12,11 @@ import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
@@ -31,7 +38,8 @@ import jakarta.validation.constraints.Min;
 @RestController
 @RequestMapping("/community/posts/{postId}/comments")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.COMMUNITY_REACTION)
 public class CommunityPostCommentController {
 
     private final CommunityPostCommentCommandService communityPostCommentCommandService;
@@ -41,7 +49,7 @@ public class CommunityPostCommentController {
     @Operation(summary = "커뮤니티 게시글 댓글 목록 조회", description = "게시글 본문 아래에 표시할 댓글을 최신 댓글순으로 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "댓글 목록 조회 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음", useReturnTypeSchema = true)
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<CommunityPostCommentListResponse> findAll(
             @PathVariable long postId,
@@ -56,9 +64,9 @@ public class CommunityPostCommentController {
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "댓글 등록 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "400", description = "댓글 입력값이 올바르지 않음", useReturnTypeSchema = true),
+            @ApiResponse(responseCode = "400", description = "댓글 입력값이 올바르지 않음", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음", useReturnTypeSchema = true)
+            @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<CommunityPostCommentCreateResponse> create(
             @PathVariable long postId,

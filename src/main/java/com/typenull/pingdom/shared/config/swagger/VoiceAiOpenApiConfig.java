@@ -18,6 +18,10 @@ import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.io.ClassPathResource;
 
+/**
+ * Voice AI 경로가 포함된 명세에 고정 ProviderEnvelope v1과 오류 응답을 덧씌움.
+ * 실제 provider 응답 검증과 런타임 예외 처리는 처리 범위 외.
+ */
 @Configuration
 public class VoiceAiOpenApiConfig {
     private static final String BASE = "/voice-ai/sessions";
@@ -57,13 +61,17 @@ public class VoiceAiOpenApiConfig {
     private Schema<?> envelopeSchema() {
         try (InputStream stream = new ClassPathResource("openapi/provider-envelope.v1.schema.json").getInputStream()) {
             JsonNode source = Json.mapper().readTree(stream);
-            // 앱의 고정 v1 계약을 OAS 3.0으로 변환한다. const는 단일 enum, 로컬 $defs는 인라인으로 표현한다.
+            // 앱의 고정 v1 계약을 OAS 3.0으로 변환. const는 단일 enum, 로컬 $defs는 인라인으로 표현.
             return Json.mapper().treeToValue(toOpenApi(source, source), Schema.class);
         } catch (IOException exception) {
             throw new IllegalStateException("ProviderEnvelope v1 계약을 읽을 수 없습니다.", exception);
         }
     }
 
+    /**
+     * 앱의 고정 JSON Schema를 OAS 3.0 표현으로 변환. 로컬 ref를 펼치고 const를 단일 enum으로 변경.
+     * 임의의 외부 참조와 순환 schema는 처리 범위 외.
+     */
     private JsonNode toOpenApi(JsonNode node, JsonNode root) {
         if (node.isArray()) {
             ArrayNode result = Json.mapper().createArrayNode();

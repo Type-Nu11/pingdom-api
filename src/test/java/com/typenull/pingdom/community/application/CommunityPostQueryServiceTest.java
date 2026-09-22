@@ -41,8 +41,11 @@ class CommunityPostQueryServiceTest {
             userRepository
     );
 
+    /**
+     * 카테고리 조회가 저장소의 ID·제목 목록과 전체 수·페이지 수·다음 페이지 여부를 응답에 반영하는지 검증.
+     */
     @Test
-    void 카테고리에_속한_게시글의_ID와_제목만_페이지로_조회한다() {
+    void returnsCategoryPostPage() {
         List<CommunityPostListResponse.Item> items = List.of(
                 new CommunityPostListResponse.Item(2L, "두 번째 게시글"),
                 new CommunityPostListResponse.Item(1L, "첫 번째 게시글")
@@ -59,8 +62,11 @@ class CommunityPostQueryServiceTest {
         verify(communityPostRepository).findListItemsByCategoryId(any(), any());
     }
 
+    /**
+     * 알 수 없는 카테고리 조회는 해당 오류 메시지를 반환하고 게시글 목록 저장소를 호출하지 않는지 검증.
+     */
     @Test
-    void 지원하지_않는_카테고리는_조회하지_않는다() {
+    void rejectsUnsupportedQueryCategory() {
         assertThatThrownBy(() -> service.findByCategory("UNKNOWN", 1, 20))
                 .isInstanceOf(CommunityException.class)
                 .hasMessage("사용할 수 없는 게시글 카테고리입니다.");
@@ -68,8 +74,11 @@ class CommunityPostQueryServiceTest {
         verify(communityPostRepository, never()).findListItemsByCategoryId(any(), any());
     }
 
+    /**
+     * 게시글 상세의 제목·본문과 연결 장소 ID·이름·삭제 여부를 조립하고 연결 장소 일괄 조회를 사용하는지 검증.
+     */
     @Test
-    void 게시글_본문과_연결_장소를_한번에_조회한다() {
+    void returnsPostWithLinkedPlaces() {
         CommunityPost post = mock(CommunityPost.class);
         CommunityPostPlace postPlace = mock(CommunityPostPlace.class);
         MapPlace place = mock(MapPlace.class);
@@ -90,8 +99,11 @@ class CommunityPostQueryServiceTest {
         verify(communityPostPlaceRepository).findAllWithMapPlaceByCommunityPostId(10L);
     }
 
+    /**
+     * 조회 가능한 게시글이 없으면 게시글 없음 오류를 반환하고 연결 장소 조회를 생략하는지 검증.
+     */
     @Test
-    void 존재하지_않는_게시글은_장소를_조회하지_않는다() {
+    void rejectsMissingPostDetail() {
         when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.findDetail(10L))
@@ -101,8 +113,11 @@ class CommunityPostQueryServiceTest {
         verify(communityPostPlaceRepository, never()).findAllWithMapPlaceByCommunityPostId(any());
     }
 
+    /**
+     * 연결된 장소 객체가 삭제되어도 원래 장소 ID와 삭제 안내 문구, 삭제 상태를 상세 응답에 유지하는지 검증.
+     */
     @Test
-    void 삭제된_연결_장소는_식별자와_삭제_안내를_유지한다() {
+    void preservesDeletedPlaceReference() {
         CommunityPost post = mock(CommunityPost.class);
         CommunityPostPlace deletedPlace = mock(CommunityPostPlace.class);
         when(post.getId()).thenReturn(10L);
@@ -119,8 +134,11 @@ class CommunityPostQueryServiceTest {
                 .containsExactly(new CommunityPostDetailResponse.Place(7L, "삭제된 장소입니다", true));
     }
 
+    /**
+     * 댓글 페이지와 작성자 일괄 조회 결과를 결합해 댓글 ID·내용·작성자 ID·이름·작성 시각을 응답하는지 검증.
+     */
     @Test
-    void 게시글의_댓글만_최신순_페이지로_조회하고_작성자_정보를_일괄_결합한다() {
+    void joinsCommentAuthorInformation() {
         CommunityPost post = mock(CommunityPost.class);
         CommunityPostComment comment = mock(CommunityPostComment.class);
         User author = mock(User.class);

@@ -1,9 +1,14 @@
 package com.typenull.pingdom.place.api.registration;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationPageResponse;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationRequest;
 import com.typenull.pingdom.place.api.dto.registration.MerchantPlaceApplicationResponse;
+import com.typenull.pingdom.place.api.dto.registration.NaverAddressSearchResponse;
 import com.typenull.pingdom.place.api.dto.registration.NaverPlaceSearchResponse;
+import com.typenull.pingdom.place.application.service.registration.NaverAddressSearchService;
 import com.typenull.pingdom.place.application.service.registration.NaverPlaceSearchService;
 import com.typenull.pingdom.place.application.service.registration.MerchantPlaceApplicationService;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
@@ -22,16 +27,35 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
+import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.Size;
 
-/** Web에서 사업자와 장소를 함께 신청하는 API입니다. */
+/** Web에서 사업자와 장소를 함께 신청하는 API. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.APPLICATION)
 public class MerchantPlaceApplicationController {
     private final MerchantPlaceApplicationService service;
+    private final NaverAddressSearchService naverAddressSearchService;
     private final NaverPlaceSearchService naverPlaceSearchService;
+
+    /**
+     * 인증된 신규 장소 신청자가 입력한 도로명 또는 지번 주소를 좌표 후보로 조회.
+     * 장소 신청을 생성하거나 변경하지 않으며, 활성 Merchant 소유 여부와 관계없이 신청 단계에서 사용할 수 있도록 허용.
+     */
+    @GetMapping("/naver-address-search")
+    @Operation(
+            summary = "신규 장소 등록용 네이버 주소 검색",
+            description = "도로명·지번 주소 후보를 최대 10건 반환합니다. 좌표는 WGS84 기준이며, 우편번호가 없는 후보는 null로 반환합니다."
+    )
+    public NaverAddressSearchResponse searchNaverAddress(
+            @RequestParam @NotBlank @Size(max = 100) String query,
+            @CurrentUser JwtAuthenticatedUser user
+    ) {
+        return naverAddressSearchService.search(query);
+    }
 
     @GetMapping("/naver-place-search")
     @Operation(summary = "신규 장소 등록용 네이버 업체명 검색", description = "네이버 Local Search 결과를 최대 5건의 장소명·도로명 주소·지번 주소·WGS84 좌표로 반환합니다.")

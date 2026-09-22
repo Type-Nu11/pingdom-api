@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.notification;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.notification.AdminNotificationDeliveryResponse;
 import com.typenull.pingdom.moderation.application.query.notification.AdminNotificationDeliveryQueryService;
@@ -22,7 +25,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/notification-deliveries")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.ADMIN_NOTIFICATION)
 public class AdminNotificationDeliveryController {
 
     private final AdminNotificationDeliveryQueryService adminNotificationDeliveryQueryService;

@@ -15,6 +15,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 관리자에게 부여한 업무 역할과 회수 이력을 보관.
+ * ACTIVE 할당만 권한을 허용하며 부여 시각보다 이른 회수나 중복 회수는 거부.
+ */
 @Getter
 @Entity
 @Table(name = "admin_role_assignment")

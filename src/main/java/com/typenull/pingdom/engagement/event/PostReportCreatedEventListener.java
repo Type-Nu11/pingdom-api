@@ -14,6 +14,10 @@ import org.springframework.context.event.EventListener;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 신고 생성 이벤트를 동기로 받아 최근 신고 사유 반복과 동일 이미지의 신고자 수로 점수 조정.
+ * 처리 후 관리자 알림을 Outbox에 발행하며 @EventListener에 따라 신고 호출 트랜잭션에 참여.
+ */
 @Component
 @RequiredArgsConstructor
 public class PostReportCreatedEventListener {

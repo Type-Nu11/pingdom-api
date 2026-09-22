@@ -17,6 +17,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 요청 관리자에게 속한 관리자 알림 유형만 목록·미읽음 건수로 제공.
+ * 다른 관리자 소유 알림과 일반 사용자용 알림은 조회 범위에서 제외.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -24,6 +28,10 @@ public class AdminNotificationQueryServiceImpl implements AdminNotificationQuery
 
     private final NotificationsRepository notificationsRepository;
 
+    /**
+     * 해당 관리자 소유의 관리자용 알림만 종류·읽음 여부·기간으로 좁혀 최신순 반환.
+     * 역전된 기간은 거절하며 page는 1 이상·limit는 1~100으로 보정.
+     */
     @Override
     public AdminNotificationResponse listNotifications(
             Long adminUserId,

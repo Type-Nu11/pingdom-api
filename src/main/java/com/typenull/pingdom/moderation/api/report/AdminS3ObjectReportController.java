@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.report;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.storage.AdminS3OrphanObjectReportResponse;
 import com.typenull.pingdom.moderation.application.query.storage.AdminS3ObjectReportService;
@@ -16,7 +19,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/s3")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.OPERATIONS)
 public class AdminS3ObjectReportController {
 
     private final AdminS3ObjectReportService adminS3ObjectReportService;

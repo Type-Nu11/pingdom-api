@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.auth;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
 import com.typenull.pingdom.identity.application.service.auth.AuthService;
@@ -24,7 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
-@Tag(name = "Common", description = "앱/웹 공통")
+@ApiAudience(ApiAudience.Group.COMMON)
+@Tag(name = SwaggerTagCatalog.SIGNUP)
 public class AuthRegistrationController {
 
     private final AuthService authService;

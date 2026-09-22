@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.report;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.moderation.api.dto.report.AdminReportActionResponse;
@@ -18,12 +21,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** 신고 승인·반려와 신고 사용자 조회 요청을 관리자 서비스로 전달. */
 @RestController
 @RequestMapping("/admin/reports")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
-/** 신고 승인·반려와 신고 사용자 조회 요청을 관리자 서비스로 전달합니다. */
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.REPORT_APPEAL)
 public class AdminReportController {
 
     private final AdminReportService adminReportService;

@@ -36,15 +36,21 @@ class ConsultationIntroControllerTest {
     @MockBean
     private RateLimitStore rateLimitStore;
 
+    /**
+     * 생성된 OpenAPI에서 상담 도입 API의 첫 태그가 Consulting인지 확인해 문서 분류를 고정.
+     */
     @Test
-    void documentsConsultationIntroInConsultingTag() throws Exception {
+    void documentsConsultationIntroTag() throws Exception {
         mockMvc.perform(get("/v3/api-docs"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/consultations/intro'].post.tags[0]").value("Consulting"));
     }
 
+    /**
+     * 인증 없는 상담 도입 요청이 200과 Gemini 문구·source=gemini를 반환하는지 검증.
+     */
     @Test
-    void allowsAnonymousRequestAndReturnsGeminiContract() throws Exception {
+    void allowsAnonymousGeminiIntro() throws Exception {
         given(geminiIntroClient.generateIntro("카페를 열고 싶어요"))
                 .willReturn(Optional.of("카페 창업을 고민하고 계시는군요. 카테고리를 선택해 주세요."));
 
@@ -56,6 +62,9 @@ class ConsultationIntroControllerTest {
                 .andExpect(jsonPath("$.source").value("gemini"));
     }
 
+    /**
+     * 공백 메시지와 301자 메시지가 각각 400과 message 필드 검증 오류로 거절되는지 확인.
+     */
     @Test
     void rejectsBlankOrOversizedMessage() throws Exception {
         mockMvc.perform(post("/consultations/intro")
@@ -71,8 +80,11 @@ class ConsultationIntroControllerTest {
                 .andExpect(jsonPath("$.errors.message").exists());
     }
 
+    /**
+     * Gemini 결과가 비어 있어도 상담 도입 API는 200과 fallback 출처를 반환하는지 검증.
+     */
     @Test
-    void returnsFallbackWhenGeminiReturnsNoText() throws Exception {
+    void returnsFallbackWithoutGeminiText() throws Exception {
         given(geminiIntroClient.generateIntro("빈 응답"))
                 .willReturn(Optional.empty());
 
@@ -83,8 +95,11 @@ class ConsultationIntroControllerTest {
                 .andExpect(jsonPath("$.source").value("fallback"));
     }
 
+    /**
+     * 요청 제한 저장소가 거절하면 상담 도입 API가 429 RATE_LIMIT_EXCEEDED를 반환하는지 검증.
+     */
     @Test
-    void returnsTooManyRequestsWhenRateLimitRejectsIp() throws Exception {
+    void mapsIntroRateLimitFailure() throws Exception {
         org.mockito.BDDMockito.willThrow(new RateLimitException("요청 횟수가 너무 많습니다."))
                 .given(rateLimitStore)
                 .acquire(

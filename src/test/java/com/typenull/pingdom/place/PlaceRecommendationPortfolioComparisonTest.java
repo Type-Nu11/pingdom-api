@@ -99,13 +99,18 @@ class PlaceRecommendationPortfolioComparisonTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
+    /** 추천 이벤트·집계·사용자 반응과 장소를 비워 두 비교 시나리오가 기존 DB 데이터에 의존하지 않게 함. */
     @BeforeEach
     void setUp() {
         resetData();
     }
 
+    /**
+     * 고정 fixture에서 현재 추천의 관련 후보 순위와 상위 결과 다양성을 테스트 내부 기준 엔진과 비교.
+     * 클릭·북마크 전환율은 관련 후보 순위에 미리 정한 비율을 대입한 모의 수치. 실제 사용자 지표 개선은 검증 범위에서 제외.
+     */
     @Test
-    void compareBaselineAndCurrentRecommendationQuality() {
+    void comparesSyntheticRecommendationScenarios() {
         BaselineRecommendationEngine baselineRecommendationEngine = new BaselineRecommendationEngine();
 
         PersonalizationScenario personalizationScenario = seedPersonalizationScenario();
@@ -177,6 +182,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         );
     }
 
+    /** 관측 기록을 동반하는 실제 추천 query를 호출하고 응답 ID 순서대로 장소 엔티티를 복원. */
     private List<MapPlace> currentRecommendation(
             Long userId,
             double latitude,
@@ -203,6 +209,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 .toList();
     }
 
+    /** 추천 순서·관련 후보 수와 결과 내부 쌍별 유사도를 같은 측정 방식으로 수집. 관련 후보는 fixture가 지정한 ID 집합. */
     private ScenarioMetrics measureScenario(List<MapPlace> orderedPlaces, Set<Long> relevantPlaceIds) {
         List<Long> orderedPlaceIds = orderedPlaces.stream()
                 .map(MapPlace::getId)
@@ -226,6 +233,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         );
     }
 
+    /** 서로 다른 결과의 모든 비순서 쌍을 한 번씩 계산해 평균 유사도를 산출. 결과가 두 개 미만이면 0으로 취급. */
     private double averagePairwiseSimilarity(
             List<Long> orderedPlaceIds,
             PlaceRecommendationSimilarityService.SimilarityContext similarityContext
@@ -250,6 +258,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         return pairCount == 0 ? 0d : similaritySum / pairCount;
     }
 
+    /** fixture가 관련 있다고 지정한 첫 결과의 1부터 시작하는 순위를 반환. 관련 결과가 없으면 최댓값으로 표현. */
     private int bestRelevantRank(ScenarioMetrics metrics, Set<Long> relevantPlaceIds) {
         for (int index = 0; index < metrics.orderedPlaceIds().size(); index++) {
             if (relevantPlaceIds.contains(metrics.orderedPlaceIds().get(index))) {
@@ -259,6 +268,10 @@ class PlaceRecommendationPortfolioComparisonTest {
         return Integer.MAX_VALUE;
     }
 
+    /**
+     * 관련 후보의 최고 순위에 고정된 클릭·북마크 비율을 대입하고 노출 수에 맞춰 반올림.
+     * DB 이벤트나 실제 행동을 측정하지 않으며 순위 개선을 가정한 모의 전환 수치만 생성.
+     */
     private FunnelMetrics simulateFunnel(
             ScenarioMetrics metrics,
             Set<Long> relevantPlaceIds,
@@ -290,6 +303,10 @@ class PlaceRecommendationPortfolioComparisonTest {
         );
     }
 
+    /**
+     * 개인 반응이 있는 seed, 직접 연관 장소, 확장 후보와 주변 인기 장소를 저장.
+     * 공동 반응과 수동 유사도 snapshot으로 지정한 두 관련 후보를 현재 추천이 끌어올리는 비교 조건을 구성.
+     */
     private PersonalizationScenario seedPersonalizationScenario() {
         long targetUserId = 101L;
 
@@ -342,6 +359,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         );
     }
 
+    /** 유사도가 높은 두 인기 장소와 별도 후보를 저장해 상위 두 결과가 덜 비슷하게 선택되는지 비교할 조건을 생성. */
     private DiversityScenario seedDiversityScenario() {
         MapPlace duplicatePlaceA = createMapPlace("중복 후보 A", "경상남도 진주시 평거동 10", 35.1802d, 128.1079d, 4L);
         MapPlace duplicatePlaceB = createMapPlace("중복 후보 B", "경상남도 진주시 평거동 11", 35.18025d, 128.10795d, 4L);
@@ -372,6 +390,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         return new DiversityScenario(Set.of(duplicatePlaceA.getId(), diversePlace.getId()));
     }
 
+    /** 좋아요·북마크·사진과 추천 이벤트·snapshot을 먼저 삭제한 뒤 장소를 비워 같은 트랜잭션 안에서도 다음 시나리오를 새로 구성. */
     private void resetData() {
         mapImageLikeRepository.deleteAllInBatch();
         mapBookmarkRepository.deleteAllInBatch();
@@ -385,6 +404,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         mapPlaceRepository.deleteAllInBatch();
     }
 
+    /** 비교에 필요한 좌표·이름·주소·사진 수를 지정하고 고정 등록자 ID로 장소 fixture를 저장. */
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
@@ -397,6 +417,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 .build());
     }
 
+    /** 지정 장소에 좋아요 수를 가진 사진 행을 저장. 파일은 업로드하지 않고 테스트 URL·key만 사용. */
     private MapImage createMapImage(MapPlace mapPlace, long likeCount, String title) {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl("https://example.com/" + title + ".jpg")
@@ -410,6 +431,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 .build());
     }
 
+    /** 개인화 및 공동 북마크 집계에 사용할 사용자–장소 반응 행을 저장. */
     private void createBookmark(long userId, long placeId) {
         mapBookmarkRepository.save(MapBookmark.builder()
                 .userId(userId)
@@ -417,6 +439,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 .build());
     }
 
+    /** 개인화 및 공동 좋아요 집계에 사용할 사용자–사진 반응 행을 저장. */
     private void createLike(long userId, long mapImageId) {
         mapImageLikeRepository.save(MapImageLike.builder()
                 .userId(userId)
@@ -424,6 +447,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 .build());
     }
 
+    /** 모든 지정 사용자가 모든 지정 장소를 북마크한 교차 조합을 만들어 공동 반응을 구성. */
     private void createBookmarkGroup(List<Long> userIds, Long... placeIds) {
         for (Long userId : userIds) {
             for (Long placeId : placeIds) {
@@ -432,6 +456,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         }
     }
 
+    /** 모든 지정 사용자가 모든 지정 사진에 좋아요를 누른 교차 조합을 만들어 공동 반응을 구성. */
     private void createLikeGroup(List<Long> userIds, Long... imageIds) {
         for (Long userId : userIds) {
             for (Long imageId : imageIds) {
@@ -440,6 +465,7 @@ class PlaceRecommendationPortfolioComparisonTest {
         }
     }
 
+    /** 장소 ID를 작은 값부터 정렬하고 전달 점수를 geo·total에 넣어 비교용 유사도 snapshot을 저장. 실제 유사도 산출 과정은 검증 범위에서 제외. */
     private void saveSimilaritySnapshot(Long leftPlaceId, Long rightPlaceId, double totalSimilarityScore) {
         placeSimilaritySnapshotRepository.save(PlaceSimilaritySnapshot.builder()
                 .leftPlaceId(Math.min(leftPlaceId, rightPlaceId))
@@ -453,6 +479,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 .build());
     }
 
+    /** 개인화 순위·모의 전환율과 다양성 유사도를 기준/현재 순서로 출력. 출력된 전환율은 운영 관측값과 구분되는 모의 수치. */
     private String buildComparisonReport(
             ScenarioMetrics personalizationBaseline,
             ScenarioMetrics personalizationCurrent,
@@ -494,10 +521,12 @@ class PlaceRecommendationPortfolioComparisonTest {
         );
     }
 
+    /** 보고서의 유사도를 소수점 세 자리로 고정하고 실행 환경과 관계없이 점 소수 구분자를 사용. */
     private String formatDouble(double value) {
         return String.format(Locale.US, "%.3f", value);
     }
 
+    /** 0~1 비율을 백분율로 바꿔 소수점 한 자리와 퍼센트 기호로 출력. */
     private String formatPercent(double value) {
         return String.format(Locale.US, "%.1f%%", value * 100d);
     }
@@ -525,6 +554,7 @@ class PlaceRecommendationPortfolioComparisonTest {
     ) {
     }
 
+    /** 비교용으로 테스트 안에 고정한 거리·인기·개인 반응 기반 추천 구현. 운영 코드의 과거 전체 버전·실제 성과 재현은 비교 범위에서 제외. */
     private final class BaselineRecommendationEngine {
         private static final int MIN_LIMIT = 1;
         private static final int MAX_LIMIT = 20;
@@ -535,6 +565,10 @@ class PlaceRecommendationPortfolioComparisonTest {
         private static final double FRESHNESS_DECAY_DAYS = 14d;
         private static final double BAYESIAN_PRIOR_WEIGHT = 3d;
 
+        /**
+         * 한도·반경을 제한하고 좌표가 있는 장소에서 기존 반응을 제외한 후보를 고른 뒤 기준 점수로 정렬.
+         * 제외로 후보가 없으면 다시 포함하며 동점은 거리, 장소 ID 내림차순으로 결정.
+         */
         private List<MapPlace> recommend(
                 Long userId,
                 double latitude,
@@ -610,6 +644,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                     .toList();
         }
 
+        /** 반경을 단계적으로 넓혀 요구 수 이상 후보를 찾음. 최종 후보가 전혀 없으면 제외 조건을 유지한 가까운 장소 최대 limit×3개로 보완. */
         private CandidateSelection selectCandidates(
                 List<PlaceDistance> placeDistances,
                 int limit,
@@ -652,6 +687,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             return new CandidateSelection(candidates, appliedRadiusKm);
         }
 
+        /** 요청 반경에서 시작해 최대 20km까지 두 배씩 넓히는 중복 없는 검색 단계를 생성. */
         private List<Double> buildRadiusSteps(double requestedRadiusKm) {
             Set<Double> radiusSteps = new LinkedHashSet<>();
             double current = requestedRadiusKm;
@@ -665,6 +701,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             return new ArrayList<>(radiusSteps);
         }
 
+        /** 북마크·좋아요·업로드를 각각 1.0·0.6·0.3 가중치로 합산하고 반응 장소를 제외 집합으로 묶음. 익명은 빈 신호로 처리. */
         private UserSignalContext loadUserSignals(Long userId) {
             if (userId == null) {
                 return UserSignalContext.empty();
@@ -698,6 +735,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             return new UserSignalContext(seedWeights, signalTypes, Set.copyOf(seedWeights.keySet()));
         }
 
+        /** 장소별 반응 가중치는 더하고 신호 유형은 우선순위가 높은 하나를 유지. */
         private void registerSignals(
                 Collection<Long> placeIds,
                 double weight,
@@ -711,6 +749,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             }
         }
 
+        /** 선택 후보의 북마크 수와 사진 좋아요 합계·최신 시각을 별도 집계 조회로 수집. 누락된 집계는 후속 점수 계산에서 기본값을 사용. */
         private Map<Long, PlaceAggregate> loadAggregates(List<PlaceDistance> candidates) {
             List<Long> placeIds = candidates.stream()
                     .map(candidate -> candidate.place().getId())
@@ -733,6 +772,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             return aggregateMap;
         }
 
+        /** 후보별 사진당 좋아요 수를 계산한 뒤 장소 단위 단순 평균을 산출. 사진이 없는 장소도 0으로 평균에 포함. */
         private double calculateGlobalAverageLikePerPhoto(
                 List<PlaceDistance> candidates,
                 Map<Long, PlaceAggregate> aggregateMap
@@ -754,6 +794,10 @@ class PlaceRecommendationPortfolioComparisonTest {
                     .orElse(0d);
         }
 
+        /**
+         * seed와의 거리 감쇠에 정규화한 반응 가중치를 곱한 최댓값을 개인 점수로 사용.
+         * 요청 위치 거리 점수와 사전 평균으로 보정한 좋아요·북마크·사진 수 품질 점수, 최신성 점수를 함께 계산.
+         */
         private IntermediateCandidate toIntermediateCandidate(
                 PlaceDistance candidate,
                 PlaceAggregate aggregate,
@@ -812,6 +856,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             );
         }
 
+        /** 후보 품질 점수를 min-max 정규화하고 개인 신호 유무에 따라 고정 비중으로 거리·개인화·품질·최신성을 합산. */
         private List<ScoredCandidate> applyFinalScores(List<IntermediateCandidate> candidates, boolean hasPersonalSignals) {
             double minQuality = candidates.stream()
                     .mapToDouble(IntermediateCandidate::rawQualityScore)
@@ -844,6 +889,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                     .toList();
         }
 
+        /** 최신 사진 경과 시간을 일수로 환산해 14일 감쇠 점수를 계산. 시각이 없으면 0, 미래 시각이면 경과 시간을 0으로 제한. */
         private double calculateFreshnessScore(LocalDateTime latestCreatedAt) {
             if (latestCreatedAt == null) {
                 return 0d;
@@ -853,6 +899,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             return Math.exp(-days / FRESHNESS_DECAY_DAYS);
         }
 
+        /** 최솟값·최댓값 사이로 정규화하되 모두 같은 양수면 0.5, 같은 0 이하 값이면 0을 반환. */
         private double normalize(double value, double min, double max) {
             if (Double.compare(min, max) == 0) {
                 return max > 0d ? 0.5d : 0d;
@@ -860,6 +907,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             return (value - min) / (max - min);
         }
 
+        /** 두 위경도의 Haversine 거리를 고정 지구 반지름으로 계산해 미터로 반환. */
         private double calculateDistanceMeters(
                 double baseLatitude,
                 double baseLongitude,
@@ -886,10 +934,12 @@ class PlaceRecommendationPortfolioComparisonTest {
 
             private final int priority;
 
+            /** 동일 장소에 여러 신호가 있을 때 대표 유형을 고르는 우선순위를 저장. */
             PersonalSignalType(int priority) {
                 this.priority = priority;
             }
 
+            /** 우선순위가 큰 신호를 선택하며 같으면 먼저 전달된 값을 유지. */
             private static PersonalSignalType stronger(PersonalSignalType left, PersonalSignalType right) {
                 return left.priority >= right.priority ? left : right;
             }
@@ -900,6 +950,7 @@ class PlaceRecommendationPortfolioComparisonTest {
                 Map<Long, PersonalSignalType> signalTypes,
                 Set<Long> interactedPlaceIds
         ) {
+            /** 익명 추천에 사용할 빈 가중치·신호 유형·제외 장소 집합을 생성. */
             private static UserSignalContext empty() {
                 return new UserSignalContext(Map.of(), Map.of(), Set.of());
             }
@@ -935,6 +986,7 @@ class PlaceRecommendationPortfolioComparisonTest {
             private long likeSum;
             private LocalDateTime latestCreatedAt;
 
+            /** 사진 집계의 좋아요 합계와 최신 시각으로 현재 값을 설정. null 합계는 0으로 처리하고 기존 값은 덮어쓰기. */
             private void mergeImageAggregate(Long likeSum, LocalDateTime latestCreatedAt) {
                 this.likeSum = likeSum == null ? 0L : likeSum;
                 this.latestCreatedAt = latestCreatedAt;

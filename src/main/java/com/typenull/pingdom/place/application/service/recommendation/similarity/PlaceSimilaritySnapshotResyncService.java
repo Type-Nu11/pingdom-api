@@ -25,6 +25,11 @@ import org.springframework.jdbc.core.JdbcTemplate;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 20km 이내 장소 쌍의 유사도를 다시 계산하고 더 이상 대상이 아닌 저장 쌍을 제거.
+ * 전체 재동기화는 위도순 슬라이딩 창과 500건 저장 묶음을 사용하지만 메서드 전체가 한 트랜잭션.
+ * 장소 하나의 보정은 쌍별 UPSERT를 사용하고 해당 장소의 오래된 이웃 쌍만 정리.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceSimilaritySnapshotResyncService {
@@ -71,6 +76,11 @@ public class PlaceSimilaritySnapshotResyncService {
     private final EntityManager entityManager;
     private final JdbcTemplate jdbcTemplate;
 
+    /**
+     * 좌표 조회 대상 장소의 유사도 쌍을 원본 반응으로 재계산하고 더 이상 유효하지 않은 기존 쌍을 삭제.
+     * 대상 장소가 없으면 모든 유사도 스냅샷을 비우며 갱신·삭제 건수를 반환.
+     * 기존 쌍은 커서 슬라이스로 읽고 JDBC 배치로 갱신하며 전체 장소·반응 행에 대한 잠금은 미사용.
+     */
     @Transactional
     public SimilaritySnapshotResyncResult resyncAll() {
         Set<Long> activePlaceIds = collectActivePlaceIds();
@@ -107,6 +117,10 @@ public class PlaceSimilaritySnapshotResyncService {
         return new SimilaritySnapshotResyncResult(synchronizedSnapshotCount, deletedSnapshotCount);
     }
 
+    /**
+     * 대상 장소 주변 20km 이내 장소와의 유사도만 재계산하여 upsert하고 기존 쌍 중 범위에서 이탈한 상대를 삭제.
+     * 반환값은 저장 예정 쌍 수와 삭제 건수. 대상 장소는 존재하는 유효 좌표 객체여야 하며 호출자가 필요한 장소 잠금을 확보.
+     */
     @Transactional
     public SimilaritySnapshotResyncResult resyncPlace(MapPlace targetPlace) {
         List<MapPlace> nearbyPlaces = mapPlaceCoordinateQueryRepository.findNearbyPlaces(
@@ -249,7 +263,7 @@ public class PlaceSimilaritySnapshotResyncService {
             }
 
             for (MapPlace currentPlace : placePage.getContent()) {
-                // 위도 오름차순 페이지를 유지하면서 20km 위도 범위를 벗어난 이전 장소는 창에서 제거한다.
+                // 위도 오름차순 페이지를 유지하면서 20km 위도 범위를 벗어난 이전 장소는 창에서 제거.
                 while (!slidingWindow.isEmpty()
                         && (currentPlace.getLatitude() - slidingWindow.peekFirst().getLatitude()) > latitudeDelta) {
                     slidingWindow.removeFirst();
