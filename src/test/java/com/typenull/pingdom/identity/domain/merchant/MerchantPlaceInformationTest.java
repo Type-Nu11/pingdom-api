@@ -10,8 +10,11 @@ class MerchantPlaceInformationTest {
     private static final LocalDateTime CREATED_AT = LocalDateTime.of(2026, 8, 5, 12, 0);
     private static final LocalDateTime UPDATED_AT = CREATED_AT.plusHours(1);
 
+    /**
+     * 장소 정보 갱신이 소개·전화·웹/예약 URL·수정자를 바꾸고 생성 시각은 보존하며 수정 시각만 갱신하는지 검증한다.
+     */
     @Test
-    void createsAndUpdatesMerchantManagedInformation() {
+    void updatesMerchantManagedInformation() {
         MerchantPlaceInformation information = MerchantPlaceInformation.create(
                 10L,
                 "  K-컬처 체험 공간  ",
@@ -41,8 +44,11 @@ class MerchantPlaceInformationTest {
         assertThat(information.getUpdatedAt()).isEqualTo(UPDATED_AT);
     }
 
+    /**
+     * 소개·전화·웹/예약 URL의 공백 또는 빈 문자열을 null로 정규화하는지 검증한다.
+     */
     @Test
-    void blankOptionalInformationIsStoredAsNull() {
+    void normalizesBlankMerchantInformation() {
         MerchantPlaceInformation information = MerchantPlaceInformation.create(
                 10L,
                 "  ",
