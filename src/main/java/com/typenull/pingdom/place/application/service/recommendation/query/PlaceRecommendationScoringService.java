@@ -14,6 +14,11 @@ import java.util.Map;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 후보의 거리·개인 친화도·콘텐츠·노출 대비 반응·신뢰도를 정책 가중치로 합산합니다.
+ * 품질·참여·전환·탐색 점수는 현재 후보 집합 안에서 정규화하므로 다른 요청의 같은 점수와 직접 비교하기 어렵습니다.
+ * 관심사·활동 의도·혜택·예약·프로모션 가점은 이 기본 점수 계산 이후 별도 단계에서 더합니다.
+ */
 @Service
 @RequiredArgsConstructor
 class PlaceRecommendationScoringService {
@@ -340,6 +345,9 @@ class PlaceRecommendationScoringService {
         return smoothedConversionRate * confidence;
     }
 
+    /**
+     * 후보 간 값이 모두 같으면 양수는 중립 점수 0.5, 모두 0 이하는 0으로 반환하여 분모 0을 피합니다.
+     */
     private double normalize(double value, double min, double max) {
         if (Double.compare(min, max) == 0) {
             return max > 0d ? 0.5d : 0d;
