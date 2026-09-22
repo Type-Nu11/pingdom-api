@@ -10,6 +10,7 @@ import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.web.access.AccessDeniedHandler;
 import org.springframework.stereotype.Component;
 
+/** 인증 후 권한이 부족한 요청을 공통 ACCESS_DENIED 응답으로 변환한다. */
 @Component
 public class JwtAccessDeniedHandler implements AccessDeniedHandler {
 
