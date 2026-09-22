@@ -25,6 +25,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 운영 검토를 위해 숨긴 게시글·댓글도 필터에 따라 조회하고 현재 작성자명·장소명을 보충합니다.
+ * 연결 장소가 삭제되면 원래 장소 ID와 삭제 표시를 유지하며, 작성자 계정이 없으면 이름은 null입니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminCommunityContentQueryService {
@@ -36,6 +40,10 @@ public class AdminCommunityContentQueryService {
     private final CommunityPostPlaceRepository postPlaceRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 카테고리와 숨김 여부에 맞는 게시글을 최신순으로 조회하고 현재 작성자명을 배치로 보충합니다.
+     * page는 1 이상·limit는 1~100으로 보정하며 삭제된 작성자의 이름은 null로 반환합니다.
+     */
     @Transactional(readOnly = true)
     public AdminCommunityPostPageResponse findPosts(String categoryId, Boolean hidden, int page, int limit) {
         int safePage = Math.max(page, 1);
@@ -52,6 +60,10 @@ public class AdminCommunityContentQueryService {
         );
     }
 
+    /**
+     * 게시글 본문·숨김 처리 정보와 연결 장소를 반환하며 게시글이 없으면 POST_NOT_FOUND입니다.
+     * 삭제된 연결 장소는 원래 ID와 삭제 표시를 유지하고 현재 작성자가 없으면 이름은 null입니다.
+     */
     @Transactional(readOnly = true)
     public AdminCommunityPostResponse findPost(Long postId) {
         CommunityPost post = requirePost(postId);
@@ -64,6 +76,10 @@ public class AdminCommunityContentQueryService {
         );
     }
 
+    /**
+     * 게시글 존재를 먼저 확인한 뒤 숨김 여부에 맞는 댓글을 최신순으로 조회하고 작성자명을 배치로 보충합니다.
+     * page는 1 이상·limit는 1~100으로 보정하며 게시글이 없으면 POST_NOT_FOUND입니다.
+     */
     @Transactional(readOnly = true)
     public AdminCommunityCommentPageResponse findComments(Long postId, Boolean hidden, int page, int limit) {
         requirePost(postId);
