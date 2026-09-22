@@ -21,8 +21,11 @@ class PlaceOperatingHoursEvaluatorTest {
 
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
+    /**
+     * 서울 화요일 정오가 10~20시 정기 영업 구간 안이면 영업 중으로 판단하는지 확인합니다.
+     */
     @Test
-    void evaluatesOpenWhenCurrentTimeIsInsideRegularHours() {
+    void opensInsideRegularHours() {
         PlaceOperatingHoursEvaluator evaluator = evaluatorAt(LocalDateTime.of(2026, 7, 21, 12, 0));
         MapPlace place = place();
         place.replaceOperatingSchedule(Set.of(
@@ -36,8 +39,11 @@ class PlaceOperatingHoursEvaluatorTest {
                 .isTrue();
     }
 
+    /**
+     * 정기 영업 종료 이후인 21시는 영업 중이 아닌지 확인합니다.
+     */
     @Test
-    void evaluatesClosedWhenCurrentTimeIsOutsideRegularHours() {
+    void closesOutsideRegularHours() {
         PlaceOperatingHoursEvaluator evaluator = evaluatorAt(LocalDateTime.of(2026, 7, 21, 21, 0));
         MapPlace place = place();
         place.replaceOperatingSchedule(Set.of(
@@ -51,8 +57,11 @@ class PlaceOperatingHoursEvaluatorTest {
                 .isFalse();
     }
 
+    /**
+     * 정기 영업 구간 안이어도 장소가 임시 휴업이면 닫힘으로 판단하는지 확인합니다.
+     */
     @Test
-    void manualClosedStatusOverridesRegularHours() {
+    void prioritizesManualClosure() {
         PlaceOperatingHoursEvaluator evaluator = evaluatorAt(LocalDateTime.of(2026, 7, 21, 12, 0));
         MapPlace place = place();
         place.updateOperatingStatus(PlaceOperatingStatus.TEMPORARILY_CLOSED, LocalDateTime.of(2026, 7, 21, 9, 0));
@@ -67,8 +76,11 @@ class PlaceOperatingHoursEvaluatorTest {
                 .isFalse();
     }
 
+    /**
+     * 해당 날짜의 예외 휴무가 정기 영업시간보다 우선하는지 확인합니다.
+     */
     @Test
-    void closedExceptionOverridesRegularHoursForThatDate() {
+    void prioritizesClosedException() {
         LocalDate date = LocalDate.of(2026, 7, 21);
         PlaceOperatingHoursEvaluator evaluator = evaluatorAt(date.atTime(12, 0));
         MapPlace place = place();
@@ -84,8 +96,11 @@ class PlaceOperatingHoursEvaluatorTest {
                 .isFalse();
     }
 
+    /**
+     * 정기 영업 종료 뒤에도 날짜별 예외 영업 구간 안이면 영업 중인지 확인합니다.
+     */
     @Test
-    void customExceptionHoursCanOpenOutsideRegularHours() {
+    void usesCustomExceptionHours() {
         LocalDate date = LocalDate.of(2026, 7, 21);
         PlaceOperatingHoursEvaluator evaluator = evaluatorAt(date.atTime(22, 0));
         MapPlace place = place();
@@ -105,8 +120,11 @@ class PlaceOperatingHoursEvaluatorTest {
                 .isTrue();
     }
 
+    /**
+     * 전날 22시부터 다음 날 02시까지의 영업이 다음 날 01시에도 유지되는지 확인합니다.
+     */
     @Test
-    void overnightRegularHoursRemainOpenAfterMidnight() {
+    void continuesOvernightRegularHours() {
         PlaceOperatingHoursEvaluator evaluator = evaluatorAt(LocalDateTime.of(2026, 7, 22, 1, 0));
         MapPlace place = place();
         place.replaceOperatingSchedule(Set.of(
@@ -120,10 +138,16 @@ class PlaceOperatingHoursEvaluatorTest {
                 .isTrue();
     }
 
+    /**
+     * 주어진 서울 지역 시각에 고정된 평가기를 만듭니다.
+     */
     private PlaceOperatingHoursEvaluator evaluatorAt(LocalDateTime now) {
         return new PlaceOperatingHoursEvaluator(Clock.fixed(now.atZone(SEOUL).toInstant(), SEOUL));
     }
 
+    /**
+     * 영업 일정을 사례별로 설정할 기본 장소를 만듭니다.
+     */
     private MapPlace place() {
         return MapPlace.builder()
                 .id(10L)
