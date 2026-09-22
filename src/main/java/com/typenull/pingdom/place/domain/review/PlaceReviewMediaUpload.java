@@ -17,6 +17,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 리뷰 작성 전 업로드한 사진의 소유 회원·장소·만료와 연결 결과를 보관합니다.
+ * connect는 미연결 상태만 확인하므로 소유권·만료·사진 개수 검사는 서비스에서 선행해야 합니다.
+ */
 @Getter
 @Entity
 @Table(name = "place_review_media_upload")
