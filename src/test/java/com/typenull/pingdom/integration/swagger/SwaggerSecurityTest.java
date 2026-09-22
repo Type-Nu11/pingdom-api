@@ -13,6 +13,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * dev 프로필의 Swagger 공개 접근과 그룹별 경로·인증 문서 계약을 검증한다.
+ */
 @Tag("integration")
 @SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
@@ -22,28 +25,40 @@ class SwaggerSecurityTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /**
+     * 미인증 루트 요청이 200과 서버 실행 메시지를 반환하는지 확인한다.
+     */
     @Test
-    void homeApiIsAccessibleWithoutAuthentication() throws Exception {
+    void publicHome() throws Exception {
         mockMvc.perform(get("/"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.message").value("Pingdom Backend is running."));
     }
 
+    /**
+     * dev 프로필에서 미인증 Swagger 경로가 index.html로 리다이렉트되는지 확인한다.
+     */
     @Test
-    void swaggerUiPathIsAccessibleWithoutAuthentication() throws Exception {
+    void publicSwaggerRedirect() throws Exception {
         mockMvc.perform(get("/swagger-ui"))
                 .andExpect(status().is3xxRedirection())
                 .andExpect(header().string("Location", "/swagger-ui/index.html"));
     }
 
+    /**
+     * dev 프로필의 Swagger index가 인증 없이 200인지 확인한다.
+     */
     @Test
-    void swaggerUiIndexIsAccessibleWithoutAuthentication() throws Exception {
+    void publicSwaggerIndex() throws Exception {
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());
     }
 
+    /**
+     * dev 프로필에서 통합·app·common·consulting·admin·merchant 문서가 모두 미인증 조회 가능한지 확인한다.
+     */
     @Test
-    void apiDocsAreAccessibleWithoutAuthentication() throws Exception {
+    void publicApiDocs() throws Exception {
         for (String apiDocsPath : new String[]{
                 "/v3/api-docs",
                 "/v3/api-docs/app",
@@ -57,8 +72,11 @@ class SwaggerSecurityTest {
         }
     }
 
+    /**
+     * Swagger 설정의 그룹 이름과 URL이 app·common·consulting·admin·merchant 순서인지 확인한다.
+     */
     @Test
-    void swaggerConfigListsAllApiGroups() throws Exception {
+    void swaggerGroupOrder() throws Exception {
         mockMvc.perform(get("/v3/api-docs/swagger-config"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.urls[0].name").value("app"))
@@ -73,8 +91,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.urls[4].url").value("/v3/api-docs/merchant"));
     }
 
+    /**
+     * app 문서에 현재 장소 목록·상세·카드가 있고 구형 단수·지도·업로드 경로는 없는지 확인한다.
+     */
     @Test
-    void appGroupDocsContainPlaceQueryApis() throws Exception {
+    void appPlacePaths() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/places']").exists())
@@ -90,8 +111,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/map/places/coordinates']").doesNotExist());
     }
 
+    /**
+     * 팝업·결제·예약 경로가 app 그룹 문서에서 누락되지 않는지 확인한다.
+     */
     @Test
-    void appGroupDocsIncludePreviouslyUnmatchedAppApis() throws Exception {
+    void appCommercePaths() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/popup-campaigns']").exists())
@@ -99,8 +123,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/reservations']").exists());
     }
 
+    /**
+     * 입지 분석 문서에 Bearer 인증과 401·403 응답이 선언됐는지 확인한다. 실제 권한 거절 요청은 실행하지 않는다.
+     */
     @Test
-    void locationAnalysisApiRequiresAuthentication() throws Exception {
+    void analysisSecurityContract() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/analysis/reports/location'].post").exists())
@@ -115,8 +142,11 @@ class SwaggerSecurityTest {
                 ).exists());
     }
 
+    /**
+     * 상담 intro가 consulting에 포함되고 admin에는 없는지 확인한다. consulting 전체 경로 개수는 검사하지 않는다.
+     */
     @Test
-    void consultingGroupDocsContainOnlyConsultationIntroApi() throws Exception {
+    void consultingIntroGrouping() throws Exception {
         mockMvc.perform(get("/v3/api-docs/consulting"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/consultations/intro'].post").exists());
@@ -126,8 +156,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/consultations/intro']").doesNotExist());
     }
 
+    /**
+     * app 문서에 방문 검증 제보·수정 요청이 포함되고 관리자 경로는 제외되는지 확인한다.
+     */
     @Test
-    void appGroupDocsContainVisitorVerificationReportApis() throws Exception {
+    void appVerificationPaths() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports'].get").exists())
@@ -138,8 +171,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports']").doesNotExist());
     }
 
+    /**
+     * app 문서에 scout 제보 목록·생성·상세가 있고 관리자 목록은 없는지 확인한다.
+     */
     @Test
-    void appGroupDocsContainScoutFieldReportApis() throws Exception {
+    void appScoutPaths() throws Exception {
         mockMvc.perform(get("/v3/api-docs/app"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/scout-field-reports'].get").exists())
@@ -148,8 +184,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/admin/scout-field-reports']").doesNotExist());
     }
 
+    /**
+     * admin 문서의 방문 검증·수정 검토 경로에 인증 요구가 있고 사용자 수정 요청 경로는 제외되는지 확인한다.
+     */
     @Test
-    void webGroupDocsContainVisitorVerificationCorrectionApis() throws Exception {
+    void adminVerificationPaths() throws Exception {
         mockMvc.perform(get("/v3/api-docs/admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/admin/visitor-verification-reports'].get").exists())
@@ -173,8 +212,11 @@ class SwaggerSecurityTest {
                 .andExpect(jsonPath("$.paths['/visitor-verification-reports/{reportId}/corrections']").doesNotExist());
     }
 
+    /**
+     * admin 문서에 scout 목록·검토의 인증 계약이 있고 사용자 제보 경로는 없는지 확인한다.
+     */
     @Test
-    void webGroupDocsContainScoutFieldReportReviewApis() throws Exception {
+    void adminScoutPaths() throws Exception {
         mockMvc.perform(get("/v3/api-docs/admin"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.paths['/admin/scout-field-reports'].get").exists())
