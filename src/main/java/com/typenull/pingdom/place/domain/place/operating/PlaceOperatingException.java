@@ -23,6 +23,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소의 특정 날짜에 적용할 휴무 또는 별도 영업시간입니다.
+ * 정규 영업시간보다 우선하며 반환 시간 집합은 복사본입니다. 날짜·시간 조합 유효성은 호출 서비스에서 확인합니다.
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
