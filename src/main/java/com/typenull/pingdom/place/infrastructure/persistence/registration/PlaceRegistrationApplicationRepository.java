@@ -14,6 +14,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.JpaSpecificationExecutor;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 신청자·상태·유형별 신청 조회와 심사 대상 행 잠금을 제공합니다.
+ * Pageable 조회의 정렬은 호출자가 지정하며 findByIdForUpdate는 호출 트랜잭션에서 신청 행에 쓰기 잠금을 겁니다.
+ */
 public interface PlaceRegistrationApplicationRepository extends JpaRepository<PlaceRegistrationApplication, Long>,
         JpaSpecificationExecutor<PlaceRegistrationApplication> {
 
