@@ -25,10 +25,13 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 신고 접수·승인·반려 통계로 신고자 신뢰도와 제한, 이미지 자동 숨김을 관리합니다.
+ * 기존 신고자 정책 갱신은 행 잠금을 사용하지만 최초 정책 생성 경합을 별도로 재시도하지는 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
-// 신고자의 빈도·제재·신뢰도 정책을 평가해 신고 가능 여부와 후속 상태를 관리합니다.
 public class ReportPolicyService {
 
     private static final int AUTO_HIDE_WEIGHT_THRESHOLD = 3;
@@ -76,7 +79,10 @@ public class ReportPolicyService {
         reporterPolicyRepository.save(policy);
     }
 
-    // 반려된 신고를 반영하고 반복적인 허위 신고자의 제한 여부를 평가합니다.
+    /**
+     * 신고 반려를 신뢰도에 반영하고 허위 신고가 세 번 이상이면 전달 시각부터 7일간 제한한다.
+     * 이어 이상 징후와 최우선 개입 규칙을 적용해 제한 종료일이 다시 정해질 수 있으며 정책을 저장한다.
+     */
     public void recordDeclined(Long reporterUserId, String reporterUsername, LocalDateTime now) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
         int baselineScore = policy.getTrustScore();
@@ -89,7 +95,10 @@ public class ReportPolicyService {
         reporterPolicyRepository.save(policy);
     }
 
-    // 활성 신고의 신뢰도 가중치를 합산해 기준을 넘으면 이미지를 자동 숨김 처리합니다.
+    /**
+     * 공개 이미지의 PENDING·ACCEPTED 신고를 신고자 신뢰도 가중치로 합산해 3 이상이면 숨김 전이를 시도한다.
+     * 실제로 숨겨진 경우만 연결 장소의 사진 수를 줄이고 true를 반환한다. 누락·이미 숨김·기준 미달은 false다.
+     */
     public boolean autoHideIfNeeded(MapImage mapImage, LocalDateTime now) {
         if (mapImage == null || !mapImage.isVisible()) {
             return false;
@@ -203,7 +212,10 @@ public class ReportPolicyService {
                 .build());
     }
 
-    // 활성 개입 규칙 중 우선순위가 가장 높은 임시 제한 규칙을 적용합니다.
+    /**
+     * 우선순위·ID 순으로 처음 일치한 규칙 하나만 선택합니다.
+     * 그 규칙이 기간을 가진 TEMPORARY_RESTRICT일 때만 제한하므로, 앞선 다른 액션을 건너뛰고 후순위 제한을 찾지는 않습니다.
+     */
     private void applyHighestPriorityRule(ReporterModerationPolicy policy, LocalDateTime now) {
         trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc().stream()
                 .filter(rule -> rule.matches(policy))
