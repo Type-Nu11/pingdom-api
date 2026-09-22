@@ -7,6 +7,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 통화의 최소 단위 정수로 결제 총액·수수료·순액을 보관합니다.
+ * 환불은 원 결제의 양수 금액을 입력받아 세 금액을 음수로 기록하는 역분개이며, 외부 송금은 수행하지 않습니다.
+ */
 @Entity
 @Getter
 @Table(name = "settlement_ledger_entry")
