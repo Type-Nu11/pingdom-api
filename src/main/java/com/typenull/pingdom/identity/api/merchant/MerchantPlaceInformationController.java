@@ -28,6 +28,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 인증 회원에게 장소 추가 정보 조회·수정 경로를 제공합니다.
+ * 로그인만으로 접근을 허용하지 않고 서비스가 PLACE_INFO_EDIT 권한을 조회와 수정 모두에 적용합니다.
+ */
 @RestController
 @RequestMapping("/merchant-owner/places/{placeId}/information")
 @RequiredArgsConstructor
