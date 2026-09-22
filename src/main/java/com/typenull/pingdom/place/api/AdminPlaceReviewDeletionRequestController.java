@@ -1,5 +1,8 @@
 package com.typenull.pingdom.place.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.review.AdminPlaceReviewDeletionRequestPageResponse;
 import com.typenull.pingdom.place.api.dto.review.AdminPlaceReviewDeletionRequestResponse;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewDeletionRequestReviewRequest;
@@ -30,7 +33,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.REVIEW_DELETION)
 public class AdminPlaceReviewDeletionRequestController {
 
     private final AdminPlaceReviewDeletionRequestService deletionRequestService;
