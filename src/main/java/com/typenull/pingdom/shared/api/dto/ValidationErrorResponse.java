@@ -4,6 +4,7 @@ import com.typenull.pingdom.shared.exception.CommonErrorCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.Map;
 
+/** 공통 검증 오류와 필드별 메시지의 복사본을 반환한다. 필드별 대표 메시지 선택은 예외 처리기가 담당한다. */
 @Schema(description = "필드 검증 오류 응답")
 public record ValidationErrorResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) String message,
