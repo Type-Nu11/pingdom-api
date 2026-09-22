@@ -7,6 +7,10 @@ import java.util.ArrayList;
 import java.util.List;
 import lombok.*;
 
+/**
+ * 장소 리뷰 본문·추천 사유·사진과 공개 상태를 보관합니다.
+ * 삭제는 행 제거가 아닌 DELETED 상태 전이이며 사진 연결은 미디어 목록과 기존 imageUrls를 함께 갱신합니다.
+ */
 @Entity @Getter @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @Table(name = "place_review")
 public class PlaceReview {
