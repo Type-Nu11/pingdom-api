@@ -6,6 +6,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 길찾기·외부 지도 이동의 사용자 행동과 재요청 중복 키를 저장합니다.
+ * provider와 중복 키는 공백을 제거하며 생성 시각은 전달받은 발생 시각과 동일하게 기록합니다.
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
