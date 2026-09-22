@@ -12,7 +12,7 @@ public class TomcatMultipartConfig {
     static final int MAX_PART_HEADER_SIZE_BYTES = 512;
 
     @Bean
-    WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatMultipartCustomizer() {
+    WebServerFactoryCustomizer<TomcatServletWebServerFactory> tomcatCustomizer() {
         return factory -> factory.addConnectorCustomizers(connector -> {
             connector.setMaxPartCount(MAX_PART_COUNT);
             connector.setMaxPartHeaderSize(MAX_PART_HEADER_SIZE_BYTES);

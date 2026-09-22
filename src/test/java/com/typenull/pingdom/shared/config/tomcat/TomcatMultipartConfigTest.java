@@ -11,9 +11,9 @@ class TomcatMultipartConfigTest {
     private final TomcatMultipartConfig config = new TomcatMultipartConfig();
 
     @Test
-    void multipart_요청의_part_개수와_헤더_크기를_제한한다() {
+    void customizesMultipartLimits() {
         TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory(0);
-        config.tomcatMultipartCustomizer().customize(factory);
+        config.tomcatCustomizer().customize(factory);
         Connector connector = new Connector();
 
         factory.getTomcatConnectorCustomizers().forEach(customizer -> customizer.customize(connector));
