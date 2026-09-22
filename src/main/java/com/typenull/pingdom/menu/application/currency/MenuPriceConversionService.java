@@ -5,10 +5,6 @@ import com.typenull.pingdom.menu.domain.MenuCurrency;
 import com.typenull.pingdom.menu.domain.PlaceMenu;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -39,38 +35,11 @@ public class MenuPriceConversionService {
             return null;
         }
 
-        return convert(menu, displayCurrency, exchangeRate.get());
-    }
-
-    /**
-     * 하나의 메뉴 목록 응답 안에서 통화 쌍별 환율 조회 결과를 재사용.
-     * 실패한 빈 결과도 목록 생성 동안만 보관해 장애 시 순차 외부 호출을 막고, 다음 HTTP 요청에서는 다시 조회함.
-     */
-    public List<MenuConvertedPriceResponse> convertAll(List<PlaceMenu> menus, MenuCurrency displayCurrency) {
-        Map<CurrencyPair, Optional<CurrencyExchangeRate>> rates = new HashMap<>();
-        List<MenuConvertedPriceResponse> convertedPrices = new ArrayList<>(menus.size());
-        for (PlaceMenu menu : menus) {
-            if (menu.getCurrency() == displayCurrency) {
-                convertedPrices.add(null);
-                continue;
-            }
-            CurrencyPair pair = new CurrencyPair(menu.getCurrency(), displayCurrency);
-            Optional<CurrencyExchangeRate> rate = rates.computeIfAbsent(pair,
-                    ignored -> currencyExchangeRateClient.findRate(pair.sourceCurrency(), pair.targetCurrency()));
-            convertedPrices.add(rate.map(value -> convert(menu, displayCurrency, value)).orElse(null));
-        }
-        return convertedPrices;
-    }
-
-    private MenuConvertedPriceResponse convert(PlaceMenu menu, MenuCurrency displayCurrency,
-                                               CurrencyExchangeRate rate) {
+        CurrencyExchangeRate rate = exchangeRate.get();
         BigDecimal convertedAmount = BigDecimal.valueOf(menu.getPriceAmount())
                 .multiply(rate.rate())
                 .setScale(fractionDigits(displayCurrency), RoundingMode.HALF_UP);
         return new MenuConvertedPriceResponse(convertedAmount, displayCurrency, rate.rateDate());
-    }
-
-    private record CurrencyPair(MenuCurrency sourceCurrency, MenuCurrency targetCurrency) {
     }
 
     private int fractionDigits(MenuCurrency currency) {

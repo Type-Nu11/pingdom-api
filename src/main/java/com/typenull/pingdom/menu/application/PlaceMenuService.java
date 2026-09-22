@@ -17,7 +17,6 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import java.time.Clock;
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.stream.IntStream;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -125,6 +124,7 @@ public class PlaceMenuService {
         changeStatus(userId, placeId, menuId, PlaceMenuStatus.INACTIVE);
     }
 
+    @Transactional(readOnly = true)
     public List<PlaceMenuPublicResponse> listPublic(Long placeId) {
         return listPublic(placeId, null);
     }
@@ -132,9 +132,8 @@ public class PlaceMenuService {
     /**
      * 노출 가능하고 영업 중인 장소에서 AVAILABLE·SOLD_OUT 메뉴를 표시 순서·ID 순으로 반환.
      * 숨김·비영업 장소는 없는 대상으로 처리하며 요청 회원의 국가로 표시 통화를 정해 환산 가격을 함께 제공.
-     * DB 조회를 먼저 끝낸 뒤 환율을 계산해 외부 환율 API 대기 시간이 DB 트랜잭션을 점유하지 않도록 함.
-     * 같은 목록에서 동일 통화 쌍의 실패 결과는 재사용하며 다음 HTTP 요청에서는 다시 조회함.
      */
+    @Transactional(readOnly = true)
     public List<PlaceMenuPublicResponse> listPublic(Long placeId, Long userId) {
         MapPlace place = requirePlace(placeId);
         if (place.getDiscoveryStatus() != PlaceDiscoveryStatus.VISIBLE
@@ -145,12 +144,8 @@ public class PlaceMenuService {
                 .map(user -> user.getCountry())
                 .orElse(null);
         MenuCurrency displayCurrency = displayCurrencyResolver.resolve(country);
-        List<PlaceMenu> menus = menuRepository.findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(placeId,
-                PUBLIC_STATUSES);
-        List<MenuConvertedPriceResponse> convertedPrices = priceConversionService.convertAll(menus, displayCurrency);
-        return IntStream.range(0, menus.size())
-                .mapToObj(index -> PlaceMenuPublicResponse.from(menus.get(index), convertedPrices.get(index)))
-                .toList();
+        return menuRepository.findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(placeId, PUBLIC_STATUSES).stream()
+                .map(menu -> PlaceMenuPublicResponse.from(menu, priceConversionService.convert(menu, displayCurrency))).toList();
     }
 
     private MapPlace requirePlace(Long placeId) {

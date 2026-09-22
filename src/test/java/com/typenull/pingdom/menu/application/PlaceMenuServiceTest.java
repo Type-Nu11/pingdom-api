@@ -44,11 +44,6 @@ class PlaceMenuServiceTest {
                 displayCurrencyResolver, priceConversionService, clock);
         when(placeRepository.findById(10L)).thenReturn(Optional.of(MapPlace.builder().id(10L).build()));
         when(menuRepository.save(any(PlaceMenu.class))).thenAnswer(invocation -> invocation.getArgument(0));
-        when(priceConversionService.convertAll(anyList(), any(MenuCurrency.class))).thenAnswer(invocation -> {
-            List<PlaceMenu> menus = invocation.getArgument(0);
-            MenuCurrency displayCurrency = invocation.getArgument(1);
-            return menus.stream().map(menu -> priceConversionService.convert(menu, displayCurrency)).toList();
-        });
     }
 
     /**
