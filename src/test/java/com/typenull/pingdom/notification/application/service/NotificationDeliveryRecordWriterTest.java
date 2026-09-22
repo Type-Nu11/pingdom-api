@@ -35,6 +35,9 @@ class NotificationDeliveryRecordWriterTest {
 
     private NotificationDeliveryRecordWriter writer;
 
+    /**
+     * 최대 시도 횟수 2와 고정 현재 시각을 설정해 이력 생성 및 재시도 한계 전환을 검증할 writer를 만든다.
+     */
     @BeforeEach
     void setUp() {
         writer = new NotificationDeliveryRecordWriter(
@@ -54,8 +57,11 @@ class NotificationDeliveryRecordWriterTest {
         );
     }
 
+    /**
+     * 이메일 성공 이력을 저장하면 수신자 해시가 원문 이메일을 포함하지 않는 64자리이고 성공 상태·시도 횟수 1을 기록하는지 검증한다.
+     */
     @Test
-    void recordHashesRecipientWithoutStoringRawRecipient() {
+    void hashesDeliveryRecipient() {
         when(notificationDeliveryRepository.save(any(NotificationDelivery.class)))
                 .thenAnswer(invocation -> invocation.getArgument(0));
 
@@ -84,8 +90,11 @@ class NotificationDeliveryRecordWriterTest {
         assertThat(delivery.getAttemptCount()).isEqualTo(1);
     }
 
+    /**
+     * 재시도 예약된 이메일의 두 번째 실패는 최대 시도 횟수에 도달해 FINAL_FAILED로 바뀌고 최신 실패 사유를 저장하는지 검증한다.
+     */
     @Test
-    void retryScheduledFailureBecomesFinalFailureOnMaxAttempt() {
+    void finalizesEmailFailureAtAttemptLimit() {
         NotificationDelivery existing = NotificationDelivery.create(
                 NotificationDeliveryChannel.EMAIL,
                 1L,
@@ -137,8 +146,11 @@ class NotificationDeliveryRecordWriterTest {
         assertThat(existing.getFailureReason()).isEqualTo("failed again");
     }
 
+    /**
+     * 재시도 가능한 FCM 실패도 Outbox 최대 시도 횟수 2에 도달하면 FINAL_FAILED와 누적 시도 횟수 2를 기록하는지 검증한다.
+     */
     @Test
-    void retryableFcmFailureBecomesFinalFailureOnOutboxMaxAttempt() {
+    void finalizesFcmFailureAtAttemptLimit() {
         NotificationDelivery existing = NotificationDelivery.create(
                 NotificationDeliveryChannel.FCM,
                 1L,
