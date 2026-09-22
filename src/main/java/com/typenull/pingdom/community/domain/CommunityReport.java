@@ -20,6 +20,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 게시글 또는 댓글 중 정확히 하나를 대상으로 하는 신고와 관리자 처리 이력을 보관합니다.
+ * PENDING 상태에서만 처리할 수 있고 처리 시각은 신고 생성 시각보다 이를 수 없습니다. 경합은 엔티티 버전으로 검증합니다.
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
