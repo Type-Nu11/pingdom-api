@@ -7,6 +7,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소 메뉴의 원금·통화·노출 상태·표시 순서를 보관합니다.
+ * 설명과 이미지 URL 공백은 null로 정리하며 URL 검증·환산·권한 확인은 수행하지 않습니다. 상태별 편집 제한은 서비스 책임입니다.
+ */
 @Entity
 @Getter
 @Table(name = "place_menu")
