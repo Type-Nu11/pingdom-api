@@ -20,6 +20,11 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 import org.springframework.util.StringUtils;
 
+/**
+ * 설정된 추천 알고리즘에 DB의 트래픽 배분·킬 스위치를 겹쳐 요청에 적용할 정책을 선택합니다.
+ * 정책 변경은 기존 저장 행을 잠가 반영하고 커밋 후 현재 인스턴스의 메모리 정책을 다시 읽습니다.
+ * 버전·배분·폴백의 관리자 입력 검증은 호출 측이 맡으며 다른 서버의 메모리까지 직접 갱신하지 않습니다.
+ */
 @Service
 public class PlaceRecommendationPolicyService {
 
@@ -42,6 +47,10 @@ public class PlaceRecommendationPolicyService {
         refreshPolicies();
     }
 
+    /**
+     * 설정의 버전 정책과 DB의 트래픽·활성 여부를 읽어 현재 인스턴스의 정책 캐시를 교체합니다. 설정 버전이 없으면 기본 정책을 사용합니다.
+     * synchronized는 갱신 호출끼리만 조정하며 잠금 없이 읽는 resolve에 여러 맵의 동시 교체까지 보장하지는 않습니다.
+     */
     @Transactional(readOnly = true)
     public synchronized void refreshPolicies() {
         List<VersionPolicy> configuredPolicies = properties.versions();
@@ -78,6 +87,11 @@ public class PlaceRecommendationPolicyService {
 
     private volatile String resolvedDefaultVersion;
 
+    /**
+     * 알려진 요청 버전을 우선하고 미지정이면 사용자 또는 좌표 버킷에 따라 정책을 선택합니다.
+     * 알 수 없는 버전·비활성 정책은 기본값과 fallback 경로로 해소하여 실제 버전 및 전환 사유를 반환합니다.
+     * 정책 DB를 직접 조회하지 않고 현재 인스턴스의 메모리 캐시를 사용합니다.
+     */
     public ResolvedRecommendationPolicy resolve(
             Long userId,
             double latitude,
@@ -119,6 +133,11 @@ public class PlaceRecommendationPolicyService {
         return buildTrafficPolicies(trafficOverridesByVersion);
     }
 
+    /**
+     * 기존 정책 행을 쓰기 잠금으로 읽고 알려진 버전 중 전달된 명령만 DB에 저장하여 반영 예정 정책 목록을 반환합니다.
+     * 트랜잭션 동기화가 있으면 커밋 후 로컬 캐시를 새로 읽고, 없으면 즉시 갱신합니다.
+     * 전체 비율 합계·fallback 관계 검증은 관리자 서비스가 선행하며 이 메서드는 다른 인스턴스 캐시를 갱신하지 않습니다.
+     */
     @Transactional
     public List<RecommendationTrafficPolicy> updateTrafficPolicies(Map<String, PolicyUpdateCommand> policyCommands) {
         Map<String, Integer> updatedOverrides = new LinkedHashMap<>(trafficOverridesByVersion);
@@ -216,6 +235,10 @@ public class PlaceRecommendationPolicyService {
         return resolveFirstEnabledPolicy(sourceVersion, "fallback_version_missing");
     }
 
+    /**
+     * 폴백 체인이 끊기거나 순환하면 활성 정책을 찾습니다.
+     * 활성 정책이 하나도 없을 때도 요청을 실패시키지 않고 기본 정책을 반환하는 현재 폴백 규칙입니다.
+     */
     private ResolvedRecommendationPolicy resolveFirstEnabledPolicy(String sourceVersion, String fallbackReason) {
         for (VersionPolicy candidate : policiesByVersion.values()) {
             if (isEnabled(candidate.version(), killSwitchOverridesByVersion)) {
