@@ -1,5 +1,8 @@
 package com.typenull.pingdom.campaign.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.campaign.api.dto.BrandCreateRequest;
@@ -36,7 +39,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.CAMPAIGN)
 public class MerchantCampaignController {
 
     private final MerchantCampaignService campaignService;
