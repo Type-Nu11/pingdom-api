@@ -6,6 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.OffsetDateTime;
 import java.time.ZoneOffset;
 
+/**
+ * 공개 캠페인 시각에 UTC 오프셋을 붙여 반환합니다.
+ * 원본 LocalDateTime을 다른 시간대에서 변환하는 것이 아니므로 저장 시각이 UTC라는 호출 계약이 필요합니다.
+ */
 @Schema(description = "진행 중인 공개 팝업 캠페인 응답")
 public record PublicPopupCampaignResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED, example = "1") Long id,
