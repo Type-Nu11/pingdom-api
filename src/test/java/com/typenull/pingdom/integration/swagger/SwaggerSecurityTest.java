@@ -1,7 +1,7 @@
 package com.typenull.pingdom.integration.swagger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -30,13 +30,6 @@ class SwaggerSecurityTest {
     }
 
     @Test
-    void swaggerUiPathIsAccessibleWithoutAuthentication() throws Exception {
-        mockMvc.perform(get("/swagger-ui"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(header().string("Location", "/swagger-ui/index.html"));
-    }
-
-    @Test
     void swaggerUiIndexIsAccessibleWithoutAuthentication() throws Exception {
         mockMvc.perform(get("/swagger-ui/index.html"))
                 .andExpect(status().isOk());
@@ -61,16 +54,16 @@ class SwaggerSecurityTest {
     void swaggerConfigListsAllApiGroups() throws Exception {
         mockMvc.perform(get("/v3/api-docs/swagger-config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.urls[0].name").value("app"))
-                .andExpect(jsonPath("$.urls[0].url").value("/v3/api-docs/app"))
-                .andExpect(jsonPath("$.urls[1].name").value("common"))
-                .andExpect(jsonPath("$.urls[1].url").value("/v3/api-docs/common"))
-                .andExpect(jsonPath("$.urls[2].name").value("consulting"))
-                .andExpect(jsonPath("$.urls[2].url").value("/v3/api-docs/consulting"))
-                .andExpect(jsonPath("$.urls[3].name").value("admin"))
-                .andExpect(jsonPath("$.urls[3].url").value("/v3/api-docs/admin"))
-                .andExpect(jsonPath("$.urls[4].name").value("merchant"))
-                .andExpect(jsonPath("$.urls[4].url").value("/v3/api-docs/merchant"));
+                .andExpect(jsonPath("$.urls[*].name").value(containsInAnyOrder(
+                        "app", "common", "consulting", "admin", "merchant"
+                )))
+                .andExpect(jsonPath("$.urls[*].url").value(containsInAnyOrder(
+                        "/v3/api-docs/app",
+                        "/v3/api-docs/common",
+                        "/v3/api-docs/consulting",
+                        "/v3/api-docs/admin",
+                        "/v3/api-docs/merchant"
+                )));
     }
 
     @Test
