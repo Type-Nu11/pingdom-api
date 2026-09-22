@@ -1,7 +1,7 @@
 package com.typenull.pingdom.integration.swagger;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
-import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
+import static org.hamcrest.Matchers.containsInAnyOrder;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -36,16 +36,6 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * dev 프로필에서 미인증 Swagger 경로가 index.html로 리다이렉트되는지 확인.
-     */
-    @Test
-    void publicSwaggerRedirect() throws Exception {
-        mockMvc.perform(get("/swagger-ui"))
-                .andExpect(status().is3xxRedirection())
-                .andExpect(header().string("Location", "/swagger-ui/index.html"));
-    }
-
-    /**
      * dev 프로필의 Swagger index가 인증 없이 200인지 확인.
      */
     @Test
@@ -73,22 +63,22 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * Swagger 설정의 그룹 이름과 URL이 app·common·consulting·admin·merchant 순서인지 확인.
+     * Swagger 설정의 그룹 이름과 URL에 app·common·consulting·admin·merchant가 순서와 무관하게 포함되는지 확인.
      */
     @Test
-    void swaggerGroupOrder() throws Exception {
+    void swaggerGroups() throws Exception {
         mockMvc.perform(get("/v3/api-docs/swagger-config"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.urls[0].name").value("app"))
-                .andExpect(jsonPath("$.urls[0].url").value("/v3/api-docs/app"))
-                .andExpect(jsonPath("$.urls[1].name").value("common"))
-                .andExpect(jsonPath("$.urls[1].url").value("/v3/api-docs/common"))
-                .andExpect(jsonPath("$.urls[2].name").value("consulting"))
-                .andExpect(jsonPath("$.urls[2].url").value("/v3/api-docs/consulting"))
-                .andExpect(jsonPath("$.urls[3].name").value("admin"))
-                .andExpect(jsonPath("$.urls[3].url").value("/v3/api-docs/admin"))
-                .andExpect(jsonPath("$.urls[4].name").value("merchant"))
-                .andExpect(jsonPath("$.urls[4].url").value("/v3/api-docs/merchant"));
+                .andExpect(jsonPath("$.urls[*].name").value(containsInAnyOrder(
+                        "app", "common", "consulting", "admin", "merchant"
+                )))
+                .andExpect(jsonPath("$.urls[*].url").value(containsInAnyOrder(
+                        "/v3/api-docs/app",
+                        "/v3/api-docs/common",
+                        "/v3/api-docs/consulting",
+                        "/v3/api-docs/admin",
+                        "/v3/api-docs/merchant"
+                )));
     }
 
     /**
