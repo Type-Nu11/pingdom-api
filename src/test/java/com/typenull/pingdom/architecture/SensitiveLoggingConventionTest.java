@@ -21,6 +21,9 @@ class SensitiveLoggingConventionTest {
             Pattern.DOTALL
     );
 
+    /**
+     * 운영 Java 소스의 로그 호출 인자에서 accessToken·refreshToken·authorizationHeader·password 식별자 패턴을 찾아 위반 경로가 없는지 검증한다.
+     */
     @Test
     @DisplayName("Token과 password 원문을 로그에 기록하지 않는다")
     void sensitiveAuthenticationValuesAreNotLogged() throws IOException {
