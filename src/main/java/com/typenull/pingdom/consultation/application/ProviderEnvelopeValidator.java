@@ -25,6 +25,10 @@ public class ProviderEnvelopeValidator {
             "K_POP", "BEAUTY", "FASHION", "CAFE", "FOOD", "POP_UP", "EXHIBITION", "NIGHTLIFE", "OTHER"
     );
 
+    /**
+     * 공급자 응답의 버전 1·요청 ID 일치·ID 형식을 확인한 뒤 종류별 필드와 명령 인자를 검증합니다.
+     * 지원하지 않는 종류·필드·값은 PROVIDER_RESPONSE_INVALID로 거절하며 검증 통과만으로 명령 실행이나 자원 접근을 허용하지 않습니다.
+     */
     public void validate(JsonNode envelope, String requestId) {
         if (envelope == null || !envelope.isObject()
                 || !integer(envelope.path("schemaVersion"))
@@ -109,6 +113,10 @@ public class ProviderEnvelopeValidator {
         return node.isNumber() && node.decimalValue().stripTrailingZeros().scale() <= 0;
     }
 
+    /**
+     * 클라이언트의 JavaScript 정수 표현 범위를 넘지 않는 양수 ID만 허용합니다.
+     * ID가 실제 DB에 존재하는지나 해당 자원에 대한 사용자 권한은 이 스키마 검증에서 확인하지 않습니다.
+     */
     private void positiveId(JsonNode node) {
         if (!integer(node) || !node.canConvertToLong() || node.asLong() < 1
                 || node.asLong() > 9_007_199_254_740_991L) invalid();
