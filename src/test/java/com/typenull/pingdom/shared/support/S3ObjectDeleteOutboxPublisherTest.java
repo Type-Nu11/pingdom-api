@@ -23,13 +23,19 @@ class S3ObjectDeleteOutboxPublisherTest {
 
     private S3ObjectDeleteOutboxPublisher publisher;
 
+    /**
+     * Outbox 발행 대역을 주입해 S3 삭제 이벤트의 키·타입·집계 매핑만 검증한다.
+     */
     @BeforeEach
     void setUp() {
         publisher = new S3ObjectDeleteOutboxPublisher(outboxEventPublisher);
     }
 
+    /**
+     * 450자 파일명 키도 S3_OBJECT_DELETE 접두사와 200자 이하 중복 방지 키로 발행되는지 검증한다.
+     */
     @Test
-    void publishUsesBoundedDeduplicationKeyForLongS3Key() {
+    void boundsLongS3DeduplicationKey() {
         String longS3Key = "map/" + "a".repeat(450) + ".jpg";
         ArgumentCaptor<String> deduplicationKeyCaptor = ArgumentCaptor.forClass(String.class);
 
@@ -46,6 +52,9 @@ class S3ObjectDeleteOutboxPublisherTest {
         assertTrue(deduplicationKeyCaptor.getValue().length() <= 200);
     }
 
+    /**
+     * 공백뿐인 S3 키는 삭제 Outbox를 발행하지 않는지 검증한다.
+     */
     @Test
     void publishIgnoresBlankS3Key() {
         publisher.publish("   ", "MAP_IMAGE", "10", "MAP_IMAGE_DELETED");
