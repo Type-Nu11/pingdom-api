@@ -17,9 +17,13 @@ class CommunityReportTest {
     private final LocalDateTime now = LocalDateTime.of(2026, 9, 15, 12, 0);
     private final CommunityPost post = CommunityPost.create("travel", "제목", "내용", 1L);
 
+    /**
+     * 모든 신고 사유로 게시글 신고를 만들면 대상·신고자·사유를 보존하고 설명 양끝 공백을 제거하는지 검증한다.
+     * 초기 상태가 PENDING이며 처리자·처리 시각이 비어 있는지도 확인한다.
+     */
     @ParameterizedTest
     @EnumSource(CommunityReportReason.class)
-    void 모든_사유로_게시글_신고를_접수한다(CommunityReportReason reason) {
+    void acceptsEveryPostReportReason(CommunityReportReason reason) {
         CommunityReport report = CommunityReport.reportPost(2L, post, reason, " 설명 ", now);
 
         assertThat(report.getPost()).isSameAs(post);
@@ -32,8 +36,11 @@ class CommunityReportTest {
         assertThat(report.getProcessedByAdminUserId()).isNull();
     }
 
+    /**
+     * 댓글 신고는 댓글 참조만 보존하고 게시글 대상 참조는 null로 두는지 검증한다.
+     */
     @Test
-    void 댓글_신고는_댓글만_대상으로_참조한다() {
+    void referencesOnlyReportedComment() {
         CommunityPostComment comment = CommunityPostComment.create(post, 3L, "댓글");
         CommunityReport report = CommunityReport.reportComment(2L, comment, CommunityReportReason.SPAM, "설명", now);
 
@@ -41,25 +48,34 @@ class CommunityReportTest {
         assertThat(report.getPost()).isNull();
     }
 
+    /**
+     * null·빈 문자열·일반 공백·줄바꿈·전각 공백뿐인 신고 설명을 INVALID_REPORT로 거절하는지 검증한다.
+     */
     @ParameterizedTest
     @NullAndEmptySource
     @ValueSource(strings = {" ", "\t\n", "　"})
-    void 빈_설명을_거절한다(String description) {
+    void rejectsBlankReportDescription(String description) {
         assertThatThrownBy(() -> CommunityReport.reportPost(2L, post, CommunityReportReason.OTHER, description, now))
                 .isInstanceOf(CommunityException.class)
                 .extracting("errorCode").isEqualTo(CommunityErrorCode.INVALID_REPORT);
     }
 
+    /**
+     * 신고 설명은 500자를 허용하고 501자는 도메인 예외로 거절하는지 경계를 검증한다.
+     */
     @Test
-    void 설명_길이_경계를_검증한다() {
+    void checksReportDescriptionLength() {
         assertThat(CommunityReport.reportPost(2L, post, CommunityReportReason.SPAM, "가".repeat(500), now)
                 .getDescription()).hasSize(500);
         assertThatThrownBy(() -> CommunityReport.reportPost(2L, post, CommunityReportReason.SPAM, "가".repeat(501), now))
                 .isInstanceOf(CommunityException.class);
     }
 
+    /**
+     * 신고자가 없거나 양수가 아니고, 대상·사유·접수 시각 중 필수값이 없으면 신고 생성을 거절하는지 검증한다.
+     */
     @Test
-    void 필수_신고_정보를_검증한다() {
+    void requiresReportCreationFields() {
         assertThatThrownBy(() -> CommunityReport.reportPost(null, post, CommunityReportReason.SPAM, "설명", now))
                 .isInstanceOf(CommunityException.class);
         assertThatThrownBy(() -> CommunityReport.reportPost(0L, post, CommunityReportReason.SPAM, "설명", now))
@@ -74,9 +90,13 @@ class CommunityReportTest {
                 .isInstanceOf(CommunityException.class);
     }
 
+    /**
+     * 승인 또는 거절하면 상태·처리자·처리 시각을 기록하고 이후 승인·거절 요청을 모두 막는지 검증한다.
+     * 재처리 실패 뒤에도 최초 상태와 처리자가 유지되는지 확인한다.
+     */
     @ParameterizedTest
     @EnumSource(value = CommunityReportStatus.class, names = {"ACCEPTED", "DECLINED"})
-    void 처리_정보를_기록하고_모든_재처리를_거절한다(CommunityReportStatus status) {
+    void preventsProcessedReportTransitions(CommunityReportStatus status) {
         CommunityReport report = CommunityReport.reportPost(2L, post, CommunityReportReason.SPAM, "설명", now);
         if (status == CommunityReportStatus.ACCEPTED) {
             report.accept(9L, now.plusMinutes(1));
@@ -96,8 +116,11 @@ class CommunityReportTest {
         assertThat(report.getProcessedByAdminUserId()).isEqualTo(9L);
     }
 
+    /**
+     * 유효하지 않은 관리자 ID나 처리 시각으로 심사하면 예외를 반환하고 대기 상태와 비어 있는 처리 메타데이터를 유지하는지 검증한다.
+     */
     @Test
-    void 잘못된_처리_정보는_상태를_변경하지_않는다() {
+    void preservesPendingOnInvalidProcessing() {
         CommunityReport report = CommunityReport.reportPost(2L, post, CommunityReportReason.SPAM, "설명", now);
         assertThatThrownBy(() -> report.accept(null, now)).isInstanceOf(CommunityException.class);
         assertThatThrownBy(() -> report.decline(0L, now)).isInstanceOf(CommunityException.class);
