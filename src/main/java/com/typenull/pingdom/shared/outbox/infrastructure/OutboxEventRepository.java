@@ -16,6 +16,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * Outbox 운영 조회와 배치 선점·고착 복구를 위한 잠금 query를 제공한다.
+ * 배치 query의 lock timeout -2는 Hibernate의 잠긴 행 건너뛰기 힌트이며 실제 SQL은 DB dialect에 따른다.
+ */
 public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String> {
 
     boolean existsByDeduplicationKey(String deduplicationKey);
@@ -29,6 +33,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
 
     long countByStatus(OutboxEventStatus status);
 
+    /** null인 분류 조건은 필터를 생략하며 생성 시각 하한·상한은 각각 포함한다. 시간 조건 적용 여부는 별도 boolean으로 결정한다. */
     @Query("""
             SELECT event
             FROM OutboxEvent event
@@ -51,6 +56,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             Pageable pageable
     );
 
+    /** 수동 재시도 대상 한 행을 쓰기 잠금으로 조회한다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("""
             SELECT event
@@ -59,6 +65,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             """)
     Optional<OutboxEvent> findByEventIdForUpdate(@Param("eventId") String eventId);
 
+    /** 지정 상태 중 nextAttemptAt이 현재 시각 이하인 행을 생성 시각·ID 순서로 제한 선점한다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("""
@@ -74,6 +81,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             Pageable pageable
     );
 
+    /** 처리 시작 시각이 임계값보다 엄격히 이전인 지정 상태의 행을 오래된 순서로 잠금 조회한다. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @QueryHints(@jakarta.persistence.QueryHint(name = "jakarta.persistence.lock.timeout", value = "-2"))
     @Query("""
@@ -89,6 +97,7 @@ public interface OutboxEventRepository extends JpaRepository<OutboxEvent, String
             Pageable pageable
     );
 
+    /** 처리 완료 시각이 기준보다 이전인 지정 상태의 ID를 오래된 순서·ID 순서로 제한 조회한다. */
     @Query("""
             SELECT event.eventId
             FROM OutboxEvent event
