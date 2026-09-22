@@ -43,6 +43,11 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         this.objectMapper = objectMapper;
     }
 
+    /**
+     * API 키와 MCP 주소가 있어야 요청하며 허용 MCP 도구를 Gemini에 등록합니다.
+     * 최종 텍스트에서 JSON을 추출해 알 수 없는 필드와 html 필드를 거절하지만 도구가 실제 호출됐는지는 확인하지 않습니다.
+     * 연결·HTTP 실패와 응답 형식 오류를 도메인 오류로 변환하며 재시도하지 않습니다.
+     */
     @Override
     public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
         if (!StringUtils.hasText(properties.apiKey())) {
