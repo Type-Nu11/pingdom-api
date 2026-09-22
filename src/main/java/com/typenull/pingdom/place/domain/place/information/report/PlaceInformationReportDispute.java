@@ -20,6 +20,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
+/**
+ * 장소 정보 신고에 대한 이의 제기 내용과 관리자 심사 결과입니다.
+ * 승인·거절 모두 사유가 필수이며 이미 심사한 이의는 재심사하지 않습니다. 원 신고 상태는 여기서 자동 변경하지 않습니다.
+ */
 @Entity
 @Getter
 @Table(name = "place_information_report_dispute")
