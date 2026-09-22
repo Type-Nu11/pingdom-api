@@ -7,11 +7,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** 예약 결제와 환불의 외부 거래 식별자 및 상태 전이를 관리합니다. */
 @Entity
 @Getter
 @Table(name = "payment_transaction")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-/** 예약 결제와 환불의 외부 거래 식별자 및 상태 전이를 관리합니다. */
 public class PaymentTransaction {
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
@@ -100,6 +100,9 @@ public class PaymentTransaction {
         this.updatedAt = now;
     }
 
+    /**
+     * PAID 거래만 환불 처리 중으로 전환합니다. 이미 처리 중인 환불 재요청을 허용하는 멱등 메서드는 아닙니다.
+     */
     public void startRefund(LocalDateTime now) {
         requireStatus(PaymentStatus.PAID);
         this.status = PaymentStatus.REFUND_PROCESSING;
@@ -123,6 +126,9 @@ public class PaymentTransaction {
         if (status != expected) throw new IllegalStateException("현재 결제 상태에서는 요청을 처리할 수 없습니다.");
     }
 
+    /**
+     * 알파벳 세 자리 형식만 확인하며 실제 ISO 통화 목록의 존재 여부나 통화별 소수 자릿수는 검증하지 않습니다.
+     */
     private static String requireCurrency(String value) {
         String normalized = requireText(value, "currency", 3).toUpperCase();
         if (!normalized.matches("[A-Z]{3}")) throw new IllegalArgumentException("통화 코드는 ISO-4217 형식이어야 합니다.");
