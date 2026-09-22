@@ -40,6 +40,11 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관리자 장소 검색에 분류 alias와 숫자 ID 검색을 적용하고 관광 카테고리를 배치 조합합니다.
+ * 상세의 게시글은 숨김 상태를 포함해 최대 20개를 반환하고, postCount는 해당 제목 검색에 맞는 전체 건수입니다.
+ * 성장 집계와 숨김 사진 수는 게시글 검색어와 별도로 조회합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminMapPlaceLookupQueryService {
@@ -50,6 +55,10 @@ public class AdminMapPlaceLookupQueryService {
     private final MapImageRepository mapImageRepository;
     private final PlaceGrowthService placeGrowthService;
 
+    /**
+     * 장소명·주소 검색어와 숫자로 해석 가능한 ID, 정규화한 카테고리 별칭으로 검색하고 관광 카테고리를 배치로 조합합니다.
+     * page는 1 이상·limit는 1~100으로 보정하고 정렬이 없으면 최신 ID순을 사용합니다.
+     */
     @Transactional(readOnly = true)
     public AdminMapPlaceResponse listPlaces(
             int page,
@@ -94,6 +103,10 @@ public class AdminMapPlaceLookupQueryService {
         );
     }
 
+    /**
+     * 존재하는 장소에 제목 검색과 정렬을 적용한 게시글 최대 20개, 검색에 맞는 전체 게시글 수, 장소 성장 정보를 붙입니다.
+     * 게시글에는 숨김 상태도 포함하며 숨김 사진 수는 제목 검색과 별도로 집계합니다. 장소가 없으면 PLACE_NOT_FOUND입니다.
+     */
     @Transactional(readOnly = true)
     public AdminMapPlaceDetailResponse getPlace(Long placeId, SortParam sortParam, String keyword) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
