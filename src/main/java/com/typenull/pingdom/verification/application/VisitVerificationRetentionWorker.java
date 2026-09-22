@@ -15,6 +15,10 @@ public class VisitVerificationRetentionWorker {
     private final VisitVerificationProperties properties;
     private final Clock clock;
 
+    /**
+     * 세션 만료 시각에 보관 기간까지 더한 시점이 지난 행을 트랜잭션으로 삭제한다.
+     * 기본 cron은 매일 04시이며 별도 zone 지정이 없어 스케줄러의 시간대를 따른다.
+     */
     @Scheduled(cron = "${verification.visit-verification.cleanup-cron:0 0 4 * * *}")
     @Transactional
     public void deleteExpiredRetention() {
