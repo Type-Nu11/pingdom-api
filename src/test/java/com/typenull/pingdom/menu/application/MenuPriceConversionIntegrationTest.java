@@ -105,6 +105,31 @@ class MenuPriceConversionIntegrationTest {
     }
 
     /**
+     * 같은 통화 쌍의 환율 공급자가 장애여도 하나의 메뉴 목록에서는 첫 실패 결과를 재사용하고,
+     * 다음 목록 요청에서는 복구 여부를 확인하도록 다시 조회하는지 검증.
+     */
+    @Test
+    void reusesFailedRateOnlyWithinOneMenuListRequest() {
+        PlaceMenu secondKrwMenu = PlaceMenu.create(10L, 7L, "짬뽕", null, 10000L, MenuCurrency.KRW,
+                null, 1, LocalDateTime.now(clock));
+        when(menuRepository.findAllByPlaceIdAndStatusInOrderByDisplayOrderAscIdAsc(eq(10L), anyCollection()))
+                .thenReturn(List.of(menu, secondKrwMenu));
+        User usUser = mock(User.class);
+        when(userRepository.findById(99L)).thenReturn(Optional.of(usUser));
+        when(usUser.getCountry()).thenReturn("US");
+        CurrencyExchangeRateClient exchangeRateClient = mock(CurrencyExchangeRateClient.class);
+        when(exchangeRateClient.findRate(MenuCurrency.KRW, MenuCurrency.USD)).thenReturn(Optional.empty());
+        PlaceMenuService service = serviceWith(exchangeRateClient);
+
+        List<PlaceMenuPublicResponse> first = service.listPublic(10L, 99L);
+        List<PlaceMenuPublicResponse> second = service.listPublic(10L, 99L);
+
+        assertThat(first).hasSize(2).allSatisfy(response -> assertThat(response.convertedPrice()).isNull());
+        assertThat(second).hasSize(2).allSatisfy(response -> assertThat(response.convertedPrice()).isNull());
+        verify(exchangeRateClient, times(2)).findRate(MenuCurrency.KRW, MenuCurrency.USD);
+    }
+
+    /**
      * 지정된 환율 클라이언트를 실제 국가 통화 해석기·환산 서비스와 조합해 메뉴 서비스를 생성.
      */
     private PlaceMenuService serviceWith(CurrencyExchangeRateClient exchangeRateClient) {
