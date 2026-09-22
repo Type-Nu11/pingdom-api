@@ -26,6 +26,10 @@ public class ProfileImageFileValidator {
     private static final int MAX_HEIGHT = 8_000;
     private static final long MAX_PIXEL_COUNT = 36_000_000L;
 
+    /**
+     * JPEG·PNG의 선언 MIME과 파일 시그니처를 대조하고 디코딩 후 다시 인코딩한 바이트를 반환합니다.
+     * 입력·변환 결과는 10MiB 이하, 각 변은 8,000px 이하, 총 픽셀은 3,600만 이하로 제한합니다.
+     */
     public ValidatedProfileImage validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {
             throw new UsersException(UsersErrorCode.PROFILE_IMAGE_FILE_EMPTY);
