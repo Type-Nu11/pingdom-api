@@ -20,6 +20,10 @@ import org.springframework.jdbc.datasource.DataSourceUtils;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 보존 기간이 지난 탈퇴 회원을 한 배치씩 조회해 참조를 정리한 후 물리 삭제합니다.
+ * PostgreSQL에서는 트랜잭션 advisory lock을 사용하고 다른 DB나 종류 판별 실패 시에는 락을 생략합니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,6 +41,10 @@ public class WithdrawnUserPurgeService {
 
     private volatile Boolean postgreSQL;
 
+    /**
+     * 보존 기간이 지난 탈퇴 회원 한 배치의 콘텐츠 참조·OAuth 연결을 정리한 뒤 회원을 물리 삭제하고 대상 수를 반환합니다.
+     * PostgreSQL advisory lock을 얻지 못하거나 대상이 없으면 0을 반환하며, 삭제 시 개인정보 DELETED Outbox 기록도 발행합니다.
+     */
     @Transactional
     public int purgeExpiredUsers(LocalDateTime now) {
         if (!tryAcquirePurgeLock()) {
