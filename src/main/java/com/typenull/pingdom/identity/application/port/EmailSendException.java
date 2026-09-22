@@ -1,8 +1,8 @@
 package com.typenull.pingdom.identity.application.port;
 
 /**
- * 메일 발송 실패의 내부 코드·제공자 코드와 재시도 가능 여부를 상위 처리자에 전달합니다.
- * 이 예외 자체가 재시도를 실행하거나 횟수를 결정하지는 않습니다.
+ * 메일 발송 실패의 내부 코드·제공자 코드와 재시도 가능 여부를 상위 처리자에 전달.
+ * 재시도 실행과 횟수 결정은 이 예외 타입의 책임 범위에서 제외.
  */
 public class EmailSendException extends RuntimeException {
 

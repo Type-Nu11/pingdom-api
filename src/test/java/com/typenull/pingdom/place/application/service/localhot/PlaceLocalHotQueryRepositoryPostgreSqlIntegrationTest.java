@@ -47,7 +47,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * 테스트 전용 PostGIS 컨테이너의 접속 정보를 Spring 데이터소스에 연결합니다.
+     * 테스트 전용 PostGIS 컨테이너의 접속 정보를 Spring 데이터소스에 연결.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -63,7 +63,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     /**
-     * 각 사례가 만든 북마크·이미지·장소·지역 행을 의존 순서대로 정리합니다.
+     * 각 사례가 만든 북마크·이미지·장소·지역 행을 의존 순서대로 정리.
      */
     @AfterEach
     void cleanUp() {
@@ -74,7 +74,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 지정 지역의 공개 장소만 현재 북마크 수로 집계하고 동률 ID 순서와 사용자 북마크 여부를 PostgreSQL 결과로 확인합니다.
+     * 지정 지역의 공개 장소만 현재 북마크 수로 집계하고 동률 ID 순서와 사용자 북마크 여부를 PostgreSQL 결과로 확인.
      */
     @Test
     void ranksVisibleRegionalBookmarks() {
@@ -108,7 +108,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 행정구역 생성 후 이름·시각 갱신과 장소 지역 코드 변경이 실제 저장소 재조회에 반영되는지 확인합니다.
+     * 행정구역 생성 후 이름·시각 갱신과 장소 지역 코드 변경이 실제 저장소 재조회에 반영되는지 확인.
      */
     @Test
     void persistsAdministrativeRegionUpdates() {
@@ -138,7 +138,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 지역 코드가 null인 장소만 백필 후보로 조회되는지 확인합니다.
+     * 지역 코드가 null인 장소만 백필 후보로 조회되는지 확인.
      */
     @Test
     void selectsMissingRegionBackfill() {
@@ -152,7 +152,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 지역 코드와 시도·시군구를 DB fixture로 삽입합니다.
+     * 지역 코드와 시도·시군구를 DB fixture로 삽입.
      */
     private void insertRegion(String code, String sido, String sigungu) {
         jdbcTemplate.update(
@@ -165,7 +165,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 지정 지역 코드와 공간 좌표를 가진 장소를 삽입하고 생성 ID를 반환합니다.
+     * 지정 지역 코드와 공간 좌표를 가진 장소를 삽입하고 생성 ID를 반환.
      */
     private Long insertPlace(String name, String regionCode) {
         return jdbcTemplate.queryForObject("""
@@ -177,7 +177,7 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 사용자별 현재 북마크 수와 본인 저장 여부 검증용 행을 추가합니다.
+     * 사용자별 현재 북마크 수와 본인 저장 여부 검증용 행을 추가.
      */
     private void insertBookmark(Long userId, Long placeId) {
         jdbcTemplate.update("INSERT INTO map_bookmark (user_id, place_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)", userId, placeId);

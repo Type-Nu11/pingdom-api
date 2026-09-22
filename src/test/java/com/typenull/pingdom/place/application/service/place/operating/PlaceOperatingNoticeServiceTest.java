@@ -58,7 +58,7 @@ class PlaceOperatingNoticeServiceTest {
     private PlaceOperatingNoticeService service;
 
     /**
-     * 다른 상점주의 공지 생성을 권한 오류로 거절하고 저장하지 않는지 확인합니다.
+     * 다른 상점주의 공지 생성을 권한 오류로 거절하고 저장하지 않는지 확인.
      */
     @Test
     void rejectsNonOwnerNoticeCreation() {
@@ -74,7 +74,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 현재 시각에 시작하는 관리자 공지를 ACTIVE로 반환하고 Outbox와 감사를 기록하는지 확인합니다.
+     * 현재 시각에 시작하는 관리자 공지를 ACTIVE로 반환하고 Outbox와 감사를 기록하는지 확인.
      */
     @Test
     void createsActiveAdminNotice() {
@@ -94,7 +94,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 시작 시각이 지난 예약 공지를 활성화하고 만료 시각에 도달한 공지를 종료하며 종료 건수만 반환하는지 확인합니다.
+     * 시작 시각이 지난 예약 공지를 활성화하고 만료 시각에 도달한 공지를 종료하며 종료 건수만 반환하는지 확인.
      */
     @Test
     void advancesDueNoticeLifecycle() {
@@ -122,7 +122,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 공지 관리 권한을 확인한 뒤 활성·예약·만료·취소 공지와 생성·수정 시각을 모두 반환하는지 확인합니다.
+     * 공지 관리 권한을 확인한 뒤 활성·예약·만료·취소 공지와 생성·수정 시각을 모두 반환하는지 확인.
      */
     @Test
     void listsAllMerchantNoticeStatuses() {
@@ -162,7 +162,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 공지 관리 capability 거절 시 공지 저장소 조회 전에 예외를 전파하는지 확인합니다.
+     * 공지 관리 capability 거절 시 공지 저장소 조회 전에 예외를 전파하는지 확인.
      */
     @Test
     void rejectsUnauthorizedNoticeList() {
@@ -178,7 +178,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 기준 시각부터 2시간 동안 유효한 일반 공지 요청을 만듭니다.
+     * 기준 시각부터 2시간 동안 유효한 일반 공지 요청을 생성.
      */
     private PlaceOperatingNoticeCreateRequest request() {
         return new PlaceOperatingNoticeCreateRequest(
@@ -191,7 +191,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 상점주 사용자 1의 공지 대상 장소를 만듭니다.
+     * 상점주 사용자 1의 공지 대상 장소를 생성.
      */
     private MapPlace place() {
         return MapPlace.builder().id(10L).name("테스트 상점").address("서울시 테스트로 1")
@@ -199,7 +199,7 @@ class PlaceOperatingNoticeServiceTest {
     }
 
     /**
-     * 공지 시작·만료 판단에 사용할 UTC 시각을 고정합니다.
+     * 공지 시작·만료 판단에 사용할 UTC 시각을 고정.
      */
     private void fixedClock() {
         when(clock.instant()).thenReturn(NOW.toInstant(ZoneOffset.UTC));

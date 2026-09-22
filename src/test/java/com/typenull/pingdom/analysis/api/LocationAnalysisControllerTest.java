@@ -32,7 +32,7 @@ class LocationAnalysisControllerTest {
     private static final JwtAuthenticatedUser OWNER = new JwtAuthenticatedUser(1L, "owner");
 
     /**
-     * 이메일 소유 정책을 통과한 보관 HTML 조회가 200·text/html과 보고서 내용을 반환하는지 검증한다.
+     * 이메일 소유 정책을 통과한 보관 HTML 조회가 200·text/html과 보고서 내용을 반환하는지 검증.
      */
     @Test
     void returnsArchivedReportHtml() throws Exception {
@@ -51,7 +51,7 @@ class LocationAnalysisControllerTest {
     }
 
     /**
-     * 동의와 본인 이메일을 포함한 생성 요청이 200·application/pdf·고정 다운로드 파일명·PDF 바이트를 반환하는지 검증한다.
+     * 동의와 본인 이메일을 포함한 생성 요청이 200·application/pdf·고정 다운로드 파일명·PDF 바이트를 반환하는지 검증.
      */
     @Test
     void returnsAnalysisPdfAttachment() throws Exception {
@@ -81,7 +81,7 @@ class LocationAnalysisControllerTest {
     }
 
     /**
-     * Accept가 application/pdf인 요청도 AI 응답 오류 시 502 JSON과 AI_RESPONSE_INVALID 코드·메시지를 반환하는지 검증한다.
+     * Accept가 application/pdf인 요청도 AI 응답 오류 시 502 JSON과 AI_RESPONSE_INVALID 코드·메시지를 반환하는지 검증.
      */
     @Test
     void returnsJsonForInvalidPdfAnalysis() throws Exception {
@@ -112,7 +112,7 @@ class LocationAnalysisControllerTest {
     }
 
     /**
-     * 고정 사용자 1의 owner@example.com 요청을 허용하는 접근 정책 mock을 제공한다.
+     * 고정 사용자 1의 owner@example.com 요청을 허용하는 접근 정책 mock을 제공.
      */
     private LocationAnalysisReportAccessPolicy accessPolicy() {
         LocationAnalysisReportAccessPolicy accessPolicy = mock(LocationAnalysisReportAccessPolicy.class);
@@ -122,7 +122,7 @@ class LocationAnalysisControllerTest {
     }
 
     /**
-     * 보고서 생성·보관·접근 정책 대역과 고정 인증 사용자 resolver를 연결한 컨트롤러 MockMvc builder를 제공한다.
+     * 보고서 생성·보관·접근 정책 대역과 고정 인증 사용자 resolver를 연결한 컨트롤러 MockMvc builder를 제공.
      */
     private StandaloneMockMvcBuilder mockMvcBuilder(
             LocationAnalysisReportService reportService,
@@ -131,7 +131,7 @@ class LocationAnalysisControllerTest {
     ) {
         HandlerMethodArgumentResolver currentUserResolver = new HandlerMethodArgumentResolver() {
             /**
-             * JwtAuthenticatedUser 타입 인자만 고정 사용자 resolver의 대상으로 선택한다.
+             * JwtAuthenticatedUser 타입 인자만 고정 사용자 resolver의 대상으로 선택.
              */
             @Override
             public boolean supportsParameter(org.springframework.core.MethodParameter parameter) {
@@ -139,7 +139,7 @@ class LocationAnalysisControllerTest {
             }
 
             /**
-             * 실제 인증 절차 대신 OWNER 객체를 반환해 컨트롤러의 응답 처리만 분리한다.
+             * 실제 인증 절차 대신 OWNER 객체를 반환해 컨트롤러의 응답 처리만 분리.
              */
             @Override
             public Object resolveArgument(

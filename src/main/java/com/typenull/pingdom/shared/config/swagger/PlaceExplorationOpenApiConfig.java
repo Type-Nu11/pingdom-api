@@ -7,7 +7,7 @@ import org.springdoc.core.customizers.OpenApiCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** 장소 응답의 선택적 객체 참조를 allOf와 nullable로 표현해 OpenAPI 3.0 문서에 null 계약을 남긴다. */
+/** 장소 응답의 선택적 객체 참조를 allOf와 nullable로 표현해 OpenAPI 3.0 문서에 null 계약을 남김. */
 @Configuration
 public class PlaceExplorationOpenApiConfig {
 
@@ -27,7 +27,7 @@ public class PlaceExplorationOpenApiConfig {
         };
     }
 
-    /** 대상 schema·property·ref가 모두 있을 때만 감싼다. 해당 schema가 없는 다른 그룹 문서는 그대로 둔다. */
+    /** 대상 schema·property·ref가 모두 있을 때만 감쌈. 해당 schema가 없는 다른 그룹 문서는 그대로 둠. */
     private void replaceNullableReference(OpenAPI openApi, String schemaName, String propertyName) {
         if (openApi.getComponents() == null || openApi.getComponents().getSchemas() == null) {
             return;

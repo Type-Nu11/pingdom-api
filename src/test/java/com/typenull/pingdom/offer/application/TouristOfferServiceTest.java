@@ -50,7 +50,7 @@ class TouristOfferServiceTest {
     @InjectMocks private TouristOfferService offerService;
 
     /**
-     * 쿠폰 발급 기준 시각과 Offer 점주의 현재 활성 소유 상태를 공통 입력으로 설정한다.
+     * 쿠폰 발급 기준 시각과 Offer 점주의 현재 활성 소유 상태를 공통 입력으로 설정.
      */
     @BeforeEach
     void setUpClock() {
@@ -60,7 +60,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 여행 일정 자격 정책을 호출하고 발급한 쿠폰의 Offer ID·ISSUED 상태와 발급 수 1을 확인한다.
+     * 여행 일정 자격 정책을 호출하고 발급한 쿠폰의 Offer ID·ISSUED 상태와 발급 수 1을 확인.
      */
     @Test
     void issuesEligibleTouristCoupon() {
@@ -80,7 +80,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * PUBLIC Offer 발급에서 공개 자격 정책을 사용하고 쿠폰 만료를 Offer 종료 시각으로 설정하는지 검증한다.
+     * PUBLIC Offer 발급에서 공개 자격 정책을 사용하고 쿠폰 만료를 Offer 종료 시각으로 설정하는지 검증.
      */
     @Test
     void issuesWithPublicEligibility() {
@@ -113,7 +113,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 이미 쿠폰이 있으면 COUPON_ALREADY_ISSUED이며 발급 수 0과 저장 미호출을 유지하는지 검증한다.
+     * 이미 쿠폰이 있으면 COUPON_ALREADY_ISSUED이며 발급 수 0과 저장 미호출을 유지하는지 검증.
      */
     @Test
     void rejectsDuplicateBeforeIssuance() {
@@ -130,7 +130,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 사전 조회 뒤 발급 저장에서 Offer·사용자 고유 제약 위반이 발생해도 COUPON_ALREADY_ISSUED로 변환하는지 검증한다.
+     * 사전 조회 뒤 발급 저장에서 Offer·사용자 고유 제약 위반이 발생해도 COUPON_ALREADY_ISSUED로 변환하는지 검증.
      */
     @Test
     void mapsDuplicateCouponConstraint() {
@@ -147,7 +147,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 쿠폰 외래 키 위반은 중복 발급으로 오인하지 않고 원래 무결성 예외 객체를 전파하는지 검증한다.
+     * 쿠폰 외래 키 위반은 중복 발급으로 오인하지 않고 원래 무결성 예외 객체를 전파하는지 검증.
      */
     @Test
     void preservesUnrelatedCouponConstraint() {
@@ -162,7 +162,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 한정 수량이 이미 소진된 Offer에 새 발급을 요청하면 OFFER_SOLD_OUT인지 검증한다.
+     * 한정 수량이 이미 소진된 Offer에 새 발급을 요청하면 OFFER_SOLD_OUT인지 검증.
      */
     @Test
     void soldOutOfferIsRejected() {
@@ -177,7 +177,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 게시하지 않은 초안 Offer에 발급을 요청하면 OFFER_NOT_AVAILABLE인지 검증한다.
+     * 게시하지 않은 초안 Offer에 발급을 요청하면 OFFER_NOT_AVAILABLE인지 검증.
      */
     @Test
     void unavailableOfferIsRejected() {
@@ -191,7 +191,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 점주가 현재 활성 소유자가 아니면 OFFER_NOT_AVAILABLE로 거절하고 기존 쿠폰 조회에도 도달하지 않는지 검증한다.
+     * 점주가 현재 활성 소유자가 아니면 OFFER_NOT_AVAILABLE로 거절하고 기존 쿠폰 조회에도 도달하지 않는지 검증.
      */
     @Test
     void rejectsIneligibleOfferMerchant() {
@@ -207,7 +207,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 주어진 수량의 초안을 현재보다 1분 전에 게시하여 유효한 발급 대상 Offer를 제공한다.
+     * 주어진 수량의 초안을 현재보다 1분 전에 게시하여 유효한 발급 대상 Offer를 제공.
      */
     private TouristOffer publishedOffer(int quantity) {
         TouristOffer offer = draftOffer(quantity);
@@ -216,14 +216,14 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 장소 상세 조회가 없도록 설정해 장소 부가 정보 없이 진행되는 쿠폰 발급 경로를 재현한다.
+     * 장소 상세 조회가 없도록 설정해 장소 부가 정보 없이 진행되는 쿠폰 발급 경로를 재현.
      */
     private void stubMissingPlace() {
         when(mapPlaceRepository.findById(100L)).thenReturn(Optional.empty());
     }
 
     /**
-     * 점주 10·장소 100의 발급 기간 내 초안을 지정 수량과 쿠폰 유효기간 7일로 생성한다.
+     * 점주 10·장소 100의 발급 기간 내 초안을 지정 수량과 쿠폰 유효기간 7일로 생성.
      */
     private TouristOffer draftOffer(int quantity) {
         return TouristOffer.draft(
@@ -241,7 +241,7 @@ class TouristOfferServiceTest {
     }
 
     /**
-     * 지정한 제약 이름을 담은 Hibernate 원인을 Spring 무결성 예외로 감싸 중복 판별 경로를 재현한다.
+     * 지정한 제약 이름을 담은 Hibernate 원인을 Spring 무결성 예외로 감싸 중복 판별 경로를 재현.
      */
     private DataIntegrityViolationException constraintViolation(String constraintName) {
         return new DataIntegrityViolationException(

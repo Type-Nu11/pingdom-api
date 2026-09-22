@@ -4,12 +4,12 @@ import java.util.List;
 
 public final class ExplorationConversionVerificationFixtures {
     /**
-     * 추천 조회·클릭·설명 조회 계약을 정적 목록으로 제공하며 요청 간 상태를 가진 인스턴스는 만들지 않는다.
+     * 추천 조회·클릭·설명 조회 계약의 정적 목록 제공을 위한 유틸리티 생성자. 요청 간 상태를 보관하는 인스턴스 생성 차단.
      */
     private ExplorationConversionVerificationFixtures() {}
 
     /**
-     * 추천 조회·클릭·설명 조회의 순서와 기대 계약을 데이터로 제공합니다. 실제 HTTP 요청은 실행하지 않습니다.
+     * 추천 조회·클릭·설명 조회의 순서와 기대 계약을 데이터로 제공. 실제 HTTP 요청 실행은 제외.
      */
     public static List<ExplorationConversionVerificationScenario> scenarios() {
         return List.of(

@@ -56,7 +56,7 @@ class AdminTrustScoreServiceTest {
     private AdminTrustScoreService service;
 
     /**
-     * 이상 징후 해소 시각과 임시 제한 만료 시각을 비교하도록 고정 Clock으로 신뢰도 관리 서비스를 구성한다.
+     * 이상 징후 해소 시각과 임시 제한 만료 시각을 비교하도록 고정 Clock으로 신뢰도 관리 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -70,7 +70,7 @@ class AdminTrustScoreServiceTest {
     }
 
     /**
-     * 기존 이상 징후를 해소하면 현재 서울 시각과 해소 사유를 응답하고 감사 기록을 호출하는지 검증한다.
+     * 기존 이상 징후를 해소하면 현재 서울 시각과 해소 사유를 응답하고 감사 기록을 호출하는지 검증.
      */
     @Test
     void resolvesAnomalyWithAudit() {
@@ -102,7 +102,7 @@ class AdminTrustScoreServiceTest {
     }
 
     /**
-     * 임시 제한이 아닌 WARN 규칙에 기간을 지정하면 개입 규칙 요청 오류로 거절하는지 검증한다.
+     * 임시 제한이 아닌 WARN 규칙에 기간을 지정하면 개입 규칙 요청 오류로 거절하는지 검증.
      */
     @Test
     void rejectsDurationForWarningRule() {
@@ -126,8 +126,8 @@ class AdminTrustScoreServiceTest {
     }
 
     /**
-     * 허위 신고 누적 조건에 맞는 규칙 하나를 평가하면 해당 규칙 ID와 7일 제한을 응답·정책에 반영하는지 검증한다.
-     * 감사 기록에 제한 전 상태와 적용 규칙·행동·제한 후 기한이 담기는지도 확인한다.
+     * 허위 신고 누적 조건에 맞는 규칙 하나를 평가하면 해당 규칙 ID와 7일 제한을 응답·정책에 반영하는지 검증.
+     * 감사 기록에 제한 전 상태와 적용 규칙·행동·제한 후 기한이 담기는지도 확인.
      */
     @Test
     void appliesMatchingTemporaryRestriction() {

@@ -46,7 +46,7 @@ class CommunityReportApiIntegrationTest {
     private static final String BODY = "{\"reason\":\"SPAM\",\"description\":\" 도배입니다 \"}";
 
     /**
-     * 인증 사용자와 신고 대상 글·댓글을 저장해 신고자 식별자 및 두 신고 경로를 준비한다.
+     * 인증 사용자와 신고 대상 글·댓글을 저장해 신고자 식별자 및 두 신고 경로를 준비.
      */
     @BeforeEach
     void setup() {
@@ -61,7 +61,7 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 글·댓글 신고가 201과 PENDING을 반환하고 인증 사용자 ID와 양끝 공백이 제거된 설명으로 저장되는지 검증한다.
+     * 글·댓글 신고가 201과 PENDING을 반환하고 인증 사용자 ID와 양끝 공백이 제거된 설명으로 저장되는지 검증.
      */
     @Test
     void storesAuthenticatedContentReports() throws Exception {
@@ -79,7 +79,7 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 같은 사용자의 글·댓글 재신고는 대기 중에도, 기존 신고 반려 후에도 409로 거절되는지 검증한다.
+     * 같은 사용자의 글·댓글 재신고는 대기 중에도, 기존 신고 반려 후에도 409로 거절되는지 검증.
      */
     @Test
     void rejectsRepeatedContentReports() throws Exception {
@@ -98,7 +98,7 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 필수값 누락·알 수 없는 사유·공백 설명을 글과 댓글 신고 API에 전달하면 모두 400이며 저장된 신고가 없는지 검증한다.
+     * 필수값 누락·알 수 없는 사유·공백 설명을 글과 댓글 신고 API에 전달하면 모두 400이며 저장된 신고가 없는지 검증.
      */
     @ParameterizedTest
     @ValueSource(strings = {"{}", "{\"reason\":\"SPAM\"}", "{\"reason\":\"UNKNOWN\",\"description\":\"설명\"}",
@@ -112,7 +112,7 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 501자 설명으로 글을 신고하면 400을 반환하고 신고를 저장하지 않는지 검증한다.
+     * 501자 설명으로 글을 신고하면 400을 반환하고 신고를 저장하지 않는지 검증.
      */
     @Test
     void rejectsOversizedReportDescription() throws Exception {
@@ -123,7 +123,7 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 인증 없는 글·댓글 신고는 모두 401을 반환하고 신고 행을 만들지 않는지 검증한다.
+     * 인증 없는 글·댓글 신고는 모두 401을 반환하고 신고 행을 만들지 않는지 검증.
      */
     @Test
     void rejectsUnauthenticatedReports() throws Exception {
@@ -134,7 +134,7 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 없는 글·없는 댓글·다른 글에 속한 댓글을 신고하면 각각의 404 오류 코드를 반환하고 신고를 저장하지 않는지 검증한다.
+     * 없는 글·없는 댓글·다른 글에 속한 댓글을 신고하면 각각의 404 오류 코드를 반환하고 신고를 저장하지 않는지 검증.
      */
     @Test
     void rejectsUnavailableReportTargets() throws Exception {
@@ -152,11 +152,11 @@ class CommunityReportApiIntegrationTest {
     }
 
     /**
-     * 현재 테스트의 글 신고 URL을 저장된 게시글 ID로 구성한다.
+     * 현재 테스트의 글 신고 URL을 저장된 게시글 ID로 구성.
      */
     private String postUrl() { return "/community/posts/" + postId + "/reports"; }
     /**
-     * 현재 테스트의 댓글 신고 URL을 저장된 글·댓글 ID로 구성한다.
+     * 현재 테스트의 댓글 신고 URL을 저장된 글·댓글 ID로 구성.
      */
     private String commentUrl() { return "/community/posts/" + postId + "/comments/" + commentId + "/reports"; }
 }

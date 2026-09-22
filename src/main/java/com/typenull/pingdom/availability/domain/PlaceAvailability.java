@@ -8,8 +8,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 시간 구간의 총 수용량과 잔여 수용량을 보유하며 예약으로 배정된 양은 두 값의 차이로 계산합니다.
- * 재고 변경의 동시성은 호출 서비스의 잠금 또는 엔티티 버전 검사에 의존하고, 사용자·상품 자격은 직접 조회하지 않습니다.
+ * 시간 구간의 총 수용량과 잔여 수용량을 보유하며 예약 배정량은 두 값의 차이로 계산.
+ * 재고 변경의 동시성은 호출 서비스의 잠금 또는 엔티티 버전 검사에 의존하며, 사용자·상품 자격 조회는 호출자 책임.
  */
 @Entity
 @Getter
@@ -98,8 +98,8 @@ public class PlaceAvailability {
     }
 
     /**
-     * 이미 배정된 수량을 보존하면서 총량과 잔여량을 함께 바꿉니다.
-     * 배정량이 양수이면 상품·시간은 고정하고, 총량은 배정량 이상이어야 합니다.
+     * 이미 배정된 수량을 보존하면서 총량과 잔여량을 함께 변경.
+     * 배정량이 양수이면 상품·시간은 고정하고, 총량은 배정량 이상이어야 함.
      */
     public void update(Long productId, AvailabilityProductType productType, LocalDateTime startsAt,
             LocalDateTime endsAt, int totalCapacity, LocalDateTime now) {
@@ -143,8 +143,8 @@ public class PlaceAvailability {
     }
 
     /**
-     * 기존 예약 해제량을 잔여량에 돌려놓되 총 수용량을 넘는 반환은 거절합니다.
-     * 비활성·종료 슬롯에도 반환은 허용하며 동일 반환 요청의 중복 여부는 호출자가 보장해야 합니다.
+     * 기존 예약 해제량을 잔여량에 돌려놓되 총 수용량을 넘는 반환은 거절.
+     * 비활성·종료 슬롯에도 반환은 허용하며 동일 반환 요청의 중복 여부는 호출자가 보장해야 함.
      */
     public void release(int quantity, LocalDateTime now) {
         if (quantity <= 0 || remainingCapacity + quantity > totalCapacity) {

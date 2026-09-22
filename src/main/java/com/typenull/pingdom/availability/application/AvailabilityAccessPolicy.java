@@ -10,8 +10,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 슬롯과 예약 관련 서비스가 사용할 현재 점주 자격과 장소 소유권을 검사합니다.
- * 활성 프로필·승인된 본인/사업자 인증·탈퇴/정지 상태를 함께 확인하며 조회 대상 행 잠금은 호출 서비스가 담당합니다.
+ * 슬롯과 예약 관련 서비스가 사용할 현재 점주 자격과 장소 소유권을 검사.
+ * 활성 프로필·승인된 본인/사업자 인증·탈퇴/정지 상태를 함께 확인하며 조회 대상 행 잠금은 호출 서비스가 담당.
  */
 @Component
 @RequiredArgsConstructor

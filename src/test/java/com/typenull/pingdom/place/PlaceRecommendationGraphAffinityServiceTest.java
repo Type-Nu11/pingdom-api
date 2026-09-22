@@ -28,7 +28,7 @@ class PlaceRecommendationGraphAffinityServiceTest {
     private PlaceRecommendationGraphAffinityService placeRecommendationGraphAffinityService;
 
     /**
-     * 모의 유사도 서비스를 주입하여 그래프 전파 규칙만 독립적으로 검사합니다.
+     * 모의 유사도 서비스를 주입하여 그래프 전파 규칙만 독립적으로 검사.
      */
     @BeforeEach
     void setUp() {
@@ -37,7 +37,7 @@ class PlaceRecommendationGraphAffinityServiceTest {
     }
 
     /**
-     * 직접 시드와 유사한 중간 장소를 통해 후속 후보에도 양수 친화도가 전파되고 약한 직접 연결보다 높아지는지 확인합니다.
+     * 직접 시드와 유사한 중간 장소를 통해 후속 후보에도 양수 친화도가 전파되고 약한 직접 연결보다 높아지는지 확인.
      */
     @Test
     void propagatesIndirectAffinity() {
@@ -68,7 +68,7 @@ class PlaceRecommendationGraphAffinityServiceTest {
     }
 
     /**
-     * 개인 시드가 없으면 모든 후보의 친화도가 0인지 확인합니다.
+     * 개인 시드가 없으면 모든 후보의 친화도가 0인지 확인.
      */
     @Test
     void returnsZeroWithoutSeeds() {
@@ -93,7 +93,7 @@ class PlaceRecommendationGraphAffinityServiceTest {
     }
 
     /**
-     * 시드와 후보 각 200개를 주어도 유사도 호출이 64개 노드의 쌍 수인 2,016회를 넘지 않는지 확인합니다.
+     * 시드와 후보 각 200개를 주어도 유사도 호출이 64개 노드의 쌍 수인 2,016회를 넘지 않는지 확인.
      */
     @Test
     void boundsGraphPairCalculations() {
@@ -111,7 +111,7 @@ class PlaceRecommendationGraphAffinityServiceTest {
     }
 
     /**
-     * 장소 쌍을 어느 방향으로 조회해도 같은 유사도 값을 반환하도록 준비합니다.
+     * 장소 쌍을 어느 방향으로 조회해도 같은 유사도 값을 반환하도록 준비.
      */
     private void stubBidirectionalSimilarity(
             PlaceRecommendationSimilarityService.SimilarityContext similarityContext,

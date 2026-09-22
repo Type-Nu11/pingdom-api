@@ -63,7 +63,7 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * 메일 발송과 요청 제한을 대역으로 격리하고 가입·로그인·인증·재설정·탈퇴의 API와 저장 상태를 검증한다.
+ * 메일 발송과 요청 제한을 대역으로 격리하고 가입·로그인·인증·재설정·탈퇴의 API와 저장 상태를 검증.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -79,7 +79,7 @@ class AuthControllerTest {
     static class TestEmailSenderConfig {
 
         /**
-         * 외부 발송 없이 성공 결과를 주는 메일 대역을 등록해 인증·재설정의 DB 및 API 계약에 집중한다.
+         * 외부 발송 없이 성공 결과를 주는 메일 대역을 등록해 인증·재설정의 DB 및 API 계약에 집중.
          */
         @Bean
         @Primary
@@ -87,7 +87,7 @@ class AuthControllerTest {
         EmailSender emailSender() {
             return new EmailSender() {
                 /**
-                 * 인증 메일 공급자를 호출하지 않고 message ID 없는 성공 결과를 반환한다.
+                 * 인증 메일 공급자를 호출하지 않고 message ID 없는 성공 결과를 반환.
                  */
                 @Override
                 public EmailSendResult sendVerificationEmail(String recipientEmail, String verificationCode) {
@@ -95,7 +95,7 @@ class AuthControllerTest {
                 }
 
                 /**
-                 * 비밀번호 재설정 메일을 실제 발송하지 않고 성공 결과를 반환한다.
+                 * 비밀번호 재설정 메일을 실제 발송하지 않고 성공 결과를 반환.
                  */
                 @Override
                 public EmailSendResult sendPasswordResetEmail(String recipientEmail, String resetToken, LocalDateTime expiresAt) {
@@ -105,7 +105,7 @@ class AuthControllerTest {
         }
 
         /**
-         * 요청 제한을 소비하거나 거절하지 않는 대역으로 인증 업무 흐름을 격리한다.
+         * 요청 제한을 소비하거나 거절하지 않는 대역으로 인증 업무 흐름을 격리.
          */
         @Bean
         @Primary
@@ -158,7 +158,7 @@ class AuthControllerTest {
     private JwtTokenProvider jwtTokenProvider;
 
     /**
-     * 알림·기기 토큰·사용자 활동·콘텐츠·OAuth·outbox·재설정 토큰을 사용자보다 먼저 비운다.
+     * 알림·기기 토큰·사용자 활동·콘텐츠·OAuth·outbox·재설정 토큰을 사용자보다 먼저 비움.
      */
     @BeforeEach
     void setUp() {
@@ -175,7 +175,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 제거된 /auth/google 별칭이 404인지 확인한다.
+     * 제거된 /auth/google 별칭이 404인지 확인.
      */
     @Test
     void removedGoogleAlias() throws Exception {
@@ -184,7 +184,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 회원 가입이 미인증 사용자와 인증 코드를 저장하고 메일 발송 요청 outbox를 남기는지 확인한다.
+     * 회원 가입이 미인증 사용자와 인증 코드를 저장하고 메일 발송 요청 outbox를 남기는지 확인.
      */
     @Test
     void signupCreatesUser() throws Exception {
@@ -207,7 +207,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 올바른 로그인에서 접근 토큰은 본문에, 갱신 토큰은 /auth·HttpOnly·Secure·SameSite=Lax 쿠키에 전달되는지 확인한다.
+     * 올바른 로그인에서 접근 토큰은 본문에, 갱신 토큰은 /auth·HttpOnly·Secure·SameSite=Lax 쿠키에 전달되는지 확인.
      */
     @Test
     void loginTokenContract() throws Exception {
@@ -238,7 +238,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 잘못된 비밀번호가 401과 공통 자격 증명 오류 메시지를 반환하는지 확인한다.
+     * 잘못된 비밀번호가 401과 공통 자격 증명 오류 메시지를 반환하는지 확인.
      */
     @Test
     void wrongPasswordLogin() throws Exception {
@@ -257,7 +257,7 @@ class AuthControllerTest {
     }
 
     /**
-     * localhost:5173의 갱신 preflight에서 해당 origin과 credentials 허용 헤더를 확인한다.
+     * localhost:5173의 갱신 preflight에서 해당 origin과 credentials 허용 헤더를 확인.
      */
     @Test
     void refreshCors5173() throws Exception {
@@ -270,7 +270,7 @@ class AuthControllerTest {
     }
 
     /**
-     * localhost:5174의 갱신 preflight에서도 쿠키 사용을 허용하는지 확인한다.
+     * localhost:5174의 갱신 preflight에서도 쿠키 사용을 허용하는지 확인.
      */
     @Test
     void refreshCors5174() throws Exception {
@@ -283,7 +283,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 가입 후 발급된 코드로 인증하면 저장된 사용자의 이메일 인증 상태가 참인지 확인한다.
+     * 가입 후 발급된 코드로 인증하면 저장된 사용자의 이메일 인증 상태가 참인지 확인.
      */
     @Test
     void verifyEmail() throws Exception {
@@ -305,7 +305,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 만료 코드를 재발급하면 미래 만료 시각의 새 코드만 인증에 성공하고 이전 코드는 거절되는지 확인한다.
+     * 만료 코드를 재발급하면 미래 만료 시각의 새 코드만 인증에 성공하고 이전 코드는 거절되는지 확인.
      */
     @Test
     void resendRotatesVerificationCode() throws Exception {
@@ -347,7 +347,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 인증을 마친 사용자는 재발송 시 EMAIL_ALREADY_VERIFIED 충돌을 받는지 확인한다.
+     * 인증을 마친 사용자는 재발송 시 EMAIL_ALREADY_VERIFIED 충돌을 받는지 확인.
      */
     @Test
     void resendVerifiedEmail() throws Exception {
@@ -371,7 +371,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 제재 사용자에게 인증 메일 재발송을 USER_BANNED로 거절하는지 확인한다.
+     * 제재 사용자에게 인증 메일 재발송을 USER_BANNED로 거절하는지 확인.
      */
     @Test
     void resendBannedUser() throws Exception {
@@ -393,7 +393,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 없는 이메일의 인증 메일 재발송이 USER_NOT_FOUND인지 확인한다.
+     * 없는 이메일의 인증 메일 재발송이 USER_NOT_FOUND인지 확인.
      */
     @Test
     void resendMissingUser() throws Exception {
@@ -407,7 +407,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 재설정 요청이 원문 토큰을 메일 outbox에 담고 토큰 저장소에는 원문과 다른 64자 해시를 저장하는지 확인한다.
+     * 재설정 요청이 원문 토큰을 메일 outbox에 담고 토큰 저장소에는 원문과 다른 64자 해시를 저장하는지 확인.
      */
     @Test
     void resetTokenAndOutbox() throws Exception {
@@ -433,7 +433,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 소문자 이메일 요청으로 기존 대소문자 혼합 이메일을 찾아 원래 주소로 발송 payload를 만드는지 확인한다.
+     * 소문자 이메일 요청으로 기존 대소문자 혼합 이메일을 찾아 원래 주소로 발송 payload를 만드는지 확인.
      */
     @Test
     void resetRequestEmailCase() throws Exception {
@@ -455,7 +455,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 없는 이메일도 200을 반환하되 재설정 토큰과 outbox는 만들지 않는지 확인한다.
+     * 없는 이메일도 200을 반환하되 재설정 토큰과 outbox는 만들지 않는지 확인.
      */
     @Test
     void resetMissingEmail() throws Exception {
@@ -471,7 +471,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 재설정 완료 후 기존 비밀번호와 갱신 토큰은 거절되고 새 비밀번호로 로그인되는지 확인한다.
+     * 재설정 완료 후 기존 비밀번호와 갱신 토큰은 거절되고 새 비밀번호로 로그인되는지 확인.
      */
     @Test
     void resetPasswordAndRevokeRefresh() throws Exception {
@@ -516,7 +516,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 확인 요청의 이메일 대소문자가 달라도 동일 사용자 토큰을 인정하는지 확인한다.
+     * 확인 요청의 이메일 대소문자가 달라도 동일 사용자 토큰을 인정하는지 확인.
      */
     @Test
     void resetConfirmEmailCase() throws Exception {
@@ -541,7 +541,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 이미 만료된 해시 토큰 fixture의 확인 요청이 EXPIRED_PASSWORD_RESET_TOKEN인지 확인한다.
+     * 이미 만료된 해시 토큰 fixture의 확인 요청이 EXPIRED_PASSWORD_RESET_TOKEN인지 확인.
      */
     @Test
     void expiredResetToken() throws Exception {
@@ -574,7 +574,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 같은 재설정 토큰으로 한 번 성공한 뒤 다시 확인하면 INVALID_PASSWORD_RESET_TOKEN인지 확인한다.
+     * 같은 재설정 토큰으로 한 번 성공한 뒤 다시 확인하면 INVALID_PASSWORD_RESET_TOKEN인지 확인.
      */
     @Test
     void reusedResetToken() throws Exception {
@@ -605,7 +605,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 다른 이메일과 토큰을 조합해도 비밀번호 재설정을 허용하지 않는지 확인한다.
+     * 다른 이메일과 토큰을 조합해도 비밀번호 재설정을 허용하지 않는지 확인.
      */
     @Test
     void otherUserResetToken() throws Exception {
@@ -633,7 +633,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 갱신 요청이 접근 토큰과 갱신 쿠키를 반환하는지 확인한다. 마지막 토큰 비교는 helper의 추가 로그인으로 발급된 값과 비교한다.
+     * 갱신 요청이 접근 토큰과 갱신 쿠키를 반환하는지 확인. 마지막 토큰 비교는 helper의 추가 로그인으로 발급된 값과 비교.
      */
     @Test
     void refreshTokenContract() throws Exception {
@@ -664,7 +664,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 갱신 쿠키 이름에 접근 토큰을 넣어도 토큰 유형 검증에서 거절되는지 확인한다.
+     * 갱신 쿠키 이름에 접근 토큰을 넣어도 토큰 유형 검증에서 거절되는지 확인.
      */
     @Test
     void accessTokenAsRefreshCookie() throws Exception {
@@ -677,7 +677,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 반복 로그아웃은 204를 유지하고 쿠키·저장된 갱신 토큰을 제거해 이전 토큰의 갱신을 차단하는지 확인한다.
+     * 반복 로그아웃은 204를 유지하고 쿠키·저장된 갱신 토큰을 제거해 이전 토큰의 갱신을 차단하는지 확인.
      */
     @Test
     void idempotentLogout() throws Exception {
@@ -716,7 +716,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 활성 임시 제재 뒤 기존 접근은 INVALID_TOKEN, 갱신은 USER_BANNED로 각각 차단되는지 확인한다.
+     * 활성 임시 제재 뒤 기존 접근은 INVALID_TOKEN, 갱신은 USER_BANNED로 각각 차단되는지 확인.
      */
     @Test
     void activeBanTokens() throws Exception {
@@ -754,7 +754,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 임시 제재가 만료된 사용자는 기존 접근 토큰 조회와 새 로그인 모두 성공하는지 확인한다.
+     * 임시 제재가 만료된 사용자는 기존 접근 토큰 조회와 새 로그인 모두 성공하는지 확인.
      */
     @Test
     void expiredBanAccess() throws Exception {
@@ -783,7 +783,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 탈퇴가 이름·이메일 익명화와 프로필·갱신 토큰·기기 토큰 정리로 이어지고 기존 접근·갱신 요청을 차단하는지 확인한다.
+     * 탈퇴가 이름·이메일 익명화와 프로필·갱신 토큰·기기 토큰 정리로 이어지고 기존 접근·갱신 요청을 차단하는지 확인.
      */
     @Test
     void withdrawIdentityAndTokens() throws Exception {
@@ -846,7 +846,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 탈퇴 전 사용자명과 이메일을 새 가입에서 다시 사용할 수 있는지 확인한다.
+     * 탈퇴 전 사용자명과 이메일을 새 가입에서 다시 사용할 수 있는지 확인.
      */
     @Test
     void reuseWithdrawnIdentity() throws Exception {
@@ -870,7 +870,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 탈퇴 후 게시물·장소 작성자 표시는 익명화하고 좋아요·북마크·알림을 삭제하는지 확인한다.
+     * 탈퇴 후 게시물·장소 작성자 표시는 익명화하고 좋아요·북마크·알림을 삭제하는지 확인.
      */
     @Test
     void withdrawContentAndActivity() throws Exception {
@@ -936,7 +936,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 탈퇴 31일 뒤 사용자 행을 제거해도 장소·게시물은 남기고 작성자 ID만 null로 분리하는지 확인한다.
+     * 탈퇴 31일 뒤 사용자 행을 제거해도 장소·게시물은 남기고 작성자 ID만 null로 분리하는지 확인.
      */
     @Test
     void purgeWithdrawnUser() {
@@ -984,7 +984,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 공통 비밀번호로 실제 로그인한 응답에서 접근 토큰을 추출한다.
+     * 공통 비밀번호로 실제 로그인한 응답에서 접근 토큰을 추출.
      */
     private String loginAndExtractAccessToken(String username) throws Exception {
         LoginRequest loginRequest = new LoginRequest(username, "password123");
@@ -1000,7 +1000,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 저장된 값을 읽는 대신 추가 로그인을 수행해 새로 발급된 갱신 쿠키 값을 반환한다.
+     * 저장된 값을 읽는 대신 추가 로그인을 수행해 새로 발급된 갱신 쿠키 값을 반환.
      */
     private String refreshTokenOf(String username) throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
@@ -1012,14 +1012,14 @@ class AuthControllerTest {
     }
 
     /**
-     * 갱신 토큰을 인증 API에서 읽는 공통 쿠키 이름으로 감싼다.
+     * 갱신 토큰을 인증 API에서 읽는 공통 쿠키 이름으로 감쌈.
      */
     private Cookie refreshTokenCookie(String refreshToken) {
         return new Cookie(REFRESH_TOKEN_COOKIE_NAME, refreshToken);
     }
 
     /**
-     * 지정 이메일의 재설정 요청을 보내고 200 응답을 확인한다.
+     * 지정 이메일의 재설정 요청을 보내고 200 응답을 확인.
      */
     private void requestPasswordReset(String email) throws Exception {
         mockMvc.perform(post("/auth/password-reset/request")
@@ -1029,7 +1029,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 첫 PASSWORD_RESET_REQUESTED outbox를 찾아 payload를 역직렬화하며 누락이나 잘못된 JSON은 실패시킨다.
+     * 첫 PASSWORD_RESET_REQUESTED outbox를 찾아 payload를 역직렬화하며 누락이나 잘못된 JSON은 실패시킴.
      */
     private PasswordResetOutboxPayload passwordResetPayload() throws Exception {
         return outboxEventRepository.findAll().stream()
@@ -1046,7 +1046,7 @@ class AuthControllerTest {
     }
 
     /**
-     * 원문 토큰의 UTF-8 SHA-256을 16진 문자열로 만들어 만료 토큰 fixture에 사용한다.
+     * 원문 토큰의 UTF-8 SHA-256을 16진 문자열로 만들어 만료 토큰 fixture에 사용.
      */
     private String passwordResetTokenHash(String token) {
         try {

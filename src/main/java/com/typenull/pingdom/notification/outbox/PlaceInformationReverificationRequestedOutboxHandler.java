@@ -12,8 +12,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 장소 정보 재확인 요청 Outbox를 해당 점주의 FCM 알림으로 전달합니다.
- * 알림 정책으로 생략되면 정상 종료하고, 토큰별 임시 실패가 남았을 때만 재시도 예외를 던집니다.
+ * 장소 정보 재확인 요청 Outbox를 해당 점주의 FCM 알림으로 전달.
+ * 알림 정책으로 생략되면 정상 종료하고, 토큰별 임시 실패가 남았을 때만 재시도 예외 발생.
  */
 @Component
 @RequiredArgsConstructor

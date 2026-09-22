@@ -41,7 +41,7 @@ class PlaceRecommendationSnapshotResyncServiceTest {
     private PlaceRecommendationSnapshotResyncService resyncService;
 
     /**
-     * 단일 장소의 원본 집계와 유사도·버전 단건 결과를 합치고 전체 장소 순회를 호출하지 않는지 확인합니다.
+     * 단일 장소의 원본 집계와 유사도·버전 단건 결과를 합치고 전체 장소 순회를 호출하지 않는지 확인.
      */
     @Test
     void resyncsOnlyRequestedPlace() {
@@ -71,7 +71,7 @@ class PlaceRecommendationSnapshotResyncServiceTest {
     }
 
     /**
-     * 대상 장소가 없으면 전체·유사도·버전 스냅샷 정리를 호출하고 삭제 건수를 반환하는지 확인합니다.
+     * 대상 장소가 없으면 전체·유사도·버전 스냅샷 정리를 호출하고 삭제 건수를 반환하는지 확인.
      */
     @Test
     void cleansDeletedPlaceSnapshots() {
@@ -93,7 +93,7 @@ class PlaceRecommendationSnapshotResyncServiceTest {
     }
 
     /**
-     * 단일 재동기화 대상 장소를 고정된 콘텐츠 수로 만듭니다.
+     * 단일 재동기화 대상 장소를 고정된 콘텐츠 수로 생성.
      */
     private MapPlace createPlace(Long placeId) {
         return MapPlace.builder()

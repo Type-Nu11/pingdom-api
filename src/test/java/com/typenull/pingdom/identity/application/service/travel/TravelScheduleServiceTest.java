@@ -40,7 +40,7 @@ class TravelScheduleServiceTest {
     private Clock clock;
 
     /**
-     * 일정 취소 저장의 낙관적 잠금 실패를 TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION으로 변환하는지 검증한다.
+     * 일정 취소 저장의 낙관적 잠금 실패를 TRAVEL_SCHEDULE_CONCURRENT_MODIFICATION으로 변환하는지 검증.
      */
     @Test
     void mapsConcurrentScheduleModification() {
@@ -62,7 +62,7 @@ class TravelScheduleServiceTest {
     }
 
     /**
-     * 오늘 이전 시작일의 생성 요청은 TRAVEL_SCHEDULE_START_DATE_IN_PAST이며 기간 중복 조회에도 도달하지 않는지 검증한다.
+     * 오늘 이전 시작일의 생성 요청은 TRAVEL_SCHEDULE_START_DATE_IN_PAST이며 기간 중복 조회에도 도달하지 않는지 검증.
      */
     @Test
     void rejectsScheduleStartingBeforeToday() {
@@ -87,7 +87,7 @@ class TravelScheduleServiceTest {
     }
 
     /**
-     * 기존 SCHEDULED 일정과 생성 기간이 겹치면 TRAVEL_SCHEDULE_PERIOD_OVERLAP으로 거절되는지 검증한다.
+     * 기존 SCHEDULED 일정과 생성 기간이 겹치면 TRAVEL_SCHEDULE_PERIOD_OVERLAP으로 거절되는지 검증.
      */
     @Test
     void rejectsOverlappingScheduleCreation() {
@@ -111,7 +111,7 @@ class TravelScheduleServiceTest {
     }
 
     /**
-     * 수정 대상 ID를 제외한 다른 일정과 새 기간이 겹치면 TRAVEL_SCHEDULE_PERIOD_OVERLAP인지 검증한다.
+     * 수정 대상 ID를 제외한 다른 일정과 새 기간이 겹치면 TRAVEL_SCHEDULE_PERIOD_OVERLAP인지 검증.
      */
     @Test
     void rejectsOverlappingScheduleUpdate() {
@@ -143,7 +143,7 @@ class TravelScheduleServiceTest {
     }
 
     /**
-     * 지정 날짜 UTC 자정을 현재로 사용하는 서비스를 만들어 과거 날짜와 중복 기간의 입력을 고정한다.
+     * 지정 날짜 UTC 자정을 현재로 사용하는 서비스를 만들어 과거 날짜와 중복 기간의 입력을 고정.
      */
     private TravelScheduleService serviceAt(LocalDate today) {
         return new TravelScheduleService(

@@ -48,7 +48,7 @@ import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * 관리자 역할에 따른 제재 조회·적용·해제와 이력·알림·감사의 연결을 검증한다.
+ * 관리자 역할에 따른 제재 조회·적용·해제와 이력·알림·감사의 연결을 검증.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -97,7 +97,7 @@ class AdminUserControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * outbox·감사·제재 이력·관리자 역할을 사용자보다 먼저 비워 제재 검증을 격리한다.
+     * outbox·감사·제재 이력·관리자 역할을 사용자보다 먼저 비워 제재 검증을 격리.
      */
     @BeforeEach
     void setUp() {
@@ -109,7 +109,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * SUPPORT_OPERATOR가 제재 사용자 목록을 조회하고 대상 사용자에게 제재를 적용할 수 있는지 확인한다.
+     * SUPPORT_OPERATOR가 제재 사용자 목록을 조회하고 대상 사용자에게 제재를 적용할 수 있는지 확인.
      */
     @Test
     void supportSanctionPermissions() throws Exception {
@@ -129,7 +129,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * ANALYST의 제재 목록 조회와 제재 적용이 모두 ADMIN_PERMISSION_REQUIRED로 거절되는지 확인한다.
+     * ANALYST의 제재 목록 조회와 제재 적용이 모두 ADMIN_PERMISSION_REQUIRED로 거절되는지 확인.
      */
     @Test
     void analystSanctionDenied() throws Exception {
@@ -150,7 +150,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * ADMIN 사용자라도 세부 역할이 없으면 제재 목록 조회를 거절하는지 확인한다.
+     * ADMIN 사용자라도 세부 역할이 없으면 제재 목록 조회를 거절하는지 확인.
      */
     @Test
     void unassignedAdminDenied() throws Exception {
@@ -163,7 +163,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 비제재 사용자를 제외하고 최근 제재 순으로 두 영구 제재 사용자와 유형별 집계를 반환하는지 확인한다.
+     * 비제재 사용자를 제외하고 최근 제재 순으로 두 영구 제재 사용자와 유형별 집계를 반환하는지 확인.
      */
     @Test
     void bannedUsersNewestFirst() throws Exception {
@@ -200,7 +200,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 숫자 ID 검색과 사용자명 부분 검색으로 각각 해당 제재 사용자 한 명을 찾는지 확인한다.
+     * 숫자 ID 검색과 사용자명 부분 검색으로 각각 해당 제재 사용자 한 명을 찾는지 확인.
      */
     @Test
     void bannedUserKeyword() throws Exception {
@@ -230,7 +230,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 사용자명에 숫자가 포함돼도 숫자 검색어는 정확한 사용자 ID로만 해석하는지 확인한다.
+     * 사용자명에 숫자가 포함돼도 숫자 검색어는 정확한 사용자 ID로만 해석하는지 확인.
      */
     @Test
     void numericKeywordIsUserId() throws Exception {
@@ -248,7 +248,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * TEMPORARY 및 from/to 기간 필터와 만료일 오름차순 정렬을 함께 적용하는지 확인한다.
+     * TEMPORARY 및 from/to 기간 필터와 만료일 오름차순 정렬을 함께 적용하는지 확인.
      */
     @Test
     void banPeriodAndExpirySort() throws Exception {
@@ -297,7 +297,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 만료된 제재와 검색어 불일치 사용자를 제외한 집계가 페이지 크기 1과 무관하게 영구·임시 각각 한 건인지 확인한다.
+     * 만료된 제재와 검색어 불일치 사용자를 제외한 집계가 페이지 크기 1과 무관하게 영구·임시 각각 한 건인지 확인.
      */
     @Test
     void filteredActiveBanCounts() throws Exception {
@@ -336,7 +336,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 활성 사용자만 존재할 때 제재 목록과 유형별 집계가 모두 비어 있는지 확인한다.
+     * 활성 사용자만 존재할 때 제재 목록과 유형별 집계가 모두 비어 있는지 확인.
      */
     @Test
     void emptyBannedUsers() throws Exception {
@@ -356,7 +356,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 영구 제재 상세에 사용자 정보·사유·제재 시점이 포함되고 만료 시점은 비어 있는지 확인한다.
+     * 영구 제재 상세에 사용자 정보·사유·제재 시점이 포함되고 만료 시점은 비어 있는지 확인.
      */
     @Test
     void bannedUserDetail() throws Exception {
@@ -385,7 +385,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 제재되지 않은 사용자는 제재 상세 경로에서 USER_NOT_FOUND로 반환하는지 확인한다.
+     * 제재되지 않은 사용자는 제재 상세 경로에서 USER_NOT_FOUND로 반환하는지 확인.
      */
     @Test
     void detailForActiveUser() throws Exception {
@@ -399,7 +399,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 7일 제재의 저장 상태·제재 이력·알림 outbox와 감사 로그의 전후 상태를 확인한다.
+     * 7일 제재의 저장 상태·제재 이력·알림 outbox와 감사 로그의 전후 상태를 확인.
      */
     @Test
     void temporaryBanSideEffects() throws Exception {
@@ -452,7 +452,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 3일 제재 후 상태 조회와 유형·행위 필터를 적용한 이력 조회에서 대상과 관리자 정보를 확인한다.
+     * 3일 제재 후 상태 조회와 유형·행위 필터를 적용한 이력 조회에서 대상과 관리자 정보를 확인.
      */
     @Test
     void sanctionStatusAndHistory() throws Exception {
@@ -496,7 +496,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 이력이 없는 기존 사용자는 빈 목록과 현재 계약의 totalPages 1을 반환하는지 확인한다.
+     * 이력이 없는 기존 사용자는 빈 목록과 현재 계약의 totalPages 1을 반환하는지 확인.
      */
     @Test
     void emptySanctionHistory() throws Exception {
@@ -517,7 +517,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 존재하지 않는 사용자의 이력 조회가 USER_NOT_FOUND로 거절되는지 확인한다.
+     * 존재하지 않는 사용자의 이력 조회가 USER_NOT_FOUND로 거절되는지 확인.
      */
     @Test
     void missingSanctionUser() throws Exception {
@@ -532,7 +532,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 역전된 제재 이력 기간에 INVALID_SANCTION_FILTER_PERIOD를 반환하는지 확인한다.
+     * 역전된 제재 이력 기간에 INVALID_SANCTION_FILTER_PERIOD를 반환하는지 확인.
      */
     @Test
     void reversedSanctionPeriod() throws Exception {
@@ -550,7 +550,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 제재 해제가 상태 조회에 반영되고 적용·해제 이력 두 건과 해제 감사·알림 요청이 남는지 확인한다.
+     * 제재 해제가 상태 조회에 반영되고 적용·해제 이력 두 건과 해제 감사·알림 요청이 남는지 확인.
      */
     @Test
     void releaseBanSideEffects() throws Exception {
@@ -601,7 +601,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 비제재 사용자 해제 요청이 USER_NOT_BANNED로 충돌하는지 확인한다.
+     * 비제재 사용자 해제 요청이 USER_NOT_BANNED로 충돌하는지 확인.
      */
     @Test
     void releaseUnbannedUser() throws Exception {
@@ -621,7 +621,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 만료된 임시 제재를 상태 조회 중 해제하고 EXPIRED 이력 및 알림 outbox를 남기는지 확인한다.
+     * 만료된 임시 제재를 상태 조회 중 해제하고 EXPIRED 이력 및 알림 outbox를 남기는지 확인.
      */
     @Test
     void expireBanOnStatusRead() throws Exception {
@@ -652,7 +652,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 관리자 식별자가 없는 제재 서비스 호출이 AuthException으로 거절되는지 확인한다.
+     * 관리자 식별자가 없는 제재 서비스 호출이 AuthException으로 거절되는지 확인.
      */
     @Test
     void applyBanRejectsNullAdminUserId() {
@@ -668,7 +668,7 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 제재 대상으로 사용할 일반 사용자를 암호화된 비밀번호와 함께 저장한다.
+     * 제재 대상으로 사용할 일반 사용자를 암호화된 비밀번호와 함께 저장.
      */
     private User createUser(String username) {
         return userRepository.save(User.builder()
@@ -683,14 +683,14 @@ class AdminUserControllerTest {
     }
 
     /**
-     * 기본 SUPER_ADMIN인 adminTester의 접근 토큰을 반환한다.
+     * 기본 SUPER_ADMIN인 adminTester의 접근 토큰을 반환.
      */
     private String createAdminAndLogin() throws Exception {
         return createAdminAndLogin("adminTester", AdminRole.SUPER_ADMIN);
     }
 
     /**
-     * 관리자를 저장하고 역할이 null이 아닐 때만 배정하여 미배정 권한 경계도 구성한다.
+     * 관리자를 저장하고 역할이 null이 아닐 때만 배정하여 미배정 권한 경계도 구성.
      */
     private String createAdminAndLogin(String username, AdminRole adminRole) throws Exception {
         User admin = userRepository.save(User.builder()

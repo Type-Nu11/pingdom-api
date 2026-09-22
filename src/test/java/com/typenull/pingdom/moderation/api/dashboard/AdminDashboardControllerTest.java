@@ -32,7 +32,7 @@ class AdminDashboardControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 대시보드 조회 결과의 HTTP 응답 구조를 검증하도록 모의 조회 서비스를 연결한 MockMvc를 만든다.
+     * 대시보드 조회 결과의 HTTP 응답 구조를 검증하도록 모의 조회 서비스를 연결한 MockMvc를 생성.
      */
     @BeforeEach
     void setUp() {
@@ -42,7 +42,7 @@ class AdminDashboardControllerTest {
     }
 
     /**
-     * 대시보드 요약 요청이 전체 수치와 기간별 등록·중복·만료 예정·위치 누락 지표를 JSON에 매핑하는지 검증한다.
+     * 대시보드 요약 요청이 전체 수치와 기간별 등록·중복·만료 예정·위치 누락 지표를 JSON에 매핑하는지 검증.
      */
     @Test
     void getSummaryReturnsDashboardCounts() throws Exception {
@@ -71,7 +71,7 @@ class AdminDashboardControllerTest {
     }
 
     /**
-     * limit 5로 최근 활동을 요청하면 장소 ID·이름·생성 시각 배열을 반환하고 다른 활동 목록은 빈 배열로 유지하는지 검증한다.
+     * limit 5로 최근 활동을 요청하면 장소 ID·이름·생성 시각 배열을 반환하고 다른 활동 목록은 빈 배열로 유지하는지 검증.
      */
     @Test
     void returnsRecentDashboardActivities() throws Exception {
@@ -106,7 +106,7 @@ class AdminDashboardControllerTest {
     }
 
     /**
-     * 대기 항목 요청이 신고와 게시글 ID를 구분한 유형·제목·상태 및 전체 수를 응답하는지 검증한다.
+     * 대기 항목 요청이 신고와 게시글 ID를 구분한 유형·제목·상태 및 전체 수를 응답하는지 검증.
      */
     @Test
     void returnsPendingDashboardItems() throws Exception {
@@ -137,7 +137,7 @@ class AdminDashboardControllerTest {
     }
 
     /**
-     * 처리할 항목이 없으면 items를 null 대신 길이 0의 JSON 배열로 반환하는지 검증한다.
+     * 처리할 항목이 없으면 items를 null 대신 길이 0의 JSON 배열로 반환하는지 검증.
      */
     @Test
     void returnsEmptyPendingItemsArray() throws Exception {
@@ -151,7 +151,7 @@ class AdminDashboardControllerTest {
     }
 
     /**
-     * 오늘·최근 7일 등록 수와 품질·제재 지표를 고정한 운영 지표 응답을 만들어 직렬화를 확인한다.
+     * 오늘·최근 7일 등록 수와 품질·제재 지표를 고정한 운영 지표 응답을 만들어 직렬화를 확인.
      */
     private AdminDashboardOperationalMetricsResponse operationalMetrics() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 21, 15, 30);

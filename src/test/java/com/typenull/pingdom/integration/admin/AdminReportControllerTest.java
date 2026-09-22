@@ -50,7 +50,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * 신고 처리 권한 및 단일·일괄 승인/기각의 게시물·제재·통계·감사 부작용을 검증한다.
+ * 신고 처리 권한 및 단일·일괄 승인/기각의 게시물·제재·통계·감사 부작용을 검증.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -103,7 +103,7 @@ class AdminReportControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * outbox·감사·제재·신고·신고자 정책을 게시물과 사용자보다 먼저 삭제해 처리 부작용을 격리한다.
+     * outbox·감사·제재·신고·신고자 정책을 게시물과 사용자보다 먼저 삭제해 처리 부작용을 격리.
      */
     @BeforeEach
     void setUp() {
@@ -118,7 +118,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 단일·일괄 신고 처리에 권한이 없는 역할 조합과 승인만 금지된 CONTENT_MODERATOR 조합을 제공한다.
+     * 단일·일괄 신고 처리에 권한이 없는 역할 조합과 승인만 금지된 CONTENT_MODERATOR 조합을 제공.
      */
     static Stream<Arguments> deniedReportActions() {
         return Stream.concat(
@@ -130,7 +130,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 권한 거절 뒤 신고·게시물·사용자 상태와 감사·outbox·제재·신고자 정책 건수가 모두 유지되는지 확인한다.
+     * 권한 거절 뒤 신고·게시물·사용자 상태와 감사·outbox·제재·신고자 정책 건수가 모두 유지되는지 확인.
      */
     @ParameterizedTest(name = "{0}: {1}")
     @MethodSource("deniedReportActions")
@@ -163,7 +163,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 승인 가능한 역할에서 신고 수락, 작성자 제재, 게시물 자동 숨김과 감사·관리자 알림 outbox를 확인한다.
+     * 승인 가능한 역할에서 신고 수락, 작성자 제재, 게시물 자동 숨김과 감사·관리자 알림 outbox를 확인.
      */
     @ParameterizedTest
     @ValueSource(strings = {"SUPER_ADMIN", "CONTENT_AND_SUPPORT"})
@@ -214,7 +214,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 기각 가능한 역할에서 신고만 기각하고 작성자는 제재하지 않으며 처리 감사와 알림 요청을 남기는지 확인한다.
+     * 기각 가능한 역할에서 신고만 기각하고 작성자는 제재하지 않으며 처리 감사와 알림 요청을 남기는지 확인.
      */
     @ParameterizedTest
     @ValueSource(strings = {"SUPER_ADMIN", "CONTENT_MODERATOR"})
@@ -250,7 +250,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 대기 신고 두 건을 수락하고 게시물 숨김·작성자 제재 한 건·신고자별 승인 통계·감사 기록을 확인한다.
+     * 대기 신고 두 건을 수락하고 게시물 숨김·작성자 제재 한 건·신고자별 승인 통계·감사 기록을 확인.
      */
     @Test
     void bulkAcceptReports() throws Exception {
@@ -307,7 +307,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 대기 신고 두 건을 기각하면서 게시물 노출과 작성자 비제재 상태를 보존하고 신고자 통계와 감사를 확인한다.
+     * 대기 신고 두 건을 기각하면서 게시물 노출과 작성자 비제재 상태를 보존하고 신고자 통계와 감사를 확인.
      */
     @Test
     void bulkDeclineReports() throws Exception {
@@ -359,7 +359,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 기각된 신고만 있는 게시물의 일괄 승인이 PENDING_REPORT_NOT_FOUND로 충돌하는지 확인한다.
+     * 기각된 신고만 있는 게시물의 일괄 승인이 PENDING_REPORT_NOT_FOUND로 충돌하는지 확인.
      */
     @Test
     void bulkAcceptWithoutPending() throws Exception {
@@ -383,7 +383,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 이미 기각된 신고를 승인하면 REPORT_ALREADY_PROCESSED로 충돌하는지 확인한다.
+     * 이미 기각된 신고를 승인하면 REPORT_ALREADY_PROCESSED로 충돌하는지 확인.
      */
     @Test
     void acceptProcessedReport() throws Exception {
@@ -401,7 +401,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 검색어 %가 LIKE 전체 일치로 확장되지 않고 사유에 실제 %가 있는 신고만 찾는지 확인한다.
+     * 검색어 %가 LIKE 전체 일치로 확장되지 않고 사유에 실제 %가 있는 신고만 찾는지 확인.
      */
     @Test
     void literalWildcardSearch() throws Exception {
@@ -422,7 +422,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 게시물 소유자 또는 신고자로 사용할 일반 사용자를 저장한다.
+     * 게시물 소유자 또는 신고자로 사용할 일반 사용자를 저장.
      */
     private User createUser(String username) {
         return userRepository.save(User.builder()
@@ -437,14 +437,14 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 기본 SUPER_ADMIN 권한의 로그인 토큰을 만든다.
+     * 기본 SUPER_ADMIN 권한의 로그인 토큰을 생성.
      */
     private String createAdminAndLogin() throws Exception {
         return createAdminAndLogin("SUPER_ADMIN");
     }
 
     /**
-     * 복합 역할·미배정·회수 상태를 포함한 관리자 fixture를 저장하고 실제 로그인 토큰을 반환한다.
+     * 복합 역할·미배정·회수 상태를 포함한 관리자 fixture를 저장하고 실제 로그인 토큰을 반환.
      */
     private String createAdminAndLogin(String role) throws Exception {
         String username = "adminTester" + System.nanoTime();
@@ -487,7 +487,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 소유자 ID와 삭제용 S3 키를 가진 신고 대상 게시물을 저장한다.
+     * 소유자 ID와 삭제용 S3 키를 가진 신고 대상 게시물을 저장.
      */
     private MapImage createMapImage(Long userId, String imageUrl) {
         return mapImageRepository.save(MapImage.builder()
@@ -500,7 +500,7 @@ class AdminReportControllerTest {
     }
 
     /**
-     * 게시물 연관관계와 신고 당시 작성자·이미지 URL을 함께 저장해 처리 대상 신고를 만든다.
+     * 게시물 연관관계와 신고 당시 작성자·이미지 URL을 함께 저장해 처리 대상 신고를 생성.
      */
     private PostReport createPostReport(Long reporterUserId, String reporterUsername, MapImage mapImage, String reason) {
         return postReportRepository.save(PostReport.builder()

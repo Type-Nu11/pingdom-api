@@ -11,8 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 클릭 행을 장소·추천 버전별로 집계하고 장소 병합 시 참조를 일괄 변경합니다.
- * 기간 조건이 있는 집계는 cutoff 이상이며 상한은 없고, 나머지 집계는 전체 보존 기간을 대상으로 합니다.
+ * 클릭 행을 장소·추천 버전별로 집계하고 장소 병합 시 참조를 일괄 변경.
+ * 기간 조건이 있는 집계는 cutoff 이상이며 상한은 없고, 나머지 집계는 전체 보존 기간을 대상으로 함.
  */
 public interface PlaceRecommendationClickRepository extends JpaRepository<PlaceRecommendationClick, Long> {
 

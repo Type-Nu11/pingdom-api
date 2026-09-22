@@ -14,8 +14,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 브랜드·캠페인 변경 시 현재 점주 역할, 탈퇴·정지 상태, 활성 프로필과 본인/사업자 승인을 검사합니다.
- * 장소 지정 작업에는 현재 소유 관계까지 요구하며, 행 잠금 없이 조회하므로 변경 경합 제어는 호출자가 담당합니다.
+ * 브랜드·캠페인 변경 시 현재 점주 역할, 탈퇴·정지 상태, 활성 프로필과 본인/사업자 승인을 검사.
+ * 장소 지정 작업에는 현재 소유 관계까지 요구하며, 행 잠금 없이 조회하므로 변경 경합 제어는 호출자가 담당.
  */
 @Component
 @RequiredArgsConstructor
@@ -27,8 +27,8 @@ public class CampaignAccessPolicy {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
 
     /**
-     * 지정 시점에 탈퇴·정지되지 않은 점주이며 ACTIVE 프로필과 본인·사업자 승인 정보를 갖췄는지 검사합니다.
-     * 자격 미충족은 PLACE_NOT_OWNED로 거절하며 특정 장소 소유 관계는 별도 검사에 맡깁니다.
+     * 지정 시점에 탈퇴·정지되지 않은 점주이며 ACTIVE 프로필과 본인·사업자 승인 정보를 갖췄는지 검사.
+     * 자격 미충족은 PLACE_NOT_OWNED로 거절하며 특정 장소 소유 관계는 별도 검사에 위임.
      */
     public void requireActiveOwner(Long ownerId, LocalDateTime now) {
         User user = userRepository.findById(ownerId).orElse(null);

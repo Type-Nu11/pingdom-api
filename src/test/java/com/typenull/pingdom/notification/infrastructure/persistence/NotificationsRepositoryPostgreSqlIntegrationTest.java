@@ -54,7 +54,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * 관리자 알림 필터와 중복 무시 삽입을 검증할 PostgreSQL 컨테이너 접속 정보를 등록한다.
+     * 관리자 알림 필터와 중복 무시 삽입을 검증할 PostgreSQL 컨테이너 접속 정보를 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -68,7 +68,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     private NotificationsRepository notificationsRepository;
 
     /**
-     * 기간 필터와 멱등 삽입의 행 수를 정확히 확인하도록 기존 알림을 제거한다.
+     * 기간 필터와 멱등 삽입의 행 수를 정확히 확인하도록 기존 알림을 제거.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -76,7 +76,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 관리자 알림 조회의 선택적 시작·종료 조건과 최신순 결과를 PostgreSQL에서 검증한다.
+     * 관리자 알림 조회의 선택적 시작·종료 조건과 최신순 결과를 PostgreSQL에서 검증.
      */
     @Test
     void filtersAdminNotificationsByOptionalPeriod() {
@@ -98,7 +98,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 같은 수신자·이벤트의 두 번째 삽입은 0건이고 다른 수신자 삽입은 허용되어 총 두 행이 저장되는지 검증한다.
+     * 같은 수신자·이벤트의 두 번째 삽입은 0건이고 다른 수신자 삽입은 허용되어 총 두 행이 저장되는지 검증.
      */
     @Test
     @Transactional
@@ -114,7 +114,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 사용자 10의 관리자 알림 유형에 선택적 기간 조건을 적용하고 최신 생성 시각·ID 순으로 조회한다.
+     * 사용자 10의 관리자 알림 유형에 선택적 기간 조건을 적용하고 최신 생성 시각·ID 순으로 조회.
      */
     private Page<Notifications> findByPeriod(
             boolean hasFrom,
@@ -139,7 +139,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 수신자와 이벤트 키를 바꾸어 신고 접수 알림의 중복 무시 삽입 결과를 확인한다.
+     * 수신자와 이벤트 키를 바꾸어 신고 접수 알림의 중복 무시 삽입 결과를 확인.
      */
     private int insertAdminNotification(Long userId, String eventKey) {
         return notificationsRepository.insertAdminNotificationIfAbsent(
@@ -154,7 +154,7 @@ class NotificationsRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 기간 조회에 필요한 제목과 생성 시각을 지정해 읽지 않은 관리자 신고 알림을 만든다.
+     * 기간 조회에 필요한 제목과 생성 시각을 지정해 읽지 않은 관리자 신고 알림을 생성.
      */
     private Notifications notification(String title, LocalDateTime createdAt) {
         return Notifications.builder()

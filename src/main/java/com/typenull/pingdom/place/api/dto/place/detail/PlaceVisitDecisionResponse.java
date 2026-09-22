@@ -7,8 +7,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 방문 판단에 필요한 장소·사업자 연락처·진행 행사·예약 가능 시간·혜택을 조합한 응답입니다.
- * 예약 가능 정보는 조회 결과이며 응답 생성만으로 재고나 예약 자리를 확보하지 않습니다.
+ * 방문 판단에 필요한 장소·사업자 연락처·진행 행사·예약 가능 시간·혜택을 조합한 응답.
+ * 예약 가능 정보는 조회 결과이며 재고나 예약 자리 확보는 응답 생성 범위에서 제외.
  */
 @Schema(description = "관광객 장소 상세 방문 결정 화면 응답")
 public record PlaceVisitDecisionResponse(

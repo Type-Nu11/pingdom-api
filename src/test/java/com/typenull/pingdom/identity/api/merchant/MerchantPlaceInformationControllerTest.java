@@ -40,7 +40,7 @@ class MerchantPlaceInformationControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 장소 정보 API의 검증 및 오류 응답을 확인하도록 Bean Validation과 예외 처리기, 고정 점주 인자를 설정한다.
+     * 장소 정보 API의 검증 및 오류 응답을 확인하도록 Bean Validation과 예외 처리기, 고정 점주 인자를 설정.
      */
     @BeforeEach
     void setUp() {
@@ -51,7 +51,7 @@ class MerchantPlaceInformationControllerTest {
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     /**
-                     * CurrentUser 어노테이션을 가진 인자에만 테스트용 인증 해석기를 적용한다.
+                     * CurrentUser 어노테이션을 가진 인자에만 테스트용 인증 해석기를 적용.
                      */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
@@ -59,7 +59,7 @@ class MerchantPlaceInformationControllerTest {
                     }
 
                     /**
-                     * 장소 정보 서비스에 전달할 점주 사용자 식별자를 20으로 고정한다.
+                     * 장소 정보 서비스에 전달할 점주 사용자 식별자를 20으로 고정.
                      */
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
@@ -71,7 +71,7 @@ class MerchantPlaceInformationControllerTest {
     }
 
     /**
-     * 장소 정보 GET은 장소 ID·소개를, PUT은 수정자 ID를 서비스 응답에서 200 JSON 응답으로 옮기는지 검증한다.
+     * 장소 정보 GET은 장소 ID·소개를, PUT은 수정자 ID를 서비스 응답에서 200 JSON 응답으로 옮기는지 검증.
      */
     @Test
     void exposesPlaceInformationEndpoints() throws Exception {
@@ -108,7 +108,7 @@ class MerchantPlaceInformationControllerTest {
     }
 
     /**
-     * 최대 허용 길이인 1,000자 소개를 수정 요청하면 200과 전체 소개 문자열을 반환하는지 검증한다.
+     * 최대 허용 길이인 1,000자 소개를 수정 요청하면 200과 전체 소개 문자열을 반환하는지 검증.
      */
     @Test
     void acceptsMaximumDescriptionLength() throws Exception {
@@ -132,7 +132,7 @@ class MerchantPlaceInformationControllerTest {
     }
 
     /**
-     * 프로토콜 없는 웹사이트 URL은 400과 필드 오류 메시지로 거절하며 서비스를 호출하지 않는지 검증한다.
+     * 프로토콜 없는 웹사이트 URL은 400과 필드 오류 메시지로 거절하며 서비스를 호출하지 않는지 검증.
      */
     @Test
     void rejectsInvalidWebsiteUrl() throws Exception {
@@ -147,7 +147,7 @@ class MerchantPlaceInformationControllerTest {
     }
 
     /**
-     * 서비스의 장소 정보 없음 오류가 HTTP 404와 PLACE_INFORMATION_NOT_FOUND 코드로 노출되는지 검증한다.
+     * 서비스의 장소 정보 없음 오류가 HTTP 404와 PLACE_INFORMATION_NOT_FOUND 코드로 노출되는지 검증.
      */
     @Test
     void mapsMissingInformationError() throws Exception {
@@ -160,7 +160,7 @@ class MerchantPlaceInformationControllerTest {
     }
 
     /**
-     * 서비스의 관리자 팀 권한 부족 오류가 HTTP 403과 해당 도메인 오류 코드로 노출되는지 검증한다.
+     * 서비스의 관리자 팀 권한 부족 오류가 HTTP 403과 해당 도메인 오류 코드로 노출되는지 검증.
      */
     @Test
     void mapsManagerPermissionError() throws Exception {

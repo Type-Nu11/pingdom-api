@@ -36,7 +36,7 @@ class MerchantVerifiedBoostSelectionServiceTest {
     @InjectMocks private MerchantVerifiedBoostSelectionService service;
 
     /**
-     * 상품 선택의 소유권 확인 시각을 고정하도록 Clock의 현재 시각과 UTC 시간대를 설정한다.
+     * 상품 선택의 소유권 확인 시각을 고정하도록 Clock의 현재 시각과 UTC 시간대를 설정.
      */
     @BeforeEach
     void setUpClock() {
@@ -45,7 +45,7 @@ class MerchantVerifiedBoostSelectionServiceTest {
     }
 
     /**
-     * 같은 점주·장소·멱등 키의 선택이 있으면 소유 장소 접근을 재확인하고 기존 상품 ID를 반환하는지 검증한다.
+     * 같은 점주·장소·멱등 키의 선택이 있으면 소유 장소 접근을 재확인하고 기존 상품 ID를 반환하는지 검증.
      */
     @Test
     void repeatedRequestReturnsExistingSelection() {
@@ -61,7 +61,7 @@ class MerchantVerifiedBoostSelectionServiceTest {
     }
 
     /**
-     * 같은 멱등 키로 다른 상품을 선택하면 IDEMPOTENCY_KEY_CONFLICT가 발생하는지 검증한다.
+     * 같은 멱등 키로 다른 상품을 선택하면 IDEMPOTENCY_KEY_CONFLICT가 발생하는지 검증.
      */
     @Test
     void rejectsConflictingSelectionKey() {
@@ -76,7 +76,7 @@ class MerchantVerifiedBoostSelectionServiceTest {
     }
 
     /**
-     * 기존 선택이 없고 활성 상품 잠금 조회가 성공하면 선택 결과에 요청 상품 ID가 반영되는지 검증한다.
+     * 기존 선택이 없고 활성 상품 잠금 조회가 성공하면 선택 결과에 요청 상품 ID가 반영되는지 검증.
      */
     @Test
     void activeProductCanBeSelected() {

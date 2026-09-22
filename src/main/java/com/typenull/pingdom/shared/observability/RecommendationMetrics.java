@@ -12,8 +12,8 @@ import java.util.concurrent.ConcurrentHashMap;
 import org.springframework.stereotype.Component;
 
 /**
- * 추천 버전별 요청 수·결과 개수 분포와 snapshot 재동기화·kill switch fallback을 집계한다.
- * 버전별 summary를 캐시하므로 호출자는 버전과 사유에 임의 식별자를 넣지 않아야 한다.
+ * 추천 버전별 요청 수·결과 개수 분포와 snapshot 재동기화·kill switch fallback을 집계.
+ * 버전별 summary를 캐시하므로 호출자는 버전과 사유에 임의 식별자를 넣지 않아야 함.
  */
 @Component
 public class RecommendationMetrics {
@@ -37,7 +37,7 @@ public class RecommendationMetrics {
         ).record(recommendedCount);
     }
 
-    /** 성공 실행을 한 번 기록하고 각 snapshot 처리 건수 중 양수만 누적한다. 최종 저장 개수의 gauge는 아니다. */
+    /** 성공 실행을 한 번 기록하고 각 snapshot 처리 건수 중 양수만 누적. 최종 저장 개수의 gauge와는 별도. */
     public void recordSnapshotResyncSuccess(SnapshotResyncResult result) {
         meterRegistry.counter(
                 "pingdom.recommendation.snapshot_resync",

@@ -7,8 +7,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 행위별 고정 구간 요청 수와 재발송 간격을 바인딩한다. 생략된 정책은 생성자에서 기본값으로 보완한다.
- * Redis 장애 시 기본값은 요청 차단이며, failOpen을 명시한 경우에만 장애 중 요청을 허용한다.
+ * 행위별 고정 구간 요청 수와 재발송 간격을 바인딩. 생략된 정책은 생성자에서 기본값으로 보완.
+ * Redis 장애 시 기본값은 요청 차단이며, failOpen을 명시한 경우에만 장애 중 요청을 허용.
  */
 @Validated
 @ConfigurationProperties(prefix = "abuse.rate-limit")

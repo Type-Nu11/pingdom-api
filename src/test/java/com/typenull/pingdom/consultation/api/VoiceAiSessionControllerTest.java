@@ -32,7 +32,7 @@ class VoiceAiSessionControllerTest {
     private MockMvc mvc;
 
     /**
-     * 고정 사용자 resolver·JavaTime JSON 변환기·공통 예외 처리기를 연결해 음성 세션 HTTP 계약을 분리 검증한다.
+     * 고정 사용자 resolver·JavaTime JSON 변환기·공통 예외 처리기를 연결해 음성 세션 HTTP 계약을 분리 검증.
      */
     @BeforeEach
     void setup() {
@@ -41,11 +41,11 @@ class VoiceAiSessionControllerTest {
                 .setMessageConverters(new MappingJackson2HttpMessageConverter(JsonMapper.builder().addModule(new JavaTimeModule()).build()))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     /**
-                     * JwtAuthenticatedUser 타입만 테스트용 사용자 인자로 해석한다.
+                     * JwtAuthenticatedUser 타입만 테스트용 사용자 인자로 해석.
                      */
                     public boolean supportsParameter(MethodParameter parameter) { return parameter.getParameterType() == JwtAuthenticatedUser.class; }
                     /**
-                     * 실제 인증 절차 대신 고정 사용자 1을 반환한다.
+                     * 실제 인증 절차 대신 고정 사용자 1을 반환.
                      */
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer container,
                             NativeWebRequest request, WebDataBinderFactory factory) { return new JwtAuthenticatedUser(1L, "voice"); }
@@ -53,7 +53,7 @@ class VoiceAiSessionControllerTest {
     }
 
     /**
-     * 세션 생성이 201과 sessionId·명시적 +09:00 만료 시각을 JSON으로 반환하는지 검증한다.
+     * 세션 생성이 201과 sessionId·명시적 +09:00 만료 시각을 JSON으로 반환하는지 검증.
      */
     @Test
     void returnsSessionIdAndOffset() throws Exception {
@@ -64,7 +64,7 @@ class VoiceAiSessionControllerTest {
     }
 
     /**
-     * 모든 VoiceAiErrorCode에 대해 서비스 예외가 정의된 HTTP 상태·코드·문자열 메시지를 보존하는지 검증한다.
+     * 모든 VoiceAiErrorCode에 대해 서비스 예외가 정의된 HTTP 상태·코드·문자열 메시지를 보존하는지 검증.
      */
     @ParameterizedTest
     @EnumSource(VoiceAiErrorCode.class)
@@ -77,7 +77,7 @@ class VoiceAiSessionControllerTest {
     }
 
     /**
-     * 빈 텍스트와 잘못된 요청 ID가 400 VALIDATION_FAILED·text 오류를 반환하고 서비스를 호출하지 않는지 검증한다.
+     * 빈 텍스트와 잘못된 요청 ID가 400 VALIDATION_FAILED·text 오류를 반환하고 서비스를 호출하지 않는지 검증.
      */
     @Test
     void invalidRequestUsesValidationSchema() throws Exception {

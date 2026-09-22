@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class PlaceDuplicateFixturesTest {
     /**
-     * 중복 후보 fixture에 GET/POST와 확정·거절·병합 경로가 존재하고 모든 검증 항목과 실패 오류 코드가 채워졌는지 확인한다.
+     * 중복 후보 fixture에 GET/POST와 확정·거절·병합 경로가 존재하고 모든 검증 항목과 실패 오류 코드가 채워졌는지 확인.
      */
     @Test
     void coversDuplicateResolutionContracts() {
@@ -26,7 +26,7 @@ class PlaceDuplicateFixturesTest {
     }
 
     /**
-     * 중복 장소 시나리오 이름이 유일한지 확인해 실패 결과를 개별 사례로 식별할 수 있게 한다.
+     * 중복 장소 시나리오 이름이 유일한지 확인해 실패 결과를 개별 사례로 식별할 수 있게 함.
      */
     @Test
     void usesUniqueScenarioNames() {

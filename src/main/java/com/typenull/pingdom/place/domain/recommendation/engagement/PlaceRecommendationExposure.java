@@ -15,8 +15,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * 추천 요청 좌표와 결과의 1부터 시작하는 순위를 기록한 노출 행입니다.
- * 익명 요청은 userId가 null이며 집계는 행 수를 사용하므로 사용자별 고유 노출 수와 다릅니다.
+ * 추천 요청 좌표와 결과의 1부터 시작하는 순위를 기록한 노출 행.
+ * 익명 요청은 userId가 null이며 집계는 행 수를 사용하므로 사용자별 고유 노출 수와 다름.
  */
 @Entity
 @Table(name = "place_recommendation_exposure")

@@ -14,7 +14,7 @@ class LocationAnalysisResponseValidatorTest {
     private final LocationAnalysisResponseValidator validator = new LocationAnalysisResponseValidator();
 
     /**
-     * script가 없는 기본 HTML 보고서는 validateHtml에서 예외 없이 통과하는지 검증한다.
+     * script가 없는 기본 HTML 보고서는 validateHtml에서 예외 없이 통과하는지 검증.
      */
     @Test
     void acceptsSafeHtmlReport() {
@@ -26,7 +26,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * script 태그가 포함된 보고서는 AnalysisReportException으로 거절되는지 검증한다.
+     * script 태그가 포함된 보고서는 AnalysisReportException으로 거절되는지 검증.
      */
     @Test
     void rejectsHtmlReportWithScript() {
@@ -38,7 +38,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 추천 장소와 핵심 관측 데이터가 없는 보고서가 SUITABLE로 판정되면 검증을 거절하는지 확인한다.
+     * 추천 장소와 핵심 관측 데이터가 없는 보고서가 SUITABLE로 판정되면 검증을 거절하는지 확인.
      */
     @Test
     void rejectsUnsupportedSuitableGrade() {
@@ -50,7 +50,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 관측 데이터가 없는 보고서도 INSUFFICIENT_DATA 등급과 MCP 데이터 없음 한계를 명시하면 검증을 통과하는지 확인한다.
+     * 관측 데이터가 없는 보고서도 INSUFFICIENT_DATA 등급과 MCP 데이터 없음 한계를 명시하면 검증을 통과하는지 확인.
      */
     @Test
     void acceptsInsufficientDataWithLimitation() {
@@ -64,7 +64,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 추천 장소·연령/성별 지표·유동 총계·분석 섹션을 갖춘 SUITABLE 보고서가 예외 없이 통과하는지 검증한다.
+     * 추천 장소·연령/성별 지표·유동 총계·분석 섹션을 갖춘 SUITABLE 보고서가 예외 없이 통과하는지 검증.
      */
     @Test
     void acceptsSupportedSuitableGrade() {
@@ -98,7 +98,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 연령/성별 분포 없이 MCP 유동 총계와 추천 장소가 있으며 확장 반경·지역 밖 결과 한계를 명시한 CONDITIONAL 보고서를 허용하는지 검증한다.
+     * 연령/성별 분포 없이 MCP 유동 총계와 추천 장소가 있으며 확장 반경·지역 밖 결과 한계를 명시한 CONDITIONAL 보고서를 허용하는지 검증.
      */
     @Test
     void acceptsLimitedTrafficConditionalGrade() {
@@ -132,14 +132,14 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 주어진 지표명에 관측 수 10과 비중 10%를 지정해 검증 가능한 타깃 분포 입력을 만든다.
+     * 주어진 지표명에 관측 수 10과 비중 10%를 지정해 검증 가능한 타깃 분포 입력을 생성.
      */
     private LocationAnalysisContent.Metric metric(String label) {
         return new LocationAnalysisContent.Metric(label, 10d, "PEOPLE", 10d);
     }
 
     /**
-     * 분석 범위 일치 검증에 사용할 대구광역시 북구 요청을 만든다.
+     * 분석 범위 일치 검증에 사용할 대구광역시 북구 요청을 생성.
      */
     private LocationAnalysisRequest request() {
         LocationAnalysisRequest request = new LocationAnalysisRequest();
@@ -148,7 +148,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 추천·유동 데이터가 없는 보고서에 지정 등급과 한계 문구를 설정해 데이터 부족 정책의 입력을 구성한다.
+     * 추천·유동 데이터가 없는 보고서에 지정 등급과 한계 문구를 설정해 데이터 부족 정책의 입력을 구성.
      */
     private LocationAnalysisContent content(LocationAnalysisContent.Grade grade, List<String> limitations) {
         return new LocationAnalysisContent(
@@ -172,7 +172,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 대구 북구의 상권명·유형·요약을 갖춘 기본 상권 분석 섹션을 제공한다.
+     * 대구 북구의 상권명·유형·요약을 갖춘 기본 상권 분석 섹션을 제공.
      */
     private LocationAnalysisContent.CommercialAreaAnalysis commercialArea() {
         return new LocationAnalysisContent.CommercialAreaAnalysis(
@@ -181,7 +181,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 요약은 있으나 경쟁 수치와 목록은 없는 경쟁 분석 섹션을 제공한다.
+     * 요약은 있으나 경쟁 수치와 목록은 없는 경쟁 분석 섹션을 제공.
      */
     private LocationAnalysisContent.CompetitionAnalysis competition() {
         return new LocationAnalysisContent.CompetitionAnalysis(
@@ -190,7 +190,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 요약과 빈 지표 목록을 가진 사업성 분석 섹션으로 구조적 필수 조건을 충족시킨다.
+     * 요약과 빈 지표 목록을 가진 사업성 분석 섹션으로 구조적 필수 조건을 충족시킴.
      */
     private LocationAnalysisContent.BusinessPerformanceAnalysis businessPerformance() {
         return new LocationAnalysisContent.BusinessPerformanceAnalysis(
@@ -199,7 +199,7 @@ class LocationAnalysisResponseValidatorTest {
     }
 
     /**
-     * 신뢰도 수치와 출처가 없는 상태를 데이터 없음 문구로 표현하는 품질 섹션을 제공한다.
+     * 신뢰도 수치와 출처가 없는 상태를 데이터 없음 문구로 표현하는 품질 섹션을 제공.
      */
     private LocationAnalysisContent.DataQualityAnalysis dataQuality() {
         return new LocationAnalysisContent.DataQualityAnalysis(

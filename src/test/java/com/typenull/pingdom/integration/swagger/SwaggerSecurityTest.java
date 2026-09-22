@@ -14,7 +14,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * dev 프로필의 Swagger 공개 접근과 그룹별 경로·인증 문서 계약을 검증한다.
+ * dev 프로필의 Swagger 공개 접근과 그룹별 경로·인증 문서 계약을 검증.
  */
 @Tag("integration")
 @SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
@@ -26,7 +26,7 @@ class SwaggerSecurityTest {
     private MockMvc mockMvc;
 
     /**
-     * 미인증 루트 요청이 200과 서버 실행 메시지를 반환하는지 확인한다.
+     * 미인증 루트 요청이 200과 서버 실행 메시지를 반환하는지 확인.
      */
     @Test
     void publicHome() throws Exception {
@@ -36,7 +36,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * dev 프로필에서 미인증 Swagger 경로가 index.html로 리다이렉트되는지 확인한다.
+     * dev 프로필에서 미인증 Swagger 경로가 index.html로 리다이렉트되는지 확인.
      */
     @Test
     void publicSwaggerRedirect() throws Exception {
@@ -46,7 +46,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * dev 프로필의 Swagger index가 인증 없이 200인지 확인한다.
+     * dev 프로필의 Swagger index가 인증 없이 200인지 확인.
      */
     @Test
     void publicSwaggerIndex() throws Exception {
@@ -55,7 +55,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * dev 프로필에서 통합·app·common·consulting·admin·merchant 문서가 모두 미인증 조회 가능한지 확인한다.
+     * dev 프로필에서 통합·app·common·consulting·admin·merchant 문서가 모두 미인증 조회 가능한지 확인.
      */
     @Test
     void publicApiDocs() throws Exception {
@@ -73,7 +73,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * Swagger 설정의 그룹 이름과 URL이 app·common·consulting·admin·merchant 순서인지 확인한다.
+     * Swagger 설정의 그룹 이름과 URL이 app·common·consulting·admin·merchant 순서인지 확인.
      */
     @Test
     void swaggerGroupOrder() throws Exception {
@@ -92,7 +92,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * app 문서에 현재 장소 목록·상세·카드가 있고 구형 단수·지도·업로드 경로는 없는지 확인한다.
+     * app 문서에 현재 장소 목록·상세·카드가 있고 구형 단수·지도·업로드 경로는 없는지 확인.
      */
     @Test
     void appPlacePaths() throws Exception {
@@ -112,7 +112,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * 팝업·결제·예약 경로가 app 그룹 문서에서 누락되지 않는지 확인한다.
+     * 팝업·결제·예약 경로가 app 그룹 문서에서 누락되지 않는지 확인.
      */
     @Test
     void appCommercePaths() throws Exception {
@@ -124,7 +124,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * 입지 분석 문서에 Bearer 인증과 401·403 응답이 선언됐는지 확인한다. 실제 권한 거절 요청은 실행하지 않는다.
+     * 입지 분석 문서에 Bearer 인증과 401·403 응답이 선언됐는지 확인. 실제 권한 거절 요청은 검증 범위에서 제외.
      */
     @Test
     void analysisSecurityContract() throws Exception {
@@ -143,7 +143,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * 상담 intro가 consulting에 포함되고 admin에는 없는지 확인한다. consulting 전체 경로 개수는 검사하지 않는다.
+     * 상담 intro가 consulting에 포함되고 admin에는 없는지 확인. consulting 전체 경로 개수는 검증 범위에서 제외.
      */
     @Test
     void consultingIntroGrouping() throws Exception {
@@ -157,7 +157,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * app 문서에 방문 검증 제보·수정 요청이 포함되고 관리자 경로는 제외되는지 확인한다.
+     * app 문서에 방문 검증 제보·수정 요청이 포함되고 관리자 경로는 제외되는지 확인.
      */
     @Test
     void appVerificationPaths() throws Exception {
@@ -172,7 +172,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * app 문서에 scout 제보 목록·생성·상세가 있고 관리자 목록은 없는지 확인한다.
+     * app 문서에 scout 제보 목록·생성·상세가 있고 관리자 목록은 없는지 확인.
      */
     @Test
     void appScoutPaths() throws Exception {
@@ -185,7 +185,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * admin 문서의 방문 검증·수정 검토 경로에 인증 요구가 있고 사용자 수정 요청 경로는 제외되는지 확인한다.
+     * admin 문서의 방문 검증·수정 검토 경로에 인증 요구가 있고 사용자 수정 요청 경로는 제외되는지 확인.
      */
     @Test
     void adminVerificationPaths() throws Exception {
@@ -213,7 +213,7 @@ class SwaggerSecurityTest {
     }
 
     /**
-     * admin 문서에 scout 목록·검토의 인증 계약이 있고 사용자 제보 경로는 없는지 확인한다.
+     * admin 문서에 scout 목록·검토의 인증 계약이 있고 사용자 제보 경로는 없는지 확인.
      */
     @Test
     void adminScoutPaths() throws Exception {

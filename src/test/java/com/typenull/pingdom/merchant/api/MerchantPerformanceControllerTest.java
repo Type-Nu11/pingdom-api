@@ -30,14 +30,14 @@ class MerchantPerformanceControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 사용자 인자를 점주 7로 고정한 MockMvc를 구성해 성과 응답의 JSON 매핑을 검증한다.
+     * 사용자 인자를 점주 7로 고정한 MockMvc를 구성해 성과 응답의 JSON 매핑을 검증.
      */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new MerchantPerformanceController(queryService))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     /**
-                     * CurrentUser가 선언된 컨트롤러 인자만 테스트 인증 사용자 해석 대상으로 선택한다.
+                     * CurrentUser가 선언된 컨트롤러 인자만 테스트 인증 사용자 해석 대상으로 선택.
                      */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
@@ -45,7 +45,7 @@ class MerchantPerformanceControllerTest {
                     }
 
                     /**
-                     * 실제 인증 필터 대신 고정된 점주 ID 7을 반환해 성과 조회 호출 대상을 지정한다.
+                     * 실제 인증 필터 대신 고정된 점주 ID 7을 반환해 성과 조회 호출 대상을 지정.
                      */
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
@@ -57,7 +57,7 @@ class MerchantPerformanceControllerTest {
     }
 
     /**
-     * 점주 성과 요청이 200과 장소 수·노출 수·클릭 수·예약 전환율을 지정된 값으로 반환하는지 검증한다.
+     * 점주 성과 요청이 200과 장소 수·노출 수·클릭 수·예약 전환율을 지정된 값으로 반환하는지 검증.
      */
     @Test
     void returnsMerchantPerformanceSummary() throws Exception {

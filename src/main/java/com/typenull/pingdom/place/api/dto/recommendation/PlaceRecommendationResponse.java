@@ -8,9 +8,9 @@ import java.util.List;
 import java.util.Set;
 
 /**
- * 최종 추천 목록과 실제 적용된 버전·반경·개수·사용자 맥락을 반환합니다.
- * 반경은 km 단위이며 requestedRadiusKm과 확장 후 appliedRadiusKm을 구분합니다.
- * 여행 목적과 제한 사유의 null은 빈 불변 컬렉션으로 변환하고 활동 의도는 없으면 null을 유지합니다.
+ * 최종 추천 목록과 실제 적용된 버전·반경·개수·사용자 맥락을 반환.
+ * 반경은 km 단위이며 requestedRadiusKm과 확장 후 appliedRadiusKm을 구분.
+ * 여행 목적과 제한 사유의 null은 빈 불변 컬렉션으로 변환하고 활동 의도는 없으면 null을 유지.
  */
 @Schema(description = "장소 추천 조회 응답")
 public record PlaceRecommendationResponse(

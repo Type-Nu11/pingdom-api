@@ -8,8 +8,8 @@ import org.junit.jupiter.api.Test;
 class ReservableProductTypeTest {
 
     /**
-     * 상품 유형이 TICKET과 CLASS만 제공하고 각각 같은 AvailabilityProductType으로 변환되는지 검증한다.
-     * 요청 DTO에 GENERAL이 노출되거나 예약 유형으로 잘못 매핑되는 회귀를 방지한다.
+     * 상품 유형이 TICKET과 CLASS만 제공하고 각각 같은 AvailabilityProductType으로 변환되는지 검증.
+     * 요청 DTO에 GENERAL이 노출되거나 예약 유형으로 잘못 매핑되는 회귀를 방지.
      */
     @Test
     void mapsSupportedProductTypes() {

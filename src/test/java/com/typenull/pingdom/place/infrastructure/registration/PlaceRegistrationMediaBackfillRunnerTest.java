@@ -24,7 +24,7 @@ class PlaceRegistrationMediaBackfillRunnerTest {
             backfillService
     );
 
-    /** 처리·건너뜀·예외 세 신청 결과를 각각 한 건으로 집계하고 신규·기존 승격 미디어 수를 구분하는지 확인한다. */
+    /** 처리·건너뜀·예외 세 신청 결과를 각각 한 건으로 집계하고 신규·기존 승격 미디어 수를 구분하는지 확인. */
     @Test
     void summarizesMediaBackfillOutcomes() {
         PlaceRegistrationApplication processed = application(77L, 70069L);
@@ -51,7 +51,7 @@ class PlaceRegistrationMediaBackfillRunnerTest {
         assertThat(summary.alreadyPromotedMedia()).isEqualTo(2);
     }
 
-    /** 신청 ID와 완료 장소 ID만 제공하는 mock으로 runner의 결과 집계를 격리한다. */
+    /** 신청 ID와 완료 장소 ID만 제공하는 mock으로 runner의 결과 집계를 격리. */
     private PlaceRegistrationApplication application(Long applicationId, Long placeId) {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         when(application.getId()).thenReturn(applicationId);

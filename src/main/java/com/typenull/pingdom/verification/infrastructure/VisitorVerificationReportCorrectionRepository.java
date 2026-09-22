@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
-/** 정정 이력과 상태별 페이지를 제공한다. 목록은 report EntityGraph로 원본 정보를 함께 로드해 응답 매핑에 사용한다. */
+/** 정정 이력과 상태별 페이지를 제공. 목록은 report EntityGraph로 원본 정보를 함께 로드해 응답 매핑에 사용. */
 public interface VisitorVerificationReportCorrectionRepository
         extends JpaRepository<VisitorVerificationReportCorrection, Long> {
 
@@ -35,7 +35,7 @@ public interface VisitorVerificationReportCorrectionRepository
             Pageable pageable
     );
 
-    /** 정정 심사 중 같은 정정이 중복 처리되지 않도록 쓰기 잠금 조회한다. 원본 제보 잠금은 별도다. */
+    /** 정정 심사 중 같은 정정이 중복 처리되지 않도록 쓰기 잠금 조회. 원본 제보 잠금은 별도. */
     @Lock(LockModeType.PESSIMISTIC_WRITE)
     @Query("SELECT correction FROM VisitorVerificationReportCorrection correction WHERE correction.id = :id")
     Optional<VisitorVerificationReportCorrection> findByIdForUpdate(@Param("id") Long id);

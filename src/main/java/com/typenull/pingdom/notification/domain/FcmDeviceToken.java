@@ -13,8 +13,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 기기 토큰 하나와 마지막 등록 사용자를 연결합니다.
- * 다른 사용자가 같은 토큰을 등록하면 refresh가 사용자 연결을 바꾸며 최초 생성 시각은 유지합니다.
+ * 기기 토큰 하나와 마지막 등록 사용자를 연결.
+ * 다른 사용자가 같은 토큰을 등록하면 refresh가 사용자 연결을 바꾸며 최초 생성 시각은 유지.
  */
 @Getter
 @Entity

@@ -13,8 +13,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 현재 점주 자격과 상품 참조의 일관성을 확인하는 슬롯 조회를 제공합니다.
- * 공개 목록은 종료 전·잔여량 양수 조건을 사용하지만 시작 전 조건은 포함하지 않습니다. 실제 예약의 시각·재고 검사는 도메인에서 수행합니다.
+ * 현재 점주 자격과 상품 참조의 일관성을 확인하는 슬롯 조회 제공.
+ * 공개 목록은 종료 전·잔여량 양수 조건만 적용하므로 이미 시작한 슬롯도 포함 가능. 실제 예약의 시각·재고 검사는 도메인 책임.
  */
 public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailability, Long> {
     Optional<PlaceAvailability> findByIdAndMerchantOwnerUserId(Long id, Long ownerId);

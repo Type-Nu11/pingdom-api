@@ -24,7 +24,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
-/** 관광객 예약 생성·조회·취소 요청을 예약 서비스로 전달합니다. */
+/** 관광객 예약 생성·조회·취소 요청을 예약 서비스로 전달. */
 @RestController
 @RequestMapping("/reservations")
 @RequiredArgsConstructor

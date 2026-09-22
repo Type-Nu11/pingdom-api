@@ -44,7 +44,7 @@ class AdminCommunityContentApiIntegrationTest {
     private String userBearer;
 
     /**
-     * 일반 사용자·관리자와 공개/숨김 글·댓글을 저장하고 역할별 인증 토큰을 준비한다.
+     * 일반 사용자·관리자와 공개/숨김 글·댓글을 저장하고 역할별 인증 토큰을 준비.
      */
     @BeforeEach
     void setup() {
@@ -69,7 +69,7 @@ class AdminCommunityContentApiIntegrationTest {
     }
 
     /**
-     * 관리자 글 목록의 hidden 필터는 숨김 글만, 카테고리 필터는 해당 공개 글만 반환하며 전체 수를 맞추는지 검증한다.
+     * 관리자 글 목록의 hidden 필터는 숨김 글만, 카테고리 필터는 해당 공개 글만 반환하며 전체 수를 맞추는지 검증.
      */
     @Test
     void filtersAdminPostsByVisibilityAndCategory() throws Exception {
@@ -87,7 +87,7 @@ class AdminCommunityContentApiIntegrationTest {
     }
 
     /**
-     * 관리자는 숨김 글 상세와 숨김 댓글 목록을 조회할 수 있고 공개 댓글 상세도 공개 상태로 반환하는지 검증한다.
+     * 관리자는 숨김 글 상세와 숨김 댓글 목록을 조회할 수 있고 공개 댓글 상세도 공개 상태로 반환하는지 검증.
      */
     @Test
     void readsAdminContentAcrossVisibilityStates() throws Exception {
@@ -109,7 +109,7 @@ class AdminCommunityContentApiIntegrationTest {
     }
 
     /**
-     * 일반 사용자의 관리자 목록 접근은 403이며 없는 글·댓글 조회는 각 대상 없음 코드와 404를 반환하는지 검증한다.
+     * 일반 사용자의 관리자 목록 접근은 403이며 없는 글·댓글 조회는 각 대상 없음 코드와 404를 반환하는지 검증.
      */
     @Test
     void rejectsUnauthorizedOrMissingContent() throws Exception {
@@ -123,7 +123,7 @@ class AdminCommunityContentApiIntegrationTest {
     }
 
     /**
-     * 일반 조회와 관리자 조회의 권한 차이를 검사할 이메일 인증 완료 사용자를 지정 역할로 만든다.
+     * 일반 조회와 관리자 조회의 권한 차이를 검사할 이메일 인증 완료 사용자를 지정 역할로 생성.
      */
     private User user(String username, UserRole role) {
         return User.builder()
@@ -139,7 +139,7 @@ class AdminCommunityContentApiIntegrationTest {
     }
 
     /**
-     * 저장된 사용자 ID와 역할로 관리자 또는 일반 요청의 Bearer 토큰을 발급한다.
+     * 저장된 사용자 ID와 역할로 관리자 또는 일반 요청의 Bearer 토큰을 발급.
      */
     private String bearer(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

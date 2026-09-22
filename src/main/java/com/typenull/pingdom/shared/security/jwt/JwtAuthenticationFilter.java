@@ -16,8 +16,8 @@ import org.springframework.util.AntPathMatcher;
 import org.springframework.util.StringUtils;
 import org.springframework.web.filter.OncePerRequestFilter;
 
-/** Bearer access token과 계정 상태가 유효할 때 SecurityContext에 사용자·역할을 설정한다.
- * 유효하지 않은 요청도 다음 필터로 전달하며 최종 공개 경로·인증 요구는 보안 체인이 결정한다. */
+/** Bearer access token과 계정 상태가 유효할 때 SecurityContext에 사용자·역할을 설정.
+ * 유효하지 않은 요청도 다음 필터로 전달하며 최종 공개 경로·인증 요구는 보안 체인이 결정. */
 @Component
 public class JwtAuthenticationFilter extends OncePerRequestFilter {
 
@@ -47,14 +47,14 @@ public class JwtAuthenticationFilter extends OncePerRequestFilter {
         this.userAccessStatusService = userAccessStatusService;
     }
 
-    /** 인증·오류·상태 확인·API 문서 경로는 JWT 해석을 생략한다. 이 목록 자체가 전체 접근 허용 규칙은 아니다. */
+    /** 인증·오류·상태 확인·API 문서 경로는 JWT 해석을 생략. 전체 접근 허용 규칙은 별도 설정에 따름. */
     @Override
     protected boolean shouldNotFilter(HttpServletRequest request) {
         return EXCLUDED_PATH_PATTERNS.stream()
                 .anyMatch(pattern -> PATH_MATCHER.match(pattern, request.getRequestURI()));
     }
 
-    /** 만료 토큰은 요청 속성으로 표시하고, 유효 토큰만 계정 상태를 확인한다. role이 없으면 빈 권한 목록을 사용한다. */
+    /** 만료 토큰은 요청 속성으로 표시하고, 유효 토큰만 계정 상태를 확인. role이 없으면 빈 권한 목록을 사용. */
     @Override
     protected void doFilterInternal(
             HttpServletRequest request,

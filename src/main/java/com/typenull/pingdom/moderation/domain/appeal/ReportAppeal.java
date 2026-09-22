@@ -18,8 +18,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
- * 신고와 사진의 식별자 및 이의제기 시점 신청자 정보를 보관합니다.
- * approve/reject는 결과 필드를 덮어쓰므로 SUBMITTED 상태·권한 검증은 호출 서비스 책임입니다.
+ * 신고와 사진의 식별자 및 이의제기 시점 신청자 정보를 보관.
+ * approve/reject는 결과 필드를 덮어쓰므로 SUBMITTED 상태·권한 검증은 호출 서비스 책임.
  */
 @Entity
 @Getter

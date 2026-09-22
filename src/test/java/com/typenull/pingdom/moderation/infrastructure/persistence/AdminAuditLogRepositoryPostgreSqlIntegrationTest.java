@@ -48,7 +48,7 @@ class AdminAuditLogRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * 감사 로그의 선택적 날짜 조건을 PostgreSQL에서 검증하도록 컨테이너 접속 정보를 등록한다.
+     * 감사 로그의 선택적 날짜 조건을 PostgreSQL에서 검증하도록 컨테이너 접속 정보를 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -62,7 +62,7 @@ class AdminAuditLogRepositoryPostgreSqlIntegrationTest {
     private AdminAuditLogRepository adminAuditLogRepository;
 
     /**
-     * 기간 조건별 조회 결과를 독립적으로 검증하도록 감사 로그 테이블을 비운다.
+     * 기간 조건별 조회 결과를 독립적으로 검증하도록 감사 로그 테이블을 비움.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -70,7 +70,7 @@ class AdminAuditLogRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 기간 조건 없음·시작만 지정·종료만 지정한 감사 로그 조회가 기대 대상 ID와 최신순 결과를 반환하는지 검증한다.
+     * 기간 조건 없음·시작만 지정·종료만 지정한 감사 로그 조회가 기대 대상 ID와 최신순 결과를 반환하는지 검증.
      */
     @Test
     void filtersAuditLogsByOptionalPeriod() {
@@ -92,7 +92,7 @@ class AdminAuditLogRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 다른 조건을 비운 채 선택적 생성 기간으로 감사 로그의 첫 페이지를 생성 시각·ID 내림차순 조회한다.
+     * 다른 조건을 비운 채 선택적 생성 기간으로 감사 로그의 첫 페이지를 생성 시각·ID 내림차순 조회.
      */
     private Page<AdminAuditLog> findByPeriod(
             boolean hasFrom,
@@ -117,7 +117,7 @@ class AdminAuditLogRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 기간별 결과를 구분하도록 대상 ID와 생성 시각을 지정한 사용자 정지 감사 로그를 만든다.
+     * 기간별 결과를 구분하도록 대상 ID와 생성 시각을 지정한 사용자 정지 감사 로그를 생성.
      */
     private AdminAuditLog auditLog(String targetId, LocalDateTime createdAt) {
         return AdminAuditLog.builder()

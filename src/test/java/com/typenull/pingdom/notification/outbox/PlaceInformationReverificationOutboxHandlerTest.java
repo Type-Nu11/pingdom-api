@@ -24,7 +24,7 @@ class PlaceInformationReverificationOutboxHandlerTest {
     private final ObjectMapper objectMapper = new ObjectMapper().findAndRegisterModules();
 
     /**
-     * 재확인 요청 핸들러가 지원 이벤트 유형을 선언하고 페이로드의 점주·장소명·이벤트 ID로 요청 알림을 위임하는지 검증한다.
+     * 재확인 요청 핸들러가 지원 이벤트 유형을 선언하고 페이로드의 점주·장소명·이벤트 ID로 요청 알림을 위임하는지 검증.
      */
     @Test
     void deliversReverificationRequestNotification() throws Exception {
@@ -43,7 +43,7 @@ class PlaceInformationReverificationOutboxHandlerTest {
     }
 
     /**
-     * 재확인 리마인더 핸들러의 지원 이벤트 유형과 점주·장소명·이벤트 ID를 사용한 리마인더 발송 위임을 검증한다.
+     * 재확인 리마인더 핸들러의 지원 이벤트 유형과 점주·장소명·이벤트 ID를 사용한 리마인더 발송 위임을 검증.
      */
     @Test
     void deliversReverificationReminderNotification() throws Exception {
@@ -61,7 +61,7 @@ class PlaceInformationReverificationOutboxHandlerTest {
     }
 
     /**
-     * 요청 및 리마인더 역직렬화에 사용할 재확인 식별자·장소·점주·요청 상태·기한을 제공한다.
+     * 요청 및 리마인더 역직렬화에 사용할 재확인 식별자·장소·점주·요청 상태·기한을 제공.
      */
     private PlaceInformationReverificationOutboxPayload payload() {
         return new PlaceInformationReverificationOutboxPayload(

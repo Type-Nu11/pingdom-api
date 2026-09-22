@@ -11,7 +11,7 @@ class MerchantOwnerProfileTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 13, 12, 0);
 
     /**
-     * 대기 프로필 승인 후 해제하면 REVOKED 상태와 검토자 ID가 반영되는지 검증한다.
+     * 대기 프로필 승인 후 해제하면 REVOKED 상태와 검토자 ID가 반영되는지 검증.
      */
     @Test
     void approvesThenRevokesMerchantProfile() {
@@ -25,7 +25,7 @@ class MerchantOwnerProfileTest {
     }
 
     /**
-     * 거절 프로필 재신청이 PENDING·새 상호를 반영하고 이전 검토자·사유를 제거하는지 검증한다.
+     * 거절 프로필 재신청이 PENDING·새 상호를 반영하고 이전 검토자·사유를 제거하는지 검증.
      */
     @Test
     void rejectedProfileCanBeReapplied() {
@@ -48,7 +48,7 @@ class MerchantOwnerProfileTest {
     }
 
     /**
-     * 이미 승인된 프로필을 거절하면 IllegalStateException인지 검증한다.
+     * 이미 승인된 프로필을 거절하면 IllegalStateException인지 검증.
      */
     @Test
     void activeProfileCannotBeRejected() {
@@ -60,7 +60,7 @@ class MerchantOwnerProfileTest {
     }
 
     /**
-     * 고정 시각과 연락처를 가진 사용자 1의 승인 대기 점주 프로필을 생성한다.
+     * 고정 시각과 연락처를 가진 사용자 1의 승인 대기 점주 프로필을 생성.
      */
     private MerchantOwnerProfile pendingProfile() {
         return MerchantOwnerProfile.pending(

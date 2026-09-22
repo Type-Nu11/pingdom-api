@@ -31,7 +31,7 @@ class ServiceTransactionConventionTest {
     private static final String APPLICATION_QUERY_PACKAGE = ".application.query.";
 
     /**
-     * 저장소 필드를 직접 가진 application.query 서비스의 공개 메서드마다 유효한 readOnly 트랜잭션이 있는지 검증한다.
+     * 저장소 필드를 직접 가진 application.query 서비스의 공개 메서드마다 유효한 readOnly 트랜잭션이 있는지 검증.
      */
     @Test
     @DisplayName("Repository를 직접 보유한 application.query Service는 조회 전용 트랜잭션을 사용한다")
@@ -62,7 +62,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 신고 정책과 관리자 알림 명령 서비스의 클래스 트랜잭션이 쓰기 가능하도록 선언되어 있는지 검증한다.
+     * 신고 정책과 관리자 알림 명령 서비스의 클래스 트랜잭션이 쓰기 가능하도록 선언되어 있는지 검증.
      */
     @Test
     @DisplayName("상태 변경 Service는 쓰기 트랜잭션을 사용한다")
@@ -72,7 +72,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 관리자 알림 조회는 목록·미읽음 수, 명령은 단건·전체 읽음 변경 메서드만 소유하는지 reflection으로 검증한다.
+     * 관리자 알림 조회는 목록·미읽음 수, 명령은 단건·전체 읽음 변경 메서드만 소유하는지 reflection으로 검증.
      */
     @Test
     @DisplayName("관리자 알림 Query와 Command 책임을 분리한다")
@@ -90,7 +90,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 추천 응답과 노출 관측 기록 메서드는 조회성 이름에도 상태를 저장하므로 명시한 시그니처의 유효 트랜잭션이 쓰기인지 검증한다.
+     * 추천 응답과 노출 관측 기록 메서드는 조회성 이름에도 상태를 저장하므로 명시한 시그니처의 유효 트랜잭션이 쓰기인지 검증.
      */
     @Test
     @DisplayName("추천 응답과 관측 기록 유스케이스는 명시적 쓰기 트랜잭션 예외로 둔다")
@@ -117,7 +117,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 기본 패키지의 Service 컴포넌트를 스캔해 트랜잭션 규칙 검사 대상 클래스를 수집한다.
+     * 기본 패키지의 Service 컴포넌트를 스캔해 트랜잭션 규칙 검사 대상 클래스를 수집.
      */
     private List<Class<?>> serviceClasses() throws ClassNotFoundException {
         ClassPathScanningCandidateComponentProvider scanner =
@@ -132,7 +132,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * application.query 패키지에 속하고 Repository 접미사 타입 필드를 직접 가진 서비스만 일반 조회 규칙의 대상으로 분류한다.
+     * application.query 패키지에 속하고 Repository 접미사 타입 필드를 직접 가진 서비스만 일반 조회 규칙의 대상으로 분류.
      */
     private boolean isRepositoryBackedApplicationQueryService(Class<?> service) {
         if (!service.getPackageName().contains(APPLICATION_QUERY_PACKAGE)) {
@@ -143,7 +143,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 합성 어노테이션을 포함해 메서드의 트랜잭션 선언을 우선하고 없으면 클래스 선언으로 보완한다.
+     * 합성 어노테이션을 포함해 메서드의 트랜잭션 선언을 우선하고 없으면 클래스 선언으로 보완.
      */
     private Transactional effectiveTransaction(Class<?> service, Method method) {
         Transactional methodTransaction =
@@ -155,7 +155,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 서비스 클래스의 트랜잭션이 존재하고 readOnly가 false인지 검사하며 실패 메시지에 서비스명을 포함한다.
+     * 서비스 클래스의 트랜잭션이 존재하고 readOnly가 false인지 검사하며 실패 메시지에 서비스명을 포함.
      */
     private void assertWriteTransaction(Class<?> service) {
         Transactional transactional =
@@ -169,7 +169,7 @@ class ServiceTransactionConventionTest {
     }
 
     /**
-     * 지정 메서드 시그니처의 유효 트랜잭션이 존재하고 쓰기 가능한지 검사해 오버로드를 구분한다.
+     * 지정 메서드 시그니처의 유효 트랜잭션이 존재하고 쓰기 가능한지 검사해 오버로드를 구분.
      */
     private void assertWriteTransaction(Class<?> service, String methodName, Class<?>... parameterTypes)
             throws NoSuchMethodException {

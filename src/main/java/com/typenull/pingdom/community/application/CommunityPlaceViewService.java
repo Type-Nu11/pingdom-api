@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 커뮤니티 글에 연결된 공개 장소로의 유입을 사용자·장소·KST 날짜 단위로 기록합니다.
- * 같은 장소를 여러 게시글에서 열어도 하루 최초 삽입 때만 장소 집계를 증가시키며, 상세 조회까지 동일 트랜잭션에 참여합니다.
+ * 커뮤니티 글에 연결된 공개 장소로의 유입을 사용자·장소·KST 날짜 단위로 기록.
+ * 같은 장소를 여러 게시글에서 열어도 하루 최초 삽입 때만 장소 집계를 증가시키며, 상세 조회까지 동일 트랜잭션에 참여.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,13 +36,13 @@ public class CommunityPlaceViewService {
     private final PlaceQueryService placeQueryService;
     private final Clock clock;
 
-    /** 게시글에 실제 연결된 공개 장소만 KST 날짜별 사용자 1회로 조회수를 기록합니다. */
+    /** 게시글에 실제 연결된 공개 장소에 대해 KST 날짜별 사용자당 최초 조회만 기록. */
     @Transactional
     public PlaceDetailResponse record(long postId, long placeId, long userId) {
         requirePost(postId);
         requireLinkedPlace(postId, placeId);
 
-        // 먼저 공개 가능한 장소인지 검증해 실패 요청은 일별 조회 기록과 집계에서 제외한다.
+        // 먼저 공개 가능한 장소인지 검증해 실패 요청은 일별 조회 기록과 집계에서 제외.
         requirePublicPlace(placeId);
 
         if (communityPlaceDailyViewRepository.insertIgnoreDuplicate(
@@ -53,7 +53,7 @@ public class CommunityPlaceViewService {
             mapPlaceRepository.increaseCommunityViewCount(placeId);
         }
 
-        // 원자적 UPDATE 후 최신 집계값을 포함한 장소 상세를 반환한다.
+        // 원자적 UPDATE 후 최신 집계값을 포함한 장소 상세를 반환.
         return placeQueryService.getPlace(placeId);
     }
 

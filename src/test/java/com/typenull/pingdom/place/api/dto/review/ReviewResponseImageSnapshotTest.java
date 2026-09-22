@@ -13,7 +13,7 @@ import org.junit.jupiter.api.Test;
 
 class ReviewResponseImageSnapshotTest {
 
-    /** 공개·내 리뷰·사업자·삭제 심사 응답을 만든 뒤 원본 이미지 목록을 비워도 각 응답이 이미지를 유지하는지 확인한다. */
+    /** 공개·내 리뷰·사업자·삭제 심사 응답을 만든 뒤 원본 이미지 목록을 비워도 각 응답이 이미지를 유지하는지 확인. */
     @Test
     void responseMappingsSnapshotReviewImages() {
         List<String> imageUrls = new ArrayList<>(List.of("https://cdn.pingdom.test/review.jpg"));

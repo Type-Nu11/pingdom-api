@@ -48,7 +48,7 @@ class ForwardedHeadersIntegrationTest {
     private ServerProperties serverProperties;
 
     /**
-     * 실제 Tomcat의 native RemoteIpValve와 로컬 신뢰 프록시 설정을 확인하고 전달 헤더로 외부 IP·HTTPS 보안 요청 여부가 해석되는지 검증한다.
+     * 실제 Tomcat의 native RemoteIpValve와 로컬 신뢰 프록시 설정을 확인하고 전달 헤더로 외부 IP·HTTPS 보안 요청 여부가 해석되는지 검증.
      */
     @Test
     void resolvesTrustedProxyIpAndScheme() {
@@ -81,7 +81,7 @@ class ForwardedHeadersIntegrationTest {
     static class RequestInfoHeaderFilterConfiguration {
 
         /**
-         * health 요청에서 컨테이너가 해석한 클라이언트 IP와 secure 여부를 테스트 응답 헤더에 실어 실제 웹서버 결과를 관측한다.
+         * health 요청에서 컨테이너가 해석한 클라이언트 IP와 secure 여부를 테스트 응답 헤더에 실어 실제 웹서버 결과를 관측.
          */
         @Bean
         FilterRegistrationBean<Filter> requestInfoHeaderFilter() {

@@ -49,7 +49,7 @@ class TravelPurposePreferenceControllerTest {
     private JdbcTemplate jdbcTemplate;
 
     /**
-     * 여행 목적 연결 테이블을 먼저 비우고 사용자를 제거해 외래 키와 이전 선호 데이터의 영향을 없앤다.
+     * 여행 목적 연결 테이블을 먼저 비우고 사용자를 제거해 외래 키와 이전 선호 데이터의 영향을 제거.
      */
     @BeforeEach
     void setUp() {
@@ -58,7 +58,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 요청으로 저장한 여행 목적 선호와 사용자를 의존 순서대로 정리한다.
+     * 요청으로 저장한 여행 목적 선호와 사용자를 의존 순서대로 정리.
      */
     @AfterEach
     void tearDown() {
@@ -67,7 +67,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 선호를 등록하지 않은 인증 사용자의 여행 목적 조회가 200과 빈 목록을 반환하는지 검증한다.
+     * 선호를 등록하지 않은 인증 사용자의 여행 목적 조회가 200과 빈 목록을 반환하는지 검증.
      */
     @Test
     void returnsEmptyTravelPreferences() throws Exception {
@@ -80,7 +80,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 두 여행 목적을 저장한 응답의 항목을 확인한 뒤 빈 목록으로 다시 요청하면 전체 선호가 비워지는지 검증한다.
+     * 두 여행 목적을 저장한 응답의 항목을 확인한 뒤 빈 목록으로 다시 요청하면 전체 선호가 비워지는지 검증.
      */
     @Test
     void replacesTravelPreferenceSet() throws Exception {
@@ -109,7 +109,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 여행 목적 필드가 없는 수정 요청은 400과 필수 목록 검증 메시지를 반환하는지 검증한다.
+     * 여행 목적 필드가 없는 수정 요청은 400과 필수 목록 검증 메시지를 반환하는지 검증.
      */
     @Test
     void rejectsMissingTravelPreferences() throws Exception {
@@ -124,7 +124,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 인증 없이 여행 목적 목록을 조회하면 401을 반환하는지 검증한다.
+     * 인증 없이 여행 목적 목록을 조회하면 401을 반환하는지 검증.
      */
     @Test
     void requiresTravelPreferenceAuthentication() throws Exception {
@@ -133,7 +133,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 여행 목적을 등록한 사용자가 탈퇴하면 204를 반환하고 연결 테이블의 해당 사용자 선호가 즉시 제거되는지 검증한다.
+     * 여행 목적을 등록한 사용자가 탈퇴하면 204를 반환하고 연결 테이블의 해당 사용자 선호가 즉시 제거되는지 검증.
      */
     @Test
     void deletesTravelPreferencesOnWithdrawal() throws Exception {
@@ -161,7 +161,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 여행 목적 API에서 인증하고 조회할 독립 사용자를 저장한다.
+     * 여행 목적 API에서 인증하고 조회할 독립 사용자를 저장.
      */
     private User saveUser(String username) {
         return userRepository.saveAndFlush(User.builder()
@@ -175,7 +175,7 @@ class TravelPurposePreferenceControllerTest {
     }
 
     /**
-     * 사용자 식별자와 현재 역할을 담아 여행 목적 API의 Bearer 인증 토큰을 만든다.
+     * 사용자 식별자와 현재 역할을 담아 여행 목적 API의 Bearer 인증 토큰을 생성.
      */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

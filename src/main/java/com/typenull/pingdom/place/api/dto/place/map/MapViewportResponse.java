@@ -4,8 +4,8 @@ import io.swagger.v3.oas.annotations.media.Schema;
 import java.util.List;
 
 /**
- * 줌 단계에 따른 마커 또는 클러스터 응답입니다.
- * 사용하지 않는 목록은 빈 목록이고 truncated는 최대 개수 제한으로 결과가 잘렸음을 나타냅니다.
+ * 줌 단계에 따른 마커 또는 클러스터 응답.
+ * 사용하지 않는 목록은 빈 목록이고 truncated는 최대 개수 제한으로 결과가 잘렸음을 나타냄.
  */
 public record MapViewportResponse(
         @Schema(

@@ -29,8 +29,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * refresh 쿠키를 읽어 토큰 회전·로그아웃을 인증 서비스에 위임합니다.
- * 로그아웃은 토큰 검증이나 서비스 처리 실패 여부와 관계없이 finally에서 쿠키 만료 헤더를 추가합니다.
+ * refresh 쿠키를 읽어 토큰 회전·로그아웃을 인증 서비스에 위임.
+ * 로그아웃은 토큰 검증이나 서비스 처리 실패 여부와 관계없이 finally에서 쿠키 만료 헤더를 추가.
  */
 @RestController
 @RequestMapping("/auth")

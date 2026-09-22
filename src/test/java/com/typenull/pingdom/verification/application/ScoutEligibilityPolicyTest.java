@@ -29,8 +29,8 @@ class ScoutEligibilityPolicyTest {
     );
 
     /**
-     * 활성 프로필과 유효 기간의 활동 자격이 있으면 허용한다.
-     * 같은 프로필을 정지한 후에는 자격 기간이 유효해도 거부해야 한다.
+     * 활성 프로필과 유효 기간의 활동 자격이 있으면 허용.
+     * 같은 프로필을 정지한 후에는 자격 기간이 유효해도 거부해야 함.
      */
     @Test
     void requireActiveEligibleProfile() {
@@ -48,7 +48,7 @@ class ScoutEligibilityPolicyTest {
         assertThat(policy.isEligible(1L)).isFalse();
     }
 
-    /** 프로필 저장소가 빈 결과를 반환하면 활동 가능으로 판단하지 않는다. */
+    /** 프로필 저장소의 빈 결과에 대한 활동 불가 판정 확인. */
     @Test
     void rejectMissingProfile() {
         when(profileRepository.findById(1L)).thenReturn(Optional.empty());

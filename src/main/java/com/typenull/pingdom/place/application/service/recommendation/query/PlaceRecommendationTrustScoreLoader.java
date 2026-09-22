@@ -8,8 +8,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 후보별 승인 제보 신뢰도를 불러오고 조회된 null 점수를 중립값 0.5로, 수치를 0~1 범위로 보정합니다.
- * 조회 행 자체가 없는 후보는 점수 계산 서비스가 동일한 중립값을 적용합니다.
+ * 후보별 승인 제보 신뢰도를 불러오고 조회된 null 점수를 중립값 0.5로, 수치를 0~1 범위로 보정.
+ * 조회 행 자체가 없는 후보는 점수 계산 서비스가 동일한 중립값을 적용.
  */
 @Component
 @RequiredArgsConstructor

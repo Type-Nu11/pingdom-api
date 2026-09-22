@@ -49,7 +49,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * Flyway와 실제 공간 쿼리에 사용할 PostGIS 데이터소스를 테스트 컨테이너에 연결합니다.
+     * Flyway와 실제 공간 쿼리에 사용할 PostGIS 데이터소스를 테스트 컨테이너에 연결.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -64,7 +64,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     @Autowired private EntityManagerFactory entityManagerFactory;
 
     /**
-     * 랭킹 사례의 북마크·이미지·장소 데이터를 정리합니다.
+     * 랭킹 사례의 북마크·이미지·장소 데이터를 정리.
      */
     @AfterEach
     void cleanUp() {
@@ -74,7 +74,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     }
 
     /**
-     * 1km 후보 부족 시 50km로 확장하여 기간 내 ACTIVE 게시물만 집계하고 동률·대표 이미지·북마크 및 SQL 4회 상한을 확인합니다.
+     * 1km 후보 부족 시 50km로 확장하여 기간 내 ACTIVE 게시물만 집계하고 동률·대표 이미지·북마크 및 SQL 4회 상한을 확인.
      */
     @Test
     void expandsLocalRankingOnce() {
@@ -133,7 +133,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     }
 
     /**
-     * 일·주·월에 포함되는 게시물을 구분하고 월별 두 번째 페이지의 절대 순위와 전체 건수를 유지하는지 확인합니다.
+     * 일·주·월에 포함되는 게시물을 구분하고 월별 두 번째 페이지의 절대 순위와 전체 건수를 유지하는지 확인.
      */
     @Test
     void preservesNationalRankingPeriods() {
@@ -158,7 +158,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     }
 
     /**
-     * 거리 조건 없는 전국 랭킹을 지정 기간과 페이지로 조회합니다.
+     * 거리 조건 없는 전국 랭킹을 지정 기간과 페이지로 조회.
      */
     private PlaceRankingResponse findNational(PlaceRankingPeriod period, int page, int limit) {
         return placeRankingQueryService.find(
@@ -175,7 +175,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     }
 
     /**
-     * 랭킹 거리와 카테고리 필터에 사용할 공간 좌표 장소를 DB에 삽입합니다.
+     * 랭킹 거리와 카테고리 필터에 사용할 공간 좌표 장소를 DB에 삽입.
      */
     private Long insertPlace(String name, String category, double latitude, double longitude) {
         return jdbcTemplate.queryForObject("""
@@ -187,7 +187,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     }
 
     /**
-     * 좋아요 수·생성 시각·노출 상태를 지정한 게시물을 DB에 삽입합니다.
+     * 좋아요 수·생성 시각·노출 상태를 지정한 게시물을 DB에 삽입.
      */
     private Long insertImage(Long placeId, String name, long likeCount, LocalDateTime createdAt, String visibilityStatus) {
         return jdbcTemplate.queryForObject("""
@@ -207,7 +207,7 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     }
 
     /**
-     * 랭킹 조회 횟수 상한을 검증할 Hibernate 통계를 가져옵니다.
+     * 랭킹 조회 횟수 상한을 검증할 Hibernate 통계를 가져옴.
      */
     private Statistics statistics() {
         return entityManagerFactory.unwrap(SessionFactory.class).getStatistics();

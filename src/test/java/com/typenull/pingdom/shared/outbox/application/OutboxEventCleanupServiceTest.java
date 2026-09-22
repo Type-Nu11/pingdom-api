@@ -32,7 +32,7 @@ class OutboxEventCleanupServiceTest {
     private OutboxEventCleanupService cleanupService;
 
     /**
-     * 보존 7일·정리 배치 100건과 UTC 고정 시각을 사용하는 Outbox 정리 서비스를 구성한다.
+     * 보존 7일·정리 배치 100건과 UTC 고정 시각을 사용하는 Outbox 정리 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -55,7 +55,7 @@ class OutboxEventCleanupServiceTest {
     }
 
     /**
-     * 7일 이전 SUCCEEDED 이벤트를 100건 페이지로 조회하고 반환된 ID 2건만 일괄 삭제하며 삭제 수 2를 반환하는지 검증한다.
+     * 7일 이전 SUCCEEDED 이벤트를 100건 페이지로 조회하고 반환된 ID 2건만 일괄 삭제하며 삭제 수 2를 반환하는지 검증.
      */
     @Test
     void cleanupDeletesOnlyConfiguredBatch() {

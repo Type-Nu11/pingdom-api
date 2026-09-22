@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 class NotificationTypeTest {
 
     /**
-     * 신고 접수·처리, 중복 장소, 사용자 제재 알림 본문에 각 대상 식별자와 처리 결과가 정해진 문구로 삽입되는지 검증한다.
+     * 신고 접수·처리, 중복 장소, 사용자 제재 알림 본문에 각 대상 식별자와 처리 결과가 정해진 문구로 삽입되는지 검증.
      */
     @Test
     void formatsAdminNotificationBodies() {

@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 현재 사용자 자격을 확인한 뒤 관광객 결제 또는 점주 결제·정산 원장을 조회합니다.
- * 페이지 번호는 1부터 받고 범위 보정 없이 PageRequest에 전달하므로 입력 범위 검증은 API 계층이 담당합니다.
+ * 현재 사용자 자격을 확인한 뒤 관광객 결제 또는 점주 결제·정산 원장을 조회.
+ * 페이지 번호는 1부터 받고 범위 보정 없이 PageRequest에 전달하므로 입력 범위 검증은 API 계층이 담당.
  */
 @Service
 @RequiredArgsConstructor

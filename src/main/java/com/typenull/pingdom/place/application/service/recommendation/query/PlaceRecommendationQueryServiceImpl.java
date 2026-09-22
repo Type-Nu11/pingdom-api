@@ -31,7 +31,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 /**
  * 사용자 신호, 후보 원천, 정책 가중치와 운영 상태를 결합해 추천 응답과 관측 기록 요청을
- * 함께 조립하는 유스케이스입니다.
+ * 함께 조립하는 유스케이스.
  */
 @Service
 @RequiredArgsConstructor
@@ -68,7 +68,7 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
 
     /**
      * 추천 응답을 조합하고, 활성화된 feature log는 같은 쓰기 트랜잭션에 저장한 뒤 노출 기록을
-     * 커밋 후 처리하도록 요청합니다. 노출 기록 실패는 추천 응답을 실패시키지 않습니다.
+     * 커밋 후 처리하도록 요청. 노출 기록 실패 시에도 추천 응답은 유지.
      */
     @Override
     @Transactional
@@ -314,8 +314,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     /**
-     * 현재 영업 중, 영업 여부 미상, 영업 중 아님 순으로 결과를 채웁니다.
-     * 각 등급 안에서 포트폴리오와 MMR을 적용하므로 낮은 등급의 높은 점수보다 상위 영업 등급을 우선합니다.
+     * 현재 영업 중, 영업 여부 미상, 비영업 순으로 결과 구성.
+     * 각 등급 안에서 포트폴리오와 MMR을 적용하므로 낮은 등급의 높은 점수보다 상위 영업 등급을 우선.
      */
     private List<ScoredCandidate> selectOperationallyPrioritizedCandidates(
             List<ScoredCandidate> candidates,
@@ -384,8 +384,8 @@ public class PlaceRecommendationQueryServiceImpl implements PlaceRecommendationQ
     }
 
     /**
-     * GEO 후보의 반경을 최대 20km까지 배로 늘리고, 개인·추세 후보는 반경과 무관하게 유지합니다.
-     * 이미 반응한 장소를 제외한 뒤 후보가 전혀 없을 때만 전체 수집 후보 폴백을 사용합니다.
+     * GEO 후보의 반경을 최대 20km까지 배로 늘리고, 개인·추세 후보는 반경과 무관하게 유지.
+     * 이미 반응한 장소를 제외한 뒤 후보가 전혀 없을 때만 전체 수집 후보 폴백을 사용.
      */
     private CandidateSelection selectCandidates(
             List<PlaceDistance> placeDistances,

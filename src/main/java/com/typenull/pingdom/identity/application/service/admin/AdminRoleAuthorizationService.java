@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관리자 계정 상태와 ACTIVE 역할 할당을 함께 조회해 세부 권한을 판정합니다.
- * ADMIN 역할만으로는 허용하지 않으며 탈퇴·현재 정지·미할당 상태는 모두 거부합니다.
+ * 관리자 계정 상태와 ACTIVE 역할 할당을 함께 조회해 세부 권한을 판정.
+ * ADMIN 역할만으로는 접근 불가하며 탈퇴·현재 정지·미할당 상태는 모두 거부.
  */
 @Service
 @RequiredArgsConstructor
@@ -26,8 +26,8 @@ public class AdminRoleAuthorizationService {
     private final Clock clock;
 
     /**
-     * 요청자가 탈퇴·정지되지 않은 ADMIN이며 ACTIVE 역할 중 하나가 지정 권한을 허용하는지 확인합니다.
-     * 사용자·권한 누락, 계정 부재 또는 권한 부족은 모두 ADMIN_PERMISSION_REQUIRED로 거절해 보호 작업 진입을 막습니다.
+     * 요청자가 탈퇴·정지되지 않은 ADMIN이며 ACTIVE 역할 중 하나가 지정 권한을 허용하는지 확인.
+     * 사용자·권한 누락, 계정 부재 또는 권한 부족은 모두 ADMIN_PERMISSION_REQUIRED로 거절해 보호 작업 진입을 차단.
      */
     @Transactional(readOnly = true)
     public void requirePermission(Long actorUserId, AdminPermission permission) {

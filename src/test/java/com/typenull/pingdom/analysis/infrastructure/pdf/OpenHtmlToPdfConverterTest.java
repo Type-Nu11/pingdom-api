@@ -10,8 +10,8 @@ class OpenHtmlToPdfConverterTest {
     private final OpenHtmlToPdfConverter converter = new OpenHtmlToPdfConverter();
 
     /**
-     * 한글 제목 HTML을 실제 변환해 비어 있지 않은 %PDF- 바이트와 번들 NanumGothic 리소스를 확인한다.
-     * 페이지의 시각적 배치나 한글 렌더링 품질을 직접 검사하는 테스트는 아니다.
+     * 한글 제목 HTML을 실제 변환해 비어 있지 않은 %PDF- 바이트와 번들 NanumGothic 리소스를 확인.
+     * 페이지의 시각적 배치와 한글 렌더링 품질은 직접 검증 대상에서 제외.
      */
     @Test
     void convertsHtmlToPdfBytes() {

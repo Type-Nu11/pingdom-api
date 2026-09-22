@@ -23,7 +23,7 @@ class TestSourceConventionTest {
     private static final Pattern TOP_LEVEL_CLASS = Pattern.compile("(?m)^class\\s+(\\w+)");
 
     /**
-     * 테스트 Java 파일의 package 선언이 소스 디렉터리와 일치하는지 확인하고 불일치 경로를 보고한다.
+     * 테스트 Java 파일의 package 선언이 소스 디렉터리와 일치하는지 확인하고 불일치 경로를 보고.
      */
     @Test
     void testPackageDeclarationMatchesDirectory() throws IOException {
@@ -41,7 +41,7 @@ class TestSourceConventionTest {
     }
 
     /**
-     * architecture·fixture·integration 전용 패키지를 제외한 테스트에는 같은 경로의 운영 패키지 디렉터리가 존재하는지 검증한다.
+     * architecture·fixture·integration 전용 패키지를 제외한 테스트에는 같은 경로의 운영 패키지 디렉터리가 존재하는지 검증.
      */
     @Test
     void requiresMatchingProductionTestPackages() throws IOException {
@@ -63,7 +63,7 @@ class TestSourceConventionTest {
     }
 
     /**
-     * Test.java로 끝나는 파일의 최상위 package-private 클래스 이름이 파일명과 일치하는지 검증한다.
+     * Test.java로 끝나는 파일의 최상위 package-private 클래스 이름이 파일명과 일치하는지 검증.
      */
     @Test
     void testClassNameMatchesFileName() throws IOException {
@@ -85,7 +85,7 @@ class TestSourceConventionTest {
     }
 
     /**
-     * 테스트 기본 패키지 아래 모든 일반 Java 파일을 수집하고 탐색 스트림을 정리한다.
+     * 테스트 기본 패키지 아래 모든 일반 Java 파일을 수집하고 탐색 스트림을 정리.
      */
     private List<Path> testSourceFiles() throws IOException {
         try (Stream<Path> paths = Files.walk(TEST_BASE_PACKAGE_ROOT)) {
@@ -97,7 +97,7 @@ class TestSourceConventionTest {
     }
 
     /**
-     * 상대 경로의 첫 디렉터리로 운영 패키지 대응이 필요 없는 테스트 전용 영역을 구분한다.
+     * 상대 경로의 첫 디렉터리로 운영 패키지 대응이 필요 없는 테스트 전용 영역을 구분.
      */
     private boolean isTestOnlyPackage(Path relativePath) {
         return relativePath.getNameCount() > 1
@@ -105,7 +105,7 @@ class TestSourceConventionTest {
     }
 
     /**
-     * 소스 루트와 파일 디렉터리의 상대 경로로 기대 package 이름을 계산한다.
+     * 소스 루트와 파일 디렉터리의 상대 경로로 기대 package 이름을 계산.
      */
     private String packageFor(Path sourceFile, Path sourceRoot) {
         return sourceRoot.relativize(sourceFile.getParent())
@@ -114,7 +114,7 @@ class TestSourceConventionTest {
     }
 
     /**
-     * 소스의 package 선언을 읽고 선언이 없으면 빈 문자열을 반환해 일치 검사에서 누락을 드러낸다.
+     * 소스의 package 선언을 읽고 선언이 없으면 빈 문자열을 반환해 일치 검사에서 누락을 명시.
      */
     private String declaredPackage(Path sourceFile) throws IOException {
         Matcher matcher = PACKAGE_DECLARATION.matcher(Files.readString(sourceFile));

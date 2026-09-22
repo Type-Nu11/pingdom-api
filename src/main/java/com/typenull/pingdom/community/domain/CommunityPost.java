@@ -14,9 +14,9 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 커뮤니티 게시글의 제목·본문·작성자와 관리자 숨김 이력을 보관합니다.
+ * 커뮤니티 게시글의 제목·본문·작성자와 관리자 숨김 이력을 보관.
  *
- * <p>장소 연결은 {@link CommunityPostPlace}가 별도로 관리한다.</p>
+ * <p>장소 연결은 {@link CommunityPostPlace}가 별도로 관리.</p>
  */
 @Entity
 @Getter

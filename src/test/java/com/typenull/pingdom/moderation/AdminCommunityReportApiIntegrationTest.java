@@ -58,8 +58,8 @@ class AdminCommunityReportApiIntegrationTest {
     private String userBearer;
 
     /**
-     * 신고자·관리자와 글·댓글 신고를 저장하고 역할별 토큰을 준비한다.
-     * 글과 댓글 ID가 같으면 댓글을 다시 만들어 대상 ID 매핑 오류가 우연히 숨겨지지 않게 한다.
+     * 신고자·관리자와 글·댓글 신고를 저장하고 역할별 토큰을 준비.
+     * 글과 댓글 ID가 같으면 댓글을 다시 만들어 대상 ID 매핑 오류가 우연히 숨겨지지 않게 함.
      */
     @BeforeEach
     void setup() {
@@ -69,7 +69,7 @@ class AdminCommunityReportApiIntegrationTest {
         CommunityPostComment comment = commentRepository.saveAndFlush(
                 CommunityPostComment.create(post, reporter.getId(), "댓글")
         );
-        // 글과 댓글 ID가 우연히 같아 잘못된 매핑을 놓치지 않도록 구분한다.
+        // 글과 댓글 ID가 우연히 같아 잘못된 매핑을 놓치지 않도록 구분.
         if (comment.getId().equals(post.getId())) {
             commentRepository.delete(comment);
             commentRepository.flush();
@@ -88,7 +88,7 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 대기 글 신고 필터가 해당 신고만 반환하고 댓글 신고 상세는 댓글 유형과 설명을 제공하는지 검증한다.
+     * 대기 글 신고 필터가 해당 신고만 반환하고 댓글 신고 상세는 댓글 유형과 설명을 제공하는지 검증.
      */
     @Test
     void filtersAndReadsAdminReports() throws Exception {
@@ -109,8 +109,8 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 글·댓글의 네 가지 숨김 조합에서 신고 상세가 원문 postId와 대상 targetId를 구분하는지 검증한다.
-     * 영속성 컨텍스트를 비운 뒤 응답 ID로 관리자 댓글 상세에 접근해 내용과 숨김 상태를 확인한다.
+     * 글·댓글의 네 가지 숨김 조합에서 신고 상세가 원문 postId와 대상 targetId를 구분하는지 검증.
+     * 영속성 컨텍스트를 비운 뒤 응답 ID로 관리자 댓글 상세에 접근해 내용과 숨김 상태를 확인.
      */
     @ParameterizedTest
     @CsvSource({"false,false", "true,false", "false,true", "true,true"})
@@ -156,8 +156,8 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 글 신고 수락 시 신고는 ACCEPTED, 글은 숨김으로 저장되고 일반 상세·댓글 작성·좋아요·재신고는 404로 차단되는지 검증한다.
-     * 일반 카테고리 목록에서도 해당 글이 제외되는지 확인한다.
+     * 글 신고 수락 시 신고는 ACCEPTED, 글은 숨김으로 저장되고 일반 상세·댓글 작성·좋아요·재신고는 404로 차단되는지 검증.
+     * 일반 카테고리 목록에서도 해당 글이 제외되는지 확인.
      */
     @Test
     void hidesAcceptedPostReportTarget() throws Exception {
@@ -188,7 +188,7 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 댓글 신고 수락은 댓글만 숨기고 원문 글은 공개로 유지하며 일반 댓글 목록에서 숨김 댓글이 제외되는지 검증한다.
+     * 댓글 신고 수락은 댓글만 숨기고 원문 글은 공개로 유지하며 일반 댓글 목록에서 숨김 댓글이 제외되는지 검증.
      */
     @Test
     void hidesOnlyAcceptedCommentTarget() throws Exception {
@@ -208,7 +208,7 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 신고를 반려하면 대상 글을 공개로 유지하고 이후 수락 요청은 처리 완료 오류와 409로 거절하는지 검증한다.
+     * 신고를 반려하면 대상 글을 공개로 유지하고 이후 수락 요청은 처리 완료 오류와 409로 거절하는지 검증.
      */
     @Test
     void preservesDeclinedTargetAndRejectsReprocessing() throws Exception {
@@ -223,7 +223,7 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 일반 사용자의 관리자 신고 목록 접근은 403, 미인증은 401이며 없는 신고 수락은 404와 REPORT_NOT_FOUND를 반환하는지 검증한다.
+     * 일반 사용자의 관리자 신고 목록 접근은 403, 미인증은 401이며 없는 신고 수락은 404와 REPORT_NOT_FOUND를 반환하는지 검증.
      */
     @Test
     void rejectsUnauthorizedOrMissingReports() throws Exception {
@@ -235,7 +235,7 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 신고와 관리자 처리를 구분할 이메일 인증 완료 사용자를 지정 역할로 만든다.
+     * 신고와 관리자 처리를 구분할 이메일 인증 완료 사용자를 지정 역할로 생성.
      */
     private User user(String username, UserRole role) {
         return User.builder()
@@ -251,7 +251,7 @@ class AdminCommunityReportApiIntegrationTest {
     }
 
     /**
-     * 저장한 사용자의 실제 역할을 담은 JWT로 신고 관리 API 인증 헤더를 만든다.
+     * 저장한 사용자의 실제 역할을 담은 JWT로 신고 관리 API 인증 헤더를 생성.
      */
     private String bearer(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

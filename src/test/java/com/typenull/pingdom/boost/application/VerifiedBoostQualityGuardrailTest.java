@@ -21,7 +21,7 @@ class VerifiedBoostQualityGuardrailTest {
     private final VerifiedBoostQualityGuardrail guardrail = new VerifiedBoostQualityGuardrail(placeRepository);
 
     /**
-     * HEALTHY인 소유 장소가 운영 중이며 탐색에 공개되어 있으면 품질 검사가 예외 없이 통과하는지 검증한다.
+     * HEALTHY인 소유 장소가 운영 중이며 탐색에 공개되어 있으면 품질 검사가 예외 없이 통과하는지 검증.
      */
     @Test
     void acceptsHealthyVisibleOperatingPlace() {
@@ -35,7 +35,7 @@ class VerifiedBoostQualityGuardrailTest {
     }
 
     /**
-     * 운영 품질이 AT_RISK인 장소는 QUALITY_GUARDRAIL_BLOCKED로 거절되는지 검증한다.
+     * 운영 품질이 AT_RISK인 장소는 QUALITY_GUARDRAIL_BLOCKED로 거절되는지 검증.
      */
     @Test
     void unhealthyPlaceIsBlocked() {
@@ -47,7 +47,7 @@ class VerifiedBoostQualityGuardrailTest {
     }
 
     /**
-     * 지정한 운영 품질 상태를 가진 점주 1의 장소 2를 만들어 품질 조건을 분리해 검증한다.
+     * 지정한 운영 품질 상태를 가진 점주 1의 장소 2를 만들어 품질 조건을 분리해 검증.
      */
     private MerchantOwnerPlace ownerPlace(MerchantOperationalQualityStatus status) {
         return MerchantOwnerPlace.builder()

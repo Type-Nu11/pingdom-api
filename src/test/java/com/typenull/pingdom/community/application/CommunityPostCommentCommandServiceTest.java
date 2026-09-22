@@ -28,7 +28,7 @@ class CommunityPostCommentCommandServiceTest {
     );
 
     /**
-     * 조회 가능한 게시글에 댓글을 생성하면 저장소를 호출하고 저장된 댓글 ID와 게시글 ID를 응답하는지 검증한다.
+     * 조회 가능한 게시글에 댓글을 생성하면 저장소를 호출하고 저장된 댓글 ID와 게시글 ID를 응답하는지 검증.
      */
     @Test
     void savesCommentForVisiblePost() {
@@ -52,7 +52,7 @@ class CommunityPostCommentCommandServiceTest {
     }
 
     /**
-     * 게시글을 조회할 수 없으면 게시글 없음 오류를 반환하고 댓글을 저장하지 않는지 검증한다.
+     * 게시글을 조회할 수 없으면 게시글 없음 오류를 반환하고 댓글을 저장하지 않는지 검증.
      */
     @Test
     void rejectsCommentForMissingPost() {

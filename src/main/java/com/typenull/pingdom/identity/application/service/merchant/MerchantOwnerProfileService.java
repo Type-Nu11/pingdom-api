@@ -23,8 +23,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 회원의 사업자 프로필 신청·재신청·수정을 처리합니다.
- * 상호 변경은 기존 검증을 무효화하며 프로필 수정 경로에서는 진행 중인 혜택도 종료합니다.
+ * 회원의 사업자 프로필 신청·재신청·수정을 처리.
+ * 상호 변경은 기존 검증을 무효화하며 프로필 수정 경로에서는 진행 중인 혜택도 종료.
  */
 @Service
 @RequiredArgsConstructor
@@ -38,8 +38,8 @@ public class MerchantOwnerProfileService {
     private final Clock clock;
 
     /**
-     * 회원·기존 프로필을 잠가 점주 프로필을 신규 신청하거나 재신청하고 연결 장소를 포함한 응답을 반환합니다.
-     * ADMIN 신청과 재신청 불가 상태는 거절하며, 재신청으로 상호가 바뀌면 기존 검증 정보를 무효화합니다.
+     * 회원·기존 프로필을 잠가 점주 프로필을 신규 신청하거나 재신청하고 연결 장소를 포함한 응답을 반환.
+     * ADMIN 신청과 재신청 불가 상태는 거절하며, 재신청으로 상호가 바뀌면 기존 검증 정보를 무효화.
      */
     @Transactional
     public MerchantOwnerProfileResponse apply(Long userId, MerchantOwnerProfileRequest request) {
@@ -83,8 +83,8 @@ public class MerchantOwnerProfileService {
     }
 
     /**
-     * 점주 프로필을 잠가 수정 가능한 상태에서 기본 정보를 갱신하고 연결 장소를 포함한 응답을 반환합니다.
-     * 프로필 부재·수정 불가 상태는 거절하며, 상호 변경 시 검증 정보를 무효화하고 해당 점주의 혜택을 종료합니다.
+     * 점주 프로필을 잠가 수정 가능한 상태에서 기본 정보를 갱신하고 연결 장소를 포함한 응답을 반환.
+     * 프로필 부재·수정 불가 상태는 거절하며, 상호 변경 시 검증 정보를 무효화하고 해당 점주의 혜택을 종료.
      */
     @Transactional
     public MerchantOwnerProfileResponse update(Long userId, MerchantOwnerProfileRequest request) {

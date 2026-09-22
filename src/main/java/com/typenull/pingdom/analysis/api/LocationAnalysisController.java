@@ -35,8 +35,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 로그인 계정의 이메일 소유권을 확인한 뒤 보고서 생성·보관·조회 흐름을 연결합니다.
- * 생성된 PDF와 HTML이 보관된 후 PDF 응답을 반환하므로, 저장 실패도 생성 요청의 실패로 전달됩니다.
+ * 로그인 계정의 이메일 소유권을 확인한 뒤 보고서 생성·보관·조회 흐름을 연결.
+ * 생성된 PDF와 HTML이 보관된 후 PDF 응답을 반환하므로, 저장 실패도 생성 요청의 실패로 전달.
  */
 @RestController
 @RequestMapping("/analysis/reports")

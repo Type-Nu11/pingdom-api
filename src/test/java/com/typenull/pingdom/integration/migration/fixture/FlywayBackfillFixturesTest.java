@@ -9,12 +9,12 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
- * backfill 시나리오 설명의 완전성과 식별자·migration 리소스 참조를 검증한다. SQL은 실행하지 않는다.
+ * backfill 시나리오 설명의 완전성과 식별자·migration 리소스 참조를 검증. SQL 실행은 검증 범위에서 제외.
  */
 class FlywayBackfillFixturesTest {
 
     /**
-     * backfill fixture에 정상·경계·실패·재시도 유형이 빠짐없이 포함되는지 확인한다.
+     * backfill fixture에 정상·경계·실패·재시도 유형이 빠짐없이 포함되는지 확인.
      */
     @Test
     void allBackfillScenarioTypes() {
@@ -28,7 +28,7 @@ class FlywayBackfillFixturesTest {
     }
 
     /**
-     * 각 fixture의 기존 데이터·기대값·검증 설명과 실패 시나리오의 원인이 비어 있지 않은지 확인한다.
+     * 각 fixture의 기존 데이터·기대값·검증 설명과 실패 시나리오의 원인이 비어 있지 않은지 확인.
      */
     @Test
     void backfillDiagnostics() {
@@ -50,7 +50,7 @@ class FlywayBackfillFixturesTest {
     }
 
     /**
-     * fixture 이름 유일성, 숫자 migration 버전, 대상 테이블 이름의 존재를 확인한다.
+     * fixture 이름 유일성, 숫자 migration 버전, 대상 테이블 이름의 존재를 확인.
      */
     @Test
     void backfillIdentifiers() {
@@ -67,7 +67,7 @@ class FlywayBackfillFixturesTest {
     }
 
     /**
-     * fixture의 migration 버전에 대응하는 등록 SQL 리소스가 클래스패스에 있는지 확인한다.
+     * fixture의 migration 버전에 대응하는 등록 SQL 리소스가 클래스패스에 있는지 확인.
      */
     @Test
     void referencesExistingMigrationScripts() {
@@ -80,7 +80,7 @@ class FlywayBackfillFixturesTest {
     }
 
     /**
-     * 명시된 migration 파일 목록에서 버전 접두사가 맞는 첫 리소스의 존재만 확인한다. 전체 migration 디렉터리를 탐색하지 않는다.
+     * 명시된 migration 파일 목록에서 버전 접두사가 맞는 첫 리소스의 존재만 확인. 전체 migration 디렉터리 탐색은 제외.
      */
     private boolean findMigrationResource(String prefix) {
         String[] migrationNames = {

@@ -4,7 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
-/** 도메인과 무관한 요청·인증 경계·인프라 실패를 HTTP 상태와 공개 메시지에 매핑한다. */
+/** 도메인과 무관한 요청·인증 경계·인프라 실패를 HTTP 상태와 공개 메시지에 매핑. */
 @Getter
 @RequiredArgsConstructor
 public enum CommonErrorCode implements ErrorCode {

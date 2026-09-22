@@ -79,7 +79,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     private MerchantPlaceApplicationService service;
 
     /**
-     * 심사·첨부 보존 경계가 실행 날짜에 흔들리지 않도록 UTC 시계를 고정합니다.
+     * 심사·첨부 보존 경계가 실행 날짜에 흔들리지 않도록 UTC 시계를 고정.
      */
     @BeforeEach
     void setUpClock() {
@@ -88,7 +88,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 관리자 상세에서 사업자등록번호를 복호화하여 반환하고 MERCHANT_REVIEW 권한 및 민감정보 조회 감사를 요청하는지 확인합니다.
+     * 관리자 상세에서 사업자등록번호를 복호화하여 반환하고 MERCHANT_REVIEW 권한 및 민감정보 조회 감사를 요청하는지 확인.
      */
     @Test
     void auditsDecryptedAdminDetail() {
@@ -115,7 +115,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 단일 상태 조건을 넘긴 목록이 저장소의 총 41건·3페이지·다음 페이지 메타데이터를 반환하는지 확인합니다.
+     * 단일 상태 조건을 넘긴 목록이 저장소의 총 41건·3페이지·다음 페이지 메타데이터를 반환하는지 확인.
      */
     @Test
     void returnsSingleStatusPageMetadata() {
@@ -138,7 +138,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 복수 상태·유형·검색어·기간을 전달한 조회가 저장소 페이지 번호·크기·총 건수를 응답으로 유지하는지 확인합니다. 실제 SQL 필터 결과는 이 모의 테스트 범위 밖입니다.
+     * 복수 상태·유형·검색어·기간을 전달한 조회가 저장소 페이지 번호·크기·총 건수를 응답으로 유지하는지 확인. 실제 SQL 필터 결과는 이 모의 테스트 범위 밖.
      */
     @Test
     void returnsFilteredPageMetadata() {
@@ -180,7 +180,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 마지막 페이지를 넘겨 항목이 없어도 요청 페이지와 전체 건수·페이지 수를 유지하는지 확인합니다.
+     * 마지막 페이지를 넘겨 항목이 없어도 요청 페이지와 전체 건수·페이지 수를 유지하는지 확인.
      */
     @Test
     void preservesEmptyPageMetadata() {
@@ -209,7 +209,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 제출 기간 종료가 시작보다 이르면 관리자 도메인 예외로 거절하는지 확인합니다.
+     * 제출 기간 종료가 시작보다 이르면 관리자 도메인 예외로 거절하는지 확인.
      */
     @Test
     void rejectsReversedSubmittedPeriod() {
@@ -226,7 +226,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 신청에 속한 활성·미만료 첨부를 내려받을 때 바이트와 MIME을 유지하고 관리자 열람 감사를 기록하는지 확인합니다.
+     * 신청에 속한 활성·미만료 첨부를 내려받을 때 바이트와 MIME을 유지하고 관리자 열람 감사를 기록하는지 확인.
      */
     @Test
     void auditsActiveAttachmentDownload() {
@@ -262,7 +262,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 활성·미만료 첨부 목록을 반환하면서 해당 첨부의 메타데이터 조회 감사를 남기는지 확인합니다.
+     * 활성·미만료 첨부 목록을 반환하면서 해당 첨부의 메타데이터 조회 감사를 남기는지 확인.
      */
     @Test
     void auditsAttachmentMetadata() {
@@ -300,7 +300,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 필수 정보가 부족하여 제출이 실패해도 신청자 잠금 조회가 신청 잠금 조회보다 먼저 수행되는지 확인합니다.
+     * 필수 정보가 부족하여 제출이 실패해도 신청자 잠금 조회가 신청 잠금 조회보다 먼저 수행되는지 확인.
      */
     @Test
     void locksApplicantBeforeApplication() {
@@ -318,7 +318,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 심사 버전 불일치를 전용 오류로 거절하고 감사·심사 이력 저장에 접근하지 않는지 확인합니다.
+     * 심사 버전 불일치를 전용 오류로 거절하고 감사·심사 이력 저장에 접근하지 않는지 확인.
      */
     @Test
     void rejectsStaleReviewVersion() {
@@ -338,7 +338,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 동일 장소의 대기 Claim이 있으면 DUPLICATE_PLACE로 거절하며 신청 submit 전이를 호출하지 않는지 확인합니다.
+     * 동일 장소의 대기 Claim이 있으면 DUPLICATE_PLACE로 거절하며 신청 submit 전이를 호출하지 않는지 확인.
      */
     @Test
     void rejectsPendingPlaceClaim() {
@@ -371,7 +371,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 제출 당시와 현재 소유자가 다르면 승인 전이와 사업자·팀·오퍼·감사 변경 전에 거절하는지 확인합니다.
+     * 제출 당시와 현재 소유자가 다르면 승인 전이와 사업자·팀·오퍼·감사 변경 전에 거절하는지 확인.
      */
     @Test
     void rejectsChangedClaimOwner() {
@@ -401,7 +401,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 기존 장소 Claim에서 신청 완료 후 이전 소유자 오퍼를 종료하고 사용자 역할 활성화 후 접근 캐시를 비우는 호출 순서를 확인합니다.
+     * 기존 장소 Claim에서 신청 완료 후 이전 소유자 오퍼를 종료하고 사용자 역할 활성화 후 접근 캐시를 비우는 호출 순서를 확인.
      */
     @Test
     void completesBeforeClosingPreviousOffers() throws Exception {
@@ -462,7 +462,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 신규 장소 심사 승인이 장소 생성과 신청 완료를 순서대로 호출하고 신원·사업자 검증 승인을 함께 수행하는지 확인합니다.
+     * 신규 장소 심사 승인이 장소 생성과 신청 완료를 순서대로 호출하고 신원·사업자 검증 승인을 함께 수행하는지 확인.
      */
     @Test
     void completesApprovedNewPlace() throws Exception {
@@ -510,7 +510,7 @@ class MerchantPlaceApplicationAdminServiceTest {
     }
 
     /**
-     * 신청 ID를 가진 모의를 만들어 사례별 심사 상태와 민감정보를 추가할 수 있게 합니다.
+     * 신청 ID를 가진 모의를 만들어 사례별 심사 상태와 민감정보를 추가할 수 있게 함.
      */
     private PlaceRegistrationApplication application(Long id) {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);

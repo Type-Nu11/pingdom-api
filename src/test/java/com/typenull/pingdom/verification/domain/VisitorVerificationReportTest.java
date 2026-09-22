@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class VisitorVerificationReportTest {
     private final LocalDateTime now = LocalDateTime.of(2026, 7, 20, 15, 0);
 
-    /** 새 제보는 SUBMITTED 상태로 시작하며 심사자·심사 시각은 null이어야 한다. */
+    /** 새 제보는 SUBMITTED 상태로 시작하며 심사자·심사 시각은 null이어야 함. */
     @Test
     void submitWithoutReviewData() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -20,7 +20,7 @@ class VisitorVerificationReportTest {
         assertThat(report.getReviewedAt()).isNull();
     }
 
-    /** 승인하면 ACCEPTED 상태와 관리자 9, 제출 10분 뒤 심사 시각이 기록된다. */
+    /** 승인하면 ACCEPTED 상태와 관리자 9, 제출 10분 뒤 심사 시각이 기록됨. */
     @Test
     void acceptSubmittedReport() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -33,7 +33,7 @@ class VisitorVerificationReportTest {
         assertThat(report.getReviewedAt()).isEqualTo(now.plusMinutes(10));
     }
 
-    /** 거절 시 공백뿐인 심사 메모는 인자 오류로 거부한다. */
+    /** 거절 시 공백뿐인 심사 메모는 인자 오류로 거부. */
     @Test
     void requireRejectionNote() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -43,7 +43,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 이미 거절된 제보에 다시 승인 요청을 하면 상태 전이 오류로 거부한다. */
+    /** 이미 거절된 제보에 다시 승인 요청을 하면 상태 전이 오류로 거부. */
     @Test
     void rejectRepeatedReportReview() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -55,7 +55,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
-    /** 작성자 응답은 거절 사유를 제공하지만 record에 심사자 ID와 내부 reviewNote 필드는 없어야 한다. */
+    /** 작성자 응답은 거절 사유를 제공하지만 record에 심사자 ID와 내부 reviewNote 필드는 없어야 함. */
     @Test
     void exposeUserRejectionReason() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -70,7 +70,7 @@ class VisitorVerificationReportTest {
                 .doesNotContain("reviewerAdminUserId", "reviewNote");
     }
 
-    /** WAIT_TIME 제보는 전달한 35분을 보관하며 언어 값은 null을 유지한다. */
+    /** WAIT_TIME 제보는 전달한 35분을 보관하며 언어 값은 null을 유지. */
     @Test
     void retainWaitTimeValue() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -81,7 +81,7 @@ class VisitorVerificationReportTest {
         assertThat(report.getLanguageCode()).isNull();
     }
 
-    /** 대기 시간의 양쪽 경계 0분과 1,440분을 모두 허용한다. */
+    /** 대기 시간의 양쪽 경계 0분과 1,440분을 모두 허용. */
     @Test
     void acceptWaitTimeBoundaries() {
         assertThat(VisitorVerificationReport.submit(
@@ -92,7 +92,7 @@ class VisitorVerificationReportTest {
                 1440, null, null, null, now).getWaitTimeMinutes()).isEqualTo(1440);
     }
 
-    /** 대기 시간 -1분과 1,441분은 인자 오류로 거부한다. */
+    /** 대기 시간 -1분과 1,441분은 인자 오류로 거부. */
     @Test
     void rejectInvalidWaitTime() {
         assertThatThrownBy(() -> VisitorVerificationReport.submit(
@@ -103,7 +103,7 @@ class VisitorVerificationReportTest {
                 1441, null, null, null, now)).isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 언어 태그 앞뒤 공백을 제거해 en-US로 저장하는지 확인한다. */
+    /** 언어 태그 앞뒤 공백을 제거해 en-US로 저장하는지 확인. */
     @Test
     void normalizeLanguageCode() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -113,7 +113,7 @@ class VisitorVerificationReportTest {
         assertThat(report.getLanguageCode()).isEqualTo("en-US");
     }
 
-    /** 지정 언어 태그 형식에 맞지 않는 english를 거부한다. */
+    /** 지정 언어 태그 형식에 맞지 않는 english를 거부. */
     @Test
     void rejectInvalidLanguageCode() {
         assertThatThrownBy(() -> VisitorVerificationReport.submit(
@@ -121,7 +121,7 @@ class VisitorVerificationReportTest {
                 null, "english", null, null, now)).isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 혼잡도 유형에 대기 시간만 전달하면 유형에 맞지 않아 거부한다. */
+    /** 혼잡도 유형에 대기 시간만 전달하면 유형에 맞지 않아 거부. */
     @Test
     void rejectMismatchedStructuredValue() {
         assertThatThrownBy(() -> VisitorVerificationReport.submit(
@@ -130,7 +130,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 대기 시간 유형에 대기 시간과 혼잡도를 함께 제공하면 인자 오류로 거부한다. */
+    /** 대기 시간 유형에 대기 시간과 혼잡도를 함께 제공하면 인자 오류로 거부. */
     @Test
     void rejectMixedStructuredValues() {
         assertThatThrownBy(() -> VisitorVerificationReport.submit(
@@ -139,7 +139,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 구조화 값이 없는 LOCATION 유형에 쿠폰 사용 상태를 제공하면 거부한다. */
+    /** 구조화 값이 없는 LOCATION 유형에 쿠폰 사용 상태를 제공하면 거부. */
     @Test
     void rejectUnexpectedStructuredValue() {
         assertThatThrownBy(() -> VisitorVerificationReport.submit(
@@ -149,8 +149,8 @@ class VisitorVerificationReportTest {
     }
 
     /**
-     * 거절된 제보에 정정을 제출해도 원본 본문은 유지해야 한다.
-     * 새 본문은 별도 정정 객체에 SUBMITTED 상태로 보관된다.
+     * 거절된 제보에 정정을 제출해도 원본 본문은 유지해야 함.
+     * 새 본문은 별도 정정 객체에 SUBMITTED 상태로 보관됨.
      */
     @Test
     void preserveReportUntilCorrectionReview() {
@@ -168,8 +168,8 @@ class VisitorVerificationReportTest {
     }
 
     /**
-     * 정정을 승인하고 명시적으로 원본에 적용하면 정정은 ACCEPTED, 원본은 SUBMITTED가 된다.
-     * 원본 본문·대기 시간은 새 값으로 바뀌고 기존 심사자 ID는 비워야 한다.
+     * 정정을 승인하고 명시적으로 원본에 적용하면 정정은 ACCEPTED, 원본은 SUBMITTED가 됨.
+     * 원본 본문·대기 시간은 새 값으로 바뀌고 기존 심사자 ID는 비워야 함.
      */
     @Test
     void resubmitCorrectedReport() {
@@ -194,7 +194,7 @@ class VisitorVerificationReportTest {
         assertThat(report.getReviewerAdminUserId()).isNull();
     }
 
-    /** 아직 심사되지 않은 원본 제보에는 정정을 제출할 수 없다. */
+    /** 아직 심사되지 않은 원본 제보에는 정정을 제출할 수 없음. */
     @Test
     void rejectPendingReportCorrection() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -205,7 +205,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
-    /** 정정 거절에 공백 사유를 전달하면 인자 오류로 거부한다. */
+    /** 정정 거절에 공백 사유를 전달하면 인자 오류로 거부. */
     @Test
     void requireCorrectionRejectionNote() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -219,7 +219,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 이미 승인한 정정을 다시 심사하면 상태 오류로 거부한다. */
+    /** 이미 승인한 정정을 다시 심사하면 상태 오류로 거부. */
     @Test
     void rejectRepeatedCorrectionReview() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -234,7 +234,7 @@ class VisitorVerificationReportTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
-    /** 정정 심사 결과로 SUBMITTED를 전달하면 허용된 결정이 아니므로 거부한다. */
+    /** 정정 심사 결과로 SUBMITTED를 전달하면 허용된 결정이 아니므로 거부. */
     @Test
     void rejectSubmittedReviewDecision() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(

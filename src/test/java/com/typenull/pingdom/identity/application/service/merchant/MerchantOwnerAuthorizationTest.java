@@ -33,7 +33,7 @@ class MerchantOwnerAuthorizationTest {
     private MerchantVerificationRepository verificationRepository;
 
     /**
-     * JWT에는 점주 권한이 남아 있어도 현재 사용자 역할이 일반 사용자이면 활성 점주 접근을 거부하는지 검증한다.
+     * JWT에는 점주 권한이 남아 있어도 현재 사용자 역할이 일반 사용자이면 활성 점주 접근을 거부하는지 검증.
      */
     @Test
     void rejectsRevokedOwnerRole() {
@@ -52,7 +52,7 @@ class MerchantOwnerAuthorizationTest {
     }
 
     /**
-     * 현재 점주 역할과 활성 프로필, 승인된 본인·사업자 인증이 모두 있으면 활성 점주 접근을 허용하는지 검증한다.
+     * 현재 점주 역할과 활성 프로필, 승인된 본인·사업자 인증이 모두 있으면 활성 점주 접근을 허용하는지 검증.
      */
     @Test
     void authorizesVerifiedActiveOwner() {
@@ -76,7 +76,7 @@ class MerchantOwnerAuthorizationTest {
     }
 
     /**
-     * 활성 점주 프로필이 있으면 인증 완료 전에도 승인 점주 판정은 통과하되 활성 점주 판정은 실패하는지 검증한다.
+     * 활성 점주 프로필이 있으면 인증 완료 전에도 승인 점주 판정은 통과하되 활성 점주 판정은 실패하는지 검증.
      */
     @Test
     void allowsApprovedOwnerBeforeVerification() {
@@ -96,7 +96,7 @@ class MerchantOwnerAuthorizationTest {
     }
 
     /**
-     * 점주 역할과 활성 프로필만으로는 인증 승인이 필요한 활성 점주 접근을 허용하지 않는지 검증한다.
+     * 점주 역할과 활성 프로필만으로는 인증 승인이 필요한 활성 점주 접근을 허용하지 않는지 검증.
      */
     @Test
     void rejectsOwnerWithoutApprovedVerification() {
@@ -115,7 +115,7 @@ class MerchantOwnerAuthorizationTest {
     }
 
     /**
-     * 현재 DB 상태와 오래된 토큰 권한을 분리해 확인할 수 있도록 점주 권한을 가진 인증 객체를 만든다.
+     * 현재 DB 상태와 오래된 토큰 권한을 분리해 확인할 수 있도록 점주 권한을 가진 인증 객체를 생성.
      */
     private UsernamePasswordAuthenticationToken authentication(Long userId) {
         return new UsernamePasswordAuthenticationToken(

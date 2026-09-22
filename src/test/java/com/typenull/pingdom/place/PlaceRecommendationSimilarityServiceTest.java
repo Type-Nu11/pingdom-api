@@ -43,7 +43,7 @@ class PlaceRecommendationSimilarityServiceTest {
     private PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
     /**
-     * 원본 반응과 유사도 스냅샷의 기본 조회를 빈 결과로 설정하여 각 사례가 필요한 신호만 추가하게 합니다.
+     * 원본 반응과 유사도 스냅샷의 기본 조회를 빈 결과로 설정하여 각 사례가 필요한 신호만 추가하게 함.
      */
     @BeforeEach
     void setUp() {
@@ -62,7 +62,7 @@ class PlaceRecommendationSimilarityServiceTest {
     }
 
     /**
-     * 저장된 쌍 스냅샷이 있으면 실시간 계산 대신 저장 점수와 snapshotBacked 표시가 반환되는지 확인합니다.
+     * 저장된 쌍 스냅샷이 있으면 실시간 계산 대신 저장 점수와 snapshotBacked 표시가 반환되는지 확인.
      */
     @Test
     void prefersStoredSimilarity() {
@@ -97,7 +97,7 @@ class PlaceRecommendationSimilarityServiceTest {
     }
 
     /**
-     * 스냅샷이 없을 때 거리·공동 북마크·좋아요·추세가 양수 신호를 만들고 0.40/0.35/0.15/0.10 가중 합을 이루는지 확인합니다.
+     * 스냅샷이 없을 때 거리·공동 북마크·좋아요·추세가 양수 신호를 만들고 0.40/0.35/0.15/0.10 가중 합을 이루는지 확인.
      */
     @Test
     void combinesRealtimeSimilaritySignals() {
@@ -139,7 +139,7 @@ class PlaceRecommendationSimilarityServiceTest {
     }
 
     /**
-     * 거리와 콘텐츠 신호를 조절할 수 있는 장소 fixture를 생성합니다.
+     * 거리와 콘텐츠 신호를 조절할 수 있는 장소 fixture를 생성.
      */
     private MapPlace place(Long id, double latitude, double longitude, long photoCount) {
         return MapPlace.builder()
@@ -153,17 +153,17 @@ class PlaceRecommendationSimilarityServiceTest {
     }
 
     /**
-     * 북마크 사용자와 장소의 조회 projection을 구성합니다.
+     * 북마크 사용자와 장소의 조회 projection을 구성.
      */
     private MapBookmarkRepository.PlaceBookmarkUserProjection projection(Long placeId, Long userId) {
         return new MapBookmarkRepository.PlaceBookmarkUserProjection() {
-            /** 사용자 간 공동 반응을 비교할 장소 ID를 반환한다. */
+            /** 사용자 간 공동 반응을 비교할 장소 ID를 반환. */
             @Override
             public Long getPlaceId() {
                 return placeId;
             }
 
-            /** 북마크 또는 좋아요 사용자 집합에 포함할 ID를 반환한다. */
+            /** 북마크 또는 좋아요 사용자 집합에 포함할 ID를 반환. */
             @Override
             public Long getUserId() {
                 return userId;
@@ -172,17 +172,17 @@ class PlaceRecommendationSimilarityServiceTest {
     }
 
     /**
-     * 좋아요 사용자와 장소의 조회 projection을 구성합니다.
+     * 좋아요 사용자와 장소의 조회 projection을 구성.
      */
     private MapImageLikeRepository.PlaceLikeUserProjection likeProjection(Long placeId, Long userId) {
         return new MapImageLikeRepository.PlaceLikeUserProjection() {
-            /** 사용자 간 공동 반응을 비교할 장소 ID를 반환한다. */
+            /** 사용자 간 공동 반응을 비교할 장소 ID를 반환. */
             @Override
             public Long getPlaceId() {
                 return placeId;
             }
 
-            /** 북마크 또는 좋아요 사용자 집합에 포함할 ID를 반환한다. */
+            /** 북마크 또는 좋아요 사용자 집합에 포함할 ID를 반환. */
             @Override
             public Long getUserId() {
                 return userId;

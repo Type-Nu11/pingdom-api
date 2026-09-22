@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class PlaceLifecycleFixturesTest {
     /**
-     * fixture에 노출·운영 상태·장소 경로가 포함되고 오류 시나리오에 코드가 있는지 확인합니다. 실제 상태 변경 API는 호출하지 않습니다.
+     * fixture에 노출·운영 상태·장소 경로가 포함되고 오류 시나리오에 코드가 있는지 확인. 실제 상태 변경 API 호출은 검증 범위에서 제외.
      */
     @Test
     void coversLifecycleFixtureContracts() {
@@ -27,7 +27,7 @@ class PlaceLifecycleFixturesTest {
     }
 
     /**
-     * 시나리오 이름의 중복을 막아 실패한 fixture를 이름으로 식별할 수 있게 합니다.
+     * 시나리오 이름의 중복을 막아 실패한 fixture를 이름으로 식별할 수 있게 함.
      */
     @Test
     void keepsScenarioNamesUnique() {

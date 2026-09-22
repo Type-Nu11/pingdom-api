@@ -11,8 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 장소·버전별 스냅샷을 조회하고 버전별 클릭·노출 합계를 계산합니다.
- * 잠금 조회는 기존 행에 PESSIMISTIC_READ를 적용하고 집계 SUM의 빈 결과는 0으로 반환합니다.
+ * 장소·버전별 스냅샷을 조회하고 버전별 클릭·노출 합계를 계산.
+ * 잠금 조회는 기존 행에 PESSIMISTIC_READ를 적용하고 집계 SUM의 빈 결과는 0으로 반환.
  */
 public interface PlaceRecommendationVersionSnapshotRepository
         extends JpaRepository<PlaceRecommendationVersionSnapshot, Long> {

@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class LocationAnalysisContentTest {
 
     /**
-     * AI 사업성 내용이 비어 있으면 관측 유동 12,240명과 영업시간 적합도·피크 시간·평균 활동 시간을 사업성 지표로 파생하는지 검증한다.
+     * AI 사업성 내용이 비어 있으면 관측 유동 12,240명과 영업시간 적합도·피크 시간·평균 활동 시간을 사업성 지표로 파생하는지 검증.
      */
     @Test
     void derivesMissingBusinessPerformance() {
@@ -37,8 +37,8 @@ class LocationAnalysisContentTest {
     }
 
     /**
-     * 전체 유동·타깃 연령 값으로 상권 수요 지표를 보완하고 시간·요일·월 분포는 전체 관측값으로 명시하는지 검증한다.
-     * 집계만으로 세부 분포가 존재하는 것처럼 표현되는 회귀를 방지한다.
+     * 전체 유동·타깃 연령 값으로 상권 수요 지표를 보완하고 시간·요일·월 분포는 전체 관측값으로 명시하는지 검증.
+     * 집계만으로 세부 분포가 존재하는 것처럼 표현되는 회귀를 방지.
      */
     @Test
     void derivesAvailableTrafficTotals() {

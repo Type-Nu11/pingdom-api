@@ -14,8 +14,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사용자별 알림 종류와 방해금지 시간 설정을 보관합니다.
- * 기본값은 주요 알림 허용·방해금지 해제·Asia/Seoul이며 시간대 및 구간의 유효성 검사는 변경 서비스가 담당합니다.
+ * 사용자별 알림 종류와 방해금지 시간 설정을 보관.
+ * 기본값은 주요 알림 허용·방해금지 해제·Asia/Seoul이며 시간대 및 구간의 유효성 검사는 변경 서비스가 담당.
  */
 @Getter
 @Entity

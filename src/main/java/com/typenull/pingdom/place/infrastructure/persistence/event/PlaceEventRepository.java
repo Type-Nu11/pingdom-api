@@ -16,8 +16,8 @@ import org.springframework.data.repository.query.Param;
 import java.util.List;
 
 /**
- * 관리자 행사 검색과 공개 미종료·현재 진행 행사 조회를 제공합니다.
- * 기간 겹침은 시작 포함·종료 제외에 맞춰 비교하며 행사 조회 자체에 장소의 운영·탐색 상태 필터는 없습니다.
+ * 관리자 행사 검색과 공개 미종료·현재 진행 행사 조회를 제공.
+ * 기간 겹침은 시작 포함·종료 제외에 맞춰 비교하며 행사 조회 자체에 장소의 운영·탐색 상태 필터는 없음.
  */
 public interface PlaceEventRepository extends JpaRepository<PlaceEvent, Long> {
 

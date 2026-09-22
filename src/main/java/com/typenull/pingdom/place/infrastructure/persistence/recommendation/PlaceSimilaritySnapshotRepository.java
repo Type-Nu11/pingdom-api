@@ -10,8 +10,8 @@ import org.springframework.data.domain.Slice;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 선택 장소 집합 안의 쌍 또는 한 장소가 포함된 유사도 쌍을 조회합니다.
- * 기존 쌍 순회는 id가 lastSeenId보다 큰 행을 오름차순으로 읽는 커서 방식입니다.
+ * 선택 장소 집합 안의 쌍 또는 한 장소가 포함된 유사도 쌍을 조회.
+ * 기존 쌍 순회는 id가 lastSeenId보다 큰 행을 오름차순으로 읽는 커서 방식.
  */
 public interface PlaceSimilaritySnapshotRepository extends JpaRepository<PlaceSimilaritySnapshot, Long> {
 

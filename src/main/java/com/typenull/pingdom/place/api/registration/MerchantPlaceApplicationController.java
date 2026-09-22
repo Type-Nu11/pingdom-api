@@ -27,7 +27,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.constraints.Size;
 
-/** Web에서 사업자와 장소를 함께 신청하는 API입니다. */
+/** Web에서 사업자와 장소를 함께 신청하는 API. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications")

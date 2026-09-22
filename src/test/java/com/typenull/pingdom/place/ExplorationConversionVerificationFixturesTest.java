@@ -9,7 +9,7 @@ import java.util.stream.Stream;
 
 class ExplorationConversionVerificationFixturesTest {
     /**
-     * 탐색·전환·검증 fixture 세 개의 순서와 필수 메타데이터를 확인합니다. 실제 전체 API 흐름을 실행하는 검증은 아닙니다.
+     * 탐색·전환·검증 fixture 세 개의 순서와 필수 메타데이터를 확인. 실제 전체 API 흐름 실행은 검증 범위에서 제외.
      */
     @Test
     void definesExplorationLoopFixtures() {
@@ -26,7 +26,7 @@ class ExplorationConversionVerificationFixturesTest {
     }
 
     /**
-     * 각 시나리오의 HTTP 메서드·경로·성공 상태·검증 문구가 유효한 형식인지 확인합니다.
+     * 각 시나리오의 HTTP 메서드·경로·성공 상태·검증 문구가 유효한 형식인지 확인.
      */
     @ParameterizedTest(name = "{0}")
     @MethodSource("scenarios")
@@ -38,7 +38,7 @@ class ExplorationConversionVerificationFixturesTest {
     }
 
     /**
-     * 공통 시나리오 목록을 파라미터 테스트의 입력 스트림으로 제공합니다.
+     * 공통 시나리오 목록을 파라미터 테스트의 입력 스트림으로 제공.
      */
     private static Stream<ExplorationConversionVerificationScenario> scenarios() {
         return ExplorationConversionVerificationFixtures.scenarios().stream();

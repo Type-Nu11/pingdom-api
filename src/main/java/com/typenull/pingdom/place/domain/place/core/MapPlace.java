@@ -30,8 +30,8 @@ import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
 /**
- * 장소의 좌표·탐색 노출·운영 일정·관광 정보와 조회용 집계를 보관합니다.
- * 회원 등록자와 사업자 소유권은 별도 개념이며 이 엔티티의 setter 성격 메서드가 호출자 권한을 검사하지는 않습니다.
+ * 장소의 좌표·탐색 노출·운영 일정·관광 정보와 조회용 집계를 보관.
+ * 회원 등록자와 사업자 소유권은 별도 개념이며 호출자 권한은 이 엔티티의 setter 성격 메서드에서 검사 대상에서 제외.
  */
 @Entity
 @Getter
@@ -172,7 +172,7 @@ public class MapPlace {
     @Column(name = "image_url", length = 500)
     private String imageUrl;
 
-    /** Merchant 신규 장소 신청의 장소 설명입니다. Merchant profile 소개와 별도 계약을 유지합니다. */
+    /** Merchant 신규 장소 신청의 장소 설명. Merchant profile 소개와 별도 계약을 유지. */
     @Column(name = "description", length = 1000)
     private String description;
 
@@ -205,7 +205,7 @@ public class MapPlace {
     @Column(name = "photo_count", nullable = false)
     private Long photoCount = 0L;
 
-    /** 커뮤니티 게시글에서 이 장소로 이동한 사용자 수를 일 단위 중복 없이 집계합니다. */
+    /** 커뮤니티 게시글에서 이 장소로 이동한 사용자 수를 일 단위 중복 없이 집계. */
     @Builder.Default
     @ColumnDefault("0")
     @Column(name = "community_view_count", nullable = false)
@@ -254,8 +254,8 @@ public class MapPlace {
     }
 
     /**
-     * 관광 정보와 카테고리를 교체하고 하나라도 정보가 있으면 guard를 함께 유지합니다.
-     * Hibernate가 관리하는 컬렉션은 같은 인스턴스에서 바꾸며 불변 컬렉션만 가변 복사본으로 교체합니다.
+     * 관광 정보와 카테고리를 교체하고 하나라도 정보가 있으면 guard를 함께 유지.
+     * Hibernate가 관리하는 컬렉션은 같은 인스턴스에서 바꾸며 불변 컬렉션만 가변 복사본으로 교체.
      */
     public void updateTouristInformation(
             String englishName,
@@ -404,8 +404,8 @@ public class MapPlace {
     }
 
     /**
-     * 정규 영업시간·예외 일정만 전달하는 호환 경로입니다.
-     * 휴게시간은 빈 집합으로 넘기므로 이전 휴게시간도 제거됩니다.
+     * 정규 영업시간·예외 일정만 전달하는 호환 경로.
+     * 휴게시간은 빈 집합으로 넘기므로 이전 휴게시간도 제거됨.
      */
     public void replaceOperatingSchedule(
             Set<PlaceRegularOperatingHour> regularOperatingHours,

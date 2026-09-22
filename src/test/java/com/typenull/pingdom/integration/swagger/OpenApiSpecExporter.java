@@ -15,7 +15,7 @@ import org.springframework.boot.builder.SpringApplicationBuilder;
 import org.springframework.context.ConfigurableApplicationContext;
 
 /**
- * export 전용 프로필의 로컬 서버에서 생성 문서를 가져와 파일로 저장하는 실행 진입점이다.
+ * export 전용 프로필의 로컬 서버에서 생성 문서를 가져와 파일로 저장하는 실행 진입점.
  */
 public class OpenApiSpecExporter {
 
@@ -27,7 +27,7 @@ public class OpenApiSpecExporter {
             .build();
 
     /**
-     * 임의 포트로 export 프로필 서버를 시작해 여섯 문서를 UTF-8 파일로 저장한다. 포트 문자열을 고정 URL로 치환하며 중간 실패 시 이미 쓴 파일은 남을 수 있다.
+     * 임의 포트로 export 프로필 서버를 시작해 여섯 문서를 UTF-8 파일로 저장. 포트 문자열을 고정 URL로 치환하며 중간 실패 시 이미 쓴 파일은 남을 수 있음.
      */
     public static void main(String[] args) throws Exception {
         ExportOptions options = ExportOptions.from(args);
@@ -68,7 +68,7 @@ public class OpenApiSpecExporter {
     }
 
     /**
-     * 로컬 서버에서 최대 10초 요청 제한으로 문서를 읽고 200이 아니면 경로·상태를 담은 예외로 실패한다. 자동 재시도는 없다.
+     * 로컬 서버에서 최대 10초 요청 제한으로 문서를 읽고 200이 아니면 경로·상태를 담은 예외로 실패. 자동 재시도는 없음.
      */
     private static String fetchSpec(int port, String path) throws IOException, InterruptedException {
         HttpRequest request = HttpRequest.newBuilder()
@@ -88,7 +88,7 @@ public class OpenApiSpecExporter {
     private record ExportOptions(Path outputDirectory) {
 
         /**
-         * 출력 경로 기본값은 build/openapi이며 같은 옵션이 여러 번 있으면 마지막 값을 사용한다.
+         * 출력 경로 기본값은 build/openapi이며 같은 옵션이 여러 번 있으면 마지막 값을 사용.
          */
         private static ExportOptions from(String[] args) {
             String outputDirectoryValue = DEFAULT_OUTPUT_DIR;

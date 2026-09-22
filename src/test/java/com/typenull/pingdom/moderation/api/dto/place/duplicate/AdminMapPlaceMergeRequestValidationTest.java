@@ -14,7 +14,7 @@ class AdminMapPlaceMergeRequestValidationTest {
     private static Validator validator;
 
     /**
-     * HTTP 계층 없이 병합 요청의 Bean Validation 제약을 직접 검사할 validator를 초기화한다.
+     * HTTP 계층 없이 병합 요청의 Bean Validation 제약을 직접 검사할 validator를 초기화.
      */
     @BeforeAll
     static void setUpValidator() {
@@ -22,7 +22,7 @@ class AdminMapPlaceMergeRequestValidationTest {
     }
 
     /**
-     * 원본 장소 ID가 0이면 위반 필드가 sourcePlaceId뿐인지 검증한다.
+     * 원본 장소 ID가 0이면 위반 필드가 sourcePlaceId뿐인지 검증.
      */
     @Test
     @DisplayName("원본 장소 ID는 양수여야 한다")
@@ -33,7 +33,7 @@ class AdminMapPlaceMergeRequestValidationTest {
     }
 
     /**
-     * 대상 장소 ID가 0이면 위반 필드가 targetPlaceId뿐인지 검증한다.
+     * 대상 장소 ID가 0이면 위반 필드가 targetPlaceId뿐인지 검증.
      */
     @Test
     @DisplayName("대상 장소 ID는 양수여야 한다")
@@ -44,7 +44,7 @@ class AdminMapPlaceMergeRequestValidationTest {
     }
 
     /**
-     * 후보 ID는 null일 때 허용하고 음수로 지정하면 candidateId 필드 위반을 반환하는지 검증한다.
+     * 후보 ID는 null일 때 허용하고 음수로 지정하면 candidateId 필드 위반을 반환하는지 검증.
      */
     @Test
     @DisplayName("중복 장소 후보 ID는 선택값이지만 입력하면 양수여야 한다")
@@ -55,7 +55,7 @@ class AdminMapPlaceMergeRequestValidationTest {
     }
 
     /**
-     * 검증 위반의 필드 경로만 집합으로 추출해 오류 메시지나 반환 순서와 무관하게 제약 대상을 비교한다.
+     * 검증 위반의 필드 경로만 집합으로 추출해 오류 메시지나 반환 순서와 무관하게 제약 대상을 비교.
      */
     private Set<String> violatingProperties(AdminMapPlaceMergeRequest request) {
         return validator.validate(request).stream()

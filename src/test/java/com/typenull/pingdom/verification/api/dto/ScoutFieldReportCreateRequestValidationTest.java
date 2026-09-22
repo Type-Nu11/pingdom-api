@@ -11,7 +11,7 @@ class ScoutFieldReportCreateRequestValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-    /** 필수 제보 정보와 HTTPS 증빙 URL을 주면 Bean Validation 위반이 없어야 한다. */
+    /** 필수 제보 정보와 HTTPS 증빙 URL을 주면 Bean Validation 위반이 없어야 함. */
     @Test
     void acceptHttpsEvidence() {
         ScoutFieldReportCreateRequest request = new ScoutFieldReportCreateRequest(
@@ -24,7 +24,7 @@ class ScoutFieldReportCreateRequestValidationTest {
         assertThat(validator.validate(request)).isEmpty();
     }
 
-    /** HTTP 증빙 URL을 주면 evidenceUrl 필드에 검증 위반이 발생해야 한다. */
+    /** HTTP 증빙 URL을 주면 evidenceUrl 필드에 검증 위반이 발생해야 함. */
     @Test
     void rejectHttpEvidence() {
         ScoutFieldReportCreateRequest request = new ScoutFieldReportCreateRequest(

@@ -14,7 +14,7 @@ class PlaceAdministrativeRegionResolverConfigurationTest {
     private final ApplicationContextRunner contextRunner = new ApplicationContextRunner()
             .withUserConfiguration(TestConfiguration.class);
 
-    /** 네이버 조회 활성 시 지역 resolver 빈이 하나이며 네이버 구현체인지 확인한다. */
+    /** 네이버 조회 활성 시 지역 resolver 빈이 하나이며 네이버 구현체인지 확인. */
     @Test
     void selectsEnabledNaverResolver() {
         contextRunner.withPropertyValues(
@@ -30,7 +30,7 @@ class PlaceAdministrativeRegionResolverConfigurationTest {
         });
     }
 
-    /** 네이버 조회 비활성 시 지역 resolver를 하나만 등록하고 기존 Kakao 구현체를 선택하는지 확인한다. */
+    /** 네이버 조회 비활성 시 지역 resolver를 하나만 등록하고 기존 Kakao 구현체를 선택하는지 확인. */
     @Test
     void fallsBackToKakaoResolver() {
         contextRunner.withPropertyValues("place.local-hot.naver.enabled=false")

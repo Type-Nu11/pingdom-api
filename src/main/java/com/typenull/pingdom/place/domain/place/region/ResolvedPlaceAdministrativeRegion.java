@@ -3,8 +3,8 @@ package com.typenull.pingdom.place.domain.place.region;
 import org.springframework.util.StringUtils;
 
 /**
- * 좌표 해석 결과의 5자리 지역 코드와 지역명입니다.
- * 코드 형식은 trim 이전에 검사하므로 공백이 포함된 코드를 유효한 코드로 보정하지 않습니다.
+ * 좌표 해석 결과의 5자리 지역 코드와 지역명.
+ * 코드 형식은 trim 이전에 검사하므로 공백이 포함된 코드는 유효한 코드로 보정 불가.
  */
 public record ResolvedPlaceAdministrativeRegion(
         String code,

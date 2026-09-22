@@ -17,7 +17,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/** 알림 도메인 이벤트를 FCM 메시지로 변환하고 전송 결과를 기록합니다. */
+/** 알림 도메인 이벤트를 FCM 메시지로 변환하고 전송 결과를 기록. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -37,8 +37,8 @@ public class FcmService {
     }
 
     /**
-     * 자기 좋아요이거나 발신자·수신자가 없거나 탈퇴했으면 발송을 생략한다.
-     * 그 외에는 좋아요 알림의 설정·토큰 확인 및 전송을 수행하고 앱 알림 ID와 재시도할 토큰 실패 여부를 반환한다.
+     * 자기 좋아요이거나 발신자·수신자가 없거나 탈퇴했으면 발송을 생략.
+     * 그 외에는 좋아요 알림의 설정·토큰 확인 및 전송을 수행하고 앱 알림 ID와 재시도할 토큰 실패 여부를 반환.
      */
     @Transactional
     public FcmDispatchResult sendLikeNotification(Long ownerId, Long likerId, String outboxEventId) {
@@ -62,8 +62,8 @@ public class FcmService {
     }
 
     /**
-     * 수신자가 없거나 탈퇴했으면 생략하고, 장소 정보 재확인 요청·리마인더 이외의 유형은 거부한다.
-     * 유효한 요청은 공통 발송 흐름으로 전달해 알림 ID와 재시도 필요 여부를 반환한다.
+     * 수신자가 없거나 탈퇴했으면 생략하고, 장소 정보 재확인 요청·리마인더 이외의 유형은 거부.
+     * 유효한 요청은 공통 발송 흐름으로 전달해 알림 ID와 재시도 필요 여부를 반환.
      */
     @Transactional
     public FcmDispatchResult sendPlaceInformationReverificationNotification(
@@ -82,8 +82,8 @@ public class FcmService {
     }
 
     /**
-     * 설정·방해금지·등록 토큰을 확인한 뒤 앱 알림을 만들고 토큰별로 전송합니다.
-     * Outbox 이벤트의 성공 기록이 있는 토큰은 건너뛰지만, 외부 전송과 DB 기록은 원자적이지 않아 중복 전송 가능성이 남습니다.
+     * 설정·방해금지·등록 토큰을 확인한 뒤 앱 알림을 만들고 토큰별로 전송.
+     * Outbox 이벤트의 성공 기록이 있는 토큰은 건너뛰지만, 외부 전송과 DB 기록은 원자적이지 않아 중복 전송 가능성이 남음.
      */
     private FcmDispatchResult sendNotification(Long userId, NotificationType type, String outboxEventId, String... args) {
         if (!notificationDeliveryPolicy.canReceive(userId, type)) {
@@ -137,8 +137,8 @@ public class FcmService {
     }
 
     /**
-     * 무효 토큰은 실패를 기록하고 삭제하여 재시도 대상에서 제외합니다.
-     * 그 외 실패는 다른 토큰 처리를 계속하면서 재시도 필요를 반환하며, 결과 기록 실패는 Recorder가 별도로 흡수합니다.
+     * 무효 토큰은 실패를 기록하고 삭제하여 재시도 대상에서 제외.
+     * 그 외 실패는 다른 토큰 처리를 계속하면서 재시도 필요를 반환하며, 결과 기록 실패는 Recorder가 별도로 흡수.
      */
     private boolean sendToToken(
             Long userId,

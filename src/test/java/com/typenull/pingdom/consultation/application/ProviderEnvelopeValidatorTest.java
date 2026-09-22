@@ -12,7 +12,7 @@ class ProviderEnvelopeValidatorTest {
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 버전 1·일치하는 요청 ID·텍스트를 가진 assistant_message를 예외 없이 허용하는지 검증한다.
+     * 버전 1·일치하는 요청 ID·텍스트를 가진 assistant_message를 예외 없이 허용하는지 검증.
      */
     @Test
     void acceptsAssistantMessageEnvelope() throws Exception {
@@ -24,7 +24,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 필수 placeId가 없는 getPlaceDetails 명령은 VoiceAiException으로 거절되는지 검증한다.
+     * 필수 placeId가 없는 getPlaceDetails 명령은 VoiceAiException으로 거절되는지 검증.
      */
     @Test
     void rejectsCommandWithoutRequiredArgs() throws Exception {
@@ -37,7 +37,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 날짜·시간·수량·현재 위치 사용을 갖춘 주변 예약 검색은 선택 category 없이도 허용되는지 검증한다.
+     * 날짜·시간·수량·현재 위치 사용을 갖춘 주변 예약 검색은 선택 category 없이도 허용되는지 검증.
      */
     @Test
     void acceptsSearchWithoutOptionalCategory() throws Exception {
@@ -49,7 +49,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * clarification_request·protocol_error·세션 취소 명령의 공급 JSON이 요청 ID 계약을 만족하면 통과하는지 검증한다.
+     * clarification_request·protocol_error·세션 취소 명령의 공급 JSON이 요청 ID 계약을 만족하면 통과하는지 검증.
      */
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {
@@ -62,7 +62,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 소수·문자열·boolean·정수 범위를 넘는 schemaVersion을 거절해 숫자 변환으로 버전 1이 오인되는 것을 방지한다.
+     * 소수·문자열·boolean·정수 범위를 넘는 schemaVersion을 거절해 숫자 변환으로 버전 1이 오인되는 것을 방지.
      */
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"1.5", "\"1\"", "true", "4294967297"})
@@ -72,7 +72,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 소수·0·JavaScript 안전 정수 범위 초과·문자열 placeId가 모두 거절되는지 검증한다.
+     * 소수·0·JavaScript 안전 정수 범위 초과·문자열 placeId가 모두 거절되는지 검증.
      */
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"1.5", "0", "9007199254740992", "\"1\""})
@@ -82,7 +82,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 표현이 1.0이어도 수학적으로 정수인 schemaVersion과 placeId는 허용해 클라이언트 숫자 직렬화 차이를 수용하는지 검증한다.
+     * 표현이 1.0이어도 수학적으로 정수인 schemaVersion과 placeId는 허용해 클라이언트 숫자 직렬화 차이를 수용하는지 검증.
      */
     @Test
     void acceptsIntegralJsonNumbers() throws Exception {
@@ -91,7 +91,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 유효한 슬롯 조회·예약 준비 인자를 가진 명령에 공통 envelope 필드를 더하면 검증을 통과하는지 확인한다.
+     * 유효한 슬롯 조회·예약 준비 인자를 가진 명령에 공통 envelope 필드를 더하면 검증을 통과하는지 확인.
      */
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {
@@ -105,7 +105,7 @@ class ProviderEnvelopeValidatorTest {
     }
 
     /**
-     * 0년·존재하지 않는 윤일·다섯 자리 연도의 예약 조회 날짜를 거절해 앱 날짜 계약을 유지하는지 검증한다.
+     * 0년·존재하지 않는 윤일·다섯 자리 연도의 예약 조회 날짜를 거절해 앱 날짜 계약을 유지하는지 검증.
      */
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(strings = {"0000-01-01", "2026-02-29", "+10000-01-01"})

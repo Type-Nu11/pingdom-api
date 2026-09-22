@@ -8,7 +8,7 @@ import org.junit.jupiter.api.Test;
 class ReporterModerationPolicyTest {
 
     /**
-     * 승인 25회에도 신뢰도는 100을 넘지 않고 거절 6회에는 허위 신고 6회·신뢰도 0이 되는지 검증한다.
+     * 승인 25회에도 신뢰도는 100을 넘지 않고 거절 6회에는 허위 신고 6회·신뢰도 0이 되는지 검증.
      */
     @Test
     void boundsRecalculatedTrustScore() {
@@ -31,7 +31,7 @@ class ReporterModerationPolicyTest {
     }
 
     /**
-     * 제한이 만료되면 만료 시각·사유를 제거하고 허위 신고 수를 0·신뢰도를 100으로 복원하는지 검증한다.
+     * 제한이 만료되면 만료 시각·사유를 제거하고 허위 신고 수를 0·신뢰도를 100으로 복원하는지 검증.
      */
     @Test
     void clearsExpiredReporterRestriction() {
@@ -55,7 +55,7 @@ class ReporterModerationPolicyTest {
     }
 
     /**
-     * 제한이 아직 유효하면 제한 여부·허위 신고 수 3·신뢰도 40을 유지하는지 검증한다.
+     * 제한이 아직 유효하면 제한 여부·허위 신고 수 3·신뢰도 40을 유지하는지 검증.
      */
     @Test
     void preservesActiveReporterRestriction() {

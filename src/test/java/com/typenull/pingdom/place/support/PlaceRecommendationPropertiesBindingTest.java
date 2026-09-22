@@ -45,7 +45,7 @@ class PlaceRecommendationPropertiesBindingTest {
                     "place.recommendation.versions[0].anonymous-weights.trust-weight=0.00"
             );
 
-    /** 추천 버전 전체 설정을 바인딩해 컨텍스트 생성, 기본 버전·버전 수·혜택 및 예약 가중치를 확인한다. */
+    /** 추천 버전 전체 설정을 바인딩해 컨텍스트 생성, 기본 버전·버전 수·혜택 및 예약 가중치를 확인. */
     @Test
     void bindsRecommendationVersionProperties() {
         contextRunner.run(context -> {

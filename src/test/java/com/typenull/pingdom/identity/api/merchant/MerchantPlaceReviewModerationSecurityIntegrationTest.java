@@ -20,7 +20,7 @@ class MerchantPlaceReviewModerationSecurityIntegrationTest {
     private MockMvc mockMvc;
 
     /**
-     * 인증 없이 점주 리뷰 목록에 접근하면 보안 필터가 401과 INVALID_TOKEN을 반환하는지 검증한다.
+     * 인증 없이 점주 리뷰 목록에 접근하면 보안 필터가 401과 INVALID_TOKEN을 반환하는지 검증.
      */
     @Test
     void listRejectsUnauthenticatedRequests() throws Exception {

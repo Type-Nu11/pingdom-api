@@ -28,14 +28,14 @@ class KakaoPlaceAdministrativeRegionResolverTest {
     private RestClient.Builder builder;
     private MockRestServiceServer server;
 
-    /** 실제 네트워크 없이 Kakao 요청 URL·헤더·응답을 제어하는 RestClient 대역을 만든다. */
+    /** 실제 네트워크 없이 Kakao 요청 URL·헤더·응답을 제어하는 RestClient 대역을 생성. */
     @BeforeEach
     void setUp() {
         builder = RestClient.builder().baseUrl("https://kakao.test");
         server = MockRestServiceServer.bindTo(builder).build();
     }
 
-    /** 비활성 또는 빈 API key 조합에서는 configured=false와 사용 불가·503을 반환하고 HTTP 요청이 없는지 확인한다. */
+    /** 비활성 또는 빈 API key 조합에서는 configured=false와 사용 불가·503을 반환하고 HTTP 요청이 없는지 확인. */
     @ParameterizedTest
     @CsvSource({"false,test-key", "true,''", "true,'   '"})
     void skipsUnavailableKakaoRequests(boolean enabled, String apiKey) {
@@ -46,7 +46,7 @@ class KakaoPlaceAdministrativeRegionResolverTest {
         server.verify();
     }
 
-    /** 경도를 x·위도를 y로 보내고 Kakao 인증 헤더를 적용하며 행정동 대신 법정동 코드 앞 5자리와 지역명을 반환하는지 확인한다. */
+    /** 경도를 x·위도를 y로 보내고 Kakao 인증 헤더를 적용하며 행정동 대신 법정동 코드 앞 5자리와 지역명을 반환하는지 확인. */
     @Test
     void resolvesKakaoLegalRegion() {
         server.expect(requestTo(REQUEST_URL))
@@ -66,7 +66,7 @@ class KakaoPlaceAdministrativeRegionResolverTest {
         server.verify();
     }
 
-    /** Kakao의 인증 실패·제한 초과·서버 오류 응답을 동일한 외부 조회 실패·502 계약으로 변환하는지 확인한다. */
+    /** Kakao의 인증 실패·제한 초과·서버 오류 응답을 동일한 외부 조회 실패·502 계약으로 변환하는지 확인. */
     @ParameterizedTest
     @EnumSource(value = HttpStatus.class, names = {
             "UNAUTHORIZED", "FORBIDDEN", "TOO_MANY_REQUESTS", "INTERNAL_SERVER_ERROR"
@@ -79,7 +79,7 @@ class KakaoPlaceAdministrativeRegionResolverTest {
         server.verify();
     }
 
-    /** HTTP 대역에서 발생한 SocketTimeoutException을 외부 조회 실패·502로 변환하는지 확인한다. */
+    /** HTTP 대역에서 발생한 SocketTimeoutException을 외부 조회 실패·502로 변환하는지 확인. */
     @Test
     void timeoutRemainsBadGateway() {
         server.expect(requestTo(REQUEST_URL)).andRespond(withException(new SocketTimeoutException("timeout")));
@@ -89,7 +89,7 @@ class KakaoPlaceAdministrativeRegionResolverTest {
         server.verify();
     }
 
-    /** 빈 Kakao documents 응답을 지역 없음·404로 변환하는지 확인한다. */
+    /** 빈 Kakao documents 응답을 지역 없음·404로 변환하는지 확인. */
     @Test
     void missingLegalRegionReturnsNotFound() {
         server.expect(requestTo(REQUEST_URL))
@@ -99,13 +99,13 @@ class KakaoPlaceAdministrativeRegionResolverTest {
         server.verify();
     }
 
-    /** 활성 여부와 API key를 바꿀 수 있는 Kakao resolver를 HTTP 대역에 연결한다. */
+    /** 활성 여부와 API key를 바꿀 수 있는 Kakao resolver를 HTTP 대역에 연결. */
     private KakaoPlaceAdministrativeRegionResolver resolver(boolean enabled, String apiKey) {
         return new KakaoPlaceAdministrativeRegionResolver(builder.build(),
                 new KakaoLocalRegionProperties(enabled, apiKey, "https://kakao.test", null, null, null, null));
     }
 
-    /** 고정 좌표 조회의 도메인 코드와 HTTP 상태를 함께 비교한다. */
+    /** 고정 좌표 조회의 도메인 코드와 HTTP 상태를 함께 비교. */
     private void assertFailure(KakaoPlaceAdministrativeRegionResolver resolver, MapErrorCode code, HttpStatus status) {
         assertThatThrownBy(() -> resolver.resolve(37.5172, 127.0473))
                 .isInstanceOfSatisfying(MapException.class, exception -> {

@@ -10,7 +10,7 @@ import java.util.Map;
 import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
-/** 추천 장소 주변의 실제 map_place 경쟁업체를 보고서 데이터에 보강한다. */
+/** 추천 장소 주변의 실제 map_place 경쟁업체를 보고서 데이터에 보강. */
 @Service
 public class LocationAnalysisCompetitionService {
 
@@ -26,9 +26,9 @@ public class LocationAnalysisCompetitionService {
     }
 
     /**
-     * 상위 다섯 추천 중 좌표가 있는 첫 장소를 기준으로 반경 1,500m의 최대 30개 장소를 조회합니다.
-     * 동일 업종의 100m 이내 장소를 경쟁업체로 분류하고, 교통시설은 이름에 포함된 단어로 추정합니다.
-     * 좌표가 없으면 원래 응답을 유지하며 모든 추천 장소 각각의 주변을 검색하는 것은 아닙니다.
+     * 상위 다섯 추천 중 좌표가 있는 첫 장소를 기준으로 반경 1,500m의 최대 30개 장소를 조회.
+     * 동일 업종의 100m 이내 장소를 경쟁업체로 분류하고, 교통시설은 이름에 포함된 단어로 추정.
+     * 기준 좌표 누락 시 원래 응답 유지. 주변 검색 범위는 기준 장소 한 곳으로 제한.
      */
     public LocationAnalysisContent enrich(LocationAnalysisContent content, String category) {
         if (content == null || content.recommendedPlaces().isEmpty()) {

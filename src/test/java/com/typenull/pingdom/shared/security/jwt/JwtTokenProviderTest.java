@@ -10,7 +10,7 @@ class JwtTokenProviderTest {
     private JwtTokenProvider jwtTokenProvider;
 
     /**
-     * 테스트 전용 서명 키와 액세스/리프레시 유효기간으로 JWT 공급자를 구성한다.
+     * 테스트 전용 서명 키와 액세스/리프레시 유효기간으로 JWT 공급자를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -23,7 +23,7 @@ class JwtTokenProviderTest {
     }
 
     /**
-     * 정상 발급 액세스 JWT라도 리프레시 파서에서 INVALID로 판정해 토큰 용도 혼용을 방지하는지 검증한다.
+     * 정상 발급 액세스 JWT라도 리프레시 파서에서 INVALID로 판정해 토큰 용도 혼용을 방지하는지 검증.
      */
     @Test
     void rejectsAccessTokenAsRefresh() {
@@ -34,7 +34,7 @@ class JwtTokenProviderTest {
     }
 
     /**
-     * 정상 발급 리프레시 JWT라도 액세스 파서에서 INVALID로 판정해 API 인증에 재사용하지 못하는지 검증한다.
+     * 정상 발급 리프레시 JWT라도 액세스 파서에서 INVALID로 판정해 API 인증에 재사용하지 못하는지 검증.
      */
     @Test
     void rejectsRefreshTokenAsAccess() {

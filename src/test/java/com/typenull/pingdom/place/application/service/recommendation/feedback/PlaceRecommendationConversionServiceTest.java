@@ -52,7 +52,7 @@ class PlaceRecommendationConversionServiceTest {
     private PlaceRecommendationConversionService placeRecommendationConversionService;
 
     /**
-     * 최근 클릭의 7일 귀속 구간을 확인할 UTC 현재 시각을 고정합니다.
+     * 최근 클릭의 7일 귀속 구간을 확인할 UTC 현재 시각을 고정.
      */
     @BeforeEach
     void setUpClock() {
@@ -61,7 +61,7 @@ class PlaceRecommendationConversionServiceTest {
     }
 
     /**
-     * 7일 전을 포함한 최신 클릭 조회의 ID·버전·특성 로그를 전환에 연결하고 전체·버전별 집계를 증가하는지 확인합니다.
+     * 7일 전을 포함한 최신 클릭 조회의 ID·버전·특성 로그를 전환에 연결하고 전체·버전별 집계를 증가하는지 확인.
      */
     @Test
     void linksAttributedConversionFeature() {
@@ -120,7 +120,7 @@ class PlaceRecommendationConversionServiceTest {
     }
 
     /**
-     * 특성 기록이 없는 클릭도 전환을 저장하며 featureLogId를 null로 두고 전체 집계를 갱신하는지 확인합니다.
+     * 특성 기록이 없는 클릭도 전환을 저장하며 featureLogId를 null로 두고 전체 집계를 갱신하는지 확인.
      */
     @Test
     void recordsConversionWithoutFeatureLog() {

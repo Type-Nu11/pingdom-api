@@ -7,7 +7,7 @@ import java.lang.annotation.Target;
 import java.lang.reflect.Method;
 import java.util.Locale;
 
-/** 문서 소속만 지정하며 요청 라우팅이나 인증·인가에는 관여하지 않는다. */
+/** 문서 소속만 지정하며 요청 라우팅과 인증·인가는 적용 범위 외. */
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 public @interface ApiAudience {
@@ -20,7 +20,7 @@ public @interface ApiAudience {
             return name().toLowerCase(Locale.ROOT);
         }
 
-        /** 메서드 선언을 먼저 확인하고 없으면 선언 클래스의 소속을 사용한다. 둘 다 없으면 문서 그룹 미지정인 null을 반환한다. */
+        /** 메서드 선언을 먼저 확인하고 없으면 선언 클래스의 소속을 사용. 둘 다 없으면 문서 그룹 미지정인 null을 반환. */
         public static Group resolve(Method method) {
             ApiAudience audience = method.getAnnotation(ApiAudience.class);
             if (audience == null) {

@@ -15,8 +15,8 @@ import org.springframework.data.redis.core.script.DefaultRedisScript;
 import org.springframework.stereotype.Component;
 
 /**
- * Redis Lua 스크립트 한 번으로 모든 규칙을 검사한 뒤 허용된 요청의 카운터와 대기 키를 갱신한다.
- * 한 규칙이라도 초과하면 다른 규칙을 소비하지 않으며, 첫 요청의 TTL을 후속 요청으로 연장하지 않는다.
+ * Redis Lua 스크립트 한 번으로 모든 규칙을 검사한 뒤 허용된 요청의 카운터와 대기 키를 갱신.
+ * 한 규칙이라도 초과하면 다른 규칙을 소비하지 않으며, 후속 요청에서도 첫 요청의 TTL 유지.
  */
 @Slf4j
 @Component
@@ -68,7 +68,7 @@ public class RedisRateLimitStore implements RateLimitStore {
         this.acquireScript = new DefaultRedisScript<>(ACQUIRE_SCRIPT, Long.class);
     }
 
-    /** 스크립트의 0은 제한 초과, 1은 허용으로 해석한다. 실행 장애·예상 밖 반환값은 failOpen 정책을 따른다. */
+    /** 스크립트의 0은 제한 초과, 1은 허용으로 해석. 실행 장애·예상 밖 반환값은 failOpen 정책을 따름. */
     @Override
     public void acquire(
             String message,
@@ -114,7 +114,7 @@ public class RedisRateLimitStore implements RateLimitStore {
         return keys;
     }
 
-    /** KEYS와 같은 순서로 규칙 수, 허용 횟수, 밀리초 TTL을 배치해 Lua 인덱스 계약을 유지한다. */
+    /** KEYS와 같은 순서로 규칙 수, 허용 횟수, 밀리초 TTL을 배치해 Lua 인덱스 계약을 유지. */
     private String[] args(
             Collection<RateLimitWindowRule> windowRules,
             Collection<RateLimitCooldownRule> cooldownRules
@@ -132,7 +132,7 @@ public class RedisRateLimitStore implements RateLimitStore {
         return args.toArray(String[]::new);
     }
 
-    /** 행위 접두사를 Redis hash tag로 사용해 같은 행위의 복수 키가 같은 Cluster 슬롯에 배치되게 한다. */
+    /** 행위 접두사를 Redis hash tag로 사용해 같은 행위의 복수 키를 같은 Cluster 슬롯에 배치. */
     private String redisKey(String key) {
         return properties.redisKeyPrefix() + "{" + rateLimitGroup(key) + "}:" + key;
     }

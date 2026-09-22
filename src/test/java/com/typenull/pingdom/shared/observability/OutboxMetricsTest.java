@@ -23,7 +23,7 @@ class OutboxMetricsTest {
     private OutboxEventRepository outboxEventRepository;
 
     /**
-     * Outbox 메트릭 생성 자체는 상태별 건수를 조회하지 않아 애플리케이션 초기화 시 DB 접근을 유발하지 않는지 검증한다.
+     * Outbox 메트릭 생성 자체는 상태별 건수를 조회하지 않아 애플리케이션 초기화 시 DB 접근을 유발하지 않는지 검증.
      */
     @Test
     void constructorDoesNotQueryStatusCounts() {
@@ -33,7 +33,7 @@ class OutboxMetricsTest {
     }
 
     /**
-     * 명시적 갱신에서 상태 수만큼 저장소를 조회하고 모든 상태 gauge에 반환 건수 3을 반영하는지 검증한다.
+     * 명시적 갱신에서 상태 수만큼 저장소를 조회하고 모든 상태 gauge에 반환 건수 3을 반영하는지 검증.
      */
     @Test
     void refreshStatusCountsUpdatesGauges() {
@@ -54,7 +54,7 @@ class OutboxMetricsTest {
     }
 
     /**
-     * 수동 재시도 카운터가 이벤트 타입과 success 태그로 1 증가하는지 검증한다.
+     * 수동 재시도 카운터가 이벤트 타입과 success 태그로 1 증가하는지 검증.
      */
     @Test
     void tagsManualOutboxRetryMetric() {

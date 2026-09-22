@@ -54,7 +54,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     private MerchantPlaceApplicationAttachmentService service;
 
     /**
-     * 본인 소유의 Claim 초안과 고정 보존 기준 시각을 준비합니다.
+     * 본인 소유의 Claim 초안과 고정 보존 기준 시각을 준비.
      */
     @BeforeEach
     void setUp() {
@@ -73,7 +73,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * 서버가 받은 객체 키와 계산한 해시·크기, 경로를 제거한 파일명·30일 기한을 저장하고 응답에서 private 키를 감추는지 확인합니다.
+     * 서버가 받은 객체 키와 계산한 해시·크기, 경로를 제거한 파일명·30일 기한을 저장하고 응답에서 private 키를 감추는지 확인.
      */
     @Test
     void storesValidatedPrivateAttachment() {
@@ -101,7 +101,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * NEW_PLACE 초안도 악성 파일 검사와 private 업로드를 통과할 수 있는지 확인합니다.
+     * NEW_PLACE 초안도 악성 파일 검사와 private 업로드를 통과할 수 있는지 확인.
      */
     @Test
     void allowsNewPlaceAttachment() {
@@ -122,7 +122,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * JPEG로 신고한 PDF 시그니처를 메타데이터 오류로 거절하고 스캔·저장 전에 중단하는지 확인합니다.
+     * JPEG로 신고한 PDF 시그니처를 메타데이터 오류로 거절하고 스캔·저장 전에 중단하는지 확인.
      */
     @Test
     void rejectsMimeSignatureMismatch() {
@@ -139,7 +139,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * 악성 파일 검사 예외를 전파하면서 객체 저장을 실행하지 않는지 확인합니다.
+     * 악성 파일 검사 예외를 전파하면서 객체 저장을 실행하지 않는지 확인.
      */
     @Test
     void stopsAfterMalwareFailure() {
@@ -155,7 +155,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * 첨부 DB 저장 실패 시 원래 무결성 예외를 유지하면서 새 S3 객체 보상 삭제를 호출하는지 확인합니다.
+     * 첨부 DB 저장 실패 시 원래 무결성 예외를 유지하면서 새 S3 객체 보상 삭제를 호출하는지 확인.
      */
     @Test
     void cleansUploadAfterPersistenceFailure() {
@@ -175,7 +175,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * 다른 신청자의 첨부 업로드를 접근 거절로 처리하고 스캔·저장을 수행하지 않는지 확인합니다.
+     * 다른 신청자의 첨부 업로드를 접근 거절로 처리하고 스캔·저장을 수행하지 않는지 확인.
      */
     @Test
     void rejectsOtherApplicantUpload() {
@@ -192,7 +192,7 @@ class MerchantPlaceApplicationAttachmentServiceTest {
     }
 
     /**
-     * 시그니처 검사에 필요한 최소 JPEG 바이트와 지정 파일명을 가진 입력을 만듭니다.
+     * 시그니처 검사에 필요한 최소 JPEG 바이트와 지정 파일명을 가진 입력을 생성.
      */
     private MockMultipartFile jpeg(String filename) {
         return new MockMultipartFile("file", filename, "image/jpeg", new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff});

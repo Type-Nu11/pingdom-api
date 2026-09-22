@@ -9,8 +9,8 @@ import java.util.stream.Collectors;
 import org.springframework.util.StringUtils;
 
 /**
- * 한글·영문 별칭과 과거 분류를 현재 장소 카테고리로 정규화합니다.
- * 알 수 없는 값은 normalize에서는 OTHER, canonicalOrNull에서는 null로 구분해 반환합니다.
+ * 한글·영문 별칭과 과거 분류를 현재 장소 카테고리로 정규화.
+ * 알 수 없는 값은 normalize에서는 OTHER, canonicalOrNull에서는 null로 구분해 반환.
  */
 public final class PlaceCategoryPolicy {
 

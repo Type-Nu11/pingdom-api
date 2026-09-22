@@ -10,8 +10,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * handler 처리와 분리된 트랜잭션에서 이벤트 상태를 조회·변경하고 수동 재시도 결과를 제공한다.
- * 상태 조건과 낙관적 잠금은 있으나 worker별 lease 소유 토큰을 검사하는 구조는 아니다.
+ * handler 처리와 분리된 트랜잭션에서 이벤트 상태를 조회·변경하고 수동 재시도 결과를 제공.
+ * 상태 조건과 낙관적 잠금은 있으나 worker별 lease 소유 토큰은 검사 대상에서 제외.
  */
 @Service
 @RequiredArgsConstructor
@@ -22,7 +22,7 @@ public class OutboxEventStateService {
     private final OutboxBackoffPolicy backoffPolicy;
     private final Clock outboxClock;
 
-    /** PROCESSING 상태만 읽기 스냅샷으로 반환하며 없거나 다른 상태이면 null이다. */
+    /** PROCESSING 상태만 읽기 스냅샷으로 반환하며 없거나 다른 상태이면 null. */
     @Transactional(readOnly = true)
     public OutboxEventSnapshot findProcessingEvent(String eventId) {
         return outboxEventRepository.findById(eventId)
@@ -31,7 +31,7 @@ public class OutboxEventStateService {
                 .orElse(null);
     }
 
-    /** 현재 행이 있으면 성공 전이를 요청한다. 도메인은 PROCESSING 외 상태의 호출을 무시한다. */
+    /** 현재 행이 있으면 성공 전이를 요청. 도메인은 PROCESSING 외 상태의 호출을 무시. */
     @Transactional
     public void markSucceeded(String eventId) {
         outboxEventRepository.findById(eventId)
@@ -39,8 +39,8 @@ public class OutboxEventStateService {
     }
 
     /**
-     * 현재 PROCESSING인 이벤트만 실패 횟수와 다음 시각을 갱신한다.
-     * 행이 없거나 다른 상태이면 null을 반환하고 실패 내용을 덮어쓰지 않는다.
+     * 현재 PROCESSING인 이벤트만 실패 횟수와 다음 시각을 갱신.
+     * 행이 없거나 다른 상태이면 null을 반환하고 기존 실패 내용 유지.
      */
     @Transactional
     public OutboxEventStatus markFailed(String eventId, Throwable failure) {
@@ -60,8 +60,8 @@ public class OutboxEventStateService {
     }
 
     /**
-     * 이벤트를 쓰기 잠금으로 읽고 FAILED인 경우에만 횟수를 초기화해 RETRY로 되돌린다.
-     * 즉시 handler를 실행하지 않으며 다음 worker 선점 대상으로 만든다.
+     * 이벤트를 쓰기 잠금으로 읽고 FAILED인 경우에만 횟수를 초기화해 RETRY로 되돌림.
+     * 즉시 handler를 실행하지 않으며 다음 worker 선점 대상으로 전환.
      */
     @Transactional
     public ManualRetryResult retryFailedEvent(String eventId) {
@@ -79,7 +79,7 @@ public class OutboxEventStateService {
         return ManualRetryResult.retried(before, OutboxEventOperationSnapshot.from(event));
     }
 
-    /** 예외 타입과 메시지를 저장용 오류 설명으로 합친다. 길이 제한은 도메인이 적용하며 값 마스킹은 하지 않는다. */
+    /** 예외 타입과 메시지를 저장용 오류 설명으로 통합. 길이 제한은 도메인이 적용하며 값 마스킹은 미수행. */
     private String failureMessage(Throwable failure) {
         String message = failure.getMessage();
         return failure.getClass().getSimpleName() + (message == null ? "" : ": " + message);

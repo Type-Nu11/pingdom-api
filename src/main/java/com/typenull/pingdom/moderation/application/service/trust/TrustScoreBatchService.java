@@ -18,8 +18,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 전체 신고자 정책을 한 트랜잭션으로 읽어 100 + 승인수×5 - 허위신고수×20을 0~100으로 보정합니다.
- * 점수가 바뀐 정책에만 변경 이력을 남기며, 만료 제한 해제·이상 징후 탐지·개입 규칙 평가는 포함하지 않습니다.
+ * 전체 신고자 정책을 한 트랜잭션으로 읽어 100 + 승인수×5 - 허위신고수×20을 0~100으로 보정.
+ * 점수가 바뀐 정책에만 변경 이력을 저장하며 만료 제한 해제·이상 징후 탐지·개입 규칙 평가는 처리 범위에서 제외.
  */
 @Service
 @RequiredArgsConstructor
@@ -30,8 +30,8 @@ public class TrustScoreBatchService {
     private final Clock clock;
 
     /**
-     * 전체 신고자 정책의 승인·허위 신고 누적 수로 점수를 다시 계산하고 0~100 범위로 보정합니다.
-     * 점수가 달라진 정책만 변경 이력을 남기며 전체 재계산은 하나의 트랜잭션입니다. 응답은 별도 전체 건수 조회와 실제 변경 수입니다.
+     * 전체 신고자 정책의 승인·허위 신고 누적 수로 점수를 다시 계산하고 0~100 범위로 보정.
+     * 점수가 달라진 정책만 변경 이력을 남기며 전체 재계산은 하나의 트랜잭션. 응답은 별도 전체 건수 조회와 실제 변경 수.
      */
     @Transactional
     public AdminTrustScoreBatchResponse recalculate() {
@@ -54,7 +54,7 @@ public class TrustScoreBatchService {
     }
 
     /**
-     * 해당 신고자의 점수 변경 이력을 변경 시각·ID 내림차순으로 조회합니다. page는 1 이상·limit는 1~100으로 보정합니다.
+     * 해당 신고자의 점수 변경 이력을 변경 시각·ID 내림차순으로 조회. page는 1 이상·limit는 1~100으로 보정.
      */
     @Transactional(readOnly = true)
     public AdminTrustScoreChangeHistoryResponse listHistory(Long reporterUserId, int page, int limit) {

@@ -59,7 +59,7 @@ import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * PostGIS에서 쿠폰·예약의 동시 처리, 권한 거절과 실패 후 재요청 시 수량 일관성을 검증한다.
+ * PostGIS에서 쿠폰·예약의 동시 처리, 권한 거절과 실패 후 재요청 시 수량 일관성을 검증.
  */
 @Tag("postgres-integration")
 @Testcontainers
@@ -87,7 +87,7 @@ class CouponBookingConcurrencyIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS 컨테이너 접속 정보를 등록해 실제 DB 잠금·제약 조건으로 동시성을 검증한다.
+     * PostGIS 컨테이너 접속 정보를 등록해 실제 DB 잠금·제약 조건으로 동시성을 검증.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -112,7 +112,7 @@ class CouponBookingConcurrencyIntegrationTest {
     @Autowired private ReservationRepository reservationRepository;
 
     /**
-     * 예약·가용량·쿠폰·혜택과 상점 및 사용자 fixture를 외래 키 의존 순서대로 제거한다.
+     * 예약·가용량·쿠폰·혜택과 상점 및 사용자 fixture를 외래 키 의존 순서대로 제거.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -129,7 +129,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 잔여 수량 1인 혜택에 두 관광객이 동시에 발급을 요청하면 한 건만 성공하고 발급 수량도 1인지 확인한다.
+     * 잔여 수량 1인 혜택에 두 관광객이 동시에 발급을 요청하면 한 건만 성공하고 발급 수량도 1인지 확인.
      */
     @Test
     void couponQuantityRace() throws Exception {
@@ -151,7 +151,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 같은 관광객의 동시 발급은 한 건만 성공하고 중복 오류가 발급 수량을 더 소비하지 않는지 확인한다.
+     * 같은 관광객의 동시 발급은 한 건만 성공하고 중복 오류가 발급 수량을 더 소비하지 않는지 확인.
      */
     @Test
     void duplicateCouponRace() throws Exception {
@@ -172,7 +172,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 동일 쿠폰의 동시 사용 처리 중 한 건만 성공하며 사용 주체와 시각이 저장되는지 확인한다.
+     * 동일 쿠폰의 동시 사용 처리 중 한 건만 성공하며 사용 주체와 시각이 저장되는지 확인.
      */
     @Test
     void couponRedeemRace() throws Exception {
@@ -195,7 +195,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 다른 상점의 사용 요청은 쿠폰을 찾지 못한 것으로 처리하고 미사용 상태를 보존해 실제 소유자가 사용하도록 하는지 확인한다.
+     * 다른 상점의 사용 요청은 쿠폰을 찾지 못한 것으로 처리하고 미사용 상태를 보존해 실제 소유자가 사용하도록 하는지 확인.
      */
     @Test
     void otherMerchantRedeem() {
@@ -219,7 +219,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 중복 발급 실패 뒤 다른 관광객이 남은 수량을 발급받아 총 수량 2가 유지되는지 확인한다.
+     * 중복 발급 실패 뒤 다른 관광객이 남은 수량을 발급받아 총 수량 2가 유지되는지 확인.
      */
     @Test
     void duplicateIssueThenRetry() {
@@ -239,7 +239,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 가용량 1에 대한 서로 다른 관광객의 동시 예약 중 한 건만 생성하고 잔여량이 0인지 확인한다.
+     * 가용량 1에 대한 서로 다른 관광객의 동시 예약 중 한 건만 생성하고 잔여량이 0인지 확인.
      */
     @Test
     void reservationCapacityRace() throws Exception {
@@ -263,7 +263,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 동일 사용자·키·본문의 동시 요청 두 건은 모두 같은 예약을 반환하고 가용량을 한 번만 소비하는지 확인한다.
+     * 동일 사용자·키·본문의 동시 요청 두 건은 모두 같은 예약을 반환하고 가용량을 한 번만 소비하는지 확인.
      */
     @Test
     void sameKeyReservationRace() throws Exception {
@@ -285,7 +285,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 같은 키로 수량이 다른 동시 요청은 하나만 성공하고 승자 수량만 가용량에서 차감되는지 확인한다.
+     * 같은 키로 수량이 다른 동시 요청은 하나만 성공하고 승자 수량만 가용량에서 차감되는지 확인.
      */
     @Test
     void reusedKeyReservationRace() throws Exception {
@@ -311,7 +311,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 동시 취소 중 한 건만 성공해 취소 상태와 가용량 1을 남기고 패자는 상태 오류를 받는지 확인한다.
+     * 동시 취소 중 한 건만 성공해 취소 상태와 가용량 1을 남기고 패자는 상태 오류를 받는지 확인.
      */
     @Test
     void reservationCancelRace() throws Exception {
@@ -335,7 +335,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 다른 상점의 확정·취소 및 다른 관광객의 취소를 거절한 뒤 실제 소유 상점이 예약을 확정할 수 있는지 확인한다.
+     * 다른 상점의 확정·취소 및 다른 관광객의 취소를 거절한 뒤 실제 소유 상점이 예약을 확정할 수 있는지 확인.
      */
     @Test
     void nonOwnerReservationChanges() {
@@ -365,7 +365,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 가용량 부족 실패 후 기존 예약을 취소하면 실패했던 키로 재요청이 성공하고 취소 이력을 포함한 두 행이 남는지 확인한다.
+     * 가용량 부족 실패 후 기존 예약을 취소하면 실패했던 키로 재요청이 성공하고 취소 이력을 포함한 두 행이 남는지 확인.
      */
     @Test
     void capacityFailureThenRetry() {
@@ -391,7 +391,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 활성 프로필·신원 및 사업 승인·장소 소유권을 갖춘 상점 사용자를 저장해 업무 자격 조건을 충족한다.
+     * 활성 프로필·신원 및 사업 승인·장소 소유권을 갖춘 상점 사용자를 저장해 업무 자격 조건을 충족.
      */
     private MerchantContext merchant(String suffix) {
         LocalDateTime now = now();
@@ -433,7 +433,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 오늘을 포함하는 UTC 여행 일정을 추가해 쿠폰 발급 대상 관광객을 만든다.
+     * 오늘을 포함하는 UTC 여행 일정을 추가해 쿠폰 발급 대상 관광객을 생성.
      */
     private User eligibleTourist(String suffix) {
         User tourist = tourist(suffix);
@@ -443,14 +443,14 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 상점 fixture와 이름이 겹치지 않도록 접미사를 붙여 일반 사용자를 저장한다.
+     * 상점 fixture와 이름이 겹치지 않도록 접미사를 붙여 일반 사용자를 저장.
      */
     private User tourist(String suffix) {
         return userRepository.saveAndFlush(user(suffix + "-tourist", UserRole.USER));
     }
 
     /**
-     * 이메일 인증과 활성 상태를 갖춘 지정 역할 사용자를 구성한다. 영속화는 호출자가 수행한다.
+     * 이메일 인증과 활성 상태를 갖춘 지정 역할 사용자를 구성. 영속화는 호출자가 수행.
      */
     private User user(String suffix, UserRole role) {
         return User.builder()
@@ -468,7 +468,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 현재 유효 기간 안에 있고 1인 한도 1인 혜택을 게시 상태로 저장한다.
+     * 현재 유효 기간 안에 있고 1인 한도 1인 혜택을 게시 상태로 저장.
      */
     private TouristOffer publishedOffer(MerchantContext merchant, String suffix, int quantity) {
         LocalDateTime now = now();
@@ -480,7 +480,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * UTC 현재 시각의 1~2시간 뒤에 사용할 수 있는 일반 상품 가용량을 저장한다.
+     * UTC 현재 시각의 1~2시간 뒤에 사용할 수 있는 일반 상품 가용량을 저장.
      */
     private PlaceAvailability availability(MerchantContext merchant, int capacity) {
         LocalDateTime now = now();
@@ -490,7 +490,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 실패한 작업들의 예외 유형과 혜택 오류 코드를 확인한다. 실패 건수는 호출한 테스트가 별도로 검증한다.
+     * 실패한 작업들의 예외 유형과 혜택 오류 코드를 확인. 실패 건수는 호출한 테스트가 별도로 검증.
      */
     private <T> void assertOfferFailures(
             List<ConcurrentScenario.Result<T>> results,
@@ -505,7 +505,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 실패 결과에 가용량 예외와 지정 오류 코드가 있는지 확인한다. 성공·실패 건수는 별도 assertion의 책임이다.
+     * 실패 결과에 가용량 예외와 지정 오류 코드가 있는지 확인. 성공·실패 건수는 별도 assertion의 책임.
      */
     private <T> void assertAvailabilityFailures(
             List<ConcurrentScenario.Result<T>> results,
@@ -520,7 +520,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 실패한 결과가 지정 예약 오류를 담는지 확인한다. 빈 실패 목록 여부는 이 메서드가 판단하지 않는다.
+     * 실패한 결과가 지정 예약 오류를 담는지 확인. 실패 목록의 공백 여부는 별도 검증 대상.
      */
     private <T> void assertReservationFailures(
             List<ConcurrentScenario.Result<T>> results,
@@ -535,7 +535,7 @@ class CouponBookingConcurrencyIntegrationTest {
     }
 
     /**
-     * 예약·혜택 fixture의 시각을 UTC 기준 LocalDateTime으로 맞춘다.
+     * 예약·혜택 fixture의 시각을 UTC 기준 LocalDateTime으로 맞춤.
      */
     private LocalDateTime now() {
         return LocalDateTime.now(ZoneOffset.UTC);

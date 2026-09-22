@@ -13,8 +13,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Component;
 
 /**
- * 시작 시 행정구역 코드가 없는 장소를 ID 순으로 한 배치만 보강합니다.
- * 각 장소는 서비스의 별도 호출 트랜잭션으로 처리하고 MapException은 개별 실패로 남겨 다음 장소를 계속 처리합니다.
+ * 시작 시 행정구역 코드가 없는 장소를 ID 순으로 한 배치만 보강.
+ * 각 장소는 서비스의 별도 호출 트랜잭션으로 처리하고 MapException은 개별 실패로 남겨 다음 장소를 계속 처리.
  */
 @Component
 @Slf4j

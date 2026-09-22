@@ -18,7 +18,7 @@ class MenuPriceConversionServiceTest {
     private final MenuPriceConversionService service = new MenuPriceConversionService(exchangeRateClient);
 
     /**
-     * 9,000 KRW에 환율 0.000714를 적용해 USD 6.43으로 반올림하고 환율 기준일을 응답에 포함하는지 검증한다.
+     * 9,000 KRW에 환율 0.000714를 적용해 USD 6.43으로 반올림하고 환율 기준일을 응답에 포함하는지 검증.
      */
     @Test
     void convertsUsingRateAndScale() {
@@ -36,7 +36,7 @@ class MenuPriceConversionServiceTest {
     }
 
     /**
-     * 원통화와 표시 통화가 같으면 환산 결과를 생략하고 외부 환율 조회를 호출하지 않는지 검증한다.
+     * 원통화와 표시 통화가 같으면 환산 결과를 생략하고 외부 환율 조회를 호출하지 않는지 검증.
      */
     @Test
     void skipsSameCurrencyConversion() {
@@ -45,7 +45,7 @@ class MenuPriceConversionServiceTest {
     }
 
     /**
-     * 환율 조회 결과가 없으면 null을 반환해 환산 가격만 생략하는지 검증한다.
+     * 환율 조회 결과가 없으면 null을 반환해 환산 가격만 생략하는지 검증.
      */
     @Test
     void omitsUnavailableRateConversion() {
@@ -55,7 +55,7 @@ class MenuPriceConversionServiceTest {
     }
 
     /**
-     * 주어진 원통화·가격으로 고정 시각의 메뉴를 만들어 환율 계산의 입력을 제공한다.
+     * 주어진 원통화·가격으로 고정 시각의 메뉴를 만들어 환율 계산의 입력을 제공.
      */
     private PlaceMenu menu(MenuCurrency currency, long amount) {
         return PlaceMenu.create(10L, 7L, "짜장면", null, amount, currency, null, 0,

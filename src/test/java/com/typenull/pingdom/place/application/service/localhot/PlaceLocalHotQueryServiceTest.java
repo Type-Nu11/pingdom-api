@@ -26,7 +26,7 @@ import org.springframework.data.domain.Pageable;
 class PlaceLocalHotQueryServiceTest {
 
     /**
-     * 지역 장소가 없으면 지역 정보와 빈 목록·총 0건·총 1페이지·다음 없음으로 응답하는지 확인합니다.
+     * 지역 장소가 없으면 지역 정보와 빈 목록·총 0건·총 1페이지·다음 없음으로 응답하는지 확인.
      */
     @Test
     void returnsEmptyRegionalList() {
@@ -52,7 +52,7 @@ class PlaceLocalHotQueryServiceTest {
     }
 
     /**
-     * 좌표 해석 결과를 조회에 사용하고 두 번째 페이지 첫 항목을 21위로 매핑하며 북마크 정보와 페이지 메타데이터를 유지하는지 확인합니다.
+     * 좌표 해석 결과를 조회에 사용하고 두 번째 페이지 첫 항목을 21위로 매핑하며 북마크 정보와 페이지 메타데이터를 유지하는지 확인.
      */
     @Test
     void preservesRegionalPageRanks() {
@@ -91,7 +91,7 @@ class PlaceLocalHotQueryServiceTest {
     }
 
     /**
-     * 지역 코드를 직접 전달하면 저장 지역을 사용하고 외부 resolver를 호출하지 않는지 확인합니다.
+     * 지역 코드를 직접 전달하면 저장 지역을 사용하고 외부 resolver를 호출하지 않는지 확인.
      */
     @Test
     void bypassesResolverForRegionCode() {
@@ -117,7 +117,7 @@ class PlaceLocalHotQueryServiceTest {
     }
 
     /**
-     * 좌표 해석 실패를 그대로 전파하고 지역·핫플 조회를 진행하지 않는지 확인합니다.
+     * 좌표 해석 실패를 그대로 전파하고 지역·핫플 조회를 진행하지 않는지 확인.
      */
     @Test
     void propagatesRegionResolutionFailure() {
@@ -136,7 +136,7 @@ class PlaceLocalHotQueryServiceTest {
     }
 
     /**
-     * 페이지 순위와 북마크 응답을 확인할 핫플 조회 행을 만듭니다.
+     * 페이지 순위와 북마크 응답을 확인할 핫플 조회 행을 생성.
      */
     private PlaceLocalHotQueryRepository.PlaceLocalHotProjection projection(
             Long placeId,
@@ -144,23 +144,23 @@ class PlaceLocalHotQueryServiceTest {
             boolean bookmarked
     ) {
         return new PlaceLocalHotQueryRepository.PlaceLocalHotProjection() {
-            /** 지역 핫플 응답의 장소 ID를 제공한다. */
+            /** 지역 핫플 응답의 장소 ID를 제공. */
             @Override public Long getPlaceId() { return placeId; }
-            /** 핫플 응답에 표시할 고정 장소명을 제공한다. */
+            /** 핫플 응답에 표시할 고정 장소명을 제공. */
             @Override public String getPlaceName() { return "강남 핫플"; }
-            /** 응답 매핑에 사용할 카페 카테고리를 제공한다. */
+            /** 응답 매핑에 사용할 카페 카테고리를 제공. */
             @Override public String getCategory() { return "카페"; }
-            /** 강남 지역 후보의 표시 주소를 제공한다. */
+            /** 강남 지역 후보의 표시 주소를 제공. */
             @Override public String getAddress() { return "서울특별시 강남구"; }
-            /** 강남 지역 후보의 위도를 제공한다. */
+            /** 강남 지역 후보의 위도를 제공. */
             @Override public Double getLatitude() { return 37.5172d; }
-            /** 강남 지역 후보의 경도를 제공한다. */
+            /** 강남 지역 후보의 경도를 제공. */
             @Override public Double getLongitude() { return 127.0473d; }
-            /** 응답 매핑에 사용할 핫플 대표 이미지 URL을 제공한다. */
+            /** 응답 매핑에 사용할 핫플 대표 이미지 URL을 제공. */
             @Override public String getImageUrl() { return "https://example.com/local-hot.jpg"; }
-            /** 순위 응답에 포함할 현재 북마크 수를 제공한다. */
+            /** 순위 응답에 포함할 현재 북마크 수를 제공. */
             @Override public long getBookmarkCount() { return bookmarkCount; }
-            /** 조회 사용자 본인의 북마크 상태를 제공한다. */
+            /** 조회 사용자 본인의 북마크 상태를 제공. */
             @Override public boolean getBookmarked() { return bookmarked; }
         };
     }

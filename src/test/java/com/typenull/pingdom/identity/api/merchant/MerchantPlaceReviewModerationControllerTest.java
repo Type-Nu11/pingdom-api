@@ -40,7 +40,7 @@ class MerchantPlaceReviewModerationControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 리뷰 목록의 페이지 응답을 검증하도록 컨트롤러와 검증기·예외 처리기·고정 점주 인증 인자를 연결한다.
+     * 리뷰 목록의 페이지 응답을 검증하도록 컨트롤러와 검증기·예외 처리기·고정 점주 인증 인자를 연결.
      */
     @BeforeEach
     void setUp() {
@@ -51,7 +51,7 @@ class MerchantPlaceReviewModerationControllerTest {
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     /**
-                     * CurrentUser 어노테이션이 있는 메서드 인자에 테스트용 인증 해석기를 적용한다.
+                     * CurrentUser 어노테이션이 있는 메서드 인자에 테스트용 인증 해석기를 적용.
                      */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
@@ -59,7 +59,7 @@ class MerchantPlaceReviewModerationControllerTest {
                     }
 
                     /**
-                     * 리뷰 목록 서비스 호출의 사용자 ID를 검증할 수 있도록 점주 20을 반환한다.
+                     * 리뷰 목록 서비스 호출의 사용자 ID를 검증할 수 있도록 점주 20을 반환.
                      */
                     @Override
                     public Object resolveArgument(
@@ -75,8 +75,8 @@ class MerchantPlaceReviewModerationControllerTest {
     }
 
     /**
-     * 점주 리뷰 목록 요청의 사용자·장소·페이지·크기를 서비스에 전달하는지 검증한다.
-     * 페이지 메타데이터, 숨김 상태와 삭제 요청 null 값이 JSON 응답에 유지되는지도 확인한다.
+     * 점주 리뷰 목록 요청의 사용자·장소·페이지·크기를 서비스에 전달하는지 검증.
+     * 페이지 메타데이터, 숨김 상태와 삭제 요청 null 값이 JSON 응답에 유지되는지도 확인.
      */
     @Test
     void returnsReviewPageWithNullableRequest() throws Exception {

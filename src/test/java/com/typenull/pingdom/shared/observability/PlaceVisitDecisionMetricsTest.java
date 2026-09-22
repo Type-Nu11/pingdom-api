@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class PlaceVisitDecisionMetricsTest {
 
     /**
-     * 임시 휴업 방문 판단 조회를 운영 상태 태그로 1건 기록하고 place_id 태그는 없어 고카디널리티 지표가 생기지 않는지 검증한다.
+     * 임시 휴업 방문 판단 조회를 운영 상태 태그로 1건 기록하고 place_id 태그는 없어 고카디널리티 지표가 생기지 않는지 검증.
      */
     @Test
     void recordsBoundedVisitDecisionTags() {

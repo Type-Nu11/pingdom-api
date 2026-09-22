@@ -19,8 +19,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * 승인된 신규 장소 신청의 공개 대표 이미지만 exploration media로 승격합니다.
- * 사업자등록증과 신분증은 이 서비스의 대상이 아니므로 private prefix 밖으로 복사되지 않습니다.
+ * 승인된 신규 장소 신청의 공개 대표 이미지만 exploration media로 승격.
+ * 사업자등록증과 신분증은 이 서비스의 복사 대상에서 제외하여 private prefix 내부에 유지.
  */
 @Service
 @RequiredArgsConstructor
@@ -32,12 +32,12 @@ public class PlaceRegistrationMediaPromotionService {
     private final Clock clock;
 
     /**
-     * 활성 대표 이미지만 표시 순서대로 공개 영역에 복사하고 원본 첨부 ID로 중복 승격을 건너뜁니다.
-     * 호출자의 트랜잭션 동기화가 활성화된 경우에만 롤백 시 복사 객체 삭제를 예약합니다.
-     * 삭제 보상 실패는 로그로 남기므로 DB 롤백과 S3 정리가 항상 함께 성공하는 것은 아닙니다.
+     * 활성 대표 이미지만 표시 순서대로 공개 영역에 복사하고 원본 첨부 ID로 중복 승격을 건너뜀.
+     * 호출자의 트랜잭션 동기화가 활성화된 경우에만 롤백 시 복사 객체 삭제를 예약.
+     * 삭제 보상 실패는 로그로 남기므로 DB 롤백과 S3 정리의 성공 여부는 별개.
      */
     public PromotionResult promote(MapPlace place, PlaceRegistrationApplication application) {
-        // 기존 COMPLETED 데이터도 같은 경로로 복구하므로 이미 운영 중인 설명은 덮어쓰지 않습니다.
+        // 기존 COMPLETED 데이터도 같은 경로로 복구하므로 이미 운영 중인 설명은 유지.
         if (place.getDescription() == null) {
             place.updateDescription(application.getDescription());
         }
@@ -83,7 +83,7 @@ public class PlaceRegistrationMediaPromotionService {
         return new PromotionResult(promotedCount, alreadyPromotedCount);
     }
 
-    /** 백필 runner가 신규 승격과 기존 승격 건을 운영 로그에서 구분할 수 있게 합니다. */
+    /** 백필 runner가 신규 승격과 기존 승격 건을 운영 로그에서 구분할 수 있게 함. */
     public record PromotionResult(int promotedCount, int alreadyPromotedCount) {
 
         public boolean hasPromotedMedia() {
@@ -97,8 +97,8 @@ public class PlaceRegistrationMediaPromotionService {
         }
         TransactionSynchronizationManager.registerSynchronization(new TransactionSynchronization() {
             /**
-             * DB 트랜잭션이 롤백된 경우에만 이미 복사한 공개 S3 객체의 삭제를 시도합니다.
-             * 삭제 실패는 로그로 남겨 원래 트랜잭션 실패를 가리지 않으며 커밋되었거나 다른 완료 상태이면 객체를 유지합니다.
+             * DB 트랜잭션이 롤백된 경우에만 이미 복사한 공개 S3 객체의 삭제를 시도.
+             * 삭제 실패는 로그로 남겨 원래 트랜잭션 실패를 가리지 않으며 커밋되었거나 다른 완료 상태이면 객체를 유지.
              */
             @Override
             public void afterCompletion(int status) {
@@ -106,7 +106,7 @@ public class PlaceRegistrationMediaPromotionService {
                     try {
                         storage.delete(key);
                     } catch (RuntimeException exception) {
-                        // 재시도 가능한 orphan만 남기고 승인 transaction의 원래 실패 원인을 보존합니다.
+                        // 재시도 가능한 orphan만 남기고 승인 transaction의 원래 실패 원인을 보존.
                         log.warn("Approved place media rollback cleanup failed. key={}", key, exception);
                     }
                 }

@@ -49,7 +49,7 @@ class CommunityModerationFlowIntegrationTest {
     private String adminBearer;
 
     /**
-     * 작성자·신고자·관리자와 신고 대상 글·댓글을 저장하고 신고 및 심사 요청의 역할별 토큰을 준비한다.
+     * 작성자·신고자·관리자와 신고 대상 글·댓글을 저장하고 신고 및 심사 요청의 역할별 토큰을 준비.
      */
     @BeforeEach
     void setUp() {
@@ -67,8 +67,8 @@ class CommunityModerationFlowIntegrationTest {
     }
 
     /**
-     * 글 신고의 접수·관리자 목록 및 상세 조회·수락을 연결하고 대상이 숨김 상태로 저장되는지 검증한다.
-     * 관리자는 숨김 글을 조회할 수 있고 일반 조회는 POST_NOT_FOUND로 차단되는지도 확인한다.
+     * 글 신고의 접수·관리자 목록 및 상세 조회·수락을 연결하고 대상이 숨김 상태로 저장되는지 검증.
+     * 관리자는 숨김 글을 조회할 수 있고 일반 조회는 POST_NOT_FOUND로 차단되는지도 확인.
      */
     @Test
     void hidesPostAfterReportAcceptance() throws Exception {
@@ -104,7 +104,7 @@ class CommunityModerationFlowIntegrationTest {
     }
 
     /**
-     * 댓글 신고를 반려하면 DECLINED 상태와 숨김 false를 반환하고 댓글이 일반 목록과 관리자 신고 목록에 유지되는지 검증한다.
+     * 댓글 신고를 반려하면 DECLINED 상태와 숨김 false를 반환하고 댓글이 일반 목록과 관리자 신고 목록에 유지되는지 검증.
      */
     @Test
     void preservesCommentAfterReportDecline() throws Exception {
@@ -133,7 +133,7 @@ class CommunityModerationFlowIntegrationTest {
     }
 
     /**
-     * 미인증 신고·일반 사용자의 관리자 접근·중복 신고·처리된 신고 재심사·없는 신고 조회의 HTTP 상태와 도메인 오류 코드를 검증한다.
+     * 미인증 신고·일반 사용자의 관리자 접근·중복 신고·처리된 신고 재심사·없는 신고 조회의 HTTP 상태와 도메인 오류 코드를 검증.
      */
     @Test
     void enforcesReportModerationErrorContracts() throws Exception {
@@ -162,7 +162,7 @@ class CommunityModerationFlowIntegrationTest {
     }
 
     /**
-     * 방금 접수한 신고를 심사할 수 있도록 저장된 신고 중 가장 큰 식별자를 찾는다.
+     * 방금 접수한 신고를 심사할 수 있도록 저장된 신고 중 가장 큰 식별자를 찾음.
      */
     private long reportId() {
         return reportRepository.findAll().stream()
@@ -172,21 +172,21 @@ class CommunityModerationFlowIntegrationTest {
     }
 
     /**
-     * 준비한 게시글 ID로 일반 사용자의 글 신고 경로를 구성한다.
+     * 준비한 게시글 ID로 일반 사용자의 글 신고 경로를 구성.
      */
     private String postReportPath() {
         return "/community/posts/" + postId + "/reports";
     }
 
     /**
-     * 준비한 게시글과 댓글 ID로 댓글 신고 경로를 구성한다.
+     * 준비한 게시글과 댓글 ID로 댓글 신고 경로를 구성.
      */
     private String commentReportPath() {
         return "/community/posts/" + postId + "/comments/" + commentId + "/reports";
     }
 
     /**
-     * 역할별 인증과 권한 차이를 검증할 이메일 인증 완료 사용자를 만든다.
+     * 역할별 인증과 권한 차이를 검증할 이메일 인증 완료 사용자를 생성.
      */
     private User user(String username, UserRole role) {
         return User.builder()
@@ -202,7 +202,7 @@ class CommunityModerationFlowIntegrationTest {
     }
 
     /**
-     * 신고자 또는 관리자의 현재 역할을 포함하는 Bearer 인증 헤더를 만든다.
+     * 신고자 또는 관리자의 현재 역할을 포함하는 Bearer 인증 헤더를 생성.
      */
     private String bearer(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

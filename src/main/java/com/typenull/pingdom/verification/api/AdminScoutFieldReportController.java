@@ -30,8 +30,8 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 관리자 현장 제보 조회·심사 요청을 ScoutFieldReportService에 전달한다.
- * 인증 principal을 사용하고 상세 SCOUT_REVIEW 권한은 서비스에서 확인한다.
+ * 관리자 현장 제보 조회·심사 요청을 ScoutFieldReportService에 전달.
+ * 인증 principal을 사용하고 상세 SCOUT_REVIEW 권한은 서비스에서 확인.
  */
 @RestController
 @RequestMapping("/admin/scout-field-reports")

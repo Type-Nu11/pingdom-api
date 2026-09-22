@@ -57,7 +57,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     private S3Client s3Client;
 
     /**
-     * 이전 북마크·스냅샷·장소 데이터를 지우고 조회 통계를 초기화합니다.
+     * 이전 북마크·스냅샷·장소 데이터를 지우고 조회 통계를 초기화.
      */
     @BeforeEach
     void setUp() {
@@ -68,7 +68,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 개인 신호가 없으면 GEO·TREND 후보를 포함하고 PERSONAL 출처는 부여하지 않는지 확인합니다.
+     * 개인 신호가 없으면 GEO·TREND 후보를 포함하고 PERSONAL 출처는 부여하지 않는지 확인.
      */
     @Test
     void collectsAnonymousGeoAndTrend() {
@@ -94,7 +94,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 북마크 시드와 주변 장소가 PERSONAL 출처 후보로 포함되는지 확인합니다.
+     * 북마크 시드와 주변 장소가 PERSONAL 출처 후보로 포함되는지 확인.
      */
     @Test
     void expandsPersonalBookmarkSeed() {
@@ -126,7 +126,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 6일 전 갱신 스냅샷은 추세 후보에 포함하고 8일 전 것은 제외하는지 확인합니다.
+     * 6일 전 갱신 스냅샷은 추세 후보에 포함하고 8일 전 것은 제외하는지 확인.
      */
     @Test
     void limitsTrendSnapshotAge() {
@@ -149,7 +149,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 후보 12개의 영속 맥락을 비운 후 수집 SQL이 6회를 넘지 않는지 확인하여 반복 영업 일정 조회를 방지합니다.
+     * 후보 12개의 영속 맥락을 비운 후 수집 SQL이 6회를 넘지 않는지 확인하여 반복 영업 일정 조회를 방지.
      */
     @Test
     void boundsCandidateCollectionQueries() {
@@ -177,7 +177,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 위치와 사진 수가 있는 후보 수집용 장소를 저장합니다.
+     * 위치와 사진 수가 있는 후보 수집용 장소를 저장.
      */
     private MapPlace createPlace(String name, double latitude, double longitude) {
         return mapPlaceRepository.save(MapPlace.builder()
@@ -192,7 +192,7 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 추세 포함 여부를 조절할 갱신 시각의 추천 집계 스냅샷을 저장합니다.
+     * 추세 포함 여부를 조절할 갱신 시각의 추천 집계 스냅샷을 저장.
      */
     private void saveSnapshot(Long placeId, LocalDateTime updatedAt) {
         placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
@@ -210,14 +210,14 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     }
 
     /**
-     * 운영 후보 수집과 같은 UTC 기준 현재 시각을 가져옵니다.
+     * 운영 후보 수집과 같은 UTC 기준 현재 시각을 가져옴.
      */
     private LocalDateTime nowUtc() {
         return LocalDateTime.now(ZoneOffset.UTC);
     }
 
     /**
-     * 후보 수집 SQL 횟수를 확인할 Hibernate 통계를 가져옵니다.
+     * 후보 수집 SQL 횟수를 확인할 Hibernate 통계를 가져옴.
      */
     private Statistics statistics() {
         return entityManagerFactory.unwrap(SessionFactory.class).getStatistics();

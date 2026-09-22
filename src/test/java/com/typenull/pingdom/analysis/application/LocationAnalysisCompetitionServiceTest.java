@@ -16,8 +16,8 @@ import org.springframework.data.domain.Pageable;
 class LocationAnalysisCompetitionServiceTest {
 
     /**
-     * 추천 좌표 반경 1,500m 조회 결과의 42.5m 거리 동일 업종 장소가 주변 경쟁업체로 반영되는지 검증한다.
-     * 실제 거리 필터는 저장소 대역이므로 100m 제한을 검증하는 테스트가 아니다.
+     * 추천 좌표 반경 1,500m 조회 결과의 42.5m 거리 동일 업종 장소가 주변 경쟁업체로 반영되는지 검증.
+     * 저장소 대역 사용으로 실제 거리 필터의 100m 제한은 검증 범위에서 제외.
      */
     @Test
     void enrichesNearbySameCategoryCompetitors() {
@@ -53,7 +53,7 @@ class LocationAnalysisCompetitionServiceTest {
     }
 
     /**
-     * 한 주변 장소 조회 결과의 카페·역·쇼핑몰을 경쟁·교통·편의 시설로 분류하고 경쟁점 수 1과 요약을 반영하는지 검증한다.
+     * 한 주변 장소 조회 결과의 카페·역·쇼핑몰을 경쟁·교통·편의 시설로 분류하고 경쟁점 수 1과 요약을 반영하는지 검증.
      */
     @Test
     void classifiesNearbyFacilityTypes() {
@@ -93,7 +93,7 @@ class LocationAnalysisCompetitionServiceTest {
     }
 
     /**
-     * ID·명칭·분류·거리와 공통 주소를 반환하는 주변 장소 projection mock을 구성한다.
+     * ID·명칭·분류·거리와 공통 주소를 반환하는 주변 장소 projection mock을 구성.
      */
     private MapPlaceCoordinateQueryRepository.NearbyAnalysisPlace nearby(
             long id, String name, String category, double distance

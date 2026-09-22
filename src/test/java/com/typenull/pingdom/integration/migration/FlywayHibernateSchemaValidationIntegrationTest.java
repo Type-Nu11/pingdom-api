@@ -13,7 +13,7 @@ import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
 /**
- * 빈 PostGIS DB에 Flyway를 적용한 Spring 컨텍스트가 Hibernate validate를 통과하는지 검증한다.
+ * 빈 PostGIS DB에 Flyway를 적용한 Spring 컨텍스트가 Hibernate validate를 통과하는지 검증.
  */
 @Tag("postgres-integration")
 @Tag("migration")
@@ -45,7 +45,7 @@ class FlywayHibernateSchemaValidationIntegrationTest {
     }
 
     /**
-     * 직접 시작한 PostGIS 컨테이너를 Spring 데이터소스로 연결한다.
+     * 직접 시작한 PostGIS 컨테이너를 Spring 데이터소스로 연결.
      */
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
@@ -56,7 +56,7 @@ class FlywayHibernateSchemaValidationIntegrationTest {
     }
 
     /**
-     * 클래스 종료 시 테스트 컨테이너를 정리한다.
+     * 클래스 종료 시 테스트 컨테이너를 정리.
      */
     @AfterAll
     static void stopPostgres() {
@@ -64,14 +64,14 @@ class FlywayHibernateSchemaValidationIntegrationTest {
     }
 
     /**
-     * 본문 assertion 대신 Spring 컨텍스트 초기화가 완료됨을 검증한다. Flyway 적용과 Hibernate validate 실패는 테스트 진입 전에 드러난다.
+     * 본문 assertion 대신 Spring 컨텍스트 초기화가 완료됨을 검증. Flyway 적용과 Hibernate validate 실패는 테스트 진입 전에 드러남.
      */
     @Test
     void migratedSchemaMatchesHibernate() {
     }
 
     /**
-     * Flyway 적용 전에 postgis와 pg_trgm 확장을 준비하고 실패 시 컨텍스트 기동을 중단한다.
+     * Flyway 적용 전에 postgis와 pg_trgm 확장을 준비하고 실패 시 컨텍스트 기동을 중단.
      */
     private static void ensureRequiredExtensions() {
         try (Connection connection = DriverManager.getConnection(

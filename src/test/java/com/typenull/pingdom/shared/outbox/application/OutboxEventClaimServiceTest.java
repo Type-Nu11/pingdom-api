@@ -38,7 +38,7 @@ class OutboxEventClaimServiceTest {
     private OutboxEventClaimService claimService;
 
     /**
-     * 10초 기본 backoff·5분 stale 기준·최대 5회 설정과 고정 Clock으로 선점 복구 서비스를 구성한다.
+     * 10초 기본 backoff·5분 stale 기준·최대 5회 설정과 고정 Clock으로 선점 복구 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -63,7 +63,7 @@ class OutboxEventClaimServiceTest {
     }
 
     /**
-     * 한 번 실패 후 다시 선점되어 5분 이상 멈춘 이벤트를 복구하면 RETRY·시도 2회·20초 뒤 재시도와 복구 1건 메트릭을 기록하는지 검증한다.
+     * 한 번 실패 후 다시 선점되어 5분 이상 멈춘 이벤트를 복구하면 RETRY·시도 2회·20초 뒤 재시도와 복구 1건 메트릭을 기록하는지 검증.
      */
     @Test
     void backsOffRecoveredStaleEvent() {

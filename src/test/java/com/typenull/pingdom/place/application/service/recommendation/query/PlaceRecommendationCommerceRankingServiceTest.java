@@ -16,7 +16,7 @@ class PlaceRecommendationCommerceRankingServiceTest {
             new PlaceRecommendationCommerceRankingService();
 
     /**
-     * 혜택 0.05와 예약 0.07을 독립적으로 더해 기본 점수 0.40이 0.52가 되는지 확인합니다.
+     * 혜택 0.05와 예약 0.07을 독립적으로 더해 기본 점수 0.40이 0.52가 되는지 확인.
      */
     @Test
     void addsIndependentCommerceBoosts() {
@@ -37,7 +37,7 @@ class PlaceRecommendationCommerceRankingServiceTest {
     }
 
     /**
-     * 상거래 신호가 없으면 각 가점은 0이고 기존 최종 점수가 유지되는지 확인합니다.
+     * 상거래 신호가 없으면 각 가점은 0이고 기존 최종 점수가 유지되는지 확인.
      */
     @Test
     void preservesScoreWithoutCommerce() {
@@ -58,7 +58,7 @@ class PlaceRecommendationCommerceRankingServiceTest {
     }
 
     /**
-     * 지정 최종 점수를 가진 상거래 가점 전 후보를 만듭니다.
+     * 지정 최종 점수를 가진 상거래 가점 전 후보를 생성.
      */
     private ScoredCandidate candidate(MapPlace place, double finalScore) {
         return new ScoredCandidate(

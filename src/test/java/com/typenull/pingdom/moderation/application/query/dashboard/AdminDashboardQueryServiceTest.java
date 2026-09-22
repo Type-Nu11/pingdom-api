@@ -59,7 +59,7 @@ class AdminDashboardQueryServiceTest {
     private AdminDashboardQueryService service;
 
     /**
-     * UTC 기준 오늘·최근 7일·향후 7일의 집계 경계를 고정하고 운영 저장소 결과를 조합할 대시보드 서비스를 구성한다.
+     * UTC 기준 오늘·최근 7일·향후 7일의 집계 경계를 고정하고 운영 저장소 결과를 조합할 대시보드 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -77,8 +77,8 @@ class AdminDashboardQueryServiceTest {
     }
 
     /**
-     * 전체 장소·게시글·미처리 신고·정지 사용자와 오늘·최근 7일 등록 수를 요약에 반영하는지 검증한다.
-     * 위치 누락·중복 그룹·만료 예정 정지 수 및 집계·만료 기준 시각도 확인한다.
+     * 전체 장소·게시글·미처리 신고·정지 사용자와 오늘·최근 7일 등록 수를 요약에 반영하는지 검증.
+     * 위치 누락·중복 그룹·만료 예정 정지 수 및 집계·만료 기준 시각도 확인.
      */
     @Test
     void returnsDashboardOperationalCounts() {
@@ -132,7 +132,7 @@ class AdminDashboardQueryServiceTest {
     }
 
     /**
-     * 집계 대상이 없으면 요약의 모든 운영 수치가 0이고 대기 신고 수 조회를 수행하는지 검증한다.
+     * 집계 대상이 없으면 요약의 모든 운영 수치가 0이고 대기 신고 수 조회를 수행하는지 검증.
      */
     @Test
     void returnsEmptyDashboardCounts() {
@@ -160,7 +160,7 @@ class AdminDashboardQueryServiceTest {
     }
 
     /**
-     * 대기 신고 항목의 targetId·reportId는 신고 ID로, postId는 신고된 게시글 ID로 구분하고 전체 수를 반영하는지 검증한다.
+     * 대기 신고 항목의 targetId·reportId는 신고 ID로, postId는 신고된 게시글 ID로 구분하고 전체 수를 반영하는지 검증.
      */
     @Test
     void separatesPendingReportAndPostIds() {
@@ -196,7 +196,7 @@ class AdminDashboardQueryServiceTest {
     }
 
     /**
-     * 대기 점주 장소 신청을 항목으로 변환하면 신청 유형과 관리자 상세 이동 경로, 전체 수를 제공하는지 검증한다.
+     * 대기 점주 장소 신청을 항목으로 변환하면 신청 유형과 관리자 상세 이동 경로, 전체 수를 제공하는지 검증.
      */
     @Test
     void linksPendingMerchantApplicationDetail() {

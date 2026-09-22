@@ -20,8 +20,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * AUDIT_READ 권한을 확인하고 생성 시각의 양 끝을 포함해 감사 기록을 조회합니다.
- * 시작과 종료가 같은 시각은 허용하며 페이지는 1 이상, 크기는 1~100으로 보정합니다.
+ * AUDIT_READ 권한을 확인하고 생성 시각의 양 끝을 포함해 감사 기록을 조회.
+ * 시작과 종료가 같은 시각은 허용하며 페이지는 1 이상, 크기는 1~100으로 보정.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,8 +31,8 @@ public class AdminAuditLogQueryServiceImpl implements AdminAuditLogQueryService 
     private final AdminAuditLogRepository adminAuditLogRepository;
 
     /**
-     * AUDIT_READ 권한을 확인하고 대상·행위자·생성 기간에 맞는 감사 기록을 최신순으로 페이지 조회합니다.
-     * 종료 시각이 시작보다 이르면 거절하며, page는 1 이상·limit는 1~100으로 보정하고 공백 대상 ID 필터는 생략합니다.
+     * AUDIT_READ 권한을 확인하고 대상·행위자·생성 기간에 맞는 감사 기록을 최신순으로 페이지 조회.
+     * 종료 시각이 시작보다 이르면 거절하며, page는 1 이상·limit는 1~100으로 보정하고 공백 대상 ID 필터는 생략.
      */
     @Override
     @Transactional(readOnly = true)

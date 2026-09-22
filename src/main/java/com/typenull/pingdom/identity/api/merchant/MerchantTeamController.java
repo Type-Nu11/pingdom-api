@@ -37,8 +37,8 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 장소 팀 관리와 초대 수락 요청에 현재 회원 ID를 전달합니다.
- * 초대 수락자는 아직 사업자 역할이 아닐 수 있어 공통 인증을 요구하고 장소 권한은 서비스에서 검사합니다.
+ * 장소 팀 관리와 초대 수락 요청에 현재 회원 ID를 전달.
+ * 초대 수락자는 아직 사업자 역할이 아닐 수 있어 공통 인증을 요구하고 장소 권한은 서비스에서 검사.
  */
 @RestController
 @RequestMapping("/merchant-owner")

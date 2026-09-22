@@ -23,9 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 장소를 잠근 뒤 연결 이벤트·체크인·Scout 제보가 있으면 삭제를 거절합니다.
- * 사진 삭제와 북마크·추세 이력 정리, 장소 삭제, 감사 기록은 같은 DB 트랜잭션에 참여하고 실제 S3 삭제는 outbox 작업에 맡깁니다.
- * 이 서비스가 사전 검사하지 않는 다른 FK 제약도 최종 삭제를 거절할 수 있습니다.
+ * 장소를 잠근 뒤 연결 이벤트·체크인·Scout 제보가 있으면 삭제를 거절.
+ * 사진 삭제와 북마크·추세 이력 정리, 장소 삭제, 감사 기록은 같은 DB 트랜잭션에 참여하고 실제 S3 삭제는 outbox 작업에 위임.
+ * 이 서비스가 사전 검사하지 않는 다른 FK 제약도 최종 삭제를 거절할 수 있음.
  */
 @Service
 @RequiredArgsConstructor
@@ -42,9 +42,9 @@ public class AdminMapPlaceService {
     private final AdminAuditLogService adminAuditLogService;
 
     /**
-     * 장소 행을 잠그고 연결 이벤트·체크인·Scout 제보가 없을 때 연결 사진, 북마크 추세 이력, 북마크, 장소 순서로 삭제합니다.
-     * 연결 사진 삭제에는 AdminPostService의 권한 검사와 S3 삭제 outbox 등록이 적용되며 DB 삭제와 감사 기록은 같은 트랜잭션에 참여합니다.
-     * 장소 없음·보호하는 연관 데이터·남은 DB 제약은 삭제를 거절할 수 있고 반환 시 S3 정리까지 완료된 것은 아닙니다.
+     * 장소 행을 잠그고 연결 이벤트·체크인·Scout 제보가 없을 때 연결 사진, 북마크 추세 이력, 북마크, 장소 순서로 삭제.
+     * 연결 사진 삭제에는 AdminPostService의 권한 검사·S3 삭제 outbox 등록을 적용하며 DB 삭제·감사 기록은 같은 트랜잭션에 참여.
+     * 장소 부재·보호하는 연관 데이터·남은 DB 제약으로 삭제 거절 가능. 실제 S3 정리는 반환 후 비동기 처리.
      */
     @Transactional
     public void deletePlace(long placeId, Long adminUserId) {
@@ -64,7 +64,7 @@ public class AdminMapPlaceService {
 
         linkedPostIds.forEach(postId -> adminPostService.deletePost(postId, adminUserId));
 
-        // 북마크 이력의 RESTRICT FK와 실제 사용자 즐겨찾기를 모두 정리한 뒤 장소를 삭제합니다.
+        // 북마크 이력의 RESTRICT FK와 실제 사용자 즐겨찾기를 모두 정리한 뒤 장소를 삭제.
         int deletedBookmarkTrendEventCount = mapBookmarkTrendEventRepository.deleteAllByPlaceId(placeId);
         int deletedBookmarkCount = mapBookmarkRepository.deleteAllByPlaceId(placeId);
         mapPlaceRepository.delete(mapPlace);

@@ -9,7 +9,7 @@ class SettlementLedgerEntryTest {
     private final LocalDateTime now = LocalDateTime.of(2026, 7, 26, 12, 0);
 
     /**
-     * 총액 10,000·수수료 300의 결제 원장이 순액 9,700과 PENDING 상태를 기록하는지 검증한다.
+     * 총액 10,000·수수료 300의 결제 원장이 순액 9,700과 PENDING 상태를 기록하는지 검증.
      */
     @Test
     void paymentEntryCalculatesNetAmount() {
@@ -22,7 +22,7 @@ class SettlementLedgerEntryTest {
     }
 
     /**
-     * 환불 원장은 총액·수수료·순액의 부호를 모두 반전하고 REVERSED 상태로 생성되는지 검증한다.
+     * 환불 원장은 총액·수수료·순액의 부호를 모두 반전하고 REVERSED 상태로 생성되는지 검증.
      */
     @Test
     void refundEntryReversesAllAmounts() {
@@ -35,7 +35,7 @@ class SettlementLedgerEntryTest {
     }
 
     /**
-     * 총액 100보다 큰 수수료 101을 지정하면 IllegalArgumentException이 발생하는지 검증한다.
+     * 총액 100보다 큰 수수료 101을 지정하면 IllegalArgumentException이 발생하는지 검증.
      */
     @Test
     void feeCannotExceedGrossAmount() {
@@ -44,7 +44,7 @@ class SettlementLedgerEntryTest {
     }
 
     /**
-     * 정산 후 SETTLED 상태를 확인하고 재정산이 IllegalStateException으로 거절되는지 검증한다.
+     * 정산 후 SETTLED 상태를 확인하고 재정산이 IllegalStateException으로 거절되는지 검증.
      */
     @Test
     void settledEntryCannotSettleAgain() {

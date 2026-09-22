@@ -46,7 +46,7 @@ class PlaceInformationReverificationServiceTest {
     @InjectMocks PlaceInformationReverificationService service;
 
     /**
-     * 현재 소유자를 대상으로 REQUESTED 요청을 만들고 Outbox와 관리자 감사를 호출하는지 확인합니다.
+     * 현재 소유자를 대상으로 REQUESTED 요청을 만들고 Outbox와 관리자 감사를 호출하는지 확인.
      */
     @Test
     void createsOwnerReverificationRequest() {
@@ -66,7 +66,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 장소에 활성 재확인 요청이 이미 있으면 중복 오류로 거절하고 저장하지 않는지 확인합니다.
+     * 장소에 활성 재확인 요청이 이미 있으면 중복 오류로 거절하고 저장하지 않는지 확인.
      */
     @Test
     void rejectsDuplicateActiveRequest() {
@@ -82,7 +82,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 현재 소유권이 없는 사용자의 재확인 응답을 권한 오류로 거절하고 이벤트를 발행하지 않는지 확인합니다.
+     * 현재 소유권이 없는 사용자의 재확인 응답을 권한 오류로 거절하고 이벤트를 발행하지 않는지 확인.
      */
     @Test
     void rejectsUnauthorizedOwnerResponse() {
@@ -98,7 +98,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 점주 응답 후 관리자 완료가 요청과 장소 검증 상태·검증자·증거를 갱신하며 이 경로에서 Outbox를 발행하지 않는지 확인합니다.
+     * 점주 응답 후 관리자 완료가 요청과 장소 검증 상태·검증자·증거를 갱신하며 이 경로에서 Outbox를 발행하지 않는지 확인.
      */
     @Test
     void completesOwnerReverification() {
@@ -119,7 +119,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 요청에 연결된 장소와 경로 장소가 다르면 재알림을 찾을 수 없음으로 거절하는지 확인합니다.
+     * 요청에 연결된 장소와 경로 장소가 다르면 재알림을 찾을 수 없음으로 거절하는지 확인.
      */
     @Test
     void rejectsMismatchedRequestPlace() {
@@ -133,7 +133,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 기한 후 응답은 EXPIRED 상태를 반환하고 증거를 만들지 않는지 확인합니다. 모의 단위 테스트이므로 실제 DB 커밋은 검증하지 않습니다.
+     * 기한 후 응답은 EXPIRED 상태를 반환하고 증거를 만들지 않는지 확인. 모의 단위 테스트로 실제 DB 커밋은 검증 범위에서 제외.
      */
     @Test
     void returnsExpiredResponseWithoutEvidence() {
@@ -152,7 +152,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 소유권 이전 후 재알림은 현재 소유자 30으로 수신자를 바꾸고 이벤트를 발행하는지 확인합니다.
+     * 소유권 이전 후 재알림은 현재 소유자 30으로 수신자를 바꾸고 이벤트를 발행하는지 확인.
      */
     @Test
     void reassignsReminderToCurrentOwner() {
@@ -169,14 +169,14 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 현재 시각부터 이틀 뒤 만료되는 사용자 20 대상 요청을 만듭니다.
+     * 현재 시각부터 이틀 뒤 만료되는 사용자 20 대상 요청을 생성.
      */
     private PlaceInformationReverificationRequest request() {
         return PlaceInformationReverificationRequest.create(place(), 20L, "정보 확인", 7L, NOW.plusDays(2), NOW);
     }
 
     /**
-     * 재확인 요청에 연결할 장소 10을 만듭니다.
+     * 재확인 요청에 연결할 장소 10을 생성.
      */
     private MapPlace place() {
         return MapPlace.builder().id(10L).name("테스트 장소").address("서울시 테스트로 1")
@@ -184,14 +184,14 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 장소 10의 현재 상점주 소유권 fixture를 만듭니다.
+     * 장소 10의 현재 상점주 소유권 fixture를 생성.
      */
     private MerchantOwnerPlace ownership() {
         return MerchantOwnerPlace.builder().placeId(10L).merchantOwnerUserId(20L).createdAt(NOW).build();
     }
 
     /**
-     * 생성·응답·완료가 같은 UTC 기준 시각을 사용하도록 고정합니다.
+     * 생성·응답·완료가 같은 UTC 기준 시각을 사용하도록 고정.
      */
     private void fixedClock() {
         when(clock.instant()).thenReturn(NOW.toInstant(ZoneOffset.UTC));
@@ -199,7 +199,7 @@ class PlaceInformationReverificationServiceTest {
     }
 
     /**
-     * 일반 요청 조회와 장소·요청 잠금 조회가 동일 엔티티를 반환하게 합니다.
+     * 일반 요청 조회와 장소·요청 잠금 조회가 동일 엔티티를 반환하게 함.
      */
     private void stubLockedRequest(PlaceInformationReverificationRequest request) {
         when(requestRepository.findById(1L)).thenReturn(Optional.of(request));

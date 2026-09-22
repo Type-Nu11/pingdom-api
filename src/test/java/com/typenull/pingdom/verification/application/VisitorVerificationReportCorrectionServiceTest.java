@@ -47,7 +47,7 @@ class VisitorVerificationReportCorrectionServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-07-20T06:00:00Z"), ZoneOffset.UTC);
     private VisitorVerificationReportCorrectionService service;
 
-    /** 고정 시각과 활성 관광객·관리자 mock을 구성한다. 저장 mock은 전달받은 도메인 객체를 반환한다. */
+    /** 고정 시각과 활성 관광객·관리자 mock을 구성. 저장 mock은 전달받은 도메인 객체를 반환. */
     @BeforeEach
     void setUp() {
         service = new VisitorVerificationReportCorrectionService(
@@ -66,8 +66,8 @@ class VisitorVerificationReportCorrectionServiceTest {
     }
 
     /**
-     * 거절된 제보 작성자는 새 본문으로 SUBMITTED 정정을 제출할 수 있다.
-     * 트랜잭션 프록시 없는 단위 테스트에서 제출 메트릭 호출을 확인한다.
+     * 거절된 제보 작성자는 새 본문으로 SUBMITTED 정정을 제출할 수 있음.
+     * 트랜잭션 프록시 없는 단위 테스트에서 제출 메트릭 호출을 확인.
      */
     @Test
     void submitReviewedReportCorrection() {
@@ -87,7 +87,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         verify(metrics).recordCorrectionSubmitted();
     }
 
-    /** 타인 제보의 정정 제출은 REPORT_FORBIDDEN으로 거부한다. */
+    /** 타인 제보의 정정 제출은 REPORT_FORBIDDEN으로 거부. */
     @Test
     void rejectNonOwnerSubmission() {
         VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.ACCEPTED, 3L);
@@ -101,7 +101,7 @@ class VisitorVerificationReportCorrectionServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.REPORT_FORBIDDEN);
     }
 
-    /** 미심사 원본의 정정은 CORRECTION_NOT_ALLOWED로 거부하고 정정 저장소와 상호작용하지 않는다. */
+    /** 미심사 원본의 정정 요청에 대한 CORRECTION_NOT_ALLOWED 오류와 정정 저장소 미호출 확인. */
     @Test
     void rejectUnreviewedReportCorrection() {
         VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.SUBMITTED);
@@ -117,7 +117,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         verifyNoInteractions(correctionRepository);
     }
 
-    /** 이미 SUBMITTED 정정이 있으면 ACTIVE_CORRECTION_ALREADY_EXISTS로 거부한다. */
+    /** 이미 SUBMITTED 정정이 있으면 ACTIVE_CORRECTION_ALREADY_EXISTS로 거부. */
     @Test
     void rejectDuplicateActiveCorrection() {
         VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.ACCEPTED);
@@ -134,8 +134,8 @@ class VisitorVerificationReportCorrectionServiceTest {
     }
 
     /**
-     * 정정 승인 시 정정 ACCEPTED와 원본 SUBMITTED 상태를 반환한다.
-     * 원본 상태 메트릭과 감사 기록 호출을 확인하며 실제 DB 커밋은 이 테스트 범위가 아니다.
+     * 정정 승인 시 정정 ACCEPTED와 원본 SUBMITTED 상태를 반환.
+     * 원본 상태 메트릭과 감사 기록 호출 확인. 실제 DB 커밋은 검증 범위에서 제외.
      */
     @Test
     void resubmitAcceptedCorrection() {
@@ -160,7 +160,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         verify(adminAuditLogService).record(any(), any(), any(), any(), any(), any(), any());
     }
 
-    /** 정정 거절 사유를 응답에 담고 원본의 기존 REJECTED 상태는 유지한다. */
+    /** 정정 거절 사유를 응답에 담고 원본의 기존 REJECTED 상태는 유지. */
     @Test
     void preserveReportOnRejection() {
         VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.REJECTED);
@@ -183,8 +183,8 @@ class VisitorVerificationReportCorrectionServiceTest {
     }
 
     /**
-     * 같은 작성자·장소·유형에 다른 미심사 제보가 있으면 정정 승인을 중복 오류로 거부한다.
-     * 정정 flush 저장과 감사 기록은 호출하지 않아야 한다.
+     * 같은 작성자·장소·유형에 다른 미심사 제보가 있으면 정정 승인을 중복 오류로 거부.
+     * 정정 flush 저장과 감사 기록은 호출하지 않아야 함.
      */
     @Test
     void rejectConflictingCorrection() {
@@ -211,8 +211,8 @@ class VisitorVerificationReportCorrectionServiceTest {
     }
 
     /**
-     * 정정 승인 flush가 활성 제보 유일 제약에 걸리면 중복 제보 오류를 전달한다.
-     * 실패 뒤 감사 기록은 호출하지 않아야 한다.
+     * 정정 승인 flush가 활성 제보 유일 제약에 걸리면 중복 제보 오류를 전달.
+     * 실패 뒤 감사 기록은 호출하지 않아야 함.
      */
     @Test
     void mapConcurrentCorrectionConflict() {
@@ -238,7 +238,7 @@ class VisitorVerificationReportCorrectionServiceTest {
         verifyNoInteractions(adminAuditLogService);
     }
 
-    /** 타인 원본 제보의 정정 이력 조회는 CORRECTION_FORBIDDEN으로 거부한다. */
+    /** 타인 원본 제보의 정정 이력 조회는 CORRECTION_FORBIDDEN으로 거부. */
     @Test
     void rejectNonOwnerHistory() {
         VisitorVerificationReport report = reportWithStatus(VisitorVerificationReportStatus.ACCEPTED, 3L);
@@ -251,8 +251,8 @@ class VisitorVerificationReportCorrectionServiceTest {
     }
 
     /**
-     * 정정 심사 후 감사 기록이 IllegalStateException으로 실패하면 원래 타입과 메시지를 유지한다.
-     * 감사 인프라 오류를 정정 상태 오류로 오인해 변환하는 회귀를 방지한다.
+     * 정정 심사 후 감사 기록이 IllegalStateException으로 실패하면 원래 타입과 메시지를 유지.
+     * 감사 인프라 오류를 정정 상태 오류로 오인해 변환하는 회귀를 방지.
      */
     @Test
     void preserveAuditFailure() {
@@ -273,14 +273,14 @@ class VisitorVerificationReportCorrectionServiceTest {
                 .hasMessage("audit unavailable");
     }
 
-    /** 작성자 1의 영업시간 제보를 지정 심사 상태로 만들어 반환한다. */
+    /** 작성자 1의 영업시간 제보를 지정 심사 상태로 만들어 반환. */
     private VisitorVerificationReport reportWithStatus(VisitorVerificationReportStatus status) {
         return reportWithStatus(status, 1L);
     }
 
     /**
-     * 지정 작성자의 미영속 제보를 만들고 요청 상태가 심사 결과이면 관리자 9로 심사한다.
-     * 거절 상태에는 필수 사유를 넣으며 ID는 설정하지 않는다.
+     * 지정 작성자의 미영속 제보를 만들고 요청 상태가 심사 결과이면 관리자 9로 심사.
+     * 거절 상태의 필수 사유를 채우고 ID는 미설정 상태로 유지.
      */
     private VisitorVerificationReport reportWithStatus(VisitorVerificationReportStatus status, Long reporterUserId) {
         VisitorVerificationReport report = VisitorVerificationReport.submit(

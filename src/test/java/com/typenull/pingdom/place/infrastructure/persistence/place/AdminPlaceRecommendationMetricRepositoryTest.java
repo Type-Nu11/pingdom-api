@@ -8,7 +8,7 @@ import org.springframework.data.jpa.repository.Query;
 
 class AdminPlaceRecommendationMetricRepositoryTest {
 
-    /** 리플렉션으로 native SQL의 전환별 사전 집계·정렬 분기·동률 ID·count query 구조를 확인한다. SQL을 DB에서 실행하지 않는다. */
+    /** 리플렉션으로 native SQL의 전환별 사전 집계·정렬 분기·동률 ID·count query 구조를 확인. DB에서의 SQL 실행은 검증 범위에서 제외. */
     @Test
     void preservesAggregatedMetricQuery() {
         Query query = getQuery("findPeriodRecommendationMetricPage");
@@ -25,7 +25,7 @@ class AdminPlaceRecommendationMetricRepositoryTest {
         assertThat(query.countQuery()).contains("SELECT COUNT(*)");
     }
 
-    /** 합계 native query 문자열에 기간·추천 버전·장소명 조건이 유지되는지 확인한다. */
+    /** 합계 native query 문자열에 기간·추천 버전·장소명 조건이 유지되는지 확인. */
     @Test
     void preservesMetricSumFilters() {
         Query query = getQuery("sumPeriodMetricCounts");
@@ -36,7 +36,7 @@ class AdminPlaceRecommendationMetricRepositoryTest {
         assertThat(query.value()).contains("p.place_name LIKE CONCAT('%', :keyword, '%')");
     }
 
-    /** 이름으로 repository 메서드를 찾아 Query 어노테이션 존재를 확인한 뒤 SQL 계약을 읽는다. */
+    /** 이름으로 repository 메서드를 찾아 Query 어노테이션 존재를 확인한 뒤 SQL 계약을 읽음. */
     private Query getQuery(String methodName) {
         Method method = java.util.Arrays.stream(AdminPlaceRecommendationMetricRepository.class.getMethods())
                 .filter(candidate -> candidate.getName().equals(methodName))

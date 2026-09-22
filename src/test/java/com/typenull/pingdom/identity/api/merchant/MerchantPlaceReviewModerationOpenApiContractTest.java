@@ -28,8 +28,8 @@ class MerchantPlaceReviewModerationOpenApiContractTest {
     private ObjectMapper objectMapper;
 
     /**
-     * 리뷰 관리 목록이 점주 OpenAPI에만 포함되고 Bearer 인증 및 페이지 응답 스키마를 선언하는지 검증한다.
-     * 리뷰 공개 상태와 nullable 삭제 요청 상태의 enum 계약도 확인한다.
+     * 리뷰 관리 목록이 점주 OpenAPI에만 포함되고 Bearer 인증 및 페이지 응답 스키마를 선언하는지 검증.
+     * 리뷰 공개 상태와 nullable 삭제 요청 상태의 enum 계약도 확인.
      */
     @Test
     void documentsMerchantReviewManagement() throws Exception {
@@ -53,7 +53,7 @@ class MerchantPlaceReviewModerationOpenApiContractTest {
     }
 
     /**
-     * 주어진 OpenAPI 경로가 200을 반환하는지 확인하고 UTF-8 JSON을 구조 검사용 트리로 읽는다.
+     * 주어진 OpenAPI 경로가 200을 반환하는지 확인하고 UTF-8 JSON을 구조 검사용 트리로 읽음.
      */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))

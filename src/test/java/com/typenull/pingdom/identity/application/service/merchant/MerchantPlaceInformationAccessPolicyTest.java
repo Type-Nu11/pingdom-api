@@ -33,7 +33,7 @@ class MerchantPlaceInformationAccessPolicyTest {
     private MerchantPlaceInformationAccessPolicy accessPolicy;
 
     /**
-     * 활성 일반 사용자와 고정 시각을 사용해 장소 구성원의 역할에 따른 정보 관리 권한을 확인할 정책을 구성한다.
+     * 활성 일반 사용자와 고정 시각을 사용해 장소 구성원의 역할에 따른 정보 관리 권한을 확인할 정책을 구성.
      */
     @BeforeEach
     void setUp() {
@@ -50,7 +50,7 @@ class MerchantPlaceInformationAccessPolicyTest {
     }
 
     /**
-     * 활성 MANAGER 구성원은 장소 정보 관리 권한 검사에서 예외 없이 통과하는지 검증한다.
+     * 활성 MANAGER 구성원은 장소 정보 관리 권한 검사에서 예외 없이 통과하는지 검증.
      */
     @Test
     void allowsActiveManager() {
@@ -67,7 +67,7 @@ class MerchantPlaceInformationAccessPolicyTest {
     }
 
     /**
-     * 활성 구성원이라도 STAFF 역할이면 장소 정보 관리에 필요한 팀 권한 오류를 반환하는지 검증한다.
+     * 활성 구성원이라도 STAFF 역할이면 장소 정보 관리에 필요한 팀 권한 오류를 반환하는지 검증.
      */
     @Test
     void rejectsStaffManagement() {

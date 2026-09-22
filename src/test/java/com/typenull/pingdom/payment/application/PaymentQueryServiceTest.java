@@ -39,7 +39,7 @@ class PaymentQueryServiceTest {
     private PaymentQueryService service;
 
     /**
-     * 고정 Clock과 조회 의존성을 연결하고 사용자 1을 활성 관광객으로 구성한다.
+     * 고정 Clock과 조회 의존성을 연결하고 사용자 1을 활성 관광객으로 구성.
      */
     @BeforeEach
     void setUp() {
@@ -55,7 +55,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 다른 관광객 2의 결제를 사용자 1이 조회하면 PAYMENT_FORBIDDEN인지 검증한다.
+     * 다른 관광객 2의 결제를 사용자 1이 조회하면 PAYMENT_FORBIDDEN인지 검증.
      */
     @Test
     void rejectsAnotherTouristPayment() {
@@ -67,7 +67,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 없는 결제 단건 조회가 PAYMENT_NOT_FOUND로 거절되는지 검증한다.
+     * 없는 결제 단건 조회가 PAYMENT_NOT_FOUND로 거절되는지 검증.
      */
     @Test
     void rejectsUnknownPayment() {
@@ -79,7 +79,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 활성 계정이라도 MERCHANT_OWNER가 내 결제 목록을 요청하면 PAYMENT_FORBIDDEN인지 검증한다.
+     * 활성 계정이라도 MERCHANT_OWNER가 내 결제 목록을 요청하면 PAYMENT_FORBIDDEN인지 검증.
      */
     @Test
     void listMineRequiresTouristAccount() {
@@ -92,7 +92,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 내 결제가 없으면 빈 배열과 페이지 1·크기 20·전체 0·다음 없음으로 응답하는지 검증한다.
+     * 내 결제가 없으면 빈 배열과 페이지 1·크기 20·전체 0·다음 없음으로 응답하는지 검증.
      */
     @Test
     void returnsEmptyPaymentPage() {
@@ -110,7 +110,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 실패 결제 조회가 FAILED·DECLINED·실패 시각을 포함하고 공급자 ID·금액·통화·결제/환불 시각은 null인지 검증한다.
+     * 실패 결제 조회가 FAILED·DECLINED·실패 시각을 포함하고 공급자 ID·금액·통화·결제/환불 시각은 null인지 검증.
      */
     @Test
     void mapsFailedPaymentFields() {
@@ -132,7 +132,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 성공 결제 조회가 공급자 ID·15,000 KRW·결제 시각을 포함하며 실패 코드·실패/환불 시각은 null인지 검증한다.
+     * 성공 결제 조회가 공급자 ID·15,000 KRW·결제 시각을 포함하며 실패 코드·실패/환불 시각은 null인지 검증.
      */
     @Test
     void mapsPaidPaymentFields() {
@@ -154,7 +154,7 @@ class PaymentQueryServiceTest {
     }
 
     /**
-     * 주어진 관광객의 예약 10에 대해 고정된 생성 시각과 멱등 키로 PROCESSING 결제를 만든다.
+     * 주어진 관광객의 예약 10에 대해 고정된 생성 시각과 멱등 키로 PROCESSING 결제를 생성.
      */
     private PaymentTransaction processingPayment(Long touristUserId) {
         return PaymentTransaction.processing(

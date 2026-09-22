@@ -23,8 +23,8 @@ import org.hibernate.annotations.OnDeleteAction;
 import org.springframework.util.StringUtils;
 
 /**
- * 장소 이미지의 탐색·인증 목적과 원본 출처를 함께 보관합니다.
- * 인증 이미지는 원본 게시물 ID가 필수이고 탐색 이미지는 신청 첨부 출처를 선택적으로 가질 수 있습니다.
+ * 장소 이미지의 탐색·인증 목적과 원본 출처를 함께 보관.
+ * 인증 이미지는 원본 게시물 ID가 필수이고 탐색 이미지는 신청 첨부 출처를 선택적으로 가질 수 있음.
  */
 @Entity
 @Getter
@@ -65,7 +65,7 @@ public class PlaceMedia {
     @Column(name = "source_map_image_id")
     private Long sourceMapImageId;
 
-    /** 신청 대표 이미지에서 승격됐음을 기록해 승인 재시도와 backfill을 멱등 처리합니다. */
+    /** 신청 대표 이미지에서 승격됐음을 기록해 승인 재시도와 backfill을 멱등 처리. */
     @Column(name = "source_registration_attachment_id")
     private Long sourceRegistrationAttachmentId;
 

@@ -23,7 +23,7 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 /**
- * 실제 가입·로그인으로 인증을 통과한 뒤 구형 지도 API의 제거 상태를 검증한다.
+ * 실제 가입·로그인으로 인증을 통과한 뒤 구형 지도 API의 제거 상태를 검증.
  */
 @Tag("integration")
 @SpringBootTest
@@ -39,7 +39,7 @@ class LegacyMapApiRemovalTest {
     private ObjectMapper objectMapper;
 
     /**
-     * 유효한 로그인 토큰을 보내도 제거된 구형 지도 GET 경로가 404인지 확인한다.
+     * 유효한 로그인 토큰을 보내도 제거된 구형 지도 GET 경로가 404인지 확인.
      */
     @ParameterizedTest
     @MethodSource("removedGetPaths")
@@ -50,7 +50,7 @@ class LegacyMapApiRemovalTest {
     }
 
     /**
-     * 구형 게시물·신고·좋아요·이의 제기 POST 경로가 인증 후에도 모두 404인지 확인한다.
+     * 구형 게시물·신고·좋아요·이의 제기 POST 경로가 인증 후에도 모두 404인지 확인.
      */
     @Test
     void removedPostRoutes() throws Exception {
@@ -74,7 +74,7 @@ class LegacyMapApiRemovalTest {
     }
 
     /**
-     * 구형 게시물 및 좋아요 DELETE 경로가 404인지 확인한다.
+     * 구형 게시물 및 좋아요 DELETE 경로가 404인지 확인.
      */
     @Test
     void removedDeleteRoutes() throws Exception {
@@ -89,7 +89,7 @@ class LegacyMapApiRemovalTest {
     }
 
     /**
-     * 제거 여부를 반복 검증할 지도 게시물·신고·랭킹·북마크·좋아요 GET 경로를 제공한다.
+     * 제거 여부를 반복 검증할 지도 게시물·신고·랭킹·북마크·좋아요 GET 경로를 제공.
      */
     private static Stream<String> removedGetPaths() {
         return Stream.of(
@@ -102,7 +102,7 @@ class LegacyMapApiRemovalTest {
     }
 
     /**
-     * 증가하는 번호로 사용자명을 구분해 실제 가입과 로그인 API를 거친 접근 토큰을 반환한다.
+     * 증가하는 번호로 사용자명을 구분해 실제 가입과 로그인 API를 거친 접근 토큰을 반환.
      */
     private String signupAndLogin() throws Exception {
         String username = "legacy-map-removal-" + USER_SEQUENCE.incrementAndGet();

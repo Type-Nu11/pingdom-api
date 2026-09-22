@@ -24,7 +24,7 @@ class NearbyReservablePlaceControllerTest {
 
     private MockMvc mockMvc;
 
-    /** 장소 서비스들을 mock으로 연결해 요청 바인딩과 오류 응답에 집중하는 standalone MVC를 구성한다. */
+    /** 장소 서비스들을 mock으로 연결해 요청 바인딩과 오류 응답에 집중하는 standalone MVC를 구성. */
     @BeforeEach
     void setUp() {
         PlaceController controller = new PlaceController(
@@ -40,7 +40,7 @@ class NearbyReservablePlaceControllerTest {
                 .build();
     }
 
-    /** 필수 좌표 없이 예약 가능 장소를 조회하면 400과 파라미터 오류 코드가 반환되는지 확인한다. */
+    /** 필수 좌표 없이 예약 가능 장소를 조회하면 400과 파라미터 오류 코드가 반환되는지 확인. */
     @Test
     void rejectsMissingCoordinates() throws Exception {
         mockMvc.perform(get("/places/nearby-reservable"))
@@ -48,7 +48,7 @@ class NearbyReservablePlaceControllerTest {
                 .andExpect(jsonPath("$.code").value(CommonErrorCode.INVALID_REQUEST_PARAMETER.getCode()));
     }
 
-    /** 유효한 좌표와 정의되지 않은 상품 유형을 보내 enum 바인딩 실패가 400으로 변환되는지 확인한다. */
+    /** 유효한 좌표와 정의되지 않은 상품 유형을 보내 enum 바인딩 실패가 400으로 변환되는지 확인. */
     @Test
     void rejectsUnknownProductType() throws Exception {
         mockMvc.perform(get("/places/nearby-reservable")

@@ -26,8 +26,8 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 /**
- * 위치·개인 반응·최근 갱신 스냅샷에서 최대 300개 후보를 합치고 중복 장소에는 출처만 추가합니다.
- * 운영 중·공개·좌표 존재 조건을 유지하며 저장된 영업 일정이 없으면 현재 영업 여부를 null로 남깁니다.
+ * 위치·개인 반응·최근 갱신 스냅샷에서 최대 300개 후보를 합치고 중복 장소에는 출처만 추가.
+ * 운영 중·공개·좌표 존재 조건을 유지하며 저장된 영업 일정이 없으면 현재 영업 여부를 null로 남김.
  */
 @Service
 @RequiredArgsConstructor
@@ -151,8 +151,8 @@ class PlaceRecommendationCandidateCollector {
     }
 
     /**
-     * 최근 7일에 스냅샷이 갱신된 최대 80개를 갱신 시각 우선으로 읽습니다.
-     * 기간 내 반응 증가량 순위가 아니며 현재 위치와의 거리 제한은 이 원천에 적용하지 않습니다.
+     * 최근 7일에 스냅샷이 갱신된 최대 80개를 갱신 시각 우선으로 읽음.
+     * 기간 내 반응 증가량 순위와 구분하며 현재 위치와의 거리 제한은 이 원천의 조회 조건에서 제외.
      */
     private List<MapPlace> loadTrendCandidates() {
         LocalDateTime trendUpdatedAfter = LocalDateTime.now(RECOMMENDATION_CLOCK).minusDays(TREND_LOOKBACK_DAYS);
@@ -229,8 +229,8 @@ class PlaceRecommendationCandidateCollector {
     }
 
     /**
-     * 위경도 경계 상자로 후보를 좁히며 극지의 경도 제한과 날짜 변경선 넘김을 별도 처리합니다.
-     * 이 단계의 반경은 경계 상자 계산용이므로 최종 GEO 후보의 실제 거리 필터는 조회 조립 단계가 적용합니다.
+     * 위경도 경계 상자로 후보를 좁히며 극지의 경도 제한과 날짜 변경선 넘김을 별도 처리.
+     * 이 단계의 반경은 경계 상자 계산용이므로 최종 GEO 후보의 실제 거리 필터는 조회 조립 단계가 적용.
      */
     private List<MapPlace> loadNearbyCandidates(
             double latitude,

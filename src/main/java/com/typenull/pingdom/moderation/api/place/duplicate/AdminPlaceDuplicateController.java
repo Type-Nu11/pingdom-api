@@ -34,7 +34,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import jakarta.validation.Valid;
 
-/** 중복 장소 후보의 판정·병합·복구 관리 요청을 관리자 서비스로 전달합니다. */
+/** 중복 장소 후보의 판정·병합·복구 관리 요청을 관리자 서비스로 전달. */
 @RestController
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor

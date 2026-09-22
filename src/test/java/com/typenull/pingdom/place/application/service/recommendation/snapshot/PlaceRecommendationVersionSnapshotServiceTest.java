@@ -48,7 +48,7 @@ class PlaceRecommendationVersionSnapshotServiceTest {
     private PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
 
     /**
-     * 버전별 스냅샷과 노출·클릭·전환 저장소 모의 객체로 재집계 서비스를 구성한다.
+     * 버전별 스냅샷과 노출·클릭·전환 저장소 모의 객체로 재집계 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -62,7 +62,7 @@ class PlaceRecommendationVersionSnapshotServiceTest {
     }
 
     /**
-     * 최초 조회는 비어 있지만 장소 잠금 조회 후 노출 3건 스냅샷이 나타나면 기존 값을 4건으로 증가시켜 저장하는지 확인한다.
+     * 최초 조회는 비어 있지만 장소 잠금 조회 후 노출 3건 스냅샷이 나타나면 기존 값을 4건으로 증가시켜 저장하는지 확인.
      */
     @Test
     void incrementsSnapshotFoundAfterLock() {
@@ -94,7 +94,7 @@ class PlaceRecommendationVersionSnapshotServiceTest {
     }
 
     /**
-     * 대상 장소의 기존 버전에 원본 집계가 없으면 해당 스냅샷을 삭제하고 새 스냅샷은 저장하지 않는지 확인한다.
+     * 대상 장소의 기존 버전에 원본 집계가 없으면 해당 스냅샷을 삭제하고 새 스냅샷은 저장하지 않는지 확인.
      */
     @Test
     void deletesVersionsWithoutMetrics() {
@@ -122,7 +122,7 @@ class PlaceRecommendationVersionSnapshotServiceTest {
     }
 
     /**
-     * 기존 스냅샷 없이 버전별 노출 집계가 있으면 동기화 1건·삭제 0건을 반환하고 스냅샷 저장을 호출하는지 확인한다.
+     * 기존 스냅샷 없이 버전별 노출 집계가 있으면 동기화 1건·삭제 0건을 반환하고 스냅샷 저장을 호출하는지 확인.
      */
     @Test
     void createsVersionFromExposureAggregate() {
@@ -147,7 +147,7 @@ class PlaceRecommendationVersionSnapshotServiceTest {
     }
 
     /**
-     * 스냅샷 최초 생성 전 장소 잠금 조회가 반환할 장소를 지정 ID로 구성한다.
+     * 스냅샷 최초 생성 전 장소 잠금 조회가 반환할 장소를 지정 ID로 구성.
      */
     private MapPlace createPlace(Long placeId) {
         return MapPlace.builder()

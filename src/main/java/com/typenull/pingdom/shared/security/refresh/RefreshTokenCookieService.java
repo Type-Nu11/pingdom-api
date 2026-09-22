@@ -10,7 +10,7 @@ import org.springframework.http.ResponseCookie;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-/** refresh token을 /auth 경로의 HttpOnly 쿠키로 발급·만료시키고 요청 쿠키에서 읽는다. 토큰 검증은 수행하지 않는다. */
+/** refresh token을 /auth 경로의 HttpOnly 쿠키로 발급·만료시키고 요청 쿠키에서 읽음. 토큰 검증은 별도. */
 @Component
 public class RefreshTokenCookieService {
 
@@ -24,7 +24,7 @@ public class RefreshTokenCookieService {
         this.jwtProperties = jwtProperties;
     }
 
-    /** 설정된 이름의 비어 있지 않은 첫 쿠키 값을 반환한다. 쿠키가 없거나 값이 공백이면 empty다. */
+    /** 설정된 이름의 비어 있지 않은 첫 쿠키 값을 반환. 쿠키가 없거나 값이 공백이면 empty 반환. */
     public Optional<String> read(HttpServletRequest request) {
         Cookie[] cookies = request.getCookies();
         if (cookies == null) {
@@ -39,14 +39,14 @@ public class RefreshTokenCookieService {
         return Optional.empty();
     }
 
-    /** JWT refresh 수명과 같은 초 단위 max-age를 적용한다. 호출자가 Set-Cookie 헤더로 전달해야 한다. */
+    /** JWT refresh 수명과 같은 초 단위 max-age를 적용. 호출자가 Set-Cookie 헤더로 전달해야 함. */
     public ResponseCookie issue(String refreshToken) {
         return baseCookie(refreshToken)
                 .maxAge(Duration.ofSeconds(jwtProperties.refreshTokenExpirationSeconds()))
                 .build();
     }
 
-    /** 발급과 동일한 이름·경로·도메인에 빈 값과 max-age 0을 설정해 삭제용 쿠키를 만든다. */
+    /** 발급과 동일한 이름·경로·도메인에 빈 값과 max-age 0을 설정해 삭제용 쿠키를 생성. */
     public ResponseCookie expire() {
         return baseCookie("")
                 .maxAge(Duration.ZERO)

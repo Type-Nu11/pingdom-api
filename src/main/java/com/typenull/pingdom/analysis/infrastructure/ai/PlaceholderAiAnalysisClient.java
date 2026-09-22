@@ -6,7 +6,7 @@ import com.typenull.pingdom.analysis.application.ai.AiAnalysisResponse;
 import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
 import java.util.List;
 
-/** 실제 AI 연결 전에도 고정 JSON 계약과 PDF 디자인을 검증할 수 있는 임시 어댑터다. */
+/** 실제 AI 연결 전에도 고정 JSON 계약과 PDF 디자인을 검증할 수 있는 임시 어댑터. */
 public class PlaceholderAiAnalysisClient implements AiAnalysisClient {
 
     @Override

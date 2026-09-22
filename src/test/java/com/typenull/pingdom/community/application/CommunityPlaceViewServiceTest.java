@@ -32,8 +32,8 @@ class CommunityPlaceViewServiceTest {
     );
 
     /**
-     * 게시글에 연결된 공개 장소의 일일 조회 기록이 새로 삽입되면 장소 조회수를 증가시키고 상세 응답을 그대로 반환하는지 검증한다.
-     * UTC 15시가 한국 날짜의 다음 날로 기록되는지도 확인한다.
+     * 게시글에 연결된 공개 장소의 일일 조회 기록이 새로 삽입되면 장소 조회수를 증가시키고 상세 응답을 그대로 반환하는지 검증.
+     * UTC 15시가 한국 날짜의 다음 날로 기록되는지도 확인.
      */
     @Test
     void countsFirstLinkedPlaceView() {
@@ -50,7 +50,7 @@ class CommunityPlaceViewServiceTest {
     }
 
     /**
-     * 이미 같은 날의 조회 기록이 있어 삽입 결과가 0이면 장소 조회수를 다시 증가시키지 않는지 검증한다.
+     * 이미 같은 날의 조회 기록이 있어 삽입 결과가 0이면 장소 조회수를 다시 증가시키지 않는지 검증.
      */
     @Test
     void skipsDuplicateDailyViewCount() {
@@ -63,7 +63,7 @@ class CommunityPlaceViewServiceTest {
     }
 
     /**
-     * 게시글과 연결되지 않은 장소로 이동하면 예외를 반환하고 일일 기록·장소 집계·상세 조회를 호출하지 않는지 검증한다.
+     * 게시글과 연결되지 않은 장소로 이동하면 예외를 반환하고 일일 기록·장소 집계·상세 조회를 호출하지 않는지 검증.
      */
     @Test
     void rejectsUnlinkedPlaceView() {
@@ -76,7 +76,7 @@ class CommunityPlaceViewServiceTest {
     }
 
     /**
-     * 숨겨지지 않은 게시글에 공개 영업 장소가 연결된 정상 조회 조건을 설정한다.
+     * 숨겨지지 않은 게시글에 공개 영업 장소가 연결된 정상 조회 조건을 설정.
      */
     private void givenLinkedPlace() {
         when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);

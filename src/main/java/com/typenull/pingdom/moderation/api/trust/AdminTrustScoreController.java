@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** Trust Score 조회·재계산·이상 징후 및 개입 규칙 관리 API의 진입점입니다. */
+/** Trust Score 조회·재계산·이상 징후 및 개입 규칙 관리 API의 진입점. */
 @RestController
 @RequestMapping("/admin/trust-score")
 @RequiredArgsConstructor

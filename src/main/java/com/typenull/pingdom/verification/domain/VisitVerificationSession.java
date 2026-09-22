@@ -7,7 +7,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 원본 GPS 좌표는 보관하지 않고 서버가 판정한 체류 결과만 저장하는 방문 인증 세션입니다. */
+/** 원본 GPS 좌표는 보관하지 않고 서버가 판정한 체류 결과만 저장하는 방문 인증 세션. */
 @Entity
 @Getter
 @Table(name = "visit_verification_session")
@@ -60,8 +60,8 @@ public class VisitVerificationSession {
     private Long completedCheckInId;
 
     /**
-     * 시작 시점의 반경·체류 시간·TTL을 세션에 복사해 이후 전역 설정 변경과 분리한다.
-     * 체류 누적은 0초로 시작하며 인증 날짜와 관측/서버 시각을 따로 보관한다.
+     * 시작 시점의 반경·체류 시간·TTL을 세션에 복사해 이후 전역 설정 변경과 분리.
+     * 체류 누적은 0초로 시작하며 인증 날짜와 관측/서버 시각을 따로 보관.
      */
     public static VisitVerificationSession start(Long touristUserId, Long placeId, LocalDate verificationDate,
             Instant observedAt, Instant serverNow, double distanceMeters, double requiredRadiusMeters,
@@ -82,24 +82,24 @@ public class VisitVerificationSession {
         return session;
     }
 
-    /** STARTED와 IN_PROGRESS만 후속 관측을 받을 수 있는 진행 상태로 분류한다. */
+    /** STARTED와 IN_PROGRESS만 후속 관측을 받을 수 있는 진행 상태로 분류. */
     public boolean isActive() {
         return status == VisitVerificationSessionStatus.STARTED || status == VisitVerificationSessionStatus.IN_PROGRESS;
     }
 
-    /** TTL의 종료 시각과 같거나 이후이면 만료로 판정한다. 상태 자체는 바꾸지 않는다. */
+    /** TTL의 종료 시각과 같거나 이후이면 만료로 판정. 상태 자체는 유지. */
     public boolean isExpiredAt(Instant now) {
         return !now.isBefore(expiresAt);
     }
 
-    /** 마지막 서버 확인 이후 허용 간격을 엄격히 초과했는지 판정한다. 정확한 경계는 허용한다. */
+    /** 마지막 서버 확인 이후 허용 간격을 엄격히 초과했는지 판정. 정확한 경계는 허용. */
     public boolean hasObservationGapExceeded(Instant now, Duration maxObservationGap) {
         return now.isAfter(lastVerifiedAt.plus(maxObservationGap));
     }
 
     /**
-     * 검증된 관측을 기록하고 시작부터 서버 수신 시각까지의 경과 초를 체류 시간으로 갱신한다.
-     * 연속성·반경·진행 상태 검사는 호출 서비스가 먼저 수행해야 한다.
+     * 검증된 관측을 기록하고 시작부터 서버 수신 시각까지의 경과 초를 체류 시간으로 갱신.
+     * 연속성·반경·진행 상태 검사는 호출 서비스가 먼저 수행해야 함.
      */
     public void recordObservation(Instant observedAt, Instant serverNow, double distanceMeters) {
         lastObservedAt = Objects.requireNonNull(observedAt);
@@ -109,7 +109,7 @@ public class VisitVerificationSession {
         status = VisitVerificationSessionStatus.IN_PROGRESS;
     }
 
-    /** 반경 이탈 관측의 시각·거리·서버 경과 시간을 남기고 재개 불가능한 이탈 상태로 바꾼다. */
+    /** 반경 이탈 관측의 시각·거리·서버 경과 시간을 남기고 재개 불가능한 이탈 상태로 변경. */
     public void loseProximity(Instant observedAt, Instant serverNow, double distanceMeters) {
         lastObservedAt = Objects.requireNonNull(observedAt);
         lastVerifiedAt = Objects.requireNonNull(serverNow);
@@ -118,13 +118,13 @@ public class VisitVerificationSession {
         status = VisitVerificationSessionStatus.PROXIMITY_LOST;
     }
 
-    /** 마지막 서버 확인 시각과 만료 상태를 기록한다. 만료 조건의 판정은 호출자가 담당한다. */
+    /** 마지막 서버 확인 시각과 만료 상태를 기록. 만료 조건의 판정은 호출자가 담당. */
     public void expire(Instant serverNow) {
         lastVerifiedAt = Objects.requireNonNull(serverNow);
         status = VisitVerificationSessionStatus.EXPIRED;
     }
 
-    /** 저장이 완료된 체크인 ID와 완료 시각을 연결하고 서버 기준 체류 초를 갱신한다. */
+    /** 저장이 완료된 체크인 ID와 완료 시각을 연결하고 서버 기준 체류 초를 갱신. */
     public void complete(Instant serverNow, Long checkInId) {
         completedAt = Objects.requireNonNull(serverNow);
         completedCheckInId = Objects.requireNonNull(checkInId);

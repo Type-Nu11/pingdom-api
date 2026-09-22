@@ -39,7 +39,7 @@ class PlaceMediaServiceTest {
     private PlaceMediaService placeMediaService;
 
     /**
-     * 미디어 저장과 S3 검증·삭제 예약을 모의로 관찰할 서비스를 준비합니다.
+     * 미디어 저장과 S3 검증·삭제 예약을 모의로 관찰할 서비스를 준비.
      */
     @BeforeEach
     void setUp() {
@@ -53,7 +53,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 장소 소유자가 아닌 사용자의 탐색 미디어 등록을 거절하고 저장하지 않는지 확인합니다.
+     * 장소 소유자가 아닌 사용자의 탐색 미디어 등록을 거절하고 저장하지 않는지 확인.
      */
     @Test
     void rejectsNonOwnerExplorationMedia() {
@@ -74,7 +74,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 순서 누락 시 기존 최대 순서 다음 값을 부여하고 요청 URL 대신 검증한 S3 키의 공개 URL을 반환하는지 확인합니다.
+     * 순서 누락 시 기존 최대 순서 다음 값을 부여하고 요청 URL 대신 검증한 S3 키의 공개 URL을 반환하는지 확인.
      */
     @Test
     void assignsNextExplorationOrder() {
@@ -103,7 +103,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 다른 장소 prefix의 키는 S3 조회와 저장 전에 거절하는지 확인합니다.
+     * 다른 장소 prefix의 키는 S3 조회와 저장 전에 거절하는지 확인.
      */
     @Test
     void rejectsOtherPlaceMediaKey() {
@@ -125,7 +125,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * HEAD 메타데이터가 10MiB를 1바이트 넘으면 요청을 거절하고 미디어를 저장하지 않는지 확인합니다.
+     * HEAD 메타데이터가 10MiB를 1바이트 넘으면 요청을 거절하고 미디어를 저장하지 않는지 확인.
      */
     @Test
     void rejectsOversizedExplorationObject() {
@@ -148,7 +148,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 객체 메타데이터가 PDF이면 탐색 이미지로 등록할 수 없는지 확인합니다.
+     * 객체 메타데이터가 PDF이면 탐색 이미지로 등록할 수 없는지 확인.
      */
     @Test
     void rejectsUnsupportedExplorationMime() {
@@ -171,7 +171,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 새 게시물 이미지의 URL·장소·원본 ID로 VERIFICATION 미디어 한 건을 저장하는지 확인합니다.
+     * 새 게시물 이미지의 URL·장소·원본 ID로 VERIFICATION 미디어 한 건을 저장하는지 확인.
      */
     @Test
     void recordsMapImageVerification() {
@@ -199,7 +199,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 이미 원본 게시물 ID로 미디어가 있으면 다시 저장하지 않는지 확인합니다.
+     * 이미 원본 게시물 ID로 미디어가 있으면 다시 저장하지 않는지 확인.
      */
     @Test
     void skipsRecordedVerificationImage() {
@@ -217,7 +217,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 공개 장소의 EXPLORATION 조회 결과를 해당 장소의 미디어 응답으로 매핑하는지 확인합니다.
+     * 공개 장소의 EXPLORATION 조회 결과를 해당 장소의 미디어 응답으로 매핑하는지 확인.
      */
     @Test
     void loadsVisibleExplorationMedia() {
@@ -245,7 +245,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 검색 비노출 장소는 탐색 미디어 조회에서도 PLACE_NOT_FOUND로 처리하는지 확인합니다.
+     * 검색 비노출 장소는 탐색 미디어 조회에서도 PLACE_NOT_FOUND로 처리하는지 확인.
      */
     @Test
     void rejectsHiddenExplorationPlace() {
@@ -259,7 +259,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * EXPLORATION 범위에 해당 ID가 없으면 다른 용도의 미디어를 삭제하지 않고 미디어 없음 오류를 반환하는지 확인합니다.
+     * EXPLORATION 범위에 해당 ID가 없으면 다른 용도의 미디어를 삭제하지 않고 미디어 없음 오류를 반환하는지 확인.
      */
     @Test
     void rejectsMissingExplorationMedia() {
@@ -276,7 +276,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 탐색 미디어 행을 삭제하면서 해당 S3 키와 삭제 사유를 Outbox publisher에 전달하는지 확인합니다.
+     * 탐색 미디어 행을 삭제하면서 해당 S3 키와 삭제 사유를 Outbox publisher에 전달하는지 확인.
      */
     @Test
     void queuesExplorationObjectDeletion() {
@@ -306,7 +306,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * 원본 게시물 10에 연결된 기존 검증 미디어를 만듭니다.
+     * 원본 게시물 10에 연결된 기존 검증 미디어를 생성.
      */
     private PlaceMedia existingVerification() {
         return PlaceMedia.verification(
@@ -321,7 +321,7 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * ID와 등록자를 지정한 공개·운영 장소 fixture를 만듭니다.
+     * ID와 등록자를 지정한 공개·운영 장소 fixture를 생성.
      */
     private MapPlace place(Long id, Long userId) {
         return MapPlace.builder()

@@ -14,7 +14,7 @@ import java.util.stream.Stream;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 
-/** 운영 코드의 패키지 계층 규칙이 소스 경로와 일치하는지 검증합니다. */
+/** 운영 코드의 패키지 계층 규칙이 소스 경로와 일치하는지 검증. */
 class PackageConventionTest {
 
     private static final Path JAVA_SOURCE_ROOT = Path.of("src/main/java");
@@ -31,7 +31,7 @@ class PackageConventionTest {
     );
 
     /**
-     * 운영 Java 파일의 package 선언이 소스 루트 상대 디렉터리와 일치하는지 검사하고 누락 또는 불일치 경로를 보고한다.
+     * 운영 Java 파일의 package 선언이 소스 루트 상대 디렉터리와 일치하는지 검사하고 누락 또는 불일치 경로를 보고.
      */
     @Test
     @DisplayName("Java package 선언은 소스 디렉터리 경로와 일치한다")
@@ -61,7 +61,7 @@ class PackageConventionTest {
     }
 
     /**
-     * shared와 루트 파일을 제외한 도메인 모듈이 허용된 api·application·domain 등 최상위 계층만 사용하는지 검증한다.
+     * shared와 루트 파일을 제외한 도메인 모듈이 허용된 api·application·domain 등 최상위 계층만 사용하는지 검증.
      */
     @Test
     @DisplayName("도메인 모듈은 표준 최상위 계층만 사용한다")
@@ -89,7 +89,7 @@ class PackageConventionTest {
     }
 
     /**
-     * 기본 운영 패키지 아래의 일반 Java 파일을 재귀 수집하고 파일 탐색 스트림을 닫는다.
+     * 기본 운영 패키지 아래의 일반 Java 파일을 재귀 수집하고 파일 탐색 스트림을 닫음.
      */
     private List<Path> javaSourceFiles() throws IOException {
         try (Stream<Path> paths = Files.walk(BASE_PACKAGE_ROOT)) {

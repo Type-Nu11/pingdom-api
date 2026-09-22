@@ -73,7 +73,7 @@ class S3ServiceTest {
     private S3Service s3Service;
 
     /**
-     * 사진·S3·Outbox 의존성 대역과 실제 이미지 처리기를 연결하고 DB 작업 없는 트랜잭션 대역으로 서비스를 구성한다.
+     * 사진·S3·Outbox 의존성 대역과 실제 이미지 처리기를 연결하고 DB 작업 없는 트랜잭션 대역으로 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -93,7 +93,7 @@ class S3ServiceTest {
     }
 
     /**
-     * 사진 삭제 응답 ID를 확인하고 DB 삭제 후 원본·썸네일 삭제 Outbox를 순서대로 발행하며 S3 직접 삭제는 하지 않는지 검증한다.
+     * 사진 삭제 응답 ID를 확인하고 DB 삭제 후 원본·썸네일 삭제 Outbox를 순서대로 발행하며 S3 직접 삭제는 하지 않는지 검증.
      */
     @Test
     void deletesRecordBeforePublishingCleanup() {
@@ -113,7 +113,7 @@ class S3ServiceTest {
     }
 
     /**
-     * 사진 교체 시 새 원본·썸네일 키를 저장하고 이전 키 삭제 Outbox를 발행하며 이전 원본은 즉시 삭제하지 않는지 검증한다.
+     * 사진 교체 시 새 원본·썸네일 키를 저장하고 이전 키 삭제 Outbox를 발행하며 이전 원본은 즉시 삭제하지 않는지 검증.
      */
     @Test
     void publishesCleanupForReplacedImages() throws Exception {
@@ -148,7 +148,7 @@ class S3ServiceTest {
     }
 
     /**
-     * DB 사진 삭제가 실패하면 예외가 전파되고 S3 삭제와 삭제 Outbox 발행을 모두 실행하지 않는지 검증한다.
+     * DB 사진 삭제가 실패하면 예외가 전파되고 S3 삭제와 삭제 Outbox 발행을 모두 실행하지 않는지 검증.
      */
     @Test
     void preservesS3WhenDatabaseDeletionFails() {
@@ -165,7 +165,7 @@ class S3ServiceTest {
     }
 
     /**
-     * 작성자 1의 사진 10에 원본·썸네일 URL과 키를 채워 삭제/교체 대상을 제공한다.
+     * 작성자 1의 사진 10에 원본·썸네일 URL과 키를 채워 삭제/교체 대상을 제공.
      */
     private MapImage mapImage() {
         return MapImage.builder()
@@ -182,7 +182,7 @@ class S3ServiceTest {
     }
 
     /**
-     * 실제 ImageIO로 2×2 JPEG를 인코딩해 이미지 유효성 검사를 통과하는 업로드 입력을 제공한다.
+     * 실제 ImageIO로 2×2 JPEG를 인코딩해 이미지 유효성 검사를 통과하는 업로드 입력을 제공.
      */
     private byte[] validJpegBytes() throws Exception {
         BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
@@ -192,13 +192,13 @@ class S3ServiceTest {
     }
 
     /**
-     * 실제 DB 트랜잭션 없이 서비스의 트랜잭션 경로를 실행하는 no-op 대역을 만든다.
-     * 커밋·롤백의 저장소 원자성은 이 테스트로 검증되지 않는다.
+     * 실제 DB 트랜잭션 없이 서비스의 트랜잭션 경로를 실행하는 no-op 대역을 생성.
+     * 커밋·롤백의 저장소 원자성은 검증 범위에서 제외.
      */
     private PlatformTransactionManager transactionManager() {
         return new AbstractPlatformTransactionManager() {
             /**
-             * 트랜잭션 대역의 호출마다 빈 상태 객체를 제공한다.
+             * 트랜잭션 대역의 호출마다 빈 상태 객체를 제공.
              */
             @Override
             protected Object doGetTransaction() {
@@ -206,21 +206,21 @@ class S3ServiceTest {
             }
 
             /**
-             * DB 연결이 없는 테스트 대역이므로 시작 훅에서 실제 트랜잭션을 열지 않는다.
+             * DB 연결 없이 트랜잭션 경계 호출을 수용하는 빈 시작 훅.
              */
             @Override
             protected void doBegin(Object transaction, TransactionDefinition definition) {
             }
 
             /**
-             * 서비스 호출 흐름만 검증하므로 커밋 훅은 실제 저장소 커밋을 수행하지 않는다.
+             * 서비스 호출 흐름 검증을 위한 빈 커밋 훅. 실제 저장소 커밋은 생략.
              */
             @Override
             protected void doCommit(DefaultTransactionStatus status) {
             }
 
             /**
-             * 실패 전파 흐름만 검증하므로 롤백 훅은 실제 DB 복구를 수행하지 않는다.
+             * 실패 전파 흐름 검증을 위한 빈 롤백 훅. 실제 DB 복구는 생략.
              */
             @Override
             protected void doRollback(DefaultTransactionStatus status) {

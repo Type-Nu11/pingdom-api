@@ -12,7 +12,7 @@ class VisitorVerificationReportCreateRequestValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-    /** 생성 요청의 언어 태그 공백을 제거한 en-US 값과 validation 성공을 확인한다. */
+    /** 생성 요청의 언어 태그 공백을 제거한 en-US 값과 validation 성공을 확인. */
     @Test
     void trimReportLanguageCode() {
         VisitorVerificationReportCreateRequest request = new VisitorVerificationReportCreateRequest(
@@ -23,7 +23,7 @@ class VisitorVerificationReportCreateRequestValidationTest {
         assertThat(validator.validate(request)).isEmpty();
     }
 
-    /** english 언어 태그와 1,441분 대기 시간은 각각 대응 필드 위반으로 검출되어야 한다. */
+    /** english 언어 태그와 1,441분 대기 시간은 각각 대응 필드 위반으로 검출되어야 함. */
     @Test
     void rejectInvalidStructuredInputs() {
         VisitorVerificationReportCreateRequest invalidLanguage = new VisitorVerificationReportCreateRequest(
@@ -40,8 +40,8 @@ class VisitorVerificationReportCreateRequestValidationTest {
     }
 
     /**
-     * 혼잡도 FULL enum을 요청 객체가 유지하고 validation을 통과하는지 확인한다.
-     * JSON 직렬화 자체는 이 테스트에서 실행하지 않는다.
+     * 혼잡도 FULL enum을 요청 객체가 유지하고 validation을 통과하는지 확인.
+     * JSON 직렬화 실행은 검증 범위에서 제외.
      */
     @Test
     void retainCrowdLevelEnum() {

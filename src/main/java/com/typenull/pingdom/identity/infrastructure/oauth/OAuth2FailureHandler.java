@@ -14,8 +14,8 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.util.UriComponentsBuilder;
 
 /**
- * OAuth 실패를 프런트 리다이렉트의 error·message 값으로 전달하고 계정 연결 쿠키를 정리합니다.
- * 오류 코드가 제공되지 않은 실패는 공통 로그인 실패 코드로 응답합니다.
+ * OAuth 실패를 프런트 리다이렉트의 error·message 값으로 전달하고 계정 연결 쿠키를 정리.
+ * 오류 코드가 제공되지 않은 실패는 공통 로그인 실패 코드로 응답.
  */
 @Component
 @Slf4j

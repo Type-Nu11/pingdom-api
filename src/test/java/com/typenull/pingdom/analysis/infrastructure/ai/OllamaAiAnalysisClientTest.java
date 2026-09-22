@@ -27,7 +27,7 @@ class OllamaAiAnalysisClientTest {
     );
 
     /**
-     * 비스트리밍 /api/chat 요청에 단일 user 프롬프트와 모델을 전달하고 분석 JSON의 이름·기준일·데이터 부족 등급을 복원하는지 검증한다.
+     * 비스트리밍 /api/chat 요청에 단일 user 프롬프트와 모델을 전달하고 분석 JSON의 이름·기준일·데이터 부족 등급을 복원하는지 검증.
      */
     @Test
     void sendsAndParsesOllamaAnalysis() {
@@ -59,7 +59,7 @@ class OllamaAiAnalysisClientTest {
     }
 
     /**
-     * Ollama 응답 content가 공백뿐이면 AI_RESPONSE_INVALID로 처리하는지 검증한다.
+     * Ollama 응답 content가 공백뿐이면 AI_RESPONSE_INVALID로 처리하는지 검증.
      */
     @Test
     void rejectsEmptyOllamaContent() {

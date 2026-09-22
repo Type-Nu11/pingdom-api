@@ -11,7 +11,7 @@ class PopupCampaignTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 1, 12, 0);
 
     /**
-     * 기간 내 초안을 게시한 뒤 종료하면 PUBLISHED에서 CLOSED로 전이되는지 검증한다.
+     * 기간 내 초안을 게시한 뒤 종료하면 PUBLISHED에서 CLOSED로 전이되는지 검증.
      */
     @Test
     void publishesThenClosesDraft() {
@@ -25,7 +25,7 @@ class PopupCampaignTest {
     }
 
     /**
-     * 시작과 종료 시각이 동일한 캠페인 생성이 IllegalArgumentException으로 거절되는지 검증한다.
+     * 시작과 종료 시각이 동일한 캠페인 생성이 IllegalArgumentException으로 거절되는지 검증.
      */
     @Test
     void invalidPeriodIsRejected() {
@@ -35,7 +35,7 @@ class PopupCampaignTest {
     }
 
     /**
-     * 게시 후 종료한 캠페인을 다시 게시하면 IllegalStateException이 발생하는지 검증한다.
+     * 게시 후 종료한 캠페인을 다시 게시하면 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void rejectsClosedCampaignPublication() {
@@ -48,7 +48,7 @@ class PopupCampaignTest {
     }
 
     /**
-     * 게시 중인 캠페인의 브랜드·장소·기간 등을 수정하면 IllegalStateException이 발생하는지 검증한다.
+     * 게시 중인 캠페인의 브랜드·장소·기간 등을 수정하면 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void publishedCampaignCannotBeUpdated() {
@@ -67,7 +67,7 @@ class PopupCampaignTest {
     }
 
     /**
-     * 고정된 현재 시각이 행사 기간 안에 포함되는 7일 팝업 캠페인 초안을 생성한다.
+     * 고정된 현재 시각이 행사 기간 안에 포함되는 7일 팝업 캠페인 초안을 생성.
      */
     private PopupCampaign draft() {
         return PopupCampaign.draft(

@@ -25,7 +25,7 @@ import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * 제거된 관리자 광고 API가 인증된 요청에도 다시 노출되지 않는지 확인한다.
+ * 제거된 관리자 광고 API가 인증된 요청에도 다시 노출되지 않는지 확인.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -58,7 +58,7 @@ class AdminAdControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * 관리자 로그인 후에도 제거된 광고 목록·상세·생성·삭제 경로가 모두 404인지 확인한다.
+     * 관리자 로그인 후에도 제거된 광고 목록·상세·생성·삭제 경로가 모두 404인지 확인.
      */
     @Test
     void adminAdPathsAreNotMapped() throws Exception {
@@ -82,7 +82,7 @@ class AdminAdControllerTest {
     }
 
     /**
-     * ADMIN 사용자를 저장하고 실제 로그인 응답에서 접근 토큰을 추출한다.
+     * ADMIN 사용자를 저장하고 실제 로그인 응답에서 접근 토큰을 추출.
      */
     private String createAdminAndLogin() throws Exception {
         userRepository.save(User.builder()

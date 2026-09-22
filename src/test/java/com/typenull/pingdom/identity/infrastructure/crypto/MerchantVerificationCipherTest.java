@@ -14,7 +14,7 @@ class MerchantVerificationCipherTest {
     );
 
     /**
-     * 사업자번호 암호문이 v1 접두사를 사용하고 평문을 포함하지 않으며 복호화로 원문이 복원되는지 검증한다.
+     * 사업자번호 암호문이 v1 접두사를 사용하고 평문을 포함하지 않으며 복호화로 원문이 복원되는지 검증.
      */
     @Test
     void encryptsAndDecryptsRegistrationNumber() {
@@ -25,7 +25,7 @@ class MerchantVerificationCipherTest {
     }
 
     /**
-     * 암호문의 마지막 문자를 바꾼 입력을 복호화하면 IllegalStateException으로 거절되는지 검증한다.
+     * 암호문의 마지막 문자를 바꾼 입력을 복호화하면 IllegalStateException으로 거절되는지 검증.
      */
     @Test
     void rejectsTamperedCiphertext() {
@@ -37,7 +37,7 @@ class MerchantVerificationCipherTest {
     }
 
     /**
-     * 선택 값이 없는 경우 암호화·복호화 모두 null을 그대로 유지하는지 검증한다.
+     * 선택 값이 없는 경우 암호화·복호화 모두 null을 그대로 유지하는지 검증.
      */
     @Test
     void preservesNullValues() {
@@ -46,7 +46,7 @@ class MerchantVerificationCipherTest {
     }
 
     /**
-     * 지원하지 않는 v2 암호문 접두사는 IllegalStateException으로 거절되는지 검증한다.
+     * 지원하지 않는 v2 암호문 접두사는 IllegalStateException으로 거절되는지 검증.
      */
     @Test
     void rejectsUnsupportedCiphertextVersion() {
@@ -55,7 +55,7 @@ class MerchantVerificationCipherTest {
     }
 
     /**
-     * v1 접두사라도 잘못된 Base64 payload는 IllegalStateException으로 거절되는지 검증한다.
+     * v1 접두사라도 잘못된 Base64 payload는 IllegalStateException으로 거절되는지 검증.
      */
     @Test
     void rejectsMalformedBase64Payload() {

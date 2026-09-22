@@ -23,7 +23,7 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 게시글 목록·상세 조회와 좋아요·북마크 상태를 배치 조회 결과로 조합합니다. */
+/** 게시글 목록·상세 조회와 좋아요·북마크 상태를 배치 조회 결과로 조합. */
 @Service
 @RequiredArgsConstructor
 public class PostQueryServiceImpl implements PostQueryService {
@@ -37,7 +37,7 @@ public class PostQueryServiceImpl implements PostQueryService {
     private final MapImageLikeRepository mapImageLikeRepository;
     private final MapBookmarkRepository mapBookmarkRepository;
 
-    /** 페이지 조건을 보정하고 공개 게시글에 사용자별 상호작용 상태를 결합합니다. */
+    /** 페이지 조건을 보정하고 공개 게시글에 사용자별 상호작용 상태를 결합. */
     @Override
     @Transactional(readOnly = true)
     public PostListResponse listPosts(int page, int limit, Long userId) {
@@ -82,8 +82,8 @@ public class PostQueryServiceImpl implements PostQueryService {
     }
 
     /**
-     * 작성자 본인의 게시글은 숨김 상태도 포함하며 제목·설명·장소명과 숫자 게시글 ID로 검색합니다.
-     * 페이지는 1부터, 크기는 1~100으로 보정하고 정렬 동률은 ID로 안정화합니다.
+     * 작성자 본인의 게시글은 숨김 상태도 포함하며 제목·설명·장소명과 숫자 게시글 ID로 검색.
+     * 페이지는 1부터, 크기는 1~100으로 보정하고 정렬 동률은 ID로 안정화.
      */
     @Override
     @Transactional(readOnly = true)
@@ -137,8 +137,8 @@ public class PostQueryServiceImpl implements PostQueryService {
     }
 
     /**
-     * 북마크한 장소마다 공개 게시글 중 가장 큰 ID의 한 건을 골라 본인 좋아요 상태를 결합한다.
-     * 사용자 ID는 필수이며 페이지·크기를 보정한다. 결과는 북마크 생성 시각·ID 내림차순이고 북마크 상태를 true로 반환한다.
+     * 북마크한 장소마다 공개 게시글 중 가장 큰 ID의 한 건을 골라 본인 좋아요 상태를 결합.
+     * 사용자 ID는 필수이며 페이지·크기를 보정. 결과는 북마크 생성 시각·ID 내림차순이고 북마크 상태를 true로 반환.
      */
     @Override
     @Transactional(readOnly = true)
@@ -174,8 +174,8 @@ public class PostQueryServiceImpl implements PostQueryService {
     }
 
     /**
-     * 본인이 좋아요한 공개 게시글을 좋아요 ID 내림차순으로 조회하고 연결 장소의 북마크 상태를 결합한다.
-     * 사용자 ID가 없으면 거부하며, 페이지는 최소 1·크기는 1~100으로 보정한다.
+     * 본인이 좋아요한 공개 게시글을 좋아요 ID 내림차순으로 조회하고 연결 장소의 북마크 상태를 결합.
+     * 사용자 ID가 없으면 거부하며, 페이지는 최소 1·크기는 1~100으로 보정.
      */
     @Override
     @Transactional(readOnly = true)
@@ -215,7 +215,7 @@ public class PostQueryServiceImpl implements PostQueryService {
         );
     }
 
-    /** 숨긴 게시글은 작성자에게만 상세를 제공하고, 그 외 사용자에게는 존재하지 않는 게시글과 같은 오류를 반환합니다. */
+    /** 숨긴 게시글은 작성자에게만 상세를 제공하고, 그 외 사용자에게는 존재하지 않는 게시글과 같은 오류를 반환. */
     @Override
     @Transactional(readOnly = true)
     public PostDetailResponse getPost(Long postId, Long userId) {

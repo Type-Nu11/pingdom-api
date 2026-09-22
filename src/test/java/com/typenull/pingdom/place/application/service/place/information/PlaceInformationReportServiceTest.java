@@ -80,7 +80,7 @@ class PlaceInformationReportServiceTest {
     private PlaceInformationReportService service;
 
     /**
-     * 고정 시계와 모의 저장소·Outbox·감사를 주입하여 신고 상태 전이의 부작용을 관찰합니다.
+     * 고정 시계와 모의 저장소·Outbox·감사를 주입하여 신고 상태 전이의 부작용을 관찰.
      */
     @BeforeEach
     void setUp() {
@@ -98,7 +98,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 신규 신고의 저장 ID와 SUBMITTED 상태를 반환하고 신고 지표 및 장소 단위 Outbox를 남기는지 확인합니다.
+     * 신규 신고의 저장 ID와 SUBMITTED 상태를 반환하고 신고 지표 및 장소 단위 Outbox를 남기는지 확인.
      */
     @Test
     void submitsReportWithEvent() {
@@ -142,7 +142,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 동일 사용자의 같은 대상 대기 신고는 전용 중복 오류로 거절하며 저장·발행하지 않는지 확인합니다.
+     * 동일 사용자의 같은 대상 대기 신고는 전용 중복 오류로 거절하며 저장·발행하지 않는지 확인.
      */
     @Test
     void rejectsDuplicateActiveReport() {
@@ -174,7 +174,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 등록자도 연결 점주도 아닌 사용자의 이의 제기를 거절하고 이벤트를 발행하지 않는지 확인합니다.
+     * 등록자도 연결 점주도 아닌 사용자의 이의 제기를 거절하고 이벤트를 발행하지 않는지 확인.
      */
     @Test
     void rejectsUnauthorizedDispute() {
@@ -194,7 +194,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 승인된 신고에 이의를 제출하면 이의는 SUBMITTED, 신고는 DISPUTED가 되고 두 상태 이벤트와 지표를 기록하는지 확인합니다.
+     * 승인된 신고에 이의를 제출하면 이의는 SUBMITTED, 신고는 DISPUTED가 되고 두 상태 이벤트와 지표를 기록하는지 확인.
      */
     @Test
     void submitsDisputeWithReportTransition() {
@@ -235,7 +235,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 신고 승인에서 ACCEPTED 응답과 관리자 감사·상태 지표·심사 Outbox가 함께 발생하는지 확인합니다.
+     * 신고 승인에서 ACCEPTED 응답과 관리자 감사·상태 지표·심사 Outbox가 함께 발생하는지 확인.
      */
     @Test
     void auditsAcceptedReport() {
@@ -274,7 +274,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 이의 심사 결과로 SUBMITTED를 요청하면 전용 오류를 반환하고 감사·Outbox를 남기지 않는지 확인합니다.
+     * 이의 심사 결과로 SUBMITTED를 요청하면 전용 오류를 반환하고 감사·Outbox를 남기지 않는지 확인.
      */
     @Test
     void rejectsUnsupportedDisputeReview() {
@@ -298,7 +298,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 등록자와 좌표를 가진 신고 대상 장소를 준비합니다.
+     * 등록자와 좌표를 가진 신고 대상 장소를 준비.
      */
     private MapPlace place(Long placeId, Long ownerUserId) {
         return MapPlace.builder()
@@ -313,7 +313,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 하루 전에 제출된 영업 상태 신고를 지정 ID로 구성합니다.
+     * 하루 전에 제출된 영업 상태 신고를 지정 ID로 구성.
      */
     private PlaceInformationReport submittedReport(Long reportId, MapPlace place, Long reporterUserId) {
         PlaceInformationReport report = PlaceInformationReport.submit(
@@ -330,7 +330,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 제출 신고를 관리자가 승인한 상태로 전환해 이의 제기 전제조건을 만듭니다.
+     * 제출 신고를 관리자가 승인한 상태로 전환해 이의 제기 전제조건을 생성.
      */
     private PlaceInformationReport acceptedReport(Long reportId, MapPlace place, Long reporterUserId) {
         PlaceInformationReport report = submittedReport(reportId, place, reporterUserId);
@@ -339,7 +339,7 @@ class PlaceInformationReportServiceTest {
     }
 
     /**
-     * 영속 저장을 대신하여 테스트 신고 엔티티에 ID를 부여합니다.
+     * 영속 저장을 대신하여 테스트 신고 엔티티에 ID를 부여.
      */
     private PlaceInformationReport withId(PlaceInformationReport report, Long reportId) {
         ReflectionTestUtils.setField(report, "id", reportId);

@@ -11,8 +11,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 분석 기준일과 요청 조건을 JSON으로 직렬화하고 응답 구조·근거 제시 지침을 프롬프트에 결합합니다.
- * 모델에 전달하는 지침 자체가 데이터의 진실성이나 도구 호출을 보장하지 않으므로 응답 검증은 별도로 수행합니다.
+ * 분석 기준일과 요청 조건을 JSON으로 직렬화하고 응답 구조·근거 제시 지침을 프롬프트에 결합.
+ * 모델에 전달하는 지침 자체가 데이터의 진실성이나 도구 호출을 보장하지 않으므로 응답 검증은 별도로 수행.
  */
 @Service
 @RequiredArgsConstructor
@@ -36,8 +36,8 @@ public class LocationAnalysisPromptFactory {
     private final ObjectMapper objectMapper;
 
     /**
-     * 요청 조건을 JSON으로 직렬화해 기준일·고정 응답 지침과 결합한 프롬프트를 반환한다.
-     * 직렬화 실패는 AI_RESPONSE_INVALID로 변환하며 이 단계에서는 모델이나 MCP 도구를 호출하지 않는다.
+     * 요청 조건을 JSON으로 직렬화해 기준일·고정 응답 지침과 결합한 프롬프트 반환.
+     * 직렬화 실패는 AI_RESPONSE_INVALID로 변환하며 모델·MCP 도구 호출은 후속 단계의 책임.
      */
     public AiAnalysisPrompt create(LocationAnalysisRequest request, LocalDate analysisBasisDate) {
         try {

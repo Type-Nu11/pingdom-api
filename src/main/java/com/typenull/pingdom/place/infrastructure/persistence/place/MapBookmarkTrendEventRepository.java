@@ -8,8 +8,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 북마크 제거 이력 저장과 장소 병합·복구 시 집계 대상 장소의 재지정을 제공합니다.
- * originPlaceId는 변경하지 않아 복구할 때 원래 장소에서 온 이벤트만 골라 되돌릴 수 있습니다.
+ * 북마크 제거 이력 저장과 장소 병합·복구 시 집계 대상 장소의 재지정을 제공.
+ * originPlaceId는 변경하지 않아 복구할 때 원래 장소에서 온 이벤트만 골라 되돌릴 수 있음.
  */
 public interface MapBookmarkTrendEventRepository extends JpaRepository<MapBookmarkTrendEvent, Long> {
 

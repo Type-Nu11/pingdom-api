@@ -42,7 +42,7 @@ class CommunityPostQueryServiceTest {
     );
 
     /**
-     * 카테고리 조회가 저장소의 ID·제목 목록과 전체 수·페이지 수·다음 페이지 여부를 응답에 반영하는지 검증한다.
+     * 카테고리 조회가 저장소의 ID·제목 목록과 전체 수·페이지 수·다음 페이지 여부를 응답에 반영하는지 검증.
      */
     @Test
     void returnsCategoryPostPage() {
@@ -63,7 +63,7 @@ class CommunityPostQueryServiceTest {
     }
 
     /**
-     * 알 수 없는 카테고리 조회는 해당 오류 메시지를 반환하고 게시글 목록 저장소를 호출하지 않는지 검증한다.
+     * 알 수 없는 카테고리 조회는 해당 오류 메시지를 반환하고 게시글 목록 저장소를 호출하지 않는지 검증.
      */
     @Test
     void rejectsUnsupportedQueryCategory() {
@@ -75,7 +75,7 @@ class CommunityPostQueryServiceTest {
     }
 
     /**
-     * 게시글 상세의 제목·본문과 연결 장소 ID·이름·삭제 여부를 조립하고 연결 장소 일괄 조회를 사용하는지 검증한다.
+     * 게시글 상세의 제목·본문과 연결 장소 ID·이름·삭제 여부를 조립하고 연결 장소 일괄 조회를 사용하는지 검증.
      */
     @Test
     void returnsPostWithLinkedPlaces() {
@@ -100,7 +100,7 @@ class CommunityPostQueryServiceTest {
     }
 
     /**
-     * 조회 가능한 게시글이 없으면 게시글 없음 오류를 반환하고 연결 장소 조회를 생략하는지 검증한다.
+     * 조회 가능한 게시글이 없으면 게시글 없음 오류를 반환하고 연결 장소 조회를 생략하는지 검증.
      */
     @Test
     void rejectsMissingPostDetail() {
@@ -114,7 +114,7 @@ class CommunityPostQueryServiceTest {
     }
 
     /**
-     * 연결된 장소 객체가 삭제되어도 원래 장소 ID와 삭제 안내 문구, 삭제 상태를 상세 응답에 유지하는지 검증한다.
+     * 연결된 장소 객체가 삭제되어도 원래 장소 ID와 삭제 안내 문구, 삭제 상태를 상세 응답에 유지하는지 검증.
      */
     @Test
     void preservesDeletedPlaceReference() {
@@ -135,7 +135,7 @@ class CommunityPostQueryServiceTest {
     }
 
     /**
-     * 댓글 페이지와 작성자 일괄 조회 결과를 결합해 댓글 ID·내용·작성자 ID·이름·작성 시각을 응답하는지 검증한다.
+     * 댓글 페이지와 작성자 일괄 조회 결과를 결합해 댓글 ID·내용·작성자 ID·이름·작성 시각을 응답하는지 검증.
      */
     @Test
     void joinsCommentAuthorInformation() {

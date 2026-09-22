@@ -12,8 +12,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 사용자별 여행 일정 조회와 양 끝 날짜를 포함하는 기간 중복 검사를 제공합니다.
- * 중복 검사 시 수정 중인 일정 ID를 제외할 수 있으며 이 쿼리는 잠금을 획득하지 않습니다.
+ * 사용자별 여행 일정 조회와 양 끝 날짜를 포함하는 기간 중복 검사를 제공.
+ * 중복 검사 시 수정 중인 일정 ID를 제외할 수 있으며 이 쿼리는 잠금 없이 수행.
  */
 public interface TravelScheduleRepository extends JpaRepository<TravelSchedule, Long> {
 

@@ -26,14 +26,14 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
     private RestClient.Builder builder;
     private MockRestServiceServer server;
 
-    /** 네이버 HTTP 요청 횟수와 응답을 제어하는 대역 서버를 매 테스트 초기화한다. */
+    /** 네이버 HTTP 요청 횟수와 응답을 제어하는 대역 서버를 매 테스트 초기화. */
     @BeforeEach
     void setUp() {
         builder = RestClient.builder().baseUrl("https://naver.test");
         server = MockRestServiceServer.bindTo(builder).build();
     }
 
-    /** 같은 좌표의 연속 성공 조회를 한 번의 HTTP 대역 요청으로 처리하는지 확인한다. */
+    /** 같은 좌표의 연속 성공 조회를 한 번의 HTTP 대역 요청으로 처리하는지 확인. */
     @Test
     void cachesSuccessfulRegionLookup() {
         server.expect(requestTo(FIRST_REQUEST_URL))
@@ -47,7 +47,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         server.verify();
     }
 
-    /** TTL 1밀리초 설정 후 5밀리초를 기다리면 같은 좌표를 다시 외부 조회하는지 확인한다. */
+    /** TTL 1밀리초 설정 후 5밀리초를 기다리면 같은 좌표를 다시 외부 조회하는지 확인. */
     @Test
     void reloadsExpiredRegionCache() throws InterruptedException {
         server.expect(requestTo(FIRST_REQUEST_URL))
@@ -64,7 +64,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         server.verify();
     }
 
-    /** 용량 1에서 두 좌표를 순서대로 조회한 뒤 첫 좌표를 재조회하면 세 번째 HTTP 요청이 발생하는지 확인한다. */
+    /** 용량 1에서 두 좌표를 순서대로 조회한 뒤 첫 좌표를 재조회하면 세 번째 HTTP 요청이 발생하는지 확인. */
     @Test
     void clearsCacheAtCapacity() {
         server.expect(requestTo(FIRST_REQUEST_URL))
@@ -83,7 +83,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         server.verify();
     }
 
-    /** 결과 없음 응답은 반복 조회마다 HTTP를 요청하고 같은 지역 없음 오류로 변환되는지 확인한다. */
+    /** 결과 없음 응답은 반복 조회마다 HTTP를 요청하고 같은 지역 없음 오류로 변환되는지 확인. */
     @Test
     void doesNotCacheMissingRegion() {
         server.expect(requestTo(FIRST_REQUEST_URL))
@@ -99,7 +99,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         server.verify();
     }
 
-    /** 429 응답을 외부 조회 실패로 바꾸고 다음 요청에서도 다시 HTTP를 호출하는지 확인한다. */
+    /** 429 응답을 외부 조회 실패로 바꾸고 다음 요청에서도 다시 HTTP를 호출하는지 확인. */
     @Test
     void doesNotCacheProviderFailure() {
         server.expect(requestTo(FIRST_REQUEST_URL)).andRespond(withStatus(HttpStatus.TOO_MANY_REQUESTS));
@@ -113,7 +113,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         server.verify();
     }
 
-    /** 비활성 resolver와 비밀키 누락 resolver 모두 사용 불가 오류를 내고 HTTP 요청을 보내지 않는지 확인한다. */
+    /** 비활성 resolver와 비밀키 누락 resolver 모두 사용 불가 오류를 내고 HTTP 요청을 보내지 않는지 확인. */
     @Test
     void skipsUnconfiguredRegionRequests() {
         NaverPlaceAdministrativeRegionResolver disabledResolver = new NaverPlaceAdministrativeRegionResolver(
@@ -138,7 +138,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         server.verify();
     }
 
-    /** TTL과 최대 항목 수를 지정하고 나머지 인증·주소는 고정한 resolver를 만든다. */
+    /** TTL과 최대 항목 수를 지정하고 나머지 인증·주소는 고정한 resolver를 생성. */
     private NaverPlaceAdministrativeRegionResolver resolver(Duration cacheTtl, int cacheMaxEntries) {
         return new NaverPlaceAdministrativeRegionResolver(
                 builder.build(),
@@ -155,7 +155,7 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
         );
     }
 
-    /** 강남구를 가리키는 정상 legalcode JSON을 반환해 캐시 동작에 집중한다. */
+    /** 강남구를 가리키는 정상 legalcode JSON을 반환해 캐시 동작에 집중. */
     private String successResponse() {
         return """
                 {
@@ -172,14 +172,14 @@ class NaverPlaceAdministrativeRegionResolverCacheTest {
                 """;
     }
 
-    /** 고정 좌표 재조회가 지역 없음 오류로 끝나는지 확인한다. */
+    /** 고정 좌표 재조회가 지역 없음 오류로 끝나는지 확인. */
     private void assertRegionNotFound(NaverPlaceAdministrativeRegionResolver resolver) {
         assertThatThrownBy(() -> resolver.resolve(37.5172, 127.0473))
                 .isInstanceOfSatisfying(MapException.class, exception ->
                         assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND));
     }
 
-    /** 고정 좌표 재조회가 외부 조회 실패 오류로 끝나는지 확인한다. */
+    /** 고정 좌표 재조회가 외부 조회 실패 오류로 끝나는지 확인. */
     private void assertResolutionFailed(NaverPlaceAdministrativeRegionResolver resolver) {
         assertThatThrownBy(() -> resolver.resolve(37.5172, 127.0473))
                 .isInstanceOfSatisfying(MapException.class, exception ->

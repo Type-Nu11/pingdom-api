@@ -61,7 +61,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/** 장소 좌표·식별자·관광정보·운영품질·정보 근거 변경을 담당한다. */
+/** 장소 좌표·식별자·관광정보·운영품질·정보 근거 변경을 담당. */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -80,8 +80,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 장소를 잠가 이름의 양끝 공백을 제거한 값과 카테고리를 갱신하고 변경 전후 감사 기록을 함께 저장합니다.
-     * 장소가 없으면 PLACE_NOT_FOUND이며 응답의 수정 시각은 저장한 감사 기록의 생성 시각을 사용합니다.
+     * 장소를 잠가 이름의 양끝 공백을 제거한 값과 카테고리를 갱신하고 변경 전후 감사 기록을 함께 저장.
+     * 장소가 없으면 PLACE_NOT_FOUND이며 응답의 수정 시각은 저장한 감사 기록의 생성 시각을 사용.
      */
     @Transactional
     public AdminMapPlaceBasicInformationUpdateResponse updatePlaceBasicInformation(
@@ -126,8 +126,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 좌표의 필수값을 확인하고 장소 잠금 아래 ADMIN 출처 좌표·행정구역을 갱신한 뒤 추천 재동기화를 예약합니다.
-     * 좌표 범위는 API 요청 검증에 의존하며 여기서 중복 장소 판별이나 별도 감사 기록 저장은 수행하지 않습니다.
+     * 좌표 필수값을 확인하고 장소 잠금 아래 ADMIN 출처 좌표·행정구역을 갱신한 뒤 추천 재동기화 예약.
+     * 좌표 범위는 API 요청 검증에 의존하며 중복 장소 판별·별도 감사 기록 저장은 처리 범위에서 제외.
      */
     @Transactional
     public AdminMapPlaceCoordinateUpdateResponse updatePlaceCoordinates(
@@ -178,8 +178,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 대표 주소는 도로명, 지번, 요청 대표 주소 순으로 선택합니다. 좌표와 ADMIN 출처를 반영하고
-     * 행정구역 동기화·감사 기록·추천 재동기화 outbox를 현재 트랜잭션에 연결합니다.
+     * 대표 주소는 도로명, 지번, 요청 대표 주소 순으로 선택. 좌표와 ADMIN 출처를 반영하고
+     * 행정구역 동기화·감사 기록·추천 재동기화 outbox를 현재 트랜잭션에 연결.
      */
     @Transactional
     public AdminMapPlaceGeocodingUpdateResponse updatePlaceGeocoding(
@@ -240,8 +240,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 공백 또는 null 요청은 기존 Kakao ID를 제거합니다. 다른 장소의 현재 ID를 조회해 충돌을 확인하지만
-     * 해당 조회 자체가 동시 요청을 직렬화하지는 않습니다.
+     * 공백·null 요청은 기존 Kakao ID 제거. 다른 장소의 현재 ID를 조회해 충돌 확인.
+     * ID 조회 자체에는 직렬화 잠금이 없어 동시 요청 간 경쟁 가능.
      */
     @Transactional
     public AdminMapPlaceKakaoPlaceIdUpdateResponse updatePlaceKakaoPlaceId(
@@ -297,8 +297,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 장소를 잠가 영문명·관광 설명·관광 카테고리를 전체 교체하고 감사 기록을 같은 트랜잭션에 저장합니다.
-     * 공백 문자열은 null, null 카테고리 집합은 빈 집합으로 처리하므로 생략한 기존 값도 제거됩니다. 장소가 없으면 PLACE_NOT_FOUND입니다.
+     * 장소를 잠가 영문명·관광 설명·관광 카테고리를 전체 교체하고 감사 기록을 같은 트랜잭션에 저장.
+     * 공백 문자열은 null, null 카테고리 집합은 빈 집합으로 처리하므로 생략한 기존 값도 제거. 장소가 없으면 PLACE_NOT_FOUND.
      */
     @Transactional
     public AdminMapPlaceTouristInfoUpdateResponse updatePlaceTouristInfo(
@@ -352,8 +352,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 운영 상태와 공백이 아닌 사유를 확인한 뒤 장소를 잠가 상태·확인 시각과 감사 기록을 함께 갱신합니다.
-     * 잘못된 요청이나 없는 장소는 거절하며 상태가 같아도 확인 시각을 현재 Clock 시각으로 바꿉니다.
+     * 운영 상태와 공백이 아닌 사유를 확인한 뒤 장소를 잠가 상태·확인 시각과 감사 기록을 함께 갱신.
+     * 잘못된 요청이나 없는 장소는 거절하며 상태가 같아도 확인 시각을 현재 Clock 시각으로 변경.
      */
     @Transactional
     public AdminMapPlaceOperatingStatusUpdateResponse updatePlaceOperatingStatus(
@@ -400,8 +400,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 노출 상태와 공백이 아닌 사유를 확인한 뒤 장소를 잠가 탐색 노출 여부와 감사 기록을 갱신합니다.
-     * 잘못된 요청이나 없는 장소는 거절하며 변경 지표 기록은 트랜잭션 커밋 전에 호출됩니다.
+     * 노출 상태와 공백이 아닌 사유를 확인한 뒤 장소를 잠가 탐색 노출 여부와 감사 기록을 갱신.
+     * 잘못된 요청이나 없는 장소는 거절하며 변경 지표 기록은 트랜잭션 커밋 전에 호출.
      */
     @Transactional
     public AdminMapPlaceDiscoveryStatusUpdateResponse updatePlaceDiscoveryStatus(
@@ -448,8 +448,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 장소 존재를 확인한 뒤 검증 근거를 갱신 시각·ID 내림차순으로 반환합니다.
-     * 장소가 없으면 PLACE_NOT_FOUND이며 장소에 근거가 없으면 빈 목록을 반환합니다.
+     * 장소 존재를 확인한 뒤 검증 근거를 갱신 시각·ID 내림차순으로 반환.
+     * 장소가 없으면 PLACE_NOT_FOUND이며 장소에 근거가 없으면 빈 목록을 반환.
      */
     @Transactional(readOnly = true)
     public AdminPlaceInformationEvidenceResponse getPlaceInformationEvidence(Long placeId) {
@@ -465,9 +465,9 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 증빙을 저장하고 장소의 대표 정보 출처·검증 상태를 이 신규 증빙 상태로 덮어씁니다.
-     * 제출자 ID가 생략되면 관리자 ID를 쓰며, MERCHANT_OWNER 출처는 소유주 제출 상태로 표시합니다.
-     * 출처를 실제 소유권 조회로 입증하거나 다른 기존 증빙과 우선순위를 비교하지는 않습니다.
+     * 증빙을 저장하고 장소의 대표 정보 출처·검증 상태를 신규 증빙 상태로 교체.
+     * 제출자 ID 생략 시 관리자 ID 사용. MERCHANT_OWNER 출처는 소유주 제출 상태로 표시.
+     * 실제 소유권 조회를 통한 출처 입증과 기존 증빙 간 우선순위 비교는 검증 범위에서 제외.
      */
     @Transactional
     public AdminPlaceInformationEvidenceUpdateResponse createPlaceInformationEvidence(
@@ -530,8 +530,8 @@ public class AdminPlaceQualityService {
     }
 
     /**
-     * 장소를 먼저, 해당 장소의 증빙을 다음으로 잠그고 ADMIN_VERIFIED 또는 REJECTED만 적용합니다.
-     * 개별 증빙 심사 결과를 장소 대표 검증 상태에도 반영하고 감사 기록·상태 변경 outbox를 저장합니다.
+     * 장소를 먼저, 해당 장소의 증빙을 다음으로 잠그고 ADMIN_VERIFIED 또는 REJECTED만 적용.
+     * 개별 증빙 심사 결과를 장소 대표 검증 상태에도 반영하고 감사 기록·상태 변경 outbox를 저장.
      */
     @Transactional
     public AdminPlaceInformationEvidenceUpdateResponse reviewPlaceInformationEvidence(

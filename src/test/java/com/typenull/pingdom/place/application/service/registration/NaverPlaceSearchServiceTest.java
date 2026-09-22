@@ -21,7 +21,7 @@ class NaverPlaceSearchServiceTest {
     @InjectMocks private NaverPlaceSearchService service;
 
     /**
-     * 검색어 공백과 결과 제목 HTML을 제거하고 한 건의 네이버 정수 좌표를 도 단위 위경도로 변환하는지 확인합니다.
+     * 검색어 공백과 결과 제목 HTML을 제거하고 한 건의 네이버 정수 좌표를 도 단위 위경도로 변환하는지 확인.
      */
     @Test
     void normalizesNaverPlaceResult() throws Exception {
@@ -42,7 +42,7 @@ class NaverPlaceSearchServiceTest {
     }
 
     /**
-     * 공백 검색어에 MapException이 발생하는지 확인합니다.
+     * 공백 검색어에 MapException이 발생하는지 확인.
      */
     @Test
     void rejectsBlankSearchQuery() {

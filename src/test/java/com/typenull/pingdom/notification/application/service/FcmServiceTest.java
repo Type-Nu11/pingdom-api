@@ -55,7 +55,7 @@ class FcmServiceTest {
     private FcmService fcmService;
 
     /**
-     * 알림 저장·기기별 발송·전송 이력의 협력을 검사하도록 모의 의존성과 고정 Clock으로 FCM 서비스를 만든다.
+     * 알림 저장·기기별 발송·전송 이력의 협력을 검사하도록 모의 의존성과 고정 Clock으로 FCM 서비스를 생성.
      */
     @BeforeEach
     void setUp() {
@@ -72,8 +72,8 @@ class FcmServiceTest {
     }
 
     /**
-     * 수신 허용 사용자의 두 기기에 좋아요 알림을 발송하면 토큰을 넣지 않은 알림을 한 번 저장하는지 검증한다.
-     * 각 토큰의 발송 및 성공 이력이 같은 알림 ID로 기록되는지도 확인한다.
+     * 수신 허용 사용자의 두 기기에 좋아요 알림을 발송하면 토큰을 넣지 않은 알림을 한 번 저장하는지 검증.
+     * 각 토큰의 발송 및 성공 이력이 같은 알림 ID로 기록되는지도 확인.
      */
     @Test
     void sendsLikeNotificationToEveryDevice() {
@@ -114,7 +114,7 @@ class FcmServiceTest {
     }
 
     /**
-     * 수신 정책이 좋아요 알림을 차단하면 기기 토큰 조회·알림 저장·외부 발송을 모두 생략하는지 검증한다.
+     * 수신 정책이 좋아요 알림을 차단하면 기기 토큰 조회·알림 저장·외부 발송을 모두 생략하는지 검증.
      */
     @Test
     void skipsBlockedLikeNotification() {
@@ -130,7 +130,7 @@ class FcmServiceTest {
     }
 
     /**
-     * FCM이 토큰 무효 오류를 반환하면 호출 밖으로 예외를 전파하지 않고 토큰을 삭제하며 재시도 불가 실패 이력을 기록하는지 검증한다.
+     * FCM이 토큰 무효 오류를 반환하면 호출 밖으로 예외를 전파하지 않고 토큰을 삭제하며 재시도 불가 실패 이력을 기록하는지 검증.
      */
     @Test
     void removesInvalidTokenAfterFailure() {
@@ -161,8 +161,8 @@ class FcmServiceTest {
     }
 
     /**
-     * 일시적 발송 실패에서도 알림 저장을 호출하고 재시도 가능한 실패 이력을 기록하는지 검증한다.
-     * 모의 저장소를 사용하므로 실제 트랜잭션 커밋 여부는 검사하지 않는다.
+     * 일시적 발송 실패에서도 알림 저장을 호출하고 재시도 가능한 실패 이력을 기록하는지 검증.
+     * 모의 저장소 사용으로 실제 트랜잭션 커밋 여부는 검증 범위에서 제외.
      */
     @Test
     void recordsRetryableFcmFailure() {
@@ -193,8 +193,8 @@ class FcmServiceTest {
     }
 
     /**
-     * 동일 Outbox 이벤트를 재처리하면 기존 알림 ID를 재사용하고 이미 성공한 기기를 제외한 실패 토큰만 다시 발송하는지 검증한다.
-     * 첫 결과에는 재시도 가능 실패가 있고 재시도 성공 후에는 없어지는지도 확인한다.
+     * 동일 Outbox 이벤트를 재처리하면 기존 알림 ID를 재사용하고 이미 성공한 기기를 제외한 실패 토큰만 다시 발송하는지 검증.
+     * 첫 결과에는 재시도 가능 실패가 있고 재시도 성공 후에는 없어지는지도 확인.
      */
     @Test
     void retriesOnlyFailedDeviceToken() {
@@ -228,7 +228,7 @@ class FcmServiceTest {
     }
 
     /**
-     * 좋아요를 누른 사용자와 알림 수신자의 ID·이름을 지정해 발송 시나리오를 준비한다.
+     * 좋아요를 누른 사용자와 알림 수신자의 ID·이름을 지정해 발송 시나리오를 준비.
      */
     private User user(Long userId, String username) {
         return User.builder()
@@ -243,7 +243,7 @@ class FcmServiceTest {
     }
 
     /**
-     * 기기별 발송과 이력의 공통 참조가 될 저장 완료 알림 ID 100을 제공한다.
+     * 기기별 발송과 이력의 공통 참조가 될 저장 완료 알림 ID 100을 제공.
      */
     private Notifications savedNotification() {
         return Notifications.builder()

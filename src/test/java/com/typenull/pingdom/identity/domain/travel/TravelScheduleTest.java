@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class TravelScheduleTest {
 
     /**
-     * 시작 전·시작일·종료 후를 UPCOMING·ONGOING·ENDED로 계산하고 취소 후에는 CANCELLED를 유지하며 기간 수정을 거절하는지 검증한다.
+     * 시작 전·시작일·종료 후를 UPCOMING·ONGOING·ENDED로 계산하고 취소 후에는 CANCELLED를 유지하며 기간 수정을 거절하는지 검증.
      */
     @Test
     void calculatesDatesAndPreservesCancellation() {

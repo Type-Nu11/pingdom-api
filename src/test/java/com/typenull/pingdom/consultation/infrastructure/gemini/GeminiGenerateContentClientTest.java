@@ -21,7 +21,7 @@ class GeminiGenerateContentClientTest {
     private GeminiGenerateContentClient client;
 
     /**
-     * 가짜 Gemini HTTP 서버와 모델·키·시간 제한 설정을 연결해 실제 공급자 호출 없이 요청 계약을 검증한다.
+     * 가짜 Gemini HTTP 서버와 모델·키·시간 제한 설정을 연결해 실제 공급자 호출 없이 요청 계약을 검증.
      */
     @BeforeEach
     void setUp() {
@@ -35,7 +35,7 @@ class GeminiGenerateContentClientTest {
     }
 
     /**
-     * API 키·JSON 헤더·사용자/시스템 문구와 출력 80토큰·후보 1개 제한을 전송하고 여러 응답 part를 한 문장으로 합치는지 검증한다.
+     * API 키·JSON 헤더·사용자/시스템 문구와 출력 80토큰·후보 1개 제한을 전송하고 여러 응답 part를 한 문장으로 합치는지 검증.
      */
     @Test
     void requestsBoundedIntroCandidate() {
@@ -56,7 +56,7 @@ class GeminiGenerateContentClientTest {
     }
 
     /**
-     * Gemini 응답 후보가 비어 있으면 빈 Optional을 반환해 상위 서비스의 대체 안내 경로를 지원하는지 검증한다.
+     * Gemini 응답 후보가 비어 있으면 빈 Optional을 반환해 상위 서비스의 대체 안내 경로를 지원하는지 검증.
      */
     @Test
     void returnsEmptyWithoutTextCandidate() {

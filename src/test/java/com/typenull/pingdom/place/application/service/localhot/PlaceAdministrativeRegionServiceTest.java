@@ -28,7 +28,7 @@ class PlaceAdministrativeRegionServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-17T01:00:00Z"), ZoneOffset.UTC);
 
     /**
-     * 좌표로 해석한 새 행정구역을 저장하고 장소에 같은 지역 코드를 반영하는지 확인합니다.
+     * 좌표로 해석한 새 행정구역을 저장하고 장소에 같은 지역 코드를 반영하는지 확인.
      */
     @Test
     void storesNewAdministrativeRegion() {
@@ -56,7 +56,7 @@ class PlaceAdministrativeRegionServiceTest {
     }
 
     /**
-     * 기존 지역의 이름과 갱신 시각을 바꾸고 새 저장 호출 없이 장소에 지역 코드를 반영하는지 확인합니다.
+     * 기존 지역의 이름과 갱신 시각을 바꾸고 새 저장 호출 없이 장소에 지역 코드를 반영하는지 확인.
      */
     @Test
     void refreshesExistingAdministrativeRegion() {
@@ -84,7 +84,7 @@ class PlaceAdministrativeRegionServiceTest {
     }
 
     /**
-     * 비활성 resolver는 false를 반환하고 지역 저장소·장소에 접근하지 않는지 확인합니다.
+     * 비활성 resolver는 false를 반환하고 지역 저장소·장소에 접근하지 않는지 확인.
      */
     @Test
     void skipsUnconfiguredRegionResolver() {
@@ -101,7 +101,7 @@ class PlaceAdministrativeRegionServiceTest {
     }
 
     /**
-     * 외부 해석 예외를 그대로 전파하면서 지역·장소 저장과 지역 코드 변경을 하지 않는지 확인합니다.
+     * 외부 해석 예외를 그대로 전파하면서 지역·장소 저장과 지역 코드 변경을 하지 않는지 확인.
      */
     @Test
     void preservesStateOnResolutionFailure() {
@@ -122,7 +122,7 @@ class PlaceAdministrativeRegionServiceTest {
     }
 
     /**
-     * 잠금 조회한 장소가 없으면 ID를 포함한 예외를 반환하고 좌표 해석을 호출하지 않는지 확인합니다.
+     * 잠금 조회한 장소가 없으면 ID를 포함한 예외를 반환하고 좌표 해석을 호출하지 않는지 확인.
      */
     @Test
     void rejectsMissingRegionTarget() {
@@ -143,7 +143,7 @@ class PlaceAdministrativeRegionServiceTest {
     }
 
     /**
-     * 고정 UTC 시계를 사용하는 행정구역 동기화 서비스를 만듭니다.
+     * 고정 UTC 시계를 사용하는 행정구역 동기화 서비스를 생성.
      */
     private PlaceAdministrativeRegionService service(
             PlaceAdministrativeRegionResolver resolver,

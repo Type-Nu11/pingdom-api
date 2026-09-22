@@ -11,8 +11,8 @@ class TouristCouponTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 16, 12, 0);
 
     /**
-     * 만료 전 쿠폰을 사용하면 REDEEMED 상태와 사용자를 기록하고 재사용에는 IllegalStateException이 발생하는지 검증한다.
-     * 동일 쿠폰의 중복 사용을 방지한다.
+     * 만료 전 쿠폰을 사용하면 REDEEMED 상태와 사용자를 기록하고 재사용에는 IllegalStateException이 발생하는지 검증.
+     * 동일 쿠폰의 중복 사용을 방지.
      */
     @Test
     void redeemsUnexpiredCouponOnce() {
@@ -27,7 +27,7 @@ class TouristCouponTest {
     }
 
     /**
-     * 만료일을 지난 쿠폰의 계산 상태가 EXPIRED이며 사용 시 IllegalStateException이 발생하는지 검증한다.
+     * 만료일을 지난 쿠폰의 계산 상태가 EXPIRED이며 사용 시 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void rejectsExpiredCouponRedemption() {
@@ -39,8 +39,8 @@ class TouristCouponTest {
     }
 
     /**
-     * 사용자 없이 쿠폰을 사용하면 NullPointerException이 발생하고 ISSUED 상태·미사용자·미사용시각이 유지되는지 검증한다.
-     * 검증 실패가 쿠폰을 부분적으로 변경하는 회귀를 방지한다.
+     * 사용자 없이 쿠폰을 사용하면 NullPointerException이 발생하고 ISSUED 상태·미사용자·미사용시각이 유지되는지 검증.
+     * 검증 실패가 쿠폰을 부분적으로 변경하는 회귀를 방지.
      */
     @Test
     void nullRedeemerPreservesCoupon() {
@@ -55,7 +55,7 @@ class TouristCouponTest {
     }
 
     /**
-     * 고정된 코드와 발급 시각을 가진 하루 유효 쿠폰을 생성해 사용·만료 경계를 재현한다.
+     * 고정된 코드와 발급 시각을 가진 하루 유효 쿠폰을 생성해 사용·만료 경계를 재현.
      */
     private TouristCoupon coupon() {
         return TouristCoupon.issue(

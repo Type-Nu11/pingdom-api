@@ -27,7 +27,7 @@ class AdminRoleAssignmentTargetOpenApiContractTest {
     private ObjectMapper objectMapper;
 
     /**
-     * 관리자 OpenAPI의 역할 부여 대상 검색이 Bearer 인증과 200 검색 응답, 401·403 공통 오류 스키마를 선언하는지 검증한다.
+     * 관리자 OpenAPI의 역할 부여 대상 검색이 Bearer 인증과 200 검색 응답, 401·403 공통 오류 스키마를 선언하는지 검증.
      */
     @Test
     void documentsRoleAssignmentTargetSearch() throws Exception {
@@ -51,7 +51,7 @@ class AdminRoleAssignmentTargetOpenApiContractTest {
     }
 
     /**
-     * 응답 코드에 해당하는 application/json 스키마를 우선 찾고 없으면 와일드카드 콘텐츠의 참조를 읽는다.
+     * 응답 코드에 해당하는 application/json 스키마를 우선 찾고 없으면 와일드카드 콘텐츠의 참조를 읽음.
      */
     private String responseSchemaRef(JsonNode operation, String responseCode) {
         JsonNode content = operation.path("responses").path(responseCode).path("content");

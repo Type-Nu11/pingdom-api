@@ -3,17 +3,17 @@ package com.typenull.pingdom.integration.auth;
 import java.util.List;
 
 /**
- * 역할별 대표 인증 경계를 설명하는 정적 시나리오 목록을 제공한다.
+ * 역할별 대표 인증 경계를 설명하는 정적 시나리오 목록을 제공.
  */
 public final class AuthorizationBoundaryFixtures {
     /**
-     * 역할별 인증 경계는 정적 시나리오 목록으로 제공하므로 인스턴스 상태를 두지 않고 생성을 막는다.
+     * 역할별 인증 경계는 정적 시나리오 목록으로 제공하므로 인스턴스 상태를 두지 않고 생성을 차단.
      */
     private AuthorizationBoundaryFixtures() {
     }
 
     /**
-     * 공개 로그인과 보호 API에 대한 익명·일반 사용자·상점 소유자·관리자 기대 계약을 제공한다. 이 목록 자체는 HTTP 요청을 실행하지 않는다.
+     * 공개 로그인과 보호 API에 대한 익명·일반 사용자·상점 소유자·관리자 기대 계약을 제공. 이 목록의 역할은 HTTP 요청 실행을 위한 기대 계약 제공으로 한정.
      */
     public static List<AuthorizationBoundaryScenario> scenarios() {
         return List.of(

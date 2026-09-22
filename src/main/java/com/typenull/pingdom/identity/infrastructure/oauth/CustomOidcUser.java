@@ -13,8 +13,8 @@ import org.springframework.security.oauth2.core.oidc.OidcUserInfo;
 import org.springframework.security.oauth2.core.oidc.user.OidcUser;
 
 /**
- * OIDC principal에 로컬 회원 ID·역할·연결 식별자를 덧붙입니다.
- * 토큰·claim·GrantedAuthority는 원본 OIDC 사용자에 위임하므로 로컬 role 필드와 별개입니다.
+ * OIDC principal에 로컬 회원 ID·역할·연결 식별자를 덧붙임.
+ * 토큰·claim·GrantedAuthority는 원본 OIDC 사용자에 위임하므로 로컬 role 필드와 별개.
  */
 @Getter
 public class CustomOidcUser implements OidcUser, Serializable {

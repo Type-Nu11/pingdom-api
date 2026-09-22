@@ -10,8 +10,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 날짜별 예외 일정에 사용하는 시작·종료 시각 값입니다.
- * null 시각을 거부하지만 자정 통과나 두 시각의 동일 여부는 여기서 제한하지 않습니다.
+ * 날짜별 예외 일정에 사용하는 시작·종료 시각 값.
+ * null 시각은 거부하며 자정 통과와 두 시각의 동일 여부는 제한 대상에서 제외.
  */
 @Embeddable
 @Getter

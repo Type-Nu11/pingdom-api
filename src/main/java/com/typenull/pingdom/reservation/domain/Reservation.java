@@ -8,7 +8,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 예약의 대상 상품, 멱등 키와 예약 상태 전이를 보유하는 핵심 도메인입니다. */
+/** 예약의 대상 상품, 멱등 키와 예약 상태 전이를 보유하는 핵심 도메인. */
 @Entity
 @Getter
 @Table(name = "reservation")
@@ -128,8 +128,8 @@ public class Reservation {
     }
 
     /**
-     * PENDING 예약을 확정하고 심사자·사유·시각을 기록합니다.
-     * 결제나 가용 재고를 조회하지 않으므로 외부 조건이 필요하면 호출자가 별도로 검증해야 합니다.
+     * PENDING 예약을 확정하고 심사자·사유·시각을 기록.
+     * 결제나 가용 재고를 조회하지 않으므로 외부 조건이 필요하면 호출자가 별도로 검증해야 함.
      */
     public void confirm(Long adminUserId, String reason, LocalDateTime now) {
         if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 확정할 수 있습니다.");
@@ -141,7 +141,7 @@ public class Reservation {
         updatedAt = now;
     }
 
-    /** 관리자 심사 API 도입 전 내부 호출 호환용 확정 처리입니다. */
+    /** 관리자 심사 API 도입 전 내부 호출 호환용 확정 처리. */
     @Deprecated
     public void confirm(LocalDateTime now) {
         if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 확정할 수 있습니다.");

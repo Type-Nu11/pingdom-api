@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * 신고 심사의 다음 상태와 사유를 전달합니다.
- * 서비스는 UNDER_REVIEW·ACCEPTED·REJECTED·RESOLVED만 받고 각 현재 상태의 전이 가능 여부는 도메인이 검사합니다.
+ * 신고 심사의 다음 상태와 사유를 전달.
+ * 서비스는 UNDER_REVIEW·ACCEPTED·REJECTED·RESOLVED만 받고 각 현재 상태의 전이 가능 여부는 도메인이 검사.
  */
 @Schema(description = "관리자 장소 정보 신고 검토 요청")
 public record PlaceInformationReportReviewRequest(

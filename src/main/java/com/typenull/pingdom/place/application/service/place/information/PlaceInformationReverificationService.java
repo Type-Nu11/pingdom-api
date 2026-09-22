@@ -34,8 +34,8 @@ import org.springframework.data.domain.Page;
 import org.springframework.data.domain.PageRequest;
 
 /**
- * 장소 정보 재확인 요청의 생성·소유자 응답·독촉·관리자 완료·만료 처리를 조정합니다.
- * 일반 변경은 장소 행을 먼저 잠근 뒤 요청을 잠그고, 활성 요청 중복은 조회와 지정 DB 제약으로 확인합니다.
+ * 장소 정보 재확인 요청의 생성·소유자 응답·독촉·관리자 완료·만료 처리를 조정.
+ * 일반 변경은 장소 행을 먼저 잠근 뒤 요청을 잠그고, 활성 요청 중복은 조회와 지정 DB 제약으로 확인.
  */
 @Service
 @RequiredArgsConstructor
@@ -56,8 +56,8 @@ public class PlaceInformationReverificationService {
     private final Clock clock;
 
     /**
-     * 장소 행을 잠그고 현재 소유자를 수신자로 지정해 활성 재검증 요청을 생성합니다.
-     * 기존 활성 요청과 지정 유일 제약의 동시 중복은 거절하고 요청 outbox·접수 지표·관리자 감사 기록을 남깁니다.
+     * 장소 행을 잠그고 현재 소유자를 수신자로 지정해 활성 재검증 요청을 생성.
+     * 기존 활성 요청과 지정 유일 제약의 동시 중복은 거절하고 요청 outbox·접수 지표·관리자 감사 기록을 남김.
      */
     @Transactional
     public PlaceInformationReverificationResponse create(
@@ -106,9 +106,9 @@ public class PlaceInformationReverificationService {
     }
 
     /**
-     * 장소와 재검증 요청을 순서대로 잠그고 현재 소유자인지 확인합니다. 기한이 지났으면 EXPIRED로 바꾼 응답만 반환합니다.
-     * 기한 내 응답은 상점주 증빙을 저장하고 요청 및 장소 대표 검증 상태를 OWNER_SUBMITTED로 갱신합니다.
-     * 응답자·입력·상태 오류는 전용 오류로 변환하며 증빙 제출은 관리자 검증 완료를 의미하지 않습니다.
+     * 장소와 재검증 요청을 순서대로 잠그고 현재 소유자인지 확인. 기한이 지났으면 EXPIRED로 바꾼 응답만 반환.
+     * 기한 내 응답은 상점주 증빙을 저장하고 요청 및 장소 대표 검증 상태를 OWNER_SUBMITTED로 갱신.
+     * 응답자·입력·상태 오류는 전용 오류로 변환하며 증빙 제출과 관리자 검증 완료는 별개.
      */
     @Transactional
     public PlaceInformationReverificationResponse respond(
@@ -149,8 +149,8 @@ public class PlaceInformationReverificationService {
     }
 
     /**
-     * 장소·요청을 잠가 경로의 장소와 일치하는지 확인하고 기한이 지났으면 EXPIRED 응답만 반환합니다.
-     * 유효한 요청은 현재 소유자로 수신자를 갱신하고 재안내 횟수·지표·outbox·감사 기록을 남깁니다. 소유자 부재나 허용되지 않는 상태는 거절합니다.
+     * 장소·요청을 잠가 경로의 장소와 일치하는지 확인하고 기한이 지났으면 EXPIRED 응답만 반환.
+     * 유효한 요청은 현재 소유자로 수신자를 갱신하고 재안내 횟수·지표·outbox·감사 기록을 남김. 소유자 부재나 허용되지 않는 상태는 거절.
      */
     @Transactional
     public PlaceInformationReverificationResponse remind(Long adminUserId, Long placeId, Long requestId) {
@@ -188,8 +188,8 @@ public class PlaceInformationReverificationService {
     }
 
     /**
-     * 기한이 지난 REQUESTED 요청을 최대 100개 잠금 조회해 만료 처리합니다.
-     * 응답 완료 상태는 이 배치의 대상이 아니며 다음 배치 호출로 나머지 요청을 처리합니다.
+     * 기한이 지난 REQUESTED 요청을 최대 100개 잠금 조회해 만료 처리.
+     * 응답 완료 상태는 이 배치의 대상이 아니며 다음 배치 호출로 나머지 요청을 처리.
      */
     @Transactional
     public int expireDue(Long adminUserId) {

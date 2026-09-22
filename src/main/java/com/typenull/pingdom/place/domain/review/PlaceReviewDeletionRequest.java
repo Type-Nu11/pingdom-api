@@ -19,8 +19,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 사업자가 요청한 리뷰 삭제의 사유와 관리자 결정을 보관합니다.
- * PENDING만 심사할 수 있고 거절 사유는 필수이며 리뷰 자체의 삭제 상태 변경은 서비스에서 수행합니다.
+ * 사업자가 요청한 리뷰 삭제의 사유와 관리자 결정을 보관.
+ * PENDING만 심사할 수 있고 거절 사유는 필수이며 리뷰 자체의 삭제 상태 변경은 서비스에서 수행.
  */
 @Entity
 @Getter

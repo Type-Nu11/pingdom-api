@@ -29,7 +29,7 @@ class VoiceAiSessionServiceTest {
     private VoiceAiSession session;
 
     /**
-     * 사용자 1 소유의 5분 유효 세션을 만들고 ID 잠금 조회 결과를 고정한다.
+     * 사용자 1 소유의 5분 유효 세션을 만들고 ID 잠금 조회 결과를 고정.
      */
     @BeforeEach
     void setup() {
@@ -38,7 +38,7 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 세션 생성·갱신 JSON이 비어 있지 않은 ID와 +09:00 오프셋을 포함한 동일 만료 시각을 제공하는지 검증한다.
+     * 세션 생성·갱신 JSON이 비어 있지 않은 ID와 +09:00 오프셋을 포함한 동일 만료 시각을 제공하는지 검증.
      */
     @Test
     void serializesSessionExpiryOffset() throws Exception {
@@ -51,8 +51,8 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 동일 요청 ID·텍스트는 저장된 envelope를 재사용하고 텍스트 변경은 REPLAY_CONFLICT이며 공급자 호출은 한 번인지 검증한다.
-     * 세션 종료 후에는 기존 replay도 SESSION_EXPIRED로 거절한다. DB 커밋 자체는 mock 기반으로 검증하지 않는다.
+     * 동일 요청 ID·텍스트는 저장된 envelope를 재사용하고 텍스트 변경은 REPLAY_CONFLICT이며 공급자 호출은 한 번인지 검증.
+     * 세션 종료 후에는 기존 replay도 SESSION_EXPIRED로 거절. mock 기반 테스트로 실제 DB 커밋 검증은 제외.
      */
     @Test
     void replaysOnlyMatchingSessionRequest() throws Exception {
@@ -72,7 +72,7 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 없는 세션·다른 소유자·만료 경계를 각각 식별하고 반복 종료를 허용하며 공급자를 호출하지 않는지 검증한다.
+     * 없는 세션·다른 소유자·만료 경계를 각각 식별하고 반복 종료를 허용하며 공급자를 호출하지 않는지 검증.
      */
     @Test
     void checksSessionBoundariesAndClosure() {
@@ -86,7 +86,7 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 공급자 예외는 PROVIDER_UNAVAILABLE, 잘못된 envelope는 PROVIDER_RESPONSE_INVALID로 변환하고 replay 저장은 하지 않는지 검증한다.
+     * 공급자 예외는 PROVIDER_UNAVAILABLE, 잘못된 envelope는 PROVIDER_RESPONSE_INVALID로 변환하고 replay 저장은 하지 않는지 검증.
      */
     @Test
     void skipsFailedProviderReplayStorage() throws Exception {
@@ -99,7 +99,7 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 한글 6,000자의 과대 envelope가 PROVIDER_RESPONSE_INVALID로 거절되고 replay를 저장하지 않는지 검증한다.
+     * 한글 6,000자의 과대 envelope가 PROVIDER_RESPONSE_INVALID로 거절되고 replay를 저장하지 않는지 검증.
      */
     @Test
     void rejectsOversizedEnvelopeStorage() {
@@ -111,7 +111,7 @@ class VoiceAiSessionServiceTest {
     }
 
     /**
-     * 주어진 동작이 VoiceAiException을 던지고 기대 오류 코드를 포함하는지 공통으로 확인한다.
+     * 주어진 동작이 VoiceAiException을 던지고 기대 오류 코드를 포함하는지 공통으로 확인.
      */
     private void assertCode(Runnable action, String code) {
         assertThatThrownBy(action::run).isInstanceOfSatisfying(VoiceAiException.class,

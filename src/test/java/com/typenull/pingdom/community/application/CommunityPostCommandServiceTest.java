@@ -31,7 +31,7 @@ class CommunityPostCommandServiceTest {
     );
 
     /**
-     * 두 장소를 연결해 게시글을 생성하면 게시글·연결 목록 저장을 호출하고 생성 ID와 요청 장소 순서를 응답하는지 검증한다.
+     * 두 장소를 연결해 게시글을 생성하면 게시글·연결 목록 저장을 호출하고 생성 ID와 요청 장소 순서를 응답하는지 검증.
      */
     @Test
     void savesPostWithLinkedPlaces() {
@@ -51,7 +51,7 @@ class CommunityPostCommandServiceTest {
     }
 
     /**
-     * PLACE 카테고리에 연결 장소가 없으면 필수 장소 오류 메시지를 반환하고 게시글을 저장하지 않는지 검증한다.
+     * PLACE 카테고리에 연결 장소가 없으면 필수 장소 오류 메시지를 반환하고 게시글을 저장하지 않는지 검증.
      */
     @Test
     void rejectsPlacePostWithoutLinks() {
@@ -63,7 +63,7 @@ class CommunityPostCommandServiceTest {
     }
 
     /**
-     * 알 수 없는 카테고리는 오류로 거절하고 장소 조회와 게시글 저장을 진행하지 않는지 검증한다.
+     * 알 수 없는 카테고리는 오류로 거절하고 장소 조회와 게시글 저장을 진행하지 않는지 검증.
      */
     @Test
     void rejectsUnsupportedPostCategory() {
@@ -76,7 +76,7 @@ class CommunityPostCommandServiceTest {
     }
 
     /**
-     * 동일한 장소 ID가 반복된 생성 요청은 중복 연결 오류로 거절하고 장소 조회·게시글 저장을 생략하는지 검증한다.
+     * 동일한 장소 ID가 반복된 생성 요청은 중복 연결 오류로 거절하고 장소 조회·게시글 저장을 생략하는지 검증.
      */
     @Test
     void rejectsDuplicatePlaceLinks() {
@@ -89,7 +89,7 @@ class CommunityPostCommandServiceTest {
     }
 
     /**
-     * 요청한 장소 중 일부가 조회되지 않으면 장소 없음 오류를 반환하고 게시글을 저장하지 않는지 검증한다.
+     * 요청한 장소 중 일부가 조회되지 않으면 장소 없음 오류를 반환하고 게시글을 저장하지 않는지 검증.
      */
     @Test
     void rejectsMissingLinkedPlace() {
@@ -103,7 +103,7 @@ class CommunityPostCommandServiceTest {
     }
 
     /**
-     * 카테고리와 장소 목록만 바꾸어 생성 규칙을 검사하도록 고정 제목·본문의 요청을 만든다.
+     * 카테고리와 장소 목록만 바꾸어 생성 규칙을 검사하도록 고정 제목·본문의 요청을 생성.
      */
     private CommunityPostCreateRequest request(String categoryId, List<Long> placeIds) {
         return new CommunityPostCreateRequest(categoryId, "게시글 제목", "게시글 본문", placeIds);

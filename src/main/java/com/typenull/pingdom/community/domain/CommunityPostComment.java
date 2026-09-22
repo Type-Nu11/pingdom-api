@@ -16,8 +16,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * 게시글 댓글과 최초 관리자 숨김 처리자·시각을 보관합니다.
- * 이미 숨긴 댓글은 다시 hide해도 최초 처리 정보를 덮어쓰지 않으며 복구 동작은 제공하지 않습니다.
+ * 게시글 댓글과 최초 관리자 숨김 처리자·시각 보관.
+ * 이미 숨긴 댓글의 hide 재호출은 최초 처리 정보를 유지하며 숨김 복구 기능은 미제공.
  */
 @Entity
 @Getter

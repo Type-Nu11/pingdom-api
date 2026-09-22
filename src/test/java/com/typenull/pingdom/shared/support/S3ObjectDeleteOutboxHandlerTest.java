@@ -25,7 +25,7 @@ class S3ObjectDeleteOutboxHandlerTest {
     private S3ObjectDeleteOutboxHandler handler;
 
     /**
-     * 실제 JSON 역직렬화기와 S3 대역을 연결해 삭제 Outbox 처리를 검증한다.
+     * 실제 JSON 역직렬화기와 S3 대역을 연결해 삭제 Outbox 처리를 검증.
      */
     @BeforeEach
     void setUp() {
@@ -33,7 +33,7 @@ class S3ObjectDeleteOutboxHandlerTest {
     }
 
     /**
-     * 삭제 payload의 s3Key를 해석하여 지정 S3 객체를 삭제하는지 검증한다.
+     * 삭제 payload의 s3Key를 해석하여 지정 S3 객체를 삭제하는지 검증.
      */
     @Test
     void handleDeletesS3Object() throws Exception {
@@ -47,7 +47,7 @@ class S3ObjectDeleteOutboxHandlerTest {
     }
 
     /**
-     * S3 연결 오류가 핸들러 밖으로 전파되어 Outbox의 실패·재시도 경로에서 관측되는지 검증한다.
+     * S3 연결 오류가 핸들러 밖으로 전파되어 Outbox의 실패·재시도 경로에서 관측되는지 검증.
      */
     @Test
     void propagatesRetryableS3Failure() throws Exception {
@@ -66,7 +66,7 @@ class S3ObjectDeleteOutboxHandlerTest {
     }
 
     /**
-     * S3 미설정 오류는 예외 없이 건너뛰어 미설정 환경의 삭제 이벤트를 계속 실패시키지 않는지 검증한다.
+     * S3 미설정 오류는 예외 없이 건너뛰어 미설정 환경의 삭제 이벤트를 계속 실패시키지 않는지 검증.
      */
     @Test
     void skipsUnconfiguredS3Deletion() throws Exception {

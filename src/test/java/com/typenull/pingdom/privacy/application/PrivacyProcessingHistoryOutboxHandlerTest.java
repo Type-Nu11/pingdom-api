@@ -32,7 +32,7 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
     private PrivacyProcessingHistoryOutboxHandler handler;
 
     /**
-     * 실제 Jackson 역직렬화기와 감사 이력 저장소 mock을 연결해 Outbox payload 처리를 검증한다.
+     * 실제 Jackson 역직렬화기와 감사 이력 저장소 mock을 연결해 Outbox payload 처리를 검증.
      */
     @BeforeEach
     void setUp() {
@@ -40,7 +40,7 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
     }
 
     /**
-     * 처리되지 않은 개인정보 이벤트를 역직렬화하면 이벤트 ID·대상 사용자·EXPORT_REQUESTED·발생 시각을 이력에 저장하는지 검증한다.
+     * 처리되지 않은 개인정보 이벤트를 역직렬화하면 이벤트 ID·대상 사용자·EXPORT_REQUESTED·발생 시각을 이력에 저장하는지 검증.
      */
     @Test
     void storesPrivacyOutboxHistory() throws Exception {
@@ -62,7 +62,7 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
     }
 
     /**
-     * 같은 이벤트 ID와 대상 사용자 이력이 이미 있으면 재처리 시 저장하지 않는지 검증한다.
+     * 같은 이벤트 ID와 대상 사용자 이력이 이미 있으면 재처리 시 저장하지 않는지 검증.
      */
     @Test
     void skipsDuplicatePrivacyHistory() throws Exception {
@@ -74,7 +74,7 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
     }
 
     /**
-     * 이력 저장의 임시 DB 오류가 같은 예외 타입·메시지로 전파되는지 확인해 Outbox 재시도 판단에 실패가 전달되도록 한다.
+     * 이력 저장의 임시 DB 오류가 같은 예외 타입·메시지로 전파되는지 확인해 Outbox 재시도 판단에 실패가 전달되도록 함.
      */
     @Test
     void propagatesPrivacyHistoryFailure() throws Exception {
@@ -89,7 +89,7 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
     }
 
     /**
-     * 빈 JSON payload는 필수 값 누락을 설명하는 IllegalArgumentException으로 거절되는지 검증한다.
+     * 빈 JSON payload는 필수 값 누락을 설명하는 IllegalArgumentException으로 거절되는지 검증.
      */
     @Test
     void rejectsMissingPrivacyPayloadFields() {
@@ -99,7 +99,7 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
     }
 
     /**
-     * 사용자 10의 데이터 export 요청과 요청 ID·고정 발생 시각을 담은 유효한 개인정보 처리 payload를 제공한다.
+     * 사용자 10의 데이터 export 요청과 요청 ID·고정 발생 시각을 담은 유효한 개인정보 처리 payload를 제공.
      */
     private PrivacyProcessingOutboxPayload payload() {
         return new PrivacyProcessingOutboxPayload(

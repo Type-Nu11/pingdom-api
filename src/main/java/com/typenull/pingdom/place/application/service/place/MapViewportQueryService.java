@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 지도 화면 경계를 검증하고 줌 14 이상은 마커, 낮은 줌은 격자 클러스터로 조회합니다.
- * 결과는 최대 500개이며 한 개를 더 조회해 잘림 여부를 알립니다. 날짜 변경선을 넘는 west ≥ east 경계는 거부합니다.
+ * 지도 화면 경계를 검증하고 줌 14 이상은 마커, 낮은 줌은 격자 클러스터로 조회.
+ * 결과는 최대 500개이며 한 개를 더 조회해 잘림 여부를 알림. 날짜 변경선을 넘는 west ≥ east 경계는 거부.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,8 +25,8 @@ public class MapViewportQueryService {
     private final MapViewportQueryRepository mapViewportQueryRepository;
 
     /**
-     * 유한하고 순서가 맞는 지도 경계와 0~20 줌을 검증한 뒤 줌 수준에 따라 마커 또는 격자 클러스터를 반환합니다.
-     * 최대 건수보다 하나 더 조회해 초과 여부를 판단하고 응답은 상한에서 잘라 truncated로 알립니다.
+     * 유한하고 순서가 맞는 지도 경계와 0~20 줌을 검증한 뒤 줌 수준에 따라 마커 또는 격자 클러스터를 반환.
+     * 최대 건수보다 하나 더 조회해 초과 여부를 판단하고 응답은 상한에서 잘라 truncated로 알림.
      */
     @Transactional(readOnly = true)
     public MapViewportResponse find(double west, double south, double east, double north, int zoom) {

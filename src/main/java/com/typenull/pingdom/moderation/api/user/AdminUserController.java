@@ -43,7 +43,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리합니다. */
+/** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리. */
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor

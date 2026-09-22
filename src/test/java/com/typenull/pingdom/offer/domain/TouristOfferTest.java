@@ -11,7 +11,7 @@ class TouristOfferTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 16, 12, 0);
 
     /**
-     * 수량 1인 게시 Offer를 발급하면 발급 수 1·품절 상태·7일 만료가 반영되고 추가 발급이 거절되는지 검증한다.
+     * 수량 1인 게시 Offer를 발급하면 발급 수 1·품절 상태·7일 만료가 반영되고 추가 발급이 거절되는지 검증.
      */
     @Test
     void exhaustsLimitedCouponInventory() {
@@ -28,7 +28,7 @@ class TouristOfferTest {
     }
 
     /**
-     * 쿠폰 유효기간이 Offer 종료보다 길면 발급 만료일이 Offer 종료일로 제한되는지 검증한다.
+     * 쿠폰 유효기간이 Offer 종료보다 길면 발급 만료일이 Offer 종료일로 제한되는지 검증.
      */
     @Test
     void capsExpiryAtOfferEnd() {
@@ -39,7 +39,7 @@ class TouristOfferTest {
     }
 
     /**
-     * 초안 상태와 게시 후 종료 상태에서 각각 발급을 시도하면 IllegalStateException이 발생하는지 검증한다.
+     * 초안 상태와 게시 후 종료 상태에서 각각 발급을 시도하면 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void rejectsInactiveOfferIssuance() {
@@ -55,7 +55,7 @@ class TouristOfferTest {
     }
 
     /**
-     * UNLIMITED Offer 발급 후 7일 만료와 무제한 정책이 유지되고 품절이 되지 않는지 검증한다.
+     * UNLIMITED Offer 발급 후 7일 만료와 무제한 정책이 유지되고 품절이 되지 않는지 검증.
      */
     @Test
     void unlimitedInventoryAvoidsSoldOut() {
@@ -75,7 +75,7 @@ class TouristOfferTest {
     }
 
     /**
-     * OFFER_END 정책에서는 유효기간 7일과 무관하게 10일 뒤 Offer 종료 시각을 쿠폰 만료로 반환하는지 검증한다.
+     * OFFER_END 정책에서는 유효기간 7일과 무관하게 10일 뒤 Offer 종료 시각을 쿠폰 만료로 반환하는지 검증.
      */
     @Test
     void usesOfferEndExpiry() {
@@ -93,7 +93,7 @@ class TouristOfferTest {
     }
 
     /**
-     * 종료 시각을 지난 초안을 게시하면 IllegalStateException이 발생하는지 검증한다.
+     * 종료 시각을 지난 초안을 게시하면 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void endedOfferCannotBePublished() {
@@ -114,7 +114,7 @@ class TouristOfferTest {
     }
 
     /**
-     * 현재 발급 기간 안에 있으며 10일 뒤 종료되는 초안 Offer를 주어진 수량·쿠폰 유효기간으로 생성한다.
+     * 현재 발급 기간 안에 있으며 10일 뒤 종료되는 초안 Offer를 주어진 수량·쿠폰 유효기간으로 생성.
      */
     private TouristOffer offer(int quantity, int validityDays) {
         return TouristOffer.draft(

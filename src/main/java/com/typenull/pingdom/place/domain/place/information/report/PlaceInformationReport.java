@@ -28,8 +28,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
 /**
- * 장소 정보 신고의 심사 상태와 이의 제기 이력을 관리합니다.
- * 신고 근거는 같은 장소에 속해야 하며 ACCEPTED 상태도 이의 제기 경로에서는 다시 DISPUTED로 전환될 수 있습니다.
+ * 장소 정보 신고의 심사 상태와 이의 제기 이력을 관리.
+ * 신고 근거는 같은 장소에 속해야 하며 ACCEPTED 상태도 이의 제기 경로에서는 다시 DISPUTED로 전환될 수 있음.
  */
 @Entity
 @Getter

@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 class MerchantOwnerPlaceModelTest {
 
     /**
-     * 소유 장소 생성 시 품질 UNMEASURED·응답/취소/노쇼 비율 0·미평가 시각을 기본값으로 갖는지 검증한다.
+     * 소유 장소 생성 시 품질 UNMEASURED·응답/취소/노쇼 비율 0·미평가 시각을 기본값으로 갖는지 검증.
      */
     @Test
     void defaultsUnmeasuredOperationalQuality() {
@@ -23,7 +23,7 @@ class MerchantOwnerPlaceModelTest {
     }
 
     /**
-     * 운영 품질 갱신에서 비율 경계 0·100을 허용하고 HEALTHY 상태·평가 시각을 보존하는지 검증한다.
+     * 운영 품질 갱신에서 비율 경계 0·100을 허용하고 HEALTHY 상태·평가 시각을 보존하는지 검증.
      */
     @Test
     void acceptsQualityRateBoundaries() {
@@ -45,7 +45,7 @@ class MerchantOwnerPlaceModelTest {
     }
 
     /**
-     * 응답률 -1·취소율 101·노쇼율 101 입력이 각각 IllegalArgumentException으로 거절되는지 검증한다.
+     * 응답률 -1·취소율 101·노쇼율 101 입력이 각각 IllegalArgumentException으로 거절되는지 검증.
      */
     @Test
     void rejectsOutOfRangeQualityRates() {
@@ -61,7 +61,7 @@ class MerchantOwnerPlaceModelTest {
     }
 
     /**
-     * 품질 enum이 미평가·정상·주의·위험 네 상태를 정해진 순서로 유지하는지 검증한다.
+     * 품질 enum이 미평가·정상·주의·위험 네 상태를 정해진 순서로 유지하는지 검증.
      */
     @Test
     void exposesPersistedQualityStatuses() {
@@ -75,7 +75,7 @@ class MerchantOwnerPlaceModelTest {
     }
 
     /**
-     * 점주 2의 장소 1 소유 관계를 만들어 품질 기본값·갱신 경계의 입력으로 제공한다.
+     * 점주 2의 장소 1 소유 관계를 만들어 품질 기본값·갱신 경계의 입력으로 제공.
      */
     private MerchantOwnerPlace place() {
         return MerchantOwnerPlace.builder()

@@ -6,8 +6,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
 /**
- * 이의 제기 심사 결정과 사유입니다.
- * 허용 결정은 ACCEPTED·REJECTED이며 두 경우 모두 공백 아닌 사유가 필요함을 서비스·도메인이 검사합니다.
+ * 이의 제기 심사 결정과 사유.
+ * 허용 결정은 ACCEPTED·REJECTED이며 두 경우 모두 공백 아닌 사유가 필요함을 서비스·도메인이 검사.
  */
 @Schema(description = "관리자 장소 정보 반박 검토 요청")
 public record PlaceInformationDisputeReviewRequest(

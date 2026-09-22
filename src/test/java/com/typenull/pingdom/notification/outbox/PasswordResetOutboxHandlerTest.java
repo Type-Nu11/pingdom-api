@@ -27,7 +27,7 @@ class PasswordResetOutboxHandlerTest {
     private PasswordResetOutboxHandler handler;
 
     /**
-     * 모의 메일 발송기와 이력 recorder를 연결해 재설정 페이로드 오류 처리를 검사한다.
+     * 모의 메일 발송기와 이력 recorder를 연결해 재설정 페이로드 오류 처리를 검사.
      */
     @BeforeEach
     void setUp() {
@@ -35,7 +35,7 @@ class PasswordResetOutboxHandlerTest {
     }
 
     /**
-     * 공백 페이로드는 IllegalArgumentException을 발생시키고 비밀번호 재설정 유형의 재시도 불가 페이로드 오류를 기록하는지 검증한다.
+     * 공백 페이로드는 IllegalArgumentException을 발생시키고 비밀번호 재설정 유형의 재시도 불가 페이로드 오류를 기록하는지 검증.
      */
     @Test
     void rejectsBlankPasswordResetPayload() {

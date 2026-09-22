@@ -12,7 +12,7 @@ class VerifiedBoostExecutionTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 26, 12, 0);
 
     /**
-     * 7일 상품의 실행이 6일 뒤에는 활성이고 종료 시각에는 비활성·EXPIRED인지 검증해 만료 경계를 고정한다.
+     * 7일 상품의 실행이 6일 뒤에는 활성이고 종료 시각에는 비활성·EXPIRED인지 검증해 만료 경계를 고정.
      */
     @Test
     void expiresAtProductDuration() {
@@ -27,7 +27,7 @@ class VerifiedBoostExecutionTest {
     }
 
     /**
-     * 하루 실행의 종료 시각에 중단을 시도하면 IllegalStateException이 발생하는지 검증한다.
+     * 하루 실행의 종료 시각에 중단을 시도하면 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void expiredExecutionCannotBeStopped() {
@@ -38,7 +38,7 @@ class VerifiedBoostExecutionTest {
     }
 
     /**
-     * 실행 생성에 필요한 상품 선택 엔티티를 만들고 DB 저장 이후를 재현하도록 ID를 지정한다.
+     * 실행 생성에 필요한 상품 선택 엔티티를 만들고 DB 저장 이후를 재현하도록 ID를 지정.
      */
     private MerchantVerifiedBoostSelection selection() {
         MerchantVerifiedBoostSelection selection = MerchantVerifiedBoostSelection.create(3L, 1L, 2L, "key", NOW);

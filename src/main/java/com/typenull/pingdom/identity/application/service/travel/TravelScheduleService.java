@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 회원 소유 여행 일정의 생성·변경·취소와 기간 중복 검사를 조정합니다.
- * 날짜 양 끝을 포함해 중복을 확인하고 수정 충돌은 saveAndFlush에서 감지한 낙관적 락 예외로 변환합니다.
+ * 회원 소유 여행 일정의 생성·변경·취소와 기간 중복 검사를 조정.
+ * 날짜 양 끝을 포함해 중복을 확인하고 수정 충돌은 saveAndFlush에서 감지한 낙관적 락 예외로 변환.
  */
 @Service
 @RequiredArgsConstructor
@@ -43,8 +43,8 @@ public class TravelScheduleService {
     }
 
     /**
-     * 본인 소유 일정의 기간을 변경하되 날짜 누락·역전·과거 시작과 다른 유효 일정과의 중복은 거절합니다.
-     * 수정 불가 상태와 flush 시 낙관적 잠금 충돌을 각각 일정 오류로 변환하고 저장한 일정을 반환합니다.
+     * 본인 소유 일정의 기간을 변경하되 날짜 누락·역전·과거 시작과 다른 유효 일정과의 중복은 거절.
+     * 수정 불가 상태와 flush 시 낙관적 잠금 충돌을 각각 일정 오류로 변환하고 저장한 일정을 반환.
      */
     @Transactional
     public TravelSchedule update(Long userId, Long scheduleId, LocalDate startDate, LocalDate endDate) {
@@ -102,8 +102,8 @@ public class TravelScheduleService {
     }
 
     /**
-     * 현재 트랜잭션에서 취소되지 않은 일정과의 날짜 중복을 조회합니다.
-     * 이 사전 조회 자체가 서로 다른 요청의 동시 일정 생성을 직렬화하는 잠금은 아닙니다.
+     * 현재 트랜잭션에서 취소되지 않은 일정과의 날짜 중복을 조회.
+     * 서로 다른 요청의 동시 일정 생성 직렬화는 이 사전 조회의 보장 범위에서 제외.
      */
     private void validateNoOverlappingSchedule(
             Long userId,

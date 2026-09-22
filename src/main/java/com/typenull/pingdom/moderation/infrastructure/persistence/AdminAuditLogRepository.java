@@ -11,8 +11,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 행위자·작업·대상은 선택적 일치 조건, 생성 시각은 시작 이상·종료 이하로 감사 기록을 조회합니다.
- * 시각 존재 여부 플래그와 실제 인자를 함께 전달해야 하며 권한 확인은 호출 서비스가 수행합니다.
+ * 행위자·작업·대상은 선택적 일치 조건, 생성 시각은 시작 이상·종료 이하로 감사 기록을 조회.
+ * 시각 존재 여부 플래그와 실제 인자를 함께 전달해야 하며 권한 확인은 호출 서비스가 수행.
  */
 public interface AdminAuditLogRepository extends JpaRepository<AdminAuditLog, Long> {
 

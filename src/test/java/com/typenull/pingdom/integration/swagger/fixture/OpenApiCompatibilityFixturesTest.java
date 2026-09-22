@@ -13,14 +13,14 @@ import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
 /**
- * 호환성 fixture의 유형 범위와 저장 baseline의 경로·상태·오류 예시를 검증한다.
+ * 호환성 fixture의 유형 범위와 저장 baseline의 경로·상태·오류 예시를 검증.
  */
 class OpenApiCompatibilityFixturesTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();
 
     /**
-     * 각 OpenAPI 그룹에 정상·경계·실패·재시도 fixture가 모두 존재하는지 확인한다.
+     * 각 OpenAPI 그룹에 정상·경계·실패·재시도 fixture가 모두 존재하는지 확인.
      */
     @Test
     void scenarioTypesPerDomain() {
@@ -37,7 +37,7 @@ class OpenApiCompatibilityFixturesTest {
     }
 
     /**
-     * 검증 설명이 비어 있지 않고 실패 fixture에는 명시적 오류 코드 또는 오류 응답 설명이 있는지 확인한다.
+     * 검증 설명이 비어 있지 않고 실패 fixture에는 명시적 오류 코드 또는 오류 응답 설명이 있는지 확인.
      */
     @Test
     void compatibilityDiagnostics() {
@@ -57,7 +57,7 @@ class OpenApiCompatibilityFixturesTest {
     }
 
     /**
-     * 저장된 baseline에서 fixture의 경로·메서드·응답 상태와 명시된 오류 코드가 존재하는지 확인한다. 실행 중 API 응답은 비교하지 않는다.
+     * 저장된 baseline에서 fixture의 경로·메서드·응답 상태와 명시된 오류 코드가 존재하는지 확인. 실행 중인 API 응답 비교는 검증 범위에서 제외.
      */
     @Test
     void baselineOperations() throws IOException {
@@ -81,7 +81,7 @@ class OpenApiCompatibilityFixturesTest {
     }
 
     /**
-     * fixture 이름과 그룹·시나리오 유형 조합의 유일성을 확인한다. 경로 자체의 유일성을 검사하지는 않는다.
+     * fixture 이름과 그룹·시나리오 유형 조합의 유일성을 확인. 경로 자체의 유일성은 검증 범위에서 제외.
      */
     @Test
     void uniqueCompatibilityFixtures() {
@@ -99,7 +99,7 @@ class OpenApiCompatibilityFixturesTest {
     }
 
     /**
-     * 그룹에 해당하는 클래스패스 baseline JSON을 읽으며 리소스 누락 시 assertion으로 실패한다.
+     * 그룹에 해당하는 클래스패스 baseline JSON을 읽으며 리소스 누락 시 assertion으로 실패.
      */
     private JsonNode readBaseline(OpenApiCompatibilityDomain domain) throws IOException {
         String resource = "/openapi-baseline/" + domain.specName() + ".json";

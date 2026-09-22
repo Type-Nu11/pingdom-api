@@ -18,8 +18,8 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 
 /**
- * 최근 게시물 좋아요 집계를 장소 순위로 변환하고 요청 회원의 북마크 여부를 덧붙입니다.
- * LOCAL 후보가 한 페이지보다 적으면 요청 반경을 최대 50km로 확장하며 페이지 크기는 50개로 제한합니다.
+ * 최근 게시물 좋아요 집계를 장소 순위로 변환하고 요청 회원의 북마크 여부를 덧붙임.
+ * LOCAL 후보가 한 페이지보다 적으면 요청 반경을 최대 50km로 확장하며 페이지 크기는 50개로 제한.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,9 +31,9 @@ public class PlaceRankingQueryService {
     private final PlaceRankingQueryRepository rankingQueryRepository;
 
     /**
-     * 기간 내 게시물 좋아요를 집계한 장소 순위와 선택적 사용자 북마크 여부를 반환합니다. 기간 누락은 최근 7일입니다.
-     * LOCAL은 좌표 쌍을 요구하고 반경은 기본 5km·최대 50km이며 후보 수가 페이지 크기보다 적으면 50km로 확대합니다.
-     * 페이지 크기는 1~50이고 전국 조회의 반경 응답은 null입니다. 건수와 목록을 하나의 명시적 서비스 트랜잭션으로 묶지는 않습니다.
+     * 기간 내 게시물 좋아요를 집계한 장소 순위와 선택적 사용자 북마크 여부를 반환. 기간 누락은 최근 7일.
+     * LOCAL은 좌표 쌍을 요구하고 반경은 기본 5km·최대 50km이며 후보 수가 페이지 크기보다 적으면 50km로 확대.
+     * 페이지 크기는 1~50이고 전국 조회의 반경 응답은 null. 건수·목록 조회를 함께 묶는 명시적 서비스 트랜잭션은 미사용.
      */
     public PlaceRankingResponse find(
             PlaceRankingScope scope,

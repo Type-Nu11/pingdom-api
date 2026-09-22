@@ -14,8 +14,8 @@ import java.util.Objects;
 import org.springframework.stereotype.Component;
 
 /**
- * 장소 운영 상태와 날짜별 예외·정규 영업시간을 결합해 조회 시점의 영업 여부를 계산합니다.
- * 해당 날짜의 예외가 있으면 정규 시간보다 우선하며 일치하는 일정이 없으면 영업하지 않는 것으로 처리합니다.
+ * 장소 운영 상태와 날짜별 예외·정규 영업시간을 결합해 조회 시점의 영업 여부를 계산.
+ * 해당 날짜의 예외가 있으면 정규 시간보다 우선하며 일치하는 일정이 없으면 영업하지 않는 것으로 처리.
  */
 @Component
 public class PlaceOperatingHoursEvaluator {
@@ -75,8 +75,8 @@ public class PlaceOperatingHoursEvaluator {
     }
 
     /**
-     * 시간 구간은 시작 포함·종료 제외로 평가하며 시작과 종료가 같으면 24시간으로 해석합니다.
-     * 자정을 넘는 구간은 시작 이후 또는 종료 이전의 시각을 포함합니다.
+     * 시간 구간은 시작 포함·종료 제외로 평가하며 시작과 종료가 같으면 24시간으로 해석.
+     * 자정을 넘는 구간은 시작 이후 또는 종료 이전의 시각을 포함.
      */
     private boolean contains(LocalTime opensAt, LocalTime closesAt, LocalTime checkedAt) {
         if (opensAt.equals(closesAt)) {

@@ -11,7 +11,7 @@ class PlaceMenuTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 9, 12, 11, 0);
 
     /**
-     * 메뉴를 생성하면 원가격 9,000과 KRW 통화를 그대로 보유하는지 검증한다.
+     * 메뉴를 생성하면 원가격 9,000과 KRW 통화를 그대로 보유하는지 검증.
      */
     @Test
     void preservesOriginalPriceAndCurrency() {
@@ -23,7 +23,7 @@ class PlaceMenuTest {
     }
 
     /**
-     * 가격 0과 -1이 모두 양수 가격을 요구하는 IllegalArgumentException으로 거절되는지 검증한다.
+     * 가격 0과 -1이 모두 양수 가격을 요구하는 IllegalArgumentException으로 거절되는지 검증.
      */
     @Test
     void rejectsNonpositiveOriginalPrice() {
@@ -39,7 +39,7 @@ class PlaceMenuTest {
     }
 
     /**
-     * 원통화가 null이면 currency 누락을 설명하는 NullPointerException이 발생하는지 검증한다.
+     * 원통화가 null이면 currency 누락을 설명하는 NullPointerException이 발생하는지 검증.
      */
     @Test
     void rejectsMissingOriginalCurrency() {

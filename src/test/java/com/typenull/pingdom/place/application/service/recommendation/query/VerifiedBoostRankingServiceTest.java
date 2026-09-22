@@ -18,7 +18,7 @@ import org.junit.jupiter.api.Test;
 class VerifiedBoostRankingServiceTest {
 
     /**
-     * 활성 프로모션 조회에 포함된 장소에 설정 가점 0.08을 더하고 boosted ID와 점수 기여를 반환하는지 확인합니다.
+     * 활성 프로모션 조회에 포함된 장소에 설정 가점 0.08을 더하고 boosted ID와 점수 기여를 반환하는지 확인.
      */
     @Test
     void addsEligibleBoostScore() {
@@ -40,7 +40,7 @@ class VerifiedBoostRankingServiceTest {
     }
 
     /**
-     * 활성 프로모션에 없는 후보는 점수를 유지하고 boosted 목록에서 제외하는지 확인합니다.
+     * 활성 프로모션에 없는 후보는 점수를 유지하고 boosted 목록에서 제외하는지 확인.
      */
     @Test
     void preservesIneligibleBoostScore() {
@@ -60,7 +60,7 @@ class VerifiedBoostRankingServiceTest {
     }
 
     /**
-     * 프로모션 적용 전 기본 점수를 지정한 후보를 만듭니다.
+     * 프로모션 적용 전 기본 점수를 지정한 후보를 생성.
      */
     private ScoredCandidate candidate(MapPlace place, double finalScore) {
         return new ScoredCandidate(

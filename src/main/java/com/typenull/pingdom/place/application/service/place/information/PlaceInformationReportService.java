@@ -42,8 +42,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 장소 정보 신고·소유자의 이의 제기·관리자 심사를 도메인 상태 전이에 연결합니다.
- * 심사에는 감사 로그, 변경에는 outbox·지표를 기록하며 장소 정보 자체의 수정은 이 서비스에서 수행하지 않습니다.
+ * 장소 정보 신고·소유자의 이의 제기·관리자 심사를 도메인 상태 전이에 연결.
+ * 심사에는 감사 로그, 변경에는 outbox·지표를 기록하며 장소 정보 자체의 수정은 이 서비스의 처리 범위에서 제외.
  */
 @Service
 @RequiredArgsConstructor
@@ -60,8 +60,8 @@ public class PlaceInformationReportService {
     private final Clock clock;
 
     /**
-     * 존재하는 장소와 해당 장소의 선택적 증빙에 대한 정보 신고를 저장하고 응답·접수 지표·outbox 이벤트를 생성합니다.
-     * 사용자·장소·대상 유형의 기존 SUBMITTED 신고는 거절하며 동시 중복은 지정 유일 제약 위반만 중복 오류로 변환합니다. 다른 무결성 실패는 전파합니다.
+     * 존재하는 장소와 해당 장소의 선택적 증빙에 대한 정보 신고를 저장하고 응답·접수 지표·outbox 이벤트를 생성.
+     * 사용자·장소·대상 유형의 기존 SUBMITTED 신고는 거절하며 동시 중복은 지정 유일 제약 위반만 중복 오류로 변환. 다른 무결성 실패는 전파.
      */
     @Transactional
     public PlaceInformationReportResponse submit(Long userId, Long placeId, PlaceInformationReportCreateRequest request) {
@@ -120,8 +120,8 @@ public class PlaceInformationReportService {
     }
 
     /**
-     * 신고 행을 잠근 뒤 장소 등록자 또는 현재 Merchant 소유자만 이의신청을 제출하도록 확인합니다.
-     * 도메인 상태·내용 검증에 성공하면 이의신청과 신고 상태를 변경하고 각각의 outbox 이벤트 및 지표를 기록합니다. 권한·상태·입력 오류는 전용 오류로 거절합니다.
+     * 신고 행을 잠근 뒤 장소 등록자 또는 현재 Merchant 소유자만 이의신청을 제출하도록 확인.
+     * 도메인 상태·내용 검증에 성공하면 이의신청과 신고 상태를 변경하고 각각의 outbox 이벤트 및 지표를 기록. 권한·상태·입력 오류는 전용 오류로 거절.
      */
     @Transactional
     public PlaceInformationDisputeResponse submitDispute(
@@ -167,8 +167,8 @@ public class PlaceInformationReportService {
     }
 
     /**
-     * 신고 행을 잠가 UNDER_REVIEW·ACCEPTED·REJECTED·RESOLVED 중 요청 전이를 적용하고 심사 결과를 반환합니다.
-     * 허용되지 않는 전이·입력은 거절하며 감사 로그·상태 지표·심사 outbox를 남깁니다. 관리자 권한 검증은 호출 경계의 책임입니다.
+     * 신고 행을 잠가 UNDER_REVIEW·ACCEPTED·REJECTED·RESOLVED 중 요청 전이를 적용하고 심사 결과를 반환.
+     * 허용되지 않는 전이·입력은 거절하며 감사 로그·상태 지표·심사 outbox를 남김. 관리자 권한 검증은 호출 경계의 책임.
      */
     @Transactional
     public PlaceInformationReportResponse reviewReport(
@@ -207,8 +207,8 @@ public class PlaceInformationReportService {
     }
 
     /**
-     * 신고 ID에 속한 이의신청 행을 잠가 ACCEPTED 또는 REJECTED로 심사하고 감사 로그·지표·outbox를 기록합니다.
-     * 다른 신고의 이의신청은 찾을 수 없음으로 처리하고 허용되지 않는 전이·입력은 거절합니다. 원 신고 상태를 함께 변경하지는 않습니다.
+     * 신고 ID에 속한 이의신청 행을 잠가 ACCEPTED 또는 REJECTED로 심사하고 감사 로그·지표·outbox를 기록.
+     * 다른 신고의 이의신청은 조회 실패로 처리하고 허용되지 않는 전이·입력은 거절. 원 신고 상태는 유지.
      */
     @Transactional
     public PlaceInformationDisputeResponse reviewDispute(

@@ -12,7 +12,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-/** 삭제 Outbox payload를 해석해 S3 객체를 제거한다. 재시도 정책과 완료 상태 기록은 Outbox 처리기가 담당한다. */
+/** 삭제 Outbox payload를 해석해 S3 객체를 제거. 재시도 정책과 완료 상태 기록은 Outbox 처리기가 담당. */
 @Component
 @RequiredArgsConstructor
 @Slf4j
@@ -26,7 +26,7 @@ public class S3ObjectDeleteOutboxHandler implements OutboxEventHandler {
         return OutboxEventType.S3_OBJECT_DELETE_REQUESTED;
     }
 
-    /** 빈 key는 실패시키고 나머지 S3 오류는 재시도를 위해 전파한다. NOT_CONFIGURED는 정상 반환하여 Outbox가 완료 처리할 수 있다. */
+    /** 빈 key는 실패시키고 나머지 S3 오류는 재시도를 위해 전파. NOT_CONFIGURED는 정상 반환하여 Outbox가 완료 처리할 수 있음. */
     @Override
     public void handle(String eventId, String payload) {
         S3ObjectDeleteOutboxPayload event = deserialize(payload);

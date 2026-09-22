@@ -37,7 +37,7 @@ class ConsultationIntroControllerTest {
     private RateLimitStore rateLimitStore;
 
     /**
-     * 생성된 OpenAPI에서 상담 도입 API의 첫 태그가 Consulting인지 확인해 문서 분류를 고정한다.
+     * 생성된 OpenAPI에서 상담 도입 API의 첫 태그가 Consulting인지 확인해 문서 분류를 고정.
      */
     @Test
     void documentsConsultationIntroTag() throws Exception {
@@ -47,7 +47,7 @@ class ConsultationIntroControllerTest {
     }
 
     /**
-     * 인증 없는 상담 도입 요청이 200과 Gemini 문구·source=gemini를 반환하는지 검증한다.
+     * 인증 없는 상담 도입 요청이 200과 Gemini 문구·source=gemini를 반환하는지 검증.
      */
     @Test
     void allowsAnonymousGeminiIntro() throws Exception {
@@ -63,7 +63,7 @@ class ConsultationIntroControllerTest {
     }
 
     /**
-     * 공백 메시지와 301자 메시지가 각각 400과 message 필드 검증 오류로 거절되는지 확인한다.
+     * 공백 메시지와 301자 메시지가 각각 400과 message 필드 검증 오류로 거절되는지 확인.
      */
     @Test
     void rejectsBlankOrOversizedMessage() throws Exception {
@@ -81,7 +81,7 @@ class ConsultationIntroControllerTest {
     }
 
     /**
-     * Gemini 결과가 비어 있어도 상담 도입 API는 200과 fallback 출처를 반환하는지 검증한다.
+     * Gemini 결과가 비어 있어도 상담 도입 API는 200과 fallback 출처를 반환하는지 검증.
      */
     @Test
     void returnsFallbackWithoutGeminiText() throws Exception {
@@ -96,7 +96,7 @@ class ConsultationIntroControllerTest {
     }
 
     /**
-     * 요청 제한 저장소가 거절하면 상담 도입 API가 429 RATE_LIMIT_EXCEEDED를 반환하는지 검증한다.
+     * 요청 제한 저장소가 거절하면 상담 도입 API가 429 RATE_LIMIT_EXCEEDED를 반환하는지 검증.
      */
     @Test
     void mapsIntroRateLimitFailure() throws Exception {

@@ -41,7 +41,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관리자 경로와 로그인·감사 조회에서 미인증, 사용자 역할, 탈퇴 상태에 따른 접근 경계를 검증한다.
+ * 관리자 경로와 로그인·감사 조회에서 미인증, 사용자 역할, 탈퇴 상태에 따른 접근 경계를 검증.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -80,7 +80,7 @@ class AdminSecurityTest {
     private Clock clock;
 
     /**
-     * 감사 로그·관리자 역할·사용자를 삭제해 인증 및 역할 경계 검증을 격리한다.
+     * 감사 로그·관리자 역할·사용자를 삭제해 인증 및 역할 경계 검증을 격리.
      */
     @BeforeEach
     void setUp() {
@@ -90,7 +90,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 게시물 관리자 경로가 토큰 없는 요청에 401과 INVALID_TOKEN을 반환하는지 확인한다.
+     * 게시물 관리자 경로가 토큰 없는 요청에 401과 INVALID_TOKEN을 반환하는지 확인.
      */
     @Test
     void postsRequireToken() throws Exception {
@@ -100,7 +100,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 일반 사용자의 관리자 게시물 접근에서 JSON 403 응답과 관리자 권한 안내를 확인한다.
+     * 일반 사용자의 관리자 게시물 접근에서 JSON 403 응답과 관리자 권한 안내를 확인.
      */
     @Test
     void postsRejectUser() throws Exception {
@@ -116,7 +116,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 요약 대시보드가 토큰 없는 요청을 INVALID_TOKEN으로 거절하는지 확인한다.
+     * 요약 대시보드가 토큰 없는 요청을 INVALID_TOKEN으로 거절하는지 확인.
      */
     @Test
     void summaryRequiresToken() throws Exception {
@@ -126,7 +126,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 일반 사용자 토큰으로 요약 대시보드 조회 시 ACCESS_DENIED를 확인한다.
+     * 일반 사용자 토큰으로 요약 대시보드 조회 시 ACCESS_DENIED를 확인.
      */
     @Test
     void summaryRejectsUser() throws Exception {
@@ -140,7 +140,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 최근 활동 조회의 미인증 요청이 401인지 확인한다.
+     * 최근 활동 조회의 미인증 요청이 401인지 확인.
      */
     @Test
     void activitiesRequireToken() throws Exception {
@@ -150,7 +150,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 최근 활동 조회의 일반 사용자 요청이 403인지 확인한다.
+     * 최근 활동 조회의 일반 사용자 요청이 403인지 확인.
      */
     @Test
     void activitiesRejectUser() throws Exception {
@@ -164,7 +164,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 대기 항목 조회가 일반 사용자 역할을 ACCESS_DENIED로 거절하는지 확인한다.
+     * 대기 항목 조회가 일반 사용자 역할을 ACCESS_DENIED로 거절하는지 확인.
      */
     @Test
     void pendingItemsRejectUser() throws Exception {
@@ -178,7 +178,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 대기 항목 조회가 미인증 요청을 INVALID_TOKEN으로 거절하는지 확인한다.
+     * 대기 항목 조회가 미인증 요청을 INVALID_TOKEN으로 거절하는지 확인.
      */
     @Test
     void pendingItemsRequireToken() throws Exception {
@@ -188,7 +188,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 신고자 신뢰도 조회가 토큰 없는 요청에 401을 반환하는지 확인한다.
+     * 신고자 신뢰도 조회가 토큰 없는 요청에 401을 반환하는지 확인.
      */
     @Test
     void trustScoreRequiresToken() throws Exception {
@@ -198,7 +198,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 신고자 신뢰도 조회가 일반 사용자에게 403을 반환하는지 확인한다.
+     * 신고자 신뢰도 조회가 일반 사용자에게 403을 반환하는지 확인.
      */
     @Test
     void trustScoreRejectsUser() throws Exception {
@@ -212,7 +212,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 신뢰도 개입 평가 요청이 미인증 상태에서는 401인지 확인한다.
+     * 신뢰도 개입 평가 요청이 미인증 상태에서는 401인지 확인.
      */
     @Test
     void interventionRequiresToken() throws Exception {
@@ -222,7 +222,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 일반 사용자의 신뢰도 개입 평가 요청이 ACCESS_DENIED로 거절되는지 확인한다.
+     * 일반 사용자의 신뢰도 개입 평가 요청이 ACCESS_DENIED로 거절되는지 확인.
      */
     @Test
     void interventionRejectsUser() throws Exception {
@@ -236,7 +236,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 형식상 유효한 온보딩 변경 본문이어도 미인증 요청은 401인지 확인한다.
+     * 형식상 유효한 온보딩 변경 본문이어도 미인증 요청은 401인지 확인.
      */
     @Test
     void onboardingRequiresToken() throws Exception {
@@ -254,7 +254,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 운영 품질 변경 본문을 보낸 일반 사용자 요청이 403인지 확인한다.
+     * 운영 품질 변경 본문을 보낸 일반 사용자 요청이 403인지 확인.
      */
     @Test
     void merchantQualityRejectsUser() throws Exception {
@@ -278,7 +278,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자 로그인 후 빈 데이터의 대시보드 집계 네 항목이 모두 0인지 확인한다.
+     * 관리자 로그인 후 빈 데이터의 대시보드 집계 네 항목이 모두 0인지 확인.
      */
     @Test
     void adminDashboardSummary() throws Exception {
@@ -295,7 +295,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자 로그인 경로에서는 일반 사용자의 올바른 자격 증명도 INVALID_CREDENTIALS로 거절하는지 확인한다.
+     * 관리자 로그인 경로에서는 일반 사용자의 올바른 자격 증명도 INVALID_CREDENTIALS로 거절하는지 확인.
      */
     @Test
     void adminLoginRejectsUser() throws Exception {
@@ -311,7 +311,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자 로그인은 접근 토큰을 본문에, 갱신 토큰을 쿠키에 반환하고 본문에는 갱신 토큰을 노출하지 않는지 확인한다.
+     * 관리자 로그인은 접근 토큰을 본문에, 갱신 토큰을 쿠키에 반환하고 본문에는 갱신 토큰을 노출하지 않는지 확인.
      */
     @Test
     void adminLoginCookie() throws Exception {
@@ -329,7 +329,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자 로그인에서 발급한 접근 토큰의 역할 claim이 ADMIN인지 확인한다.
+     * 관리자 로그인에서 발급한 접근 토큰의 역할 claim이 ADMIN인지 확인.
      */
     @Test
     void adminTokenRole() throws Exception {
@@ -351,7 +351,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자 토큰으로 게시물 목록을 조회할 때 이 시나리오가 기대하는 200 응답을 확인한다.
+     * 관리자 토큰으로 게시물 목록을 조회할 때 이 시나리오가 기대하는 200 응답을 확인.
      */
     @Test
     void adminPostsAccess() throws Exception {
@@ -364,7 +364,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자가 기간 내 감사 두 건을 최신순으로 조회하고 대상·행위·요청 ID를 확인할 수 있는지 검증한다.
+     * 관리자가 기간 내 감사 두 건을 최신순으로 조회하고 대상·행위·요청 ID를 확인할 수 있는지 검증.
      */
     @Test
     void adminAuditFixture() throws Exception {
@@ -388,7 +388,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 상점 소유자 역할은 감사 로그에 접근할 수 없고 관리자 권한 안내를 받는지 확인한다.
+     * 상점 소유자 역할은 감사 로그에 접근할 수 없고 관리자 권한 안내를 받는지 확인.
      */
     @Test
     void auditRejectsMerchantOwner() throws Exception {
@@ -403,7 +403,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 토큰 발급 뒤 탈퇴한 관리자의 기존 토큰도 감사 로그 접근 시 무효 처리되는지 확인한다.
+     * 토큰 발급 뒤 탈퇴한 관리자의 기존 토큰도 감사 로그 접근 시 무효 처리되는지 확인.
      */
     @Test
     void auditRejectsWithdrawnAdmin() throws Exception {
@@ -425,7 +425,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 관리자·상점 소유자·탈퇴 예정 관리자와 시간순 감사 두 건을 저장하고 각 접근 토큰을 묶는다.
+     * 관리자·상점 소유자·탈퇴 예정 관리자와 시간순 감사 두 건을 저장하고 각 접근 토큰을 묶음.
      */
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
         User admin = createUser("securityAuditAdmin", UserRole.ADMIN);
@@ -471,7 +471,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 지정 역할의 사용자를 저장하고 flush하여 이후 인증 필터가 읽을 수 있게 한다.
+     * 지정 역할의 사용자를 저장하고 flush하여 이후 인증 필터가 읽을 수 있게 함.
      */
     private User createUser(String username, UserRole role) {
         return userRepository.saveAndFlush(User.builder()
@@ -486,7 +486,7 @@ class AdminSecurityTest {
     }
 
     /**
-     * 일반 로그인 경로의 성공 응답에서 접근 토큰을 추출한다.
+     * 일반 로그인 경로의 성공 응답에서 접근 토큰을 추출.
      */
     private String loginAndGetAccessToken(String username) throws Exception {
         LoginRequest loginRequest = new LoginRequest(username, "password123");

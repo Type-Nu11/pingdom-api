@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 만료된 현재 활동 의도와 탈퇴 보존 기간이 지난 회원의 여행 데이터를 정리합니다.
- * 활동 의도 만료 삭제는 전체 대상에 적용하고 탈퇴 회원의 일정 정리만 설정된 배치 크기로 제한합니다.
+ * 만료된 현재 활동 의도와 탈퇴 보존 기간이 지난 회원의 여행 데이터를 정리.
+ * 활동 의도 만료 삭제는 전체 대상에 적용하고 탈퇴 회원의 일정 정리만 설정된 배치 크기로 제한.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,8 +29,8 @@ public class TravelDataRetentionService {
     private final Clock clock;
 
     /**
-     * 현재 시각까지 만료된 활동 의도를 삭제하고, 탈퇴 보존 기간이 지난 회원 한 배치의 활동 의도·여행 일정을 정리합니다.
-     * 활동 의도 만료 삭제에는 배치 제한을 적용하지 않으며 각 종류의 삭제 건수를 반환하고 삭제가 있으면 기록합니다.
+     * 현재 시각까지 만료된 활동 의도를 삭제하고, 탈퇴 보존 기간이 지난 회원 한 배치의 활동 의도·여행 일정을 정리.
+     * 활동 의도 만료 삭제는 배치 제한 없이 수행하며 각 종류의 삭제 건수를 반환하고 삭제가 있으면 기록.
      */
     @Transactional
     public TravelDataRetentionResult purgeExpiredData() {

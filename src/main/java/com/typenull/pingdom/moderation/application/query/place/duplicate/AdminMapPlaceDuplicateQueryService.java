@@ -18,9 +18,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * DB에서 중복 가능 장소를 좁힌 뒤 메모리의 판별기로 실제 후보·연결 그룹을 계산합니다.
- * 목록 페이지는 전체 그룹 계산 이후 잘라내며, 상세는 Kakao ID 또는 이름·주소·50m 경계 상자로 후보를 얻습니다.
- * 장소가 있어도 판별된 상대 후보가 없으면 중복 후보 없음 오류를 반환합니다.
+ * DB에서 중복 가능 장소를 좁힌 뒤 메모리의 판별기로 실제 후보·연결 그룹을 계산.
+ * 목록 페이지는 전체 그룹 계산 이후 잘라내며, 상세는 Kakao ID 또는 이름·주소·50m 경계 상자로 후보를 획득.
+ * 장소가 있어도 판별된 상대 후보가 없으면 중복 후보 없음 오류를 반환.
  */
 @Service
 @RequiredArgsConstructor
@@ -34,8 +34,8 @@ public class AdminMapPlaceDuplicateQueryService {
     private final AdminPlaceDuplicateResolver adminPlaceDuplicateResolver;
 
     /**
-     * DB의 중복 가능 장소 전체를 판별해 연결 그룹을 만든 뒤 요청 페이지를 메모리에서 잘라 반환합니다.
-     * page는 1 이상·limit는 1~100으로 보정하며 총건수는 장소 수가 아닌 그룹 수입니다.
+     * DB의 중복 가능 장소 전체를 판별해 연결 그룹을 만든 뒤 요청 페이지를 메모리에서 잘라 반환.
+     * page는 1 이상·limit는 1~100으로 보정하며 총건수는 장소 수가 아닌 그룹 수.
      */
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateResponse listDuplicatePlaces(int page, int limit) {
@@ -61,8 +61,8 @@ public class AdminMapPlaceDuplicateQueryService {
     }
 
     /**
-     * 장소의 Kakao ID 또는 이름·주소·좌표 경계로 후보를 모으고 판별기가 인정한 상대 장소와 중복 근거를 반환합니다.
-     * 요청 장소가 없거나 판별 후 상대 후보가 없으면 PLACE_DUPLICATE_NOT_FOUND로 거절합니다.
+     * 장소의 Kakao ID 또는 이름·주소·좌표 경계로 후보를 모으고 판별기가 인정한 상대 장소와 중복 근거를 반환.
+     * 요청 장소가 없거나 판별 후 상대 후보가 없으면 PLACE_DUPLICATE_NOT_FOUND로 거절.
      */
     @Transactional(readOnly = true)
     public AdminMapPlaceDuplicateDetailResponse getDuplicatePlace(Long placeId) {

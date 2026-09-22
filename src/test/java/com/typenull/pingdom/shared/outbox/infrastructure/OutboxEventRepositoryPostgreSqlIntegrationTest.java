@@ -48,7 +48,7 @@ class OutboxEventRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS 컨테이너의 JDBC 주소·계정·드라이버를 Spring 데이터소스에 등록한다.
+     * PostGIS 컨테이너의 JDBC 주소·계정·드라이버를 Spring 데이터소스에 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -62,7 +62,7 @@ class OutboxEventRepositoryPostgreSqlIntegrationTest {
     private OutboxEventRepository outboxEventRepository;
 
     /**
-     * 조회 테스트 전에 Outbox 이벤트를 일괄 삭제해 생성 시각 정렬과 기간 결과를 격리한다.
+     * 조회 테스트 전에 Outbox 이벤트를 일괄 삭제해 생성 시각 정렬과 기간 결과를 격리.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -70,7 +70,7 @@ class OutboxEventRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 실패 이벤트 2건에 대해 기간 없음·시작만·종료만 조건을 PostgreSQL에서 실행해 최신순/해당 기간 결과를 검증한다.
+     * 실패 이벤트 2건에 대해 기간 없음·시작만·종료만 조건을 PostgreSQL에서 실행해 최신순/해당 기간 결과를 검증.
      */
     @Test
     void queriesOptionalOutboxPeriods() {
@@ -92,7 +92,7 @@ class OutboxEventRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * FAILED 상태와 주어진 생성 기간 플래그를 적용하고 생성 시각·이벤트 ID 내림차순 첫 20건을 조회한다.
+     * FAILED 상태와 주어진 생성 기간 플래그를 적용하고 생성 시각·이벤트 ID 내림차순 첫 20건을 조회.
      */
     private Page<OutboxEvent> findByPeriod(
             boolean hasFrom,
@@ -117,7 +117,7 @@ class OutboxEventRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 주어진 집계와 생성 시각의 이메일 이벤트를 한 번 선점·실패시켜 최대 시도 1회의 FAILED 입력을 만든다.
+     * 주어진 집계와 생성 시각의 이메일 이벤트를 한 번 선점·실패시켜 최대 시도 1회의 FAILED 입력을 생성.
      */
     private OutboxEvent failedEvent(String aggregateId, LocalDateTime createdAt) {
         OutboxEvent event = OutboxEvent.create(

@@ -23,7 +23,7 @@ class ExceptionConventionTest {
     );
 
     /**
-     * 도메인 오류 코드 enum이 공통 ErrorCode를 구현하고 대문자 코드·비어 있지 않은 메시지를 제공하는지 검증한다.
+     * 도메인 오류 코드 enum이 공통 ErrorCode를 구현하고 대문자 코드·비어 있지 않은 메시지를 제공하는지 검증.
      */
     @Test
     @DisplayName("도메인 ErrorCode는 공통 ErrorCode 계약과 대문자 이름을 사용한다")
@@ -51,7 +51,7 @@ class ExceptionConventionTest {
     }
 
     /**
-     * 도메인 예외 패키지의 Exception 클래스가 모두 공통 DomainException을 상속하는지 검증한다.
+     * 도메인 예외 패키지의 Exception 클래스가 모두 공통 DomainException을 상속하는지 검증.
      */
     @Test
     @DisplayName("도메인 Exception은 공통 DomainException을 상속한다")
@@ -71,7 +71,7 @@ class ExceptionConventionTest {
     }
 
     /**
-     * 도메인 예외 경로에서 지정 파일 접미사에 맞는 Java 소스를 찾아 공개 타입을 로드한다.
+     * 도메인 예외 경로에서 지정 파일 접미사에 맞는 Java 소스를 찾아 공개 타입을 로드.
      */
     private List<Class<?>> classesInDomainExceptionPackages(String suffix)
             throws IOException, ClassNotFoundException {
@@ -89,7 +89,7 @@ class ExceptionConventionTest {
     }
 
     /**
-     * 파일의 공개 class 또는 enum 선언과 디렉터리 패키지명을 결합하고 선언이 없으면 경로를 포함한 오류를 낸다.
+     * 파일의 공개 class 또는 enum 선언과 디렉터리 패키지명을 결합하고 선언이 없으면 경로를 포함한 오류를 냄.
      */
     private String className(Path sourceFile) throws IOException {
         Matcher matcher = TYPE_DECLARATION.matcher(Files.readString(sourceFile));

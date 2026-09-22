@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class PlaceVisitDecisionEventResponseTest {
 
-    /** 조회 시각이 시작·종료 사이인 이벤트의 제목·유형·일정과 ONGOING 상태가 응답에 반영되는지 확인한다. */
+    /** 조회 시각이 시작·종료 사이인 이벤트의 제목·유형·일정과 ONGOING 상태가 응답에 반영되는지 확인. */
     @Test
     void mapsOngoingEventDetails() {
         LocalDateTime checkedAt = LocalDateTime.of(2026, 8, 5, 10, 0);

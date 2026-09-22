@@ -47,7 +47,7 @@ class AdminRoleAssignmentServiceTest {
     private AdminRoleAssignmentService service;
 
     /**
-     * 사용자·역할·권한·감사·이벤트 의존성 대역과 고정 Clock으로 역할 부여 서비스를 구성한다.
+     * 사용자·역할·권한·감사·이벤트 의존성 대역과 고정 Clock으로 역할 부여 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -57,7 +57,7 @@ class AdminRoleAssignmentServiceTest {
     }
 
     /**
-     * 새 관리자 역할 부여가 ACTIVE 응답·역할 관리 권한 확인·부여 사유 감사·해당 역할 변경 이벤트를 생성하는지 검증한다.
+     * 새 관리자 역할 부여가 ACTIVE 응답·역할 관리 권한 확인·부여 사유 감사·해당 역할 변경 이벤트를 생성하는지 검증.
      */
     @Test
     void assignsRoleWithAuditAndEvent() {
@@ -92,7 +92,7 @@ class AdminRoleAssignmentServiceTest {
     }
 
     /**
-     * 동일한 활성 ANALYST 역할이 이미 있으면 ADMIN_ROLE_ASSIGNMENT_CONFLICT로 거절되는지 검증한다.
+     * 동일한 활성 ANALYST 역할이 이미 있으면 ADMIN_ROLE_ASSIGNMENT_CONFLICT로 거절되는지 검증.
      */
     @Test
     void rejectsDuplicateActiveRole() {
@@ -108,7 +108,7 @@ class AdminRoleAssignmentServiceTest {
     }
 
     /**
-     * 활성 역할 해제가 REVOKED·해제 시각을 기록하고 기존/변경 상태와 사유를 감사에 전달하는지 검증한다.
+     * 활성 역할 해제가 REVOKED·해제 시각을 기록하고 기존/변경 상태와 사유를 감사에 전달하는지 검증.
      */
     @Test
     void revokesRoleWithHistoricalAudit() {
@@ -131,7 +131,7 @@ class AdminRoleAssignmentServiceTest {
     }
 
     /**
-     * 지정 ID와 ADMIN 역할을 가진 사용자를 만들어 역할 부여/해제 대상 자격을 충족시킨다.
+     * 지정 ID와 ADMIN 역할을 가진 사용자를 만들어 역할 부여/해제 대상 자격을 충족시킴.
      */
     private User admin(Long id) {
         return User.builder()
@@ -143,7 +143,7 @@ class AdminRoleAssignmentServiceTest {
     }
 
     /**
-     * 역할 부여·해제 assertion에 사용할 고정 Clock의 LocalDateTime을 반환한다.
+     * 역할 부여·해제 assertion에 사용할 고정 Clock의 LocalDateTime을 반환.
      */
     private java.time.LocalDateTime now() {
         return java.time.LocalDateTime.ofInstant(CLOCK.instant(), CLOCK.getZone());

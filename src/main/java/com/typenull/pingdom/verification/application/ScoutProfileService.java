@@ -38,9 +38,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Scout 신청과 프로필·활동 자격 심사를 트랜잭션으로 처리한다.
- * 사용자/프로필/자격의 잠금 조회와 상세 권한 확인을 조율하고 변경 이벤트·감사 이력·메트릭을 남긴다.
- * 이 서비스의 이벤트 발행과 메트릭 호출은 메서드 안에서 실행되며 자체 커밋 후 지연 처리는 없다.
+ * Scout 신청과 프로필·활동 자격 심사를 트랜잭션으로 처리.
+ * 사용자/프로필/자격의 잠금 조회와 상세 권한 확인을 조율하고 변경 이벤트·감사 이력·메트릭을 남김.
+ * 이 서비스의 이벤트 발행과 메트릭 호출은 메서드 안에서 실행되며 자체 커밋 후 지연 처리는 없음.
  */
 @Service
 @RequiredArgsConstructor
@@ -56,8 +56,8 @@ public class ScoutProfileService {
     private final Clock clock;
 
     /**
-     * 신청자 행을 먼저 잠가 프로필이 아직 없는 동시 신청도 같은 사용자 기준으로 순서화한다.
-     * 프로필 존재 시 상태와 무관하게 재신청을 거부하고 최초 신청은 프로필·자격 모두 PENDING으로 저장한다.
+     * 신청자 행을 먼저 잠가 프로필이 아직 없는 동시 신청도 같은 사용자 기준으로 순서화.
+     * 프로필 존재 시 상태와 무관하게 재신청을 거부하고 최초 신청은 프로필·자격 모두 PENDING으로 저장.
      */
     @Transactional
     public ScoutProfileResponse apply(Long userId, ScoutProfileRequest request) {
@@ -80,15 +80,15 @@ public class ScoutProfileService {
         return ScoutProfileResponse.from(profile, eligibility);
     }
 
-    /** 프로필과 활동 자격을 합쳐 반환한다. 두 모델 중 하나라도 없으면 해당 부재 오류를 전달한다. */
+    /** 프로필과 활동 자격을 합쳐 반환. 두 모델 중 하나라도 없으면 해당 부재 오류를 전달. */
     @Transactional(readOnly = true)
     public ScoutProfileResponse get(Long userId) {
         return response(requireProfile(userId));
     }
 
     /**
-     * 유효한 신청자와 프로필을 잠금 조회해 표시 정보를 수정한다.
-     * 수정 가능 프로필 상태는 도메인이 판단하며 활동 자격 상태는 바꾸지 않는다.
+     * 유효한 신청자와 프로필을 잠금 조회해 표시 정보를 수정.
+     * 수정 가능 프로필 상태는 도메인이 판단하며 활동 자격 상태는 유지.
      */
     @Transactional
     public ScoutProfileResponse update(Long userId, ScoutProfileRequest request) {
@@ -105,8 +105,8 @@ public class ScoutProfileService {
     }
 
     /**
-     * SCOUT_REVIEW 권한으로 상태별 프로필을 수정 시각·사용자 ID 역순 조회한다.
-     * 페이지 하한 1, 크기 1~100으로 보정하며 각 프로필에 자격 정보를 결합한다.
+     * SCOUT_REVIEW 권한으로 상태별 프로필을 수정 시각·사용자 ID 역순 조회.
+     * 페이지 하한 1, 크기 1~100으로 보정하며 각 프로필에 자격 정보를 결합.
      */
     @Transactional(readOnly = true)
     public ScoutProfilePageResponse listForAdmin(
@@ -134,14 +134,14 @@ public class ScoutProfileService {
         );
     }
 
-    /** 상세 심사 권한을 확인하고 지정 Scout의 프로필과 활동 자격을 반환한다. */
+    /** 상세 심사 권한을 확인하고 지정 Scout의 프로필과 활동 자격을 반환. */
     @Transactional(readOnly = true)
     public ScoutProfileResponse getForAdmin(Long adminUserId, Long scoutUserId) {
         requireScoutReviewPermission(adminUserId);
         return response(requireProfile(scoutUserId));
     }
 
-    /** 심사 권한과 대상 계정의 탈퇴·정지를 확인한 뒤 잠근 프로필을 활성화한다. 활동 자격은 별도 부여한다. */
+    /** 심사 권한과 대상 계정의 탈퇴·정지를 확인한 뒤 잠근 프로필을 활성화. 활동 자격은 별도 부여. */
     @Transactional
     public ScoutProfileResponse approveProfile(
             Long adminUserId,
@@ -154,7 +154,7 @@ public class ScoutProfileService {
         return changeProfileStatus(adminUserId, scoutUserId, profile, request.reason(), ProfileDecision.ACTIVATE);
     }
 
-    /** 심사 권한으로 프로필을 잠그고 사유와 함께 정지한다. 활동 자격 행은 직접 변경하지 않는다. */
+    /** 심사 권한으로 프로필을 잠그고 사유와 함께 정지. 활동 자격 행은 직접 변경 대상에서 제외. */
     @Transactional
     public ScoutProfileResponse suspendProfile(
             Long adminUserId,
@@ -166,7 +166,7 @@ public class ScoutProfileService {
         return changeProfileStatus(adminUserId, scoutUserId, profile, request.reason(), ProfileDecision.SUSPEND);
     }
 
-    /** 심사 권한으로 프로필을 잠그고 사유와 함께 회수한다. 허용 상태 전이는 도메인이 검증한다. */
+    /** 심사 권한으로 프로필을 잠그고 사유와 함께 회수. 허용 상태 전이는 도메인이 검증. */
     @Transactional
     public ScoutProfileResponse revokeProfile(
             Long adminUserId,
@@ -179,8 +179,8 @@ public class ScoutProfileService {
     }
 
     /**
-     * 대상 계정과 활성 프로필을 확인한 뒤 활동 자격을 잠가 기간을 부여한다.
-     * 기간·상태 오류를 구분하며 감사 이력과 변경 이벤트, 상태 메트릭을 기록한다.
+     * 대상 계정과 활성 프로필을 확인한 뒤 활동 자격을 잠가 기간을 부여.
+     * 기간·상태 오류를 구분하며 감사 이력과 변경 이벤트, 상태 메트릭을 기록.
      */
     @Transactional
     public ScoutProfileResponse grantEligibility(
@@ -216,7 +216,7 @@ public class ScoutProfileService {
         return response(profile);
     }
 
-    /** 프로필 다음 자격 순으로 잠금 조회해 활동 자격을 정지하고 심사 결과를 기록한다. */
+    /** 프로필 다음 자격 순으로 잠금 조회해 활동 자격을 정지하고 심사 결과를 기록. */
     @Transactional
     public ScoutProfileResponse suspendEligibility(
             Long adminUserId,
@@ -244,8 +244,8 @@ public class ScoutProfileService {
     }
 
     /**
-     * 프로필 다음 자격 순으로 잠금 조회해 자격을 회수한다.
-     * 현재 구현은 잘못된 상태와 잘못된 인자 모두 자격 상태 오류로 변환한다.
+     * 프로필 다음 자격 순으로 잠금 조회해 자격을 회수.
+     * 현재 구현은 잘못된 상태와 잘못된 인자 모두 자격 상태 오류로 변환.
      */
     @Transactional
     public ScoutProfileResponse revokeEligibility(
@@ -274,8 +274,8 @@ public class ScoutProfileService {
     }
 
     /**
-     * 프로필 상태 전이를 적용하고 감사·이벤트·메트릭을 남긴다.
-     * 감사 이력의 변경 전 데이터에는 상태만 포함되며 이전 심사 시각·사유는 null로 기록된다.
+     * 프로필 상태 전이를 적용하고 감사·이벤트·메트릭을 남김.
+     * 감사 이력의 변경 전 데이터에는 상태만 포함되며 이전 심사 시각·사유는 null로 기록됨.
      */
     private ScoutProfileResponse changeProfileStatus(
             Long adminUserId,
@@ -315,8 +315,8 @@ public class ScoutProfileService {
     }
 
     /**
-     * 자격 상태 변경의 감사 이력·이벤트·메트릭을 기록한다.
-     * 변경 전 감사 데이터는 상태만 보존하며 이전 기간과 사유는 이 메서드에 전달되지 않는다.
+     * 자격 상태 변경의 감사 이력·이벤트·메트릭을 기록.
+     * 변경 전 감사 데이터는 상태만 보존하며 이전 기간과 사유는 이 메서드의 입력 범위 외.
      */
     private void recordEligibilityChange(
             Long adminUserId,
@@ -346,7 +346,7 @@ public class ScoutProfileService {
         metrics.recordActivityEligibilityStatusUpdate(beforeStatus, eligibility.getStatus());
     }
 
-    /** 프로필 사용자 ID로 자격을 조회해 통합 응답을 만들고 자격 부재는 오류로 처리한다. */
+    /** 프로필 사용자 ID로 자격을 조회해 통합 응답을 만들고 자격 부재는 오류로 처리. */
     private ScoutProfileResponse response(ScoutProfile profile) {
         ScoutActivityEligibility eligibility = eligibilityRepository.findById(profile.getUserId())
                 .orElseThrow(() -> new VisitorVerificationException(
@@ -355,7 +355,7 @@ public class ScoutProfileService {
         return ScoutProfileResponse.from(profile, eligibility);
     }
 
-    /** 프로필이 없으면 SCOUT_PROFILE_NOT_FOUND를 반환한다. */
+    /** 프로필이 없으면 SCOUT_PROFILE_NOT_FOUND를 반환. */
     private ScoutProfile requireProfile(Long scoutUserId) {
         return profileRepository.findById(scoutUserId)
                 .orElseThrow(() -> new VisitorVerificationException(
@@ -363,7 +363,7 @@ public class ScoutProfileService {
                 ));
     }
 
-    /** 프로필을 쓰기 잠금으로 조회하며 없으면 프로필 부재 오류로 거부한다. */
+    /** 프로필을 쓰기 잠금으로 조회하며 없으면 프로필 부재 오류로 거부. */
     private ScoutProfile requireProfileForUpdate(Long scoutUserId) {
         return profileRepository.findByUserIdForUpdate(scoutUserId)
                 .orElseThrow(() -> new VisitorVerificationException(
@@ -371,7 +371,7 @@ public class ScoutProfileService {
                 ));
     }
 
-    /** 활동 자격을 쓰기 잠금으로 조회하며 누락된 자격은 전용 부재 오류로 거부한다. */
+    /** 활동 자격을 쓰기 잠금으로 조회하며 누락된 자격은 전용 부재 오류로 거부. */
     private ScoutActivityEligibility requireEligibilityForUpdate(Long scoutUserId) {
         return eligibilityRepository.findByScoutUserIdForUpdate(scoutUserId)
                 .orElseThrow(() -> new VisitorVerificationException(
@@ -379,7 +379,7 @@ public class ScoutProfileService {
                 ));
     }
 
-    /** 신청자 행을 잠그고 USER 역할·탈퇴·현재 정지 상태를 확인한다. */
+    /** 신청자 행을 잠그고 USER 역할·탈퇴·현재 정지 상태를 확인. */
     private User requireApplicantForUpdate(Long userId) {
         User user = userRepository.findByIdForUpdate(userId)
                 .orElseThrow(() -> new VisitorVerificationException(VisitorVerificationErrorCode.SCOUT_PROFILE_NOT_FOUND));
@@ -392,7 +392,7 @@ public class ScoutProfileService {
         return user;
     }
 
-    /** 대상 계정을 잠그고 탈퇴 또는 현재 정지 여부를 확인한다. 이 경로는 계정 역할을 추가 검사하지 않는다. */
+    /** 대상 계정을 잠그고 탈퇴 또는 현재 정지 여부를 확인. 계정 역할은 이 경로의 추가 검사 대상에서 제외. */
     private void requireEligibleTargetForActivation(Long scoutUserId) {
         User user = userRepository.findByIdForUpdate(scoutUserId)
                 .orElseThrow(() -> new VisitorVerificationException(VisitorVerificationErrorCode.SCOUT_PROFILE_NOT_FOUND));
@@ -402,19 +402,19 @@ public class ScoutProfileService {
         }
     }
 
-    /** 활동 자격 부여 전에 프로필 자체가 ACTIVE인지 요구한다. */
+    /** 활동 자격 부여 전에 프로필 자체가 ACTIVE인지 요구. */
     private void requireActiveProfile(ScoutProfile profile) {
         if (profile.getStatus() != ScoutProfileStatus.ACTIVE) {
             throw new VisitorVerificationException(VisitorVerificationErrorCode.SCOUT_ACTIVITY_PROFILE_REQUIRED);
         }
     }
 
-    /** Scout 심사용 상세 권한 SCOUT_REVIEW를 요구한다. */
+    /** Scout 심사용 상세 권한 SCOUT_REVIEW를 요구. */
     private void requireScoutReviewPermission(Long adminUserId) {
         adminRoleAuthorizationService.requirePermission(adminUserId, AdminPermission.SCOUT_REVIEW);
     }
 
-    /** 감사 이력에 사용할 프로필 상태·심사 시각·사유를 순서가 있는 맵에 담는다. */
+    /** 감사 이력에 사용할 프로필 상태·심사 시각·사유를 순서가 있는 맵에 담음. */
     private Map<String, Object> profileState(
             ScoutProfileStatus status,
             LocalDateTime reviewedAt,
@@ -427,7 +427,7 @@ public class ScoutProfileService {
         return state;
     }
 
-    /** 감사 이력에 사용할 자격 상태·기간·사유를 순서가 있는 맵에 담는다. */
+    /** 감사 이력에 사용할 자격 상태·기간·사유를 순서가 있는 맵에 담음. */
     private Map<String, Object> eligibilityState(
             ScoutActivityEligibilityStatus status,
             LocalDateTime eligibleFrom,

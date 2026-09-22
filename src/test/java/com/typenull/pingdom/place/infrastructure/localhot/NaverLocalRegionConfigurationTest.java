@@ -24,7 +24,7 @@ class NaverLocalRegionConfigurationTest {
                     "place.local-hot.naver.cache-max-entries=100"
             );
 
-    /** 네이버 인증·URL·타임아웃·캐시 설정이 바인딩되고 명시된 이름의 RestClient 빈이 생성되는지 확인한다. */
+    /** 네이버 인증·URL·타임아웃·캐시 설정이 바인딩되고 명시된 이름의 RestClient 빈이 생성되는지 확인. */
     @Test
     void bindsNaverClientConfiguration() {
         contextRunner.run(context -> {
@@ -44,7 +44,7 @@ class NaverLocalRegionConfigurationTest {
         });
     }
 
-    /** 비밀키 누락과 기능 비활성은 configured=false이며 생략한 URL·타임아웃·캐시에는 기본값이 적용되는지 확인한다. */
+    /** 비밀키 누락과 기능 비활성은 configured=false이며 생략한 URL·타임아웃·캐시에는 기본값이 적용되는지 확인. */
     @Test
     void requiresEnabledNaverCredentials() {
         NaverLocalRegionProperties missingSecret =

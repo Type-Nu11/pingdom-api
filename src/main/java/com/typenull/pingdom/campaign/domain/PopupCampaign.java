@@ -16,8 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 팝업 캠페인의 기간·브랜드·장소와 DRAFT→PUBLISHED→CLOSED 상태 전이를 보관합니다.
- * 초안만 수정할 수 있으며, 기간 경과만으로 저장 상태가 자동 변경되지는 않습니다.
+ * 팝업 캠페인의 기간·브랜드·장소와 DRAFT→PUBLISHED→CLOSED 상태 전이 보관.
+ * 초안만 수정 가능하며 기간이 지나도 명시적인 전이 전까지 저장 상태 유지.
  */
 @Entity
 @Getter

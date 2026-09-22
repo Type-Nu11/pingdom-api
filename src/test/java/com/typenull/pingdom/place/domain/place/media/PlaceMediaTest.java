@@ -9,7 +9,7 @@ import org.junit.jupiter.api.Test;
 
 class PlaceMediaTest {
 
-    /** 방문 증빙 미디어는 원본 게시글 식별자 없이 생성할 수 없는지 오류 메시지와 함께 확인한다. */
+    /** 방문 증빙 미디어는 원본 게시글 식별자 없이 생성할 수 없는지 오류 메시지와 함께 확인. */
     @Test
     void verificationRequiresSourceMapImageId() {
         assertThatThrownBy(() -> PlaceMedia.verification(
@@ -24,7 +24,7 @@ class PlaceMediaTest {
                 .hasMessage("sourceMapImageId must not be null for verification media");
     }
 
-    /** 탐색용 미디어는 이미지 URL을 정리하고 원본 게시글 ID를 비우며 음수 표시 순서를 0으로 보정하는지 확인한다. */
+    /** 탐색용 미디어는 이미지 URL을 정리하고 원본 게시글 ID를 비우며 음수 표시 순서를 0으로 보정하는지 확인. */
     @Test
     void normalizesExplorationMedia() {
         PlaceMedia media = PlaceMedia.exploration(
@@ -43,7 +43,7 @@ class PlaceMediaTest {
         assertThat(media.getDisplayOrder()).isZero();
     }
 
-    /** 공백 이미지 URL로 탐색용 미디어를 만들 수 없는지 확인한다. */
+    /** 공백 이미지 URL로 탐색용 미디어를 만들 수 없는지 확인. */
     @Test
     void imageUrlMustNotBeBlank() {
         assertThatThrownBy(() -> PlaceMedia.exploration(
@@ -58,7 +58,7 @@ class PlaceMediaTest {
                 .hasMessage("imageUrl must not be blank");
     }
 
-    /** 미디어 목적·입력 검증에 필요한 장소 값을 메모리에 만든다. */
+    /** 미디어 목적·입력 검증에 필요한 장소 값을 메모리에 생성. */
     private MapPlace place() {
         return MapPlace.builder()
                 .name("미디어 장소")

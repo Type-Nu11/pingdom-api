@@ -9,8 +9,8 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 
 /**
- * 지도 외부 링크 전환을 유형·회원·장소·요청 ID로 중복 제거합니다.
- * 별도 트랜잭션의 insert가 고유 제약으로 실패하면 기존 이벤트를 다시 읽고 없으면 원래 예외를 전달합니다.
+ * 지도 외부 링크 전환을 유형·회원·장소·요청 ID로 중복 제거.
+ * 별도 트랜잭션의 insert가 고유 제약으로 실패하면 기존 이벤트를 다시 읽고 없으면 원래 예외를 전달.
  */
 @Service
 @RequiredArgsConstructor

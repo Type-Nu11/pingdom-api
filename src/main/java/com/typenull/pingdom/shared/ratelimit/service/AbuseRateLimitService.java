@@ -19,8 +19,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
 /**
- * 행위별 사용자·IP 제한 규칙을 저장소에 전달한다. 이메일·계정·토큰 키에는 SHA-256 지문을 사용한다.
- * 제한 초과 로그에는 행위별 식별 정보가 포함되며, 로그인 사용자명과 IP는 해시하지 않고 기록한다.
+ * 행위별 사용자·IP 제한 규칙을 저장소에 전달. 이메일·계정·토큰 키에는 SHA-256 지문을 사용.
+ * 제한 초과 로그에는 행위별 식별 정보가 포함되며, 로그인 사용자명과 IP는 해시하지 않고 기록.
  */
 @Service
 @Slf4j
@@ -40,7 +40,7 @@ public class AbuseRateLimitService {
         this.store = store;
     }
 
-    /** 정규화한 이메일 지문과 IP에 각각 가입 요청 한도를 적용한다. */
+    /** 정규화한 이메일 지문과 IP에 각각 가입 요청 한도를 적용. */
     public void checkSignup(String email, String clientIp) {
         String emailFingerprint = fingerprint(normalize(email));
         acquireWithLogging(
@@ -57,7 +57,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 대소문자·주변 공백을 정규화한 계정과 IP 한도를 함께 소비한다. */
+    /** 대소문자·주변 공백을 정규화한 계정과 IP 한도를 함께 소비. */
     public void checkLogin(String username, String clientIp) {
         acquireWithLogging(
                 "login",
@@ -73,7 +73,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 토큰 원문의 지문과 IP 한도를 함께 적용한다. 토큰의 유효성 검증은 수행하지 않는다. */
+    /** 토큰 원문의 지문과 IP 한도를 함께 적용. 토큰의 유효성 검증은 별도. */
     public void checkTokenRefresh(String refreshToken, String clientIp) {
         acquireWithLogging(
                 "token-refresh",
@@ -89,7 +89,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 이메일·IP 일일 한도와 이메일별 최소 재발송 간격을 한 번에 검사한다. */
+    /** 이메일·IP 일일 한도와 이메일별 최소 재발송 간격을 한 번에 검사. */
     public void checkEmailResend(String email, String clientIp) {
         String emailFingerprint = fingerprint(normalize(email));
         acquireWithLogging(
@@ -111,7 +111,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 이메일 인증 코드 확인 시 이메일별·IP별 요청 횟수를 제한한다. */
+    /** 이메일 인증 코드 확인 시 이메일별·IP별 요청 횟수를 제한. */
     public void checkEmailVerify(String email, String clientIp) {
         String emailFingerprint = fingerprint(normalize(email));
         acquireWithLogging(
@@ -128,7 +128,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 비밀번호 재설정 메일에 가입 인증과 독립된 일일 한도 및 재발송 간격을 적용한다. */
+    /** 비밀번호 재설정 메일에 가입 인증과 독립된 일일 한도 및 재발송 간격을 적용. */
     public void checkPasswordResetRequest(String email, String clientIp) {
         String emailFingerprint = fingerprint(normalize(email));
         acquireWithLogging(
@@ -156,7 +156,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 재설정 토큰 지문과 IP로 확인 요청을 제한하며 토큰 원문을 로그에 기록하지 않는다. */
+    /** 재설정 토큰 지문과 IP로 확인 요청을 제한하며 토큰 원문은 로그 기록에서 제외. */
     public void checkPasswordResetConfirm(String token, String clientIp) {
         acquireWithLogging(
                 "password-reset-confirm",
@@ -178,7 +178,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 신고 요청의 사용자별·IP별 한도를 적용한다. 대상 신고의 중복 여부는 별도 서비스 책임이다. */
+    /** 신고 요청의 사용자별·IP별 한도를 적용. 대상 신고의 중복 여부는 별도 서비스 책임. */
     public void checkPostReport(Long userId, String clientIp) {
         acquireWithLogging(
                 "post-report",
@@ -194,7 +194,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 지도 이미지 좋아요 요청에 사용자와 IP 한도를 함께 적용한다. */
+    /** 지도 이미지 좋아요 요청에 사용자와 IP 한도를 함께 적용. */
     public void checkMapImageLike(Long userId, String clientIp) {
         acquireWithLogging(
                 "map-image-like",
@@ -210,7 +210,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 추천 클릭 요청의 사용자 및 IP 빈도를 제한한다. 전환 이벤트 중복 판정은 별도 책임이다. */
+    /** 추천 클릭 요청의 사용자 및 IP 빈도를 제한. 전환 이벤트 중복 판정은 별도 책임. */
     public void checkRecommendationClick(Long userId, String clientIp) {
         acquireWithLogging(
                 "recommendation-click",
@@ -226,7 +226,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 이미지 업로드 요청에 사용자·IP별 시간 구간 한도를 적용한다. */
+    /** 이미지 업로드 요청에 사용자·IP별 시간 구간 한도를 적용. */
     public void checkImageUpload(Long userId, String clientIp) {
         acquireWithLogging(
                 "image-upload",
@@ -242,7 +242,7 @@ public class AbuseRateLimitService {
         );
     }
 
-    /** 인증 전 상담 소개 요청을 IP 단일 한도로 제한한다. */
+    /** 인증 전 상담 소개 요청을 IP 단일 한도로 제한. */
     public void checkConsultationIntro(String clientIp) {
         String normalizedIp = normalizeIp(clientIp);
         acquireWithLogging(

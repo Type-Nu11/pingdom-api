@@ -3,7 +3,7 @@ package com.typenull.pingdom.shared.api.dto;
 import com.typenull.pingdom.shared.exception.ErrorCode;
 import io.swagger.v3.oas.annotations.media.Schema;
 
-/** 클라이언트에 노출할 메시지와 오류 코드를 담는다. from은 예외 상세 메시지 대신 ErrorCode의 공개 메시지를 사용한다. */
+/** 클라이언트에 노출할 메시지와 오류 코드를 담음. from은 예외 상세 메시지 대신 ErrorCode의 공개 메시지를 사용. */
 @Schema(description = "에러 응답")
 public record ErrorResponse(
         @Schema(

@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class PlaceRecommendationUserSignalLoaderTest {
     /**
-     * 북마크 이력이 200개여도 개인화 시드는 최대 64개로 제한되는지 확인합니다.
+     * 북마크 이력이 200개여도 개인화 시드는 최대 64개로 제한되는지 확인.
      */
     @Test
     void capsPersonalSignalSeeds() {

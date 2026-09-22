@@ -32,7 +32,7 @@ class PrivacyProcessingOutboxPublisherTest {
     private OutboxEventPublisher outboxEventPublisher;
 
     /**
-     * 사용자 export 이벤트가 개인정보 Outbox 타입·집계 키로 발행되고 대상·행위자·행위·UTC 발생 시각이 payload에 담기는지 검증한다.
+     * 사용자 export 이벤트가 개인정보 Outbox 타입·집계 키로 발행되고 대상·행위자·행위·UTC 발생 시각이 payload에 담기는지 검증.
      */
     @Test
     void publishesUserPrivacyEvent() {
@@ -69,7 +69,7 @@ class PrivacyProcessingOutboxPublisherTest {
     }
 
     /**
-     * 대상 10·10·20의 삭제 이벤트가 집계 ID 10·20으로 두 번만 발행되어 중복 사용자를 제거하는지 검증한다.
+     * 대상 10·10·20의 삭제 이벤트가 집계 ID 10·20으로 두 번만 발행되어 중복 사용자를 제거하는지 검증.
      */
     @Test
     void deduplicatesBulkPrivacyTargets() {

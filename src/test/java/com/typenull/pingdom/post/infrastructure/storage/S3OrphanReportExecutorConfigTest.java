@@ -12,8 +12,8 @@ import org.springframework.scheduling.concurrent.ThreadPoolTaskExecutor;
 class S3OrphanReportExecutorConfigTest {
 
     /**
-     * 실제 executor의 실행 작업을 latch로 보류하고 대기열 한 칸을 채우면 다음 작업이 TaskRejectedException인지 검증한다.
-     * finally에서 작업을 해제하고 executor를 종료해 작업 스레드가 남지 않게 한다.
+     * 실제 executor의 실행 작업을 latch로 보류하고 대기열 한 칸을 채우면 다음 작업이 TaskRejectedException인지 검증.
+     * finally에서 작업을 해제하고 executor를 종료해 작업 스레드가 남지 않게 함.
      */
     @Test
     void rejectsSaturatedOrphanExecutor() throws InterruptedException {

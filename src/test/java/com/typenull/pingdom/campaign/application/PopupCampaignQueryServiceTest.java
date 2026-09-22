@@ -41,7 +41,7 @@ class PopupCampaignQueryServiceTest {
     @InjectMocks private PopupCampaignQueryService service;
 
     /**
-     * 공개 캠페인의 탐색 가능 조회 기준과 응답 시간 변환에 사용할 UTC 시각을 고정한다.
+     * 공개 캠페인의 탐색 가능 조회 기준과 응답 시간 변환에 사용할 UTC 시각을 고정.
      */
     @BeforeEach
     void setUpClock() {
@@ -50,7 +50,7 @@ class PopupCampaignQueryServiceTest {
     }
 
     /**
-     * 현재 시각의 PUBLISHED 탐색 가능 조회가 비어 있으면 CAMPAIGN_NOT_FOUND를 반환하는지 검증한다.
+     * 현재 시각의 PUBLISHED 탐색 가능 조회가 비어 있으면 CAMPAIGN_NOT_FOUND를 반환하는지 검증.
      */
     @Test
     void hidesUndiscoverableCampaign() {
@@ -65,8 +65,8 @@ class PopupCampaignQueryServiceTest {
     }
 
     /**
-     * 최소 정수 페이지·최대 정수 크기 요청을 저장소의 0번 페이지·100건으로 정규화하는지 검증한다.
-     * 빈 결과의 외부 페이지 1·전체 수 0·다음 페이지 없음 계약도 고정한다.
+     * 최소 정수 페이지·최대 정수 크기 요청을 저장소의 0번 페이지·100건으로 정규화하는지 검증.
+     * 빈 결과의 외부 페이지 1·전체 수 0·다음 페이지 없음 계약도 고정.
      */
     @Test
     void normalizesCampaignPagination() {
@@ -94,8 +94,8 @@ class PopupCampaignQueryServiceTest {
     }
 
     /**
-     * 게시 캠페인의 시작·종료·생성 시각을 UTC OffsetDateTime으로 매핑하고 게시 상태·null 로고를 유지하는지 검증한다.
-     * JSON 직렬화 자체를 실행하는 테스트는 아니다.
+     * 게시 캠페인의 시작·종료·생성 시각을 UTC OffsetDateTime으로 매핑하고 게시 상태·null 로고를 유지하는지 검증.
+     * JSON 직렬화 실행은 검증 범위에서 제외.
      */
     @Test
     void mapsCampaignTimesToUtc() {

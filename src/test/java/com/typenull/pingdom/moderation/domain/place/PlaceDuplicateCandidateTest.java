@@ -12,7 +12,7 @@ class PlaceDuplicateCandidateTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 23, 10, 0);
 
     /**
-     * 장소 ID를 역순으로 탐지해도 작은 ID를 왼쪽에 저장하고 초기 판정 상태를 PENDING으로 두는지 검증한다.
+     * 장소 ID를 역순으로 탐지해도 작은 ID를 왼쪽에 저장하고 초기 판정 상태를 PENDING으로 두는지 검증.
      */
     @Test
     void normalizesPlacePairWhenDetectingCandidate() {
@@ -31,7 +31,7 @@ class PlaceDuplicateCandidateTest {
     }
 
     /**
-     * 중복 후보를 확인한 뒤 병합 완료를 기록하면 MERGED 상태와 심사자·병합 이력 ID를 유지하는지 검증한다.
+     * 중복 후보를 확인한 뒤 병합 완료를 기록하면 MERGED 상태와 심사자·병합 이력 ID를 유지하는지 검증.
      */
     @Test
     void connectsConfirmedCandidateToMerge() {
@@ -46,7 +46,7 @@ class PlaceDuplicateCandidateTest {
     }
 
     /**
-     * 같은 장소끼리의 후보 생성은 거절하고 이미 기각된 후보는 다시 확인할 수 없는지 검증한다.
+     * 같은 장소끼리의 후보 생성은 거절하고 이미 기각된 후보는 다시 확인할 수 없는지 검증.
      */
     @Test
     void rejectsInvalidPairAndRepeatedDecision() {
@@ -67,7 +67,7 @@ class PlaceDuplicateCandidateTest {
     }
 
     /**
-     * 판정 전이를 검증할 동일 카카오 장소 ID 기반의 대기 중복 후보를 만든다.
+     * 판정 전이를 검증할 동일 카카오 장소 ID 기반의 대기 중복 후보를 생성.
      */
     private PlaceDuplicateCandidate candidate() {
         return PlaceDuplicateCandidate.detect(

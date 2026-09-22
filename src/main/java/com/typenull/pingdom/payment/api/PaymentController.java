@@ -23,7 +23,7 @@ import jakarta.validation.constraints.Min;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
-/** 결제 내역과 결제 상태 조회 API의 진입점입니다. */
+/** 결제 내역과 결제 상태 조회 API의 진입점. */
 @RestController
 @RequestMapping("/payments")
 @RequiredArgsConstructor

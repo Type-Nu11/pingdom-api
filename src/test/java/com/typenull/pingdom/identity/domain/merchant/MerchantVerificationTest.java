@@ -11,7 +11,7 @@ class MerchantVerificationTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 15, 12, 0);
 
     /**
-     * 본인 승인·사업자 거절이면 각각의 상태를 반영하고 완전 승인으로 판정하지 않는지 검증한다.
+     * 본인 승인·사업자 거절이면 각각의 상태를 반영하고 완전 승인으로 판정하지 않는지 검증.
      */
     @Test
     void requiresBothVerificationApprovals() {
@@ -25,7 +25,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 본인과 사업자를 모두 승인하면 완전 승인 상태와 검토자 ID를 기록하는지 검증한다.
+     * 본인과 사업자를 모두 승인하면 완전 승인 상태와 검토자 ID를 기록하는지 검증.
      */
     @Test
     void acceptsBothVerificationApprovals() {
@@ -38,7 +38,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 거절 후 재신청은 두 검증을 PENDING으로 돌리고 검토자를 지우며 새 암호화 사업자번호를 보관하는지 검증한다.
+     * 거절 후 재신청은 두 검증을 PENDING으로 돌리고 검토자를 지우며 새 암호화 사업자번호를 보관하는지 검증.
      */
     @Test
     void rejectedVerificationCanBeReapplied() {
@@ -54,7 +54,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 이미 승인된 검증의 일반 수정은 IllegalStateException으로 거절되는지 검증한다.
+     * 이미 승인된 검증의 일반 수정은 IllegalStateException으로 거절되는지 검증.
      */
     @Test
     void reviewedVerificationCannotBeUpdated() {
@@ -71,7 +71,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 탈퇴 익명화가 이름·상호·암호화 번호·검토 사유를 대체/제거하되 과거 검토 시각은 보존하는지 검증한다.
+     * 탈퇴 익명화가 이름·상호·암호화 번호·검토 사유를 대체/제거하되 과거 검토 시각은 보존하는지 검증.
      */
     @Test
     void withdrawalAnonymizesStoredIdentityData() {
@@ -88,7 +88,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 상호 변경은 새 상호와 두 PENDING 상태를 반영하고 검토자·시각·사유를 초기화하는지 검증한다.
+     * 상호 변경은 새 상호와 두 PENDING 상태를 반영하고 검토자·시각·사유를 초기화하는지 검증.
      */
     @Test
     void businessNameChangeInvalidatesVerification() {
@@ -106,7 +106,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 승인 후에도 새 대표자·암호화 번호로 증빙을 재제출하면 두 검증이 PENDING으로 돌아가는지 검증한다.
+     * 승인 후에도 새 대표자·암호화 번호로 증빙을 재제출하면 두 검증이 PENDING으로 돌아가는지 검증.
      */
     @Test
     void resubmitsApprovedVerificationEvidence() {
@@ -122,7 +122,7 @@ class MerchantVerificationTest {
     }
 
     /**
-     * 고정 시각과 암호화 사업자번호를 가진 사용자 1의 본인·사업자 검증 대기 상태를 생성한다.
+     * 고정 시각과 암호화 사업자번호를 가진 사용자 1의 본인·사업자 검증 대기 상태를 생성.
      */
     private MerchantVerification pendingVerification() {
         return MerchantVerification.pending(1L, "김핑덤", "핑덤 카페", "encrypted-123", NOW);

@@ -29,7 +29,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관리자 개인정보 처리 이력의 기본 조회와 빈 페이지 응답을 저장 데이터로 검증한다.
+ * 관리자 개인정보 처리 이력의 기본 조회와 빈 페이지 응답을 저장 데이터로 검증.
  */
 @Tag("integration")
 @SpringBootTest
@@ -53,7 +53,7 @@ class AdminPrivacyProcessingHistoryControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * 개인정보 처리 이력과 사용자를 지워 이전 시나리오의 결과를 제거한다.
+     * 개인정보 처리 이력과 사용자를 지워 이전 시나리오의 결과를 제거.
      */
     @BeforeEach
     void setUp() {
@@ -62,7 +62,7 @@ class AdminPrivacyProcessingHistoryControllerTest {
     }
 
     /**
-     * 선택 필터 없이 개인정보 처리 이력을 조회하고 삭제 후 빈 페이지의 건수와 페이지 메타데이터를 확인한다.
+     * 선택 필터 없이 개인정보 처리 이력을 조회하고 삭제 후 빈 페이지의 건수와 페이지 메타데이터를 확인.
      */
     @Test
     void defaultAndEmptyHistoryPage() throws Exception {
@@ -103,7 +103,7 @@ class AdminPrivacyProcessingHistoryControllerTest {
     }
 
     /**
-     * 지정 역할을 가진 사용자를 저장하고 실제 로그인 응답에서 접근 토큰을 가져온다.
+     * 지정 역할을 가진 사용자를 저장하고 실제 로그인 응답에서 접근 토큰을 가져옴.
      */
     private String createUserAndLogin(String username, UserRole role) throws Exception {
         userRepository.save(User.builder()

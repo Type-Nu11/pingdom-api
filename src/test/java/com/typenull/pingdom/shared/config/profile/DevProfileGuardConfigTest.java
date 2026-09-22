@@ -11,7 +11,7 @@ class DevProfileGuardConfigTest {
             .withUserConfiguration(DevProfileGuardConfig.class);
 
     /**
-     * dev 프로필만 선택하고 별도 허용 설정이 없으면 컨텍스트 시작이 실패하는지 검증한다.
+     * dev 프로필만 선택하고 별도 허용 설정이 없으면 컨텍스트 시작이 실패하는지 검증.
      */
     @Test
     void requiresExplicitDevProfileEnablement() {
@@ -21,7 +21,7 @@ class DevProfileGuardConfigTest {
     }
 
     /**
-     * 활성 프로필이 비어 있으면 DevProfileGuardConfig 빈이 등록되지 않는지 검증한다.
+     * 활성 프로필이 비어 있으면 DevProfileGuardConfig 빈이 등록되지 않는지 검증.
      */
     @Test
     void skipsGuardWithoutDevProfile() {
@@ -31,7 +31,7 @@ class DevProfileGuardConfigTest {
     }
 
     /**
-     * dev와 pingdom.dev-profile.enabled=true를 함께 설정하면 컨텍스트가 정상 시작하는지 검증한다.
+     * dev와 pingdom.dev-profile.enabled=true를 함께 설정하면 컨텍스트가 정상 시작하는지 검증.
      */
     @Test
     void startsExplicitlyEnabledDevProfile() {

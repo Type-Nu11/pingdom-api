@@ -23,9 +23,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 장소·추천 버전별 상호작용 집계를 증분 반영하거나 원본 이벤트에서 재생성합니다.
- * 최초 생성은 장소 ID 순서의 잠금과 재조회로 조정하며 기존 행의 증분 갱신에는 별도 쓰기 잠금이 없습니다.
- * 재동기화는 실제 원본 이벤트가 있는 장소·버전만 남기고 오래된 조합과 삭제된 장소의 스냅샷을 제거합니다.
+ * 장소·추천 버전별 상호작용 집계를 증분 반영하거나 원본 이벤트에서 재생성.
+ * 최초 생성은 장소 ID 순서의 잠금과 재조회로 조정하며 기존 행의 증분 갱신에는 별도 쓰기 잠금이 없음.
+ * 재동기화는 실제 원본 이벤트가 있는 장소·버전만 남기고 오래된 조합과 삭제된 장소의 스냅샷을 제거.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,8 +50,8 @@ public class PlaceRecommendationVersionSnapshotService {
     }
 
     /**
-     * 장소·추천 버전 스냅샷을 읽거나 생성하고 BOOKMARK이면 북마크 전환, 그 외에는 좋아요 전환 수를 1 증가시킵니다.
-     * 기존 스냅샷 갱신은 별도 쓰기 잠금 없이 수행하므로 동시 증가의 직렬화를 보장하지는 않습니다.
+     * 장소·추천 버전 스냅샷을 읽거나 생성하고 BOOKMARK이면 북마크 전환, 그 외에는 좋아요 전환 수를 1 증가시킴.
+     * 기존 스냅샷 갱신은 별도 쓰기 잠금 없이 수행하므로 동시 증가의 직렬화는 보장 범위에서 제외.
      */
     @Transactional
     public void increaseConversionCount(
@@ -70,8 +70,8 @@ public class PlaceRecommendationVersionSnapshotService {
     }
 
     /**
-     * 전체 장소를 ID 순 페이지로 순회해 원본 이벤트의 장소·버전별 집계를 재작성하고 집계가 없거나 장소가 삭제된 행을 정리합니다.
-     * 장소가 하나도 없으면 모든 버전 스냅샷을 삭제하며 동기화·삭제 건수를 반환합니다. 전체 원본 이벤트에 일괄 잠금을 걸지는 않습니다.
+     * 전체 장소를 ID 순 페이지로 순회해 원본 이벤트의 장소·버전별 집계를 재작성하고 집계가 없거나 장소가 삭제된 행을 정리.
+     * 장소가 하나도 없으면 모든 버전 스냅샷을 삭제하며 동기화·삭제 건수를 반환. 전체 원본 이벤트에 대한 일괄 잠금은 미사용.
      */
     @Transactional
     public VersionSnapshotResyncResult resyncAll() {

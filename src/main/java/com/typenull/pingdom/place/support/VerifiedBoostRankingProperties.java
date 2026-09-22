@@ -3,8 +3,8 @@ package com.typenull.pingdom.place.support;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * 검증된 프로모션에 더하는 추천 점수입니다.
- * 0은 가점을 없애며 유한한 0~0.25 범위 밖 설정은 시작 시 거절됩니다.
+ * 검증된 프로모션에 더하는 추천 점수.
+ * 0은 가점을 없애며 유한한 0~0.25 범위 밖 설정은 시작 시 거절됨.
  */
 @ConfigurationProperties(prefix = "place.recommendation.verified-boost")
 public record VerifiedBoostRankingProperties(double score) {

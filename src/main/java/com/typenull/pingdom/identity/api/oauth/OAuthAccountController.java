@@ -32,8 +32,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 현재 인증 회원의 Google 연결 시작 쿠키를 발급하거나 연결 해제를 요청합니다.
- * 해제 요청 본문은 생략할 수 있으며 마지막 연결의 비밀번호 필요 여부는 서비스가 판정합니다.
+ * 현재 인증 회원의 Google 연결 시작 쿠키를 발급하거나 연결 해제를 요청.
+ * 해제 요청 본문은 생략할 수 있으며 마지막 연결의 비밀번호 필요 여부는 서비스가 판정.
  */
 @RestController
 @RequestMapping("/users/me/oauth-accounts")

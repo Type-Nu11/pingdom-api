@@ -38,7 +38,7 @@ class TravelDataRetentionServiceTest {
     private TravelDataRetentionService travelDataRetentionService;
 
     /**
-     * 보존 기간 7일·정리 배치 100건과 고정 Clock을 사용하는 여행 데이터 정리 서비스를 구성한다.
+     * 보존 기간 7일·정리 배치 100건과 고정 Clock을 사용하는 여행 데이터 정리 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -52,8 +52,8 @@ class TravelDataRetentionServiceTest {
     }
 
     /**
-     * 만료 의도 2건과 7일 전 탈퇴자의 의도 1건·일정 3건을 합계 6건으로 보고하는지 검증한다.
-     * 탈퇴 기준 시각·첫 100건 조회와 대상 사용자별 삭제 전달도 확인한다.
+     * 만료 의도 2건과 7일 전 탈퇴자의 의도 1건·일정 3건을 합계 6건으로 보고하는지 검증.
+     * 탈퇴 기준 시각·첫 100건 조회와 대상 사용자별 삭제 전달도 확인.
      */
     @Test
     void purgesExpiredAndWithdrawnTravelData() {

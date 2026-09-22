@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 
-/** 재시도되는 Outbox 이벤트를 개인정보 처리 감사 이력으로 멱등 저장합니다. */
+/** 재시도되는 Outbox 이벤트를 개인정보 처리 감사 이력으로 멱등 저장. */
 @Component
 @RequiredArgsConstructor
 public class PrivacyProcessingHistoryOutboxHandler implements OutboxEventHandler {
@@ -24,8 +24,8 @@ public class PrivacyProcessingHistoryOutboxHandler implements OutboxEventHandler
     }
 
     /**
-     * Outbox 이벤트 ID와 대상 사용자 조합을 사전 조회해 재처리를 건너뜁니다.
-     * 동시 삽입은 DB 유일 제약에 의존하고 오류는 상위 Outbox 처리기로 전파하므로, 검사만으로 경합 예외까지 제거하지는 않습니다.
+     * Outbox 이벤트 ID와 대상 사용자 조합을 사전 조회해 재처리를 건너뜀.
+     * 동시 삽입은 DB 유일 제약에 의존하고 오류는 상위 Outbox 처리기로 전파하므로, 사전 검사만으로 경합 예외 제거는 보장 불가.
      */
     @Override
     @Transactional

@@ -34,7 +34,7 @@ class CommunityReportServiceTest {
     private final CommunityReportCreateRequest request = new CommunityReportCreateRequest(CommunityReportReason.SPAM, "설명");
 
     /**
-     * 조회 가능한 게시글과 모의 신고 저장소를 연결해 저장 시 제약 위반의 오류 변환을 확인한다.
+     * 조회 가능한 게시글과 모의 신고 저장소를 연결해 저장 시 제약 위반의 오류 변환을 확인.
      */
     @BeforeEach
     void setup() {
@@ -44,7 +44,7 @@ class CommunityReportServiceTest {
     }
 
     /**
-     * 신고 저장 중 게시글·댓글 신고자의 유일 제약 충돌이 발생하면 ALREADY_REPORTED 도메인 오류로 변환하는지 검증한다.
+     * 신고 저장 중 게시글·댓글 신고자의 유일 제약 충돌이 발생하면 ALREADY_REPORTED 도메인 오류로 변환하는지 검증.
      */
     @ParameterizedTest
     @ValueSource(strings = {"uk_community_report_reporter_post", "uk_community_report_reporter_comment"})
@@ -55,7 +55,7 @@ class CommunityReportServiceTest {
     }
 
     /**
-     * 외래 키·체크 제약 또는 제약명이 없는 무결성 오류는 중복 신고로 바꾸지 않고 원래 예외 그대로 전달하는지 검증한다.
+     * 외래 키·체크 제약 또는 제약명이 없는 무결성 오류는 중복 신고로 바꾸지 않고 원래 예외 그대로 전달하는지 검증.
      */
     @ParameterizedTest
     @NullSource
@@ -67,7 +67,7 @@ class CommunityReportServiceTest {
     }
 
     /**
-     * 지정 제약명을 가진 Hibernate 예외를 Spring 무결성 예외로 감싸 실제 오류 원인 탐색 형태를 재현한다.
+     * 지정 제약명을 가진 Hibernate 예외를 Spring 무결성 예외로 감싸 실제 오류 원인 탐색 형태를 재현.
      */
     private DataIntegrityViolationException failure(String constraint) {
         return new DataIntegrityViolationException("constraint", new ConstraintViolationException("constraint", new SQLException(), constraint));

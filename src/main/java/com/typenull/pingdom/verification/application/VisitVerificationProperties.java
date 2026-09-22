@@ -7,7 +7,7 @@ import java.util.Objects;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
-/** 체류 인증의 전역 기본값과 장소별 반경 예외를 서버 설정으로 관리합니다. */
+/** 체류 인증의 전역 기본값과 장소별 반경 예외를 서버 설정으로 관리. */
 @Validated
 @ConfigurationProperties(prefix = "verification.visit-verification")
 public record VisitVerificationProperties(
@@ -25,9 +25,9 @@ public record VisitVerificationProperties(
         @NotNull Duration foregroundDwellDuration
 ) {
     /**
-     * 장소별 반경을 불변 복사하고 누락된 관측·세션·보관 설정을 기본값으로 보완한다.
-     * 정확도 허용치는 기본 반경을 넘을 수 없고 관측 간격 ≤ 최대 관측 공백 ≤ 세션 TTL이어야 한다.
-     * 미래 허용 오차와 보관 기간에는 0을 허용하지만 체류·관측 시간에는 양수를 요구한다.
+     * 장소별 반경을 불변 복사하고 누락된 관측·세션·보관 설정을 기본값으로 보완.
+     * 정확도 허용치는 기본 반경을 넘을 수 없고 관측 간격 ≤ 최대 관측 공백 ≤ 세션 TTL이어야 함.
+     * 미래 허용 오차와 보관 기간에는 0을 허용하지만 체류·관측 시간에는 양수를 요구.
      */
     public VisitVerificationProperties {
         Objects.requireNonNull(defaultRadiusMeters, "defaultRadiusMeters must not be null");
@@ -56,7 +56,7 @@ public record VisitVerificationProperties(
         }
     }
 
-    /** 장소별 반경이 있으면 해당 미터 값을, 없으면 전역 기본 반경을 반환한다. */
+    /** 장소별 반경이 있으면 해당 미터 값을, 없으면 전역 기본 반경을 반환. */
     public double radiusMetersFor(Long placeId) {
         return radiusOverrides.getOrDefault(placeId, defaultRadiusMeters);
     }

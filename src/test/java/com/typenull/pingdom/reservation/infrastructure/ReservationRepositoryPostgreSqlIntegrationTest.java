@@ -41,7 +41,7 @@ class ReservationRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS 컨테이너의 JDBC 주소·계정·PostgreSQL 드라이버를 Spring 데이터소스에 연결한다.
+     * PostGIS 컨테이너의 JDBC 주소·계정·PostgreSQL 드라이버를 Spring 데이터소스에 연결.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -55,8 +55,8 @@ class ReservationRepositoryPostgreSqlIntegrationTest {
     private ReservationRepository reservationRepository;
 
     /**
-     * 실제 PostgreSQL에서 선택 기간 필터를 null·비활성 플래그로 전달해 관리자 예약 조회가 빈 결과로 정상 실행되는지 검증한다.
-     * nullable 기간 바인딩의 타입 추론 오류를 방지하는 회귀 테스트다.
+     * 실제 PostgreSQL에서 선택 기간 필터를 null·비활성 플래그로 전달해 관리자 예약 조회가 빈 결과로 정상 실행되는지 검증.
+     * nullable 기간 바인딩의 타입 추론 오류를 방지하는 회귀 테스트.
      */
     @Test
     void queriesWithoutOptionalPeriodFilters() {

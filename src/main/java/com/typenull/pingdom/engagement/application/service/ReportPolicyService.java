@@ -26,8 +26,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 신고 접수·승인·반려 통계로 신고자 신뢰도와 제한, 이미지 자동 숨김을 관리합니다.
- * 기존 신고자 정책 갱신은 행 잠금을 사용하지만 최초 정책 생성 경합을 별도로 재시도하지는 않습니다.
+ * 신고 접수·승인·반려 통계로 신고자 신뢰도와 제한, 이미지 자동 숨김 관리.
+ * 기존 신고자 정책 갱신은 행 잠금을 사용하며 최초 정책 생성 경합은 별도 재시도 없이 전파.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,7 +50,7 @@ public class ReportPolicyService {
     private final PlaceGrowthService placeGrowthService;
     private final Clock clock;
 
-    // 신고자의 현재 제한 상태를 정리한 뒤 새로운 신고를 등록할 수 있는지 검증합니다.
+    // 신고자의 현재 제한 상태를 정리한 뒤 새로운 신고를 등록할 수 있는지 검증.
     public void validateCanReport(Long reporterUserId, LocalDateTime now) {
         reporterPolicyRepository.findById(reporterUserId)
                 .ifPresent(policy -> {
@@ -61,14 +61,14 @@ public class ReportPolicyService {
                 });
     }
 
-    // 신고 접수 건수를 기록하고 신고자 정책을 저장합니다.
+    // 신고 접수 건수를 기록하고 신고자 정책을 저장.
     public void recordSubmitted(Long reporterUserId, String reporterUsername) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
         policy.recordSubmitted(reporterUsername);
         reporterPolicyRepository.save(policy);
     }
 
-    // 승인된 신고를 반영하고 신뢰도 이상 및 개입 규칙을 평가합니다.
+    // 승인된 신고를 반영하고 신뢰도 이상 및 개입 규칙을 평가.
     public void recordAccepted(Long reporterUserId, String reporterUsername) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
         int baselineScore = policy.getTrustScore();
@@ -80,8 +80,8 @@ public class ReportPolicyService {
     }
 
     /**
-     * 신고 반려를 신뢰도에 반영하고 허위 신고가 세 번 이상이면 전달 시각부터 7일간 제한한다.
-     * 이어 이상 징후와 최우선 개입 규칙을 적용해 제한 종료일이 다시 정해질 수 있으며 정책을 저장한다.
+     * 신고 반려를 신뢰도에 반영하고 허위 신고가 세 번 이상이면 전달 시각부터 7일간 제한.
+     * 이어 이상 징후와 최우선 개입 규칙을 적용해 제한 종료일이 다시 정해질 수 있으며 정책을 저장.
      */
     public void recordDeclined(Long reporterUserId, String reporterUsername, LocalDateTime now) {
         ReporterModerationPolicy policy = getOrCreate(reporterUserId, reporterUsername);
@@ -96,8 +96,8 @@ public class ReportPolicyService {
     }
 
     /**
-     * 공개 이미지의 PENDING·ACCEPTED 신고를 신고자 신뢰도 가중치로 합산해 3 이상이면 숨김 전이를 시도한다.
-     * 실제로 숨겨진 경우만 연결 장소의 사진 수를 줄이고 true를 반환한다. 누락·이미 숨김·기준 미달은 false다.
+     * 공개 이미지의 PENDING·ACCEPTED 신고를 신고자 신뢰도 가중치로 합산해 3 이상이면 숨김 전이를 시도.
+     * 실제로 숨겨진 경우만 연결 장소의 사진 수를 줄이고 true를 반환. 누락·이미 숨김·기준 미달은 false를 반환.
      */
     public boolean autoHideIfNeeded(MapImage mapImage, LocalDateTime now) {
         if (mapImage == null || !mapImage.isVisible()) {
@@ -122,7 +122,7 @@ public class ReportPolicyService {
         return hidden;
     }
 
-    // 이미지가 실제로 숨겨진 경우 장소의 사진 집계를 함께 감소시킵니다.
+    // 이미지가 실제로 숨겨진 경우 연결 장소의 사진 집계도 감소.
     private void decreasePhotoCountIfNeeded(MapImage mapImage, boolean hidden) {
         if (!hidden || mapImage.getMapPlace() == null) {
             return;
@@ -130,7 +130,7 @@ public class ReportPolicyService {
         placeGrowthService.decreasePhotoCount(mapImage.getMapPlace().getId());
     }
 
-    // 활성 신고에 포함된 신고자 정책을 한 번에 조회해 신고자 ID로 색인합니다.
+    // 활성 신고에 포함된 신고자 정책을 한 번에 조회해 신고자 ID로 색인.
     private Map<Long, ReporterModerationPolicy> loadPoliciesByReporterId(List<PostReport> activeReports) {
         List<Long> reporterIds = activeReports.stream()
                 .map(PostReport::getReporterUserId)
@@ -140,7 +140,7 @@ public class ReportPolicyService {
                 .collect(Collectors.toMap(ReporterModerationPolicy::getReporterUserId, Function.identity()));
     }
 
-    // 신고자의 신뢰도 구간을 자동 숨김 판단용 가중치로 변환합니다.
+    // 신고자의 신뢰도 구간을 자동 숨김 판단용 가중치로 변환.
     private double reporterWeight(ReporterModerationPolicy policy) {
         if (policy == null) {
             return 1.0;
@@ -154,13 +154,13 @@ public class ReportPolicyService {
         return 0.5;
     }
 
-    // 비관적 잠금으로 기존 정책을 가져오거나 신규 신고자 정책을 생성합니다.
+    // 비관적 잠금으로 기존 정책을 가져오거나 신규 신고자 정책을 생성.
     private ReporterModerationPolicy getOrCreate(Long reporterUserId, String reporterUsername) {
         return reporterPolicyRepository.findByReporterUserIdForUpdate(reporterUserId)
                 .orElseGet(() -> ReporterModerationPolicy.create(reporterUserId, reporterUsername));
     }
 
-    // 신뢰도 급락, 허위 신고 증가, 낮은 승인율을 미해결 이상으로 기록합니다.
+    // 신뢰도 급락, 허위 신고 증가, 낮은 승인율을 미해결 이상으로 기록.
     private void detectAnomalies(ReporterModerationPolicy policy, int baselineScore, LocalDateTime now) {
         if (baselineScore - policy.getTrustScore() >= RAPID_DROP_THRESHOLD) {
             saveAnomalyIfUnresolved(policy, TrustScoreAnomalyType.RAPID_DROP, TrustScoreAnomalySeverity.HIGH, baselineScore, now);
@@ -173,7 +173,7 @@ public class ReportPolicyService {
         }
     }
 
-    // 최소 신고 건수와 승인율 기준을 모두 만족하는지 확인합니다.
+    // 최소 신고 건수와 승인율 기준을 모두 만족하는지 확인.
     private boolean isLowAcceptanceRate(ReporterModerationPolicy policy) {
         if (policy.getSubmittedCount() < LOW_ACCEPTANCE_MIN_SUBMITTED_COUNT) {
             return false;
@@ -181,7 +181,7 @@ public class ReportPolicyService {
         return (double) policy.getAcceptedCount() / policy.getSubmittedCount() <= LOW_ACCEPTANCE_RATE_THRESHOLD;
     }
 
-    // 동일 유형의 미해결 이상이 없을 때 현재 신뢰도 지표를 저장합니다.
+    // 동일 유형의 미해결 이상이 없을 때 현재 신뢰도 지표를 저장.
     private void saveAnomalyIfUnresolved(
             ReporterModerationPolicy policy,
             TrustScoreAnomalyType anomalyType,
@@ -213,8 +213,8 @@ public class ReportPolicyService {
     }
 
     /**
-     * 우선순위·ID 순으로 처음 일치한 규칙 하나만 선택합니다.
-     * 그 규칙이 기간을 가진 TEMPORARY_RESTRICT일 때만 제한하므로, 앞선 다른 액션을 건너뛰고 후순위 제한을 찾지는 않습니다.
+     * 우선순위·ID 순으로 처음 일치한 규칙 하나만 선택.
+     * 선택 규칙이 기간을 가진 TEMPORARY_RESTRICT일 때만 제한 적용하며 후순위 규칙의 추가 탐색은 생략.
      */
     private void applyHighestPriorityRule(ReporterModerationPolicy policy, LocalDateTime now) {
         trustScoreInterventionRuleRepository.findByEnabledTrueOrderByPriorityAscIdAsc().stream()

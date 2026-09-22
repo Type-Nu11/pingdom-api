@@ -9,7 +9,7 @@ class ReservationTest {
     private final LocalDateTime now = LocalDateTime.of(2026, 7, 20, 15, 0);
 
     /**
-     * 예약 생성 시 PENDING 상태·요청 수량 3과 미설정 확정·취소 시각을 보유하는지 검증한다.
+     * 예약 생성 시 PENDING 상태·요청 수량 3과 미설정 확정·취소 시각을 보유하는지 검증.
      */
     @Test
     void createdReservationStartsPending() {
@@ -22,7 +22,7 @@ class ReservationTest {
     }
 
     /**
-     * 대기 예약을 5분 뒤 확정하면 CONFIRMED 상태와 확정 시각이 기록되는지 검증한다.
+     * 대기 예약을 5분 뒤 확정하면 CONFIRMED 상태와 확정 시각이 기록되는지 검증.
      */
     @Test
     void pendingReservationCanBeConfirmed() {
@@ -35,7 +35,7 @@ class ReservationTest {
     }
 
     /**
-     * 확정 예약을 취소하면 CANCELED 상태와 취소 시각이 기록되는지 검증한다.
+     * 확정 예약을 취소하면 CANCELED 상태와 취소 시각이 기록되는지 검증.
      */
     @Test
     void confirmedReservationCanBeCanceled() {
@@ -49,7 +49,7 @@ class ReservationTest {
     }
 
     /**
-     * 취소 예약을 다시 확정하거나 취소하면 각각 IllegalStateException이 발생하는지 검증한다.
+     * 취소 예약을 다시 확정하거나 취소하면 각각 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void canceledReservationCannotTransitionAgain() {
@@ -63,7 +63,7 @@ class ReservationTest {
     }
 
     /**
-     * 수량 0으로 예약을 생성하면 IllegalArgumentException이 발생하는지 검증한다.
+     * 수량 0으로 예약을 생성하면 IllegalArgumentException이 발생하는지 검증.
      */
     @Test
     void quantityMustBePositive() {

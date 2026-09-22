@@ -12,8 +12,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 만료 증빙의 S3 삭제 요청을 Outbox에 남기고 DB 증빙 행을 정리한다.
- * S3 실삭제는 별도 소비자가 수행하므로 메서드 반환 시 객체 삭제까지 끝났다는 의미는 아니다.
+ * 만료 증빙의 S3 삭제 요청을 Outbox에 남기고 DB 증빙 행을 정리.
+ * S3 실삭제는 별도 소비자가 수행하므로 메서드 반환 시 객체 삭제 완료는 보장 불가.
  */
 @Service
 @RequiredArgsConstructor
@@ -25,9 +25,9 @@ public class VisitEvidenceRetentionService {
     private final Clock clock;
 
     /**
-     * 만료 시각·ID 순으로 제한된 배치를 반복 삭제하고 제거한 DB 행 수를 반환한다.
-     * 전체 반복은 하나의 DB 트랜잭션이며 배치마다 독립 커밋하지 않는다.
-     * 빈 결과·부분 배치·최대 반복 수 중 하나에 도달하면 종료한다.
+     * 만료 시각·ID 순으로 제한된 배치를 반복 삭제하고 제거한 DB 행 수를 반환.
+     * 전체 반복은 배치별 독립 커밋 없이 하나의 DB 트랜잭션으로 처리.
+     * 빈 결과·부분 배치·최대 반복 수 중 하나에 도달하면 종료.
      */
     @Transactional
     public int purgeExpiredEvidence() {
@@ -40,7 +40,7 @@ public class VisitEvidenceRetentionService {
                 deletePublisher.publish(evidence.getS3Key(), "VISIT_EVIDENCE", String.valueOf(evidence.getId()),
                         "VISIT_EVIDENCE_RETENTION_EXPIRED");
             }
-            // 삭제 요청을 먼저 기록해 DB 메타데이터 제거 후에도 S3 key를 Outbox에 남긴다.
+            // 삭제 요청을 먼저 기록해 DB 메타데이터 제거 후에도 S3 key를 Outbox에 남김.
             evidenceRepository.deleteAllInBatch(expired);
             totalDeleted += expired.size();
             if (expired.size() < properties.cleanupBatchSize()) break;

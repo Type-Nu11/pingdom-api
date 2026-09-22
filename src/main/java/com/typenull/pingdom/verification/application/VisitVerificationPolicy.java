@@ -3,9 +3,9 @@ package com.typenull.pingdom.verification.application;
 import java.time.Duration;
 import java.util.Objects;
 
-/** 새 체류 인증 세션에 확정할 반경과 체류 시간 정책입니다. */
+/** 새 체류 인증 세션에 확정할 반경과 체류 시간 정책. */
 public record VisitVerificationPolicy(double requiredRadiusMeters, Duration requiredDwellDuration) {
-    /** 세션 생성에 전달할 반경과 체류 시간이 양수인지 확인하며 누락된 체류 시간은 거부한다. */
+    /** 세션 생성에 전달할 반경과 체류 시간이 양수인지 확인하며 누락된 체류 시간은 거부. */
     public VisitVerificationPolicy {
         if (requiredRadiusMeters <= 0) {
             throw new IllegalArgumentException("requiredRadiusMeters must be positive");

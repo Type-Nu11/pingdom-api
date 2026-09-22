@@ -23,7 +23,7 @@ class PlaceRecommendationPolicyServiceTest {
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
     /**
-     * 명시한 버전이 없으면 실험 버전 트래픽 배분과 무관하게 기본 정책을 사용하는지 확인합니다.
+     * 명시한 버전이 없으면 실험 버전 트래픽 배분과 무관하게 기본 정책을 사용하는지 확인.
      */
     @Test
     void defaultsUnknownRequestedVersion() {
@@ -49,7 +49,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 알 수 없는 요청 버전과 비활성 기본 정책 조합에서 설정된 활성 폴백 버전을 선택하고 원래 요청 버전을 보존하는지 확인합니다.
+     * 알 수 없는 요청 버전과 비활성 기본 정책 조합에서 설정된 활성 폴백 버전을 선택하고 원래 요청 버전을 보존하는지 확인.
      */
     @Test
     void fallsBackFromDisabledDefault() {
@@ -90,7 +90,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * DB에 저장한 0/100 트래픽 배분이 기본 설정을 덮어써 사용자 버킷을 실험 버전으로 보내는지 확인합니다.
+     * DB에 저장한 0/100 트래픽 배분이 기본 설정을 덮어써 사용자 버킷을 실험 버전으로 보내는지 확인.
      */
     @Test
     void appliesStoredTrafficOverrides() {
@@ -130,7 +130,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 명시한 실험 버전이 비활성화되면 설정된 기본 버전으로 이동하고 sourceVersion을 유지하는지 확인합니다.
+     * 명시한 실험 버전이 비활성화되면 설정된 기본 버전으로 이동하고 sourceVersion을 유지하는지 확인.
      */
     @Test
     void fallsBackFromDisabledVersion() {
@@ -165,7 +165,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 정책 갱신 시 잠금 저장소 메서드를 호출하는지 확인합니다. 모의 테스트이므로 실제 DB 잠금 획득은 검증하지 않습니다.
+     * 정책 갱신 시 잠금 저장소 메서드를 호출하는지 확인. 모의 테스트로 실제 DB 잠금 획득은 검증 범위에서 제외.
      */
     @Test
     void loadsLockedTrafficPolicies() {
@@ -188,7 +188,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 저장 정책이 없는 저장소와 설정 기반 서비스 조합을 만듭니다.
+     * 저장 정책이 없는 저장소와 설정 기반 서비스 조합을 생성.
      */
     private PlaceRecommendationPolicyRepositoryContext createContext(PlaceRecommendationProperties properties) {
         PlaceRecommendationTrafficPolicyRepository repository = Mockito.mock(PlaceRecommendationTrafficPolicyRepository.class);
@@ -206,7 +206,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 후보 mix와 익명 가중치 누락이 각각 중첩 Bean Validation 위반으로 보고되는지 확인합니다.
+     * 후보 mix와 익명 가중치 누락이 각각 중첩 Bean Validation 위반으로 보고되는지 확인.
      */
     @Test
     void rejectsMissingNestedPolicy() {
@@ -237,7 +237,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 버전·단계·트래픽을 지정하고 공통 가중치를 갖춘 정책 fixture를 만듭니다.
+     * 버전·단계·트래픽을 지정하고 공통 가중치를 갖춘 정책 fixture를 생성.
      */
     private VersionPolicy createPolicy(String version, RecommendationStage stage, int trafficPercentage) {
         return new VersionPolicy(
@@ -256,7 +256,7 @@ class PlaceRecommendationPolicyServiceTest {
     }
 
     /**
-     * 신뢰 가중치가 0인 레거시 추천 가중치 fixture를 반환합니다.
+     * 신뢰 가중치가 0인 레거시 추천 가중치 fixture를 반환.
      */
     private RankingWeights createWeights() {
         return new RankingWeights(0.33d, 0.30d, 0.13d, 0.07d, 0.07d, 0.08d, 0.06d, 0.0d);

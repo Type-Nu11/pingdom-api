@@ -21,7 +21,7 @@ public record MyVisitorVerificationReportResponse(
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime reviewedAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt
 ) {
-    /** 거절 상태일 때만 심사 메모를 사용자용 거절 사유로 반환한다. */
+    /** 거절 상태일 때만 심사 메모를 사용자용 거절 사유로 반환. */
     public static MyVisitorVerificationReportResponse from(VisitorVerificationReport report) {
         String rejectionReason = report.getStatus() == VisitorVerificationReportStatus.REJECTED
                 ? report.getReviewNote()

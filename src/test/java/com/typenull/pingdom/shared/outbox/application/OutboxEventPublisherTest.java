@@ -32,7 +32,7 @@ class OutboxEventPublisherTest {
     private OutboxEventPublisher publisher;
 
     /**
-     * 실제 JSON 변환기와 고정 Clock을 저장소 대역에 연결해 발행 시각과 payload 직렬화를 재현한다.
+     * 실제 JSON 변환기와 고정 Clock을 저장소 대역에 연결해 발행 시각과 payload 직렬화를 재현.
      */
     @BeforeEach
     void setUp() {
@@ -44,7 +44,7 @@ class OutboxEventPublisherTest {
     }
 
     /**
-     * 같은 이벤트 타입·집계의 PENDING/RETRY가 있으면 null을 반환하고 새 이벤트를 저장하지 않는지 검증한다.
+     * 같은 이벤트 타입·집계의 PENDING/RETRY가 있으면 null을 반환하고 새 이벤트를 저장하지 않는지 검증.
      */
     @Test
     void coalescesWaitingAggregateEvent() {
@@ -74,7 +74,7 @@ class OutboxEventPublisherTest {
     }
 
     /**
-     * 대기 이벤트와 중복 방지 키가 모두 없으면 새 이벤트를 저장하고 비어 있지 않은 ID를 반환하는지 검증한다.
+     * 대기 이벤트와 중복 방지 키가 모두 없으면 새 이벤트를 저장하고 비어 있지 않은 ID를 반환하는지 검증.
      */
     @Test
     void publishesWithoutWaitingAggregateEvent() {

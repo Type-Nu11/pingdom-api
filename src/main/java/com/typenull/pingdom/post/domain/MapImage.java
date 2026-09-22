@@ -8,8 +8,8 @@ import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import java.time.LocalDateTime;
 
 /**
- * 장소 사진 게시글의 저장소 키·작성자 표시 스냅샷·집계·노출 상태를 보관합니다.
- * 숨김과 복구는 이미 해당 상태이면 false를 반환합니다. 이미지 교체는 필드만 변경하며 S3 보상·삭제는 서비스 책임입니다.
+ * 장소 사진 게시글의 저장소 키·작성자 표시 스냅샷·집계·노출 상태를 보관.
+ * 숨김과 복구는 이미 해당 상태이면 false를 반환. 이미지 교체는 필드만 변경하며 S3 보상·삭제는 서비스 책임.
  */
 @Entity
 @Getter

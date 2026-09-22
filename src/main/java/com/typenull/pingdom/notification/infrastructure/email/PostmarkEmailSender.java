@@ -19,8 +19,8 @@ import org.springframework.stereotype.Component;
 
 // Postmark 기반 인증 메일 발송 구현 클래스
 /**
- * 인증 코드와 비밀번호 재설정 링크를 텍스트/HTML 메일로 작성해 Postmark에 전달합니다.
- * 전송 실패를 사업자 코드와 재시도 가능 여부가 포함된 예외로 바꾸며, 재시도 일정과 중복 방지는 호출자가 담당합니다.
+ * 인증 코드와 비밀번호 재설정 링크를 텍스트/HTML 메일로 작성해 Postmark에 전달.
+ * 전송 실패를 사업자 코드와 재시도 가능 여부가 포함된 예외로 바꾸며, 재시도 일정과 중복 방지는 호출자가 담당.
  */
 @Component
 public class PostmarkEmailSender implements EmailSender {

@@ -10,7 +10,7 @@ import org.junit.jupiter.api.Test;
 class TrustLayerFixturesTest {
 
     /**
-     * 신고자 정책 3건에 제한 여부 두 상태가 있고, 허위 신고 급증·급락 및 활성 개입 규칙이 포함되는지 검증한다.
+     * 신고자 정책 3건에 제한 여부 두 상태가 있고, 허위 신고 급증·급락 및 활성 개입 규칙이 포함되는지 검증.
      */
     @Test
     void definesReporterPolicyBoundaries() {
@@ -25,7 +25,7 @@ class TrustLayerFixturesTest {
     }
 
     /**
-     * 정상·경계·실패 분류와 검증 항목을 확인하고 실패 사례가 신고자 없음·규칙 요청 오류 코드를 포함하는지 검증한다.
+     * 정상·경계·실패 분류와 검증 항목을 확인하고 실패 사례가 신고자 없음·규칙 요청 오류 코드를 포함하는지 검증.
      */
     @Test
     void coversTrustScenarioCategories() {
@@ -43,7 +43,7 @@ class TrustLayerFixturesTest {
     }
 
     /**
-     * 신고자 ID·이상 징후 ID·개입 규칙 ID가 각 목록에서 유일한지 확인해 assertion 대상의 충돌을 방지한다.
+     * 신고자 ID·이상 징후 ID·개입 규칙 ID가 각 목록에서 유일한지 확인해 assertion 대상의 충돌을 방지.
      */
     @Test
     void usesUniqueTrustIdentifiers() {

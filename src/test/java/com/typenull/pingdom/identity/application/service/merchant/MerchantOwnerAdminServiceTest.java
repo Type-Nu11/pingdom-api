@@ -58,8 +58,8 @@ class MerchantOwnerAdminServiceTest {
     private MerchantOwnerAdminService service;
 
     /**
-     * 통합 신청이 없는 대기 프로필을 승인하면 활성 상태와 심사자·사유가 저장되는지 검증한다.
-     * 사용자 역할을 점주로 올리고 접근 상태 캐시를 비우는 처리도 확인한다.
+     * 통합 신청이 없는 대기 프로필을 승인하면 활성 상태와 심사자·사유가 저장되는지 검증.
+     * 사용자 역할을 점주로 올리고 접근 상태 캐시를 비우는 처리도 확인.
      */
     @Test
     void approvesPendingStandaloneProfile() {
@@ -80,8 +80,8 @@ class MerchantOwnerAdminServiceTest {
     }
 
     /**
-     * 대기 프로필을 사유와 함께 거절하면 거절 상태와 심사 사유가 반영되는지 검증한다.
-     * 기존 관광객 혜택을 닫고 점주 장소 연결을 삭제하는 후속 처리도 확인한다.
+     * 대기 프로필을 사유와 함께 거절하면 거절 상태와 심사 사유가 반영되는지 검증.
+     * 기존 관광객 혜택을 닫고 점주 장소 연결을 삭제하는 후속 처리도 확인.
      */
     @Test
     void rejectsPendingStandaloneProfile() {
@@ -104,7 +104,7 @@ class MerchantOwnerAdminServiceTest {
     }
 
     /**
-     * 공백만 있는 거절 사유는 심사 처리 전에 INVALID_REVIEW_REASON 오류로 거부되는지 검증한다.
+     * 공백만 있는 거절 사유는 심사 처리 전에 INVALID_REVIEW_REASON 오류로 거부되는지 검증.
      */
     @Test
     void rejectsBlankReviewReason() {
@@ -114,7 +114,7 @@ class MerchantOwnerAdminServiceTest {
     }
 
     /**
-     * 대기 중인 통합 점주 신청이 있으면 프로필 직접 승인을 통합 신청 심사 필요 오류로 차단하는지 검증한다.
+     * 대기 중인 통합 점주 신청이 있으면 프로필 직접 승인을 통합 신청 심사 필요 오류로 차단하는지 검증.
      */
     @Test
     void blocksReviewDuringUnifiedApplication() {
@@ -132,7 +132,7 @@ class MerchantOwnerAdminServiceTest {
     }
 
     /**
-     * 이미 승인된 프로필에 다시 승인을 요청하면 INVALID_PROFILE_STATE 오류를 반환하는지 검증한다.
+     * 이미 승인된 프로필에 다시 승인을 요청하면 INVALID_PROFILE_STATE 오류를 반환하는지 검증.
      */
     @Test
     void rejectsAlreadyProcessedProfile() {
@@ -149,7 +149,7 @@ class MerchantOwnerAdminServiceTest {
     }
 
     /**
-     * 심사 메타데이터와 상태 전이를 확인할 수 있도록 전날 신청된 대기 점주 프로필을 만든다.
+     * 심사 메타데이터와 상태 전이를 확인할 수 있도록 전날 신청된 대기 점주 프로필을 생성.
      */
     private MerchantOwnerProfile pendingProfile() {
         return MerchantOwnerProfile.pending(
@@ -164,7 +164,7 @@ class MerchantOwnerAdminServiceTest {
     }
 
     /**
-     * 심사 시각과 혜택 종료 시각을 일정하게 비교하도록 UTC Clock 값을 고정한다.
+     * 심사 시각과 혜택 종료 시각을 일정하게 비교하도록 UTC Clock 값을 고정.
      */
     private void stubNow() {
         when(clock.instant()).thenReturn(Instant.parse("2026-08-31T03:00:00Z"));

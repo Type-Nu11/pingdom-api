@@ -30,8 +30,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 인증 사용자 자신의 Scout 프로필 신청·조회·수정을 제공한다.
- * 상태와 자격에 따른 허용 여부는 서비스·도메인이 판단하며 신청 생성은 HTTP 201로 반환한다.
+ * 인증 사용자 자신의 Scout 프로필 신청·조회·수정을 제공.
+ * 상태와 자격에 따른 허용 여부는 서비스·도메인이 판단하며 신청 생성은 HTTP 201로 반환.
  */
 @RestController
 @RequestMapping("/users/me/scout-profile")

@@ -14,8 +14,8 @@ import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
 /**
- * 신고자 누적 통계와 현재 신고 제한을 보관하고 신뢰도를 0~100으로 제한합니다.
- * 신뢰도는 기본 100에 승인당 5를 더하고 허위 신고당 20을 빼며, 제한 만료 시 허위 신고 횟수만 초기화합니다.
+ * 신고자 누적 통계와 현재 신고 제한을 보관하고 신뢰도를 0~100으로 제한.
+ * 신뢰도는 기본 100에 승인당 5를 더하고 허위 신고당 20을 빼며, 제한 만료 시 허위 신고 횟수만 초기화.
  */
 @Entity
 @Getter

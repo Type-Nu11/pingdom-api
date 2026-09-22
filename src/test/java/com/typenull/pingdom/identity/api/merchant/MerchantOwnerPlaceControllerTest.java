@@ -40,7 +40,7 @@ class MerchantOwnerPlaceControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 미디어 요청의 검증 오류와 응답 매핑을 확인하도록 예외 처리기·Bean Validation·고정 점주 인자를 연결한 MockMvc를 만든다.
+     * 미디어 요청의 검증 오류와 응답 매핑을 확인하도록 예외 처리기·Bean Validation·고정 점주 인자를 연결한 MockMvc를 생성.
      */
     @BeforeEach
     void setUp() {
@@ -51,7 +51,7 @@ class MerchantOwnerPlaceControllerTest {
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     /**
-                     * CurrentUser가 붙은 컨트롤러 인자만 테스트용 인증 객체로 해석한다.
+                     * CurrentUser가 붙은 컨트롤러 인자만 테스트용 인증 객체로 해석.
                      */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
@@ -59,7 +59,7 @@ class MerchantOwnerPlaceControllerTest {
                     }
 
                     /**
-                     * 서비스 위임 인자의 점주 식별자를 일정하게 검증하도록 사용자 20의 인증 객체를 제공한다.
+                     * 서비스 위임 인자의 점주 식별자를 일정하게 검증하도록 사용자 20의 인증 객체를 제공.
                      */
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
@@ -71,7 +71,7 @@ class MerchantOwnerPlaceControllerTest {
     }
 
     /**
-     * 발급된 S3 키와 순서로 미디어 생성을 요청하면 201과 서비스가 반환한 미디어 ID·키를 응답하는지 검증한다.
+     * 발급된 S3 키와 순서로 미디어 생성을 요청하면 201과 서비스가 반환한 미디어 ID·키를 응답하는지 검증.
      */
     @Test
     void createsMerchantMedia() throws Exception {
@@ -91,7 +91,7 @@ class MerchantOwnerPlaceControllerTest {
     }
 
     /**
-     * 빈 S3 키는 400과 필수 필드 메시지로 거절하며 미디어 서비스가 호출되지 않는지 검증한다.
+     * 빈 S3 키는 400과 필수 필드 메시지로 거절하며 미디어 서비스가 호출되지 않는지 검증.
      */
     @Test
     void rejectsBlankMediaKey() throws Exception {
@@ -105,7 +105,7 @@ class MerchantOwnerPlaceControllerTest {
     }
 
     /**
-     * 미디어 순서를 0으로 수정하는 요청이 서비스 응답의 변경 순서를 200 응답에 담는지 검증한다.
+     * 미디어 순서를 0으로 수정하는 요청이 서비스 응답의 변경 순서를 200 응답에 담는지 검증.
      */
     @Test
     void updatesMediaOrder() throws Exception {
@@ -124,7 +124,7 @@ class MerchantOwnerPlaceControllerTest {
     }
 
     /**
-     * 음수 미디어 순서는 400과 최소값 검증 메시지로 거절하고 서비스를 호출하지 않는지 검증한다.
+     * 음수 미디어 순서는 400과 최소값 검증 메시지로 거절하고 서비스를 호출하지 않는지 검증.
      */
     @Test
     void rejectsNegativeMediaOrder() throws Exception {

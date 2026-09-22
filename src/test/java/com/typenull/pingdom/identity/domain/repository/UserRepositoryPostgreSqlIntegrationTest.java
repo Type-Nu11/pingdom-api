@@ -47,7 +47,7 @@ class UserRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * 저장소 쿼리를 실제 PostgreSQL에서 실행하도록 PostGIS 컨테이너 접속 정보를 등록한다.
+     * 저장소 쿼리를 실제 PostgreSQL에서 실행하도록 PostGIS 컨테이너 접속 정보를 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -61,7 +61,7 @@ class UserRepositoryPostgreSqlIntegrationTest {
     private UserRepository userRepository;
 
     /**
-     * 정지 기간 필터 결과가 이전 데이터의 영향을 받지 않도록 사용자 테이블을 비운다.
+     * 정지 기간 필터 결과가 이전 데이터의 영향을 받지 않도록 사용자 테이블을 비움.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -69,8 +69,8 @@ class UserRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 현재 정지 사용자 조회에서 기간 조건이 없거나 시작·종료 조건만 있을 때 각각의 결과와 최신 정지순 정렬을 검증한다.
-     * PostgreSQL에서 선택적 null 조건과 전체 정지 수 집계가 함께 동작하는지도 확인한다.
+     * 현재 정지 사용자 조회에서 기간 조건이 없거나 시작·종료 조건만 있을 때 각각의 결과와 최신 정지순 정렬을 검증.
+     * PostgreSQL에서 선택적 null 조건과 전체 정지 수 집계가 함께 동작하는지도 확인.
      */
     @Test
     void filtersBannedUsersByOptionalPeriod() {
@@ -99,7 +99,7 @@ class UserRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 시작·종료 필터 활성 여부와 값을 전달하고 정지 시각·ID 내림차순으로 첫 페이지를 조회한다.
+     * 시작·종료 필터 활성 여부와 값을 전달하고 정지 시각·ID 내림차순으로 첫 페이지를 조회.
      */
     private List<User> findCurrentlyBanned(
             boolean hasBannedFrom,
@@ -125,7 +125,7 @@ class UserRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 기간 필터 경계를 비교할 수 있도록 주어진 시각에 정지된 사용자를 만든다.
+     * 기간 필터 경계를 비교할 수 있도록 주어진 시각에 정지된 사용자를 생성.
      */
     private User bannedUser(String username, LocalDateTime bannedAt) {
         User user = User.builder()

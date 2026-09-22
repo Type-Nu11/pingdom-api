@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 현재 소유 장소의 노출·클릭·북마크와 점주 예약 건수를 집계합니다.
- * 기간 제한 없이 집계하며 클릭률과 확정 예약 전환율은 백분율로 소수 둘째 자리 반올림합니다. 분모가 0이면 0을 반환합니다.
+ * 현재 소유 장소의 노출·클릭·북마크와 점주 예약 건수를 집계.
+ * 기간 제한 없이 집계하며 클릭률과 확정 예약 전환율은 백분율로 소수 둘째 자리 반올림. 분모가 0이면 0을 반환.
  */
 @Service
 @RequiredArgsConstructor
@@ -33,8 +33,8 @@ public class MerchantPerformanceQueryService {
     private final Clock clock;
 
     /**
-     * 활성 점주 자격을 확인해 현재 소유 장소의 노출·클릭·북마크와 관리 예약·확정 예약 건수를 집계합니다.
-     * 기간 제한 없이 클릭률과 클릭 대비 확정 예약률을 백분율로 반환하며 분모가 0이면 비율도 0입니다.
+     * 활성 점주 자격을 확인해 현재 소유 장소의 노출·클릭·북마크와 관리 예약·확정 예약 건수를 집계.
+     * 기간 제한 없이 클릭률과 클릭 대비 확정 예약률을 백분율로 반환하며 분모가 0이면 비율도 0.
      */
     @Transactional(readOnly = true)
     public MerchantPerformanceResponse get(Long ownerId) {

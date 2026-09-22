@@ -31,7 +31,7 @@ class KCultureInterestRankingServiceTest {
     private MapPlaceRecommendationCandidateRepository candidateRepository;
 
     /**
-     * K_POP 관심사와 일치한 후보에 0.10을 더해 카페보다 우선하고 적용 관심사에 포함하는지 확인합니다.
+     * K_POP 관심사와 일치한 후보에 0.10을 더해 카페보다 우선하고 적용 관심사에 포함하는지 확인.
      */
     @Test
     void boostsMatchingInterest() {
@@ -54,7 +54,7 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * OTHER만 선택하면 점수를 유지하고 카테고리 조회를 생략하는지 확인합니다.
+     * OTHER만 선택하면 점수를 유지하고 카테고리 조회를 생략하는지 확인.
      */
     @Test
     void ignoresOtherOnlyInterest() {
@@ -73,7 +73,7 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * 후보에 해당 카테고리가 없으면 관심사를 적용 목록에 넣지 않고 점수를 유지하는지 확인합니다.
+     * 후보에 해당 카테고리가 없으면 관심사를 적용 목록에 넣지 않고 점수를 유지하는지 확인.
      */
     @Test
     void excludesUnmatchedAppliedInterest() {
@@ -93,7 +93,7 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * 가점 설정 0이면 사용자 조회 없이 기존 점수와 빈 적용 관심사를 반환하는지 확인합니다.
+     * 가점 설정 0이면 사용자 조회 없이 기존 점수와 빈 적용 관심사를 반환하는지 확인.
      */
     @Test
     void skipsDisabledInterestBoost() {
@@ -107,7 +107,7 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * 익명 추천은 사용자·카테고리를 조회하지 않고 적용 관심사를 비우는지 확인합니다.
+     * 익명 추천은 사용자·카테고리를 조회하지 않고 적용 관심사를 비우는지 확인.
      */
     @Test
     void skipsAnonymousInterestLookup() {
@@ -121,27 +121,27 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * 관심사와 카테고리 모의 저장소를 사용하는 서비스를 만듭니다.
+     * 관심사와 카테고리 모의 저장소를 사용하는 서비스를 생성.
      */
     private KCultureInterestRankingService service() {
         return new KCultureInterestRankingService(userRepository, candidateRepository);
     }
 
     /**
-     * 후보 카테고리 일치 판단에 사용할 projection을 만듭니다.
+     * 후보 카테고리 일치 판단에 사용할 projection을 생성.
      */
     private MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow row(
             Long placeId,
             TouristCategory category
     ) {
         return new MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow() {
-            /** 관심사 가점을 부여할 후보 장소 ID를 반환한다. */
+            /** 관심사 가점을 부여할 후보 장소 ID를 반환. */
             @Override
             public Long getPlaceId() {
                 return placeId;
             }
 
-            /** 사용자의 K-컬처 관심사와 비교할 장소 카테고리를 반환한다. */
+            /** 사용자의 K-컬처 관심사와 비교할 장소 카테고리를 반환. */
             @Override
             public TouristCategory getCategory() {
                 return category;
@@ -150,7 +150,7 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * 관광 카테고리가 정해진 관심사 후보를 만듭니다.
+     * 관광 카테고리가 정해진 관심사 후보를 생성.
      */
     private MapPlace place(Long id, TouristCategory category) {
         return MapPlace.builder()
@@ -161,7 +161,7 @@ class KCultureInterestRankingServiceTest {
     }
 
     /**
-     * 관심사 가점만 관찰할 수 있도록 다른 신호를 고정한 후보를 만듭니다.
+     * 관심사 가점만 관찰할 수 있도록 다른 신호를 고정한 후보를 생성.
      */
     private ScoredCandidate candidate(MapPlace place, double score) {
         return new ScoredCandidate(

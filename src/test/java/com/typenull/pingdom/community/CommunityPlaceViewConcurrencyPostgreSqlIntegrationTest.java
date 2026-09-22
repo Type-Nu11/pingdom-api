@@ -40,7 +40,7 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     ).withDatabaseName("pingdom").withUsername("pingdom").withPassword("pingdom");
 
     /**
-     * 동시 일일 조회 기록 삽입과 집계를 실제 PostgreSQL에서 확인하도록 컨테이너 접속 정보를 등록한다.
+     * 동시 일일 조회 기록 삽입과 집계를 실제 PostgreSQL에서 확인하도록 컨테이너 접속 정보를 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -54,7 +54,7 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     /**
-     * 동시 조회 테스트가 만든 일일 기록과 게시글·장소 연결 및 대상 데이터를 의존 순서대로 제거한다.
+     * 동시 조회 테스트가 만든 일일 기록과 게시글·장소 연결 및 대상 데이터를 의존 순서대로 제거.
      */
     @AfterEach
     void cleanup() {
@@ -65,7 +65,7 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     }
 
     /**
-     * 같은 사용자가 한 장소로 동시에 진입해도 두 작업이 성공하고 장소 조회수와 일일 기록 수가 각각 1인지 검증한다.
+     * 같은 사용자가 한 장소로 동시에 진입해도 두 작업이 성공하고 장소 조회수와 일일 기록 수가 각각 1인지 검증.
      */
     @Test
     void countsConcurrentUserViewOnce() throws Exception {
@@ -82,7 +82,7 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     }
 
     /**
-     * 서로 다른 사용자의 동시 진입은 두 작업이 성공하고 장소 조회수가 2로 증가하는지 검증한다.
+     * 서로 다른 사용자의 동시 진입은 두 작업이 성공하고 장소 조회수가 2로 증가하는지 검증.
      */
     @Test
     void countsConcurrentDistinctUserViews() throws Exception {
@@ -98,7 +98,7 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     }
 
     /**
-     * DB에 게시글·장소와 연결 행을 직접 저장하고 동시 조회에 필요한 두 ID를 묶어 반환한다.
+     * DB에 게시글·장소와 연결 행을 직접 저장하고 동시 조회에 필요한 두 ID를 묶어 반환.
      */
     private Fixture fixture() {
         Long placeId = jdbcTemplate.queryForObject("""
@@ -114,14 +114,14 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     }
 
     /**
-     * 대상 장소 ID를 조건으로 집계 SQL을 실행해 최종 저장 수치를 읽는다.
+     * 대상 장소 ID를 조건으로 집계 SQL을 실행해 최종 저장 수치를 읽음.
      */
     private long count(String sql, Long placeId) {
         return jdbcTemplate.queryForObject(sql, Long.class, placeId);
     }
 
     /**
-     * 두 작업을 별도 스레드에서 같은 배리어로 시작하고 제한 시간 안에 결과를 수집한 뒤 실행기를 정리한다.
+     * 두 작업을 별도 스레드에서 같은 배리어로 시작하고 제한 시간 안에 결과를 수집한 뒤 실행기를 정리.
      */
     private <T> List<Result<T>> runConcurrently(Callable<T> first, Callable<T> second) throws Exception {
         CyclicBarrier barrier = new CyclicBarrier(2);
@@ -139,7 +139,7 @@ class CommunityPlaceViewConcurrencyPostgreSqlIntegrationTest {
     }
 
     /**
-     * 두 호출이 준비될 때까지 대기한 뒤 실행 결과 또는 실패를 값으로 담아 두 작업을 함께 검증할 수 있게 한다.
+     * 두 호출이 준비될 때까지 대기한 뒤 실행 결과 또는 실패를 값으로 담아 두 작업을 함께 검증할 수 있게 함.
      */
     private <T> Result<T> callAfterBarrier(CyclicBarrier barrier, Callable<T> callable) throws Exception {
         barrier.await();

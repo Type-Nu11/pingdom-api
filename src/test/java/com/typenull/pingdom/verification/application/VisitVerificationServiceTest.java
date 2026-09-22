@@ -20,7 +20,7 @@ import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.springframework.test.util.ReflectionTestUtils;
 
-/** 체류 인증의 서버 시각 기반 완료·이탈·관측 공백과 세션별 정책 확정을 검증합니다. */
+/** 체류 인증의 서버 시각 기반 완료·이탈·관측 공백과 세션별 정책 확정을 검증. */
 class VisitVerificationServiceTest {
     private static final Instant STARTED_AT = Instant.parse("2026-08-26T06:00:00Z");
     private final VisitVerificationSessionRepository sessionRepository = mock(VisitVerificationSessionRepository.class);
@@ -31,8 +31,8 @@ class VisitVerificationServiceTest {
     private VisitVerificationService service;
 
     /**
-     * 기본 반경 500m·체류 30초·최대 관측 공백 15초와 활성 관광객/장소를 구성한다.
-     * 저장 mock이 세션 ID 10, 체크인 ID 20을 부여해 DB 없이 반환 관계를 추적한다.
+     * 기본 반경 500m·체류 30초·최대 관측 공백 15초와 활성 관광객/장소를 구성.
+     * 저장 mock이 세션 ID 10, 체크인 ID 20을 부여해 DB 없이 반환 관계를 추적.
      */
     @BeforeEach
     void setUp() {
@@ -61,9 +61,9 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 서버 시계를 15초씩 두 번 이동하며 관측하면 STARTED → IN_PROGRESS → COMPLETED가 되어야 한다.
+     * 서버 시계를 15초씩 두 번 이동하며 관측하면 STARTED → IN_PROGRESS → COMPLETED가 되어야 함.
      * 반경 500m·요구 30초, 누적 30초, 체크인 ID 20과 리뷰 가능 여부를 확인하고
-     * DWELL_VERIFIED 체크인 저장이 호출되는지 검증한다.
+     * DWELL_VERIFIED 체크인 저장이 호출되는지 검증.
      */
     @Test
     void completeContinuousDwell() {
@@ -88,7 +88,7 @@ class VisitVerificationServiceTest {
                 checkIn.getStatus() == LocationCheckInStatus.DWELL_VERIFIED));
     }
 
-    /** 시작 5초 뒤 반경 밖 좌표를 제출하면 PROXIMITY_LOST로 종료하고 체크인을 저장하지 않는다. */
+    /** 시작 5초 뒤 반경 밖 좌표 제출 시 PROXIMITY_LOST 종료와 체크인 미저장 확인. */
     @Test
     void loseProximityOutsideRadius() {
         service.start(1L, startRequest());
@@ -104,8 +104,8 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 현재 기본 반경 500m와 다른 20m 정책이 저장된 기존 세션을 반환하도록 구성한다.
-     * 기존 ID와 반경·체류 시간이 유지되고 새 세션 저장이 없어야 한다.
+     * 현재 기본 반경 500m와 다른 20m 정책이 저장된 기존 세션을 반환하도록 구성.
+     * 기존 ID와 반경·체류 시간이 유지되고 새 세션 저장이 없어야 함.
      */
     @Test
     void retainExistingSessionPolicy() {
@@ -124,7 +124,7 @@ class VisitVerificationServiceTest {
         verify(sessionRepository, never()).saveAndFlush(any());
     }
 
-    /** 최대 관측 공백 15초를 넘겨 16초 뒤 제출하면 EXPIRED가 되고 체크인을 저장하지 않는다. */
+    /** 최대 관측 공백 15초를 넘긴 16초 뒤 관측 제출 시 EXPIRED 전이와 체크인 미저장 확인. */
     @Test
     void expireAfterObservationGap() {
         service.start(1L, startRequest());
@@ -139,8 +139,8 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 주변 후보가 장소 2 하나이면 해당 장소로 foreground 세션을 시작한다.
-     * foreground 정책 반경 1,000m와 체류 30초가 적용되어야 한다.
+     * 주변 후보가 장소 2 하나이면 해당 장소로 foreground 세션을 시작.
+     * foreground 정책 반경 1,000m와 체류 30초가 적용되어야 함.
      */
     @Test
     void startSingleNearbyPlace() {
@@ -156,7 +156,7 @@ class VisitVerificationServiceTest {
         assertThat(response.requiredDwellSeconds()).isEqualTo(30);
     }
 
-    /** 주변 장소 조회가 비어 있으면 FOREGROUND_VISIT_PLACE_NOT_FOUND로 시작을 거부한다. */
+    /** 주변 장소 조회가 비어 있으면 FOREGROUND_VISIT_PLACE_NOT_FOUND로 시작을 거부. */
     @Test
     void rejectMissingNearbyPlace() {
         when(placeRepository.findNearbyPlacesForVisitVerification(anyDouble(), anyDouble(), eq(1000.0), any()))
@@ -170,8 +170,8 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 두 후보 거리가 10m·40m이고 GPS 정확도가 10m이면 거리 차이 30m가 오차 두 배보다 크다.
-     * 더 가까운 장소 2를 선택하는지 확인한다.
+     * 두 후보 거리가 10m·40m이고 GPS 정확도가 10m이면 거리 차이 30m가 오차 두 배보다 큼.
+     * 더 가까운 장소 2를 선택하는지 확인.
      */
     @Test
     void selectDistinctNearestPlace() {
@@ -187,8 +187,8 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 10m·20m 거리 후보에 정확도 10m를 전달하면 오차를 고려해 가까운 장소를 구분할 수 없다.
-     * 임의 선택 대신 FOREGROUND_VISIT_PLACE_AMBIGUOUS 오류로 거부한다.
+     * 10m·20m 거리 후보에 정확도 10m를 전달하면 오차를 고려해 가까운 장소를 구분할 수 없음.
+     * 임의 선택 대신 FOREGROUND_VISIT_PLACE_AMBIGUOUS 오류로 거부.
      */
     @Test
     void rejectAmbiguousNearbyPlaces() {
@@ -204,7 +204,7 @@ class VisitVerificationServiceTest {
                                 .isEqualTo(VisitorVerificationErrorCode.FOREGROUND_VISIT_PLACE_AMBIGUOUS));
     }
 
-    /** 두 후보 거리가 모두 10m이면 입력 목록 순서로 장소를 선택하지 않고 모호한 장소 오류로 거부한다. */
+    /** 두 후보 거리가 모두 10m이면 입력 목록 순서로 장소를 선택하지 않고 모호한 장소 오류로 거부. */
     @Test
     void rejectEquidistantPlaces() {
         MapPlaceRepository.NearbyVisitPlace first = nearbyPlace(2L, 10.0);
@@ -220,8 +220,8 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 현재 반경 안의 진행 세션 ID 11이 있으면 해당 세션과 장소 2를 반환한다.
-     * 새 주변 장소 조회 및 새 세션 저장이 모두 호출되지 않아야 한다.
+     * 현재 반경 안의 진행 세션 ID 11이 있으면 해당 세션과 장소 2를 반환.
+     * 새 주변 장소 조회 및 새 세션 저장이 모두 호출되지 않아야 함.
      */
     @Test
     void reuseNearbyActiveSession() {
@@ -242,8 +242,8 @@ class VisitVerificationServiceTest {
     }
 
     /**
-     * 서버 시간을 5분 이동해 기존 foreground 세션이 오래된 상태로 만든다.
-     * 기존 세션은 EXPIRED로 바뀌고 새 후보의 세션은 STARTED로 반환되어야 한다.
+     * 서버 시간을 5분 이동해 기존 foreground 세션이 오래된 상태로 생성.
+     * 기존 세션은 EXPIRED로 바뀌고 새 후보의 세션은 STARTED로 반환되어야 함.
      */
     @Test
     void replaceStaleForegroundSession() {
@@ -264,7 +264,7 @@ class VisitVerificationServiceTest {
         assertThat(response.status()).isEqualTo(VisitVerificationSessionStatus.STARTED);
     }
 
-    /** 장소 ID와 거리만 반환하는 주변 장소 projection mock을 만든다. */
+    /** 장소 ID와 거리만 반환하는 주변 장소 projection mock을 생성. */
     private MapPlaceRepository.NearbyVisitPlace nearbyPlace(long placeId, double distanceMeters) {
         MapPlaceRepository.NearbyVisitPlace candidate = mock(MapPlaceRepository.NearbyVisitPlace.class);
         when(candidate.getPlaceId()).thenReturn(placeId);
@@ -272,19 +272,19 @@ class VisitVerificationServiceTest {
         return candidate;
     }
 
-    /** 세션 저장 mock의 첫 saveAndFlush 호출 인자를 찾아 후속 관측에 사용할 실제 도메인 객체를 얻는다. */
+    /** 세션 저장 mock의 첫 saveAndFlush 호출 인자를 찾아 후속 관측에 사용할 실제 도메인 객체를 획득. */
     private VisitVerificationSession capturedSession() {
         return (VisitVerificationSession) mockingDetails(sessionRepository).getInvocations().stream()
                 .filter(invocation -> invocation.getMethod().getName().equals("saveAndFlush"))
                 .findFirst().orElseThrow().getArgument(0);
     }
 
-    /** 장소 2의 기준 좌표와 현재 테스트 시각으로 세션 시작 요청을 만든다. */
+    /** 장소 2의 기준 좌표와 현재 테스트 시각으로 세션 시작 요청을 생성. */
     private VisitVerificationStartRequest startRequest() {
         return new VisitVerificationStartRequest(2L, 35.1801, 128.1078, 10.0, clock.instant());
     }
 
-    /** 기준 좌표와 현재 테스트 시계의 관측 시각을 담은 후속 관측을 만든다. */
+    /** 기준 좌표와 현재 테스트 시계의 관측 시각을 담은 후속 관측을 생성. */
     private VisitVerificationObservationRequest observationRequest() {
         return new VisitVerificationObservationRequest(35.1801, 128.1078, 10.0, clock.instant());
     }
@@ -292,29 +292,29 @@ class VisitVerificationServiceTest {
     private static final class MutableClock extends Clock {
         private Instant instant;
 
-        /** 실제 대기 없이 서버 시각 경과를 제어할 초기 시점을 보관한다. */
+        /** 실제 대기 없이 서버 시각 경과를 제어할 초기 시점을 보관. */
         private MutableClock(Instant instant) {
             this.instant = instant;
         }
 
-        /** 서버 시각을 지정 기간만큼 이동시켜 체류·만료 조건을 재현한다. */
+        /** 서버 시각을 지정 기간만큼 이동시켜 체류·만료 조건을 재현. */
         void advance(Duration duration) {
             instant = instant.plus(duration);
         }
 
-        /** 테스트에서 시각 변환에 사용할 고정 UTC 시간대를 반환한다. */
+        /** 테스트에서 시각 변환에 사용할 고정 UTC 시간대를 반환. */
         @Override
         public ZoneId getZone() {
             return ZoneOffset.UTC;
         }
 
-        /** 이 fixture는 시간대 전환을 구현하지 않으므로 요청 zone과 무관하게 같은 시계를 반환한다. */
+        /** 이 fixture는 시간대 전환을 구현하지 않으므로 요청 zone과 무관하게 같은 시계를 반환. */
         @Override
         public Clock withZone(ZoneId zone) {
             return this;
         }
 
-        /** 마지막으로 이동한 테스트 서버 시각을 반환한다. */
+        /** 마지막으로 이동한 테스트 서버 시각을 반환. */
         @Override
         public Instant instant() {
             return instant;

@@ -29,7 +29,7 @@ class MerchantPerformanceQueryServiceTest {
     private MerchantPerformanceQueryService service;
 
     /**
-     * 성과 집계 저장소와 접근 정책 mock을 고정 Clock에 연결해 서비스의 집계 계산을 분리한다.
+     * 성과 집계 저장소와 접근 정책 mock을 고정 Clock에 연결해 서비스의 집계 계산을 분리.
      */
     @BeforeEach
     void setUp() {
@@ -45,8 +45,8 @@ class MerchantPerformanceQueryServiceTest {
     }
 
     /**
-     * 소유 장소 2개의 노출 1,000·클릭 200·북마크 50과 예약 40·확정 30을 응답에 반영하는지 검증한다.
-     * CTR 20%·예약 전환율 15%와 활성 점주 확인 호출을 함께 고정한다.
+     * 소유 장소 2개의 노출 1,000·클릭 200·북마크 50과 예약 40·확정 30을 응답에 반영하는지 검증.
+     * CTR 20%·예약 전환율 15%와 활성 점주 확인 호출을 함께 고정.
      */
     @Test
     void aggregatesOwnedPlaceConversionMetrics() {
@@ -84,7 +84,7 @@ class MerchantPerformanceQueryServiceTest {
     }
 
     /**
-     * 소유 장소와 예약이 없으면 전환율을 0으로 반환하고 노출·클릭·북마크 저장소를 호출하지 않는지 검증한다.
+     * 소유 장소와 예약이 없으면 전환율을 0으로 반환하고 노출·클릭·북마크 저장소를 호출하지 않는지 검증.
      */
     @Test
     void returnsZeroWithoutConversionDenominator() {

@@ -7,7 +7,7 @@ import org.junit.jupiter.api.Test;
 
 class MerchantTeamFixturesTest {
     /**
-     * 팀 fixture에 OWNER·EDITOR·VIEWER, 비활성 사용자 및 점주 101의 장소가 포함되는지 검증한다.
+     * 팀 fixture에 OWNER·EDITOR·VIEWER, 비활성 사용자 및 점주 101의 장소가 포함되는지 검증.
      */
     @Test
     void definesActorsAndOwnership() {
@@ -18,8 +18,8 @@ class MerchantTeamFixturesTest {
     }
 
     /**
-     * 정상·경계·인가·실패 분류와 GET/POST/PATCH 경로·비어 있지 않은 검증 항목을 확인한다.
-     * 정상 이외 시나리오의 오류 코드 누락을 방지한다.
+     * 정상·경계·인가·실패 분류와 GET/POST/PATCH 경로·비어 있지 않은 검증 항목을 확인.
+     * 정상 이외 시나리오의 오류 코드 누락을 방지.
      */
     @Test
     void coversTeamScenarioContracts() {
@@ -38,7 +38,7 @@ class MerchantTeamFixturesTest {
     }
 
     /**
-     * 사용자와 장소 ID에 중복이 없는지 검증해 권한·소유 관계 assertion의 대상을 명확히 유지한다.
+     * 사용자와 장소 ID에 중복이 없는지 검증해 권한·소유 관계 assertion의 대상을 명확히 유지.
      */
     @Test
     void usesUniqueFixtureIdentifiers() {

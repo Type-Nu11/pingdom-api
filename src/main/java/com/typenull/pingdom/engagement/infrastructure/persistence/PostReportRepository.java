@@ -15,8 +15,8 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 /**
- * 신고 원본 연결과 삭제 후에도 남는 reportedImageId를 목적별로 구분해 조회합니다.
- * 최근 사유 반복은 현재 신고보다 앞선 정확히 3건 모두가 같은지 검사하고, 10명 판정은 신고 상태와 무관한 고유 신고자 수입니다.
+ * 신고 원본 연결과 삭제 후에도 남는 reportedImageId를 목적별로 구분해 조회.
+ * 최근 사유 반복은 현재 신고보다 앞선 정확히 3건 모두가 같은지 검사하고, 10명 판정은 신고 상태와 무관한 고유 신고자 수.
  */
 @Repository
 public interface PostReportRepository extends JpaRepository<PostReport, Long> {

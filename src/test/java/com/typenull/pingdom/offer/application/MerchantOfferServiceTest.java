@@ -50,7 +50,7 @@ class MerchantOfferServiceTest {
     @InjectMocks private MerchantOfferService offerService;
 
     /**
-     * Offer와 쿠폰의 유효 기간 판단 시각을 UTC로 고정하고 시각을 쓰지 않는 테스트의 공통 stubbing을 허용한다.
+     * Offer와 쿠폰의 유효 기간 판단 시각을 UTC로 고정하고 시각을 쓰지 않는 테스트의 공통 stubbing을 허용.
      */
     @BeforeEach
     void setUpClock() {
@@ -59,8 +59,8 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 대문자 쿠폰 코드를 정규화해 조회하고 장소 소유권 확인 후 REDEEMED와 사용 점주 ID를 기록하는지 검증한다.
-     * 이 테스트에서는 두 번째 사용 요청을 실행하지 않는다.
+     * 대문자 쿠폰 코드를 정규화해 조회하고 장소 소유권 확인 후 REDEEMED와 사용 점주 ID를 기록하는지 검증.
+     * 검증 범위는 첫 사용 요청으로 한정.
      */
     @Test
     void redeemsOwnedCoupon() {
@@ -77,7 +77,7 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 소유자 조건의 Offer 조회가 비어 있으면 COUPON_NOT_FOUND이며 쿠폰이 ISSUED 상태로 유지되는지 검증한다.
+     * 소유자 조건의 Offer 조회가 비어 있으면 COUPON_NOT_FOUND이며 쿠폰이 ISSUED 상태로 유지되는지 검증.
      */
     @Test
     void rejectsUnownedCouponRedemption() {
@@ -93,7 +93,7 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 만료된 쿠폰 사용 요청을 COUPON_NOT_REDEEMABLE 도메인 오류로 변환하는지 검증한다.
+     * 만료된 쿠폰 사용 요청을 COUPON_NOT_REDEEMABLE 도메인 오류로 변환하는지 검증.
      */
     @Test
     void expiredCouponCannotBeRedeemed() {
@@ -108,7 +108,7 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 종료 시각이 지난 Offer 생성 요청이 INVALID_OFFER_PERIOD로 거절되는지 검증한다.
+     * 종료 시각이 지난 Offer 생성 요청이 INVALID_OFFER_PERIOD로 거절되는지 검증.
      */
     @Test
     void rejectsEndedOfferCreation() {
@@ -129,7 +129,7 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 공개·무제한·Offer 종료 만료 정책을 명시한 생성이 각 정책과 null 총수량을 저장하고 null 잔여 수량을 응답하는지 검증한다.
+     * 공개·무제한·Offer 종료 만료 정책을 명시한 생성이 각 정책과 null 총수량을 저장하고 null 잔여 수량을 응답하는지 검증.
      */
     @Test
     void createsUnlimitedPublicOffer() {
@@ -162,7 +162,7 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 소유자·장소·게시 상태 필터와 0번 페이지·20건·생성시각/ID 내림차순을 저장소에 전달하고 결과를 매핑하는지 검증한다.
+     * 소유자·장소·게시 상태 필터와 0번 페이지·20건·생성시각/ID 내림차순을 저장소에 전달하고 결과를 매핑하는지 검증.
      */
     @Test
     void forwardsOfferFiltersAndPagination() {
@@ -193,7 +193,7 @@ class MerchantOfferServiceTest {
     }
 
     /**
-     * 점주 10·장소 100의 유효 기간 내 초안 Offer를 만들어 소유권과 쿠폰 처리의 입력으로 제공한다.
+     * 점주 10·장소 100의 유효 기간 내 초안 Offer를 만들어 소유권과 쿠폰 처리의 입력으로 제공.
      */
     private TouristOffer offer() {
         return TouristOffer.draft(

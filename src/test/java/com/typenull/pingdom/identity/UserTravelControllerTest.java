@@ -69,7 +69,7 @@ class UserTravelControllerTest {
     private TransactionTemplate transactionTemplate;
 
     /**
-     * 현재 활동 의도와 여행 일정을 먼저 삭제한 뒤 사용자를 제거해 테스트 데이터를 초기화한다.
+     * 현재 활동 의도와 여행 일정을 먼저 삭제한 뒤 사용자를 제거해 테스트 데이터를 초기화.
      */
     @BeforeEach
     void setUp() {
@@ -79,7 +79,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 여행 API 및 보존 정책 테스트가 남긴 활동 의도·일정·사용자를 의존 순서대로 정리한다.
+     * 여행 API 및 보존 정책 테스트가 남긴 활동 의도·일정·사용자를 의존 순서대로 정리.
      */
     @AfterEach
     void tearDown() {
@@ -89,8 +89,8 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 여행 일정 생성·종료일 수정·취소·조회 흐름의 응답을 확인한다.
-     * 취소된 일정을 다시 수정하면 409와 수정 불가 코드를 반환하고 목록에도 취소 상태가 남는지 검증한다.
+     * 여행 일정 생성·종료일 수정·취소·조회 흐름의 응답을 확인.
+     * 취소된 일정을 다시 수정하면 409와 수정 불가 코드를 반환하고 목록에도 취소 상태가 남는지 검증.
      */
     @Test
     void managesOwnTravelSchedule() throws Exception {
@@ -137,7 +137,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 종료일이 시작일보다 이른 생성 요청은 기간 오류로 거절하고, 다른 사용자가 소유 일정을 수정하면 404로 숨기는지 검증한다.
+     * 종료일이 시작일보다 이른 생성 요청은 기간 오류로 거절하고, 다른 사용자가 소유 일정을 수정하면 404로 숨기는지 검증.
      */
     @Test
     void rejectsInvalidAndForeignSchedules() throws Exception {
@@ -170,7 +170,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 일정 생성과 수정 모두 과거 시작일은 400, 기존 일정과 겹치는 기간은 409를 각각의 오류 코드로 반환하는지 검증한다.
+     * 일정 생성과 수정 모두 과거 시작일은 400, 기존 일정과 겹치는 기간은 409를 각각의 오류 코드로 반환하는지 검증.
      */
     @Test
     void rejectsPastAndOverlappingSchedules() throws Exception {
@@ -238,8 +238,8 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 여행 일정을 만들고 CAFE 활동 의도를 저장·조회하면 내보내기에 일정과 의도가 포함되는지 검증한다.
-     * 활동 의도 응답의 만료 시각과 삭제 후 저장소에서 사라지는 결과도 확인한다.
+     * 여행 일정을 만들고 CAFE 활동 의도를 저장·조회하면 내보내기에 일정과 의도가 포함되는지 검증.
+     * 활동 의도 응답의 만료 시각과 삭제 후 저장소에서 사라지는 결과도 확인.
      */
     @Test
     void exportsTravelAndActivityData() throws Exception {
@@ -279,7 +279,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 토큰 없이 여행 일정이나 현재 활동 의도를 조회하면 모두 401을 반환하는지 검증한다.
+     * 토큰 없이 여행 일정이나 현재 활동 의도를 조회하면 모두 401을 반환하는지 검증.
      */
     @Test
     void requiresTravelAuthentication() throws Exception {
@@ -290,8 +290,8 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 탈퇴한 지 정확히 7일 된 사용자에 보존 정리를 실행하면 여행 일정과 활동 의도가 삭제되는지 검증한다.
-     * 7일 이전 보존 여부는 이 시나리오에서 검사하지 않는다.
+     * 탈퇴한 지 정확히 7일 된 사용자에 보존 정리를 실행하면 여행 일정과 활동 의도가 삭제되는지 검증.
+     * 7일 이전 보존 여부는 이 시나리오의 검증 범위에서 제외.
      */
     @Test
     void purgesTravelDataAtRetentionBoundary() {
@@ -328,7 +328,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 배치 크기가 1일 때 정리를 두 번 실행하면 보존 기간이 지난 두 사용자의 일정이 모두 삭제되는지 검증한다.
+     * 배치 크기가 1일 때 정리를 두 번 실행하면 보존 기간이 지난 두 사용자의 일정이 모두 삭제되는지 검증.
      */
     @Test
     void purgesTravelDataAcrossBatches() {
@@ -364,7 +364,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 여행 API 요청과 보존 정책의 소유자 관계에 사용할 사용자를 저장한다.
+     * 여행 API 요청과 보존 정책의 소유자 관계에 사용할 사용자를 저장.
      */
     private User saveUser(String username) {
         return userRepository.saveAndFlush(User.builder()
@@ -378,7 +378,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 주어진 탈퇴 시각으로 사용자 식별 정보를 익명화해 보존 기한이 지난 데이터를 준비한다.
+     * 주어진 탈퇴 시각으로 사용자 식별 정보를 익명화해 보존 기한이 지난 데이터를 준비.
      */
     private void withdrawUser(User user, LocalDateTime withdrawnAt) {
         user.withdraw(
@@ -391,7 +391,7 @@ class UserTravelControllerTest {
     }
 
     /**
-     * 여행 데이터 소유자 권한으로 요청할 수 있도록 사용자의 현재 역할을 담은 Bearer 토큰을 만든다.
+     * 여행 데이터 소유자 권한으로 요청할 수 있도록 사용자의 현재 역할을 담은 Bearer 토큰을 생성.
      */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

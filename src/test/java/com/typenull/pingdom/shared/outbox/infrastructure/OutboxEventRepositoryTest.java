@@ -12,7 +12,7 @@ import org.springframework.data.jpa.repository.QueryHints;
 class OutboxEventRepositoryTest {
 
     /**
-     * 준비 이벤트와 stale 이벤트 선점 조회 모두 SKIP LOCKED용 lock timeout hint를 선언하는지 확인한다. 실제 DB 경합 검증은 아니다.
+     * 준비 이벤트와 stale 이벤트 선점 조회 모두 SKIP LOCKED용 lock timeout hint를 선언하는지 확인. 실제 DB 경합은 검증 범위에서 제외.
      */
     @Test
     void lockingQueriesUseSkipLockedHint() {
@@ -21,7 +21,7 @@ class OutboxEventRepositoryTest {
     }
 
     /**
-     * 수동 재시도 조회 메서드가 PESSIMISTIC_WRITE를 선언해 상태 변경 대상의 잠금을 요구하는지 reflection으로 검증한다.
+     * 수동 재시도 조회 메서드가 PESSIMISTIC_WRITE를 선언해 상태 변경 대상의 잠금을 요구하는지 reflection으로 검증.
      */
     @Test
     void locksManualRetryLookup() {
@@ -37,7 +37,7 @@ class OutboxEventRepositoryTest {
     }
 
     /**
-     * 지정 저장소 메서드의 QueryHints에 jakarta.persistence.lock.timeout=-2가 있는지 확인한다.
+     * 지정 저장소 메서드의 QueryHints에 jakarta.persistence.lock.timeout=-2가 있는지 확인.
      */
     private void assertSkipLockedHint(String methodName) {
         Method method = Arrays.stream(OutboxEventRepository.class.getMethods())

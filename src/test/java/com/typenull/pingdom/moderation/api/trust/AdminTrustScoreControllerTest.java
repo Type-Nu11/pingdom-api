@@ -35,7 +35,7 @@ class AdminTrustScoreControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 신뢰도 조회 결과의 JSON 매핑을 검증하도록 관련 서비스들을 대체한 standalone MockMvc를 만든다.
+     * 신뢰도 조회 결과의 JSON 매핑을 검증하도록 관련 서비스들을 대체한 standalone MockMvc를 생성.
      */
     @BeforeEach
     void setUp() {
@@ -46,7 +46,7 @@ class AdminTrustScoreControllerTest {
     }
 
     /**
-     * 신고자 신뢰도 HTTP 응답에 식별 정보·점수·등급·제한 상태·기한 배열·사유와 상세 산정 근거가 서비스 값대로 직렬화되는지 검증한다.
+     * 신고자 신뢰도 HTTP 응답에 식별 정보·점수·등급·제한 상태·기한 배열·사유와 상세 산정 근거가 서비스 값대로 직렬화되는지 검증.
      */
     @Test
     void returnsTrustScoreHttpContract() throws Exception {

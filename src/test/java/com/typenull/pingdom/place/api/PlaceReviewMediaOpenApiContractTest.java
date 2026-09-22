@@ -27,7 +27,7 @@ class PlaceReviewMediaOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** 리뷰 미디어 업로드가 common 문서에만 포함되며 Bearer 인증, binary multipart 파일, 성공·크기·유형·저장소 오류 응답을 제공하는지 확인한다. */
+    /** 리뷰 미디어 업로드가 common 문서에만 포함되며 Bearer 인증, binary multipart 파일, 성공·크기·유형·저장소 오류 응답을 제공하는지 확인. */
     @Test
     void documentsReviewMediaUpload() throws Exception {
         JsonNode commonDocument = readApiDocs("/v3/api-docs/common");
@@ -47,7 +47,7 @@ class PlaceReviewMediaOpenApiContractTest {
         assertThat(upload.path("responses").has("503")).isTrue();
     }
 
-    /** 지정 그룹 OpenAPI의 HTTP 200 응답을 확인하고 UTF-8 본문을 JSON으로 변환한다. */
+    /** 지정 그룹 OpenAPI의 HTTP 200 응답을 확인하고 UTF-8 본문을 JSON으로 변환. */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())

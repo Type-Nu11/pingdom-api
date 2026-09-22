@@ -32,7 +32,7 @@ class MapPlaceServiceTest {
     private MapPlaceService mapPlaceService;
 
     /**
-     * 장소·소유권·북마크·추천 집계 저장소의 호출 순서를 모의로 관찰할 서비스를 준비합니다.
+     * 장소·소유권·북마크·추천 집계 저장소의 호출 순서를 모의로 관찰할 서비스를 준비.
      */
     @BeforeEach
     void setUp() {
@@ -46,7 +46,7 @@ class MapPlaceServiceTest {
     }
 
     /**
-     * 소유자의 삭제에서 북마크 추세·북마크·장소·추천 스냅샷 순으로 정리하는지 확인합니다.
+     * 소유자의 삭제에서 북마크 추세·북마크·장소·추천 스냅샷 순으로 정리하는지 확인.
      */
     @Test
     void deletesBookmarkBeforeOwnedPlace() {
@@ -76,7 +76,7 @@ class MapPlaceServiceTest {
     }
 
     /**
-     * 소유권이 없으면 전용 오류로 거절하고 북마크·장소 삭제를 호출하지 않는지 확인합니다.
+     * 소유권이 없으면 전용 오류로 거절하고 북마크·장소 삭제를 호출하지 않는지 확인.
      */
     @Test
     void preservesPlaceForNonOwner() {

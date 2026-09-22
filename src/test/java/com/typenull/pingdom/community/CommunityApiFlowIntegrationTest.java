@@ -48,7 +48,7 @@ class CommunityApiFlowIntegrationTest {
     @Autowired private CommunityPlaceDailyViewRepository dailyViewRepository;
 
     /**
-     * 일일 조회·댓글·좋아요·장소 연결을 먼저 지우고 게시글·장소·사용자를 정리해 통합 흐름의 데이터를 제거한다.
+     * 일일 조회·댓글·좋아요·장소 연결을 먼저 지우고 게시글·장소·사용자를 정리해 통합 흐름의 데이터를 제거.
      */
     @AfterEach
     void cleanup() {
@@ -63,7 +63,7 @@ class CommunityApiFlowIntegrationTest {
     }
 
     /**
-     * 인증 사용자가 카테고리를 조회하고 장소를 연결한 게시글을 만든 뒤 목록·상세·댓글 생성·댓글 조회로 이어지는 HTTP 흐름을 검증한다.
+     * 인증 사용자가 카테고리를 조회하고 장소를 연결한 게시글을 만든 뒤 목록·상세·댓글 생성·댓글 조회로 이어지는 HTTP 흐름을 검증.
      */
     @Test
     void connectsCategoryPostAndCommentFlow() throws Exception {
@@ -99,7 +99,7 @@ class CommunityApiFlowIntegrationTest {
     }
 
     /**
-     * 미인증 게시글 생성은 401, PLACE 카테고리의 연결 장소 누락은 400과 PLACE_REQUIRED, 없는 글 조회는 404와 POST_NOT_FOUND를 반환하는지 검증한다.
+     * 미인증 게시글 생성은 401, PLACE 카테고리의 연결 장소 누락은 400과 PLACE_REQUIRED, 없는 글 조회는 404와 POST_NOT_FOUND를 반환하는지 검증.
      */
     @Test
     void returnsCommunityRequestErrors() throws Exception {
@@ -118,7 +118,7 @@ class CommunityApiFlowIntegrationTest {
     }
 
     /**
-     * 커뮤니티 API 인증과 게시글 작성을 위한 이메일 인증 완료 일반 사용자를 만든다.
+     * 커뮤니티 API 인증과 게시글 작성을 위한 이메일 인증 완료 일반 사용자를 생성.
      */
     private User user(String username) {
         return User.builder().username(username).email(username + "@example.com").emailVerified(true)
@@ -126,7 +126,7 @@ class CommunityApiFlowIntegrationTest {
     }
 
     /**
-     * 저장한 작성자 식별자와 역할을 JWT에 담아 통합 요청의 Bearer 헤더를 만든다.
+     * 저장한 작성자 식별자와 역할을 JWT에 담아 통합 요청의 Bearer 헤더를 생성.
      */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

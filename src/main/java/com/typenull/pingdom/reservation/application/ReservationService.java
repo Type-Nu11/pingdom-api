@@ -36,8 +36,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관광객 예약과 관리자 심사를 가용 재고·상태 이력·감사 기록에 연결합니다.
- * 생성은 사용자 잠금으로 멱등 키를 검사하고, 상태 변경은 예약 잠금으로 직렬화합니다. 결제 승인 검증은 수행하지 않습니다.
+ * 관광객 예약과 관리자 심사를 가용 재고·상태 이력·감사 기록에 연결.
+ * 생성은 사용자 잠금으로 멱등 키를 검사하고, 상태 변경은 예약 잠금으로 직렬화. 결제 승인 검증은 처리 범위 외.
  */
 @Service
 public class ReservationService {
@@ -76,7 +76,7 @@ public class ReservationService {
         this.clock = clock;
     }
 
-    /** 기존 단위 테스트와 내부 호출의 생성자 호환을 위한 보조 생성자입니다. */
+    /** 기존 단위 테스트와 내부 호출의 생성자 호환을 위한 보조 생성자. */
     @Deprecated
     public ReservationService(ReservationRepository reservationRepository,
             PlaceAvailabilityRepository availabilityRepository, PlaceAvailabilityService availabilityService,
@@ -97,8 +97,8 @@ public class ReservationService {
     }
 
     /**
-     * 같은 사용자·멱등 키의 요청 값이 같으면 기존 예약을 반환합니다.
-     * 신규 요청은 재고를 먼저 예약하고 PENDING 예약·이력을 저장한 뒤 전환 이벤트를 발행합니다.
+     * 같은 사용자·멱등 키의 요청 값이 같으면 기존 예약을 반환.
+     * 신규 요청은 재고를 먼저 예약하고 PENDING 예약·이력을 저장한 뒤 전환 이벤트를 발행.
      */
     @Transactional
     public ReservationResponse create(Long userId, ReservationCreateRequest request) {
@@ -140,7 +140,7 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    // 예약을 조회하고 요청 사용자가 예약자 본인인지 확인합니다.
+    // 예약을 조회하고 요청 사용자가 예약자 본인인지 확인.
     public ReservationResponse getMine(Long userId, Long reservationId) {
         Reservation reservation = find(reservationId);
         requireTouristOwnership(reservation, userId);
@@ -148,7 +148,7 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    // 관광객 본인의 예약을 생성일 역순 페이지로 조회합니다.
+    // 관광객 본인의 예약을 생성일 역순 페이지로 조회.
     public ReservationPageResponse listMine(Long userId, int page, int limit) {
         requireTourist(userId);
         return toPageResponse(reservationRepository.findAllByTouristUserId(userId, pageRequest(page, limit)),
@@ -156,13 +156,13 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    // 활성 사업자 소유자가 관리하는 장소의 예약을 페이지로 조회합니다.
+    // 활성 사업자 소유자가 관리하는 장소의 예약을 페이지로 조회.
     public ReservationPageResponse listOwned(Long ownerId, int page, int limit) {
         availabilityAccessPolicy.requireActiveMerchantOwner(ownerId, LocalDateTime.now(clock));
         return toPageResponse(reservationRepository.findAllOwned(ownerId, pageRequest(page, limit)), page, limit);
     }
 
-    /** HTTP 엔드포인트는 제거됐으며 기존 내부 호출 호환을 위해서만 유지합니다. */
+    /** HTTP 엔드포인트는 제거됐으며 기존 내부 호출 호환을 위해서만 유지. */
     @Deprecated
     @Transactional
     public ReservationResponse confirm(Long ownerId, Long reservationId) {
@@ -177,7 +177,7 @@ public class ReservationService {
     }
 
     @Transactional
-    // 예약자 본인인지 확인하고 예약을 취소해 재고를 반환합니다.
+    // 예약자 본인인지 확인하고 예약을 취소해 재고를 반환.
     public ReservationResponse cancelMine(Long userId, Long reservationId) {
         Reservation reservation = findForUpdate(reservationId);
         requireTouristOwnership(reservation, userId);
@@ -185,14 +185,14 @@ public class ReservationService {
     }
 
     @Transactional
-    // 장소 소유자가 관리하는 예약인지 확인하고 예약을 취소합니다.
+    // 장소 소유자가 관리하는 예약인지 확인하고 예약을 취소.
     public ReservationResponse cancelOwned(Long ownerId, Long reservationId) {
         Reservation reservation = findForUpdate(reservationId);
         requireAvailabilityOwner(ownerId, reservation.getAvailabilityId());
         return cancel(reservation, ownerId);
     }
 
-    // 예약 상태를 취소로 전환하고 예약 수량을 가용 재고로 반환합니다.
+    // 예약 상태를 취소로 전환하고 예약 수량을 가용 재고로 반환.
     private ReservationResponse cancel(Reservation reservation, Long canceledBy) {
         try {
             LocalDateTime now = LocalDateTime.now(clock);
@@ -206,8 +206,8 @@ public class ReservationService {
     }
 
     /**
-     * 상태·장소·점주·예약자·상품·예약 기간으로 예약을 조회하고 관련 이름과 상태 이력을 포함한 관리자 페이지를 반환합니다.
-     * 기간 양 끝이 있으면 시작이 종료보다 앞서야 하며 누락된 경계는 저장소 필터를 비활성화합니다.
+     * 상태·장소·점주·예약자·상품·예약 기간으로 예약을 조회하고 관련 이름과 상태 이력을 포함한 관리자 페이지를 반환.
+     * 기간 양 끝이 있으면 시작이 종료보다 앞서야 하며 누락된 경계는 저장소 필터를 비활성화.
      */
     @Transactional(readOnly = true)
     public AdminReservationPageResponse listForAdmin(ReservationStatus status, Long placeId, Long ownerId,
@@ -227,8 +227,8 @@ public class ReservationService {
     public AdminReservationResponse getForAdmin(Long reservationId) { return toAdminResponse(find(reservationId)); }
 
     /**
-     * 예약 행을 잠가 관리자 ID·사유로 확정하고 상태 이력과 변경 전후 상태의 감사 로그를 기록합니다.
-     * 없는 예약·확정 불가 상태는 거절하며 관련 이름과 심사 이력을 포함한 관리자 응답을 반환합니다.
+     * 예약 행을 잠가 관리자 ID·사유로 확정하고 상태 이력과 변경 전후 상태의 감사 로그를 기록.
+     * 없는 예약·확정 불가 상태는 거절하며 관련 이름과 심사 이력을 포함한 관리자 응답을 반환.
      */
     @Transactional
     public AdminReservationResponse confirmByAdmin(Long adminUserId, Long reservationId, String reason) {
@@ -245,8 +245,8 @@ public class ReservationService {
     }
 
     /**
-     * PENDING 예약을 사유와 함께 반려하고 선점한 재고를 반환한 뒤 상태 이력과 감사 기록을 남깁니다.
-     * 이 과정의 DB 변경은 호출 트랜잭션에 참여하며, 반복 반려는 현재 상태 검사에서 거절합니다.
+     * PENDING 예약을 사유와 함께 반려하고 선점한 재고를 반환한 뒤 상태 이력과 감사 기록을 남김.
+     * 이 과정의 DB 변경은 호출 트랜잭션에 참여하며, 반복 반려는 현재 상태 검사에서 거절.
      */
     @Transactional
     public AdminReservationResponse rejectByAdmin(Long adminUserId, Long reservationId, String reason) {
@@ -294,12 +294,12 @@ public class ReservationService {
                         .map(AdminReservationStatusHistoryResponse::from).toList());
     }
 
-    // 사용자 ID로 관광객 계정을 조회해 유효성을 검증합니다.
+    // 사용자 ID로 관광객 계정을 조회해 유효성을 검증.
     private void requireTourist(Long userId) {
         requireTourist(userRepository.findById(userId).orElse(null));
     }
 
-    // 탈퇴·정지되지 않은 일반 사용자 계정인지 확인합니다.
+    // 탈퇴·정지되지 않은 일반 사용자 계정인지 확인.
     private void requireTourist(User user) {
         LocalDateTime now = LocalDateTime.now(clock);
         if (user == null || user.getRole() != UserRole.USER || user.isWithdrawn() || user.isCurrentlyBanned(now)) {
@@ -307,7 +307,7 @@ public class ReservationService {
         }
     }
 
-    // 예약자 본인인지 확인합니다.
+    // 예약자 본인인지 확인.
     private void requireTouristOwnership(Reservation reservation, Long userId) {
         requireTourist(userId);
         if (!reservation.getTouristUserId().equals(userId)) {
@@ -315,7 +315,7 @@ public class ReservationService {
         }
     }
 
-    // 가용 상품의 장소 소유자이며 활성 사업자인지 검증합니다.
+    // 가용 상품의 장소 소유자이며 활성 사업자인지 검증.
     private void requireAvailabilityOwner(Long ownerId, Long availabilityId) {
         PlaceAvailability availability = availabilityRepository.findById(availabilityId)
                 .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
@@ -327,24 +327,24 @@ public class ReservationService {
         availabilityAccessPolicy.requireActiveMerchantOwner(ownerId, LocalDateTime.now(clock));
     }
 
-    // 생성일과 ID 내림차순 페이지 요청을 생성합니다.
+    // 생성일과 ID 내림차순 페이지 요청을 생성.
     private PageRequest pageRequest(int page, int limit) {
         return PageRequest.of(page - 1, limit, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
     }
 
-    // Spring Page 결과를 API 페이지 응답 DTO로 변환합니다.
+    // Spring Page 결과를 API 페이지 응답 DTO로 변환.
     private ReservationPageResponse toPageResponse(Page<Reservation> reservations, int page, int limit) {
         return new ReservationPageResponse(reservations.getContent().stream().map(ReservationResponse::from).toList(),
                 page, limit, reservations.getTotalElements(), reservations.getTotalPages(), reservations.hasNext());
     }
 
-    // 예약을 조회하고 없으면 도메인 예외를 발생시킵니다.
+    // 예약을 조회하고 없으면 도메인 예외를 발생시킴.
     private Reservation find(Long id) {
         return reservationRepository.findById(id)
                 .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
     }
 
-    // 상태 변경을 위해 예약을 비관적 잠금으로 조회합니다.
+    // 상태 변경을 위해 예약을 비관적 잠금으로 조회.
     private Reservation findForUpdate(Long id) {
         return reservationRepository.findByIdForUpdate(id)
                 .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));

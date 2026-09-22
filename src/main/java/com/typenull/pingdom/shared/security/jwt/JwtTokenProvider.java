@@ -12,8 +12,8 @@ import java.util.UUID;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
-/** HMAC 서명·만료·토큰 종류를 확인하고 JWT 발급 및 claim 추출을 담당한다.
- * 사용자 계정 상태나 refresh token의 저장소 폐기 여부는 호출자가 별도로 확인한다. */
+/** HMAC 서명·만료·토큰 종류를 확인하고 JWT 발급 및 claim 추출을 담당.
+ * 사용자 계정 상태나 refresh token의 저장소 폐기 여부는 호출자가 별도로 확인. */
 @Component
 public class JwtTokenProvider {
 
@@ -26,13 +26,13 @@ public class JwtTokenProvider {
     }
 
     // Access Token 생성 메서드
-    /** 사용자 식별자와 권한을 담은 access token을 발급합니다. */
+    /** 사용자 식별자와 권한을 담은 access token을 발급. */
     public String generateAccessToken(Long userId, String username, String role) {
         return buildToken(userId, username, role, jwtProperties.accessTokenExpirationSeconds(), "access");
     }
 
     // Refresh Token 생성 메서드
-    /** 사용자 식별자와 매번 새로운 jti를 담은 refresh token을 발급해 같은 시점의 토큰도 구분한다. */
+    /** 사용자 식별자와 매번 새로운 jti를 담은 refresh token을 발급해 같은 시점의 토큰도 구분. */
     public String generateRefreshToken(Long userId) {
         return buildToken(userId, null, null, jwtProperties.refreshTokenExpirationSeconds(), "refresh");
     }
@@ -42,7 +42,7 @@ public class JwtTokenProvider {
         return parseRefreshToken(refreshToken).status() == TokenStatus.VALID;
     }
 
-    /** refresh 종류와 숫자 사용자 식별자를 해석한다. 만료와 그 외 파싱 실패를 구분하며 실패 결과의 userId는 null이다. */
+    /** refresh 종류와 숫자 사용자 식별자를 해석. 만료와 그 외 파싱 실패를 구분하며 실패 결과의 userId는 null. */
     public RefreshTokenParseResult parseRefreshToken(String refreshToken) {
         try {
             Claims claims = parseClaims(refreshToken);
@@ -64,7 +64,7 @@ public class JwtTokenProvider {
         return validateAccessTokenStatus(accessToken) == TokenStatus.VALID;
     }
 
-    /** 서명·만료·access 종류와 숫자 subject를 확인한다. username·role은 누락될 수 있으며 이 메서드에서 필수 검증하지 않는다. */
+    /** 서명·만료·access 종류와 숫자 subject를 확인. username·role은 누락될 수 있으며 이 메서드의 필수 검증 대상에서 제외. */
     public AccessTokenParseResult parseAccessToken(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);
@@ -84,7 +84,7 @@ public class JwtTokenProvider {
         }
     }
 
-    /** 서명·만료 및 access 종류만 판정한다. payload를 읽는 parseAccessToken과 달리 subject를 숫자로 변환하지 않는다. */
+    /** 서명·만료 및 access 종류만 판정. subject의 숫자 변환은 payload를 읽는 parseAccessToken에서 담당. */
     public TokenStatus validateAccessTokenStatus(String accessToken) {
         try {
             Claims claims = parseClaims(accessToken);
@@ -181,11 +181,11 @@ public class JwtTokenProvider {
     public record AccessTokenPayload(Long userId, String username, String role) {
     }
 
-    /** 성공 시 payload, 실패 시 null을 담는다. 호출자는 상태 확인 후 payload에 접근해야 한다. */
+    /** 성공 시 payload, 실패 시 null을 담음. 호출자는 상태 확인 후 payload에 접근해야 함. */
     public record AccessTokenParseResult(TokenStatus status, AccessTokenPayload payload) {
     }
 
-    /** 성공 시 사용자 식별자를 담고 만료·무효 토큰에는 null을 반환한다. */
+    /** 성공 시 사용자 식별자를 담고 만료·무효 토큰에는 null을 반환. */
     public record RefreshTokenParseResult(TokenStatus status, Long userId) {
     }
 }

@@ -60,7 +60,7 @@ class MapImageS3OrphanReportServiceTest {
     private MapImageS3OrphanReportService service;
 
     /**
-     * S3·Redis·사진 저장소·작업 executor를 대역으로 연결해 고아 객체 보고와 삭제 판단을 분리 검증한다.
+     * S3·Redis·사진 저장소·작업 executor를 대역으로 연결해 고아 객체 보고와 삭제 판단을 분리 검증.
      */
     @BeforeEach
     void setUp() {
@@ -73,7 +73,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * S3 3개 키를 원본·썸네일 DB 참조와 함께 비교해 DB 2건·고아 1건 및 고아 키 목록을 계산하는지 검증한다.
+     * S3 3개 키를 원본·썸네일 DB 참조와 함께 비교해 DB 2건·고아 1건 및 고아 키 목록을 계산하는지 검증.
      */
     @Test
     void comparesOriginalAndThumbnailUsage() {
@@ -95,7 +95,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * 완료 Redis 메타데이터와 첫 후보 2건을 읽어 전체 후보 3건·2페이지·다음 있음 및 후보 키를 응답하는지 검증한다.
+     * 완료 Redis 메타데이터와 첫 후보 2건을 읽어 전체 후보 3건·2페이지·다음 있음 및 후보 키를 응답하는지 검증.
      */
     @Test
     void readsCachedOrphanReportPage() {
@@ -123,7 +123,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * 보고서 후보 2개 중 현재 DB가 사용하는 키는 사유와 함께 실패로 남기고 미사용 키만 S3에서 삭제하는지 검증한다.
+     * 보고서 후보 2개 중 현재 DB가 사용하는 키는 사유와 함께 실패로 남기고 미사용 키만 S3에서 삭제하는지 검증.
      */
     @Test
     void rechecksUsageBeforeOrphanDeletion() {
@@ -148,7 +148,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * 보고서 후보 집합에 없는 키는 실패 처리하고 S3 삭제·DB 사용 여부 조회를 하지 않는지 검증한다.
+     * 보고서 후보 집합에 없는 키는 실패 처리하고 S3 삭제·DB 사용 여부 조회를 하지 않는지 검증.
      */
     @Test
     void rejectsKeysOutsideReportCandidates() {
@@ -168,8 +168,8 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * 실행 중 새로고침은 같은 RUNNING 보고서를 반환하고 작업은 한 번만 제출하는지 검증한다.
-     * 보관한 Runnable을 완료한 뒤에는 새 보고서 ID로 다음 작업을 제출해야 한다.
+     * 실행 중 새로고침은 같은 RUNNING 보고서를 반환하고 작업은 한 번만 제출하는지 검증.
+     * 보관한 Runnable을 완료한 뒤에는 새 보고서 ID로 다음 작업을 제출해야 함.
      */
     @Test
     void reusesRunningOrphanReport() {
@@ -200,7 +200,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * executor 대기열 거절 시 FAILED와 포화 메시지를 기록하고 다음 시도는 새 ID로 다시 제출하는지 검증한다.
+     * executor 대기열 거절 시 FAILED와 포화 메시지를 기록하고 다음 시도는 새 ID로 다시 제출하는지 검증.
      */
     @Test
     void failsRejectedReportAndRetries() {
@@ -222,7 +222,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * 삭제 후보 검증이 실행될 수 있도록 Redis 보고서 상태를 COMPLETED로 설정한다.
+     * 삭제 후보 검증이 실행될 수 있도록 Redis 보고서 상태를 COMPLETED로 설정.
      */
     private void stubCompletedReport() {
         when(redisTemplate.opsForHash()).thenReturn(hashOperations);
@@ -230,7 +230,7 @@ class MapImageS3OrphanReportServiceTest {
     }
 
     /**
-     * Redis hash 쓰기·읽기를 메모리 맵으로 연결해 비동기 보고서 상태 변경을 테스트 안에서 재현한다.
+     * Redis hash 쓰기·읽기를 메모리 맵으로 연결해 비동기 보고서 상태 변경을 테스트 안에서 재현.
      */
     private void stubReportMetadata() {
         Map<String, Map<Object, Object>> metadata = new HashMap<>();

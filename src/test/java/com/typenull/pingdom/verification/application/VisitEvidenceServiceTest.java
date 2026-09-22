@@ -24,9 +24,9 @@ class VisitEvidenceServiceTest {
     private VisitEvidenceService service;
 
     /**
-     * 시계를 고정하고 보관 기간 30일·최대 파일 크기 1KB로 서비스를 구성한다.
+     * 시계를 고정하고 보관 기간 30일·최대 파일 크기 1KB로 서비스를 구성.
      * S3는 고정 key를 반환하고 저장 mock은 전달받은 메타데이터로 증빙을 만들어,
-     * 실제 외부 저장소 없이 업로드와 저장에 전달되는 값을 확인할 수 있게 한다.
+     * 실제 외부 저장소 없이 업로드와 저장에 전달되는 값을 확인할 수 있게 함.
      */
     @BeforeEach
     void setUp() {
@@ -43,8 +43,8 @@ class VisitEvidenceServiceTest {
     }
 
     /**
-     * JPEG 업로드 결과가 체크인 2와 연결되고 고정 시각으로부터 30일 후 만료되는지 검증한다.
-     * S3가 반환한 key와 JPEG 콘텐츠 타입, 생성·만료 시각이 저장 서비스에 전달되어야 한다.
+     * JPEG 업로드 결과가 체크인 2와 연결되고 고정 시각으로부터 30일 후 만료되는지 검증.
+     * S3가 반환한 key와 JPEG 콘텐츠 타입, 생성·만료 시각이 저장 서비스에 전달되어야 함.
      */
     @Test
     void uploadWithRetention() throws Exception {
@@ -57,8 +57,8 @@ class VisitEvidenceServiceTest {
     }
 
     /**
-     * 소유권 확인이 CHECK_IN_NOT_FOUND로 실패하면 같은 오류를 호출자에게 전달한다.
-     * S3와 어떤 상호작용도 발생하지 않아 권한 확인 전에 파일이 업로드되는 회귀를 방지한다.
+     * 소유권 확인이 CHECK_IN_NOT_FOUND로 실패하면 같은 오류를 호출자에게 전달.
+     * S3와 어떤 상호작용도 발생하지 않아 권한 확인 전에 파일이 업로드되는 회귀를 방지.
      */
     @Test
     void rejectUnownedCheckIn() throws Exception {
@@ -70,8 +70,8 @@ class VisitEvidenceServiceTest {
     }
 
     /**
-     * S3 업로드 후 저장이 중복 증빙 오류로 실패하면 업로드한 key를 삭제 요청하는지 검증한다.
-     * 보상 처리를 하더라도 호출자에게는 VISIT_EVIDENCE_ALREADY_EXISTS를 전달해야 한다.
+     * S3 업로드 후 저장이 중복 증빙 오류로 실패하면 업로드한 key를 삭제 요청하는지 검증.
+     * 보상 처리를 하더라도 호출자에게는 VISIT_EVIDENCE_ALREADY_EXISTS를 전달해야 함.
      */
     @Test
     void cleanUpFailedSave() throws Exception {
@@ -84,8 +84,8 @@ class VisitEvidenceServiceTest {
     }
 
     /**
-     * 중복 증빙 저장 실패에 이어 S3 삭제까지 연결 오류로 실패하는 상황을 구성한다.
-     * 삭제 시도는 수행하되 정리 오류가 최초 중복 증빙 오류를 덮어쓰지 않아야 한다.
+     * 중복 증빙 저장 실패에 이어 S3 삭제까지 연결 오류로 실패하는 상황을 구성.
+     * 삭제 시도는 수행하되 정리 오류가 최초 중복 증빙 오류를 덮어쓰지 않아야 함.
      */
     @Test
     void preserveOriginalSaveError() throws Exception {
@@ -100,9 +100,9 @@ class VisitEvidenceServiceTest {
     }
 
     /**
-     * 첫 S3 업로드의 연결 오류는 저장소 사용 불가 오류로 변환되고 DB 저장은 호출되지 않는다.
-     * 호출자가 다시 업로드하면 새 S3 key로 증빙이 저장되어야 한다.
-     * 서비스 내부의 자동 재시도가 아니라 두 번의 명시적 호출을 검증한다.
+     * 첫 S3 업로드의 연결 실패에 대한 저장소 사용 불가 오류 변환과 DB 저장 미호출 확인.
+     * 호출자가 다시 업로드하면 새 S3 key로 증빙이 저장되어야 함.
+     * 서비스 내부의 자동 재시도가 아니라 두 번의 명시적 호출을 검증.
      */
     @Test
     void retryFailedUpload() throws Exception {
@@ -122,14 +122,14 @@ class VisitEvidenceServiceTest {
                 eq("image/jpeg"), anyLong(), eq(NOW), eq(NOW.plus(Duration.ofDays(30))));
     }
 
-    /** 이미지 디코딩 검사를 통과하는 2×2 RGB JPEG를 메모리에서 만들어 업로드 입력으로 사용한다. */
+    /** 이미지 디코딩 검사를 통과하는 2×2 RGB JPEG를 메모리에서 만들어 업로드 입력으로 사용. */
     private MockMultipartFile jpeg() throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "jpg", output);
         return new MockMultipartFile("file", "visit.jpg", "image/jpeg", output.toByteArray());
     }
 
-    /** 실행 결과가 방문 인증 예외인지 확인하고 내부 오류 코드까지 기대값과 대조한다. */
+    /** 실행 결과가 방문 인증 예외인지 확인하고 내부 오류 코드까지 기대값과 대조. */
     private void assertError(org.assertj.core.api.ThrowableAssert.ThrowingCallable callable,
             VisitorVerificationErrorCode expected) {
         assertThatThrownBy(callable).isInstanceOf(VisitorVerificationException.class)

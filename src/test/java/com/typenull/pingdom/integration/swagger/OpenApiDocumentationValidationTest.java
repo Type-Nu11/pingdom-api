@@ -35,7 +35,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 생성된 OpenAPI의 그룹·인증·스키마·예시를 검증한다. 내장 예시 검사기는 JSON Schema 전체 규칙을 구현하지 않는다.
+ * 생성된 OpenAPI의 그룹·인증·스키마·예시를 검증. 내장 예시 검사기의 범위는 JSON Schema 규칙 일부로 한정.
  */
 @Tag("integration")
 @SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
@@ -82,7 +82,7 @@ class OpenApiDocumentationValidationTest {
     private ObjectMapper objectMapper;
 
     /**
-     * 여섯 문서의 요청·응답 예시를 순회해 helper가 지원하는 타입·enum·필수 필드 불일치를 모아 확인한다. 전체 JSON Schema 규격 검증은 아니다.
+     * 여섯 문서의 요청·응답 예시를 순회해 helper가 지원하는 타입·enum·필수 필드 불일치를 모아 확인. 전체 JSON Schema 규격은 검증 범위에서 제외.
      */
     @Test
     void examplesMatchSchemas() throws Exception {
@@ -125,7 +125,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 통합 문서의 bearerAuth가 HTTP Bearer 및 JWT 형식으로 선언됐는지 확인한다.
+     * 통합 문서의 bearerAuth가 HTTP Bearer 및 JWT 형식으로 선언됐는지 확인.
      */
     @Test
     void jwtSecurityScheme() throws Exception {
@@ -138,7 +138,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 가용량·리뷰·입지 분석의 인증 오류와 FCM 등록의 일반·검증 오류 oneOf 계약을 확인한다.
+     * 가용량·리뷰·입지 분석의 인증 오류와 FCM 등록의 일반·검증 오류 oneOf 계약을 확인.
      */
     @Test
     void groupAuthorizationContracts() throws Exception {
@@ -167,7 +167,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 공개 경로 목록을 제외한 모든 문서 operation이 Bearer 및 공통 401·403 오류 스키마를 선언하는지 확인한다.
+     * 공개 경로 목록을 제외한 모든 문서 operation이 Bearer 및 공통 401·403 오류 스키마를 선언하는지 확인.
      */
     @Test
     void protectedOperationSecurity() throws Exception {
@@ -196,7 +196,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 각 그룹의 operation과 태그를 baseline에 비교하고 허용 기능 분류 하나 및 태그 순서·설명을 확인한다.
+     * 각 그룹의 operation과 태그를 baseline에 비교하고 허용 기능 분류 하나 및 태그 순서·설명을 확인.
      */
     @Test
     void audienceAndSectionContracts() throws Exception {
@@ -233,7 +233,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * path 수준 메타데이터를 제외하고 HTTP 메서드와 경로 조합을 정렬된 집합으로 만든다.
+     * path 수준 메타데이터를 제외하고 HTTP 메서드와 경로 조합을 정렬된 집합으로 생성.
      */
     private Set<String> operationKeys(JsonNode document) {
         Set<String> keys = new TreeSet<>();
@@ -247,7 +247,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 최근 활동·대기 항목이 admin에만 있고 operation ID·응답 스키마·limit 범위·nullable 필드가 기대 계약인지 확인한다.
+     * 최근 활동·대기 항목이 admin에만 있고 operation ID·응답 스키마·limit 범위·nullable 필드가 기대 계약인지 확인.
      */
     @Test
     void adminDashboardContracts() throws Exception {
@@ -305,7 +305,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 탐색과 추천의 필터·limit 상한 100/20·오류 예시 및 영업·혜택·예약·추천 사유 필드를 확인한다.
+     * 탐색과 추천의 필터·limit 상한 100/20·오류 예시 및 영업·혜택·예약·추천 사유 필드를 확인.
      */
     @Test
     void discoveryRecommendationContracts() throws Exception {
@@ -376,7 +376,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 관리자 장소의 표준 카테고리·한글 이름·nullable 분류·필수 레벨과 빈 페이지 최소 페이지 수를 확인한다.
+     * 관리자 장소의 표준 카테고리·한글 이름·nullable 분류·필수 레벨과 빈 페이지 최소 페이지 수를 확인.
      */
     @Test
     void adminPlaceCategoryContract() throws Exception {
@@ -425,7 +425,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * app 체크인 생성의 요청·201 응답과 명시된 여섯 실패 상태의 공통 오류 스키마를 확인한다.
+     * app 체크인 생성의 요청·201 응답과 명시된 여섯 실패 상태의 공통 오류 스키마를 확인.
      */
     @Test
     void checkInContract() throws Exception {
@@ -443,7 +443,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 증빙 업로드의 multipart binary·인증·201·실패 응답과 증빙 파일 조회의 byte 형식을 확인한다.
+     * 증빙 업로드의 multipart binary·인증·201·실패 응답과 증빙 파일 조회의 byte 형식을 확인.
      */
     @Test
     void visitEvidenceContract() throws Exception {
@@ -468,7 +468,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * scout 사용자 제출과 관리자 검토 경로의 그룹 분리·요청/응답 참조·제보 유형 enum을 확인한다.
+     * scout 사용자 제출과 관리자 검토 경로의 그룹 분리·요청/응답 참조·제보 유형 enum을 확인.
      */
     @Test
     void scoutReportGroups() throws Exception {
@@ -499,7 +499,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * app 문서에서 구형 단수 FCM·장소·사용자 북마크 경로가 제거됐는지 확인한다.
+     * app 문서에서 구형 단수 FCM·장소·사용자 북마크 경로가 제거됐는지 확인.
      */
     @Test
     void removedAliases() throws Exception {
@@ -511,7 +511,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 여행 목적 GET/PUT 스키마와 업데이트 요청의 travelPurposes 필수 표시를 확인한다.
+     * 여행 목적 GET/PUT 스키마와 업데이트 요청의 travelPurposes 필수 표시를 확인.
      */
     @Test
     void travelPurposeContract() throws Exception {
@@ -534,7 +534,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 여행 일정·취소·현재 활동 의도 경로 및 요청/응답 스키마와 일정 생성·변경의 오류 상태를 확인한다.
+     * 여행 일정·취소·현재 활동 의도 경로 및 요청/응답 스키마와 일정 생성·변경의 오류 상태를 확인.
      */
     @Test
     void travelIntentContracts() throws Exception {
@@ -559,7 +559,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 상점 소유자·장소 신청·첨부 경로는 merchant에, 운영 심사 경로는 admin에 포함하고 구형 app 경로는 제외하는지 확인한다.
+     * 상점 소유자·장소 신청·첨부 경로는 merchant에, 운영 심사 경로는 admin에 포함하고 구형 app 경로는 제외하는지 확인.
      */
     @Test
     void merchantRegistrationGroups() throws Exception {
@@ -599,7 +599,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 상점 소유자 승인 요청 스키마에 reason이 있고 placeIds는 없는지 확인한다. 나머지 필드 전체를 제한하지는 않는다.
+     * 상점 소유자 승인 요청 스키마에 reason이 있고 placeIds는 없는지 확인. 나머지 필드 구성은 검증 범위에서 제외.
      */
     @Test
     void merchantReviewReason() throws Exception {
@@ -615,7 +615,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 신청 상태가 반복 query 배열(form/explode)로 문서화되고 유형·검색어·제출 기간 필터가 제공되는지 확인한다.
+     * 신청 상태가 반복 query 배열(form/explode)로 문서화되고 유형·검색어·제출 기간 필터가 제공되는지 확인.
      */
     @Test
     void applicationFilterContract() throws Exception {
@@ -645,7 +645,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 구형 추천·지도·상점 심사·광고 경로 및 관리자 알림 사용자 ID, 구형 제재 기간 파라미터가 문서에서 빠졌는지 확인한다.
+     * 구형 추천·지도·상점 심사·광고 경로 및 관리자 알림 사용자 ID, 구형 제재 기간 파라미터가 문서에서 빠졌는지 확인.
      */
     @Test
     void removedLegacyContracts() throws Exception {
@@ -701,7 +701,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 관광객 혜택·쿠폰 경로와 상점 혜택 관리·사용 처리 경로가 서로의 그룹에 노출되지 않는지 확인한다.
+     * 관광객 혜택·쿠폰 경로와 상점 혜택 관리·사용 처리 경로가 서로의 그룹에 노출되지 않는지 확인.
      */
     @Test
     void offerCouponGroups() throws Exception {
@@ -725,7 +725,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 상점 혜택 목록의 장소 ID 타입·상태 enum과 소유 범위·빈 목록 설명을 확인한다.
+     * 상점 혜택 목록의 장소 ID 타입·상태 enum과 소유 범위·빈 목록 설명을 확인.
      */
     @Test
     void merchantOfferFilters() throws Exception {
@@ -742,7 +742,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 관광 정보 요청·응답의 영문명·요약 및 자동완성 영문명이 null을 허용하는지 확인한다.
+     * 관광 정보 요청·응답의 영문명·요약 및 자동완성 영문명이 null을 허용하는지 확인.
      */
     @Test
     void nullableTouristStrings() throws Exception {
@@ -761,7 +761,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 관리자 장소 게시물의 표시 상태는 VISIBLE/HIDDEN이고 숨김 사유는 nullable인지 확인한다.
+     * 관리자 장소 게시물의 표시 상태는 VISIBLE/HIDDEN이고 숨김 사유는 nullable인지 확인.
      */
     @Test
     void postVisibilityContract() throws Exception {
@@ -775,7 +775,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 성장 응답 참조와 노출·숨김 사진의 성장 반영 여부를 구분한 설명을 확인한다.
+     * 성장 응답 참조와 노출·숨김 사진의 성장 반영 여부를 구분한 설명을 확인.
      */
     @Test
     void growthPhotoCountContract() throws Exception {
@@ -792,7 +792,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 탐색 정렬·관광 카테고리·거리와 클릭 필수 필드, 관리자 노출 상태 변경의 그룹·enum·사유 필수 계약을 확인한다.
+     * 탐색 정렬·관광 카테고리·거리와 클릭 필수 필드, 관리자 노출 상태 변경의 그룹·enum·사유 필수 계약을 확인.
      */
     @Test
     void discoveryFilterSortContract() throws Exception {
@@ -841,7 +841,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 관광객 카드의 필수 int64 장소 ID, 정상·404 응답과 영업·출처·검증 요약 필드를 확인한다.
+     * 관광객 카드의 필수 int64 장소 ID, 정상·404 응답과 영업·출처·검증 요약 필드를 확인.
      */
     @Test
     void touristCardContract() throws Exception {
@@ -875,7 +875,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 방문 결정 문서의 장소 ID·응답·오류 스키마 및 행사·가용량·혜택·판정 시각 필드를 확인한다.
+     * 방문 결정 문서의 장소 ID·응답·오류 스키마 및 행사·가용량·혜택·판정 시각 필드를 확인.
      */
     @Test
     void visitDecisionContract() throws Exception {
@@ -901,7 +901,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 방문 결정 경로가 app에는 있고 admin에는 없는지 확인한다.
+     * 방문 결정 경로가 app에는 있고 admin에는 없는지 확인.
      */
     @Test
     void visitDecisionGroup() throws Exception {
@@ -913,7 +913,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 관광객용 상점 정보 스키마는 설명·예약 URL·갱신 시각을 노출하고 편집자 ID는 제외하는지 확인한다.
+     * 관광객용 상점 정보 스키마는 설명·예약 URL·갱신 시각을 노출하고 편집자 ID는 제외하는지 확인.
      */
     @Test
     void merchantEditorPrivacy() throws Exception {
@@ -929,7 +929,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 지도·카드·방문 결정·공지·검증 사진·추천 설명·전환 문서의 인증·범위·필수/nullable 필드를 확인한다.
+     * 지도·카드·방문 결정·공지·검증 사진·추천 설명·전환 문서의 인증·범위·필수/nullable 필드를 확인.
      */
     @Test
     void explorationContracts() throws Exception {
@@ -1041,7 +1041,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 정기 영업시간·날짜 예외의 배열/불리언 구조, 시간 문자열 형식과 변경 실패 응답을 확인한다.
+     * 정기 영업시간·날짜 예외의 배열/불리언 구조, 시간 문자열 형식과 변경 실패 응답을 확인.
      */
     @Test
     void operatingScheduleContract() throws Exception {
@@ -1071,7 +1071,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 행사 공개 조회와 관리자 작성·게시·취소 경로의 스키마, 필수 필드 수와 오류 계약을 확인한다.
+     * 행사 공개 조회와 관리자 작성·게시·취소 경로의 스키마, 필수 필드 수와 오류 계약을 확인.
      */
     @Test
     void periodEventContract() throws Exception {
@@ -1106,7 +1106,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * app 행사 조회 문서와 admin 행사 관리 문서가 분리되는지 확인한다.
+     * app 행사 조회 문서와 admin 행사 관리 문서가 분리되는지 확인.
      */
     @Test
     void periodEventGroups() throws Exception {
@@ -1119,7 +1119,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 정보 신고·반박 사용자 경로와 관리자 검토 경로를 분리하고 대상·사유·처리 상태 enum을 확인한다.
+     * 정보 신고·반박 사용자 경로와 관리자 검토 경로를 분리하고 대상·사유·처리 상태 enum을 확인.
      */
     @Test
     void informationDisputeGroups() throws Exception {
@@ -1176,7 +1176,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 알림 설정 요청·응답의 방해 금지 시작/종료가 time 형식 문자열인지 확인한다.
+     * 알림 설정 요청·응답의 방해 금지 시작/종료가 time 형식 문자열인지 확인.
      */
     @Test
     void quietHoursContract() throws Exception {
@@ -1195,7 +1195,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 연쇄 내부 참조의 JSON Pointer에서 ~1과 ~0을 복원해 최종 객체 스키마를 찾는지 확인한다.
+     * 연쇄 내부 참조의 JSON Pointer에서 ~1과 ~0을 복원해 최종 객체 스키마를 찾는지 확인.
      */
     @Test
     void nestedSchemaReferences() throws Exception {
@@ -1231,7 +1231,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * operation 존재·Bearer·성공 상태와 지정 실패 상태의 공통 오류 참조를 확인한다.
+     * operation 존재·Bearer·성공 상태와 지정 실패 상태의 공통 오류 참조를 확인.
      */
     private void assertAuthenticatedOperation(
             JsonNode document,
@@ -1259,7 +1259,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 이름으로 찾은 파라미터 스키마의 최솟값과 최댓값을 비교한다.
+     * 이름으로 찾은 파라미터 스키마의 최솟값과 최댓값을 비교.
      */
     private void assertParameterRange(
             JsonNode operation,
@@ -1277,7 +1277,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * MockMvc 응답 본문을 UTF-8 JSON으로 읽는다. HTTP 상태 assertion은 이 helper에 포함하지 않는다.
+     * MockMvc 응답 본문을 UTF-8 JSON으로 읽음. HTTP 상태 assertion은 호출부의 책임.
      */
     private JsonNode readApiDocs(String apiDocPath) throws Exception {
         String body = mockMvc.perform(org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get(apiDocPath))
@@ -1288,7 +1288,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 지정 속성의 존재와 nullable=true 선언을 함께 확인한다.
+     * 지정 속성의 존재와 nullable=true 선언을 함께 확인.
      */
     private void assertNullableProperty(JsonNode document, String schemaName, String propertyName) {
         JsonNode property = document.path("components")
@@ -1306,7 +1306,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 이름이 같은 첫 파라미터를 반환하고 누락 시 MissingNode를 반환한다.
+     * 이름이 같은 첫 파라미터를 반환하고 누락 시 MissingNode를 반환.
      */
     private JsonNode parameter(JsonNode operation, String parameterName) {
         for (JsonNode parameter : operation.path("parameters")) {
@@ -1318,7 +1318,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * required 배열의 선언 순서를 유지한 필드 이름 목록을 만든다.
+     * required 배열의 선언 순서를 유지한 필드 이름 목록을 생성.
      */
     private List<String> requiredFields(JsonNode schema) {
         List<String> fields = new ArrayList<>();
@@ -1327,7 +1327,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 각 미디어 타입의 단일 example과 이름별 examples.value를 검증하고 오류 위치를 함께 누적한다. content가 없으면 생략한다.
+     * 각 미디어 타입의 단일 example과 이름별 examples.value를 검증하고 오류 위치를 함께 누적. content가 없으면 생략.
      */
     private void validateContentExamples(
             JsonNode document,
@@ -1372,7 +1372,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 내부 참조를 해석해 enum·복합 스키마·기본 타입을 검사한다. null은 생략하고 oneOf는 하나 이상 일치하면 통과하므로 배타성·범위·format은 보장하지 않는다.
+     * 내부 참조를 해석해 enum·복합 스키마·기본 타입을 검사. null은 생략하고 oneOf는 하나 이상 일치하면 통과. 배타성·범위·format은 검증 범위에서 제외.
      */
     private void validateAgainstSchema(
             JsonNode document,
@@ -1461,7 +1461,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 객체 타입과 required 이름의 존재를 확인하고 null이 아닌 선언 속성을 재귀 검사한다. 추가 속성 및 null 허용 여부는 검사하지 않는다.
+     * 객체 타입과 required 이름의 존재를 확인하고 null이 아닌 선언 속성을 재귀 검사. 추가 속성과 null 허용 여부는 검증 범위에서 제외.
      */
     private void validateObject(
             JsonNode document,
@@ -1499,7 +1499,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 배열 타입을 확인한 뒤 인덱스를 오류 경로에 붙여 모든 원소를 items 스키마로 검사한다.
+     * 배열 타입을 확인한 뒤 인덱스를 오류 경로에 붙여 모든 원소를 items 스키마로 검사.
      */
     private void validateArray(
             JsonNode document,
@@ -1525,7 +1525,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * path 항목 중 OpenAPI의 HTTP operation으로 취급할 메서드 이름을 판별한다.
+     * path 항목 중 OpenAPI의 HTTP operation으로 취급할 메서드 이름을 판별.
      */
     private boolean isHttpMethod(String method) {
         return switch (method) {
@@ -1535,7 +1535,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 이 검증에서 공개로 간주하는 루트·auth 하위·상담 intro를 제외한다. 런타임 보안 설정을 읽는 메서드는 아니다.
+     * 이 검증에서 공개로 간주하는 루트·auth 하위·상담 intro를 제외. 런타임 보안 설정 조회는 이 helper의 범위에서 제외.
      */
     private boolean isPublicPath(String path) {
         return "/".equals(path)
@@ -1544,7 +1544,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 대시보드 limit이 선택 query 정수이며 기본 10, 범위 1~50으로 문서화됐는지 확인한다.
+     * 대시보드 limit이 선택 query 정수이며 기본 10, 범위 1~50으로 문서화됐는지 확인.
      */
     private void assertLimitParameter(JsonNode parameter) {
         assertThat(parameter.path("name").asText()).isEqualTo("limit");
@@ -1557,7 +1557,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 응답 상태가 존재하고 application/json 또는 와일드카드 미디어 타입이 ErrorResponse를 참조하는지 확인한다.
+     * 응답 상태가 존재하고 application/json 또는 와일드카드 미디어 타입이 ErrorResponse를 참조하는지 확인.
      */
     private void assertErrorResponse(JsonNode operation, String status) {
         assertThat(operation.path("responses").has(status)).isTrue();
@@ -1571,7 +1571,7 @@ class OpenApiDocumentationValidationTest {
     }
 
     /**
-     * 내부 JSON Pointer 참조를 반복 해석하되 외부 참조·누락·직접 자기 참조에서 멈춘다. 여러 스키마 사이의 순환을 별도로 탐지하지 않는다.
+     * 내부 JSON Pointer 참조를 반복 해석하되 외부 참조·누락·직접 자기 참조에서 중단. 여러 스키마 사이의 순환 탐지는 처리 범위에서 제외.
      */
     private JsonNode resolveSchema(JsonNode document, JsonNode schema) {
         if (schema == null || schema.isMissingNode()) {

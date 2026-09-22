@@ -96,7 +96,7 @@ class UserDataExportServiceTest {
     private UserDataExportService userDataExportService;
 
     /**
-     * 내보내기에서 활동 의도와 쿠폰의 만료 여부를 판정할 UTC 현재 시각을 고정한다.
+     * 내보내기에서 활동 의도와 쿠폰의 만료 여부를 판정할 UTC 현재 시각을 고정.
      */
     @BeforeEach
     void setUpClock() {
@@ -105,8 +105,8 @@ class UserDataExportServiceTest {
     }
 
     /**
-     * 사용자·북마크·좋아요·여행 일정·활동 의도·점주 인증·혜택·쿠폰이 내보내기 결과에 매핑되는지 검증한다.
-     * 사업자 번호 복호화, 만료 쿠폰 상태 및 요청자와 대상자가 같은 개인정보 처리 이벤트도 확인한다.
+     * 사용자·북마크·좋아요·여행 일정·활동 의도·점주 인증·혜택·쿠폰이 내보내기 결과에 매핑되는지 검증.
+     * 사업자 번호 복호화, 만료 쿠폰 상태 및 요청자와 대상자가 같은 개인정보 처리 이벤트도 확인.
      */
     @Test
     void exportsPersonalData() {
@@ -220,7 +220,7 @@ class UserDataExportServiceTest {
     }
 
     /**
-     * 내보내기의 최근 좋아요 조회에 페이지 크기 50을 전달하는지 확인해 조회량 제한 계약을 검증한다.
+     * 내보내기의 최근 좋아요 조회에 페이지 크기 50을 전달하는지 확인해 조회량 제한 계약을 검증.
      */
     @Test
     void limitsExportedLikesQuery() {
@@ -245,7 +245,7 @@ class UserDataExportServiceTest {
     }
 
     /**
-     * 현재 시각과 만료 시각이 같은 활동 의도는 내보내기 결과에서 null로 제외되는지 검증한다.
+     * 현재 시각과 만료 시각이 같은 활동 의도는 내보내기 결과에서 null로 제외되는지 검증.
      */
     @Test
     void excludesExpiredActivityIntent() {

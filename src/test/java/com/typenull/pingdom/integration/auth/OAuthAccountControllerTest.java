@@ -44,7 +44,7 @@ import org.springframework.security.oauth2.client.authentication.OAuth2Authentic
 import org.springframework.security.oauth2.core.OAuth2AuthenticationException;
 
 /**
- * Google 연동·해제 권한과 성공 핸들러의 토큰 전달을 검증한다. Google 서버 호출은 실행하지 않는다.
+ * Google 연동·해제 권한과 성공 핸들러의 토큰 전달을 검증. 실제 Google 서버 호출은 검증 범위에서 제외.
  */
 @Tag("integration")
 @SpringBootTest
@@ -73,7 +73,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     private OAuth2LinkTokenService oAuth2LinkTokenService;
 
     /**
-     * 인증된 연동 시작 요청이 연동 쿠키와 Google 인가 경로를 반환하는지 확인한다.
+     * 인증된 연동 시작 요청이 연동 쿠키와 Google 인가 경로를 반환하는지 확인.
      */
     @Test
     void startGoogleLink() throws Exception {
@@ -88,7 +88,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 로컬 사용자와 이메일이 일치하면 Google provider ID 연관관계가 저장되는지 확인한다.
+     * 로컬 사용자와 이메일이 일치하면 Google provider ID 연관관계가 저장되는지 확인.
      */
     @Test
     void linkMatchingEmail() {
@@ -100,7 +100,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 다른 사용자에게 이미 연결된 provider ID는 OAUTH_ACCOUNT_ALREADY_LINKED로 거절되는지 확인한다.
+     * 다른 사용자에게 이미 연결된 provider ID는 OAUTH_ACCOUNT_ALREADY_LINKED로 거절되는지 확인.
      */
     @Test
     void linkOwnedProviderId() {
@@ -119,7 +119,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 로컬 사용자 이메일과 다른 Google 이메일의 연결을 OAUTH_EMAIL_MISMATCH로 거절하는지 확인한다.
+     * 로컬 사용자 이메일과 다른 Google 이메일의 연결을 OAUTH_EMAIL_MISMATCH로 거절하는지 확인.
      */
     @Test
     void linkMismatchedEmail() {
@@ -132,7 +132,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 기존 로컬 이메일로 새 Google 사용자를 만들 때 계정 충돌 안내 코드를 반환하는지 확인한다.
+     * 기존 로컬 이메일로 새 Google 사용자를 만들 때 계정 충돌 안내 코드를 반환하는지 확인.
      */
     @Test
     void localEmailConflict() {
@@ -145,7 +145,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 비밀번호 확인 없는 마지막 Google 연결 해제를 거절하고 연관관계를 보존하는지 확인한다.
+     * 비밀번호 확인 없는 마지막 Google 연결 해제를 거절하고 연관관계를 보존하는지 확인.
      */
     @Test
     void unlinkWithoutPassword() throws Exception {
@@ -161,7 +161,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 로컬 비밀번호가 활성화되지 않은 OAuth 전용 계정은 비밀번호를 제출해도 연결을 유지하는지 확인한다.
+     * 로컬 비밀번호가 활성화되지 않은 OAuth 전용 계정은 비밀번호를 제출해도 연결을 유지하는지 확인.
      */
     @Test
     void unlinkOAuthOnlyUser() throws Exception {
@@ -180,7 +180,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 잘못된 비밀번호로 연결 해제 시 INVALID_CREDENTIALS를 반환하고 연결 행을 보존하는지 확인한다.
+     * 잘못된 비밀번호로 연결 해제 시 INVALID_CREDENTIALS를 반환하고 연결 행을 보존하는지 확인.
      */
     @Test
     void unlinkWrongPassword() throws Exception {
@@ -200,7 +200,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 올바른 로컬 비밀번호 확인 후 linked=false 응답과 연결 행 삭제를 확인한다.
+     * 올바른 로컬 비밀번호 확인 후 linked=false 응답과 연결 행 삭제를 확인.
      */
     @Test
     void unlinkMatchingPassword() throws Exception {
@@ -220,7 +220,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 연동 쿠키가 있는 OAuth 성공 콜백은 연동 완료로 리다이렉트하고 기존 갱신 토큰을 유지하는지 확인한다.
+     * 연동 쿠키가 있는 OAuth 성공 콜백은 연동 완료로 리다이렉트하고 기존 갱신 토큰을 유지하는지 확인.
      */
     @Test
     void linkPreservesRefreshToken() throws Exception {
@@ -242,7 +242,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * OAuth 로그인 후 공통 갱신 쿠키의 /auth 경로·HttpOnly 속성과 구형 쿠키 부재를 확인한다.
+     * OAuth 로그인 후 공통 갱신 쿠키의 /auth 경로·HttpOnly 속성과 구형 쿠키 부재를 확인.
      */
     @Test
     void oauthRefreshCookie() throws Exception {
@@ -268,7 +268,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 임시 접근 쿠키 교환 시 본문에는 접근 토큰만 포함하고 응답에 쿠키 변경 헤더가 있는지 확인한다.
+     * 임시 접근 쿠키 교환 시 본문에는 접근 토큰만 포함하고 응답에 쿠키 변경 헤더가 있는지 확인.
      */
     @Test
     void oauthAccessTokenExchange() {
@@ -286,7 +286,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 연결 해제 검증을 위해 사용자와 Google provider ID의 관계를 직접 저장한다.
+     * 연결 해제 검증을 위해 사용자와 Google provider ID의 관계를 직접 저장.
      */
     private void linkAccount(User user, String providerId) {
         oAuthAccountRepository.saveAndFlush(OAuthAccount.builder()
@@ -297,7 +297,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 사용자 역할과 Google sub 속성을 가진 인증 객체를 만들어 성공 핸들러 호출에 사용한다.
+     * 사용자 역할과 Google sub 속성을 가진 인증 객체를 만들어 성공 핸들러 호출에 사용.
      */
     private OAuth2AuthenticationToken googleAuthentication(User user, String providerId) {
         return new OAuth2AuthenticationToken(
@@ -317,7 +317,7 @@ class OAuthAccountControllerTest extends AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 저장된 사용자 정보로 API 호출용 접근 토큰을 직접 발급한다.
+     * 저장된 사용자 정보로 API 호출용 접근 토큰을 직접 발급.
      */
     private String accessToken(User user) {
         return jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());

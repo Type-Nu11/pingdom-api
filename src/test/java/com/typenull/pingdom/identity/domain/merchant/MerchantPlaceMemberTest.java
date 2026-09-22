@@ -11,7 +11,7 @@ class MerchantPlaceMemberTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 4, 10, 0);
 
     /**
-     * 소유자는 OWNER로 생성하고 일반 STAFF 멤버는 MANAGER로 역할을 변경할 수 있는지 검증한다.
+     * 소유자는 OWNER로 생성하고 일반 STAFF 멤버는 MANAGER로 역할을 변경할 수 있는지 검증.
      */
     @Test
     void createsOwnerAndChangesMemberRole() {
@@ -24,7 +24,7 @@ class MerchantPlaceMemberTest {
     }
 
     /**
-     * 일반 멤버 생성과 초대에 OWNER를 지정하면 모두 IllegalArgumentException으로 거절하는지 검증한다.
+     * 일반 멤버 생성과 초대에 OWNER를 지정하면 모두 IllegalArgumentException으로 거절하는지 검증.
      */
     @Test
     void rejectsInvitedOwnerRole() {
@@ -36,7 +36,7 @@ class MerchantPlaceMemberTest {
     }
 
     /**
-     * 해제된 멤버 재활성화가 같은 객체의 ACTIVE·MANAGER·새 초대자 ID를 반영하는지 검증한다.
+     * 해제된 멤버 재활성화가 같은 객체의 ACTIVE·MANAGER·새 초대자 ID를 반영하는지 검증.
      */
     @Test
     void reactivatesRevokedMember() {
@@ -52,7 +52,7 @@ class MerchantPlaceMemberTest {
     }
 
     /**
-     * 만료 시각과 같은 시각에 초대를 수락하면 IllegalStateException과 EXPIRED 상태가 반영되는지 검증한다.
+     * 만료 시각과 같은 시각에 초대를 수락하면 IllegalStateException과 EXPIRED 상태가 반영되는지 검증.
      */
     @Test
     void expiresInvitationAtAcceptanceBoundary() {

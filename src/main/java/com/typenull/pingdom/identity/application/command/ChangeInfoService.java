@@ -19,8 +19,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 회원 프로필과 비밀번호를 변경하고 프로필 이미지 저장소 호출을 조정합니다.
- * 이미지는 S3 업로드 후 DB에 URL을 반영하므로 두 저장소 사이의 원자적 커밋은 제공하지 않습니다.
+ * 회원 프로필과 비밀번호를 변경하고 프로필 이미지 저장소 호출을 조정.
+ * 이미지는 S3 업로드 후 DB에 URL을 반영하므로 두 저장소 사이의 원자적 커밋은 보장 범위에서 제외.
  */
 @Service
 @RequiredArgsConstructor
@@ -40,8 +40,8 @@ public class ChangeInfoService {
     }
 
     /**
-     * 회원을 찾아 요청 이름으로 변경합니다. 회원이 없으면 USER_NOT_FOUND를 반환합니다.
-     * 현재 이름과 요청 이름이 같고 해당 이름이 이미 존재하면 USERNAME_ALREADY_EXISTS로 거절합니다.
+     * 회원을 찾아 요청 이름으로 변경. 회원이 없으면 USER_NOT_FOUND를 반환.
+     * 현재 이름과 요청 이름이 같고 해당 이름이 이미 존재하면 USERNAME_ALREADY_EXISTS로 거절.
      */
     @Transactional
     public void changeUsername(ChangeUsernameRequest request, Long userId) {
@@ -55,8 +55,8 @@ public class ChangeInfoService {
     }
 
     /**
-     * 현재 비밀번호가 일치하는 회원에 대해 새 비밀번호와 확인값의 일치를 검증한 뒤 암호화해 교체합니다.
-     * 회원 부재나 자격 증명 불일치는 거절하며, 이 경로에서는 기존 refresh token을 변경하지 않습니다.
+     * 현재 비밀번호가 일치하는 회원에 대해 새 비밀번호와 확인값의 일치를 검증한 뒤 암호화해 교체.
+     * 회원 부재나 자격 증명 불일치는 거절하며 이 경로에서 기존 refresh token은 유지.
      */
     @Transactional
     public void changePassword(ChangePasswordRequest request, Long userId) {
@@ -71,8 +71,8 @@ public class ChangeInfoService {
     }
 
     /**
-     * 새 이미지를 업로드한 뒤 URL을 flush하며, 여기서 관찰한 DB 실패에는 업로드 객체 삭제를 시도합니다.
-     * 삭제 실패는 원래 예외를 대체하지 않습니다. 메서드 반환 뒤 커밋 실패와 이전 이미지 정리는 이 보상 범위에 포함되지 않습니다.
+     * 새 이미지를 업로드한 뒤 URL을 flush하며, 여기서 관찰한 DB 실패에는 업로드 객체 삭제를 시도.
+     * 삭제 실패 시에도 원래 예외는 유지. 메서드 반환 뒤 커밋 실패와 이전 이미지 정리는 이 보상 범위에서 제외.
      */
     @Transactional
     public String changeProfileImage(MultipartFile file, Long userId) {

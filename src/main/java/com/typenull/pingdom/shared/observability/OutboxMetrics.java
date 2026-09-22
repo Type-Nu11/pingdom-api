@@ -15,8 +15,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * DB 상태별 현재 개수 gauge와 처리·재시도·복구의 누적 counter를 제공한다.
- * 상태별 DB 조회는 개별 실행되므로 gauge 전체가 동일 트랜잭션 시점의 스냅샷은 아니다.
+ * DB 상태별 현재 개수 gauge와 처리·재시도·복구의 누적 counter를 제공.
+ * 상태별 DB 조회는 개별 실행되므로 gauge 전체의 동일 트랜잭션 시점 스냅샷은 보장 불가.
  */
 @Component
 public class OutboxMetrics {
@@ -38,7 +38,7 @@ public class OutboxMetrics {
         }
     }
 
-    /** 애플리케이션 준비 시 및 30초 고정 지연마다 상태별 개수를 다시 읽는다. 첫 갱신 전 gauge는 0이다. */
+    /** 애플리케이션 준비 시 및 30초 고정 지연마다 상태별 개수를 다시 읽음. 첫 갱신 전 gauge는 0. */
     @EventListener(ApplicationReadyEvent.class)
     @Scheduled(fixedDelayString = "PT30S", initialDelayString = "PT30S")
     public void refreshStatusCounts() {
@@ -54,7 +54,7 @@ public class OutboxMetrics {
         counter(eventType, handler, "success").increment();
     }
 
-    /** null 상태는 무시하고 FAILED는 최종 실패, 다른 상태는 retry로 집계한다. 상태 변경 자체는 수행하지 않는다. */
+    /** null 상태는 무시하고 FAILED는 최종 실패, 다른 상태는 retry로 집계. 상태 변경 자체는 처리 범위 외. */
     public void recordFailure(OutboxEventType eventType, String handler, OutboxEventStatus status) {
         if (status == null) {
             return;

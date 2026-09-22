@@ -15,9 +15,9 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
 /**
- * 저장된 장소 스냅샷을 우선 읽고 없는 장소만 북마크·게시물·클릭·노출 원본에서 보완합니다.
- * 폴백에서는 전환 집계를 조회하지 않아 전환 수는 0으로 남습니다.
- * 전역 클릭·노출 합계도 스냅샷 SUM이 null일 때만 원본 전체 집계로 대체합니다.
+ * 저장된 장소 스냅샷을 우선 읽고 없는 장소만 북마크·게시물·클릭·노출 원본에서 보완.
+ * 폴백에서는 전환 집계를 조회하지 않아 전환 수는 0으로 남음.
+ * 전역 클릭·노출 합계도 스냅샷 SUM이 null일 때만 원본 전체 집계로 대체.
  */
 @Service
 @RequiredArgsConstructor

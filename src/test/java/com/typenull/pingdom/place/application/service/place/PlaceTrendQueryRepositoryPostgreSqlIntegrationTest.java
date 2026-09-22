@@ -44,7 +44,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * 트렌드 원본 SQL을 실행할 테스트 PostGIS 데이터소스를 연결합니다.
+     * 트렌드 원본 SQL을 실행할 테스트 PostGIS 데이터소스를 연결.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -58,7 +58,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     /**
-     * 추세 이력과 현재 북마크·이미지·장소 행을 의존 순서대로 제거합니다.
+     * 추세 이력과 현재 북마크·이미지·장소 행을 의존 순서대로 제거.
      */
     @AfterEach
     void cleanUp() {
@@ -69,7 +69,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 기간 내 반복 추가·해제를 사용자별 순증으로 계산하고 숨김 장소 제외·동률 정렬·현재 북마크 정보를 실제 SQL 결과로 확인합니다.
+     * 기간 내 반복 추가·해제를 사용자별 순증으로 계산하고 숨김 장소 제외·동률 정렬·현재 북마크 정보를 실제 SQL 결과로 확인.
      */
     @Test
     void deduplicatesBookmarkToggleGrowth() {
@@ -115,7 +115,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 동일 지역의 트렌드 비교용 장소를 생성합니다.
+     * 동일 지역의 트렌드 비교용 장소를 생성.
      */
     private Long insertPlace(String name, String category) {
         return jdbcTemplate.queryForObject("""
@@ -127,7 +127,7 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 사용자·현재 장소·원본 장소와 발생 시각을 지정한 북마크 상태 이력을 삽입합니다.
+     * 사용자·현재 장소·원본 장소와 발생 시각을 지정한 북마크 상태 이력을 삽입.
      */
     private void insertEvent(Long userId, Long placeId, Long originPlaceId, String eventType, LocalDateTime occurredAt) {
         jdbcTemplate.update("""

@@ -15,8 +15,8 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
- * 장소 소유 행에 쓰기 잠금을 건 상태에서 현재 점주 역할·활성 프로필·인증 승인을 검사합니다.
- * 잠금 수명은 호출자의 트랜잭션에 따르며, 점주 계정과 인증 행 자체를 잠그지는 않습니다.
+ * 장소 소유 행에 쓰기 잠금을 건 상태에서 현재 점주 역할·활성 프로필·인증 승인 검사.
+ * 잠금 수명은 호출자의 트랜잭션 기준이며 점주 계정·인증 행은 잠금 대상에서 제외.
  */
 @Component
 @RequiredArgsConstructor
@@ -28,8 +28,8 @@ public class VerifiedBoostAccessPolicy {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
 
     /**
-     * 장소 소유 행을 잠가 반환하기 전에 요청자의 현재 점주 역할·미탈퇴·미정지 상태와 프로필·본인·사업자 승인을 확인합니다.
-     * 소유 행 부재, 자격 미충족 또는 다른 점주의 장소는 모두 PLACE_NOT_OWNED로 거절합니다.
+     * 장소 소유 행을 잠가 반환하기 전에 요청자의 현재 점주 역할·미탈퇴·미정지 상태와 프로필·본인·사업자 승인을 확인.
+     * 소유 행 부재, 자격 미충족 또는 다른 점주의 장소는 모두 PLACE_NOT_OWNED로 거절.
      */
     public MerchantOwnerPlace requireOwnedPlaceForUpdate(Long ownerId, Long placeId, LocalDateTime now) {
         MerchantOwnerPlace ownerPlace = ownerPlaceRepository.findByPlaceIdForUpdate(placeId)

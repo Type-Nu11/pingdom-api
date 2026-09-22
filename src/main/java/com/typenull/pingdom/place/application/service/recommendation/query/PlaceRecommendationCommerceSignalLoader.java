@@ -14,8 +14,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * 같은 조회 시각에 이용 가능한 오퍼와 예약 재고가 있는 장소를 일괄 조회합니다.
- * 아무 신호도 없는 장소는 결과 맵에 넣지 않으며 이 조회는 혜택 발급이나 예약 재고 점유를 수행하지 않습니다.
+ * 같은 조회 시각에 이용 가능한 오퍼와 예약 재고가 있는 장소를 일괄 조회.
+ * 아무 신호도 없는 장소는 결과 맵에서 제외하며 혜택 발급·예약 재고 점유는 미수행.
  */
 @Component
 class PlaceRecommendationCommerceSignalLoader {

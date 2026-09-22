@@ -6,7 +6,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Pattern;
 import jakarta.validation.constraints.Size;
 
-/** 현장 제보의 장소·유형·본문과 선택 증빙 URL이다. URL은 null을 허용하지만 값이 있으면 HTTPS 형식이어야 한다. */
+/** 현장 제보의 장소·유형·본문과 선택 증빙 URL. URL은 null을 허용하지만 값이 있으면 HTTPS 형식이어야 함. */
 public record ScoutFieldReportCreateRequest(
         @NotNull Long placeId,
         @NotNull ScoutFieldReportType reportType,

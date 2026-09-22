@@ -6,8 +6,8 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 탈퇴 회원의 여행 정보 보존 기간과 회원 조회 배치 크기를 설정합니다.
- * 미설정 시 7일·100명을 사용하며 이 크기는 만료 활동 의도 전체 삭제 건수를 제한하지 않습니다.
+ * 탈퇴 회원의 여행 정보 보존 기간과 회원 조회 배치 크기를 설정.
+ * 미설정 시 7일·100명을 사용하며 만료 활동 의도 전체 삭제 건수는 이 배치 크기의 제한 대상에서 제외.
  */
 @Validated
 @ConfigurationProperties(prefix = "travel.data-retention")

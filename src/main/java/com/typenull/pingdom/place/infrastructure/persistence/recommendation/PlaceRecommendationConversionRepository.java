@@ -10,8 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 추천 전환을 장소·유형·선택한 버전별로 집계합니다.
- * cutoff 조건이 있는 조회만 생성 시각 하한을 적용하고, 결과에 없는 장소·유형은 호출자가 0으로 보완합니다.
+ * 추천 전환을 장소·유형·선택한 버전별로 집계.
+ * cutoff 조건이 있는 조회만 생성 시각 하한을 적용하고, 결과에 없는 장소·유형은 호출자가 0으로 보완.
  */
 public interface PlaceRecommendationConversionRepository extends JpaRepository<PlaceRecommendationConversion, Long> {
 

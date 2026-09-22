@@ -25,8 +25,8 @@ import org.springframework.web.client.RestClient;
 class GeminiAiAnalysisClientTest {
 
     /**
-     * Gemini interactions 요청이 모델·프롬프트·generation_config의 tool_choice와 MCP URL·허용 도구·인증 헤더를 올바르게 담는지 검증한다.
-     * 금지된 요청 필드가 없고 완료 응답에서 보고서명과 기준일을 복원하는지 확인한다.
+     * Gemini interactions 요청이 모델·프롬프트·generation_config의 tool_choice와 MCP URL·허용 도구·인증 헤더를 올바르게 담는지 검증.
+     * 금지된 요청 필드가 없고 완료 응답에서 보고서명과 기준일을 복원하는지 확인.
      */
     @Test
     void registersMcpAndParsesOutput() {
@@ -70,7 +70,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * output_text 없이 steps의 model_output 텍스트에 담긴 분석 JSON에서도 보고서명을 읽을 수 있는지 검증한다.
+     * output_text 없이 steps의 model_output 텍스트에 담긴 분석 JSON에서도 보고서명을 읽을 수 있는지 검증.
      */
     @Test
     void extractsModelOutputStep() {
@@ -104,7 +104,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * MCP 토큰이 빈 문자열이면 도구 설정의 headers 필드 자체를 보내지 않는지 검증한다.
+     * MCP 토큰이 빈 문자열이면 도구 설정의 headers 필드 자체를 보내지 않는지 검증.
      */
     @Test
     void omitsBlankMcpAuthorization() {
@@ -124,7 +124,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * Gemini API 키가 없으면 분석 요청에서 AI_SERVICE_UNAVAILABLE로 실패하는지 검증한다.
+     * Gemini API 키가 없으면 분석 요청에서 AI_SERVICE_UNAVAILABLE로 실패하는지 검증.
      */
     @Test
     void rejectsMissingGeminiApiKey() {
@@ -142,7 +142,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * MCP 서버 URL이 없으면 분석 요청에서 MCP_SERVICE_UNAVAILABLE로 실패하는지 검증한다.
+     * MCP 서버 URL이 없으면 분석 요청에서 MCP_SERVICE_UNAVAILABLE로 실패하는지 검증.
      */
     @Test
     void rejectsMissingMcpServerUrl() {
@@ -157,7 +157,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * Gemini HTTP 400 응답을 AI_SERVICE_UNAVAILABLE 도메인 오류로 변환하는지 검증한다.
+     * Gemini HTTP 400 응답을 AI_SERVICE_UNAVAILABLE 도메인 오류로 변환하는지 검증.
      */
     @Test
     void mapsGeminiBadRequest() {
@@ -178,7 +178,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * HTTP 성공이어도 interaction 상태가 failed이면 AI_SERVICE_UNAVAILABLE로 처리하는지 검증한다.
+     * HTTP 성공이어도 interaction 상태가 failed이면 AI_SERVICE_UNAVAILABLE로 처리하는지 검증.
      */
     @Test
     void mapsFailedGeminiInteraction() {
@@ -199,7 +199,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * 완료 출력이 구조화된 분석 대신 html 필드를 반환하면 AI_RESPONSE_INVALID로 거절하는지 검증한다.
+     * 완료 출력이 구조화된 분석 대신 html 필드를 반환하면 AI_RESPONSE_INVALID로 거절하는지 검증.
      */
     @Test
     void rejectsDirectGeminiHtml() {
@@ -221,7 +221,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * 완료 상태라도 텍스트 출력 없이 빈 steps만 있으면 AI_RESPONSE_INVALID인지 검증한다.
+     * 완료 상태라도 텍스트 출력 없이 빈 steps만 있으면 AI_RESPONSE_INVALID인지 검증.
      */
     @Test
     void rejectsMissingInteractionText() {
@@ -242,7 +242,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * 가짜 Gemini 주소·키와 짧은 제한 시간을 사용해 HTTP 대역 검증에 필요한 설정을 제공한다.
+     * 가짜 Gemini 주소·키와 짧은 제한 시간을 사용해 HTTP 대역 검증에 필요한 설정을 제공.
      */
     private AiAnalysisProperties properties() {
         return new AiAnalysisProperties(
@@ -252,7 +252,7 @@ class GeminiAiAnalysisClientTest {
     }
 
     /**
-     * output_text에 최소 분석 JSON이 직렬화된 완료 interaction 응답을 제공해 기본 파싱 경로를 재현한다.
+     * output_text에 최소 분석 JSON이 직렬화된 완료 interaction 응답을 제공해 기본 파싱 경로를 재현.
      */
     private String interactionResponse() {
         return "{\"status\":\"completed\",\"output_text\":"

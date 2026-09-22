@@ -6,7 +6,7 @@ import io.swagger.v3.oas.models.security.SecurityScheme;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
-/** OpenAPI 문서에서 참조할 bearerAuth JWT 인증 방식을 선언한다. 개별 요청의 인증 요구 여부는 별도 구성이다. */
+/** OpenAPI 문서에서 참조할 bearerAuth JWT 인증 방식을 선언. 개별 요청의 인증 요구 여부는 별도 구성. */
 @Configuration
 public class SpringdocSecurityConfig {
 

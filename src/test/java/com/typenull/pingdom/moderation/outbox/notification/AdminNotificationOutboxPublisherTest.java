@@ -23,7 +23,7 @@ class AdminNotificationOutboxPublisherTest {
     private AdminNotificationOutboxPublisher publisher;
 
     /**
-     * 발행 인자의 이벤트 계약을 검사하도록 모의 Outbox 발행기를 연결한다.
+     * 발행 인자의 이벤트 계약을 검사하도록 모의 Outbox 발행기를 연결.
      */
     @BeforeEach
     void setUp() {
@@ -31,7 +31,7 @@ class AdminNotificationOutboxPublisherTest {
     }
 
     /**
-     * 신고 접수·처리, 장소 중복 탐지, 제재 만료마다 결정된 이벤트 키와 알림 페이로드·집계 유형·집계 ID로 Outbox를 발행하는지 검증한다.
+     * 신고 접수·처리, 장소 중복 탐지, 제재 만료마다 결정된 이벤트 키와 알림 페이로드·집계 유형·집계 ID로 Outbox를 발행하는지 검증.
      */
     @Test
     void publishesAdminNotificationEventContracts() {

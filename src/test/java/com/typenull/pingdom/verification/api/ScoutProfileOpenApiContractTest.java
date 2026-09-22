@@ -32,8 +32,8 @@ class ScoutProfileOpenApiContractTest {
     private ObjectMapper objectMapper;
 
     /**
-     * app·admin 문서의 Scout 경로 분리와 프로필/자격 상태 enum, bearer JWT 선언을 확인한다.
-     * 오류 예시·설명·required/nullable·길이 제한·관리자 페이지 인자까지 검증하며 실제 API 인가는 실행하지 않는다.
+     * app·admin 문서의 Scout 경로 분리와 프로필/자격 상태 enum, bearer JWT 선언을 확인.
+     * 오류 예시·설명·required/nullable·길이 제한·관리자 페이지 인자 검증. 실제 API 인가는 검증 범위에서 제외.
      */
     @Test
     void exposeScoutProfileContract() throws Exception {
@@ -142,12 +142,12 @@ class ScoutProfileOpenApiContractTest {
         assertThat(listOperation.path("parameters").toString()).contains("page", "limit", "status");
     }
 
-    /** operation에 bearerAuth security 배열이 선언되어 있는지 확인한다. */
+    /** operation에 bearerAuth security 배열이 선언되어 있는지 확인. */
     private void assertBearerSecurity(JsonNode operation) {
         assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
-    /** 지정 HTTP 응답의 ErrorResponse 참조와 예시의 실제 오류 코드를 대조한다. */
+    /** 지정 HTTP 응답의 ErrorResponse 참조와 예시의 실제 오류 코드를 대조. */
     private void assertErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode response = operation.path("responses").path(responseCode);
 
@@ -157,7 +157,7 @@ class ScoutProfileOpenApiContractTest {
                 .isEqualTo(errorCode);
     }
 
-    /** MockMvc로 지정 문서를 조회해 HTTP 200을 요구하고 UTF-8 JSON 트리로 파싱한다. */
+    /** MockMvc로 지정 문서를 조회해 HTTP 200을 요구하고 UTF-8 JSON 트리로 파싱. */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())

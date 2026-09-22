@@ -19,7 +19,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 인증 회귀 테스트가 공유하는 사용자 fixture와 연관 데이터 정리 절차를 제공한다.
+ * 인증 회귀 테스트가 공유하는 사용자 fixture와 연관 데이터 정리 절차를 제공.
  */
 abstract class AuthRegressionIntegrationTestSupport {
 
@@ -63,7 +63,7 @@ abstract class AuthRegressionIntegrationTestSupport {
     private OutboxEventRepository outboxEventRepository;
 
     /**
-     * 신고·알림·좋아요·북마크·게시물 등 사용자 연관 데이터를 사용자보다 먼저 삭제해 인증 회귀 시나리오를 격리한다.
+     * 신고·알림·좋아요·북마크·게시물 등 사용자 연관 데이터를 사용자보다 먼저 삭제해 인증 회귀 시나리오를 격리.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -80,7 +80,7 @@ abstract class AuthRegressionIntegrationTestSupport {
     }
 
     /**
-     * 암호화된 공통 비밀번호를 가진 일반 사용자를 저장하고 flush해 실제 로그인에 사용한다.
+     * 암호화된 공통 비밀번호를 가진 일반 사용자를 저장하고 flush해 실제 로그인에 사용.
      */
     protected User createUser(String username) {
         return userRepository.saveAndFlush(User.builder()

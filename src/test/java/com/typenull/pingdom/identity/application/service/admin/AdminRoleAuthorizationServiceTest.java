@@ -35,7 +35,7 @@ class AdminRoleAuthorizationServiceTest {
     private AdminRoleAuthorizationService authorizationService;
 
     /**
-     * 사용자·활성 역할 저장소와 고정 Clock을 연결해 관리자 세부 권한 판정을 검증한다.
+     * 사용자·활성 역할 저장소와 고정 Clock을 연결해 관리자 세부 권한 판정을 검증.
      */
     @BeforeEach
     void setUp() {
@@ -43,7 +43,7 @@ class AdminRoleAuthorizationServiceTest {
     }
 
     /**
-     * ADMIN 사용자에게 활성 SUPER_ADMIN이 있으면 역할 관리 권한 검사를 예외 없이 통과하는지 검증한다.
+     * ADMIN 사용자에게 활성 SUPER_ADMIN이 있으면 역할 관리 권한 검사를 예외 없이 통과하는지 검증.
      */
     @Test
     void activeSuperAdminCanManageRoles() {
@@ -56,7 +56,7 @@ class AdminRoleAuthorizationServiceTest {
     }
 
     /**
-     * ADMIN 사용자라도 ANALYST 역할만 있으면 ADMIN_PERMISSION_REQUIRED로 역할 관리를 거절하는지 검증한다.
+     * ADMIN 사용자라도 ANALYST 역할만 있으면 ADMIN_PERMISSION_REQUIRED로 역할 관리를 거절하는지 검증.
      */
     @Test
     void rejectsAnalystRoleManagement() {
@@ -72,7 +72,7 @@ class AdminRoleAuthorizationServiceTest {
     }
 
     /**
-     * 지정 ID·역할의 사용자를 만들어 기본 사용자 역할과 세부 관리자 권한을 분리 검증한다.
+     * 지정 ID·역할의 사용자를 만들어 기본 사용자 역할과 세부 관리자 권한을 분리 검증.
      */
     private User user(Long id, UserRole role) {
         return User.builder()
@@ -84,7 +84,7 @@ class AdminRoleAuthorizationServiceTest {
     }
 
     /**
-     * 고정 Clock의 시각을 관리자 역할 부여 입력으로 제공한다.
+     * 고정 Clock의 시각을 관리자 역할 부여 입력으로 제공.
      */
     private java.time.LocalDateTime now() {
         return java.time.LocalDateTime.ofInstant(CLOCK.instant(), CLOCK.getZone());

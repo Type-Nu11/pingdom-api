@@ -16,7 +16,7 @@ class CommunityPostLikeServiceTest {
     private final CommunityPostLikeService service = new CommunityPostLikeService(postRepository, likeRepository);
 
     /**
-     * 좋아요 요청이 중복 무시 삽입을 호출하고 현재 집계 수와 좋아요 상태를 응답하는지 검증한다.
+     * 좋아요 요청이 중복 무시 삽입을 호출하고 현재 집계 수와 좋아요 상태를 응답하는지 검증.
      */
     @Test
     void returnsExistingLikeState() {
@@ -31,7 +31,7 @@ class CommunityPostLikeServiceTest {
     }
 
     /**
-     * 이미 좋아요가 없는 상태에서 취소해도 현재 집계 수와 false 상태를 정상 응답하는지 검증한다.
+     * 이미 좋아요가 없는 상태에서 취소해도 현재 집계 수와 false 상태를 정상 응답하는지 검증.
      */
     @Test
     void returnsCancelledLikeState() {
@@ -43,7 +43,7 @@ class CommunityPostLikeServiceTest {
     }
 
     /**
-     * 공개 게시글이 없으면 예외를 반환하고 좋아요 저장소를 호출하지 않는지 검증한다.
+     * 공개 게시글이 없으면 예외를 반환하고 좋아요 저장소를 호출하지 않는지 검증.
      */
     @Test
     void rejectsLikeForMissingPost() {

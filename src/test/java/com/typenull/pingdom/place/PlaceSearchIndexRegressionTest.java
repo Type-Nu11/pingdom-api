@@ -33,7 +33,7 @@ class PlaceSearchIndexRegressionTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS·trigram 확장과 전체 마이그레이션을 적용하고 검색 실행 계획 비교용 장소 데이터를 준비한다.
+     * PostGIS·trigram 확장과 전체 마이그레이션을 적용하고 검색 실행 계획 비교용 장소 데이터를 준비.
      */
     @BeforeAll
     static void setUp() throws Exception {
@@ -59,7 +59,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 순차 탐색을 비활성화한 EXPLAIN에서 이름·주소 부분 검색에 해당 trigram 인덱스 중 하나가 나타나는지 확인한다.
+     * 순차 탐색을 비활성화한 EXPLAIN에서 이름·주소 부분 검색에 해당 trigram 인덱스 중 하나가 나타나는지 확인.
      */
     @Test
     void usesTrigramForKeywordSearch() throws Exception {
@@ -78,7 +78,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 순차 탐색을 비활성화한 도로명 주소 부분 검색 실행 계획에 정규화 주소 trigram 인덱스가 나타나는지 확인한다.
+     * 순차 탐색을 비활성화한 도로명 주소 부분 검색 실행 계획에 정규화 주소 trigram 인덱스가 나타나는지 확인.
      */
     @Test
     void usesTrigramForRoadAddress() throws Exception {
@@ -95,7 +95,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 5km ST_DWithin 검색을 순차 탐색 없이 계획할 때 geography 변환용 GiST 인덱스가 나타나는지 확인한다.
+     * 5km ST_DWithin 검색을 순차 탐색 없이 계획할 때 geography 변환용 GiST 인덱스가 나타나는지 확인.
      */
     @Test
     void usesGeographyIndexForRadius() throws Exception {
@@ -117,7 +117,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 공개·운영 중 장소의 지도 영역 검색을 순차 탐색 없이 계획할 때 geometry GiST 인덱스가 나타나는지 확인한다.
+     * 공개·운영 중 장소의 지도 영역 검색을 순차 탐색 없이 계획할 때 geometry GiST 인덱스가 나타나는지 확인.
      */
     @Test
     void usesGeometryIndexForViewport() throws Exception {
@@ -135,7 +135,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 위경도 구간과 근접 정렬을 사용하는 후보 조회를 순차 탐색 없이 계획할 때 좌표 B-tree 인덱스가 나타나는지 확인한다.
+     * 위경도 구간과 근접 정렬을 사용하는 후보 조회를 순차 탐색 없이 계획할 때 좌표 B-tree 인덱스가 나타나는지 확인.
      */
     @Test
     void usesCoordinateIndexForCandidates() throws Exception {
@@ -159,7 +159,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 공간 기준 테이블을 제외한 public 테이블을 제거하여 빈 컨테이너 스키마에 마이그레이션을 적용한다.
+     * 공간 기준 테이블을 제외한 public 테이블을 제거하여 빈 컨테이너 스키마에 마이그레이션을 적용.
      */
     private static void resetDatabase() throws Exception {
         try (Connection connection = postgres.createConnection("");
@@ -182,7 +182,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 12,000개 일반 장소와 3개 표적 장소를 넣고 ANALYZE로 실행 계획에 필요한 통계를 갱신한다.
+     * 12,000개 일반 장소와 3개 표적 장소를 넣고 ANALYZE로 실행 계획에 필요한 통계를 갱신.
      */
     private static void seedPlaces() throws Exception {
         try (Connection connection = postgres.createConnection("");
@@ -267,7 +267,7 @@ class PlaceSearchIndexRegressionTest {
     }
 
     /**
-     * 현재 연결에서 순차 탐색을 비활성화한 뒤 SQL을 실행하지 않고 EXPLAIN 계획 문자열을 수집한다.
+     * 현재 연결에서 순차 탐색을 비활성화한 뒤 SQL을 실행하지 않고 EXPLAIN 계획 문자열을 수집.
      */
     private static List<String> explain(String sql) throws Exception {
         try (Connection connection = postgres.createConnection("");

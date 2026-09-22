@@ -14,8 +14,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 요청자의 신고 이력에 현재 게시글·장소 정보를 결합합니다.
- * 원본 게시글 연결이 삭제된 경우 신고 당시 이미지 ID·URL은 유지하고 복구할 수 없는 표시 필드는 null로 반환합니다.
+ * 요청자의 신고 이력에 현재 게시글·장소 정보를 결합.
+ * 원본 게시글 연결이 삭제된 경우 신고 당시 이미지 ID·URL은 유지하고 복구할 수 없는 표시 필드는 null로 반환.
  */
 @Service
 @RequiredArgsConstructor
@@ -28,8 +28,8 @@ public class PostReportQueryServiceImpl implements PostReportQueryService {
     private final PostReportRepository postReportRepository;
 
     /**
-     * 사용자 ID가 없는 호출을 거부하고 본인 신고만 ID 내림차순으로 조회한다.
-     * 페이지는 최소 1, 크기는 1~100으로 보정하며 원본 게시글이 삭제되어도 신고 당시 이미지 ID·URL을 이용해 이력을 반환한다.
+     * 사용자 ID가 없는 호출을 거부하고 본인 신고만 ID 내림차순으로 조회.
+     * 페이지는 최소 1, 크기는 1~100으로 보정하며 원본 게시글이 삭제되어도 신고 당시 이미지 ID·URL을 이용해 이력을 반환.
      */
     @Override
     @Transactional(readOnly = true)

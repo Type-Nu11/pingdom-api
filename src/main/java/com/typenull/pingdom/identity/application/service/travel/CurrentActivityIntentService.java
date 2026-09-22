@@ -15,8 +15,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 회원당 현재 활동 의도 하나를 저장하고 변경 시점부터 2시간의 유효 기간을 부여합니다.
- * 교체·삭제는 회원 행을 잠근 뒤 수행하며 조회에서는 만료된 행을 삭제하지 않고 null로 취급합니다.
+ * 회원당 현재 활동 의도 하나를 저장하고 변경 시점부터 2시간의 유효 기간을 부여.
+ * 교체·삭제는 회원 행을 잠근 뒤 수행하며 조회에서는 만료된 행을 삭제하지 않고 null로 취급.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,8 +29,8 @@ public class CurrentActivityIntentService {
     private final Clock clock;
 
     /**
-     * 회원 행을 잠가 기존 활동 의도를 교체하거나 새로 저장하고, 변경 시점부터 2시간 유효한 결과를 반환합니다.
-     * 회원이 없으면 USER_NOT_FOUND로 거절하며 기존 의도의 만료 여부와 무관하게 같은 행을 갱신합니다.
+     * 회원 행을 잠가 기존 활동 의도를 교체하거나 새로 저장하고, 변경 시점부터 2시간 유효한 결과를 반환.
+     * 회원이 없으면 USER_NOT_FOUND로 거절하며 기존 의도의 만료 여부와 무관하게 같은 행을 갱신.
      */
     @Transactional
     public UserCurrentActivityIntent replace(Long userId, CurrentActivityIntent intent) {

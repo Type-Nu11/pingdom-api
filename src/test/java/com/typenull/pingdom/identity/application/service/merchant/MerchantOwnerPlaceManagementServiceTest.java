@@ -55,7 +55,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     private MerchantOwnerPlaceManagementService service;
 
     /**
-     * 업로드 만료와 등록 시각을 검증할 수 있도록 고정 Clock과 모의 의존성을 가진 장소 관리 서비스를 만든다.
+     * 업로드 만료와 등록 시각을 검증할 수 있도록 고정 Clock과 모의 의존성을 가진 장소 관리 서비스를 생성.
      */
     @BeforeEach
     void setUp() {
@@ -72,7 +72,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 업로드 URL 발급 시 저장하는 이력의 장소·발급자·만료 시각과 ISSUED 상태를 검증한다.
+     * 업로드 URL 발급 시 저장하는 이력의 장소·발급자·만료 시각과 ISSUED 상태를 검증.
      */
     @Test
     void recordsMediaUploadIssuance() {
@@ -95,8 +95,8 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 유효한 발급 이력과 업로드된 객체로 미디어를 등록하면 공개 URL·키·다음 순서가 응답에 담기는지 검증한다.
-     * 발급 이력도 현재 시각의 REGISTERED 상태로 전환되는지 확인한다.
+     * 유효한 발급 이력과 업로드된 객체로 미디어를 등록하면 공개 URL·키·다음 순서가 응답에 담기는지 검증.
+     * 발급 이력도 현재 시각의 REGISTERED 상태로 전환되는지 확인.
      */
     @Test
     void registersIssuedMediaObject() {
@@ -121,7 +121,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 만료 시각에 도달한 업로드 키는 잘못된 미디어 요청으로 거절하고 S3를 조회하지 않는지 검증한다.
+     * 만료 시각에 도달한 업로드 키는 잘못된 미디어 요청으로 거절하고 S3를 조회하지 않는지 검증.
      */
     @Test
     void rejectsExpiredMediaIssuance() {
@@ -139,7 +139,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 다른 점주에게 발급된 키는 잘못된 미디어 요청으로 거절하고 S3를 호출하지 않는지 검증한다.
+     * 다른 점주에게 발급된 키는 잘못된 미디어 요청으로 거절하고 S3를 호출하지 않는지 검증.
      */
     @Test
     void rejectsForeignMediaIssuance() {
@@ -157,8 +157,8 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 마지막 미디어를 맨 앞으로 옮기면 세 항목의 순서가 0·1·2로 재배치되는지 검증한다.
-     * 유일성 충돌을 피하기 위한 임시 순서 증가 호출도 확인한다.
+     * 마지막 미디어를 맨 앞으로 옮기면 세 항목의 순서가 0·1·2로 재배치되는지 검증.
+     * 유일성 충돌을 피하기 위한 임시 순서 증가 호출도 확인.
      */
     @Test
     void movesAndNormalizesMediaOrder() {
@@ -186,7 +186,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 미디어 한 개의 순서를 허용 범위 밖인 1로 바꾸면 잘못된 미디어 요청 오류를 반환하는지 검증한다.
+     * 미디어 한 개의 순서를 허용 범위 밖인 1로 바꾸면 잘못된 미디어 요청 오류를 반환하는지 검증.
      */
     @Test
     void rejectsOutOfRangeMediaOrder() {
@@ -207,7 +207,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 해당 장소 목록에 없는 미디어 ID로 순서를 바꾸면 PLACE_MEDIA_NOT_FOUND를 반환하는지 검증한다.
+     * 해당 장소 목록에 없는 미디어 ID로 순서를 바꾸면 PLACE_MEDIA_NOT_FOUND를 반환하는지 검증.
      */
     @Test
     void rejectsMissingPlaceMedia() {
@@ -227,7 +227,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 순서 재배치 전후를 직접 비교할 수 있도록 식별자와 초기 순서를 가진 탐색용 미디어를 만든다.
+     * 순서 재배치 전후를 직접 비교할 수 있도록 식별자와 초기 순서를 가진 탐색용 미디어를 생성.
      */
     private PlaceMedia explorationMedia(Long id, int displayOrder) {
         PlaceMedia media = PlaceMedia.exploration(
@@ -244,7 +244,7 @@ class MerchantOwnerPlaceManagementServiceTest {
     }
 
     /**
-     * 업로드 경로 및 장소 잠금 조회의 기준이 되는 점주 소유 장소를 만든다.
+     * 업로드 경로 및 장소 잠금 조회의 기준이 되는 점주 소유 장소를 생성.
      */
     private MapPlace place() {
         return MapPlace.builder()

@@ -16,7 +16,7 @@ class SpringdocProfileConfigurationTest {
             );
 
     /**
-     * OpenAPI 그룹·장소 탐색 설정에 Profile 제한이 없어 특정 환경에서 문서 구성이 누락되지 않는지 검증한다.
+     * OpenAPI 그룹·장소 탐색 설정에 Profile 제한이 없어 특정 환경에서 문서 구성이 누락되지 않는지 검증.
      */
     @Test
     void allowsGroupsAcrossProfiles() {
@@ -25,7 +25,7 @@ class SpringdocProfileConfigurationTest {
     }
 
     /**
-     * Bearer 보안 문서 설정에 Profile 제한이 없는지 검증한다.
+     * Bearer 보안 문서 설정에 Profile 제한이 없는지 검증.
      */
     @Test
     void allowsBearerConfigAcrossProfiles() {
@@ -33,7 +33,7 @@ class SpringdocProfileConfigurationTest {
     }
 
     /**
-     * 기본 컨텍스트에 app·common·consulting·admin·merchant 그룹 빈이 모두 등록되는지 검증한다.
+     * 기본 컨텍스트에 app·common·consulting·admin·merchant 그룹 빈이 모두 등록되는지 검증.
      */
     @Test
     void registersDefaultOpenApiGroups() {

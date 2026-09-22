@@ -7,8 +7,8 @@ import java.util.Optional;
 import org.springframework.data.jpa.repository.JpaRepository;
 
 /**
- * 신청에 귀속된 첨부를 문서 유형·표시 순서·ID 순으로 조회합니다.
- * 삭제 여부와 보존 기한은 쿼리에서 제외하지 않으므로 열람 용도에 맞는 필터는 서비스가 적용합니다.
+ * 신청에 귀속된 첨부를 문서 유형·표시 순서·ID 순으로 조회.
+ * 삭제 여부와 보존 기한은 쿼리에서 제외하지 않으므로 열람 용도에 맞는 필터는 서비스가 적용.
  */
 public interface PlaceRegistrationAttachmentRepository extends JpaRepository<PlaceRegistrationAttachment, Long> {
 

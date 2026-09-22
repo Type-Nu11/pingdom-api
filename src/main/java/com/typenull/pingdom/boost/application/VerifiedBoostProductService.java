@@ -18,8 +18,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관리자 부스트 상품의 초안·활성 상태를 저장하고 점주용 활성 목록을 제공합니다.
- * 상태 변경은 상품 쓰기 잠금으로 처리하며, 기존 선택이나 집행 이력을 함께 변경하지 않습니다.
+ * 관리자 부스트 상품의 초안·활성 상태 저장과 점주용 활성 목록 제공.
+ * 상품 쓰기 잠금 아래 상태를 변경하며 기존 선택·집행 이력은 유지.
  */
 @Service
 @RequiredArgsConstructor
@@ -29,8 +29,8 @@ public class VerifiedBoostProductService {
     private final Clock clock;
 
     /**
-     * 이름·설명·가격·기간을 도메인에서 검증해 부스트 상품 초안을 저장하고 응답을 반환합니다.
-     * 입력 조건 위반은 INVALID_PRODUCT_INPUT으로 변환하며 생성만으로 상품을 활성화하지 않습니다.
+     * 이름·설명·가격·기간을 도메인에서 검증해 부스트 상품 초안을 저장하고 응답 반환.
+     * 입력 조건 위반은 INVALID_PRODUCT_INPUT으로 변환. 생성한 상품의 활성화는 별도 단계.
      */
     @Transactional
     public VerifiedBoostProductResponse create(VerifiedBoostProductCreateRequest request) {
@@ -45,8 +45,8 @@ public class VerifiedBoostProductService {
     }
 
     /**
-     * 활성 여부와 무관하게 부스트 상품을 생성 시각·ID 내림차순으로 조회해 페이지와 전체 건수를 반환합니다.
-     * 외부 페이지는 최소 1, 크기는 1~100으로 보정합니다.
+     * 활성 여부와 무관하게 부스트 상품을 생성 시각·ID 내림차순으로 조회해 페이지와 전체 건수를 반환.
+     * 외부 페이지는 최소 1, 크기는 1~100으로 보정.
      */
     @Transactional(readOnly = true)
     public VerifiedBoostProductPageResponse list(int page, int limit) {
@@ -60,8 +60,8 @@ public class VerifiedBoostProductService {
     }
 
     /**
-     * 점주에게 선택 가능한 ACTIVE 부스트 상품만 생성 시각·ID 내림차순으로 조회해 페이지 정보를 반환합니다.
-     * 외부 페이지는 최소 1, 크기는 1~100으로 보정합니다.
+     * 점주에게 선택 가능한 ACTIVE 부스트 상품만 생성 시각·ID 내림차순으로 조회해 페이지 정보를 반환.
+     * 외부 페이지는 최소 1, 크기는 1~100으로 보정.
      */
     @Transactional(readOnly = true)
     public VerifiedBoostProductPageResponse listActive(int page, int limit) {
@@ -81,8 +81,8 @@ public class VerifiedBoostProductService {
     }
 
     /**
-     * 상품 행을 잠가 활성화하고 변경 결과를 반환합니다.
-     * 상품 부재는 PRODUCT_NOT_FOUND, 활성화할 수 없는 상태는 INVALID_PRODUCT_STATE로 거절합니다.
+     * 상품 행을 잠가 활성화하고 변경 결과를 반환.
+     * 상품 부재는 PRODUCT_NOT_FOUND, 활성화할 수 없는 상태는 INVALID_PRODUCT_STATE로 거절.
      */
     @Transactional
     public VerifiedBoostProductResponse activate(Long productId) {
@@ -97,8 +97,8 @@ public class VerifiedBoostProductService {
     }
 
     /**
-     * 상품 행을 잠가 비활성화하고 변경 결과를 반환합니다.
-     * 상품 부재와 불가능한 상태 전이는 거절하며 기존 선택·집행 이력은 이 메서드에서 변경하지 않습니다.
+     * 상품 행을 잠가 비활성화하고 변경 결과 반환.
+     * 상품 부재와 불가능한 상태 전이는 거절하며 기존 선택·집행 이력은 유지.
      */
     @Transactional
     public VerifiedBoostProductResponse deactivate(Long productId) {

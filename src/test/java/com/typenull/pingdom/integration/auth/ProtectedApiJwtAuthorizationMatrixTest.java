@@ -31,7 +31,7 @@ import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
 /**
- * 보호 API에서 JWT 누락·만료·변조·유형 및 사용자 탈퇴·제재 상태를 구분해 검증한다.
+ * 보호 API에서 JWT 누락·만료·변조·유형 및 사용자 탈퇴·제재 상태를 구분해 검증.
  */
 @Tag("integration")
 @SpringBootTest
@@ -48,7 +48,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     private Clock clock;
 
     /**
-     * 각 보호 GET 경로에서 토큰 누락을 JSON 401과 INVALID_TOKEN으로 반환하는지 확인한다.
+     * 각 보호 GET 경로에서 토큰 누락을 JSON 401과 INVALID_TOKEN으로 반환하는지 확인.
      */
     @ParameterizedTest(name = "{0} rejects missing token")
     @MethodSource("protectedGetEndpoints")
@@ -60,7 +60,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 서명은 유효하지만 만료된 접근 토큰에 EXPIRED_TOKEN을 반환하는지 확인한다.
+     * 서명은 유효하지만 만료된 접근 토큰에 EXPIRED_TOKEN을 반환하는지 확인.
      */
     @ParameterizedTest(name = "{0} rejects expired token")
     @MethodSource("protectedGetEndpoints")
@@ -76,7 +76,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * payload 한 글자를 변조한 접근 토큰은 INVALID_TOKEN으로 거절하는지 확인한다.
+     * payload 한 글자를 변조한 접근 토큰은 INVALID_TOKEN으로 거절하는지 확인.
      */
     @ParameterizedTest(name = "{0} rejects tampered token")
     @MethodSource("protectedGetEndpoints")
@@ -92,7 +92,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 갱신 토큰을 Bearer 접근 토큰처럼 제출해도 사용자 정보 조회를 허용하지 않는지 확인한다.
+     * 갱신 토큰을 Bearer 접근 토큰처럼 제출해도 사용자 정보 조회를 허용하지 않는지 확인.
      */
     @Test
     void refreshTokenAsBearer() throws Exception {
@@ -105,7 +105,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 저장된 활성 사용자의 정상 접근 토큰으로 각 보호 경로가 200인지 확인한다.
+     * 저장된 활성 사용자의 정상 접근 토큰으로 각 보호 경로가 200인지 확인.
      */
     @ParameterizedTest(name = "{0} accepts valid token")
     @MethodSource("protectedGetEndpoints")
@@ -117,7 +117,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 토큰 발급 뒤 탈퇴한 사용자의 기존 접근 토큰도 무효 처리되는지 확인한다.
+     * 토큰 발급 뒤 탈퇴한 사용자의 기존 접근 토큰도 무효 처리되는지 확인.
      */
     @Test
     void withdrawnUserToken() throws Exception {
@@ -136,7 +136,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 토큰 발급 뒤 영구 제재된 사용자의 접근이 INVALID_TOKEN으로 거절되는지 확인한다.
+     * 토큰 발급 뒤 영구 제재된 사용자의 접근이 INVALID_TOKEN으로 거절되는지 확인.
      */
     @Test
     void permanentBanToken() throws Exception {
@@ -150,7 +150,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 만료 시점이 미래인 임시 제재 사용자의 기존 접근 토큰이 차단되는지 확인한다.
+     * 만료 시점이 미래인 임시 제재 사용자의 기존 접근 토큰이 차단되는지 확인.
      */
     @Test
     void activeTemporaryBanToken() throws Exception {
@@ -165,7 +165,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 임시 제재 만료 시점이 지난 사용자는 기존 접근 토큰으로 사용자 정보를 조회할 수 있는지 확인한다.
+     * 임시 제재 만료 시점이 지난 사용자는 기존 접근 토큰으로 사용자 정보를 조회할 수 있는지 확인.
      */
     @Test
     void expiredTemporaryBanToken() throws Exception {
@@ -180,7 +180,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * ERROR dispatch에서는 원래의 500 오류를 유지하고 인증 오류 코드로 덮어쓰지 않는지 확인한다.
+     * ERROR dispatch에서는 원래의 500 오류를 유지하고 인증 오류 코드로 덮어쓰지 않는지 확인.
      */
     @Test
     void errorDispatch() throws Exception {
@@ -196,14 +196,14 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 장소 목록·정보 제보·내 정보의 공통 인증 경계를 확인할 GET 경로를 제공한다.
+     * 장소 목록·정보 제보·내 정보의 공통 인증 경계를 확인할 GET 경로를 제공.
      */
     private static Stream<String> protectedGetEndpoints() {
         return Stream.of("/places", "/places/information-reports", "/users/me");
     }
 
     /**
-     * 접근 토큰을 Bearer 헤더에 넣어 지정 경로의 200 응답을 확인한다.
+     * 접근 토큰을 Bearer 헤더에 넣어 지정 경로의 200 응답을 확인.
      */
     private void assertProtectedGetSucceeds(String endpoint, String accessToken) throws Exception {
         mockMvc.perform(get(endpoint)
@@ -212,7 +212,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 지정 보호 경로에서 401과 INVALID_TOKEN을 함께 확인한다.
+     * 지정 보호 경로에서 401과 INVALID_TOKEN을 함께 확인.
      */
     private void assertInvalidToken(String endpoint, String accessToken) throws Exception {
         mockMvc.perform(get(endpoint)
@@ -222,7 +222,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 실제 설정된 비밀키로 서명하되 60초 전에 만료된 access 유형 토큰을 만들어 만료 검증을 분리한다.
+     * 실제 설정된 비밀키로 서명하되 60초 전에 만료된 access 유형 토큰을 만들어 만료 검증을 분리.
      */
     private String generateExpiredAccessToken(User user) {
         Instant issuedAt = Instant.now().minusSeconds(120);
@@ -241,7 +241,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 원래 서명은 유지한 채 payload 첫 글자만 바꿔 서명 불일치를 만든다.
+     * 원래 서명은 유지한 채 payload 첫 글자만 바꿔 서명 불일치를 생성.
      */
     private String tamper(String token) {
         String[] parts = token.split("\\.", 3);
@@ -251,7 +251,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 경로의 슬래시와 하이픈을 제거해 매개변수별 사용자명 접미사로 쓴다.
+     * 경로의 슬래시와 하이픈을 제거해 매개변수별 사용자명 접미사로 사용.
      */
     private String endpointName(String endpoint) {
         return endpoint.replace("/", "").replace("-", "");

@@ -10,7 +10,7 @@ class CommunityPostCategoryQueryServiceTest {
     private final CommunityPostCategoryQueryService service = new CommunityPostCategoryQueryService();
 
     /**
-     * 카테고리 조회가 장소·여행·돈의 식별자와 한국어 이름을 정해진 표시 순서대로 반환하는지 검증한다.
+     * 카테고리 조회가 장소·여행·돈의 식별자와 한국어 이름을 정해진 표시 순서대로 반환하는지 검증.
      */
     @Test
     void returnsOrderedActiveCategories() {

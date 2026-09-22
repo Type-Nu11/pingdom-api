@@ -45,7 +45,7 @@ class MerchantCampaignServiceTest {
     @InjectMocks private MerchantCampaignService service;
 
     /**
-     * 캠페인 생성·게시에서 사용할 현재 시각을 UTC로 고정한다.
+     * 캠페인 생성·게시에서 사용할 현재 시각을 UTC로 고정.
      */
     @BeforeEach
     void setUpClock() {
@@ -54,7 +54,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 소유 브랜드로 캠페인을 생성할 때 장소 소유권을 확인하고 DRAFT 상태와 브랜드 ID를 반환하는지 검증한다.
+     * 소유 브랜드로 캠페인을 생성할 때 장소 소유권을 확인하고 DRAFT 상태와 브랜드 ID를 반환하는지 검증.
      */
     @Test
     void createsOwnedCampaignDraft() {
@@ -71,7 +71,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 소유자 조건의 브랜드 조회가 비어 있으면 BRAND_NOT_FOUND로 캠페인 생성을 거절하는지 검증한다.
+     * 소유자 조건의 브랜드 조회가 비어 있으면 BRAND_NOT_FOUND로 캠페인 생성을 거절하는지 검증.
      */
     @Test
     void hidesUnownedBrand() {
@@ -83,7 +83,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 저장된 초안을 게시할 때 현재 장소 소유권을 다시 확인하고 PUBLISHED로 전이되는지 검증한다.
+     * 저장된 초안을 게시할 때 현재 장소 소유권을 다시 확인하고 PUBLISHED로 전이되는지 검증.
      */
     @Test
     void publishingRevalidatesPlaceOwnership() {
@@ -108,7 +108,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 사전 중복 조회 후에도 브랜드 이름 고유 제약이 발생하면 BRAND_NAME_DUPLICATED로 변환되는지 검증한다.
+     * 사전 중복 조회 후에도 브랜드 이름 고유 제약이 발생하면 BRAND_NAME_DUPLICATED로 변환되는지 검증.
      */
     @Test
     void mapsDuplicateBrandConstraint() {
@@ -124,7 +124,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 브랜드 저장의 외래 키 위반은 이름 중복으로 오인하지 않고 원래 무결성 예외 객체를 전달하는지 검증한다.
+     * 브랜드 저장의 외래 키 위반은 이름 중복으로 오인하지 않고 원래 무결성 예외 객체를 전달하는지 검증.
      */
     @Test
     void preservesUnrelatedBrandConstraint() {
@@ -140,7 +140,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 소유 브랜드 1과 장소에 대해 한 시간 뒤 시작하는 유효한 캠페인 생성 요청을 제공한다.
+     * 소유 브랜드 1과 장소에 대해 한 시간 뒤 시작하는 유효한 캠페인 생성 요청을 제공.
      */
     private PopupCampaignCreateRequest request() {
         return new PopupCampaignCreateRequest(
@@ -154,7 +154,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 주어진 브랜드 ID와 이름을 응답 매핑에 제공하는 브랜드 mock을 만든다.
+     * 주어진 브랜드 ID와 이름을 응답 매핑에 제공하는 브랜드 mock을 생성.
      */
     private MerchantBrand brand(Long id) {
         MerchantBrand brand = mock(MerchantBrand.class);
@@ -164,7 +164,7 @@ class MerchantCampaignServiceTest {
     }
 
     /**
-     * 주어진 제약 이름을 가진 Hibernate 원인을 Spring 무결성 예외로 감싸 제약별 오류 변환을 재현한다.
+     * 주어진 제약 이름을 가진 Hibernate 원인을 Spring 무결성 예외로 감싸 제약별 오류 변환을 재현.
      */
     private DataIntegrityViolationException constraintViolation(String constraintName) {
         return new DataIntegrityViolationException(

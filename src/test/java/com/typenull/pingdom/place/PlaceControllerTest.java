@@ -120,7 +120,7 @@ class PlaceControllerTest {
     @TestConfiguration
     static class TestEmailSenderConfig {
         /**
-         * 회원가입·로그인 흐름이 외부 메일 전송 없이 진행되도록 성공 결과를 반환하는 테스트 빈을 제공한다.
+         * 회원가입·로그인 흐름이 외부 메일 전송 없이 진행되도록 성공 결과를 반환하는 테스트 빈을 제공.
          */
         @Bean
         @Primary
@@ -202,7 +202,7 @@ class PlaceControllerTest {
     private S3ObjectStorage s3ObjectStorage;
 
     /**
-     * 이미지·추천 기록·영업 일정·장소·사용자를 비워 각 API 시나리오의 조회 및 집계 입력을 독립시킨다.
+     * 이미지·추천 기록·영업 일정·장소·사용자를 비워 각 API 시나리오의 조회 및 집계 입력을 독립시킴.
      */
     @BeforeEach
     void setUp() {
@@ -221,7 +221,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 테스트 후 별도 영업 일정 행을 정리하여 다음 시나리오에 자식 데이터가 남지 않게 한다.
+     * 테스트 후 별도 영업 일정 행을 정리하여 다음 시나리오에 자식 데이터가 남지 않게 함.
      */
     @AfterEach
     void tearDownOperatingScheduleRows() {
@@ -229,7 +229,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 예외 시간·예외 일정·정기 영업시간 순으로 삭제하여 장소 정리 전에 일정 참조를 제거한다.
+     * 예외 시간·예외 일정·정기 영업시간 순으로 삭제하여 장소 정리 전에 일정 참조를 제거.
      */
     private void clearOperatingScheduleRows() {
         jdbcTemplate.update("DELETE FROM map_place_operating_exception_hour");
@@ -238,7 +238,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 두 장소를 조회하면 최신 ID부터 반환하고 요청 페이지·제한·전체 건수와 다음 페이지 여부가 일치하는지 확인한다.
+     * 두 장소를 조회하면 최신 ID부터 반환하고 요청 페이지·제한·전체 건수와 다음 페이지 여부가 일치하는지 확인.
      */
     @Test
     void listPlacesReturnsPagedPlaces() throws Exception {
@@ -262,7 +262,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 임시 휴업 장소가 일반·반경 목록, 자동완성, 상세, 사용자 북마크 조회에서 제외되는지 확인한다.
+     * 임시 휴업 장소가 일반·반경 목록, 자동완성, 상세, 사용자 북마크 조회에서 제외되는지 확인.
      */
     @Test
     void hidesTemporarilyClosedPlaces() throws Exception {
@@ -317,7 +317,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 영구 폐업 장소만 있을 때 컨트롤러 직접 호출의 추천 건수가 0인지 확인한다.
+     * 영구 폐업 장소만 있을 때 컨트롤러 직접 호출의 추천 건수가 0인지 확인.
      */
     @Test
     void excludesPermanentlyClosedRecommendations() {
@@ -334,7 +334,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 101개 장소를 100개 제한으로 조회하면 최신 100개와 전체 2페이지·hasNext=true를 반환하는지 확인한다.
+     * 101개 장소를 100개 제한으로 조회하면 최신 100개와 전체 2페이지·hasNext=true를 반환하는지 확인.
      */
     @Test
     void paginatesAtMaximumPlaceLimit() throws Exception {
@@ -359,7 +359,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 키워드 검색에도 100개 제한을 허용하고 일치하는 장소만 반환하는지 확인한다.
+     * 키워드 검색에도 100개 제한을 허용하고 일치하는 장소만 반환하는지 확인.
      */
     @Test
     void acceptsMaximumLimitWithKeyword() throws Exception {
@@ -380,7 +380,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 위도가 91도인 장소를 목록과 전체 건수에서 제외하고 정상 좌표 장소만 반환하는지 확인한다.
+     * 위도가 91도인 장소를 목록과 전체 건수에서 제외하고 정상 좌표 장소만 반환하는지 확인.
      */
     @Test
     void excludesInvalidCoordinatePlaces() throws Exception {
@@ -407,7 +407,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 주소 키워드와 공백을 포함한 카테고리를 함께 적용하고 일치 장소의 정규화 주소·지오코딩 출처를 반환하는지 확인한다.
+     * 주소 키워드와 공백을 포함한 카테고리를 함께 적용하고 일치 장소의 정규화 주소·지오코딩 출처를 반환하는지 확인.
      */
     @Test
     void filtersAddressAndCategory() throws Exception {
@@ -448,7 +448,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 공백·소문자를 포함한 관광 카테고리 입력을 정규화하여 K_POP 장소만 반환하는지 확인한다.
+     * 공백·소문자를 포함한 관광 카테고리 입력을 정규화하여 K_POP 장소만 반환하는지 확인.
      */
     @Test
     void filtersByTouristCategory() throws Exception {
@@ -479,7 +479,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * POPULAR 정렬에서 사진 수가 더 많은 장소를 먼저 반환하고 전체 건수를 유지하는지 확인한다.
+     * POPULAR 정렬에서 사진 수가 더 많은 장소를 먼저 반환하고 전체 건수를 유지하는지 확인.
      */
     @Test
     void sortsPopularByPhotoCount() throws Exception {
@@ -504,7 +504,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * HIDDEN 장소가 목록·자동완성·상세·사용자 북마크에서 제외되는지 확인한다.
+     * HIDDEN 장소가 목록·자동완성·상세·사용자 북마크에서 제외되는지 확인.
      */
     @Test
     void excludesHiddenDiscoveryPlaces() throws Exception {
@@ -543,7 +543,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 카드에 관광 요약·출처·검증 기본값을 반환하고 숨김·영구 폐업은 404, 임시 휴업은 영업 중 아님으로 제공하는지 확인한다.
+     * 카드에 관광 요약·출처·검증 기본값을 반환하고 숨김·영구 폐업은 404, 임시 휴업은 currentlyOperating=false로 제공하는지 확인.
      */
     @Test
     void returnsCardByVisibilityStatus() throws Exception {
@@ -615,7 +615,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 카드 조회의 무인증 요청은 401, 인증 후 존재하지 않는 장소는 PLACE_NOT_FOUND 404로 구분하는지 확인한다.
+     * 카드 조회의 무인증 요청은 401, 인증 후 존재하지 않는 장소는 PLACE_NOT_FOUND 404로 구분하는지 확인.
      */
     @Test
     void rejectsUnauthenticatedAndMissingCards() throws Exception {
@@ -632,7 +632,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 1km 반경 밖 장소를 제외하고 포함된 두 장소를 가까운 순으로 반환하며 거리 값을 제공하는지 확인한다.
+     * 1km 반경 밖 장소를 제외하고 포함된 두 장소를 가까운 순으로 반환하며 거리 값을 제공하는지 확인.
      */
     @Test
     void filtersRadiusAndSortsNearest() throws Exception {
@@ -655,7 +655,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 위도만 전달한 불완전한 거리 조건을 PLACE_SEARCH_CONDITION_INVALID 400으로 거절하는지 확인한다.
+     * 위도만 전달한 불완전한 거리 조건을 PLACE_SEARCH_CONDITION_INVALID 400으로 거절하는지 확인.
      */
     @Test
     void rejectsIncompleteDistanceCondition() throws Exception {
@@ -669,7 +669,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 좌표 없는 NEAREST 정렬 요청을 거리 조건 오류로 거절하는지 확인한다.
+     * 좌표 없는 NEAREST 정렬 요청을 거리 조건 오류로 거절하는지 확인.
      */
     @Test
     void rejectsNearestWithoutCoordinates() throws Exception {
@@ -683,7 +683,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 경도 Infinity를 포함한 거리 검색 요청이 400을 반환하는지 확인한다.
+     * 경도 Infinity를 포함한 거리 검색 요청이 400을 반환하는지 확인.
      */
     @Test
     void rejectsInfiniteLongitude() throws Exception {
@@ -699,7 +699,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 지원하지 않는 RATING 정렬 입력을 전용 오류 코드와 400으로 거절하는지 확인한다.
+     * 지원하지 않는 RATING 정렬 입력을 전용 오류 코드와 400으로 거절하는지 확인.
      */
     @Test
     void rejectsUnsupportedPlaceSort() throws Exception {
@@ -713,7 +713,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 정의되지 않은 관광 카테고리를 장소 검색 조건 오류와 400으로 거절하는지 확인한다.
+     * 정의되지 않은 관광 카테고리를 장소 검색 조건 오류와 400으로 거절하는지 확인.
      */
     @Test
     void rejectsUnsupportedTouristCategory() throws Exception {
@@ -727,7 +727,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 인증 토큰이 없는 장소 목록 요청에 INVALID_TOKEN 401을 반환하는지 확인한다.
+     * 인증 토큰이 없는 장소 목록 요청에 INVALID_TOKEN 401을 반환하는지 확인.
      */
     @Test
     void rejectsUnauthenticatedPlaceList() throws Exception {
@@ -737,7 +737,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 상세 조회가 저장한 장소의 ID·이름·주소·등록자를 반환하는지 확인한다.
+     * 상세 조회가 저장한 장소의 ID·이름·주소·등록자를 반환하는지 확인.
      */
     @Test
     void returnsStoredPlaceDetail() throws Exception {
@@ -754,7 +754,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 보충 정보가 없는 장소의 방문 판단 응답에서 상점 정보와 행사·예약·혜택 목록은 비고 장소 및 확인 시각은 제공되는지 확인한다.
+     * 보충 정보가 없는 장소의 방문 판단 응답에서 상점 정보와 행사·예약·혜택 목록은 비고 장소 및 확인 시각은 제공되는지 확인.
      */
     @Test
     void returnsEmptyVisitDecisionSupplements() throws Exception {
@@ -774,7 +774,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 승인된 Merchant의 예약 URL, 진행 중 공개 행사, 예약 가능 수량, 공개 혜택을 한 응답에 합치고 정보 수정자 ID는 숨기는지 확인한다.
+     * 승인된 Merchant의 예약 URL, 진행 중 공개 행사, 예약 가능 수량, 공개 혜택을 한 응답에 합치고 정보 수정자 ID는 숨기는지 확인.
      */
     @Test
     void combinesPublishedVisitDecisionData() throws Exception {
@@ -831,7 +831,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 아직 시작하지 않은 공개 행사와 현재 기간의 초안 행사를 방문 판단의 진행 중 목록에서 제외하는지 확인한다.
+     * 아직 시작하지 않은 공개 행사와 현재 기간의 초안 행사를 방문 판단의 진행 중 목록에서 제외하는지 확인.
      */
     @Test
     void excludesScheduledAndDraftEvents() throws Exception {
@@ -857,7 +857,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 비활성 예약 슬롯과 초안 혜택을 방문 판단의 예약·혜택 목록에서 제외하는지 확인한다.
+     * 비활성 예약 슬롯과 초안 혜택을 방문 판단의 예약·혜택 목록에서 제외하는지 확인.
      */
     @Test
     void excludesInactiveSlotsAndDraftOffers() throws Exception {
@@ -884,7 +884,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 장소에 연결된 Merchant가 REVOKED이면 기존 상점 정보를 방문 판단 응답에 노출하지 않는지 확인한다.
+     * 장소에 연결된 Merchant가 REVOKED이면 기존 상점 정보를 방문 판단 응답에 노출하지 않는지 확인.
      */
     @Test
     void hidesRevokedOwnerInformation() throws Exception {
@@ -927,7 +927,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 운영 중 장소의 방문 판단 조회 성공 시 해당 상태 태그의 조회 Counter가 정확히 1 증가하는지 확인한다.
+     * 운영 중 장소의 방문 판단 조회 성공 시 해당 상태 태그의 조회 Counter가 정확히 1 증가하는지 확인.
      */
     @Test
     void countsSuccessfulVisitDecisionViews() throws Exception {
@@ -952,7 +952,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 임시 휴업 장소의 방문 판단은 조회를 허용하되 operatingStatus와 currentlyOperating=false를 반환하는지 확인한다.
+     * 임시 휴업 장소의 방문 판단은 조회를 허용하되 operatingStatus와 currentlyOperating=false를 반환하는지 확인.
      */
     @Test
     void includesTemporarilyClosedVisitDecision() throws Exception {
@@ -972,7 +972,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 영구 폐업 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     * 영구 폐업 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인.
      */
     @Test
     void rejectsPermanentlyClosedVisitDecision() throws Exception {
@@ -991,7 +991,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 인증 없는 방문 판단 요청을 INVALID_TOKEN 401로 거절하는지 확인한다.
+     * 인증 없는 방문 판단 요청을 INVALID_TOKEN 401로 거절하는지 확인.
      */
     @Test
     void rejectsUnauthenticatedVisitDecision() throws Exception {
@@ -1003,7 +1003,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 탐색 상태가 HIDDEN인 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     * 탐색 상태가 HIDDEN인 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인.
      */
     @Test
     void rejectsHiddenVisitDecision() throws Exception {
@@ -1019,7 +1019,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 존재하지 않는 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     * 존재하지 않는 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인.
      */
     @Test
     void rejectsMissingVisitDecisionPlace() throws Exception {
@@ -1032,7 +1032,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 로그인 사용자가 북마크한 두 장소만 최신 순으로 반환하고 페이지 건수가 일치하는지 확인한다.
+     * 로그인 사용자가 북마크한 두 장소만 최신 순으로 반환하고 페이지 건수가 일치하는지 확인.
      */
     @Test
     void listsBookmarkedPlacesNewestFirst() throws Exception {
@@ -1068,7 +1068,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 장소는 있어도 사용자 북마크가 없으면 장소·건수·전체 페이지가 모두 0이고 다음 페이지가 없는지 확인한다.
+     * 장소는 있어도 사용자 북마크가 없으면 장소·건수·전체 페이지가 모두 0이고 다음 페이지가 없는지 확인.
      */
     @Test
     void returnsEmptyBookmarkPage() throws Exception {
@@ -1087,7 +1087,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 제거된 /place 및 /users/bookmarks 경로가 인증된 요청에도 404를 반환하는지 확인한다.
+     * 제거된 /place 및 /users/bookmarks 경로가 인증된 요청에도 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyPlaceAndBookmarkPaths() throws Exception {
@@ -1107,7 +1107,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 실제 장소가 존재해도 제거된 /place/{id} 상세 경로에는 매핑이 없는지 확인한다.
+     * 실제 장소가 존재해도 제거된 /place/{id} 상세 경로에는 매핑이 없는지 확인.
      */
     @Test
     void rejectsLegacyPlaceDetailPath() throws Exception {
@@ -1120,7 +1120,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 직접 등록 경로 두 개는 404, 숫자 ID 경로의 지원하지 않는 POST는 405로 구분하는지 확인한다.
+     * 직접 등록 경로 두 개는 404, 숫자 ID 경로의 지원하지 않는 POST는 405로 구분하는지 확인.
      */
     @Test
     void rejectsRemovedPlaceCreationRoutes() throws Exception {
@@ -1140,7 +1140,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 영문 이름으로 일반·반경 목록과 자동완성을 검색하고 목록·상세에서 관광 요약·카테고리를 반환하는지 확인한다.
+     * 영문 이름으로 일반·반경 목록과 자동완성을 검색하고 목록·상세에서 관광 요약·카테고리를 반환하는지 확인.
      */
     @Test
     void exposesTouristInformationAcrossQueries() throws Exception {
@@ -1192,7 +1192,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 상세 응답이 요일별 영업시간과 날짜별 휴무·대체 영업시간을 정해진 필드와 순서로 제공하는지 확인한다.
+     * 상세 응답이 요일별 영업시간과 날짜별 휴무·대체 영업시간을 정해진 필드와 순서로 제공하는지 확인.
      */
     @Test
     void returnsOperatingScheduleDetails() throws Exception {
@@ -1227,7 +1227,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 같은 키워드가 지번 주소와 다른 장소의 카테고리에 일치하면 지번 주소 장소를 자동완성 상위에 두는지 확인한다.
+     * 같은 키워드가 지번 주소와 다른 장소의 카테고리에 일치하면 지번 주소 장소를 자동완성 상위에 두는지 확인.
      */
     @Test
     void ranksJibunMatchAboveCategory() throws Exception {
@@ -1261,7 +1261,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 공백을 포함한 coffee 별칭을 카페로 정규화하여 카페 장소만 검색하는지 확인한다.
+     * 공백을 포함한 coffee 별칭을 카페로 정규화하여 카페 장소만 검색하는지 확인.
      */
     @Test
     void normalizesCategoryAliasForSearch() throws Exception {
@@ -1285,7 +1285,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 존재하지 않는 장소 상세 요청을 PLACE_NOT_FOUND 404로 반환하는지 확인한다.
+     * 존재하지 않는 장소 상세 요청을 PLACE_NOT_FOUND 404로 반환하는지 확인.
      */
     @Test
     void rejectsMissingPlaceDetail() throws Exception {
@@ -1298,7 +1298,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 실제 객체 메타데이터가 확인된 S3 키로 탐색 미디어를 생성하고 요청 URL 대신 저장소 URL·용도·기본 순서를 반환하는지 확인한다.
+     * 실제 객체 메타데이터가 확인된 S3 키로 탐색 미디어를 생성하고 요청 URL 대신 저장소 URL·용도·기본 순서를 반환하는지 확인.
      */
     @Test
     void createsExplorationMediaFromStorageKey() throws Exception {
@@ -1327,7 +1327,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 탐색·검증 미디어 조회가 각 용도의 항목만 반환하고 원본 게시물 ID는 검증 미디어에만 포함하는지 확인한다.
+     * 탐색·검증 미디어 조회가 각 용도의 항목만 반환하고 원본 게시물 ID는 검증 미디어에만 포함하는지 확인.
      */
     @Test
     void separatesMediaByPurpose() throws Exception {
@@ -1374,7 +1374,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * URL만 있고 S3 키가 없는 탐색 미디어 생성 요청을 필드 검증 오류로 거절하는지 확인한다.
+     * URL만 있고 S3 키가 없는 탐색 미디어 생성 요청을 필드 검증 오류로 거절하는지 확인.
      */
     @Test
     void rejectsMissingExplorationStorageKey() throws Exception {
@@ -1391,7 +1391,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 탐색 미디어가 저장되어 있어도 숨김 장소의 공개 조회를 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     * 탐색 미디어가 저장되어 있어도 숨김 장소의 공개 조회를 PLACE_NOT_FOUND 404로 거절하는지 확인.
      */
     @Test
     void rejectsHiddenPlaceExplorationMedia() throws Exception {
@@ -1417,7 +1417,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 다른 사용자의 검증 미디어 조회는 403, 장소 등록자의 조회는 빈 목록 200으로 허용하는지 확인한다.
+     * 다른 사용자의 검증 미디어 조회는 403, 장소 등록자의 조회는 빈 목록 200으로 허용하는지 확인.
      */
     @Test
     void restrictsVerificationMediaToRegistrant() throws Exception {
@@ -1438,7 +1438,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 탐색 미디어 삭제 후 해당 행만 없어지고 같은 장소의 검증 미디어는 유지되는지 확인한다.
+     * 탐색 미디어 삭제 후 해당 행만 없어지고 같은 장소의 검증 미디어는 유지되는지 확인.
      */
     @Test
     void preservesVerificationMediaWhenDeletingExploration() throws Exception {
@@ -1475,7 +1475,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 컨트롤러를 null principal로 직접 호출해도 추천 1건과 요청 ID를 반환하는지 확인한다. HTTP 보안 경로를 검증하는 테스트는 아니다.
+     * 컨트롤러를 null principal로 직접 호출해도 추천 1건과 요청 ID를 반환하는지 확인. HTTP 보안 경로는 검증 범위에서 제외.
      */
     @Test
     void recommendsWithNullPrincipal() {
@@ -1492,7 +1492,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 북마크와 사진 반응이 있는 입력에서 개인화 장소가 우선되고 정책 버전·요청 ID·개인화 사유 코드를 반환하는지 확인한다.
+     * 북마크와 사진 반응이 있는 입력에서 개인화 장소가 우선되고 정책 버전·요청 ID·개인화 사유 코드를 반환하는지 확인.
      */
     @Test
     void returnsPersonalizedNearbyRecommendations() throws Exception {
@@ -1532,7 +1532,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 두 사용자가 seed와 함께 북마크한 장소를 더 가까운 일반 장소보다 먼저 추천하는지 확인한다.
+     * 두 사용자가 seed와 함께 북마크한 장소를 더 가까운 일반 장소보다 먼저 추천하는지 확인.
      */
     @Test
     void ranksBySharedBookmarkSimilarity() throws Exception {
@@ -1571,7 +1571,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 현재 위치는 서울이고 북마크는 진주에 있을 때 위치 반경 밖의 개인화 확장 장소도 추천되는지 확인한다.
+     * 현재 위치는 서울이고 북마크는 진주에 있을 때 위치 반경 밖의 개인화 확장 장소도 추천되는지 확인.
      */
     @Test
     void includesDistantPersonalizedCandidates() throws Exception {
@@ -1602,7 +1602,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 개인화 신호가 없는 사용자는 주변 후보 중 사진·좋아요가 많은 장소를 먼저 받고 주변 추천 사유를 받는지 확인한다.
+     * 개인화 신호가 없는 사용자는 주변 후보 중 사진·좋아요가 많은 장소를 먼저 받고 주변 추천 사유를 받는지 확인.
      */
     @Test
     void ranksPopularWithoutUserSignals() throws Exception {
@@ -1630,7 +1630,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 현재 위치 주변에 후보가 없어도 최근 집계 스냅샷이 있는 원거리 트렌드 장소가 추천되는지 확인한다.
+     * 현재 위치 주변에 후보가 없어도 최근 집계 스냅샷이 있는 원거리 트렌드 장소가 추천되는지 확인.
      */
     @Test
     void includesTrendsWithoutNearbyCandidates() throws Exception {
@@ -1661,7 +1661,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 추천 요청 트랜잭션을 실제 커밋한 뒤 비동기 노출 2건의 순위·요청 정보와 각 스냅샷 노출 수 증가를 기다려 확인한다.
+     * 추천 요청 트랜잭션을 실제 커밋한 뒤 비동기 노출 2건의 순위·요청 정보와 각 스냅샷 노출 수 증가를 기다려 확인.
      */
     @Test
     void recommendPlacesRecordsExposureLogs() throws Exception {
@@ -1714,7 +1714,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 위치와 사진 반응이 같은 두 후보 중 기존 노출 30건 장소보다 저노출 장소를 우선 선택하는지 확인한다.
+     * 위치와 사진 반응이 같은 두 후보 중 기존 노출 30건 장소보다 저노출 장소를 우선 선택하는지 확인.
      */
     @Test
     void prefersLowerExposurePlace() throws Exception {
@@ -1738,7 +1738,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 클릭 요청이 201을 반환하고 장소·요청 ID·시각을 저장하며 새 스냅샷의 클릭은 1, 노출은 0으로 유지하는지 확인한다.
+     * 클릭 요청이 201을 반환하고 장소·요청 ID·시각을 저장하며 새 스냅샷의 클릭은 1, 노출은 0으로 유지하는지 확인.
      */
     @Test
     void recordsClickAndUpdatesSnapshot() throws Exception {
@@ -1772,7 +1772,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 숨김 장소 클릭을 PLACE_NOT_FOUND 404로 거절하고 클릭 기록과 추천 스냅샷을 생성하지 않는지 확인한다.
+     * 숨김 장소 클릭을 PLACE_NOT_FOUND 404로 거절하고 클릭 기록과 추천 스냅샷을 생성하지 않는지 확인.
      */
     @Test
     void rejectsClicksOnHiddenPlaces() throws Exception {
@@ -1800,7 +1800,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 실험 버전 추천을 커밋하고 노출 기록을 기다린 뒤 클릭·북마크를 수행하면 전환이 클릭·특성 로그에 귀속되고 버전이 일치하는지 확인한다.
+     * 실험 버전 추천을 커밋하고 노출 기록을 기다린 뒤 클릭·북마크를 수행하면 전환이 클릭·특성 로그에 귀속되고 버전이 일치하는지 확인.
      */
     @Test
     void attributesBookmarkToRecommendationClick() throws Exception {
@@ -1876,7 +1876,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * place-rec-v2를 명시한 추천을 커밋한 뒤 특성 로그와 비동기 노출 기록이 응답의 버전·요청 ID를 유지하는지 확인한다.
+     * place-rec-v2를 명시한 추천을 커밋한 뒤 특성 로그와 비동기 노출 기록이 응답의 버전·요청 ID를 유지하는지 확인.
      */
     @Test
     void recordsExplicitExperimentalVersion() throws Exception {
@@ -1920,7 +1920,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 추천 응답의 요청 ID와 실험 버전을 클릭 요청에 전달하면 동일 값으로 클릭 기록이 저장되는지 확인한다.
+     * 추천 응답의 요청 ID와 실험 버전을 클릭 요청에 전달하면 동일 값으로 클릭 기록이 저장되는지 확인.
      */
     @Test
     void preservesRecommendationRequestInClick() throws Exception {
@@ -1959,7 +1959,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 같은 요청 ID에 두 사용자의 특성 로그가 있어도 각 사용자는 본인 장소와 점수 설명만 조회하는지 확인한다.
+     * 같은 요청 ID에 두 사용자의 특성 로그가 있어도 각 사용자는 본인 장소와 점수 설명만 조회하는지 확인.
      */
     @Test
     void scopesExplanationsToCurrentUser() throws Exception {
@@ -2031,7 +2031,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 설명 로그가 없는 요청 ID에는 RECOMMENDATION_EXPLANATION_NOT_FOUND 404를 반환하는지 확인한다.
+     * 설명 로그가 없는 요청 ID에는 RECOMMENDATION_EXPLANATION_NOT_FOUND 404를 반환하는지 확인.
      */
     @Test
     void rejectsMissingRecommendationExplanation() throws Exception {
@@ -2044,7 +2044,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 인증 없이 추천 설명을 조회하면 401을 반환하는지 확인한다.
+     * 인증 없이 추천 설명을 조회하면 401을 반환하는지 확인.
      */
     @Test
     void rejectsUnauthenticatedRecommendationExplanation() throws Exception {
@@ -2053,7 +2053,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 제거된 단수형 /place 추천·클릭·설명 경로가 모두 404를 반환하는지 확인한다.
+     * 제거된 단수형 /place 추천·클릭·설명 경로가 모두 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyRecommendationPaths() throws Exception {
@@ -2079,7 +2079,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 제거된 /map/places/coordinates 경로에 좌표를 전송해도 404를 반환하는지 확인한다.
+     * 제거된 /map/places/coordinates 경로에 좌표를 전송해도 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyCoordinateRoute() throws Exception {
@@ -2096,7 +2096,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 제거된 /map/places/upload 경로에 등록 본문을 전송해도 404를 반환하는지 확인한다.
+     * 제거된 /map/places/upload 경로에 등록 본문을 전송해도 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyUploadRoute() throws Exception {
@@ -2116,7 +2116,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 제거된 /map/places/{id}/delete 경로가 인증 요청에도 404를 반환하는지 확인한다.
+     * 제거된 /map/places/{id}/delete 경로가 인증 요청에도 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyDeleteRoute() throws Exception {
@@ -2128,7 +2128,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 동일 노출 20건에서 클릭 6건인 후보를 클릭 0건인 후보보다 우선하고 클릭 반응 추천 사유를 반환하는지 확인한다.
+     * 동일 노출 20건에서 클릭 6건인 후보를 클릭 0건인 후보보다 우선하고 클릭 반응 추천 사유를 반환하는지 확인.
      */
     @Test
     void prefersStrongerClickResponse() throws Exception {
@@ -2171,7 +2171,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 1회 노출·1회 클릭 후보보다 20회 노출·6회 클릭 후보를 우선하여 작은 표본의 단순 CTR 과대평가를 방지하는지 확인한다.
+     * 1회 노출·1회 클릭 후보보다 20회 노출·6회 클릭 후보를 우선하여 작은 표본의 단순 CTR 과대평가를 방지하는지 확인.
      */
     @Test
     void downweightsSingleClickSample() throws Exception {
@@ -2213,7 +2213,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 클릭·노출이 같은 두 후보 중 북마크·좋아요 전환이 있는 장소를 우선하고 저장 전환 사유를 반환하는지 확인한다.
+     * 클릭·노출이 같은 두 후보 중 북마크·좋아요 전환이 있는 장소를 우선하고 저장 전환 사유를 반환하는지 확인.
      */
     @Test
     void prefersHigherConversionQuality() throws Exception {
@@ -2260,7 +2260,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 북마크 생성 시 스냅샷 북마크 수가 1로 증가하고 삭제 시 0으로 돌아가며 좋아요 수는 유지되는지 확인한다.
+     * 북마크 생성 시 스냅샷 북마크 수가 1로 증가하고 삭제 시 0으로 돌아가며 좋아요 수는 유지되는지 확인.
      */
     @Test
     void refreshesSnapshotForBookmarkChanges() throws Exception {
@@ -2290,7 +2290,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 숨김 장소 북마크 생성을 PLACE_NOT_FOUND 404로 거절하고 북마크와 추천 스냅샷을 만들지 않는지 확인한다.
+     * 숨김 장소 북마크 생성을 PLACE_NOT_FOUND 404로 거절하고 북마크와 추천 스냅샷을 만들지 않는지 확인.
      */
     @Test
     void rejectsBookmarkingHiddenPlace() throws Exception {
@@ -2316,7 +2316,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 제거된 /map/bookmarks 생성·삭제 요청이 모두 404를 반환하는지 확인한다.
+     * 제거된 /map/bookmarks 생성·삭제 요청이 모두 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyBookmarkWrites() throws Exception {
@@ -2335,7 +2335,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 장소 필드를 갖춘 요청 본문을 보내도 제거된 업로드 경로가 404를 반환하는지 확인한다.
+     * 장소 필드를 갖춘 요청 본문을 보내도 제거된 업로드 경로가 404를 반환하는지 확인.
      */
     @Test
     void rejectsLegacyUploadWithBody() throws Exception {
@@ -2355,7 +2355,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 서로 가까운 인기 후보 둘을 함께 선택하지 않고 떨어진 다양성 후보를 포함한 2개 결과를 반환하는지 확인한다.
+     * 서로 가까운 인기 후보 둘을 함께 선택하지 않고 떨어진 다양성 후보를 포함한 2개 결과를 반환하는지 확인.
      */
     @Test
     void recommendPlacesAppliesDiversityReranking() throws Exception {
@@ -2388,7 +2388,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 회원가입과 로그인 API의 성공을 확인하고 보호된 장소 요청에 사용할 accessToken을 반환한다.
+     * 회원가입과 로그인 API의 성공을 확인하고 보호된 장소 요청에 사용할 accessToken을 반환.
      */
     private String signupAndLogin(String username) throws Exception {
         SignupRequest signupRequest = new SignupRequest(username, username + "@example.com", "password123", 1998, null, "ko", "KR");
@@ -2411,7 +2411,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 활성 Merchant 계정·승인된 본인 및 사업자 검증·장소 소유 연결을 저장해 방문 판단의 공개 자격을 준비한다.
+     * 활성 Merchant 계정·승인된 본인 및 사업자 검증·장소 소유 연결을 저장해 방문 판단의 공개 자격을 준비.
      */
     private User createActiveMerchantForVisitDecision(MapPlace mapPlace, LocalDateTime now) {
         String suffix = Long.toUnsignedString(System.nanoTime());
@@ -2453,28 +2453,28 @@ class PlaceControllerTest {
     }
 
     /**
-     * 이름과 주소만 필요한 테스트에 기본 진주 좌표와 사진 수 0인 장소를 저장한다.
+     * 이름과 주소만 필요한 테스트에 기본 진주 좌표와 사진 수 0인 장소를 저장.
      */
     private MapPlace createMapPlace(String name, String address) {
         return createMapPlace(name, address, 35.1801, 128.1078, 0L);
     }
 
     /**
-     * 카테고리·좌표가 필요한 검색 테스트에 사진 수 0인 장소를 저장한다.
+     * 카테고리·좌표가 필요한 검색 테스트에 사진 수 0인 장소를 저장.
      */
     private MapPlace createMapPlace(String name, String address, String category, double latitude, double longitude) {
         return createMapPlace(name, address, category, latitude, longitude, 0L);
     }
 
     /**
-     * 추천 비교에 사용할 좌표·사진 수를 받되 카테고리는 지정하지 않은 장소를 저장한다.
+     * 추천 비교에 사용할 좌표·사진 수를 받되 카테고리는 지정하지 않은 장소를 저장.
      */
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
         return createMapPlace(name, address, null, latitude, longitude, photoCount);
     }
 
     /**
-     * 미디어 관리 권한 비교를 위해 지정한 등록 사용자 ID를 가진 장소를 저장한다.
+     * 미디어 관리 권한 비교를 위해 지정한 등록 사용자 ID를 가진 장소를 저장.
      */
     private MapPlace createMapPlace(String name, String address, Long userId) {
         return mapPlaceRepository.save(MapPlace.builder()
@@ -2489,7 +2489,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 검색·추천 조건에서 바꾸는 카테고리·위경도·사진 수를 받아 공통 등록자 정보와 함께 저장한다.
+     * 검색·추천 조건에서 바꾸는 카테고리·위경도·사진 수를 받아 공통 등록자 정보와 함께 저장.
      */
     private MapPlace createMapPlace(
             String name,
@@ -2512,7 +2512,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 영문 검색과 관광 정보 직렬화를 검증할 영문 이름·요약·복수 관광 카테고리 장소를 저장한다.
+     * 영문 검색과 관광 정보 직렬화를 검증할 영문 이름·요약·복수 관광 카테고리 장소를 저장.
      */
     private MapPlace createTouristMapPlace() {
         return mapPlaceRepository.save(MapPlace.builder()
@@ -2531,7 +2531,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 공동 북마크 신호를 만들기 위한 사용자를 API 로그인 없이 직접 저장한다.
+     * 공동 북마크 신호를 만들기 위한 사용자를 API 로그인 없이 직접 저장.
      */
     private User createUser(String username) {
         return userRepository.save(User.builder()
@@ -2545,7 +2545,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 사용자와 장소의 북마크 연결을 저장하여 추천 유사도 입력을 만든다.
+     * 사용자와 장소의 북마크 연결을 저장하여 추천 유사도 입력을 생성.
      */
     private void createBookmark(Long userId, Long placeId) {
         mapBookmarkRepository.save(MapBookmark.builder()
@@ -2555,7 +2555,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 지정한 좋아요 수를 가진 장소 게시물을 저장하여 추천 품질과 미디어 연결 입력을 만든다.
+     * 지정한 좋아요 수를 가진 장소 게시물을 저장하여 추천 품질과 미디어 연결 입력을 생성.
      */
     private MapImage createMapImage(MapPlace mapPlace, long likeCount, String title) {
         return mapImageRepository.save(MapImage.builder()
@@ -2571,7 +2571,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 서로 다른 사용자 ID로 지정 수만큼 노출 기록을 저장해 저노출 후보와 기존 노출 후보를 비교한다.
+     * 서로 다른 사용자 ID로 지정 수만큼 노출 기록을 저장해 저노출 후보와 기존 노출 후보를 비교.
      */
     private void createExposureLogs(Long placeId, int count, double latitude, double longitude) {
         for (int index = 0; index < count; index++) {
@@ -2587,7 +2587,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 커밋 후 비동기 저장 결과를 50ms 간격으로 최대 3초 조회하며 조건 미충족이나 인터럽트는 assertion 실패로 전환한다.
+     * 커밋 후 비동기 저장 결과를 50ms 간격으로 최대 3초 조회하며 조건 미충족이나 인터럽트는 assertion 실패로 전환.
      */
     private <T> T waitForValue(Supplier<T> supplier, java.util.function.Predicate<T> condition) {
         long deadline = System.currentTimeMillis() + 3_000L;
@@ -2610,7 +2610,7 @@ class PlaceControllerTest {
     }
 
     /**
-     * 롤백되지 않는 추천 시나리오가 끝난 뒤 특성·전환·클릭·노출·스냅샷과 관련 장소 데이터를 직접 정리한다.
+     * 롤백되지 않는 추천 시나리오가 끝난 뒤 특성·전환·클릭·노출·스냅샷과 관련 장소 데이터를 직접 정리.
      */
     private void cleanupCommittedRecommendationTestData() {
         placeRecommendationFeatureLogRepository.deleteAll();

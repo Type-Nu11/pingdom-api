@@ -5,9 +5,9 @@ import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
 /**
- * AI 공급자·주소·모델·인증키와 HTTP 제한 시간을 바인딩합니다.
- * null 제한 시간은 연결 2초·응답 2분으로 보충하지만 0이나 음수 값을 여기서 검증하지는 않습니다.
- * 레코드의 기본 공급자와 실제 Bean 선택 조건은 별개이므로 설정 누락 시 선택은 구성 클래스에 따릅니다.
+ * AI 공급자·주소·모델·인증키와 HTTP 제한 시간 바인딩.
+ * null 제한 시간은 연결 2초·응답 2분으로 보충. 0·음수 제한 시간의 유효성 검사는 별도 책임.
+ * 레코드의 기본 공급자와 실제 Bean 선택 조건은 별개이며, 설정 누락 시 선택은 구성 클래스 기준.
  */
 @ConfigurationProperties(prefix = "analysis.ai")
 public record AiAnalysisProperties(

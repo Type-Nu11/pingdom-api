@@ -41,7 +41,7 @@ import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
 /**
- * 게시물 삭제의 DB·outbox·감사 기록과 고아 객체 삭제 확인 입력 계약을 검증한다. S3는 대역을 사용한다.
+ * 게시물 삭제의 DB·outbox·감사 기록과 고아 객체 삭제 확인 입력 계약을 검증. S3는 대역을 사용.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -88,7 +88,7 @@ class AdminPostControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * 감사 로그·outbox·게시물·관리자 역할을 사용자보다 먼저 비워 삭제 부작용 검증을 격리한다.
+     * 감사 로그·outbox·게시물·관리자 역할을 사용자보다 먼저 비워 삭제 부작용 검증을 격리.
      */
     @BeforeEach
     void setUp() {
@@ -100,7 +100,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * 관리자 인증 이후에도 제거된 게시물 목록·상세 조회 경로가 404인지 확인한다.
+     * 관리자 인증 이후에도 제거된 게시물 목록·상세 조회 경로가 404인지 확인.
      */
     @Test
     void removedPostQueries() throws Exception {
@@ -116,7 +116,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * 게시물 삭제가 DB 행 제거, S3 삭제 요청 outbox 한 건, 대상 게시물 감사 로그로 이어지는지 확인한다. 실제 S3 삭제 완료는 검증하지 않는다.
+     * 게시물 삭제가 DB 행 제거, S3 삭제 요청 outbox 한 건, 대상 게시물 감사 로그로 이어지는지 확인. 실제 S3 삭제 완료는 검증 범위에서 제외.
      */
     @Test
     void deletePostOutboxAndAudit() throws Exception {
@@ -137,7 +137,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * 리포트 ID와 확인 플래그 없이 키만 제출한 고아 객체 삭제 요청을 400으로 거절하는지 확인한다.
+     * 리포트 ID와 확인 플래그 없이 키만 제출한 고아 객체 삭제 요청을 400으로 거절하는지 확인.
      */
     @Test
     void orphanDeleteNeedsConfirmation() throws Exception {
@@ -155,7 +155,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * 확인된 빈 키 목록 요청에서 요청·삭제·실패 건수가 모두 0인지 확인한다.
+     * 확인된 빈 키 목록 요청에서 요청·삭제·실패 건수가 모두 0인지 확인.
      */
     @Test
     void confirmedEmptyOrphanDelete() throws Exception {
@@ -178,7 +178,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * S3 삭제 요청 한 건의 aggregate와 payload 키·사유가 삭제된 게시물과 일치하는지 확인한다.
+     * S3 삭제 요청 한 건의 aggregate와 payload 키·사유가 삭제된 게시물과 일치하는지 확인.
      */
     private void assertS3DeleteOutboxEvent(Long mapImageId, String s3Key, String reason) throws Exception {
         List<OutboxEvent> events = outboxEventRepository.findAll()
@@ -195,7 +195,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * 삭제할 게시물의 일반 사용자 소유자를 암호화된 비밀번호와 함께 저장한다.
+     * 삭제할 게시물의 일반 사용자 소유자를 암호화된 비밀번호와 함께 저장.
      */
     private User createUser(String username) {
         return userRepository.save(User.builder()
@@ -210,7 +210,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * 고유 이름의 관리자와 SUPER_ADMIN 배정을 저장한 뒤 실제 로그인으로 접근 토큰을 만든다.
+     * 고유 이름의 관리자와 SUPER_ADMIN 배정을 저장한 뒤 실제 로그인으로 접근 토큰을 생성.
      */
     private String createAdminAndLogin() throws Exception {
         String username = "adminTester" + System.nanoTime();
@@ -240,7 +240,7 @@ class AdminPostControllerTest {
     }
 
     /**
-     * URL과 별도 S3 키를 가진 게시물을 저장해 삭제 요청이 키를 사용하는지 검증할 fixture를 만든다.
+     * URL과 별도 S3 키를 가진 게시물을 저장해 삭제 요청이 키를 사용하는지 검증할 fixture를 생성.
      */
     private MapImage createMapImage(Long userId, String username, String imageUrl) {
         return mapImageRepository.save(MapImage.builder()

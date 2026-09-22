@@ -62,7 +62,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 장소 조회, 추천, 방문 판단, 운영 공지 및 장소 미디어 API의 진입점입니다. */
+/** 장소 조회, 추천, 방문 판단, 운영 공지 및 장소 미디어 API의 진입점. */
 @RestController
 @RequestMapping("/places")
 @RequiredArgsConstructor

@@ -23,7 +23,7 @@ import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.multipart.MultipartFile;
 
-/** 업로드 파일의 크기·콘텐츠·픽셀을 검증하고 메타데이터를 제거한 이미지와 썸네일을 생성합니다. */
+/** 업로드 파일의 크기·콘텐츠·픽셀을 검증하고 메타데이터를 제거한 이미지와 썸네일을 생성. */
 @Component
 public class ImageUploadProcessor {
 
@@ -36,9 +36,9 @@ public class ImageUploadProcessor {
     private static final float JPEG_QUALITY = 0.9f;
 
     /**
-     * 신고된 파일 크기 10MiB 이하, 가로·세로 각각 8,000px 이하, 총 3,600만 픽셀 이하의 JPEG·PNG를 받습니다.
-     * 완전 디코딩 전 헤더 크기를 검사하고 재인코딩으로 메타데이터를 제거합니다.
-     * 썸네일은 비율을 유지해 최대 512px로 축소하며 작은 이미지를 확대하지 않습니다.
+     * 신고된 파일 크기 10MiB 이하, 가로·세로 각각 8,000px 이하, 총 3,600만 픽셀 이하의 JPEG·PNG를 받음.
+     * 완전 디코딩 전 헤더 크기를 검사하고 재인코딩으로 메타데이터를 제거.
+     * 썸네일은 비율을 유지해 최대 512px로 축소하며 작은 이미지의 크기는 유지.
      */
     public ProcessedImageUpload process(MultipartFile file) {
         byte[] uploadBytes = readAndValidateSize(file);

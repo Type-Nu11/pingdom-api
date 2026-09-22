@@ -35,7 +35,7 @@ class PlaceAvailabilityServiceTest {
     private PlaceAvailabilityService service;
 
     /**
-     * UTC 고정 Clock과 저장소·접근 정책 mock을 사용해 시간 조건이 재현되는 서비스를 구성한다.
+     * UTC 고정 Clock과 저장소·접근 정책 mock을 사용해 시간 조건이 재현되는 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -44,8 +44,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 소유 슬롯 목록 조회 시 활성 가맹점 확인과 현재 소유 목록 저장소 조회가 실행되는지 검증한다.
-     * 과거 소유권만으로 목록을 제공하는 회귀를 방지한다.
+     * 소유 슬롯 목록 조회 시 활성 가맹점 확인과 현재 소유 목록 저장소 조회가 실행되는지 검증.
+     * 과거 소유권만으로 목록을 제공하는 회귀를 방지.
      */
     @Test
     void checksOwnedListAccess() {
@@ -58,8 +58,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * GENERAL·TICKET·CLASS 슬롯 조회에서 상품명이 null·티켓명·클래스명 순으로 반환되는지 검증한다.
-     * 상품 ID 집합의 일괄 조회와 단건 조회 미호출을 확인해 슬롯별 추가 조회를 방지한다.
+     * GENERAL·TICKET·CLASS 슬롯 조회에서 상품명이 null·티켓명·클래스명 순으로 반환되는지 검증.
+     * 상품 ID 집합의 일괄 조회와 단건 조회 미호출을 확인해 슬롯별 추가 조회를 방지.
      */
     @Test
     void batchLoadsPublicProductNames() {
@@ -89,8 +89,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 슬롯 고유 제약 위반으로 생성 저장이 실패하면 AVAILABILITY_ALREADY_EXISTS로 변환되는지 검증한다.
-     * DB 예외가 클라이언트의 중복 예약 시간 오류 계약을 우회하는 회귀를 방지한다.
+     * 슬롯 고유 제약 위반으로 생성 저장이 실패하면 AVAILABILITY_ALREADY_EXISTS로 변환되는지 검증.
+     * DB 예외가 클라이언트의 중복 예약 시간 오류 계약을 우회하는 회귀를 방지.
      */
     @Test
     void mapsDuplicateSlotCreation() {
@@ -111,7 +111,7 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 기존 슬롯 수정의 flush에서 고유 제약 위반이 발생하면 AVAILABILITY_ALREADY_EXISTS로 변환되는지 검증한다.
+     * 기존 슬롯 수정의 flush에서 고유 제약 위반이 발생하면 AVAILABILITY_ALREADY_EXISTS로 변환되는지 검증.
      */
     @Test
     void mapsDuplicateSlotUpdate() {
@@ -134,8 +134,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 상품 ID와 유형을 생략한 기존 방식 수정 요청이 TICKET 유형을 유지하는지 검증한다.
-     * 선택 항목 누락이 기존 상품 유형을 GENERAL로 초기화하는 회귀를 방지한다.
+     * 상품 ID와 유형을 생략한 기존 방식 수정 요청이 TICKET 유형을 유지하는지 검증.
+     * 선택 항목 누락이 기존 상품 유형을 GENERAL로 초기화하는 회귀를 방지.
      */
     @Test
     void preservesOmittedProductType() {
@@ -160,8 +160,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 상품 ID를 생략하고 기존 TICKET 상품과 다른 CLASS 유형을 요청하면 INVALID_AVAILABILITY_INPUT인지 검증한다.
-     * 기존 유형이 유지되고 flush가 호출되지 않는지도 확인해 불일치 상태의 저장을 방지한다.
+     * 상품 ID를 생략하고 기존 TICKET 상품과 다른 CLASS 유형을 요청하면 INVALID_AVAILABILITY_INPUT인지 검증.
+     * 기존 유형이 유지되고 flush가 호출되지 않는지도 확인해 불일치 상태의 저장을 방지.
      */
     @Test
     void rejectsPreservedProductTypeMismatch() {
@@ -193,8 +193,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 상품 정보를 생략한 수정에서도 기존 상품의 장소와 ACTIVE 상태를 재조회하는지 검증한다.
-     * 상품 ID·유형 유지, 응답 상품명 및 flush 호출을 확인해 생략 필드가 상품 연결을 끊는 회귀를 방지한다.
+     * 상품 정보를 생략한 수정에서도 기존 상품의 장소와 ACTIVE 상태를 재조회하는지 검증.
+     * 상품 ID·유형 유지, 응답 상품명 및 flush 호출을 확인해 생략 필드가 상품 연결을 끊는 회귀를 방지.
      */
     @Test
     void revalidatesPreservedActiveProduct() {
@@ -226,8 +226,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 수정할 슬롯의 기존 상품이 활성 상품 조회에서 사라지면 INVALID_AVAILABILITY_INPUT인지 검증한다.
-     * flush 미호출을 확인해 비활성 상품 연결을 그대로 저장하는 것을 방지한다.
+     * 수정할 슬롯의 기존 상품이 활성 상품 조회에서 사라지면 INVALID_AVAILABILITY_INPUT인지 검증.
+     * flush 미호출을 확인해 비활성 상품 연결을 그대로 저장하는 것을 방지.
      */
     @Test
     void rejectsInactivePreservedProduct() {
@@ -256,8 +256,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 예약 가능한 슬롯의 잠금 조회가 비어 있으면 AVAILABILITY_NOT_FOUND가 발생하는지 검증한다.
-     * 소유자 조건 등을 만족하지 않는 슬롯으로 예약이 진행되는 회귀를 방지한다.
+     * 예약 가능한 슬롯의 잠금 조회가 비어 있으면 AVAILABILITY_NOT_FOUND가 발생하는지 검증.
+     * 소유자 조건 등을 만족하지 않는 슬롯으로 예약이 진행되는 회귀를 방지.
      */
     @Test
     void rejectsUnavailableReservation() {
@@ -271,7 +271,7 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 같은 장소의 활성 TICKET 상품을 조회한 뒤 슬롯을 생성하면 해당 상품 ID·유형으로 저장되는지 검증한다.
+     * 같은 장소의 활성 TICKET 상품을 조회한 뒤 슬롯을 생성하면 해당 상품 ID·유형으로 저장되는지 검증.
      */
     @Test
     void createsActiveProductSlot() {
@@ -294,7 +294,7 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 상품 ID 없이 TICKET 슬롯을 생성하면 AvailabilityException이 발생하고 저장이 호출되지 않는지 검증한다.
+     * 상품 ID 없이 TICKET 슬롯을 생성하면 AvailabilityException이 발생하고 저장이 호출되지 않는지 검증.
      */
     @Test
     void rejectsTicketWithoutProduct() {
@@ -310,8 +310,8 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 슬롯 고유 제약 이름을 담은 Hibernate 예외를 Spring 무결성 예외로 감싼다.
-     * 수정 flush 실패가 실제 중복 제약 판별 경로를 통과하도록 구성한다.
+     * 슬롯 고유 제약 이름을 담은 Hibernate 예외를 Spring 무결성 예외로 감쌈.
+     * 수정 flush 실패가 실제 중복 제약 판별 경로를 통과하도록 구성.
      */
     private DataIntegrityViolationException duplicateSlotViolation() {
         ConstraintViolationException constraint = new ConstraintViolationException(
@@ -320,7 +320,7 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 주어진 ID·상품 유형·상품명을 반환하는 상품 mock을 만들어 연결 유지와 응답 매핑을 검증한다.
+     * 주어진 ID·상품 유형·상품명을 반환하는 상품 mock을 만들어 연결 유지와 응답 매핑을 검증.
      */
     private ReservableProduct product(Long id, AvailabilityProductType productType, String name) {
         ReservableProduct product = mock(ReservableProduct.class);

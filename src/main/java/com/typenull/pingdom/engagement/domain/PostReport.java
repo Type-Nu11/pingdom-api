@@ -22,8 +22,8 @@ import com.typenull.pingdom.post.domain.MapImage;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * 신고 당시 게시글·작성자 식별 정보와 이미지 URL을 원본 연결과 별도로 보관합니다.
- * 원본 삭제 시 연결만 해제해 신고 증거를 유지하며, 상태 전이의 허용 여부와 중복 처리는 호출 서비스가 검사합니다.
+ * 신고 당시 게시글·작성자 식별 정보와 이미지 URL을 원본 연결과 별도로 보관.
+ * 원본 삭제 시 연결만 해제해 신고 증거를 유지하며, 상태 전이의 허용 여부와 중복 처리는 호출 서비스가 검사.
  */
 @Entity
 @Getter

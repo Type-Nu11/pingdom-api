@@ -12,7 +12,7 @@ import org.junit.jupiter.api.Test;
 class PlaceMenuResponseTest {
 
     /**
-     * 공개 응답에 환산 가격을 추가해도 점주·공개 응답의 원가격 9,000 KRW가 유지되고 환산 객체를 별도로 보유하는지 검증한다.
+     * 공개 응답에 환산 가격을 추가해도 점주·공개 응답의 원가격 9,000 KRW가 유지되고 환산 객체를 별도로 보유하는지 검증.
      */
     @Test
     void conversionPreservesOriginalMenuPrice() {

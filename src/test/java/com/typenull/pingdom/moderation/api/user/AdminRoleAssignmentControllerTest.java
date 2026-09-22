@@ -37,14 +37,14 @@ class AdminRoleAssignmentControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * 역할 조회·부여·회수의 HTTP 계약을 검사하도록 모의 서비스와 고정 관리자 인증 인자를 연결한다.
+     * 역할 조회·부여·회수의 HTTP 계약을 검사하도록 모의 서비스와 고정 관리자 인증 인자를 연결.
      */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AdminRoleAssignmentController(service))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
                     /**
-                     * CurrentUser가 붙은 컨트롤러 인자를 테스트 관리자 인증의 적용 대상으로 선택한다.
+                     * CurrentUser가 붙은 컨트롤러 인자를 테스트 관리자 인증의 적용 대상으로 선택.
                      */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
@@ -52,7 +52,7 @@ class AdminRoleAssignmentControllerTest {
                     }
 
                     /**
-                     * 역할 관리 서비스 호출의 수행 관리자 ID를 10으로 고정한다.
+                     * 역할 관리 서비스 호출의 수행 관리자 ID를 10으로 고정.
                      */
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer container,
@@ -64,7 +64,7 @@ class AdminRoleAssignmentControllerTest {
     }
 
     /**
-     * 역할 목록·부여·회수 경로가 서비스를 호출해 200과 역할명·상태·대상 관리자 ID를 각각 반환하는지 검증한다.
+     * 역할 목록·부여·회수 경로가 서비스를 호출해 200과 역할명·상태·대상 관리자 ID를 각각 반환하는지 검증.
      */
     @Test
     void exposesRoleAssignmentContracts() throws Exception {

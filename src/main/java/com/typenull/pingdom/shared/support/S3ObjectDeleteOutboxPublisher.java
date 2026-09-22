@@ -10,7 +10,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-/** S3 key의 SHA-256 지문을 중복 방지 키로 사용해 비동기 삭제를 등록한다. 실제 객체 삭제는 handler가 수행한다. */
+/** S3 key의 SHA-256 지문을 중복 방지 키로 사용해 비동기 삭제를 등록. 실제 객체 삭제는 handler가 수행. */
 @Component
 @RequiredArgsConstructor
 public class S3ObjectDeleteOutboxPublisher {
@@ -23,8 +23,8 @@ public class S3ObjectDeleteOutboxPublisher {
     private final OutboxEventPublisher outboxEventPublisher;
 
     /**
-     * 공백 key는 등록하지 않고 null을 반환한다. key가 같으면 사유·aggregate가 달라도 같은 중복 방지 키를 사용한다.
-     * 호출자의 DB 트랜잭션과 이벤트 저장을 묶을 필요가 있으면 호출 측에서 트랜잭션을 제공해야 한다.
+     * 공백 key는 등록하지 않고 null을 반환. key가 같으면 사유·aggregate가 달라도 같은 중복 방지 키를 사용.
+     * 호출자의 DB 트랜잭션과 이벤트 저장을 묶을 필요가 있으면 호출 측에서 트랜잭션을 제공해야 함.
      */
     public String publish(
             String s3Key,

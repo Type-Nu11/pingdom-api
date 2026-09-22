@@ -10,7 +10,7 @@ class MenuDisplayCurrencyResolverTest {
     private final MenuDisplayCurrencyResolver resolver = new MenuDisplayCurrencyResolver();
 
     /**
-     * 소문자 kr·US·3자리 JPN·CN·DE를 각각 KRW·USD·JPY·CNY·EUR로 해석하는지 검증한다.
+     * 소문자 kr·US·3자리 JPN·CN·DE를 각각 KRW·USD·JPY·CNY·EUR로 해석하는지 검증.
      */
     @Test
     void resolvesSupportedCountryCurrencies() {
@@ -22,7 +22,7 @@ class MenuDisplayCurrencyResolverTest {
     }
 
     /**
-     * 국가가 null이거나 UNKNOWN이면 KRW를 반환해 기본 표시 통화를 유지하는지 검증한다.
+     * 국가가 null이거나 UNKNOWN이면 KRW를 반환해 기본 표시 통화를 유지하는지 검증.
      */
     @Test
     void defaultsUnknownCountryToKrw() {

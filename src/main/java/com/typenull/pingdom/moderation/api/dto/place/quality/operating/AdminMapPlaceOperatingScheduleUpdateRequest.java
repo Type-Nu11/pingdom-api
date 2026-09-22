@@ -7,8 +7,8 @@ import jakarta.validation.constraints.Size;
 import java.util.Set;
 
 /**
- * 정규·예외 일정을 전체 교체하는 요청입니다. 목록이 null이면 해당 일정을 비우며 기존 값을 유지하지 않습니다.
- * 개별 날짜·시간 제약 외에 자정 경계를 포함한 구간 중복은 서비스에서 검증합니다.
+ * 정규·예외 일정을 전체 교체하는 요청. null 목록은 해당 일정 삭제로 처리.
+ * 개별 날짜·시간 제약 외에 자정 경계를 포함한 구간 중복은 서비스에서 검증.
  */
 @Schema(description = "관리자 장소 정규 영업시간과 예외 일정 전체 교체 요청")
 public record AdminMapPlaceOperatingScheduleUpdateRequest(

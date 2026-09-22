@@ -24,7 +24,7 @@ class S3ObjectDeleteOutboxPublisherTest {
     private S3ObjectDeleteOutboxPublisher publisher;
 
     /**
-     * Outbox 발행 대역을 주입해 S3 삭제 이벤트의 키·타입·집계 매핑만 검증한다.
+     * Outbox 발행 대역을 주입해 S3 삭제 이벤트의 키·타입·집계 매핑만 검증.
      */
     @BeforeEach
     void setUp() {
@@ -32,7 +32,7 @@ class S3ObjectDeleteOutboxPublisherTest {
     }
 
     /**
-     * 450자 파일명 키도 S3_OBJECT_DELETE 접두사와 200자 이하 중복 방지 키로 발행되는지 검증한다.
+     * 450자 파일명 키도 S3_OBJECT_DELETE 접두사와 200자 이하 중복 방지 키로 발행되는지 검증.
      */
     @Test
     void boundsLongS3DeduplicationKey() {
@@ -53,7 +53,7 @@ class S3ObjectDeleteOutboxPublisherTest {
     }
 
     /**
-     * 공백뿐인 S3 키는 삭제 Outbox를 발행하지 않는지 검증한다.
+     * 공백뿐인 S3 키는 삭제 Outbox를 발행하지 않는지 검증.
      */
     @Test
     void publishIgnoresBlankS3Key() {

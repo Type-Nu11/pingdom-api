@@ -46,7 +46,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS 컨테이너 연결 정보를 Spring 데이터소스에 전달해 실제 공간 쿼리와 마이그레이션을 사용한다.
+     * PostGIS 컨테이너 연결 정보를 Spring 데이터소스에 전달해 실제 공간 쿼리와 마이그레이션을 사용.
      */
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
@@ -62,7 +62,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
 
     /**
-     * 유사도·버전·추천 스냅샷을 지운 뒤 장소를 정리하여 다음 테스트에 집계 상태가 남지 않게 한다.
+     * 유사도·버전·추천 스냅샷을 지운 뒤 장소를 정리하여 다음 테스트에 집계 상태가 남지 않게 함.
      */
     @AfterEach
     void cleanUp() {
@@ -73,7 +73,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     }
 
     /**
-     * 실제 PostGIS에서 단건 재동기화 후 좌표를 옮기면 이전 이웃 쌍이 삭제되고 새 이웃 쌍으로 교체되며 대상 장소 스냅샷만 생성되는지 확인한다.
+     * 실제 PostGIS에서 단건 재동기화 후 좌표를 옮기면 이전 이웃 쌍이 삭제되고 새 이웃 쌍으로 교체되며 대상 장소 스냅샷만 생성되는지 확인.
      */
     @Test
     void replacesPairsAfterPlaceMoves() {
@@ -103,7 +103,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     }
 
     /**
-     * 위경도 컬럼과 SRID 4326 공간 좌표를 함께 가진 장소를 삽입하고 생성 ID를 반환한다.
+     * 위경도 컬럼과 SRID 4326 공간 좌표를 함께 가진 장소를 삽입하고 생성 ID를 반환.
      */
     private Long insertPlace(String name, double latitude, double longitude) {
         return jdbcTemplate.queryForObject("""
@@ -129,7 +129,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     }
 
     /**
-     * 장소 이동을 재현하도록 위경도와 공간 좌표를 동일한 위치로 갱신한다.
+     * 장소 이동을 재현하도록 위경도와 공간 좌표를 동일한 위치로 갱신.
      */
     private void updateCoordinates(Long placeId, double latitude, double longitude) {
         jdbcTemplate.update("""
@@ -142,7 +142,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     }
 
     /**
-     * ID를 오름차순으로 정규화한 유사도 쌍을 삽입하여 재동기화가 정리할 기존 관계를 만든다.
+     * ID를 오름차순으로 정규화한 유사도 쌍을 삽입하여 재동기화가 정리할 기존 관계를 생성.
      */
     private void insertSimilaritySnapshot(Long firstPlaceId, Long secondPlaceId) {
         long leftPlaceId = Math.min(firstPlaceId, secondPlaceId);
@@ -162,7 +162,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     }
 
     /**
-     * 대상 장소를 포함하는 저장된 유사도 쌍에서 상대 장소 ID를 모아 교체 결과를 비교한다.
+     * 대상 장소를 포함하는 저장된 유사도 쌍에서 상대 장소 ID를 모아 교체 결과를 비교.
      */
     private List<Long> otherPlaceIds(Long targetPlaceId) {
         return similaritySnapshotRepository.findByPlaceId(targetPlaceId).stream()
@@ -171,7 +171,7 @@ class PlaceScopedRecommendationResyncPostgreSqlIntegrationTest {
     }
 
     /**
-     * 정규화된 쌍에서 대상 ID가 아닌 쪽을 반환한다.
+     * 정규화된 쌍에서 대상 ID가 아닌 쪽을 반환.
      */
     private Long otherPlaceId(PlaceSimilaritySnapshot snapshot, Long targetPlaceId) {
         return snapshot.getLeftPlaceId().equals(targetPlaceId)

@@ -48,7 +48,7 @@ class NotificationDeliveryRepositoryPostgreSqlIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * 알림 전송 이력의 선택적 날짜 조건 쿼리를 실제 PostgreSQL에서 실행하도록 접속 정보를 등록한다.
+     * 알림 전송 이력의 선택적 날짜 조건 쿼리를 실제 PostgreSQL에서 실행하도록 접속 정보를 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -62,7 +62,7 @@ class NotificationDeliveryRepositoryPostgreSqlIntegrationTest {
     private NotificationDeliveryRepository notificationDeliveryRepository;
 
     /**
-     * 전송 이력 필터 결과를 독립적으로 비교하도록 기존 이력을 제거한다.
+     * 전송 이력 필터 결과를 독립적으로 비교하도록 기존 이력을 제거.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -70,7 +70,7 @@ class NotificationDeliveryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 실패 이력 조회에서 기간 조건 없음·시작만 지정·종료만 지정한 결과와 최신순 정렬을 PostgreSQL에서 검증한다.
+     * 실패 이력 조회에서 기간 조건 없음·시작만 지정·종료만 지정한 결과와 최신순 정렬을 PostgreSQL에서 검증.
      */
     @Test
     void filtersDeliveriesByOptionalPeriod() {
@@ -92,7 +92,7 @@ class NotificationDeliveryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 실패 상태를 고정하고 선택적 시작·종료 조건으로 생성 시각·ID 내림차순 첫 페이지를 조회한다.
+     * 실패 상태를 고정하고 선택적 시작·종료 조건으로 생성 시각·ID 내림차순 첫 페이지를 조회.
      */
     private Page<NotificationDelivery> findByPeriod(
             boolean hasFrom,
@@ -118,7 +118,7 @@ class NotificationDeliveryRepositoryPostgreSqlIntegrationTest {
     }
 
     /**
-     * 지정 이벤트 ID와 생성 시각을 가진 재시도 불가 FCM 실패 이력을 만들어 날짜 필터 대상을 준비한다.
+     * 지정 이벤트 ID와 생성 시각을 가진 재시도 불가 FCM 실패 이력을 만들어 날짜 필터 대상을 준비.
      */
     private NotificationDelivery delivery(String outboxEventId, LocalDateTime createdAt) {
         NotificationDelivery delivery = NotificationDelivery.create(

@@ -10,8 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 회원별 활동 의도를 조회하고 만료 시각 이하의 행 또는 지정 회원의 행을 일괄 삭제합니다.
- * 만료 삭제에는 페이징 제한이 없습니다.
+ * 회원별 활동 의도를 조회하고 만료 시각 이하의 행 또는 지정 회원의 행을 일괄 삭제.
+ * 만료 삭제에는 페이징 제한이 없음.
  */
 public interface UserCurrentActivityIntentRepository extends JpaRepository<UserCurrentActivityIntent, Long> {
 

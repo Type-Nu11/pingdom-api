@@ -31,7 +31,7 @@ class EmailVerificationOutboxHandlerTest {
     private ObjectMapper objectMapper;
 
     /**
-     * JSON 페이로드를 실제 역직렬화하면서 메일 발송과 이력 기록은 대체할 인증 메일 핸들러를 구성한다.
+     * JSON 페이로드를 실제 역직렬화하면서 메일 발송과 이력 기록은 대체할 인증 메일 핸들러를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -40,7 +40,7 @@ class EmailVerificationOutboxHandlerTest {
     }
 
     /**
-     * 인증 메일 발송 성공 시 사용자·이벤트·수신자·공급자 메시지 ID를 인증 요청 유형의 성공 이력으로 전달하는지 검증한다.
+     * 인증 메일 발송 성공 시 사용자·이벤트·수신자·공급자 메시지 ID를 인증 요청 유형의 성공 이력으로 전달하는지 검증.
      */
     @Test
     void recordsSuccessfulVerificationDelivery() throws Exception {
@@ -62,7 +62,7 @@ class EmailVerificationOutboxHandlerTest {
     }
 
     /**
-     * 메일 발송 오류의 공급자 코드·내부 코드·사유·재시도 여부를 실패 이력에 전달하고 EmailSendException을 호출자에게 전파하는지 검증한다.
+     * 메일 발송 오류의 공급자 코드·내부 코드·사유·재시도 여부를 실패 이력에 전달하고 EmailSendException을 호출자에게 전파하는지 검증.
      */
     @Test
     void recordsAndRethrowsVerificationFailure() throws Exception {
@@ -93,7 +93,7 @@ class EmailVerificationOutboxHandlerTest {
     }
 
     /**
-     * null 페이로드는 IllegalArgumentException을 발생시키고 수신자 없이 재시도 불가 페이로드 오류 이력을 기록하는지 검증한다.
+     * null 페이로드는 IllegalArgumentException을 발생시키고 수신자 없이 재시도 불가 페이로드 오류 이력을 기록하는지 검증.
      */
     @Test
     void rejectsNullVerificationPayload() {

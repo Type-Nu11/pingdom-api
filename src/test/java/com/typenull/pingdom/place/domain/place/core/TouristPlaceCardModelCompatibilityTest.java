@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 
 class TouristPlaceCardModelCompatibilityTest {
 
-    /** 추가 필드를 생략한 장소가 관광 카드에 필요한 노출·영업·출처·미검증 기본값과 빈 카테고리를 제공하는지 확인한다. DB 마이그레이션은 실행하지 않는다. */
+    /** 추가 필드를 생략한 장소가 관광 카드에 필요한 노출·영업·출처·미검증 기본값과 빈 카테고리를 제공하는지 확인. DB 마이그레이션 실행은 검증 범위에서 제외. */
     @Test
     void preservesLegacyCardDefaults() {
         MapPlace place = MapPlace.builder()
@@ -40,7 +40,7 @@ class TouristPlaceCardModelCompatibilityTest {
                 .isEqualTo(Set.of());
     }
 
-    /** 노출·영업·출처·검증 enum의 기존 이름이 유지되는지 확인해 저장 문자열 계약 변경을 감지한다. */
+    /** 노출·영업·출처·검증 enum의 기존 이름이 유지되는지 확인해 저장 문자열 계약 변경을 감지. */
     @Test
     void preservesTouristCardEnumNames() {
         assertThat(PlaceDiscoveryStatus.values())

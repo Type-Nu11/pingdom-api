@@ -10,7 +10,7 @@ class ScoutProfileRequestValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-    /** 유효한 표시 이름과 소개에는 Bean Validation 오류가 없어야 한다. */
+    /** 유효한 표시 이름과 소개에는 Bean Validation 오류가 없어야 함. */
     @Test
     void acceptsValidProfileDetails() {
         ScoutProfileRequest request = new ScoutProfileRequest("서울 현장 Scout", "관광객에게 최신 장소 정보를 전달합니다.");
@@ -18,7 +18,7 @@ class ScoutProfileRequestValidationTest {
         assertThat(validator.validate(request)).isEmpty();
     }
 
-    /** 표시 이름이 공백뿐이면 displayName 필드 위반을 반환한다. */
+    /** 표시 이름이 공백뿐이면 displayName 필드 위반을 반환. */
     @Test
     void rejectsBlankDisplayName() {
         ScoutProfileRequest request = new ScoutProfileRequest("   ", "소개");
@@ -27,7 +27,7 @@ class ScoutProfileRequestValidationTest {
                 .anyMatch(violation -> violation.getPropertyPath().toString().equals("displayName"));
     }
 
-    /** 표시 이름 100자와 소개 1,000자는 최대 길이 경계로 허용한다. */
+    /** 표시 이름 100자와 소개 1,000자는 최대 길이 경계로 허용. */
     @Test
     void acceptMaximumTextLengths() {
         ScoutProfileRequest request = new ScoutProfileRequest("a".repeat(100), "b".repeat(1000));
@@ -35,7 +35,7 @@ class ScoutProfileRequestValidationTest {
         assertThat(validator.validate(request)).isEmpty();
     }
 
-    /** 표시 이름 101자와 소개 1,001자는 두 필드 모두 길이 위반으로 반환한다. */
+    /** 표시 이름 101자와 소개 1,001자는 두 필드 모두 길이 위반으로 반환. */
     @Test
     void rejectOversizedText() {
         ScoutProfileRequest request = new ScoutProfileRequest("a".repeat(101), "b".repeat(1001));

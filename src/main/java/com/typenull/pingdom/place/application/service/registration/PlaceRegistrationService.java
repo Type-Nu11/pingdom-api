@@ -53,8 +53,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 통합 Merchant 신청 서비스와 협력하여 신규 장소 초안을 편집·제출하고 승인된 신청을 운영 장소로 변환합니다.
- * 기존 신청 변경 진입점은 신청 행의 쓰기 잠금과 신청자·유형 검사를 거치며 심사 권한 검사는 호출 측에서 수행합니다.
+ * 통합 Merchant 신청 서비스와 협력하여 신규 장소 초안을 편집·제출하고 승인된 신청을 운영 장소로 변환.
+ * 기존 신청 변경 진입점은 신청 행의 쓰기 잠금과 신청자·유형 검사를 거치며 심사 권한 검사는 호출 측에서 수행.
  */
 @Service
 @RequiredArgsConstructor
@@ -74,8 +74,8 @@ public class PlaceRegistrationService {
     private final ObjectMapper objectMapper;
 
     /**
-     * 신규 장소의 기본 정보와 정규화된 국제 전화번호·7일 영업 일정을 초안으로 저장하고 신청 ID를 반환합니다.
-     * 입력 장소 정보·시간대·일정이 유효해야 하며 사업자 검증 정보 반영과 제출은 통합 신청 서비스가 이어서 수행합니다.
+     * 신규 장소의 기본 정보와 정규화된 국제 전화번호·7일 영업 일정을 초안으로 저장하고 신청 ID를 반환.
+     * 입력 장소 정보·시간대·일정이 유효해야 하며 사업자 검증 정보 반영과 제출은 통합 신청 서비스가 이어서 수행.
      */
     @Transactional
     public Long createForUnifiedApplication(Long userId, PlaceRegistrationRequest r) {
@@ -88,10 +88,10 @@ public class PlaceRegistrationService {
     }
 
     /**
-     * 신청 행을 쓰기 잠금으로 읽어 본인의 NEW_PLACE 초안만 기본 정보·연락처·영업 일정으로 교체합니다.
-     * 신청 부재·유형 불일치는 APPLICATION_NOT_FOUND, 다른 신청자는 ACCESS_DENIED로 거절합니다.
-     * 초안이 아니거나 일정이 잘못되면 INVALID_STATE, 갱신 중 입력 형식 오류는 INVALID_ATTACHMENT_METADATA로 변환합니다.
-     * 별도 save 없이 현재 트랜잭션의 변경 감지로 반영하며 제출·심사 상태를 바꾸지는 않습니다.
+     * 신청 행을 쓰기 잠금으로 읽어 본인의 NEW_PLACE 초안만 기본 정보·연락처·영업 일정으로 교체.
+     * 신청 부재·유형 불일치는 APPLICATION_NOT_FOUND, 다른 신청자는 ACCESS_DENIED로 거절.
+     * 초안이 아니거나 일정이 잘못되면 INVALID_STATE, 갱신 중 입력 형식 오류는 INVALID_ATTACHMENT_METADATA로 변환.
+     * 별도 save 없이 현재 트랜잭션의 변경 감지로 반영하며 제출·심사 상태는 유지.
      */
     @Transactional
     public void updateForUnifiedApplication(Long userId, Long id, PlaceRegistrationRequest r) {
@@ -101,8 +101,8 @@ public class PlaceRegistrationService {
     }
 
     /**
-     * 초안의 장소 입력·정규화 연락처·7일 영업 일정을 같은 관리 객체에 반영합니다.
-     * 입력 형식 오류는 INVALID_ATTACHMENT_METADATA, 도메인 상태 오류는 INVALID_STATE로 변환하며 소유권·유형 검증은 호출자가 선행합니다.
+     * 초안의 장소 입력·정규화 연락처·7일 영업 일정을 같은 관리 객체에 반영.
+     * 입력 형식 오류는 INVALID_ATTACHMENT_METADATA, 도메인 상태 오류는 INVALID_STATE로 변환하며 소유권·유형 검증은 호출자가 선행.
      */
     private void updateDraft(PlaceRegistrationApplication a, Long userId, PlaceRegistrationRequest r) {
         try {
@@ -118,9 +118,9 @@ public class PlaceRegistrationService {
     }
 
     /**
-     * 본인의 NEW_PLACE 신청 행을 잠그고 DRAFT 상태와 보존 기한 내 필수 첨부를 검증하여 PENDING으로 전이합니다.
-     * 제출 시각·횟수·내용 해시를 갱신하며 장소 생성은 수행하지 않습니다. 사업자 정보 검증은 호출 측에서 선행합니다.
-     * 제출 실패 시 첨부 존재 여부를 다시 확인해 REQUIRED_FILES_MISSING 또는 INVALID_STATE로 변환합니다.
+     * 본인의 NEW_PLACE 신청 행을 잠그고 DRAFT 상태와 보존 기한 내 필수 첨부를 검증하여 PENDING으로 전이.
+     * 제출 시각·횟수·내용 해시를 갱신하며 장소 생성은 미수행. 사업자 정보 검증은 호출 측에서 선행.
+     * 제출 실패 시 첨부 존재 여부를 다시 확인해 REQUIRED_FILES_MISSING 또는 INVALID_STATE로 변환.
      */
     @Transactional
     public void submitForUnifiedApplication(Long userId, Long id) {
@@ -136,12 +136,12 @@ public class PlaceRegistrationService {
     }
 
     /**
-     * 신청 행을 잠가 신청자·NEW_PLACE 유형·APPROVED 상태를 확인한 뒤 생성된 장소 ID를 반환합니다.
-     * 이름·도로명 주소·좌표 중복을 검사하고 프로필과 사용자 행도 쓰기 잠금으로 읽어 프로필·역할을 활성화합니다.
+     * 신청 행을 잠가 신청자·NEW_PLACE 유형·APPROVED 상태를 확인한 뒤 생성된 장소 ID를 반환.
+     * 이름·도로명 주소·좌표 중복을 검사하고 프로필과 사용자 행도 쓰기 잠금으로 읽어 프로필·역할을 활성화.
      * 호출자의 승인 트랜잭션에 참여하여 장소·공개 미디어·영업 일정·소유권·OWNER 멤버십·추천 스냅샷을 저장하며,
-     * 신청의 COMPLETED 전이는 호출 측이 수행합니다. 중복 사전 조회 자체는 서로 다른 신청의 동시 생성을 잠그지 않습니다.
-     * 접근 상태 로컬 캐시는 즉시 제거됩니다. S3 복사는 DB 트랜잭션 밖의 부작용이며 활성 트랜잭션 동기화가 있을 때만
-     * 롤백 후 복사 객체 삭제를 예약합니다. 삭제 실패는 로그로 남으므로 S3 정리까지 원자적으로 보장하지 않습니다.
+     * 신청의 COMPLETED 전이는 호출 측이 수행. 중복 사전 조회는 서로 다른 신청의 동시 생성에 대한 잠금 없이 수행.
+     * 접근 상태 로컬 캐시는 즉시 제거됨. S3 복사는 DB 트랜잭션 밖의 부작용이며 활성 트랜잭션 동기화가 있을 때만
+     * 롤백 후 복사 객체 삭제를 예약. 삭제 실패는 로그로 남으므로 S3 정리까지의 원자성은 보장 범위에서 제외.
      */
     @Transactional
     public Long createApprovedPlaceForUnifiedApplication(Long userId, Long id) {
@@ -160,8 +160,8 @@ public class PlaceRegistrationService {
         User user = userRepository.findByIdForUpdate(userId).orElseThrow(() -> new PlaceRegistrationException(PlaceRegistrationErrorCode.ACCESS_DENIED));
         LocalDateTime now = now();
         try {
-            // 기존 Merchant Owner의 신규 장소 신청은 이미 활성화된 프로필을 재심사하지 않습니다.
-            // ACTIVE 프로필에 approve()를 호출하면 PENDING 상태 검증으로 409(INVALID_STATE)가 발생합니다.
+            // 기존 Merchant Owner의 신규 장소 신청에서 이미 활성화된 프로필은 재심사 대상에서 제외.
+            // ACTIVE 프로필에 approve()를 호출하면 PENDING 상태 검증으로 409(INVALID_STATE)가 발생.
             if (profile.getStatus() == MerchantOwnerStatus.PENDING) {
                 profile.approve(a.getReviewerUserId(), now);
             } else if (profile.getStatus() != MerchantOwnerStatus.ACTIVE) {
@@ -171,7 +171,7 @@ public class PlaceRegistrationService {
         } catch (IllegalStateException e) {
             throw new PlaceRegistrationException(PlaceRegistrationErrorCode.MERCHANT_PROFILE_REQUIRED);
         }
-        // 로컬 캐시 제거는 즉시 수행되며 DB 롤백 시 이전 캐시 항목을 복원하지 않습니다.
+        // 로컬 캐시 제거는 즉시 수행되며 DB 롤백 시에도 이전 캐시 항목 복원은 미수행.
         userAccessStatusService.evict(userId);
         MapPlace place = MapPlace.builder().name(a.getPlaceName()).address(a.getRoadAddress())
                 .roadAddress(a.getRoadAddress()).jibunAddress(a.getJibunAddress()).postalCode(a.getPostalCode())
@@ -179,7 +179,7 @@ public class PlaceRegistrationService {
                 .category(a.getCategory().name()).latitude(a.getLatitude()).longitude(a.getLongitude())
                 .location(point(a.getLatitude(), a.getLongitude())).userId(userId).registrant(user.getUsername())
                 .geocodingSource(GeocodingSource.LEGACY).build();
-        // tags·연락처는 현재 MapPlace의 공개 canonical field가 아니므로 신청/상점주 계약에만 보관합니다.
+        // tags·연락처는 현재 MapPlace의 공개 canonical field가 아니므로 신청/상점주 계약에만 보관.
         placeAdministrativeRegionService.synchronizeIfConfigured(place);
         place = placeRepository.save(place);
         mediaPromotionService.promote(place, a);
@@ -206,8 +206,8 @@ public class PlaceRegistrationService {
     private PlaceRegistrationException notFound() { return new PlaceRegistrationException(PlaceRegistrationErrorCode.APPLICATION_NOT_FOUND); }
 
     /**
-     * 장소 기본 정보·태그·영업 일정·정렬한 첨부 메타데이터를 제출 내용 해시로 만듭니다.
-     * 사업자 검증 정보와 연락처는 이 정규 문자열에 포함되지 않으며 심사 충돌 검사는 엔티티 version을 사용합니다.
+     * 장소 기본 정보·태그·영업 일정·정렬한 첨부 메타데이터를 바탕으로 제출 내용 해시 생성.
+     * 사업자 검증 정보와 연락처는 이 정규 문자열에 포함되지 않으며 심사 충돌 검사는 엔티티 version을 사용.
      */
     private String contentHash(PlaceRegistrationApplication application) {
         String canonical = application.getPlaceName() + "|" + application.getCategory() + "|"
@@ -231,8 +231,8 @@ public class PlaceRegistrationService {
         }
     }
     /**
-     * 시간대 누락은 Asia/Seoul로 채우고 서로 다른 7개 요일의 입력을 JSON으로 저장합니다.
-     * 휴게 구간은 같은 날의 OPEN 구간 내부에서만 허용하므로 자정을 넘는 영업 구간에는 등록할 수 없습니다.
+     * 시간대 누락은 Asia/Seoul로 채우고 서로 다른 7개 요일의 입력을 JSON으로 저장.
+     * 휴게 구간은 같은 날의 OPEN 구간 내부에서만 허용하므로 자정을 넘는 영업 구간에는 등록 불가.
      */
     private void updateOperatingSchedule(PlaceRegistrationApplication application, PlaceRegistrationRequest request, LocalDateTime now) {
         String timezone = request.timezone() == null || request.timezone().isBlank() ? "Asia/Seoul" : request.timezone();

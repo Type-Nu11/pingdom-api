@@ -28,7 +28,7 @@ class ControllerConventionTest {
     private static final String BASE_PACKAGE = "com.typenull.pingdom";
 
     /**
-     * 전체 RestController 요청 처리 메서드를 스캔해 RequestBody 인자마다 Valid가 선언되어 있는지 확인하고 누락 위치를 보고한다.
+     * 전체 RestController 요청 처리 메서드를 스캔해 RequestBody 인자마다 Valid가 선언되어 있는지 확인하고 누락 위치를 보고.
      */
     @Test
     @DisplayName("RequestBody DTO는 Valid로 검증한다")
@@ -57,7 +57,7 @@ class ControllerConventionTest {
     }
 
     /**
-     * 컨트롤러 반환 타입의 배열·제네릭 인자까지 탐색해 JPA Entity가 직접 응답에 노출되지 않는지 검증한다.
+     * 컨트롤러 반환 타입의 배열·제네릭 인자까지 탐색해 JPA Entity가 직접 응답에 노출되지 않는지 검증.
      */
     @Test
     @DisplayName("Controller는 Entity를 응답으로 직접 반환하지 않는다")
@@ -79,7 +79,7 @@ class ControllerConventionTest {
     }
 
     /**
-     * JWT 인증 사용자 타입의 요청 인자에 CurrentUser가 선언되어 공통 인자 해석기를 거치는지 정적 계약을 검증한다.
+     * JWT 인증 사용자 타입의 요청 인자에 CurrentUser가 선언되어 공통 인자 해석기를 거치는지 정적 계약을 검증.
      */
     @Test
     @DisplayName("Controller의 JWT 인증 사용자는 CurrentUser로 전달한다")
@@ -107,7 +107,7 @@ class ControllerConventionTest {
     }
 
     /**
-     * 컨트롤러 클래스와 선언 메서드에 PreAuthorize를 직접 붙이지 않아 공통 권한 어노테이션 규칙을 유지하는지 검증한다.
+     * 컨트롤러 클래스와 선언 메서드에 PreAuthorize를 직접 붙이지 않아 공통 권한 어노테이션 규칙을 유지하는지 검증.
      */
     @Test
     @DisplayName("Controller는 공통 권한 애노테이션을 사용한다")
@@ -132,7 +132,7 @@ class ControllerConventionTest {
     }
 
     /**
-     * 기본 패키지에서 RestController가 붙은 후보를 스캔하고 reflection 검사에 사용할 클래스를 로드한다.
+     * 기본 패키지에서 RestController가 붙은 후보를 스캔하고 reflection 검사에 사용할 클래스를 로드.
      */
     private List<Class<?>> controllerClasses() throws ClassNotFoundException {
         ClassPathScanningCandidateComponentProvider scanner =
@@ -147,14 +147,14 @@ class ControllerConventionTest {
     }
 
     /**
-     * 합성된 HTTP 매핑도 포함하도록 RequestMapping을 찾아 실제 요청 처리 메서드를 구분한다.
+     * 합성된 HTTP 매핑도 포함하도록 RequestMapping을 찾아 실제 요청 처리 메서드를 구분.
      */
     private boolean isRequestHandler(Method method) {
         return AnnotationUtils.findAnnotation(method, RequestMapping.class) != null;
     }
 
     /**
-     * 일반 클래스·배열 원소·제네릭 타입 인자를 재귀 검사해 Entity가 응답 타입에 포함되었는지 판정한다.
+     * 일반 클래스·배열 원소·제네릭 타입 인자를 재귀 검사해 Entity가 응답 타입에 포함되었는지 판정.
      */
     private boolean containsEntity(Type type) {
         if (type instanceof Class<?> clazz) {

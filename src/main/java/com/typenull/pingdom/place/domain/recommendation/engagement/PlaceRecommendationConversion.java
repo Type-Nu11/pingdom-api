@@ -18,8 +18,8 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
 /**
- * 추천 클릭에 귀속된 사용자 행동을 보존합니다.
- * 사용자·장소·전환 유형의 유일 제약은 추천 버전과 무관하게 중복 전환을 막으며 특성 로그 연결은 생략할 수 있습니다.
+ * 추천 클릭에 귀속된 사용자 행동을 보존.
+ * 사용자·장소·전환 유형의 유일 제약은 추천 버전과 무관하게 중복 전환을 막으며 특성 로그 연결은 생략할 수 있음.
  */
 @Entity
 @Table(

@@ -21,7 +21,7 @@ class ConsultationIntroServiceTest {
     private GeminiIntroClient geminiIntroClient;
 
     /**
-     * Gemini가 안내 문구를 반환하면 같은 문구와 source=gemini를 응답하는지 검증한다.
+     * Gemini가 안내 문구를 반환하면 같은 문구와 source=gemini를 응답하는지 검증.
      */
     @Test
     void returnsGeminiIntroText() {
@@ -36,7 +36,7 @@ class ConsultationIntroServiceTest {
     }
 
     /**
-     * Gemini가 비활성이면 고정 안내·fallback 출처를 반환하고 클라이언트를 호출하지 않는지 검증한다.
+     * Gemini가 비활성이면 고정 안내·fallback 출처를 반환하고 클라이언트를 호출하지 않는지 검증.
      */
     @Test
     void disabledGeminiUsesFallback() {
@@ -50,7 +50,7 @@ class ConsultationIntroServiceTest {
     }
 
     /**
-     * Gemini의 빈 결과와 예외 모두 fallback 출처로 처리해 상담 시작이 실패하지 않는지 검증한다.
+     * Gemini의 빈 결과와 예외 모두 fallback 출처로 처리해 상담 시작이 실패하지 않는지 검증.
      */
     @Test
     void fallsBackForUnavailableIntro() {
@@ -65,7 +65,7 @@ class ConsultationIntroServiceTest {
     }
 
     /**
-     * 활성 플래그·API 키와 짧은 시간 제한을 지정해 안내 생성 분기를 검증할 서비스를 구성한다.
+     * 활성 플래그·API 키와 짧은 시간 제한을 지정해 안내 생성 분기를 검증할 서비스를 구성.
      */
     private ConsultationIntroService service(boolean enabled, String apiKey) {
         return new ConsultationIntroService(

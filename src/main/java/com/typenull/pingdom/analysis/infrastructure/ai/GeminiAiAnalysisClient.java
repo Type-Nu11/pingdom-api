@@ -19,7 +19,7 @@ import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
 
-/** Gemini Interactions API에 Remote MCP를 등록하고 최종 분석 결과만 받는 클라이언트다. */
+/** Gemini Interactions API에 Remote MCP를 등록하고 최종 분석 결과만 받는 클라이언트. */
 @Slf4j
 public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
@@ -44,9 +44,9 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
     }
 
     /**
-     * API 키와 MCP 주소가 있어야 요청하며 허용 MCP 도구를 Gemini에 등록합니다.
-     * 최종 텍스트에서 JSON을 추출해 알 수 없는 필드와 html 필드를 거절하지만 도구가 실제 호출됐는지는 확인하지 않습니다.
-     * 연결·HTTP 실패와 응답 형식 오류를 도메인 오류로 변환하며 재시도하지 않습니다.
+     * API 키와 MCP 주소가 있어야 요청하며 허용 MCP 도구를 Gemini에 등록.
+     * 최종 텍스트에서 JSON을 추출해 알 수 없는 필드와 html 필드를 거절. 도구의 실제 호출 여부는 검사 범위에서 제외.
+     * 연결·HTTP 실패와 응답 형식 오류는 재시도 없이 도메인 오류로 변환.
      */
     @Override
     public AiAnalysisResponse analyze(AiAnalysisPrompt prompt) {
@@ -60,7 +60,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         ObjectNode request = objectMapper.createObjectNode();
         request.put("model", properties.model());
         request.put("input", prompt.content());
-        // 도구를 사용할 수 있게 하되, 결과를 받은 뒤 불필요하게 재호출하지 않도록 자동 선택한다.
+        // 도구를 사용할 수 있게 하되, 결과를 받은 뒤 불필요하게 재호출하지 않도록 자동 선택.
         ObjectNode generationConfig = request.putObject("generation_config");
         generationConfig.put("tool_choice", "auto");
         request.set("tools", remoteMcpTools());
@@ -82,7 +82,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         mcp.put("type", "mcp_server");
         mcp.put("name", MCP_NAME);
         mcp.put("url", mcpProperties.serverUrl());
-        // Interactions API는 허용 도구 목록을 문자열 배열이 아닌 AllowedTools 객체 배열로 받는다.
+        // Interactions API는 허용 도구 목록을 AllowedTools 객체 배열로 수신.
         ObjectNode allowedTools = mcp.putArray("allowed_tools").addObject();
         allowedTools.put("mode", "any");
         allowedTools.putArray("tools").add(MCP_TOOL);
@@ -111,7 +111,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         } catch (AnalysisReportException exception) {
             throw exception;
         } catch (RestClientResponseException exception) {
-            // 외부 응답의 상태만 남긴다. 프롬프트·이메일·API 키가 포함될 수 있는 요청/응답 본문은 기록하지 않는다.
+            // 외부 응답의 상태만 기록. 프롬프트·이메일·API 키 노출 방지를 위해 요청/응답 본문은 로그에서 제외.
             log.warn("Gemini Interactions API 요청 실패. status={}, statusText={}",
                     exception.getStatusCode().value(), exception.getStatusText());
             throw new AnalysisReportException(AnalysisReportErrorCode.AI_SERVICE_UNAVAILABLE, exception);
@@ -121,7 +121,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         }
     }
 
-    /** Interactions 응답의 output_text 또는 model_output step에서 텍스트를 추출한다. */
+    /** Interactions 응답의 output_text 또는 model_output step에서 텍스트를 추출. */
     private String extractOutputText(JsonNode response) {
         if (response.path("output_text").isTextual()) {
             return response.path("output_text").asText();

@@ -18,7 +18,7 @@ class PaymentCommandServiceTest {
     private PaymentCommandService service;
 
     /**
-     * 결제 공급자 조회와 원장 기록을 mock으로 분리한 결제 명령 서비스를 구성한다.
+     * 결제 공급자 조회와 원장 기록을 mock으로 분리한 결제 명령 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -26,8 +26,8 @@ class PaymentCommandServiceTest {
     }
 
     /**
-     * 처리 중 결제에 공급자 명령을 전달하고 완료 기록에서 반환한 15,000 금액을 응답하는지 검증한다.
-     * 실제 DB 저장이나 공급자 결제 실행은 포함하지 않는다.
+     * 처리 중 결제에 공급자 명령을 전달하고 완료 기록에서 반환한 15,000 금액을 응답하는지 검증.
+     * 실제 DB 저장과 공급자 결제 실행은 검증 범위에서 제외.
      */
     @Test
     void usesProviderResultAmount() {
@@ -46,7 +46,7 @@ class PaymentCommandServiceTest {
     }
 
     /**
-     * 공급자가 DECLINED 실패를 반환하면 FAILED 응답으로 처리하고 결제 완료 기록을 호출하지 않는지 검증한다.
+     * 공급자가 DECLINED 실패를 반환하면 FAILED 응답으로 처리하고 결제 완료 기록을 호출하지 않는지 검증.
      */
     @Test
     void recordsDeclinedProviderPayment() {
@@ -65,7 +65,7 @@ class PaymentCommandServiceTest {
     }
 
     /**
-     * 공급자 TIMEOUT으로 결과가 UNKNOWN이면 PROVIDER_RESULT_UNKNOWN을 던지고 실패로 확정 기록하지 않는지 검증한다.
+     * 공급자 TIMEOUT으로 결과가 UNKNOWN이면 PROVIDER_RESULT_UNKNOWN을 던지고 실패로 확정 기록하지 않는지 검증.
      */
     @Test
     void preservesUnknownPaymentResult() {
@@ -83,8 +83,8 @@ class PaymentCommandServiceTest {
     }
 
     /**
-     * 환불 준비 결과의 공급자 결제 ID·금액·통화와 refund-100 키로 공급자를 호출하고 REFUNDED 응답을 반환하는지 검증한다.
-     * 호출 순서를 직접 assertion하는 테스트는 아니다.
+     * 환불 준비 결과의 공급자 결제 ID·금액·통화와 refund-100 키로 공급자를 호출하고 REFUNDED 응답을 반환하는지 검증.
+     * 호출 순서는 직접 검증 대상에서 제외.
      */
     @Test
     void forwardsPreparedRefund() {
@@ -103,7 +103,7 @@ class PaymentCommandServiceTest {
     }
 
     /**
-     * 멱등 키가 포함된 요청의 준비 결과가 PAID이면 응답 상태도 PAID이며 결제 공급자를 호출하지 않는지 검증한다.
+     * 멱등 키가 포함된 요청의 준비 결과가 PAID이면 응답 상태도 PAID이며 결제 공급자를 호출하지 않는지 검증.
      */
     @Test
     void reusesCompletedIdempotentPayment() {
@@ -120,7 +120,7 @@ class PaymentCommandServiceTest {
     }
 
     /**
-     * 결제 상태·금액에 따라 공급자 ID·통화·실패 코드·결제 시각을 채운 응답 대역을 만든다.
+     * 결제 상태·금액에 따라 공급자 ID·통화·실패 코드·결제 시각을 채운 응답 대역을 생성.
      */
     private PaymentResponse response(PaymentStatus status, Long amount) {
         return new PaymentResponse(100L, 10L, "TOSS", amount == null ? null : "provider-1", amount,

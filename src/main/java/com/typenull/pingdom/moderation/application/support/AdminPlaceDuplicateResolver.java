@@ -14,9 +14,9 @@ import java.util.Set;
 import org.springframework.stereotype.Component;
 
 /**
- * 장소 쌍의 Kakao ID 일치 또는 정규화 이름·주소 일치와 50m 이하 거리를 중복 근거로 계산합니다.
- * 거리 계산은 좌표가 존재한다는 전제에서 수행합니다. 그룹은 중복 연결의 연결 성분이므로 모든 구성원 쌍이 직접 중복인 것은 아닙니다.
- * 입력 전체 쌍을 비교하므로 조회 단계에서 후보 규모를 줄이는 책임은 호출자에게 있습니다.
+ * 장소 쌍의 Kakao ID 일치 또는 정규화 이름·주소 일치와 50m 이하 거리를 중복 근거로 계산.
+ * 거리 계산은 좌표 존재를 전제로 수행. 그룹은 중복 연결의 연결 성분으로, 일부 구성원 쌍은 간접 연결만 가능.
+ * 입력 전체 쌍을 비교하므로 조회 단계에서 후보 규모를 줄이는 책임은 호출자에게 귀속.
  */
 @Component
 public class AdminPlaceDuplicateResolver {
@@ -24,9 +24,9 @@ public class AdminPlaceDuplicateResolver {
     private static final double DUPLICATE_DISTANCE_METERS = 50d;
 
     /**
-     * 입력 장소의 모든 ID 쌍을 비교해 양방향 후보와 중복 연결 그룹을 반환하며 DB 상태는 바꾸지 않습니다.
-     * 좌표가 있는 장소 입력을 전제로 Kakao ID 또는 이름·주소·50m 거리 규칙을 적용합니다.
-     * 후보는 근거·거리·ID순, 그룹은 최소 ID순이며 한 그룹의 모든 장소 쌍이 직접 중복이라는 뜻은 아닙니다.
+     * 입력 장소의 모든 ID 쌍을 비교해 DB 변경 없이 양방향 후보·중복 연결 그룹 반환.
+     * 좌표가 있는 장소 입력을 전제로 Kakao ID 또는 이름·주소·50m 거리 규칙 적용.
+     * 후보는 근거·거리·ID순, 그룹은 최소 ID순 정렬. 그룹에는 직접 중복인 쌍뿐 아니라 간접 연결된 쌍도 포함 가능.
      */
     public DuplicateAnalysis analyze(Collection<MapPlace> places) {
         List<MapPlace> sortedPlaces = places.stream()

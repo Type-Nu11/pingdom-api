@@ -30,7 +30,7 @@ class ChangeInfoServiceTest {
     private ChangeInfoService changeInfoService;
 
     /**
-     * 현재 비밀번호가 인코더 검증을 통과하면 새 비밀번호를 암호화한 값으로 사용자 변경을 호출하는지 검증한다.
+     * 현재 비밀번호가 인코더 검증을 통과하면 새 비밀번호를 암호화한 값으로 사용자 변경을 호출하는지 검증.
      */
     @Test
     void changesVerifiedPassword() {
@@ -50,7 +50,7 @@ class ChangeInfoServiceTest {
     }
 
     /**
-     * 현재 비밀번호가 저장값과 일치하지 않으면 AuthException으로 변경을 거절하는지 검증한다.
+     * 현재 비밀번호가 저장값과 일치하지 않으면 AuthException으로 변경을 거절하는지 검증.
      */
     @Test
     void rejectsIncorrectCurrentPassword() {

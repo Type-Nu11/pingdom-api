@@ -20,9 +20,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 업무 변경 전후 상태와 현재 요청 ID·행위자 표시명을 감사 기록으로 저장합니다.
- * 호출 트랜잭션에 참여하므로 직렬화·저장 실패는 업무 변경도 실패시킬 수 있고 별도 독립 감사 트랜잭션은 아닙니다.
- * String 상태는 그대로 저장하고 그 외 객체만 JSON으로 직렬화하며, 민감정보 선별은 호출자가 책임집니다.
+ * 업무 변경 전후 상태와 현재 요청 ID·행위자 표시명을 감사 기록으로 저장.
+ * 호출 트랜잭션에 참여하므로 직렬화·저장 실패 시 업무 변경도 함께 롤백 가능.
+ * String 상태는 그대로 저장하고 그 외 객체만 JSON으로 직렬화하며 민감정보 선별은 호출자 책임.
  */
 @Service
 @RequiredArgsConstructor
@@ -34,9 +34,9 @@ public class AdminAuditLogService {
     private final Clock clock;
 
     /**
-     * 필수 action·targetType·targetId를 확인한 뒤 행위자의 현재 이름·MDC 요청 ID와 변경 전후 상태를 저장합니다.
-     * 문자열 상태는 그대로, 객체 상태는 JSON으로 보관하며 직렬화 실패를 AUDIT_LOG_WRITE_FAILED로 전달합니다.
-     * 호출자의 트랜잭션에 참여하므로 감사 기록 실패는 같은 트랜잭션의 업무 변경도 롤백시킬 수 있습니다.
+     * 필수 action·targetType·targetId를 확인한 뒤 행위자의 현재 이름·MDC 요청 ID와 변경 전후 상태를 저장.
+     * 문자열 상태는 그대로, 객체 상태는 JSON으로 보관하며 직렬화 실패를 AUDIT_LOG_WRITE_FAILED로 전달.
+     * 호출자의 트랜잭션에 참여하므로 감사 기록 실패는 같은 트랜잭션의 업무 변경도 롤백시킬 수 있음.
      */
     @Transactional
     public AdminAuditLog record(

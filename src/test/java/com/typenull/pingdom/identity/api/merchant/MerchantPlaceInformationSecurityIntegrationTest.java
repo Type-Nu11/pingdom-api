@@ -22,7 +22,7 @@ class MerchantPlaceInformationSecurityIntegrationTest {
     private MockMvc mockMvc;
 
     /**
-     * 인증 없는 장소 정보 GET·PUT 요청은 보안 필터에서 401과 INVALID_TOKEN 코드로 거부되는지 검증한다.
+     * 인증 없는 장소 정보 GET·PUT 요청은 보안 필터에서 401과 INVALID_TOKEN 코드로 거부되는지 검증.
      */
     @Test
     void rejectsUnauthenticatedInformationRequests() throws Exception {

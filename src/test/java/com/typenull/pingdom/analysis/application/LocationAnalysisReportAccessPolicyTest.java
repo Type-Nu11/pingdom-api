@@ -19,7 +19,7 @@ class LocationAnalysisReportAccessPolicyTest {
             new LocationAnalysisReportAccessPolicy(userRepository);
 
     /**
-     * 계정 이메일과 요청 이메일이 대소문자·양끝 공백만 다르면 소문자 정규 이메일을 반환하는지 검증한다.
+     * 계정 이메일과 요청 이메일이 대소문자·양끝 공백만 다르면 소문자 정규 이메일을 반환하는지 검증.
      */
     @Test
     void normalizesOwnedReportEmail() {
@@ -33,7 +33,7 @@ class LocationAnalysisReportAccessPolicyTest {
     }
 
     /**
-     * 계정과 다른 이메일로 보고서를 요청하면 ANALYSIS_REPORT_FORBIDDEN인지 검증한다.
+     * 계정과 다른 이메일로 보고서를 요청하면 ANALYSIS_REPORT_FORBIDDEN인지 검증.
      */
     @Test
     void rejectsUnownedReportEmail() {
@@ -48,7 +48,7 @@ class LocationAnalysisReportAccessPolicyTest {
     }
 
     /**
-     * 인증 사용자 ID가 null이면 ANALYSIS_REPORT_FORBIDDEN으로 거절되는지 검증한다.
+     * 인증 사용자 ID가 null이면 ANALYSIS_REPORT_FORBIDDEN으로 거절되는지 검증.
      */
     @Test
     void rejectsMissingAuthenticatedUser() {

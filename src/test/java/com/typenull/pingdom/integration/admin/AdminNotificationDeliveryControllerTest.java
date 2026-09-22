@@ -31,7 +31,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관리자 발송 이력의 복합 필터·빈 페이지 및 수신자 해시 비노출 계약을 검증한다.
+ * 관리자 발송 이력의 복합 필터·빈 페이지 및 수신자 해시 비노출 계약을 검증.
  */
 @Tag("integration")
 @SpringBootTest
@@ -55,7 +55,7 @@ class AdminNotificationDeliveryControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * 발송 이력과 사용자를 비워 필터 및 빈 페이지 결과를 격리한다.
+     * 발송 이력과 사용자를 비워 필터 및 빈 페이지 결과를 격리.
      */
     @BeforeEach
     void setUp() {
@@ -64,7 +64,7 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     /**
-     * 사용자·채널·상태·알림 유형·기간에 맞는 한 건을 조회하고 수신자 해시가 응답에 노출되지 않는지 확인한다.
+     * 사용자·채널·상태·알림 유형·기간에 맞는 한 건을 조회하고 수신자 해시가 응답에 노출되지 않는지 확인.
      */
     @Test
     void combinedDeliveryFilters() throws Exception {
@@ -114,7 +114,7 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     /**
-     * 기간 없이 FAILED 이력을 조회하고 일치하지 않는 상태에서는 빈 페이지 메타데이터를 확인한다.
+     * 기간 없이 FAILED 이력을 조회하고 일치하지 않는 상태에서는 빈 페이지 메타데이터를 확인.
      */
     @Test
     void statusOnlyDeliveryPages() throws Exception {
@@ -157,7 +157,7 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     /**
-     * 시작이 종료보다 늦으면 INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD가 반환되는지 확인한다.
+     * 시작이 종료보다 늦으면 INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD가 반환되는지 확인.
      */
     @Test
     void reversedDeliveryPeriod() throws Exception {
@@ -172,7 +172,7 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     /**
-     * 일반 사용자 토큰으로 발송 이력 조회 시 403과 ACCESS_DENIED를 확인한다.
+     * 일반 사용자 토큰으로 발송 이력 조회 시 403과 ACCESS_DENIED를 확인.
      */
     @Test
     void deliveriesRejectUser() throws Exception {
@@ -185,7 +185,7 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     /**
-     * 발송 이력을 생성한 뒤 지정 결과와 1회 시도 정보를 기록한다. RETRY_SCHEDULED일 때만 재시도 플래그를 켠다.
+     * 발송 이력을 생성한 뒤 지정 결과와 1회 시도 정보를 기록. RETRY_SCHEDULED일 때만 재시도 플래그를 활성화.
      */
     private void saveDelivery(
             Long userId,
@@ -227,7 +227,7 @@ class AdminNotificationDeliveryControllerTest {
     }
 
     /**
-     * 지정 역할의 사용자를 저장하고 로그인 성공 응답의 접근 토큰을 반환한다.
+     * 지정 역할의 사용자를 저장하고 로그인 성공 응답의 접근 토큰을 반환.
      */
     private String createUserAndLogin(String username, UserRole role) throws Exception {
         userRepository.save(User.builder()

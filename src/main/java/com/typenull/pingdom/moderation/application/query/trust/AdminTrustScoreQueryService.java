@@ -16,8 +16,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 저장된 신고자 점수와 현재 제한 여부에 집계 근거를 붙입니다. 점수 자체를 재계산하거나 만료 상태를 저장하지 않습니다.
- * acceptanceRate는 접수 건수 대비 승인 건수의 백분율이며 소수 둘째 자리까지 반올림합니다.
+ * 저장된 신고자 점수와 현재 제한 여부에 집계 근거를 결합. 점수 재계산·만료 상태 저장은 처리 범위에서 제외.
+ * acceptanceRate는 접수 건수 대비 승인 건수의 백분율이며 소수 둘째 자리까지 반올림.
  */
 @Service
 @RequiredArgsConstructor
@@ -31,8 +31,8 @@ public class AdminTrustScoreQueryService {
     private final Clock clock;
 
     /**
-     * 저장된 신고자 점수·등급, 현재 시각의 제한 여부와 신고 집계 근거를 반환합니다.
-     * 정책 행이 없으면 TRUST_SCORE_REPORTER_POLICY_NOT_FOUND이며 점수 재계산이나 만료 상태 저장은 수행하지 않습니다.
+     * 저장된 신고자 점수·등급, 현재 시각의 제한 여부와 신고 집계 근거 반환.
+     * 정책 행 부재 시 TRUST_SCORE_REPORTER_POLICY_NOT_FOUND. 점수 재계산·만료 상태 저장은 처리 범위에서 제외.
      */
     @Transactional(readOnly = true)
     public AdminTrustScoreResponse getTrustScore(Long reporterUserId) {

@@ -69,7 +69,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.test.web.servlet.MockMvc;
 
 /**
- * 메모리 제한 저장소와 MockMvc로 인증·추천 클릭의 횟수, 최소 간격, 저장소 장애 HTTP 계약을 검증한다.
+ * 메모리 제한 저장소와 MockMvc로 인증·추천 클릭의 횟수, 최소 간격, 저장소 장애 HTTP 계약을 검증.
  */
 @Tag("integration")
 @SpringBootTest(properties = {
@@ -97,7 +97,7 @@ class AbuseRateLimitControllerTest {
     static class TestRateLimitConfig {
 
         /**
-         * UTC 시스템 시각을 쓰는 메모리 제한 저장소를 실제 저장소보다 우선하는 테스트 빈으로 제공한다.
+         * UTC 시스템 시각을 쓰는 메모리 제한 저장소를 실제 저장소보다 우선하는 테스트 빈으로 제공.
          */
         @Bean
         @Primary
@@ -176,7 +176,7 @@ class AbuseRateLimitControllerTest {
     private PasswordResetTokenRepository passwordResetTokenRepository;
 
     /**
-     * 메모리 제한 상태와 추천·게시물·인증 관련 DB 데이터를 초기화해 요청 횟수 누적을 시나리오 안으로 한정한다.
+     * 메모리 제한 상태와 추천·게시물·인증 관련 DB 데이터를 초기화해 요청 횟수 누적을 시나리오 안으로 한정.
      */
     @BeforeEach
     void setUp() {
@@ -201,7 +201,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 동일 이메일 가입이 생성·중복 충돌을 거친 뒤 세 번째 요청에서 429로 제한되는지 확인한다.
+     * 동일 이메일 가입이 생성·중복 충돌을 거친 뒤 세 번째 요청에서 429로 제한되는지 확인.
      */
     @Test
     void signupEmailLimit() throws Exception {
@@ -236,7 +236,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 같은 사용자명의 비밀번호 오류 두 번 후 세 번째 로그인 시도가 429인지 확인한다.
+     * 같은 사용자명의 비밀번호 오류 두 번 후 세 번째 로그인 시도가 429인지 확인.
      */
     @Test
     void loginUsernameLimit() throws Exception {
@@ -260,7 +260,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 같은 잘못된 갱신 쿠키의 인증 실패도 횟수에 포함되어 세 번째 요청이 429인지 확인한다.
+     * 같은 잘못된 갱신 쿠키의 인증 실패도 횟수에 포함되어 세 번째 요청이 429인지 확인.
      */
     @Test
     void refreshTokenLimit() throws Exception {
@@ -281,7 +281,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 첫 인증 메일 재발급 성공 직후 반복 요청이 최소 간격 제한으로 거절되는지 확인한다.
+     * 첫 인증 메일 재발급 성공 직후 반복 요청이 최소 간격 제한으로 거절되는지 확인.
      */
     @Test
     void emailResendCooldown() throws Exception {
@@ -305,7 +305,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 같은 이메일의 잘못된 인증 코드 두 번 후 세 번째 시도가 429인지 확인한다.
+     * 같은 이메일의 잘못된 인증 코드 두 번 후 세 번째 시도가 429인지 확인.
      */
     @Test
     void emailVerificationLimit() throws Exception {
@@ -331,7 +331,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 비밀번호 재설정 요청 직후의 반복 요청이 최소 간격 제한으로 거절되는지 확인한다.
+     * 비밀번호 재설정 요청 직후의 반복 요청이 최소 간격 제한으로 거절되는지 확인.
      */
     @Test
     void passwordResetCooldown() throws Exception {
@@ -353,7 +353,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 서로 다른 장소·요청 ID라도 같은 사용자의 세 번째 추천 클릭은 횟수 제한에 걸리는지 확인한다.
+     * 서로 다른 장소·요청 ID라도 같은 사용자의 세 번째 추천 클릭은 횟수 제한에 걸리는지 확인.
      */
     @Test
     void recommendationUserLimit() throws Exception {
@@ -399,7 +399,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 장소를 바꿔도 추천 클릭 requestId를 재사용하면 두 번째 요청을 429로 거절하는지 확인한다.
+     * 장소를 바꿔도 추천 클릭 requestId를 재사용하면 두 번째 요청을 429로 거절하는지 확인.
      */
     @Test
     void recommendationRequestReuse() throws Exception {
@@ -433,7 +433,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 제한 저장소 대역의 장애가 로그인에서 503과 RATE_LIMIT_UNAVAILABLE로 노출되는지 확인한다.
+     * 제한 저장소 대역의 장애가 로그인에서 503과 RATE_LIMIT_UNAVAILABLE로 노출되는지 확인.
      */
     @Test
     void rateLimitStoreUnavailable() throws Exception {
@@ -448,7 +448,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 공통 암호를 가진 사용자를 저장하고 flush해 인증 및 이메일 제한 시나리오에 사용한다.
+     * 공통 암호를 가진 사용자를 저장하고 flush해 인증 및 이메일 제한 시나리오에 사용.
      */
     private User createUser(String username) {
         return userRepository.saveAndFlush(User.builder()
@@ -462,14 +462,14 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 로그인 횟수 제한을 소비하지 않고 사용자 접근 토큰을 직접 발급한다.
+     * 로그인 횟수 제한을 소비하지 않고 사용자 접근 토큰을 직접 발급.
      */
     private String accessToken(User user) {
         return jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
     }
 
     /**
-     * 추천 클릭의 대상 존재 검증을 통과할 장소를 저장한다.
+     * 추천 클릭의 대상 존재 검증을 통과할 장소를 저장.
      */
     private MapPlace createMapPlace(String name) {
         return mapPlaceRepository.saveAndFlush(MapPlace.builder()
@@ -483,7 +483,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 소유자·장소·S3 키와 초기 좋아요 0을 가진 업로드 fixture를 저장한다.
+     * 소유자·장소·S3 키와 초기 좋아요 0을 가진 업로드 fixture를 저장.
      */
     private MapImage createMapImage(Long ownerId, MapPlace mapPlace) {
         return mapImageRepository.saveAndFlush(MapImage.builder()
@@ -499,14 +499,14 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 실제 JPEG 바이트를 file 필드의 multipart 요청 파일로 감싼다.
+     * 실제 JPEG 바이트를 file 필드의 multipart 요청 파일로 감쌈.
      */
     private MockMultipartFile imageFile(String filename) throws Exception {
         return new MockMultipartFile("file", filename, "image/jpeg", validJpegBytes());
     }
 
     /**
-     * 파일 서명 검증을 통과하도록 2×2 RGB 이미지를 JPEG로 인코딩한다.
+     * 파일 서명 검증을 통과하도록 2×2 RGB 이미지를 JPEG로 인코딩.
      */
     private byte[] validJpegBytes() throws Exception {
         BufferedImage image = new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB);
@@ -516,7 +516,7 @@ class AbuseRateLimitControllerTest {
     }
 
     /**
-     * 요청의 원격 주소를 명시해 IP별 제한 키를 시나리오마다 구분한다.
+     * 요청의 원격 주소를 명시해 IP별 제한 키를 시나리오마다 구분.
      */
     private org.springframework.test.web.servlet.request.RequestPostProcessor remoteAddress(String remoteAddress) {
         return request -> {
@@ -533,14 +533,14 @@ class AbuseRateLimitControllerTest {
         private boolean unavailable;
 
         /**
-         * 기간 만료와 쿨다운을 판단할 테스트 시계를 주입한다.
+         * 기간 만료와 쿨다운을 판단할 테스트 시계를 주입.
          */
         private TestRateLimitStore(Clock clock) {
             this.clock = clock;
         }
 
         /**
-         * 메모리 대역에서 쿨다운과 기간별 횟수를 모두 검사한 뒤 횟수·다음 허용 시각을 갱신한다. Redis 원자성이나 동시 요청 안전성을 검증하는 구현은 아니다.
+         * 메모리 대역에서 쿨다운과 기간별 횟수를 모두 검사한 뒤 횟수·다음 허용 시각을 갱신. Redis 원자성과 동시 요청 안전성은 이 대역의 검증 범위에서 제외.
          */
         @Override
         public void acquire(
@@ -578,7 +578,7 @@ class AbuseRateLimitControllerTest {
         }
 
         /**
-         * 횟수·쿨다운·장애 플래그를 모두 초기화한다.
+         * 횟수·쿨다운·장애 플래그를 모두 초기화.
          */
         private void clear() {
             windows.clear();
@@ -587,14 +587,14 @@ class AbuseRateLimitControllerTest {
         }
 
         /**
-         * 후속 획득 호출이 저장소 장애 예외를 내도록 대역 상태를 바꾼다.
+         * 후속 획득 호출이 저장소 장애 예외를 내도록 대역 상태를 변경.
          */
         private void simulateUnavailable() {
             unavailable = true;
         }
 
         /**
-         * 기간이 없거나 현재 시각이 만료 시각 이상이면 횟수 0의 새 기간을 반환하고 그 외에는 기존 상태를 쓴다.
+         * 기간이 없거나 현재 시각이 만료 시각 이상이면 횟수 0의 새 기간을 반환하고 그 외에는 기존 상태를 사용.
          */
         private WindowState activeWindowState(RateLimitWindowRule rule, Instant now) {
             WindowState state = windows.get(rule.key());
@@ -610,7 +610,7 @@ class AbuseRateLimitControllerTest {
             private final Instant expiresAt;
 
             /**
-             * 요청 횟수와 기간 만료 시각을 묶어 메모리 제한 상태를 구성한다.
+             * 요청 횟수와 기간 만료 시각을 묶어 메모리 제한 상태를 구성.
              */
             private WindowState(int count, Instant expiresAt) {
                 this.count = count;

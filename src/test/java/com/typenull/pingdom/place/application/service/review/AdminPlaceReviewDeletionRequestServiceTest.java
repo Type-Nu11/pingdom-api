@@ -26,7 +26,7 @@ import org.junit.jupiter.api.Test;
 class AdminPlaceReviewDeletionRequestServiceTest {
 
     /**
-     * 활성 관리자가 삭제 요청을 승인하면 응답 상태가 APPROVED이고 리뷰에 고정 시각의 삭제 표시를 요청하는지 확인합니다.
+     * 활성 관리자가 삭제 요청을 승인하면 응답 상태가 APPROVED이고 리뷰에 고정 시각의 삭제 표시를 요청하는지 확인.
      */
     @Test
     void approvesReviewDeletion() {

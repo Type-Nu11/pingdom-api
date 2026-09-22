@@ -9,8 +9,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 장소에 연결되는 티켓·클래스 상품의 식별 정보와 활성 상태를 보관합니다.
- * GENERAL 슬롯은 별도 상품이 없으므로 생성할 수 없으며, 예약 재고와 시간은 PlaceAvailability가 담당합니다.
+ * 장소에 연결되는 티켓·클래스 상품의 식별 정보와 활성 상태를 보관.
+ * GENERAL 슬롯은 별도 상품이 없으므로 생성할 수 없으며, 예약 재고와 시간은 PlaceAvailability가 담당.
  */
 @Entity
 @Getter

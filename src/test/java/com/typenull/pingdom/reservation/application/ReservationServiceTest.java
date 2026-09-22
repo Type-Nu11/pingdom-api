@@ -40,7 +40,7 @@ class ReservationServiceTest {
     private ReservationService service;
 
     /**
-     * 사용자 1의 일반/잠금 조회를 활성 관광객으로 고정하고 예약 저장·슬롯 예약 결과와 UTC Clock을 구성한다.
+     * 사용자 1의 일반/잠금 조회를 활성 관광객으로 고정하고 예약 저장·슬롯 예약 결과와 UTC Clock을 구성.
      */
     @BeforeEach
     void setUp() {
@@ -59,7 +59,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 수량 2 예약 생성이 슬롯 정원 차감·예약 저장·장소 전환 이벤트 발행을 호출하고 PENDING·GENERAL 응답을 반환하는지 검증한다.
+     * 수량 2 예약 생성이 슬롯 정원 차감·예약 저장·장소 전환 이벤트 발행을 호출하고 PENDING·GENERAL 응답을 반환하는지 검증.
      */
     @Test
     void createsPendingReservation() {
@@ -73,7 +73,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 티켓 슬롯의 상품 ID·유형·시작/종료 시각과 예약자 이름·전화·요청사항이 응답에 반영되고, 저장 대상의 상품 유형이 TICKET인지 검증한다.
+     * 티켓 슬롯의 상품 ID·유형·시작/종료 시각과 예약자 이름·전화·요청사항이 응답에 반영되고, 저장 대상의 상품 유형이 TICKET인지 검증.
      */
     @Test
     void snapshotsTicketReservationDetails() {
@@ -97,7 +97,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 확정 예약을 취소하면 수량 2를 반환하고 반복 취소는 예외가 되어 정원을 한 번만 복구하는지 검증한다.
+     * 확정 예약을 취소하면 수량 2를 반환하고 반복 취소는 예외가 되어 정원을 한 번만 복구하는지 검증.
      */
     @Test
     void cancelReleasesCapacityOnlyOnce() {
@@ -114,7 +114,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 같은 사용자·멱등 키의 동일 예약 요청이 있으면 슬롯 예약과 추가 저장을 실행하지 않는지 검증한다.
+     * 같은 사용자·멱등 키의 동일 예약 요청이 있으면 슬롯 예약과 추가 저장을 실행하지 않는지 검증.
      */
     @Test
     void reusesIdempotentReservation() {
@@ -130,7 +130,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 같은 멱등 키로 다른 슬롯을 요청하면 IDEMPOTENCY_KEY_REUSED를 반환하고 정원 처리에 도달하지 않는지 검증한다.
+     * 같은 멱등 키로 다른 슬롯을 요청하면 IDEMPOTENCY_KEY_REUSED를 반환하고 정원 처리에 도달하지 않는지 검증.
      */
     @Test
     void rejectsIdempotentSlotMismatch() {
@@ -147,7 +147,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 같은 키·슬롯·수량이어도 예약자 이름이 바뀌면 IDEMPOTENCY_KEY_REUSED를 반환하고 정원 처리에 도달하지 않는지 검증한다.
+     * 같은 키·슬롯·수량이어도 예약자 이름이 바뀌면 IDEMPOTENCY_KEY_REUSED를 반환하고 정원 처리에 도달하지 않는지 검증.
      */
     @Test
     void rejectsIdempotentBookerMismatch() {
@@ -167,7 +167,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 사용자 1이 관광객 2의 예약을 단건 조회하면 RESERVATION_FORBIDDEN인지 검증한다.
+     * 사용자 1이 관광객 2의 예약을 단건 조회하면 RESERVATION_FORBIDDEN인지 검증.
      */
     @Test
     void rejectsAnotherTouristReservation() {
@@ -181,7 +181,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 없는 예약을 단건 조회하면 RESERVATION_NOT_FOUND인지 검증한다.
+     * 없는 예약을 단건 조회하면 RESERVATION_NOT_FOUND인지 검증.
      */
     @Test
     void rejectsUnknownReservation() {
@@ -193,7 +193,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 예약 소유자라도 MERCHANT_OWNER 계정이면 내 예약 조회에서 TOURIST_ACCOUNT_REQUIRED인지 검증한다.
+     * 예약 소유자라도 MERCHANT_OWNER 계정이면 내 예약 조회에서 TOURIST_ACCOUNT_REQUIRED인지 검증.
      */
     @Test
     void getMineRequiresTouristAccount() {
@@ -210,7 +210,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 관리자 목록의 예약 기간 값이 모두 없으면 저장소의 두 기간 적용 플래그를 false로 전달하는지 검증한다.
+     * 관리자 목록의 예약 기간 값이 모두 없으면 저장소의 두 기간 적용 플래그를 false로 전달하는지 검증.
      */
     @Test
     void disablesAbsentReservationPeriodFilters() {
@@ -225,7 +225,7 @@ class ReservationServiceTest {
     }
 
     /**
-     * 이전 점주 슬롯의 예약도 현재 소유자를 잠금 조회하여 확인하고 활성 점주 8이 CONFIRMED로 전이시킬 수 있는지 검증한다.
+     * 이전 점주 슬롯의 예약도 현재 소유자를 잠금 조회하여 확인하고 활성 점주 8이 CONFIRMED로 전이시킬 수 있는지 검증.
      */
     @Test
     void currentOwnerConfirmsTransferredReservation() {
@@ -246,8 +246,8 @@ class ReservationServiceTest {
     }
 
     /**
-     * 장소가 점주 8로 이전된 뒤 이전 점주 7의 확정 요청은 RESERVATION_FORBIDDEN이며 예약은 PENDING으로 유지되는지 검증한다.
-     * 활성 점주 정책에도 도달하지 않음을 확인해 현재 소유권 검증 경계를 고정한다.
+     * 장소가 점주 8로 이전된 뒤 이전 점주 7의 확정 요청은 RESERVATION_FORBIDDEN이며 예약은 PENDING으로 유지되는지 검증.
+     * 활성 점주 정책 미호출도 확인해 현재 소유권 검증 경계를 고정.
      */
     @Test
     void rejectsPreviousOwnerConfirmation() {

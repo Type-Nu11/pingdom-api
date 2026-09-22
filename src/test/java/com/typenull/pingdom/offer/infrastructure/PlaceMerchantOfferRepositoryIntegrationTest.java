@@ -62,7 +62,7 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS 컨테이너의 JDBC 접속값을 Spring에 등록해 실제 PostgreSQL 쿼리·제약 검증을 수행한다.
+     * PostGIS 컨테이너의 JDBC 접속값을 Spring에 등록해 실제 PostgreSQL 쿼리·제약 검증을 수행.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -82,7 +82,7 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
     @Autowired private PlatformTransactionManager transactionManager;
 
     /**
-     * 쿠폰부터 사용자까지 종속 데이터 순서로 삭제해 Offer 공개 조건과 중복 제약 테스트를 격리한다.
+     * 쿠폰부터 사용자까지 종속 데이터 순서로 삭제해 Offer 공개 조건과 중복 제약 테스트를 격리.
      */
     @BeforeEach
     void cleanDatabase() {
@@ -96,8 +96,8 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
     }
 
     /**
-     * 프로필·검증·역할·탈퇴·밴·소유권·기간·상태·재고가 다른 Offer 중 유효한 2건과 해당 장소만 조회되는지 검증한다.
-     * 시작 시각은 포함하고 종료 시각은 제외하는 공개 경계도 고정한다.
+     * 프로필·검증·역할·탈퇴·밴·소유권·기간·상태·재고가 다른 Offer 중 유효한 2건과 해당 장소만 조회되는지 검증.
+     * 시작 시각은 포함하고 종료 시각은 제외하는 공개 경계도 고정.
      */
     @Test
     void filtersAvailableMerchantOffers() {
@@ -159,8 +159,8 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
     }
 
     /**
-     * 같은 Offer·사용자의 중복 쿠폰 저장이 고유 제약으로 실패한 뒤 별도 트랜잭션에서 다른 관광객 쿠폰이 저장되는지 검증한다.
-     * 실패 트랜잭션이 이후 독립 저장을 오염시키지 않고 최초 쿠폰은 유지되어야 한다.
+     * 같은 Offer·사용자의 중복 쿠폰 저장이 고유 제약으로 실패한 뒤 별도 트랜잭션에서 다른 관광객 쿠폰이 저장되는지 검증.
+     * 실패 트랜잭션이 이후 독립 저장을 오염시키지 않고 최초 쿠폰은 유지되어야 함.
      */
     @Test
     void recoversAfterDuplicateCouponRollback() {
@@ -193,7 +193,7 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
     }
 
     /**
-     * 지정한 사용자·프로필·검증 상태로 점주와 장소·소유 관계를 DB에 저장해 공개 조건별 입력을 구성한다.
+     * 지정한 사용자·프로필·검증 상태로 점주와 장소·소유 관계를 DB에 저장해 공개 조건별 입력을 구성.
      */
     private MerchantContext merchant(
             String suffix,
@@ -214,7 +214,7 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
     }
 
     /**
-     * 점주의 장소에 지정 기간·수량의 게시 Offer를 저장하며 게시 시각을 시작 시각으로 맞춘다.
+     * 점주의 장소에 지정 기간·수량의 게시 Offer를 저장하며 게시 시각을 시작 시각으로 맞춤.
      */
     private TouristOffer savePublished(
             MerchantContext merchant,

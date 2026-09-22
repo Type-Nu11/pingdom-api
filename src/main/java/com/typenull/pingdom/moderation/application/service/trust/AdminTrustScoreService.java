@@ -32,8 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 신고자 점수 이상 징후의 해결과 개입 규칙 관리·수동 평가를 수행하고 감사 기록을 남깁니다.
- * 규칙 평가는 저장된 점수·집계를 사용하며 현재 점수를 원본 신고에서 다시 산출하지 않습니다.
+ * 신고자 점수 이상 징후의 해결, 개입 규칙 관리·수동 평가와 감사 기록 저장.
+ * 규칙 평가는 저장된 점수·집계를 사용하며 원본 신고 기반 점수 재산출은 처리 범위에서 제외.
  */
 @Service
 @RequiredArgsConstructor
@@ -50,7 +50,7 @@ public class AdminTrustScoreService {
     private final Clock clock;
 
     /**
-     * 신고자 ID와 미해결 여부를 선택적으로 적용해 이상 징후를 탐지 시각·ID 내림차순으로 반환합니다. page는 1 이상·limit는 1~100으로 보정합니다.
+     * 신고자 ID와 미해결 여부를 선택적으로 적용해 이상 징후를 탐지 시각·ID 내림차순으로 반환. page는 1 이상·limit는 1~100으로 보정.
      */
     @Transactional(readOnly = true)
     public AdminTrustScoreAnomalyResponse listAnomalies(int page, int limit, Long reporterUserId, boolean unresolvedOnly) {
@@ -84,8 +84,8 @@ public class AdminTrustScoreService {
     }
 
     /**
-     * 저장된 이상 징후에 현재 해결 시각과 사유를 반영하고 감사 기록을 같은 트랜잭션에 저장합니다.
-     * 이상 징후가 없으면 TRUST_SCORE_ANOMALY_NOT_FOUND이며 신고자 점수나 제한 정책을 재계산하지 않습니다.
+     * 저장된 이상 징후에 현재 해결 시각·사유를 반영하고 감사 기록을 같은 트랜잭션에 저장.
+     * 이상 징후 부재 시 TRUST_SCORE_ANOMALY_NOT_FOUND. 신고자 점수·제한 정책은 유지.
      */
     @Transactional
     public AdminTrustScoreAnomalyItem resolveAnomaly(
@@ -113,7 +113,7 @@ public class AdminTrustScoreService {
     }
 
     /**
-     * enabledOnly이면 활성 규칙만, 아니면 전체 규칙을 priority·ID 오름차순으로 반환하며 규칙을 실행하지 않습니다.
+     * enabledOnly이면 활성 규칙, 아니면 전체 규칙을 priority·ID 오름차순으로 반환하는 규칙 정의 조회 전용 메서드.
      */
     @Transactional(readOnly = true)
     public AdminTrustScoreInterventionRuleResponse listRules(boolean enabledOnly) {
@@ -127,8 +127,8 @@ public class AdminTrustScoreService {
     }
 
     /**
-     * 최소·최대 점수 순서와 조치별 기간을 검증하고 이름이 중복되지 않는 규칙을 활성 상태로 생성합니다.
-     * 임시 제한은 1~365일만 허용하고 다른 조치는 기간을 받지 않으며 규칙과 감사 기록을 같은 트랜잭션에 저장합니다.
+     * 최소·최대 점수 순서와 조치별 기간을 검증하고 이름이 중복되지 않는 활성 규칙을 신규 생성.
+     * 임시 제한은 1~365일만 허용하고 다른 조치는 기간을 받지 않으며 규칙과 감사 기록을 같은 트랜잭션에 저장.
      */
     @Transactional
     public AdminTrustScoreInterventionRuleItem createRule(
@@ -169,8 +169,8 @@ public class AdminTrustScoreService {
     }
 
     /**
-     * 점수·기간 조건을 검증하고 존재하는 규칙의 이름이 다른 규칙과 중복되지 않을 때 내용을 교체합니다.
-     * 활성 여부는 유지하며 변경 전후 감사 기록을 함께 저장합니다. 규칙 없음·이름 중복·잘못된 조건은 오류입니다.
+     * 점수·기간 조건을 검증하고 존재하는 규칙의 이름이 다른 규칙과 중복되지 않을 때 내용을 교체.
+     * 활성 여부는 유지하며 변경 전후 감사 기록을 함께 저장. 규칙 없음·이름 중복·잘못된 조건은 오류.
      */
     @Transactional
     public AdminTrustScoreInterventionRuleItem updateRule(
@@ -231,9 +231,9 @@ public class AdminTrustScoreService {
     }
 
     /**
-     * 활성 규칙을 priority·ID 오름차순으로 검사해 첫 일치 규칙 하나를 적용합니다.
-     * TEMPORARY_RESTRICT만 실제 제한 만료를 변경하고 다른 조치는 평가 결과와 감사 기록만 남깁니다.
-     * 반복 평가 시 임시 제한 기준은 기존 만료가 아닌 현재 시각입니다.
+     * 활성 규칙을 priority·ID 오름차순으로 검사해 첫 일치 규칙 하나를 적용.
+     * TEMPORARY_RESTRICT만 실제 제한 만료를 변경하고 다른 조치는 평가 결과와 감사 기록만 남김.
+     * 반복 평가 시 임시 제한 기준은 기존 만료가 아닌 현재 시각.
      */
     @Transactional
     public AdminTrustScoreInterventionEvaluationResponse evaluateReporter(Long reporterUserId, Long adminUserId) {

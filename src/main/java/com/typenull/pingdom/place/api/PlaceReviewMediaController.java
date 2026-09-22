@@ -29,8 +29,8 @@ import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
 /**
- * 리뷰 작성 전 사진을 임시 업로드하거나 취소하는 인증 API입니다.
- * 장소·현재 사용자 ID를 함께 넘기며 리뷰 연결과 소유권·만료 검사는 미디어 서비스가 담당합니다.
+ * 리뷰 작성 전 사진을 임시 업로드하거나 취소하는 인증 API.
+ * 장소·현재 사용자 ID를 함께 넘기며 리뷰 연결과 소유권·만료 검사는 미디어 서비스가 담당.
  */
 @RestController
 @RequestMapping("/places/{placeId}/reviews/media")

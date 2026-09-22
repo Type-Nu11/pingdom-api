@@ -37,7 +37,7 @@ class AdminTrustScoreQueryServiceTest {
     private AdminTrustScoreQueryService service;
 
     /**
-     * 신고 제한의 현재 유효 여부를 판정할 서울 시간대 고정 Clock으로 신뢰도 조회 서비스를 만든다.
+     * 신고 제한의 현재 유효 여부를 판정할 서울 시간대 고정 Clock으로 신뢰도 조회 서비스를 생성.
      */
     @BeforeEach
     void setUp() {
@@ -45,8 +45,8 @@ class AdminTrustScoreQueryServiceTest {
     }
 
     /**
-     * 신고 정책을 조회하면 신고자 정보·점수 80·HIGH 등급과 접수·수락·기각·허위 건수를 응답하는지 검증한다.
-     * 수락률 66.67%, 기본점수·가산·감점 근거와 비제한 상태도 확인한다.
+     * 신고 정책을 조회하면 신고자 정보·점수 80·HIGH 등급과 접수·수락·기각·허위 건수를 응답하는지 검증.
+     * 수락률 66.67%, 기본점수·가산·감점 근거와 비제한 상태도 확인.
      */
     @Test
     void returnsTrustGradeAndEvidence() {
@@ -80,7 +80,7 @@ class AdminTrustScoreQueryServiceTest {
     }
 
     /**
-     * 낮은 점수와 미래 제한 기한이 있는 신고자는 LOW 등급, 제한 true, 기한과 사유를 응답하는지 검증한다.
+     * 낮은 점수와 미래 제한 기한이 있는 신고자는 LOW 등급, 제한 true, 기한과 사유를 응답하는지 검증.
      */
     @Test
     void returnsActiveTrustRestriction() {
@@ -108,7 +108,7 @@ class AdminTrustScoreQueryServiceTest {
     }
 
     /**
-     * 신고자 정책이 없으면 TRUST_SCORE_REPORTER_POLICY_NOT_FOUND 오류를 반환하는지 검증한다.
+     * 신고자 정책이 없으면 TRUST_SCORE_REPORTER_POLICY_NOT_FOUND 오류를 반환하는지 검증.
      */
     @Test
     void rejectsMissingTrustPolicy() {

@@ -8,12 +8,12 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
-/** 장소 랭킹 화면에 필요한 집계 결과만 PostgreSQL에서 조회합니다. */
+/** 장소 랭킹 화면에 필요한 집계 결과만 PostgreSQL에서 조회. */
 public interface PlaceRankingQueryRepository extends Repository<MapPlace, Long> {
 
     /**
-     * 기간 시작 이후 작성된 활성 게시물의 현재 누적 좋아요를 합산해 양수인 장소만 셉니다.
-     * 좋아요가 눌린 시각의 구간 집계가 아니며 장소의 운영·탐색 상태나 기간 종료 상한은 이 쿼리에 포함되지 않습니다.
+     * 기간 시작 이후 작성된 활성 게시물의 현재 누적 좋아요를 합산해 양수인 장소만 집계.
+     * 좋아요가 눌린 시각의 구간 집계와 구분하며 장소의 운영·탐색 상태와 기간 종료 상한은 이 쿼리의 조건에서 제외.
      */
     @Query(value = """
             SELECT COUNT(*)

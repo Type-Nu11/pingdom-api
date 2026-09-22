@@ -11,7 +11,7 @@ class VerifiedBoostProductTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 7, 26, 12, 0);
 
     /**
-     * 초안 상품을 활성화한 뒤 비활성화하면 INACTIVE 상태와 마지막 수정 시각을 기록하는지 검증한다.
+     * 초안 상품을 활성화한 뒤 비활성화하면 INACTIVE 상태와 마지막 수정 시각을 기록하는지 검증.
      */
     @Test
     void activatesThenDeactivatesDraft() {
@@ -25,7 +25,7 @@ class VerifiedBoostProductTest {
     }
 
     /**
-     * 한 번도 활성화되지 않은 초안을 비활성화하면 IllegalStateException이 발생하는지 검증한다.
+     * 한 번도 활성화되지 않은 초안을 비활성화하면 IllegalStateException이 발생하는지 검증.
      */
     @Test
     void draftCannotBeDeactivated() {
@@ -36,7 +36,7 @@ class VerifiedBoostProductTest {
     }
 
     /**
-     * 가격과 기간이 모두 0인 상품 초안 생성이 IllegalArgumentException으로 거절되는지 검증한다.
+     * 가격과 기간이 모두 0인 상품 초안 생성이 IllegalArgumentException으로 거절되는지 검증.
      */
     @Test
     void rejectsZeroPriceAndDuration() {
@@ -45,7 +45,7 @@ class VerifiedBoostProductTest {
     }
 
     /**
-     * 가격 30,000·기간 7일인 초안을 만들어 상태 전이 테스트의 유효한 초기 조건을 제공한다.
+     * 가격 30,000·기간 7일인 초안을 만들어 상태 전이 테스트의 유효한 초기 조건을 제공.
      */
     private VerifiedBoostProduct product() {
         return VerifiedBoostProduct.draft("Boost", "description", 30_000, 7, NOW);

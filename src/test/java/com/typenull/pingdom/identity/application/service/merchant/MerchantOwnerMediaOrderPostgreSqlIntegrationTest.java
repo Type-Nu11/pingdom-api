@@ -75,7 +75,7 @@ class MerchantOwnerMediaOrderPostgreSqlIntegrationTest {
     private TransactionTemplate transactionTemplate;
 
     /**
-     * Flyway와 JPA가 동일한 PostGIS 컨테이너를 사용하도록 접속 정보와 PostgreSQL 드라이버를 등록한다.
+     * Flyway와 JPA가 동일한 PostGIS 컨테이너를 사용하도록 접속 정보와 PostgreSQL 드라이버를 등록.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -86,8 +86,8 @@ class MerchantOwnerMediaOrderPostgreSqlIntegrationTest {
     }
 
     /**
-     * 장소 미디어와 장소를 정리하고 실제 저장소·트랜잭션을 사용하는 서비스를 구성한다.
-     * 권한 정책과 외부 저장소는 대체해 순서 변경의 DB 동시성에 검증 범위를 집중한다.
+     * 장소 미디어와 장소를 정리하고 실제 저장소·트랜잭션을 사용하는 서비스를 구성.
+     * 권한 정책과 외부 저장소는 대체해 순서 변경의 DB 동시성에 검증 범위를 집중.
      */
     @BeforeEach
     void setUp() {
@@ -110,7 +110,7 @@ class MerchantOwnerMediaOrderPostgreSqlIntegrationTest {
     }
 
     /**
-     * 서로 다른 두 미디어를 동시에 앞뒤로 이동한 후 저장된 노출 순서가 중복 없이 0·1·2로 유지되는지 PostgreSQL에서 검증한다.
+     * 서로 다른 두 미디어를 동시에 앞뒤로 이동한 후 저장된 노출 순서가 중복 없이 0·1·2로 유지되는지 PostgreSQL에서 검증.
      */
     @Test
     void preservesOrderUnderConcurrentMoves() throws Exception {
@@ -154,8 +154,8 @@ class MerchantOwnerMediaOrderPostgreSqlIntegrationTest {
     }
 
     /**
-     * 두 작업의 준비를 알리고 공통 시작 신호 후 독립 트랜잭션으로 순서를 변경한다.
-     * 대기 초과와 인터럽트를 테스트 실패로 드러내며 인터럽트 상태를 복원한다.
+     * 두 작업의 준비를 알리고 공통 시작 신호 후 독립 트랜잭션으로 순서를 변경.
+     * 대기 초과와 인터럽트를 테스트 실패로 드러내며 인터럽트 상태를 복원.
      */
     private void updateAfterStart(
             CountDownLatch ready,
@@ -182,7 +182,7 @@ class MerchantOwnerMediaOrderPostgreSqlIntegrationTest {
     }
 
     /**
-     * 지정한 장소·파일명·순서를 가진 탐색용 미디어를 만들어 동시 이동 전 초기 순서를 준비한다.
+     * 지정한 장소·파일명·순서를 가진 탐색용 미디어를 만들어 동시 이동 전 초기 순서를 준비.
      */
     private PlaceMedia explorationMedia(MapPlace place, String filename, int displayOrder) {
         return PlaceMedia.exploration(

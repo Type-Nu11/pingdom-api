@@ -36,8 +36,8 @@ class CommunityModerationOpenApiContractTest {
     @Autowired private ObjectMapper objectMapper;
 
     /**
-     * 일반 신고와 관리자 심사 경로가 각 OpenAPI 그룹에 분리되는지 검증한다.
-     * 신고 생성·관리자 목록·상세·수락·반려의 성공 스키마, Bearer 인증, 요청 본문과 상태별 오류 스키마도 확인한다.
+     * 일반 신고와 관리자 심사 경로가 각 OpenAPI 그룹에 분리되는지 검증.
+     * 신고 생성·관리자 목록·상세·수락·반려의 성공 스키마, Bearer 인증, 요청 본문과 상태별 오류 스키마도 확인.
      */
     @Test
     void documentsCommunityModerationContracts() throws Exception {
@@ -90,7 +90,7 @@ class CommunityModerationOpenApiContractTest {
     }
 
     /**
-     * 관리자 글·댓글·신고 페이지가 서로 다른 항목 스키마를 참조하고 각 항목의 필수 식별 필드를 문서화하는지 검증한다.
+     * 관리자 글·댓글·신고 페이지가 서로 다른 항목 스키마를 참조하고 각 항목의 필수 식별 필드를 문서화하는지 검증.
      */
     @Test
     void usesDistinctAdminContentItemSchemas() throws Exception {
@@ -102,8 +102,8 @@ class CommunityModerationOpenApiContractTest {
     }
 
     /**
-     * 신고 상세의 postId가 필수 정수이며 null을 허용하지 않고 글·댓글 예시가 원문 ID와 대상 ID를 구분하는지 검증한다.
-     * 목록 항목과 처리 응답에는 postId 필드가 추가되지 않는지도 확인한다.
+     * 신고 상세의 postId가 필수 정수이며 null을 허용하지 않고 글·댓글 예시가 원문 ID와 대상 ID를 구분하는지 검증.
+     * 목록 항목과 처리 응답에는 postId 필드가 추가되지 않는지도 확인.
      */
     @Test
     void documentsRequiredReportPostId() throws Exception {
@@ -127,14 +127,14 @@ class CommunityModerationOpenApiContractTest {
     }
 
     /**
-     * OpenAPI 문서에서 지정 경로와 HTTP 메서드의 operation 노드를 선택한다.
+     * OpenAPI 문서에서 지정 경로와 HTTP 메서드의 operation 노드를 선택.
      */
     private JsonNode operation(JsonNode document, String path, String method) {
         return document.path("paths").path(path).path(method);
     }
 
     /**
-     * 성공 응답 코드의 와일드카드 콘텐츠가 기대 DTO 스키마를 참조하는지 검사한다.
+     * 성공 응답 코드의 와일드카드 콘텐츠가 기대 DTO 스키마를 참조하는지 검사.
      */
     private void assertSuccessResponse(JsonNode operation, String responseCode, String schemaName) {
         assertThat(operation.at("/responses/" + responseCode + "/content/*~1*/schema/$ref").asText())
@@ -142,14 +142,14 @@ class CommunityModerationOpenApiContractTest {
     }
 
     /**
-     * operation이 Bearer 보안 요구사항을 배열 형태로 선언하는지 확인한다.
+     * operation이 Bearer 보안 요구사항을 배열 형태로 선언하는지 확인.
      */
     private void assertBearerSecurity(JsonNode operation) {
         assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
     /**
-     * 와일드카드 또는 JSON 콘텐츠의 오류 응답이 공통 ErrorResponse 스키마를 참조하는지 확인한다.
+     * 와일드카드 또는 JSON 콘텐츠의 오류 응답이 공통 ErrorResponse 스키마를 참조하는지 확인.
      */
     private void assertErrorResponse(JsonNode operation, String responseCode) {
         JsonNode content = operation.path("responses").path(responseCode).path("content");
@@ -163,7 +163,7 @@ class CommunityModerationOpenApiContractTest {
     }
 
     /**
-     * 페이지 목록 필드가 고유 항목 스키마를 참조하고 그 스키마에 필요한 필드가 실제로 존재하는지 확인한다.
+     * 페이지 목록 필드가 고유 항목 스키마를 참조하고 그 스키마에 필요한 필드가 실제로 존재하는지 확인.
      */
     private void assertItemSchema(
             JsonNode document,
@@ -181,7 +181,7 @@ class CommunityModerationOpenApiContractTest {
     }
 
     /**
-     * OpenAPI HTTP 응답이 200인지 확인하고 UTF-8 본문을 JSON 트리로 읽는다.
+     * OpenAPI HTTP 응답이 200인지 확인하고 UTF-8 본문을 JSON 트리로 읽음.
      */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))

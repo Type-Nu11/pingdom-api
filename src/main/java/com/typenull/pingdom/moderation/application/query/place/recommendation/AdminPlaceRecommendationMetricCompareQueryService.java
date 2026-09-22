@@ -24,9 +24,9 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 
 /**
- * 두 버전의 성과를 같은 검색 대상 장소 집합으로 집계하고 target에서 baseline을 뺀 차이를 제공합니다.
- * 양수 days가 있으면 기간 이벤트를, 없으면 버전 스냅샷을 사용하며 대상 장소 10,000개 초과는 거절합니다.
- * 기간 집계의 CTR prior는 검색된 장소 집합, 누적 스냅샷의 prior는 해당 버전 전체에서 계산합니다.
+ * 두 버전의 성과를 같은 검색 대상 장소 집합으로 집계하고 target에서 baseline을 뺀 차이를 제공.
+ * 양수 days가 있으면 기간 이벤트를, 없으면 버전 스냅샷을 사용하며 대상 장소 10,000개 초과는 거절.
+ * 기간 집계의 CTR prior는 검색된 장소 집합, 누적 스냅샷의 prior는 해당 버전 전체에서 계산.
  */
 @Service
 @RequiredArgsConstructor

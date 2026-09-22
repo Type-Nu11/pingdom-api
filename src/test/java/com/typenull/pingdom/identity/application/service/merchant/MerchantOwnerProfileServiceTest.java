@@ -42,8 +42,8 @@ class MerchantOwnerProfileServiceTest {
     private MerchantOwnerProfileService profileService;
 
     /**
-     * 승인된 인증이 있는 프로필의 상호를 변경하면 인증 상호도 바뀌고 본인·사업자 인증이 대기로 돌아가는지 검증한다.
-     * 변경 시각에 기존 관광객 혜택을 종료하는 처리도 확인한다.
+     * 승인된 인증이 있는 프로필의 상호를 변경하면 인증 상호도 바뀌고 본인·사업자 인증이 대기로 돌아가는지 검증.
+     * 변경 시각에 기존 관광객 혜택을 종료하는 처리도 확인.
      */
     @Test
     void invalidatesVerificationOnBusinessRename() {
@@ -89,7 +89,7 @@ class MerchantOwnerProfileServiceTest {
     }
 
     /**
-     * 상호를 유지한 채 프로필을 수정하면 인증 잠금 조회나 관광객 혜택 종료를 수행하지 않는지 검증한다.
+     * 상호를 유지한 채 프로필을 수정하면 인증 잠금 조회나 관광객 혜택 종료를 수행하지 않는지 검증.
      */
     @Test
     void preservesVerificationForSameBusinessName() {
@@ -124,7 +124,7 @@ class MerchantOwnerProfileServiceTest {
     }
 
     /**
-     * 거절된 프로필로 다른 상호를 재신청하면 기존 인증의 상호를 갱신하고 두 인증 상태를 대기로 되돌리는지 검증한다.
+     * 거절된 프로필로 다른 상호를 재신청하면 기존 인증의 상호를 갱신하고 두 인증 상태를 대기로 되돌리는지 검증.
      */
     @Test
     void invalidatesVerificationOnRenamedReapplication() {

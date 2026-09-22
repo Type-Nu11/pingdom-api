@@ -22,8 +22,8 @@ import org.springframework.web.context.request.RequestContextHolder;
 import org.springframework.web.context.request.ServletRequestAttributes;
 
 /**
- * RateLimited 메서드 호출 전에 요청 DTO·JWT 주체·refresh 쿠키에서 제한 키를 구성한다.
- * 인증 주체 누락은 인증 오류로, 필요한 DTO 누락은 구성 오류로 처리하고 대상 메서드 호출을 막는다.
+ * RateLimited 메서드 호출 전에 요청 DTO·JWT 주체·refresh 쿠키에서 제한 키를 구성.
+ * 인증 주체 누락은 인증 오류로, 필요한 DTO 누락은 구성 오류로 처리하고 대상 메서드 호출을 차단.
  */
 @Aspect
 @Component

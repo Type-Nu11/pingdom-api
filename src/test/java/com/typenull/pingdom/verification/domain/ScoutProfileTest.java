@@ -12,8 +12,8 @@ class ScoutProfileTest {
     private static final LocalDateTime REVIEWED_AT = LocalDateTime.of(2026, 8, 2, 9, 0);
 
     /**
-     * 공백을 포함한 이름·소개로 생성한 대기 프로필을 관리자가 활성화한다.
-     * 사용자 ID와 정규화된 문자열, ACTIVE 상태, 심사자·심사 시각을 확인한다.
+     * 공백을 포함한 이름·소개로 생성한 대기 프로필을 관리자가 활성화.
+     * 사용자 ID와 정규화된 문자열, ACTIVE 상태, 심사자·심사 시각을 확인.
      */
     @Test
     void activatePendingProfile() {
@@ -30,8 +30,8 @@ class ScoutProfileTest {
     }
 
     /**
-     * 활성 프로필 정지 시 공백 사유는 거부하고 정상 사유로는 SUSPENDED 상태와 사유를 기록한다.
-     * 이 시나리오의 대상은 정지이며 회수 동작은 실행하지 않는다.
+     * 활성 프로필 정지 시 공백 사유는 거부하고 정상 사유로는 SUSPENDED 상태와 사유를 기록.
+     * 검증 범위는 정지 동작으로 한정하며 회수 동작은 제외.
      */
     @Test
     void requireSuspensionReason() {

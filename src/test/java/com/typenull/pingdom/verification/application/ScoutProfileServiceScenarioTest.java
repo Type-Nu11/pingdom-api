@@ -53,7 +53,7 @@ class ScoutProfileServiceScenarioTest {
     private final ApplicationEventPublisher eventPublisher = org.mockito.Mockito.mock(ApplicationEventPublisher.class);
     private ScoutProfileService service;
 
-    /** 고정 시계와 mock 의존성으로 서비스를 구성하고 프로필·자격 저장 mock은 입력 객체를 그대로 반환한다. */
+    /** 고정 시계와 mock 의존성으로 서비스를 구성하고 프로필·자격 저장 mock은 입력 객체를 그대로 반환. */
     @BeforeEach
     void setUp() {
         service = new ScoutProfileService(
@@ -72,7 +72,7 @@ class ScoutProfileServiceScenarioTest {
                 .thenAnswer(invocation -> invocation.getArgument(0));
     }
 
-    /** 탈퇴 계정의 신청은 계정 자격 오류로 거부하고 프로필 잠금 조회를 호출하지 않는다. */
+    /** 탈퇴 계정 신청의 계정 자격 오류와 프로필 잠금 조회 미호출 확인. */
     @Test
     void rejectWithdrawnApplicant() {
         User withdrawn = user(1L);
@@ -87,7 +87,7 @@ class ScoutProfileServiceScenarioTest {
         verify(profileRepository, never()).findByUserIdForUpdate(1L);
     }
 
-    /** 현재 정지 계정의 신청은 계정 자격 오류로 거부하고 프로필 잠금 조회를 호출하지 않는다. */
+    /** 현재 정지 계정 신청의 계정 자격 오류와 프로필 잠금 조회 미호출 확인. */
     @Test
     void rejectBannedApplicant() {
         User banned = user(1L);
@@ -102,7 +102,7 @@ class ScoutProfileServiceScenarioTest {
         verify(profileRepository, never()).findByUserIdForUpdate(1L);
     }
 
-    /** 대기 프로필의 이름·소개 앞뒤 공백을 정리해 수정하고 프로필과 자격 PENDING 상태를 유지한다. */
+    /** 대기 프로필의 이름·소개 앞뒤 공백을 정리해 수정하고 프로필과 자격 PENDING 상태를 유지. */
     @Test
     void updatePendingProfile() {
         ScoutProfile profile = ScoutProfile.pending(1L, "기존 Scout", null, NOW);
@@ -121,7 +121,7 @@ class ScoutProfileServiceScenarioTest {
         );
     }
 
-    /** 정지 프로필 수정은 INVALID_SCOUT_PROFILE_STATE로 거부한다. */
+    /** 정지 프로필 수정은 INVALID_SCOUT_PROFILE_STATE로 거부. */
     @Test
     void rejectSuspendedProfileUpdate() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
@@ -137,8 +137,8 @@ class ScoutProfileServiceScenarioTest {
     }
 
     /**
-     * 활동 자격이 정지되어도 프로필 자체가 ACTIVE이면 이름 수정이 가능하다.
-     * 프로필 ACTIVE와 자격 SUSPENDED 상태는 그대로 반환해야 한다.
+     * 활동 자격이 정지되어도 프로필 자체가 ACTIVE이면 이름 수정이 가능.
+     * 프로필 ACTIVE와 자격 SUSPENDED 상태는 그대로 반환해야 함.
      */
     @Test
     void updateDespiteSuspendedEligibility() {
@@ -160,7 +160,7 @@ class ScoutProfileServiceScenarioTest {
         );
     }
 
-    /** 회수 프로필 수정은 프로필 상태 오류로 거부한다. */
+    /** 회수 프로필 수정은 프로필 상태 오류로 거부. */
     @Test
     void rejectRevokedProfileUpdate() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
@@ -176,8 +176,8 @@ class ScoutProfileServiceScenarioTest {
     }
 
     /**
-     * 이미 회수된 프로필도 기존 신청으로 취급해 중복 오류를 반환한다.
-     * 프로필과 활동 자격을 새로 저장하지 않아야 한다.
+     * 이미 회수된 프로필도 기존 신청으로 취급해 중복 오류를 반환.
+     * 프로필과 활동 자격을 새로 저장하지 않아야 함.
      */
     @Test
     void rejectRevokedProfileReapplication() {
@@ -196,7 +196,7 @@ class ScoutProfileServiceScenarioTest {
         verify(eligibilityRepository, never()).save(any(ScoutActivityEligibility.class));
     }
 
-    /** 상세 심사 권한 검사가 실패하면 같은 관리자 권한 오류를 전달하고 대상 프로필을 조회하지 않는다. */
+    /** 상세 심사 권한 검사 실패 시 동일 관리자 권한 오류 전달과 대상 프로필 조회 미호출 확인. */
     @Test
     void rejectUnauthorizedAdminLookup() {
         doThrow(new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED))
@@ -209,7 +209,7 @@ class ScoutProfileServiceScenarioTest {
         verify(profileRepository, never()).findById(1L);
     }
 
-    /** 본인 프로필 조회 결과가 없으면 SCOUT_PROFILE_NOT_FOUND를 반환한다. */
+    /** 본인 프로필 조회 결과가 없으면 SCOUT_PROFILE_NOT_FOUND를 반환. */
     @Test
     void reportMissingProfile() {
         when(profileRepository.findById(1L)).thenReturn(Optional.empty());
@@ -220,7 +220,7 @@ class ScoutProfileServiceScenarioTest {
                                 .isEqualTo(VisitorVerificationErrorCode.SCOUT_PROFILE_NOT_FOUND));
     }
 
-    /** 종료가 시작보다 빠른 기간은 자격 기간 오류로 거부하며 변경 이벤트를 발행하지 않는다. */
+    /** 종료가 시작보다 빠른 기간의 자격 기간 오류와 변경 이벤트 미발행 확인. */
     @Test
     void rejectReversedEligibilityPeriod() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
@@ -241,7 +241,7 @@ class ScoutProfileServiceScenarioTest {
         verify(eventPublisher, never()).publishEvent(any());
     }
 
-    /** 정지 계정의 프로필 승인은 계정 자격 오류로 거부하며 프로필 잠금 조회 전에 끝나야 한다. */
+    /** 정지 계정의 프로필 승인은 계정 자격 오류로 거부하며 프로필 잠금 조회 전에 끝나야 함. */
     @Test
     void rejectBannedProfileApproval() {
         User banned = user(1L);
@@ -257,7 +257,7 @@ class ScoutProfileServiceScenarioTest {
         verify(profileRepository, never()).findByUserIdForUpdate(1L);
     }
 
-    /** 지정 ID의 활성·미정지 일반 계정을 만들어 신청자/심사 대상 조건을 제공한다. */
+    /** 지정 ID의 활성·미정지 일반 계정을 만들어 신청자/심사 대상 조건을 제공. */
     private User user(long id) {
         return User.builder()
                 .id(id)

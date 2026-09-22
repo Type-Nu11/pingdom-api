@@ -11,7 +11,7 @@ class MerchantPlaceInformationTest {
     private static final LocalDateTime UPDATED_AT = CREATED_AT.plusHours(1);
 
     /**
-     * 장소 정보 갱신이 소개·전화·웹/예약 URL·수정자를 바꾸고 생성 시각은 보존하며 수정 시각만 갱신하는지 검증한다.
+     * 장소 정보 갱신이 소개·전화·웹/예약 URL·수정자를 바꾸고 생성 시각은 보존하며 수정 시각만 갱신하는지 검증.
      */
     @Test
     void updatesMerchantManagedInformation() {
@@ -45,7 +45,7 @@ class MerchantPlaceInformationTest {
     }
 
     /**
-     * 소개·전화·웹/예약 URL의 공백 또는 빈 문자열을 null로 정규화하는지 검증한다.
+     * 소개·전화·웹/예약 URL의 공백 또는 빈 문자열을 null로 정규화하는지 검증.
      */
     @Test
     void normalizesBlankMerchantInformation() {

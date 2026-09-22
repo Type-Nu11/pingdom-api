@@ -16,9 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 커뮤니티 게시글과 장소의 다중 연결을 나타낸다.
- *
- * <p>장소 이름을 저장하지 않고 장소 식별자만 참조한다. 동일 게시글에 같은 장소를 두 번 연결할 수 없다.</p>
+ * 커뮤니티 게시글과 장소의 다중 연결 표현.
+ * 장소 식별자만 참조하고 이름은 저장 대상에서 제외. 동일 게시글 내 장소 중복 연결 금지.
  */
 @Entity
 @Getter
@@ -45,7 +44,7 @@ public class CommunityPostPlace {
     @JoinColumn(name = "map_place_id", nullable = false)
     private MapPlace mapPlace;
 
-    /** 삭제된 장소에도 연결 식별자를 유지해 상세 응답에서 삭제 안내를 제공한다. */
+    /** 삭제된 장소에도 연결 식별자를 유지해 상세 응답에서 삭제 안내를 제공. */
     @Column(name = "map_place_id", insertable = false, updatable = false)
     private Long mapPlaceId;
 

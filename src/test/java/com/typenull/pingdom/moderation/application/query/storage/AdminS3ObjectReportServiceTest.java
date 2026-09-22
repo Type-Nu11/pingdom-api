@@ -21,7 +21,7 @@ class AdminS3ObjectReportServiceTest {
     private AdminS3ObjectReportService service;
 
     /**
-     * 공통 S3 고아 객체 보고 서비스를 대체해 관리자 응답 변환만 검증한다.
+     * 공통 S3 고아 객체 보고 서비스를 대체해 관리자 응답 변환만 검증.
      */
     @BeforeEach
     void setUp() {
@@ -29,7 +29,7 @@ class AdminS3ObjectReportServiceTest {
     }
 
     /**
-     * 공통 dry-run 보고서의 prefix·스캔 한도·DB 키 수·S3 객체 수·고아 수·고아 키 목록이 관리자 응답에 유지되는지 검증한다.
+     * 공통 dry-run 보고서의 prefix·스캔 한도·DB 키 수·S3 객체 수·고아 수·고아 키 목록이 관리자 응답에 유지되는지 검증.
      */
     @Test
     void mapsOrphanObjectReport() {

@@ -37,8 +37,8 @@ import org.springframework.transaction.support.TransactionSynchronization;
 import org.springframework.transaction.support.TransactionSynchronizationManager;
 
 /**
- * 현재 활동 가능한 Scout의 현장 제보 접수·본인 조회 및 관리자 심사를 조율한다.
- * 중복 제보는 사전 조회와 DB 제약으로 제한하며 심사는 잠금 조회 후 감사 이력을 남긴다.
+ * 현재 활동 가능한 Scout의 현장 제보 접수·본인 조회 및 관리자 심사를 조율.
+ * 중복 제보는 사전 조회와 DB 제약으로 제한하며 심사는 잠금 조회 후 감사 이력을 남김.
  */
 @Service
 @RequiredArgsConstructor
@@ -54,8 +54,8 @@ public class ScoutFieldReportService {
     private final ScoutEligibilityPolicy scoutEligibilityPolicy;
 
     /**
-     * 활동 자격과 장소 존재를 확인하고 같은 Scout·장소·유형의 미심사 중복을 거부한다.
-     * flush의 지정 유일 제약도 동일 오류로 변환하며 제출 메트릭은 트랜잭션 커밋 후 기록한다.
+     * 활동 자격과 장소 존재를 확인하고 같은 Scout·장소·유형의 미심사 중복을 거부.
+     * flush의 지정 유일 제약도 동일 오류로 변환하며 제출 메트릭은 트랜잭션 커밋 후 기록.
      */
     @Transactional
     public MyScoutFieldReportResponse submit(Long userId, ScoutFieldReportCreateRequest request) {
@@ -102,7 +102,7 @@ public class ScoutFieldReportService {
         }
     }
 
-    /** 현재 Scout 자격을 확인한 뒤 본인 제보만 반환한다. 다른 소유자의 제보는 접근 금지 오류로 처리한다. */
+    /** 현재 Scout 자격을 확인한 뒤 본인 제보만 반환. 다른 소유자의 제보는 접근 금지 오류로 처리. */
     @Transactional(readOnly = true)
     public MyScoutFieldReportResponse getMine(Long userId, Long reportId) {
         requireScout(userId);
@@ -113,7 +113,7 @@ public class ScoutFieldReportService {
         return MyScoutFieldReportResponse.from(report);
     }
 
-    /** 현재 자격이 있는 Scout의 제보를 생성 시각·ID 역순으로 조회한다. */
+    /** 현재 자격이 있는 Scout의 제보를 생성 시각·ID 역순으로 조회. */
     @Transactional(readOnly = true)
     public MyScoutFieldReportPageResponse listMine(Long userId, int page, int limit) {
         requireScout(userId);
@@ -128,7 +128,7 @@ public class ScoutFieldReportService {
         );
     }
 
-    /** SCOUT_REVIEW 권한으로 제보를 조회한다. 상태 null은 전체이며 페이지는 1부터 시작한다. */
+    /** SCOUT_REVIEW 권한으로 제보를 조회. 상태 null은 전체이며 페이지는 1부터 시작. */
     @Transactional(readOnly = true)
     public ScoutFieldReportPageResponse listForAdmin(
             Long adminUserId,
@@ -144,8 +144,8 @@ public class ScoutFieldReportService {
     }
 
     /**
-     * SCOUT_REVIEW 권한 확인 후 제보를 쓰기 잠금으로 조회해 중복 심사를 방지한다.
-     * 상태·입력 오류를 구분하고 전후 심사 정보를 감사 이력에 남기며 메트릭은 커밋 후 기록한다.
+     * SCOUT_REVIEW 권한 확인 후 제보를 쓰기 잠금으로 조회해 중복 심사를 방지.
+     * 상태·입력 오류를 구분하고 전후 심사 정보를 감사 이력에 남기며 메트릭은 커밋 후 기록.
      */
     @Transactional
     public ScoutFieldReportResponse review(
@@ -185,7 +185,7 @@ public class ScoutFieldReportService {
         return ScoutFieldReportResponse.from(report);
     }
 
-    /** 미탈퇴·미정지 USER 계정이며 활성 프로필과 현재 활동 자격을 모두 갖춰야 한다. */
+    /** 미탈퇴·미정지 USER 계정이며 활성 프로필과 현재 활동 자격을 모두 갖춰야 함. */
     private void requireScout(Long userId) {
         User user = userRepository.findById(userId).orElse(null);
         LocalDateTime now = LocalDateTime.now(clock);
@@ -198,12 +198,12 @@ public class ScoutFieldReportService {
         }
     }
 
-    /** 단순 ADMIN 역할 여부 대신 SCOUT_REVIEW 상세 권한을 요구한다. */
+    /** 단순 ADMIN 역할 여부 대신 SCOUT_REVIEW 상세 권한을 요구. */
     private void requireAdmin(Long userId) {
         adminRoleAuthorizationService.requirePermission(userId, AdminPermission.SCOUT_REVIEW);
     }
 
-    /** 제보가 없으면 현장 제보 부재 오류를 발생시킨다. */
+    /** 제보가 없으면 현장 제보 부재 오류를 발생시킴. */
     private ScoutFieldReport find(Long id) {
         return reportRepository.findById(id)
                 .orElseThrow(() -> new VisitorVerificationException(
@@ -211,12 +211,12 @@ public class ScoutFieldReportService {
                 ));
     }
 
-    /** 1부터 시작하는 페이지 번호를 내부 offset으로 바꾸고 생성 시각·ID 역순을 적용한다. */
+    /** 1부터 시작하는 페이지 번호를 내부 offset으로 바꾸고 생성 시각·ID 역순을 적용. */
     private PageRequest pageRequest(int page, int limit) {
         return PageRequest.of(page - 1, limit, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")));
     }
 
-    /** 관리자용 응답 항목과 페이지 총계·다음 페이지 여부를 묶는다. */
+    /** 관리자용 응답 항목과 페이지 총계·다음 페이지 여부를 묶음. */
     private ScoutFieldReportPageResponse page(Page<ScoutFieldReport> reports, int page, int limit) {
         return new ScoutFieldReportPageResponse(
                 reports.getContent().stream().map(ScoutFieldReportResponse::from).toList(),
@@ -228,7 +228,7 @@ public class ScoutFieldReportService {
         );
     }
 
-    /** 현재 제보의 심사 정보로 감사 이력 스냅샷을 만든다. */
+    /** 현재 제보의 심사 정보로 감사 이력 스냅샷을 생성. */
     private Map<String, Object> reportState(ScoutFieldReport report, ScoutFieldReportStatus status) {
         return reportState(
                 report,
@@ -239,7 +239,7 @@ public class ScoutFieldReportService {
         );
     }
 
-    /** 공통 제보 식별 정보에 전달받은 상태·심사자·메모·시각을 결합해 변경 전후 이력을 구성한다. */
+    /** 공통 제보 식별 정보에 전달받은 상태·심사자·메모·시각을 결합해 변경 전후 이력을 구성. */
     private Map<String, Object> reportState(
             ScoutFieldReport report,
             ScoutFieldReportStatus status,
@@ -259,7 +259,7 @@ public class ScoutFieldReportService {
         return state;
     }
 
-    /** 원인 예외 체인에서 지정 유일 제약만 식별해 다른 무결성 오류를 숨기지 않는다. */
+    /** 원인 예외 체인에서 지정 유일 제약만 식별해 다른 무결성 오류는 그대로 전파. */
     private boolean hasConstraint(Throwable throwable, String constraintName) {
         Throwable current = throwable;
         while (current != null) {
@@ -273,8 +273,8 @@ public class ScoutFieldReportService {
     }
 
     /**
-     * 트랜잭션 동기화가 있으면 커밋 후 실행하고 없으면 즉시 실행한다.
-     * 콜백 실패를 재시도하거나 DB 커밋을 되돌리는 장치는 아니다.
+     * 트랜잭션 동기화가 있으면 커밋 후 실행하고 없으면 즉시 실행.
+     * 콜백 실패 재시도와 DB 커밋 롤백은 처리 범위 외.
      */
     private void afterCommit(Runnable action) {
         if (!TransactionSynchronizationManager.isSynchronizationActive()) {

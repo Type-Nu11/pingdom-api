@@ -32,8 +32,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 커뮤니티 신고를 잠근 후 승인 시 대상 콘텐츠도 잠가 숨김 상태·처리 결과·감사 기록을 함께 저장합니다.
- * 이미 처리된 신고는 도메인 상태 검사로 거절하며, 사진 신고와 달리 사용자 정지나 신고자 점수 변경은 수행하지 않습니다.
+ * 커뮤니티 신고를 잠근 후 승인 시 대상 콘텐츠도 잠가 숨김 상태·처리 결과·감사 기록을 함께 저장.
+ * 이미 처리된 신고는 도메인 상태 검사로 거절하며 사용자 정지·신고자 점수 변경은 처리 범위에서 제외.
  */
 @Service
 @RequiredArgsConstructor
@@ -46,8 +46,8 @@ public class AdminCommunityReportService {
     private final Clock clock;
 
     /**
-     * 신고 처리 상태와 게시글/댓글 대상 유형이 주어지면 해당 조건을 적용해 최신순으로 반환합니다.
-     * page는 1 이상·limit는 1~100으로 보정하고 각 결과에 현재 대상 숨김 상태를 포함합니다.
+     * 신고 처리 상태와 게시글/댓글 대상 유형이 주어지면 해당 조건을 적용해 최신순으로 반환.
+     * page는 1 이상·limit는 1~100으로 보정하고 각 결과에 현재 대상 숨김 상태를 포함.
      */
     @Transactional(readOnly = true)
     public AdminCommunityReportPageResponse list(
@@ -80,7 +80,7 @@ public class AdminCommunityReportService {
     }
 
     /**
-     * 대상 숨김과 신고 승인을 같은 트랜잭션에 반영합니다. 신고 상태 검사가 실패하면 앞선 숨김도 롤백됩니다.
+     * 대상 숨김과 신고 승인을 같은 트랜잭션에 반영. 신고 상태 검사가 실패하면 앞선 숨김도 롤백.
      */
     @Transactional
     public AdminCommunityReportActionResponse accept(Long reportId, Long adminUserId) {
@@ -102,8 +102,8 @@ public class AdminCommunityReportService {
     }
 
     /**
-     * 신고 행을 잠그고 미처리 상태의 신고만 거절해 처리 정보와 대상의 현재 숨김 상태를 반환합니다.
-     * 신고가 없거나 이미 처리됐으면 거절하며 신고 전이와 감사 기록을 함께 저장하고 대상 콘텐츠의 숨김 상태는 바꾸지 않습니다.
+     * 신고 행을 잠그고 미처리 상태의 신고만 거절해 처리 정보·대상의 현재 숨김 상태 반환.
+     * 신고 부재·기처리 상태는 오류 처리. 신고 전이와 감사 기록을 함께 저장하며 대상 콘텐츠의 숨김 상태는 유지.
      */
     @Transactional
     public AdminCommunityReportActionResponse decline(Long reportId, Long adminUserId) {
@@ -151,7 +151,7 @@ public class AdminCommunityReportService {
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.REPORT_NOT_FOUND));
     }
 
-    // 신고 잠금 뒤 대상 잠금을 획득해 서로 다른 신고가 같은 콘텐츠를 동시에 처리해도 숨김 상태를 일관되게 유지한다.
+    // 신고 잠금 뒤 대상 잠금을 획득해 서로 다른 신고가 같은 콘텐츠를 동시에 처리해도 숨김 상태를 일관되게 유지.
     private boolean hideTarget(CommunityReport report, Long adminUserId, LocalDateTime now) {
         if (report.getTargetType() == CommunityReportTargetType.POST) {
             CommunityPost post = postRepository.findByIdForUpdate(report.getTargetId())

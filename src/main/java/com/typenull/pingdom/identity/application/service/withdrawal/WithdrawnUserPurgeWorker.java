@@ -9,8 +9,8 @@ import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
 /**
- * 활성화된 스케줄마다 탈퇴 회원 정리 배치를 한 번 호출합니다.
- * 배치 예외를 기록하고 다음 스케줄로 재시도를 넘기며 한 실행에서 모든 대상을 소진하지 않습니다.
+ * 활성화된 스케줄마다 탈퇴 회원 정리 배치를 한 번 호출.
+ * 배치 예외를 기록하고 다음 스케줄로 재시도를 넘기며 한 실행에서는 일부 배치만 처리.
  */
 @Component
 @ConditionalOnProperty(prefix = "user.withdrawal", name = "cleanup-enabled", havingValue = "true", matchIfMissing = true)
@@ -22,8 +22,8 @@ public class WithdrawnUserPurgeWorker {
     private final Clock clock;
 
     /**
-     * 현재 Clock 시각으로 탈퇴 회원 최종 삭제를 한 배치 호출하고 삭제가 있을 때 건수를 기록합니다.
-     * 예외는 로그에 남기고 종료하며 남은 대상과 실패 재시도는 다음 스케줄로 넘깁니다.
+     * 현재 Clock 시각으로 탈퇴 회원 최종 삭제를 한 배치 호출하고 삭제가 있을 때 건수를 기록.
+     * 예외는 로그에 남기고 종료하며 남은 대상과 실패 재시도는 다음 스케줄로 전달.
      */
     @Scheduled(
             fixedDelayString = "${user.withdrawal.cleanup-delay:PT24H}",

@@ -32,7 +32,7 @@ class MapViewportQueryServiceTest {
     private MapViewportQueryService service;
 
     /**
-     * zoom 13에서는 클러스터만 조회하고 마커 목록은 비우며 잘림 표시가 없는지 확인합니다.
+     * zoom 13에서는 클러스터만 조회하고 마커 목록은 비우며 잘림 표시가 없는지 확인.
      */
     @Test
     void loadsClustersAtLowZoom() {
@@ -50,7 +50,7 @@ class MapViewportQueryServiceTest {
     }
 
     /**
-     * zoom 14에서 501개 조회 결과를 마커 500개와 truncated=true로 반환하고 클러스터 조회를 생략하는지 확인합니다.
+     * zoom 14에서 501개 조회 결과를 마커 500개와 truncated=true로 반환하고 클러스터 조회를 생략하는지 확인.
      */
     @Test
     void capsHighZoomMarkers() {
@@ -72,7 +72,7 @@ class MapViewportQueryServiceTest {
     }
 
     /**
-     * 서쪽 경도가 동쪽보다 큰 요청은 검색 조건 오류로 거절하며 저장소를 조회하지 않는지 확인합니다.
+     * 서쪽 경도가 동쪽보다 큰 요청은 검색 조건 오류로 거절하며 저장소를 조회하지 않는지 확인.
      */
     @Test
     void rejectsInvalidViewport() {

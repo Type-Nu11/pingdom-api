@@ -38,7 +38,7 @@ class FcmDeviceTokenServiceTest {
     private FcmDeviceTokenService fcmDeviceTokenService;
 
     /**
-     * 토큰 등록 시각이 테스트마다 달라지지 않도록 고정 Clock으로 서비스를 구성한다.
+     * 토큰 등록 시각이 테스트마다 달라지지 않도록 고정 Clock으로 서비스를 구성.
      */
     @BeforeEach
     void setUp() {
@@ -47,7 +47,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 활성 사용자가 공백을 포함한 토큰을 등록하면 양끝 공백을 제거하고 해당 사용자 ID와 함께 저장하는지 검증한다.
+     * 활성 사용자가 공백을 포함한 토큰을 등록하면 양끝 공백을 제거하고 해당 사용자 ID와 함께 저장하는지 검증.
      */
     @Test
     void registerTokenStoresTrimmedToken() {
@@ -63,7 +63,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 다른 사용자 소유의 기존 토큰을 현재 활성 사용자가 등록하면 소유자 ID를 변경하는지 검증한다.
+     * 다른 사용자 소유의 기존 토큰을 현재 활성 사용자가 등록하면 소유자 ID를 변경하는지 검증.
      */
     @Test
     void reassignsExistingDeviceToken() {
@@ -78,7 +78,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 활성 사용자의 공백뿐인 토큰 등록 요청을 알림 도메인 예외로 거절하는지 검증한다.
+     * 활성 사용자의 공백뿐인 토큰 등록 요청을 알림 도메인 예외로 거절하는지 검증.
      */
     @Test
     void blankTokenIsRejected() {
@@ -89,7 +89,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 탈퇴 사용자의 기기 토큰 등록을 인증 예외로 거절하는지 검증한다.
+     * 탈퇴 사용자의 기기 토큰 등록을 인증 예외로 거절하는지 검증.
      */
     @Test
     void withdrawnUserCannotRegisterToken() {
@@ -100,7 +100,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 토큰 삭제 시 공백을 제거한 토큰과 현재 사용자 ID를 함께 조건으로 전달하는지 검증한다.
+     * 토큰 삭제 시 공백을 제거한 토큰과 현재 사용자 ID를 함께 조건으로 전달하는지 검증.
      */
     @Test
     void deletesOnlyOwnedDeviceToken() {
@@ -112,7 +112,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 기기 토큰을 등록·삭제할 수 있는 활성 사용자를 지정 ID로 만든다.
+     * 기기 토큰을 등록·삭제할 수 있는 활성 사용자를 지정 ID로 생성.
      */
     private User activeUser(Long userId) {
         return User.builder()
@@ -127,7 +127,7 @@ class FcmDeviceTokenServiceTest {
     }
 
     /**
-     * 탈퇴 상태의 인증 차단을 확인할 사용자를 지정 ID로 만든다.
+     * 탈퇴 상태의 인증 차단을 확인할 사용자를 지정 ID로 생성.
      */
     private User withdrawnUser(Long userId) {
         return User.builder()

@@ -17,7 +17,7 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MvcResult;
 
 /**
- * 로그인 갱신 쿠키로 받은 접근 토큰이 실제 보호 API에서도 사용 가능한지 검증한다.
+ * 로그인 갱신 쿠키로 받은 접근 토큰이 실제 보호 API에서도 사용 가능한지 검증.
  */
 @Tag("integration")
 @SpringBootTest
@@ -27,7 +27,7 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     private static final String REFRESH_TOKEN_COOKIE_NAME = "PINGDOM_REFRESH_TOKEN";
 
     /**
-     * 로그인 쿠키로 갱신한 접근 토큰이 장소·내 정보 API에 사용되고 갱신 토큰은 응답 본문에 없는지 확인한다.
+     * 로그인 쿠키로 갱신한 접근 토큰이 장소·내 정보 API에 사용되고 갱신 토큰은 응답 본문에 없는지 확인.
      */
     @Test
     void refreshThenProtectedApis() throws Exception {
@@ -53,7 +53,7 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 갱신된 접근 토큰으로 page와 limit을 포함한 장소 목록 조회도 성공하는지 확인한다.
+     * 갱신된 접근 토큰으로 page와 limit을 포함한 장소 목록 조회도 성공하는지 확인.
      */
     @Test
     void refreshThenPlacePage() throws Exception {
@@ -78,14 +78,14 @@ class RefreshTokenProtectedApiRegressionTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 갱신 이후 접근을 확인할 장소 목록과 내 정보 경로를 제공한다.
+     * 갱신 이후 접근을 확인할 장소 목록과 내 정보 경로를 제공.
      */
     private static Stream<String> protectedGetEndpoints() {
         return Stream.of("/places", "/users/me");
     }
 
     /**
-     * 실제 로그인 성공 후 PINGDOM_REFRESH_TOKEN 쿠키에서 갱신 토큰을 추출한다.
+     * 실제 로그인 성공 후 PINGDOM_REFRESH_TOKEN 쿠키에서 갱신 토큰을 추출.
      */
     private String loginAndReadRefreshToken(String username) throws Exception {
         MvcResult loginResult = mockMvc.perform(post("/auth/login")

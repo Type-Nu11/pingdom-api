@@ -29,7 +29,7 @@ class VisitorVerificationReportServiceTest {
     private final VisitorVerificationReportMetrics metrics = mock(VisitorVerificationReportMetrics.class);
     private VisitorVerificationReportService service;
 
-    /** 고정 시각과 활성 관광객·관리자 mock을 구성한다. 저장 mock은 전달받은 도메인 객체를 반환한다. */
+    /** 고정 시각과 활성 관광객·관리자 mock을 구성. 저장 mock은 전달받은 도메인 객체를 반환. */
     @BeforeEach
     void setUp() {
         service = new VisitorVerificationReportService(
@@ -48,7 +48,7 @@ class VisitorVerificationReportServiceTest {
         when(reportRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
-    /** 활성 관광객이 존재하는 장소를 제보하면 SUBMITTED와 공백 정리된 본문을 반환하고 flush 저장한다. */
+    /** 활성 관광객이 존재하는 장소를 제보하면 SUBMITTED와 공백 정리된 본문을 반환하고 flush 저장. */
     @Test
     void submitTouristReport() {
         var response = service.submit(1L, new VisitorVerificationReportCreateRequest(
@@ -60,7 +60,7 @@ class VisitorVerificationReportServiceTest {
         verify(reportRepository).saveAndFlush(any(VisitorVerificationReport.class));
     }
 
-    /** 같은 작성자·장소·유형의 미심사 제보가 있으면 ACTIVE_REPORT_ALREADY_EXISTS로 거부한다. */
+    /** 같은 작성자·장소·유형의 미심사 제보가 있으면 ACTIVE_REPORT_ALREADY_EXISTS로 거부. */
     @Test
     void rejectDuplicateActiveReport() {
         when(reportRepository.existsByReporterUserIdAndPlaceIdAndReportTypeAndStatus(
@@ -75,7 +75,7 @@ class VisitorVerificationReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.ACTIVE_REPORT_ALREADY_EXISTS);
     }
 
-    /** 혼잡도 FULL을 제출하면 응답에도 같은 enum을 담고 대기 시간은 null이어야 한다. */
+    /** 혼잡도 FULL을 제출하면 응답에도 같은 enum을 담고 대기 시간은 null이어야 함. */
     @Test
     void returnCrowdLevel() {
         var response = service.submit(1L, new VisitorVerificationReportCreateRequest(
@@ -86,7 +86,7 @@ class VisitorVerificationReportServiceTest {
         assertThat(response.waitTimeMinutes()).isNull();
     }
 
-    /** 쿠폰 사용 가능 제보의 AVAILABLE 상태가 응답에 유지되는지 확인한다. */
+    /** 쿠폰 사용 가능 제보의 AVAILABLE 상태가 응답에 유지되는지 확인. */
     @Test
     void returnCouponUsage() {
         var response = service.submit(1L, new VisitorVerificationReportCreateRequest(
@@ -96,7 +96,7 @@ class VisitorVerificationReportServiceTest {
         assertThat(response.couponUsageStatus()).isEqualTo(CouponUsageStatus.AVAILABLE);
     }
 
-    /** 대기 시간 유형에 쿠폰 상태를 전달하면 INVALID_REPORT_DETAILS로 변환한다. */
+    /** 대기 시간 유형에 쿠폰 상태를 전달하면 INVALID_REPORT_DETAILS로 변환. */
     @Test
     void rejectMismatchedStructuredValue() {
         assertThatThrownBy(() -> service.submit(1L, new VisitorVerificationReportCreateRequest(
@@ -107,7 +107,7 @@ class VisitorVerificationReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.INVALID_REPORT_DETAILS);
     }
 
-    /** flush에서 활성 제보 유일 제약 위반이 발생하면 사전 중복과 같은 오류로 전달한다. */
+    /** flush에서 활성 제보 유일 제약 위반이 발생하면 사전 중복과 같은 오류로 전달. */
     @Test
     void mapConcurrentReportDuplicate() {
         ConstraintViolationException constraint = new ConstraintViolationException(
@@ -123,7 +123,7 @@ class VisitorVerificationReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.ACTIVE_REPORT_ALREADY_EXISTS);
     }
 
-    /** 다른 작성자의 제보를 본인 조회로 요청하면 REPORT_FORBIDDEN으로 거부한다. */
+    /** 다른 작성자의 제보를 본인 조회로 요청하면 REPORT_FORBIDDEN으로 거부. */
     @Test
     void rejectNonOwnerRead() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -137,7 +137,7 @@ class VisitorVerificationReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.REPORT_FORBIDDEN);
     }
 
-    /** 관리자 거절 결과에는 REJECTED 상태·심사자 9·거절 사유가 반환되어야 한다. */
+    /** 관리자 거절 결과에는 REJECTED 상태·심사자 9·거절 사유가 반환되어야 함. */
     @Test
     void rejectReportWithReason() {
         VisitorVerificationReport report = VisitorVerificationReport.submit(
@@ -153,7 +153,7 @@ class VisitorVerificationReportServiceTest {
         assertThat(response.reviewNote()).isEqualTo("운영 중 확인");
     }
 
-    /** 관광객의 관리자 심사는 계정 권한 오류로 거부하고 잠금 조회를 호출하지 않는다. */
+    /** 관광객의 관리자 심사 요청에 대한 계정 권한 오류와 잠금 조회 미호출 확인. */
     @Test
     void rejectTouristReview() {
         assertThatThrownBy(() -> service.review(1L, 5L, new VisitorVerificationReportReviewRequest(

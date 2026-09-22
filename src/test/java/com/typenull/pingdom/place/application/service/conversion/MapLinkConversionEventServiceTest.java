@@ -12,7 +12,7 @@ import org.springframework.dao.DataIntegrityViolationException;
 
 class MapLinkConversionEventServiceTest {
     /**
-     * 처음 요청한 지도 전환을 새로 저장하면서 NAVER 제공자 값을 보존하는지 확인합니다.
+     * 처음 요청한 지도 전환을 새로 저장하면서 NAVER 제공자 값을 보존하는지 확인.
      */
     @Test
     void recordsNaverProvider() {
@@ -30,7 +30,7 @@ class MapLinkConversionEventServiceTest {
     }
 
     /**
-     * 같은 중복 키의 재요청은 기존 KAKAO 이벤트를 그대로 반환하고 writer를 호출하지 않는지 확인합니다.
+     * 같은 중복 키의 재요청은 기존 KAKAO 이벤트를 그대로 반환하고 writer를 호출하지 않는지 확인.
      */
     @Test
     void reusesExistingKakaoEvent() {
@@ -54,7 +54,7 @@ class MapLinkConversionEventServiceTest {
     }
 
     /**
-     * 삽입의 유일 제약 실패를 모의한 뒤 재조회한 기존 이벤트를 반환하는지 확인합니다. 실제 동시 스레드나 DB 충돌은 실행하지 않습니다.
+     * 삽입의 유일 제약 실패를 모의한 뒤 재조회한 기존 이벤트를 반환하는지 확인. 실제 동시 스레드 실행과 DB 충돌은 검증 범위에서 제외.
      */
     @Test
     void reloadsAfterDuplicateInsert() {
@@ -81,7 +81,7 @@ class MapLinkConversionEventServiceTest {
     }
 
     /**
-     * 사용자·장소·유형이 같아도 requestId가 다르면 NAVER 이벤트 두 건과 서로 다른 중복 키를 저장하는지 확인합니다.
+     * 사용자·장소·유형이 같아도 requestId가 다르면 NAVER 이벤트 두 건과 서로 다른 중복 키를 저장하는지 확인.
      */
     @Test
     void separatesDistinctRequestIds() {

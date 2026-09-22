@@ -4,8 +4,8 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
 /**
- * Kakao 좌표 지역 해석의 활성화·연결 설정과 로컬 캐시 제한입니다.
- * 기본 타임아웃은 연결 2초·읽기 3초, 캐시는 10분·10,000개이며 enabled와 API 키가 모두 있어야 사용 가능합니다.
+ * Kakao 좌표 지역 해석의 활성화·연결 설정과 로컬 캐시 제한.
+ * 기본 타임아웃은 연결 2초·읽기 3초, 캐시는 10분·10,000개이며 enabled와 API 키가 모두 있어야 사용 가능.
  */
 @ConfigurationProperties(prefix = "place.local-hot.kakao")
 public record KakaoLocalRegionProperties(

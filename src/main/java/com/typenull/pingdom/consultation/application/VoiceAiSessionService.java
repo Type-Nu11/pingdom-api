@@ -22,8 +22,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
- * 인증 사용자별 5분 세션과 요청 ID별 응답 재전송 기록을 관리합니다.
- * 세션 행 잠금은 외부 생성 호출과 응답 저장까지 유지되며, 외부 호출 자체를 DB 롤백으로 되돌릴 수는 없습니다.
+ * 인증 사용자별 5분 세션과 요청 ID별 응답 재전송 기록을 관리.
+ * 세션 행 잠금은 외부 생성 호출과 응답 저장까지 유지. 외부 호출 자체는 DB 롤백의 보상 범위에서 제외.
  */
 @Service
 public class VoiceAiSessionService {
@@ -78,9 +78,9 @@ public class VoiceAiSessionService {
     }
 
     /**
-     * 사용 가능한 세션에서 같은 requestId와 원문 SHA-256이면 저장된 응답을 반환합니다.
-     * 다른 원문은 충돌로 거절하고, 신규 응답은 16KiB 및 허용 스키마 검증 후 저장합니다.
-     * 외부 생성 후 저장이 실패하면 재요청에서 다시 생성될 수 있으므로 외부 호출의 exactly-once를 보장하지 않습니다.
+     * 사용 가능한 세션에서 같은 requestId와 원문 SHA-256이면 저장된 응답 반환.
+     * 다른 원문은 충돌로 거절하고 신규 응답은 16KiB 및 허용 스키마 검증 후 저장.
+     * 외부 생성 후 저장 실패 시 재요청에서 다시 생성될 수 있어 외부 호출의 exactly-once 보장 불가.
      */
     @Transactional
     public JsonNode send(String sessionId, Long userId, String text, String requestId) {
@@ -110,11 +110,11 @@ public class VoiceAiSessionService {
     }
 
     private VoiceAiSessionResponse response(String sessionId, LocalDateTime expiresAt) {
-        // 기존 DB의 서버 로컬 시각 해석을 유지하고 API 경계에서 offset을 명시한다.
+        // 기존 DB의 서버 로컬 시각 해석을 유지하고 API 경계에서 offset을 명시.
         return new VoiceAiSessionResponse(sessionId, expiresAt.atZone(clock.getZone()).toOffsetDateTime());
     }
 
-    // provider 처리와 replay 저장이 커밋될 때까지 갱신·종료·후속 전송도 같은 행에서 대기한다.
+    // provider 처리와 replay 저장이 커밋될 때까지 갱신·종료·후속 전송도 같은 행에서 대기.
     private VoiceAiSession requireSession(String sessionId, Long userId) {
         return sessionRepository.findByIdForUpdate(sessionId)
                 .map(session -> {

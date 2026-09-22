@@ -38,7 +38,7 @@ class AdminNotificationRecipientResolverTest {
     private AdminNotificationRecipientResolver resolver;
 
     /**
-     * 역할 할당과 현재 계정 상태를 조합할 수신자 resolver를 고정 Clock으로 만든다.
+     * 역할 할당과 현재 계정 상태를 조합할 수신자 resolver를 고정 Clock으로 생성.
      */
     @BeforeEach
     void setUp() {
@@ -46,7 +46,7 @@ class AdminNotificationRecipientResolverTest {
     }
 
     /**
-     * 활성 역할 할당이 있는 관리자 중 정지된 최고 관리자는 제외하고 정상 콘텐츠 관리자의 ID만 수신자로 반환하는지 검증한다.
+     * 활성 역할 할당이 있는 관리자 중 정지된 최고 관리자는 제외하고 정상 콘텐츠 관리자의 ID만 수신자로 반환하는지 검증.
      */
     @Test
     void excludesBannedAdminRecipients() {
@@ -77,7 +77,7 @@ class AdminNotificationRecipientResolverTest {
     }
 
     /**
-     * 수신자 조회 결과를 준비하도록 지정 ID·이름·역할의 사용자 객체를 만든다.
+     * 수신자 조회 결과를 준비하도록 지정 ID·이름·역할의 사용자 객체를 생성.
      */
     private User user(Long id, String username, UserRole role) {
         User user = User.builder()

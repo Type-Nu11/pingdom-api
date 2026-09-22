@@ -30,7 +30,7 @@ class NotificationDeliveryPolicyTest {
     private NotificationDeliveryPolicy notificationDeliveryPolicy;
 
     /**
-     * 서울 시간으로 23시인 UTC 시각에 고정해 자정을 넘는 방해 금지 구간을 판정할 정책을 만든다.
+     * 서울 시간으로 23시인 UTC 시각에 고정해 자정을 넘는 방해 금지 구간을 판정할 정책을 생성.
      */
     @BeforeEach
     void setUp() {
@@ -39,7 +39,7 @@ class NotificationDeliveryPolicyTest {
     }
 
     /**
-     * 사용자 설정이 없으면 기본 정책에 따라 좋아요 알림 수신을 허용하는지 검증한다.
+     * 사용자 설정이 없으면 기본 정책에 따라 좋아요 알림 수신을 허용하는지 검증.
      */
     @Test
     void missingSettingUsesDefaultAllowPolicy() {
@@ -51,7 +51,7 @@ class NotificationDeliveryPolicyTest {
     }
 
     /**
-     * 좋아요 알림을 비활성화한 사용자는 해당 유형을 수신할 수 없는지 검증한다.
+     * 좋아요 알림을 비활성화한 사용자는 해당 유형을 수신할 수 없는지 검증.
      */
     @Test
     void disabledNotificationTypeIsBlocked() {
@@ -65,7 +65,7 @@ class NotificationDeliveryPolicyTest {
     }
 
     /**
-     * 서울 기준 22시부터 다음 날 8시까지 방해 금지를 켜면 현재 23시의 좋아요 알림을 차단하는지 검증한다.
+     * 서울 기준 22시부터 다음 날 8시까지 방해 금지를 켜면 현재 23시의 좋아요 알림을 차단하는지 검증.
      */
     @Test
     void quietHoursAcrossMidnightBlocksNotification() {

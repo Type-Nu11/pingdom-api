@@ -10,8 +10,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 추천 노출 행 수를 장소·버전별로 집계하고 장소 병합 참조를 갱신합니다.
- * 사용자 중복을 제거하지 않으며 cutoff가 있는 조회는 해당 시각을 포함한 이후 행을 셉니다.
+ * 추천 노출 행 수를 장소·버전별로 집계하고 장소 병합 참조를 갱신.
+ * 사용자 중복을 제거하지 않으며 cutoff가 있는 조회는 해당 시각을 포함한 이후 행을 집계.
  */
 public interface PlaceRecommendationExposureRepository extends JpaRepository<PlaceRecommendationExposure, Long> {
 

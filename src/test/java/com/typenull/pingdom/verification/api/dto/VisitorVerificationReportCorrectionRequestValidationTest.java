@@ -11,7 +11,7 @@ class VisitorVerificationReportCorrectionRequestValidationTest {
 
     private final Validator validator = Validation.buildDefaultValidatorFactory().getValidator();
 
-    /** 정정 언어 태그의 공백을 먼저 제거해 en-US로 보관하고 validation을 통과해야 한다. */
+    /** 정정 언어 태그의 공백을 먼저 제거해 en-US로 보관하고 validation을 통과해야 함. */
     @Test
     void trimCorrectionLanguageCode() {
         VisitorVerificationReportCorrectionRequest request = new VisitorVerificationReportCorrectionRequest(
@@ -21,7 +21,7 @@ class VisitorVerificationReportCorrectionRequestValidationTest {
         assertThat(validator.validate(request)).isEmpty();
     }
 
-    /** 공백 본문과 HTTP 증빙 URL은 description·evidenceUrl 두 필드 위반을 발생시킨다. */
+    /** 공백 본문과 HTTP 증빙 URL은 description·evidenceUrl 두 필드 위반을 발생시킴. */
     @Test
     void rejectInvalidCorrectionFields() {
         VisitorVerificationReportCorrectionRequest request = new VisitorVerificationReportCorrectionRequest(
@@ -33,8 +33,8 @@ class VisitorVerificationReportCorrectionRequestValidationTest {
     }
 
     /**
-     * 심사 결정이 null이면 decision 필드만 위반해야 한다.
-     * 도메인 상태 enum에는 미심사 상태 SUBMITTED가 존재함도 확인한다.
+     * 심사 결정이 null이면 decision 필드만 위반해야 함.
+     * 도메인 상태 enum에 미심사 상태 SUBMITTED가 포함되는지도 확인.
      */
     @Test
     void requireCorrectionDecision() {

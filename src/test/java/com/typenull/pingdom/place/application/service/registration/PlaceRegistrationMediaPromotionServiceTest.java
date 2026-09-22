@@ -32,7 +32,7 @@ class PlaceRegistrationMediaPromotionServiceTest {
     );
 
     /**
-     * 신분증을 제외한 대표 이미지 두 개를 표시 순서대로 승격하고 첫 이미지와 신청 설명을 장소에 반영하는지 확인합니다.
+     * 신분증을 제외한 대표 이미지 두 개를 표시 순서대로 승격하고 첫 이미지와 신청 설명을 장소에 반영하는지 확인.
      */
     @Test
     void promotesOrderedRepresentativeImages() {
@@ -75,7 +75,7 @@ class PlaceRegistrationMediaPromotionServiceTest {
     }
 
     /**
-     * 원본 첨부 ID의 미디어가 이미 있으면 S3 복사와 새 미디어 저장 없이 기존 승격 건수만 증가하는지 확인합니다.
+     * 원본 첨부 ID의 미디어가 이미 있으면 S3 복사와 새 미디어 저장 없이 기존 승격 건수만 증가하는지 확인.
      */
     @Test
     void skipsPromotedAttachment() {
@@ -95,7 +95,7 @@ class PlaceRegistrationMediaPromotionServiceTest {
     }
 
     /**
-     * ID·표시 순서·MIME을 가진 활성 대표 이미지 모의를 만듭니다.
+     * ID·표시 순서·MIME을 가진 활성 대표 이미지 모의를 생성.
      */
     private PlaceRegistrationAttachment attachment(Long id, int displayOrder, String filename, String contentType) {
         PlaceRegistrationAttachment attachment = org.mockito.Mockito.mock(PlaceRegistrationAttachment.class);

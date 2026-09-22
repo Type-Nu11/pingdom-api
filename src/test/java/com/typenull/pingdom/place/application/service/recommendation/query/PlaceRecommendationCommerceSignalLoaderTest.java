@@ -37,7 +37,7 @@ class PlaceRecommendationCommerceSignalLoaderTest {
     private PlaceRecommendationCommerceSignalLoader loader;
 
     /**
-     * 혜택과 예약을 같은 고정 시각에 조회하는 로더를 준비합니다.
+     * 혜택과 예약을 같은 고정 시각에 조회하는 로더를 준비.
      */
     @BeforeEach
     void setUp() {
@@ -49,7 +49,7 @@ class PlaceRecommendationCommerceSignalLoaderTest {
     }
 
     /**
-     * 혜택만·예약만·두 가지 모두 있는 장소를 구분하고 두 저장소가 같은 기준 시각을 받는지 확인합니다.
+     * 혜택만·예약만·두 가지 모두 있는 장소를 구분하고 두 저장소가 같은 기준 시각을 받는지 확인.
      */
     @Test
     void combinesCommerceSignalsAtSameTime() {
@@ -75,7 +75,7 @@ class PlaceRecommendationCommerceSignalLoaderTest {
     }
 
     /**
-     * 후보가 비어 있으면 빈 맵을 반환하고 혜택·예약 조회를 생략하는지 확인합니다.
+     * 후보가 비어 있으면 빈 맵을 반환하고 혜택·예약 조회를 생략하는지 확인.
      */
     @Test
     void skipsEmptyCommerceCandidates() {

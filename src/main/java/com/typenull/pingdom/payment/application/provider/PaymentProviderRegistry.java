@@ -10,8 +10,8 @@ import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
 /**
- * 등록된 결제 사업자를 공백 제거·대문자화한 이름으로 조회합니다.
- * 미등록 이름은 도메인 예외로 거절하고, 정규화 뒤 중복되는 사업자 이름은 맵 구성 시 오류가 됩니다.
+ * 등록된 결제 사업자를 공백 제거·대문자화한 이름으로 조회.
+ * 미등록 이름은 도메인 예외로 거절하고, 정규화 뒤 중복되는 사업자 이름은 맵 구성 시 오류가 됨.
  */
 @Component
 public class PaymentProviderRegistry {

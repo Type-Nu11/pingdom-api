@@ -22,7 +22,7 @@ class PlaceOperatingHoursEvaluatorTest {
     private static final ZoneId SEOUL = ZoneId.of("Asia/Seoul");
 
     /**
-     * 서울 화요일 정오가 10~20시 정기 영업 구간 안이면 영업 중으로 판단하는지 확인합니다.
+     * 서울 화요일 정오가 10~20시 정기 영업 구간 안이면 영업 중으로 판단하는지 확인.
      */
     @Test
     void opensInsideRegularHours() {
@@ -40,7 +40,7 @@ class PlaceOperatingHoursEvaluatorTest {
     }
 
     /**
-     * 정기 영업 종료 이후인 21시는 영업 중이 아닌지 확인합니다.
+     * 정기 영업 종료 이후인 21시는 영업 중이 아닌지 확인.
      */
     @Test
     void closesOutsideRegularHours() {
@@ -58,7 +58,7 @@ class PlaceOperatingHoursEvaluatorTest {
     }
 
     /**
-     * 정기 영업 구간 안이어도 장소가 임시 휴업이면 닫힘으로 판단하는지 확인합니다.
+     * 정기 영업 구간 안이어도 장소가 임시 휴업이면 닫힘으로 판단하는지 확인.
      */
     @Test
     void prioritizesManualClosure() {
@@ -77,7 +77,7 @@ class PlaceOperatingHoursEvaluatorTest {
     }
 
     /**
-     * 해당 날짜의 예외 휴무가 정기 영업시간보다 우선하는지 확인합니다.
+     * 해당 날짜의 예외 휴무가 정기 영업시간보다 우선하는지 확인.
      */
     @Test
     void prioritizesClosedException() {
@@ -97,7 +97,7 @@ class PlaceOperatingHoursEvaluatorTest {
     }
 
     /**
-     * 정기 영업 종료 뒤에도 날짜별 예외 영업 구간 안이면 영업 중인지 확인합니다.
+     * 정기 영업 종료 뒤에도 날짜별 예외 영업 구간 안이면 영업 중인지 확인.
      */
     @Test
     void usesCustomExceptionHours() {
@@ -121,7 +121,7 @@ class PlaceOperatingHoursEvaluatorTest {
     }
 
     /**
-     * 전날 22시부터 다음 날 02시까지의 영업이 다음 날 01시에도 유지되는지 확인합니다.
+     * 전날 22시부터 다음 날 02시까지의 영업이 다음 날 01시에도 유지되는지 확인.
      */
     @Test
     void continuesOvernightRegularHours() {
@@ -139,14 +139,14 @@ class PlaceOperatingHoursEvaluatorTest {
     }
 
     /**
-     * 주어진 서울 지역 시각에 고정된 평가기를 만듭니다.
+     * 주어진 서울 지역 시각에 고정된 평가기를 생성.
      */
     private PlaceOperatingHoursEvaluator evaluatorAt(LocalDateTime now) {
         return new PlaceOperatingHoursEvaluator(Clock.fixed(now.atZone(SEOUL).toInstant(), SEOUL));
     }
 
     /**
-     * 영업 일정을 사례별로 설정할 기본 장소를 만듭니다.
+     * 영업 일정을 사례별로 설정할 기본 장소를 생성.
      */
     private MapPlace place() {
         return MapPlace.builder()

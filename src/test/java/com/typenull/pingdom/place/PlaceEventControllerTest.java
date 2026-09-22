@@ -68,7 +68,7 @@ class PlaceEventControllerTest {
     private MapPlace place;
 
     /**
-     * 감사 로그·행사·장소·사용자를 의존 순서대로 비우고 모든 요청에서 사용할 장소를 저장한다.
+     * 감사 로그·행사·장소·사용자를 의존 순서대로 비우고 모든 요청에서 사용할 장소를 저장.
      */
     @BeforeEach
     void setUp() {
@@ -86,7 +86,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 초안은 앱 상세에서 숨기고 관리자 공개 후 목록·상세·UTC 시간 응답과 생성·공개 감사 로그가 기록되는지 확인한다.
+     * 초안은 앱 상세에서 숨기고 관리자 공개 후 목록·상세·UTC 시간 응답과 생성·공개 감사 로그가 기록되는지 확인.
      */
     @Test
     void exposesEventAfterAdminPublishes() throws Exception {
@@ -140,7 +140,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 공개된 행사를 수정하면 409와 PLACE_EVENT_UPDATE_NOT_ALLOWED 코드를 반환하는지 확인한다.
+     * 공개된 행사를 수정하면 409와 PLACE_EVENT_UPDATE_NOT_ALLOWED 코드를 반환하는지 확인.
      */
     @Test
     void rejectsPublishedEventUpdate() throws Exception {
@@ -157,7 +157,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 공개 행사를 취소하면 CANCELLED 상태를 반환하고 앱 상세 조회가 404가 되는지 확인한다.
+     * 공개 행사를 취소하면 CANCELLED 상태를 반환하고 앱 상세 조회가 404가 되는지 확인.
      */
     @Test
     void hidesCancelledEventFromApp() throws Exception {
@@ -178,7 +178,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 공개 행사가 연결된 장소 삭제를 409와 PLACE_EVENT_CONNECTED 코드로 거절하는지 확인한다.
+     * 공개 행사가 연결된 장소 삭제를 409와 PLACE_EVENT_CONNECTED 코드로 거절하는지 확인.
      */
     @Test
     void rejectsDeletingEventLinkedPlace() throws Exception {
@@ -193,7 +193,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 최대 정수 페이지 요청을 허용 상한인 10,000으로 정규화하여 응답하는지 확인한다.
+     * 최대 정수 페이지 요청을 허용 상한인 10,000으로 정규화하여 응답하는지 확인.
      */
     @Test
     void capsOversizedEventListPage() throws Exception {
@@ -207,7 +207,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 역전된 기간과 알 수 없는 행사 유형을 각각 400 및 동일한 검색 조건 오류 코드로 반환하는지 확인한다.
+     * 역전된 기간과 알 수 없는 행사 유형을 각각 400 및 동일한 검색 조건 오류 코드로 반환하는지 확인.
      */
     @Test
     void rejectsInvalidEventSearchConditions() throws Exception {
@@ -228,7 +228,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 빈 관리자 목록도 전체 페이지를 1로 표시하고 행사 저장 후 목록 건수·제목·페이지 정보가 반영되는지 확인한다.
+     * 빈 관리자 목록도 전체 페이지를 1로 표시하고 행사 저장 후 목록 건수·제목·페이지 정보가 반영되는지 확인.
      */
     @Test
     void normalizesAdminEventListPages() throws Exception {
@@ -268,7 +268,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 관리자 API로 행사를 생성하고 공개까지 성공시킨 뒤 수정·취소·삭제 검증에 사용할 행사 ID를 반환한다.
+     * 관리자 API로 행사를 생성하고 공개까지 성공시킨 뒤 수정·취소·삭제 검증에 사용할 행사 ID를 반환.
      */
     private long createAndPublish(String accessToken, LocalDateTime startAt, LocalDateTime endAt) throws Exception {
         MvcResult createResult = mockMvc.perform(post("/admin/place-events")
@@ -287,7 +287,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 공통 장소·전시 내용에 테스트별 시작·종료 시각을 넣은 관리자 행사 등록 JSON을 만든다.
+     * 공통 장소·전시 내용에 테스트별 시작·종료 시각을 넣은 관리자 행사 등록 JSON을 생성.
      */
     private ObjectNode eventRequest(LocalDateTime startAt, LocalDateTime endAt) {
         ObjectNode request = objectMapper.createObjectNode();
@@ -302,7 +302,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 행사 생성 응답에서 이후 요청 경로에 사용할 eventId를 읽는다.
+     * 행사 생성 응답에서 이후 요청 경로에 사용할 eventId를 읽음.
      */
     private long readEventId(MvcResult result) throws Exception {
         JsonNode response = objectMapper.readTree(result.getResponse().getContentAsString());
@@ -310,7 +310,7 @@ class PlaceEventControllerTest {
     }
 
     /**
-     * 충돌하지 않는 ADMIN 계정을 저장한 뒤 실제 로그인 API가 발급한 accessToken을 반환한다.
+     * 충돌하지 않는 ADMIN 계정을 저장한 뒤 실제 로그인 API가 발급한 accessToken을 반환.
      */
     private String createAdminAndLogin() throws Exception {
         String username = "eventAdmin" + ADMIN_SEQUENCE.incrementAndGet();

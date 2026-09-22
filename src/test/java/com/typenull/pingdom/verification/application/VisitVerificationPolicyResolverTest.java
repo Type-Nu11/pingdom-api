@@ -9,9 +9,9 @@ import org.junit.jupiter.api.Test;
 class VisitVerificationPolicyResolverTest {
 
     /**
-     * 장소 2에 지정한 반경 100m가 전역 기본값 500m보다 우선하는지 검증한다.
+     * 장소 2에 지정한 반경 100m가 전역 기본값 500m보다 우선하는지 검증.
      * 별도 설정이 없는 장소 3에는 기본 반경을 적용하며,
-     * 반경을 재정의한 장소에서도 기본 체류 시간 30초는 유지되어야 한다.
+     * 반경을 재정의한 장소에서도 기본 체류 시간 30초는 유지되어야 함.
      */
     @Test
     void preferPlaceRadius() {

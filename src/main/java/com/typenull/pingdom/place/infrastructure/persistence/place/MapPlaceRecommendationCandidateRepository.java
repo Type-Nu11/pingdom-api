@@ -11,8 +11,8 @@ import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 추천 후보 수를 제한하기 위한 일반·위도대·날짜 변경선 통과 경계 조회를 제공합니다.
- * 정렬은 위경도 차이의 합에 의한 근사치이며 실제 미터 거리와 점수 계산은 추천 서비스가 수행합니다.
+ * 추천 후보 수를 제한하기 위한 일반·위도대·날짜 변경선 통과 경계 조회를 제공.
+ * 정렬은 위경도 차이의 합에 의한 근사치이며 실제 미터 거리와 점수 계산은 추천 서비스가 수행.
  */
 public interface MapPlaceRecommendationCandidateRepository extends Repository<MapPlace, Long> {
 

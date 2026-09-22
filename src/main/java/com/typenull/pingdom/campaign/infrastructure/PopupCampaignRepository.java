@@ -13,8 +13,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 공개 캠페인은 시작 포함·종료 제외 기간과 현재 소유 관계·활성 점주 자격을 함께 필터링합니다.
- * 캠페인에 연결된 장소 자체의 운영/노출 상태와 브랜드 존재 여부는 이 쿼리의 검사 대상이 아닙니다.
+ * 공개 캠페인은 시작 포함·종료 제외 기간과 현재 소유 관계·활성 점주 자격을 함께 필터링.
+ * 연결 장소 자체의 운영·노출 상태와 브랜드 존재 여부는 이 쿼리의 검사 범위에서 제외.
  */
 public interface PopupCampaignRepository extends JpaRepository<PopupCampaign, Long> {
 

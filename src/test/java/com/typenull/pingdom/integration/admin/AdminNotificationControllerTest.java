@@ -32,7 +32,7 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 현재 관리자의 관리자용 알림 조회·읽음 범위와 감사 기록을 검증한다.
+ * 현재 관리자의 관리자용 알림 조회·읽음 범위와 감사 기록을 검증.
  */
 @Tag("integration")
 @SpringBootTest
@@ -59,7 +59,7 @@ class AdminNotificationControllerTest {
     private PasswordEncoder passwordEncoder;
 
     /**
-     * 감사 로그·알림·사용자를 비워 알림 건수와 읽음 상태 검증을 격리한다.
+     * 감사 로그·알림·사용자를 비워 알림 건수와 읽음 상태 검증을 격리.
      */
     @BeforeEach
     void setUp() {
@@ -69,7 +69,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 유형·읽음 여부·기간 조건으로 현재 관리자의 알림 한 건과 전체 건수를 확인한다.
+     * 유형·읽음 여부·기간 조건으로 현재 관리자의 알림 한 건과 전체 건수를 확인.
      */
     @Test
     void filteredAdminNotifications() throws Exception {
@@ -111,7 +111,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 선택 필터가 없을 때 기본 페이지 1, 크기 20으로 관리자 알림을 조회하는지 확인한다.
+     * 선택 필터가 없을 때 기본 페이지 1, 크기 20으로 관리자 알림을 조회하는지 확인.
      */
     @Test
     void defaultNotificationPage() throws Exception {
@@ -138,7 +138,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 다른 관리자 알림과 일반 사용자용 좋아요 알림을 제외한 미읽음 관리자 알림 두 건을 확인한다.
+     * 다른 관리자 알림과 일반 사용자용 좋아요 알림을 제외한 미읽음 관리자 알림 두 건을 확인.
      */
     @Test
     void countUnreadNotifications() throws Exception {
@@ -161,7 +161,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 읽음 응답과 저장 상태, 대상 알림 ID를 포함한 NOTIFICATION_READ 감사 로그를 확인한다.
+     * 읽음 응답과 저장 상태, 대상 알림 ID를 포함한 NOTIFICATION_READ 감사 로그를 확인.
      */
     @Test
     void readNotificationAudit() throws Exception {
@@ -196,7 +196,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 현재 관리자의 관리자용 알림만 읽음 처리하고 일반 알림·다른 관리자 알림을 보존하며 감사 로그를 남기는지 확인한다.
+     * 현재 관리자의 관리자용 알림만 읽음 처리하고 일반 알림·다른 관리자 알림을 보존하며 감사 로그를 남기는지 확인.
      */
     @Test
     void markAllNotificationsAsRead() throws Exception {
@@ -231,7 +231,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 역전된 조회 기간이 INVALID_NOTIFICATION_FILTER_PERIOD로 거절되는지 확인한다.
+     * 역전된 조회 기간이 INVALID_NOTIFICATION_FILTER_PERIOD로 거절되는지 확인.
      */
     @Test
     void reversedNotificationPeriod() throws Exception {
@@ -246,7 +246,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 다른 관리자 알림은 404로 숨기고 미읽음 상태를 유지하는지 확인한다.
+     * 다른 관리자 알림은 404로 숨기고 미읽음 상태를 유지하는지 확인.
      */
     @Test
     void otherAdminNotificationRead() throws Exception {
@@ -272,7 +272,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 본인의 좋아요 알림도 관리자 읽음 API에서는 404로 거절하고 상태를 보존하는지 확인한다.
+     * 본인의 좋아요 알림도 관리자 읽음 API에서는 404로 거절하고 상태를 보존하는지 확인.
      */
     @Test
     void personalNotificationRead() throws Exception {
@@ -299,7 +299,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 일반 사용자의 관리자 알림 조회를 ACCESS_DENIED로 거절하는지 확인한다.
+     * 일반 사용자의 관리자 알림 조회를 ACCESS_DENIED로 거절하는지 확인.
      */
     @Test
     void notificationsRejectUser() throws Exception {
@@ -312,7 +312,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 소유자·유형·읽음 여부·생성 시점을 직접 지정해 필터와 범위 검증용 알림을 저장한다.
+     * 소유자·유형·읽음 여부·생성 시점을 직접 지정해 필터와 범위 검증용 알림을 저장.
      */
     private Notifications saveNotification(
             Long userId,
@@ -335,7 +335,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 지정 사용자 역할을 저장한 뒤 실제 로그인 응답에서 접근 토큰을 추출한다.
+     * 지정 사용자 역할을 저장한 뒤 실제 로그인 응답에서 접근 토큰을 추출.
      */
     private String createUserAndLogin(String username, UserRole role) throws Exception {
         userRepository.save(User.builder()
@@ -361,7 +361,7 @@ class AdminNotificationControllerTest {
     }
 
     /**
-     * 로그인에 사용한 이름으로 알림 소유자의 영속 ID를 조회하며 사용자가 없으면 실패한다.
+     * 로그인에 사용한 이름으로 알림 소유자의 영속 ID를 조회하며 사용자가 없으면 실패.
      */
     private Long findUserId(String username) {
         return userRepository.findByUsername(username).orElseThrow().getId();

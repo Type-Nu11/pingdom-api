@@ -13,7 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 북마크 상태 전이를 보존해 기간별 순증가량을 재현합니다. */
+/** 북마크 상태 전이를 보존해 기간별 순증가량을 재현. */
 @Entity
 @Getter
 @Table(name = "map_bookmark_trend_event")

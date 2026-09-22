@@ -126,7 +126,7 @@ class PlaceRecommendationQueryServiceImplTest {
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
 
     /**
-     * 후보 수집·점수·포트폴리오 구성은 실제 협력 객체로 연결하고 저장소·정책·노출 이벤트 경계는 모의하여 추천 흐름을 검증한다.
+     * 후보 수집·점수·포트폴리오 구성은 실제 협력 객체로 연결하고 저장소·정책·노출 이벤트 경계는 모의하여 추천 흐름을 검증.
      */
     @BeforeEach
     void setUp() {
@@ -203,7 +203,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 사용자 북마크 seed의 위도가 null이면 개인화 후보에서 제외하고 정상 seed와 확장 후보는 유지하는지 확인한다.
+     * 사용자 북마크 seed의 위도가 null이면 개인화 후보에서 제외하고 정상 seed와 확장 후보는 유지하는지 확인.
      */
     @Test
     void excludesSeedsWithMissingCoordinates() {
@@ -245,7 +245,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 추천 결과에 포함된 장소 ID·사용자·정책 버전을 가진 노출 기록 요청 이벤트가 발행되는지 확인한다.
+     * 추천 결과에 포함된 장소 ID·사용자·정책 버전을 가진 노출 기록 요청 이벤트가 발행되는지 확인.
      */
     @Test
     void publishesRecommendationExposureEvent() {
@@ -293,7 +293,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 특성 로그 저장이 실패하면 동일 예외를 요청에 전파하고 노출 이벤트는 발행하지 않는지 확인한다.
+     * 특성 로그 저장이 실패하면 동일 예외를 요청에 전파하고 노출 이벤트는 발행하지 않는지 확인.
      */
     @Test
     void propagatesFeatureLogFailure() {
@@ -317,7 +317,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * Boost 협력 객체가 적용 대상으로 반환한 장소는 추천 응답에서도 boosted=true로 표시되는지 확인한다.
+     * Boost 협력 객체가 적용 대상으로 반환한 장소는 추천 응답에서도 boosted=true로 표시되는지 확인.
      */
     @Test
     void returnsVerifiedBoostFlag() {
@@ -345,7 +345,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 고정 시각에 영업 중인 장소를 영업 외 장소보다 먼저 반환하고 특성 로그와 노출 이벤트에도 같은 순서를 전달하는지 확인한다.
+     * 고정 시각에 영업 중인 장소를 영업 외 장소보다 먼저 반환하고 특성 로그와 노출 이벤트에도 같은 순서를 전달하는지 확인.
      */
     @Test
     void prioritizesCurrentlyOperatingCandidates() {
@@ -402,7 +402,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 반환 제한이 1건일 때 가까운 영업 외 장소보다 영업 중인 장소를 선택하는지 확인한다.
+     * 반환 제한이 1건일 때 가까운 영업 외 장소보다 영업 중인 장소를 선택하는지 확인.
      */
     @Test
     void selectsOperatingCandidateWithinLimit() {
@@ -432,7 +432,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 특성 로그 활성 여부만 바꾸면서 공통 가중치와 후보 비율을 사용하는 STABLE 정책을 만든다.
+     * 특성 로그 활성 여부만 바꾸면서 공통 가중치와 후보 비율을 사용하는 STABLE 정책을 생성.
      */
     private PlaceRecommendationPolicyService.ResolvedRecommendationPolicy stablePolicy(boolean featureLoggingEnabled) {
         return new PlaceRecommendationPolicyService.ResolvedRecommendationPolicy(
@@ -452,7 +452,7 @@ class PlaceRecommendationQueryServiceImplTest {
     }
 
     /**
-     * 좌표 누락·영업 일정·후보 순서를 비교할 수 있도록 입력 ID와 좌표로 장소를 만든다.
+     * 좌표 누락·영업 일정·후보 순서를 비교할 수 있도록 입력 ID와 좌표로 장소를 생성.
      */
     private MapPlace createPlace(Long id, String name, Double latitude, Double longitude) {
         return MapPlace.builder()

@@ -15,7 +15,7 @@ import org.junit.jupiter.api.Test;
 class PlaceRecommendationTrustRankingTest {
 
     /**
-     * 신뢰 조회에 없는 장소는 맵에서 제외되어 호출자의 기본값 0.5를 적용할 수 있는지 확인합니다.
+     * 신뢰 조회에 없는 장소는 맵에서 제외되어 호출자의 기본값 0.5를 적용할 수 있는지 확인.
      */
     @Test
     void defaultsMissingTrustToNeutral() {
@@ -40,7 +40,7 @@ class PlaceRecommendationTrustRankingTest {
     }
 
     /**
-     * 신뢰 가중치만 1이면 후보 최종 점수가 각각의 신뢰도 0.2와 0.9가 되는지 확인합니다.
+     * 신뢰 가중치만 1이면 후보 최종 점수가 각각의 신뢰도 0.2와 0.9가 되는지 확인.
      */
     @Test
     void usesExclusiveTrustWeight() {
@@ -59,7 +59,7 @@ class PlaceRecommendationTrustRankingTest {
     }
 
     /**
-     * 신뢰 가중치를 포함한 가중치 합이 1이 아니면 생성 시 명확한 예외로 거절하는지 확인합니다.
+     * 신뢰 가중치를 포함한 가중치 합이 1이 아니면 생성 시 명확한 예외로 거절하는지 확인.
      */
     @Test
     void rejectsInvalidTrustWeightSum() {
@@ -69,21 +69,21 @@ class PlaceRecommendationTrustRankingTest {
     }
 
     /**
-     * 신뢰도 비교용 최소 장소를 만듭니다.
+     * 신뢰도 비교용 최소 장소를 생성.
      */
     private MapPlace place(Long id) {
         return MapPlace.builder().id(id).name("place-" + id).build();
     }
 
     /**
-     * 같은 거리와 영업 상태를 가진 조회 후보를 만듭니다.
+     * 같은 거리와 영업 상태를 가진 조회 후보를 생성.
      */
     private PlaceDistance distance(MapPlace place) {
         return new PlaceDistance(place, java.util.Set.of(), 100d, true, null);
     }
 
     /**
-     * 신뢰도만 다르고 다른 신호는 0인 정규화 전 후보를 만듭니다.
+     * 신뢰도만 다르고 다른 신호는 0인 정규화 전 후보를 생성.
      */
     private IntermediateCandidate candidate(MapPlace place, double trustScore) {
         return new IntermediateCandidate(

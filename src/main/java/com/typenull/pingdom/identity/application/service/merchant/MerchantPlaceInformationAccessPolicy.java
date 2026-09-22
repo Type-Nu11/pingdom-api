@@ -12,8 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 /**
- * 장소 추가 정보 API의 접근 조건을 PLACE_INFO_EDIT capability에 연결합니다.
- * 조회에도 같은 조건을 적용하므로 일반 열람 권한만 가진 팀원은 사용할 수 없습니다.
+ * 장소 추가 정보 API의 접근 조건을 PLACE_INFO_EDIT capability에 연결.
+ * 조회에도 같은 조건을 적용하므로 일반 열람 권한만 가진 팀원은 사용 불가.
  */
 @Component
 public class MerchantPlaceInformationAccessPolicy {

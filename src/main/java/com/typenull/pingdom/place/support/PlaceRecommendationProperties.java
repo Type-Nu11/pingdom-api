@@ -13,9 +13,9 @@ import org.springframework.boot.context.properties.bind.ConstructorBinding;
 import org.springframework.validation.annotation.Validated;
 
 /**
- * 추천 버전별 후보 혼합 비율과 순위 가중치·부스트를 설정합니다.
- * 개별 수치 범위는 Bean Validation으로 검사하며 후보 혼합 비율 합계는 이 설정 타입에서 검사하지 않습니다.
- * RankingWeights의 합계 검사는 trustWeight가 양수인 경우에만 적용됩니다.
+ * 추천 버전별 후보 혼합 비율과 순위 가중치·부스트를 설정.
+ * 개별 수치 범위는 Bean Validation으로 검사하며 후보 혼합 비율 합계는 이 설정 타입의 검사 대상에서 제외.
+ * RankingWeights의 합계 검사는 trustWeight가 양수인 경우에만 적용됨.
  */
 @Validated
 @ConfigurationProperties(prefix = "place.recommendation")

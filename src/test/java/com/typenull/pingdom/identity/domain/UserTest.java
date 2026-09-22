@@ -11,7 +11,7 @@ import org.junit.jupiter.api.Test;
 class UserTest {
 
     /**
-     * 여행 목적 교체 시 입력 집합 변경의 영향을 받지 않고 조회 집합도 수정 불가이며 탈퇴 시 목적이 비워지는지 검증한다.
+     * 여행 목적 교체 시 입력 집합 변경의 영향을 받지 않고 조회 집합도 수정 불가이며 탈퇴 시 목적이 비워지는지 검증.
      */
     @Test
     void protectsAndClearsTravelPurposes() {
@@ -37,7 +37,7 @@ class UserTest {
     }
 
     /**
-     * 점주 권한 해제 시 역할을 USER로 변경하고 리프레시 토큰도 제거해 이전 권한의 갱신을 방지하는지 검증한다.
+     * 점주 권한 해제 시 역할을 USER로 변경하고 리프레시 토큰도 제거해 이전 권한의 갱신을 방지하는지 검증.
      */
     @Test
     void revocationClearsMerchantRefreshToken() {

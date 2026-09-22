@@ -49,7 +49,7 @@ class ReportPolicyServiceTest {
     private ReportPolicyService service;
 
     /**
-     * 서울 시간대 고정 Clock에 신고 정책 의존성을 연결하고 기본 미해결 이상 징후·개입 규칙을 빈 목록으로 설정한다.
+     * 서울 시간대 고정 Clock에 신고 정책 의존성을 연결하고 기본 미해결 이상 징후·개입 규칙을 빈 목록으로 설정.
      */
     @BeforeEach
     void setUp() {
@@ -68,7 +68,7 @@ class ReportPolicyServiceTest {
     }
 
     /**
-     * 허위 신고가 2회에서 3회로 증가하면 신뢰도 40·7일 제한·기본 사유를 적용하고 급증/낮은 승인율 이상 징후 2종을 저장하는지 검증한다.
+     * 허위 신고가 2회에서 3회로 증가하면 신뢰도 40·7일 제한·기본 사유를 적용하고 급증/낮은 승인율 이상 징후 2종을 저장하는지 검증.
      */
     @Test
     void restrictsReporterAtFalseReportThreshold() {
@@ -96,7 +96,7 @@ class ReportPolicyServiceTest {
     }
 
     /**
-     * 미해결 허위 신고 급증 징후가 이미 있으면 거절 기록 후 낮은 승인율 징후만 추가 저장하는지 검증한다.
+     * 미해결 허위 신고 급증 징후가 이미 있으면 거절 기록 후 낮은 승인율 징후만 추가 저장하는지 검증.
      */
     @Test
     void avoidsDuplicateUnresolvedAnomaly() {
@@ -124,7 +124,7 @@ class ReportPolicyServiceTest {
     }
 
     /**
-     * 승인 후 신뢰도 45에서 두 제한 규칙이 일치하면 우선순위 10의 3일 제한·사유만 적용하고 정책을 저장하는지 검증한다.
+     * 승인 후 신뢰도 45에서 두 제한 규칙이 일치하면 우선순위 10의 3일 제한·사유만 적용하고 정책을 저장하는지 검증.
      */
     @Test
     void appliesHighestPriorityRestrictionRule() {
@@ -149,7 +149,7 @@ class ReportPolicyServiceTest {
     }
 
     /**
-     * 허위 신고 3회 이상을 대상으로 지정 우선순위·기간을 가진 활성 임시 제한 규칙을 구성한다.
+     * 허위 신고 3회 이상을 대상으로 지정 우선순위·기간을 가진 활성 임시 제한 규칙을 구성.
      */
     private TrustScoreInterventionRule restrictionRule(Long id, int priority, int durationDays) {
         return TrustScoreInterventionRule.builder()

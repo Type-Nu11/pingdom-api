@@ -47,8 +47,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * USER_READ·USER_SANCTION 권한을 구분하여 사용자 제재 조회·변경을 조정합니다.
- * 제재 상태·이력 조회 일부는 만료된 정지를 정리하므로 쓰기 트랜잭션으로 실행됩니다.
+ * USER_READ·USER_SANCTION 권한을 구분하여 사용자 제재 조회·변경을 조정.
+ * 제재 상태·이력 조회 일부는 만료된 정지를 정리하므로 쓰기 트랜잭션으로 실행.
  */
 @Service
 @RequiredArgsConstructor
@@ -62,8 +62,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     private final Clock clock;
 
     /**
-     * 종료 시각과 일수 중 하나만 허용하고 둘 다 없으면 무기한 정지합니다.
-     * 정지 적용·이력·감사 기록을 저장하며, 이미 정지된 사용자의 기존 기간과 사유도 새 값으로 교체합니다.
+     * 종료 시각과 일수 중 하나만 허용하고 둘 다 없으면 무기한 정지.
+     * 정지 적용·이력·감사 기록을 저장하며, 이미 정지된 사용자의 기존 기간과 사유도 새 값으로 교체.
      */
     @Override
     @Transactional
@@ -97,8 +97,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     /**
-     * USER_SANCTION 권한과 사용자 존재를 확인하고 저장된 정지 상태를 해제해 결과를 반환합니다.
-     * 정지 중이 아니면 USER_NOT_BANNED이며 해제 이력·관리자 알림 outbox·감사 기록은 같은 트랜잭션에 저장하고 접근 캐시는 즉시 비웁니다.
+     * USER_SANCTION 권한과 사용자 존재를 확인하고 저장된 정지 상태를 해제해 결과를 반환.
+     * 정지 중이 아니면 USER_NOT_BANNED이며 해제 이력·관리자 알림 outbox·감사 기록은 같은 트랜잭션에 저장하고 접근 캐시는 즉시 비움.
      */
     @Override
     @Transactional
@@ -124,8 +124,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     /**
-     * 현재 정지 중인 계정 목록에 검색어·유형·시작 시각 필터를 적용합니다.
-     * 응답의 유형별 counts는 검색어만 공유하므로 기간·유형으로 좁힌 목록의 totalCount와 다를 수 있습니다.
+     * 현재 정지 중인 계정 목록에 검색어·유형·시작 시각 필터를 적용.
+     * 응답의 유형별 counts는 검색어만 공유하므로 기간·유형으로 좁힌 목록의 totalCount와 다를 수 있음.
      */
     @Override
     @Transactional
@@ -179,8 +179,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     /**
-     * USER_READ 권한을 확인하고 만료 정리 후에도 현재 정지 중인 사용자만 상세 정보를 반환합니다.
-     * 사용자가 없거나 현재 정지가 아니면 USER_NOT_FOUND이며 만료 정리 후 이 오류가 발생하면 같은 트랜잭션의 DB 변경도 롤백됩니다.
+     * USER_READ 권한을 확인하고 만료 정리 후에도 현재 정지 중인 사용자만 상세 정보를 반환.
+     * 사용자가 없거나 현재 정지가 아니면 USER_NOT_FOUND이며 만료 정리 후 이 오류가 발생하면 같은 트랜잭션의 DB 변경도 롤백.
      */
     @Override
     @Transactional
@@ -211,8 +211,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     /**
-     * USER_READ 권한과 사용자 존재를 확인하고 만료된 정지를 정리한 뒤 현재 제재 정보를 반환합니다.
-     * 만료 시 상태·이력·알림 outbox도 바뀌는 쓰기 조회이며 현재 정지가 아니면 제재 유형·기간·사유는 null입니다.
+     * USER_READ 권한과 사용자 존재를 확인하고 만료된 정지를 정리한 뒤 현재 제재 정보를 반환.
+     * 만료 시 상태·이력·알림 outbox도 바뀌는 쓰기 조회이며 현재 정지가 아니면 제재 유형·기간·사유는 null.
      */
     @Override
     @Transactional
@@ -235,8 +235,8 @@ public class AdminUserServiceImpl implements AdminUserService {
     }
 
     /**
-     * USER_READ 권한과 사용자·기간 조건을 확인하고 만료 정지를 정리한 뒤 제재 이력을 최신 처리순으로 반환합니다.
-     * 유형·조치·처리 시각의 양 끝을 포함해 필터링하고 페이지 크기는 1~100으로 보정합니다. 만료 시 새 이력·알림 outbox가 저장될 수 있습니다.
+     * USER_READ 권한과 사용자·기간 조건을 확인하고 만료 정지를 정리한 뒤 제재 이력을 최신 처리순으로 반환.
+     * 유형·조치·처리 시각의 양 끝을 포함해 필터링하고 페이지 크기는 1~100으로 보정. 만료 시 새 이력·알림 outbox가 저장될 수 있음.
      */
     @Override
     @Transactional
@@ -353,7 +353,7 @@ public class AdminUserServiceImpl implements AdminUserService {
         if (request == null) {
             return null;
         }
-        // 절대 종료 시각과 상대 기간이 함께 오면 적용 기준이 모호하므로 한쪽을 임의 선택하지 않습니다.
+        // 적용 기준의 모호함을 방지하기 위해 절대 종료 시각·상대 기간 동시 입력 거절.
         if (request.expiresAt() != null && request.durationDays() != null) {
             throw new AdminException(AdminErrorCode.INVALID_SANCTION_PERIOD);
         }

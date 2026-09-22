@@ -10,7 +10,7 @@ import org.mockito.Mockito;
 class CommunityPostPlaceTest {
 
     /**
-     * 게시글과 장소를 연결하면 전달한 두 객체 참조를 그대로 보존하는지 검증한다.
+     * 게시글과 장소를 연결하면 전달한 두 객체 참조를 그대로 보존하는지 검증.
      */
     @Test
     void connectsPostAndPlaceReferences() {
@@ -24,7 +24,7 @@ class CommunityPostPlaceTest {
     }
 
     /**
-     * 게시글 또는 장소가 null이면 연결 생성 시 NullPointerException을 반환하는지 검증한다.
+     * 게시글 또는 장소가 null이면 연결 생성 시 NullPointerException을 반환하는지 검증.
      */
     @Test
     void rejectsMissingLinkEndpoints() {

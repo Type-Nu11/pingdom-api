@@ -61,7 +61,7 @@ class OutboxEventContractIntegrationTest {
             .withPassword("pingdom");
 
     /**
-     * PostGIS 컨테이너의 JDBC 접속값을 등록해 실제 Outbox 저장·선점·상태 전이를 검증한다.
+     * PostGIS 컨테이너의 JDBC 접속값을 등록해 실제 Outbox 저장·선점·상태 전이를 검증.
      */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
@@ -81,7 +81,7 @@ class OutboxEventContractIntegrationTest {
     @Autowired private OutboxProperties outboxProperties;
 
     /**
-     * 이벤트 테이블을 비우고 Clock과 이메일/전달 기록 대역을 초기화해 각 재시도 시나리오를 격리한다.
+     * 이벤트 테이블을 비우고 Clock과 이메일/전달 기록 대역을 초기화해 각 재시도 시나리오를 격리.
      */
     @BeforeEach
     void setUp() {
@@ -91,8 +91,8 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 동일 키 중복 발행은 생략하고 PENDING payload·집계 정보를 유지한 이벤트가 선점 후 등록 핸들러를 거쳐 SUCCEEDED가 되는지 검증한다.
-     * 실제 이메일 전송은 대역이며 처리 시각·시도 0회와 이메일 인자 전달을 확인한다.
+     * 동일 키 중복 발행은 생략하고 PENDING payload·집계 정보를 유지한 이벤트가 선점 후 등록 핸들러를 거쳐 SUCCEEDED가 되는지 검증.
+     * 실제 이메일 전송은 대역이며 처리 시각·시도 0회와 이메일 인자 전달을 확인.
      */
     @Test
     void publishesAndCompletesRegisteredEvent() {
@@ -131,7 +131,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 이메일 처리 첫 실패가 RETRY·시도 1회·오류·10초 backoff를 저장하고 Clock 전진 후 재처리가 SUCCEEDED가 되는지 검증한다.
+     * 이메일 처리 첫 실패가 RETRY·시도 1회·오류·10초 backoff를 저장하고 Clock 전진 후 재처리가 SUCCEEDED가 되는지 검증.
      */
     @Test
     void retriesTransientHandlerFailure() {
@@ -161,7 +161,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 계속 실패하는 핸들러를 설정된 최대 횟수까지 재선점·처리하여 각 시도 수와 최종 FAILED·오류 기록을 검증한다.
+     * 계속 실패하는 핸들러를 설정된 최대 횟수까지 재선점·처리하여 각 시도 수와 최종 FAILED·오류 기록을 검증.
      */
     @Test
     void failsAtMaximumHandlerAttempts() {
@@ -188,7 +188,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 선점 후 301초 멈춘 이벤트는 stale 복구 1건·RETRY·시도 1회·선점 시각 제거·10초 backoff로 저장되는지 검증한다.
+     * 선점 후 301초 멈춘 이벤트는 stale 복구 1건·RETRY·시도 1회·선점 시각 제거·10초 backoff로 저장되는지 검증.
      */
     @Test
     void recoversStaleClaimWithBackoff() {
@@ -207,7 +207,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 사례별 중복 키와 공통 이메일 payload·사용자 집계로 실제 Outbox 이벤트를 발행한다.
+     * 사례별 중복 키와 공통 이메일 payload·사용자 집계로 실제 Outbox 이벤트를 발행.
      */
     private String publishEmail(String suffix) {
         return eventPublisher.publish(
@@ -220,7 +220,7 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 준비된 이벤트가 기대 ID 하나로만 선점되는지 확인한 뒤 processor로 전달한다.
+     * 준비된 이벤트가 기대 ID 하나로만 선점되는지 확인한 뒤 processor로 전달.
      */
     private void processClaimedEvent(String eventId) {
         List<String> claimedEventIds = claimService.claimReadyEvents();
@@ -229,14 +229,14 @@ class OutboxEventContractIntegrationTest {
     }
 
     /**
-     * 이벤트를 저장소에서 다시 읽어 서비스 호출 이후 실제 영속 상태를 assertion에 제공한다.
+     * 이벤트를 저장소에서 다시 읽어 서비스 호출 이후 실제 영속 상태를 assertion에 제공.
      */
     private OutboxEvent event(String eventId) {
         return eventRepository.findById(eventId).orElseThrow();
     }
 
     /**
-     * 공유 테스트 Clock의 현재 Instant를 Outbox 저장 시간 기준인 UTC LocalDateTime으로 변환한다.
+     * 공유 테스트 Clock의 현재 Instant를 Outbox 저장 시간 기준인 UTC LocalDateTime으로 변환.
      */
     private LocalDateTime now() {
         return LocalDateTime.ofInstant(OUTBOX_CLOCK.instant(), ZoneOffset.UTC);
@@ -246,7 +246,7 @@ class OutboxEventContractIntegrationTest {
     static class OutboxContractTestConfiguration {
 
         /**
-         * 공유 변경 가능 Clock을 Primary 빈으로 등록해 발행·선점·상태 서비스가 같은 시간을 사용하게 한다.
+         * 공유 변경 가능 Clock을 Primary 빈으로 등록해 발행·선점·상태 서비스가 같은 시간을 사용하게 함.
          */
         @Bean
         @Primary
@@ -260,14 +260,14 @@ class OutboxEventContractIntegrationTest {
         private Instant instant;
 
         /**
-         * Outbox 시나리오에서 직접 변경할 초기 Instant를 보관한다.
+         * Outbox 시나리오에서 직접 변경할 초기 Instant를 보관.
          */
         private MutableClock(Instant instant) {
             this.instant = instant;
         }
 
         /**
-         * Outbox 테스트의 시간대를 UTC로 고정한다.
+         * Outbox 테스트의 시간대를 UTC로 고정.
          */
         @Override
         public ZoneOffset getZone() {
@@ -275,7 +275,7 @@ class OutboxEventContractIntegrationTest {
         }
 
         /**
-         * UTC 전용 테스트 Clock이므로 요청 시간대와 무관하게 같은 인스턴스를 반환한다.
+         * UTC 전용 테스트 Clock이므로 요청 시간대와 무관하게 같은 인스턴스를 반환.
          */
         @Override
         public Clock withZone(java.time.ZoneId zone) {
@@ -283,7 +283,7 @@ class OutboxEventContractIntegrationTest {
         }
 
         /**
-         * 서비스가 사용하는 현재 테스트 Instant를 반환한다.
+         * 서비스가 사용하는 현재 테스트 Instant를 반환.
          */
         @Override
         public Instant instant() {
@@ -291,14 +291,14 @@ class OutboxEventContractIntegrationTest {
         }
 
         /**
-         * 현재 시각을 지정된 다음 재시도 시각이나 초기 시각으로 이동한다.
+         * 현재 시각을 지정된 다음 재시도 시각이나 초기 시각으로 이동.
          */
         private void set(Instant instant) {
             this.instant = instant;
         }
 
         /**
-         * 실제 대기 없이 시각을 전진시켜 backoff와 stale 경계를 재현한다.
+         * 실제 대기 없이 시각을 전진시켜 backoff와 stale 경계를 재현.
          */
         private void advanceSeconds(long seconds) {
             instant = instant.plusSeconds(seconds);

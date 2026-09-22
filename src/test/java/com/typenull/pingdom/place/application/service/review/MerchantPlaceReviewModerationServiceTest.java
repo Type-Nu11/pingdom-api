@@ -31,7 +31,7 @@ import org.springframework.data.domain.Sort;
 class MerchantPlaceReviewModerationServiceTest {
 
     /**
-     * 소유자 목록에 공개·숨김·삭제 리뷰를 포함하되 리뷰별 최신 삭제 요청만 연결하고 페이지·정렬 계약을 유지하는지 확인합니다.
+     * 소유자 목록에 공개·숨김·삭제 리뷰를 포함하되 리뷰별 최신 삭제 요청만 연결하고 페이지·정렬 계약을 유지하는지 확인.
      */
     @Test
     void listsLatestReviewDeletionRequests() {
@@ -119,7 +119,7 @@ class MerchantPlaceReviewModerationServiceTest {
     }
 
     /**
-     * 장소 소유권이 없는 사용자의 리뷰 삭제 요청이 MapException으로 거절되는지 확인합니다.
+     * 장소 소유권이 없는 사용자의 리뷰 삭제 요청이 MapException으로 거절되는지 확인.
      */
     @Test
     void rejectsNonOwnerDeletionRequest() {
@@ -136,7 +136,7 @@ class MerchantPlaceReviewModerationServiceTest {
     }
 
     /**
-     * 같은 리뷰에 심사 대기 삭제 요청이 있으면 중복 요청을 거절하는지 확인합니다.
+     * 같은 리뷰에 심사 대기 삭제 요청이 있으면 중복 요청을 거절하는지 확인.
      */
     @Test
     void rejectsDuplicatePendingDeletion() {
@@ -157,7 +157,7 @@ class MerchantPlaceReviewModerationServiceTest {
     }
 
     /**
-     * 노출 상태와 응답 필드를 갖춘 리뷰 모의를 만듭니다.
+     * 노출 상태와 응답 필드를 갖춘 리뷰 모의를 생성.
      */
     private PlaceReview review(Long reviewId, Long placeId, PlaceReviewVisibilityStatus visibilityStatus) {
         PlaceReview review = mock(PlaceReview.class);
@@ -175,7 +175,7 @@ class MerchantPlaceReviewModerationServiceTest {
     }
 
     /**
-     * 요청·심사 시각과 상태를 지정하여 최신 삭제 요청 선택 사례를 구성합니다.
+     * 요청·심사 시각과 상태를 지정하여 최신 삭제 요청 선택 사례를 구성.
      */
     private PlaceReviewDeletionRequest deletionRequest(
             Long deletionRequestId,

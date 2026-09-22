@@ -19,7 +19,7 @@ class PlaceVisitDecisionSourceModelTest {
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 5, 12, 0);
 
     /**
-     * 상점 정보에서 예약 링크를 생략할 수 있고 장소 ID가 유지되는지 확인합니다.
+     * 상점 정보에서 예약 링크를 생략할 수 있고 장소 ID가 유지되는지 확인.
      */
     @Test
     void allowsMissingReservationLink() {
@@ -32,7 +32,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 설명은 양끝 공백을 제거하고 선택 연락처·웹사이트·예약 URL의 공백은 null로 바꾸는지 확인합니다.
+     * 설명은 양끝 공백을 제거하고 선택 연락처·웹사이트·예약 URL의 공백은 null로 바꾸는지 확인.
      */
     @Test
     void normalizesOptionalMerchantInformation() {
@@ -47,7 +47,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 새 예약 재고가 ACTIVE 상태와 전체 잔여 인원으로 시작하는지 확인합니다.
+     * 새 예약 재고가 ACTIVE 상태와 전체 잔여 인원으로 시작하는지 확인.
      */
     @Test
     void startsWithFullAvailability() {
@@ -62,7 +62,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 뒤집힌 영업 구간과 0 정원은 재고 생성 시 거절하는지 확인합니다.
+     * 뒤집힌 영업 구간과 0 정원은 재고 생성 시 거절하는지 확인.
      */
     @Test
     void rejectsInvalidAvailabilityBounds() {
@@ -75,7 +75,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 정원 20에서 3명을 예약하면 잔여 정원이 17이 되는지 확인합니다.
+     * 정원 20에서 3명을 예약하면 잔여 정원이 17이 되는지 확인.
      */
     @Test
     void reducesReservedCapacity() {
@@ -89,7 +89,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 비활성화한 재고에는 새 예약을 받을 수 없는지 확인합니다.
+     * 비활성화한 재고에는 새 예약을 받을 수 없는지 확인.
      */
     @Test
     void rejectsInactiveAvailabilityReservation() {
@@ -103,7 +103,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 새 오퍼가 DRAFT와 발급 수 0으로 시작하는지 확인합니다.
+     * 새 오퍼가 DRAFT와 발급 수 0으로 시작하는지 확인.
      */
     @Test
     void startsOfferAsDraft() {
@@ -117,7 +117,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 종료 전 시각에 발행한 오퍼가 PUBLISHED로 전이하는지 확인합니다.
+     * 종료 전 시각에 발행한 오퍼가 PUBLISHED로 전이하는지 확인.
      */
     @Test
     void publishesOfferBeforeEnd() {
@@ -132,7 +132,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 종료가 시작보다 앞선 오퍼 기간은 생성 시 거절하는지 확인합니다.
+     * 종료가 시작보다 앞선 오퍼 기간은 생성 시 거절하는지 확인.
      */
     @Test
     void rejectsReversedOfferPeriod() {
@@ -143,7 +143,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 현재보다 늦게 시작하는 이벤트의 일정 상태가 UPCOMING인지 확인합니다.
+     * 현재보다 늦게 시작하는 이벤트의 일정 상태가 UPCOMING인지 확인.
      */
     @Test
     void identifiesUpcomingEvent() {
@@ -156,7 +156,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 현재가 시작·종료 사이인 이벤트의 일정 상태가 ONGOING인지 확인합니다.
+     * 현재가 시작·종료 사이인 이벤트의 일정 상태가 ONGOING인지 확인.
      */
     @Test
     void identifiesOngoingEvent() {
@@ -169,7 +169,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 종료 시각이 지난 이벤트의 일정 상태가 ENDED인지 확인합니다.
+     * 종료 시각이 지난 이벤트의 일정 상태가 ENDED인지 확인.
      */
     @Test
     void identifiesEndedEvent() {
@@ -182,7 +182,7 @@ class PlaceVisitDecisionSourceModelTest {
     }
 
     /**
-     * 방문 판단용 이벤트에 연결할 기존 장소 fixture를 만듭니다.
+     * 방문 판단용 이벤트에 연결할 기존 장소 fixture를 생성.
      */
     private MapPlace legacyPlace() {
         return MapPlace.builder()

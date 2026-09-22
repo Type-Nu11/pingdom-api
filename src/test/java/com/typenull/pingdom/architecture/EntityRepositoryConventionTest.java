@@ -16,13 +16,13 @@ import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.data.jpa.repository.Lock;
 
-/** Entity와 Repository의 위치·명명 규칙을 정적 소스 검사로 검증합니다. */
+/** Entity와 Repository의 위치·명명 규칙을 정적 소스 검사로 검증. */
 class EntityRepositoryConventionTest {
 
     private static final Path JAVA_SOURCE_ROOT = Path.of("src/main/java");
 
     /**
-     * Entity 선언이 있는 운영 클래스를 로드해 공개 set 접두사 메서드가 노출되지 않는지 검증한다.
+     * Entity 선언이 있는 운영 클래스를 로드해 공개 set 접두사 메서드가 노출되지 않는지 검증.
      */
     @Test
     @DisplayName("Entity는 범용 Setter 대신 의미 있는 상태 변경 메서드를 사용한다")
@@ -45,7 +45,7 @@ class EntityRepositoryConventionTest {
     }
 
     /**
-     * JpaRepository 소스에서 선언한 PESSIMISTIC_WRITE 조회 메서드가 ForUpdate 접미사로 잠금 의도를 드러내는지 검증한다.
+     * JpaRepository 소스에서 선언한 PESSIMISTIC_WRITE 조회 메서드가 ForUpdate 접미사로 잠금 의도를 드러내는지 검증.
      */
     @Test
     @DisplayName("비관적 쓰기 잠금 조회는 ForUpdate 접미사를 사용한다")
@@ -70,7 +70,7 @@ class EntityRepositoryConventionTest {
     }
 
     /**
-     * 지정 소스 표식을 포함한 Java 파일을 찾아 reflection 검사에 필요한 클래스로 로드한다.
+     * 지정 소스 표식을 포함한 Java 파일을 찾아 reflection 검사에 필요한 클래스로 로드.
      */
     private List<Class<?>> classesContaining(String marker) throws IOException, ClassNotFoundException {
         List<Class<?>> classes = new ArrayList<>();
@@ -87,7 +87,7 @@ class EntityRepositoryConventionTest {
     }
 
     /**
-     * 소스의 표식 포함 여부를 확인하고 파일을 읽지 못하면 해당 경로를 포함한 오류로 검사 실패를 드러낸다.
+     * 소스의 표식 포함 여부를 확인하고 파일을 읽지 못하면 해당 경로를 포함한 오류로 검사 실패를 명시.
      */
     private boolean contains(Path sourceFile, String marker) {
         try {
@@ -98,7 +98,7 @@ class EntityRepositoryConventionTest {
     }
 
     /**
-     * 운영 소스 루트 상대 경로에서 확장자를 제거하고 디렉터리 구분자를 패키지 구분자로 바꾸어 클래스명을 얻는다.
+     * 운영 소스 루트 상대 경로에서 확장자를 제거하고 디렉터리 구분자를 패키지 구분자로 바꾸어 클래스명을 획득.
      */
     private String toClassName(Path sourceFile) {
         String relativePath = JAVA_SOURCE_ROOT.relativize(sourceFile).toString();

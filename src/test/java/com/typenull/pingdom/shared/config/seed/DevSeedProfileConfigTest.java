@@ -31,7 +31,7 @@ class DevSeedProfileConfigTest {
             .withBean(PlatformTransactionManager.class, SimplePlatformTransactionManager::new);
 
     /**
-     * local에서 관리자·개발 데이터 runner 2개와 Compose/Swagger/seed 기본값·개발 사용자 비밀번호·FCM 비활성이 설정되는지 검증한다.
+     * local에서 관리자·개발 데이터 runner 2개와 Compose/Swagger/seed 기본값·개발 사용자 비밀번호·FCM 비활성이 설정되는지 검증.
      */
     @Test
     void loadsLocalSeedDefaults() {
@@ -52,7 +52,7 @@ class DevSeedProfileConfigTest {
     }
 
     /**
-     * dev에서 runner 2개를 등록하되 관리자 seed 비활성·개발 데이터 seed 활성·Swagger 활성·FCM 비활성 기본값을 사용하는지 검증한다.
+     * dev에서 runner 2개를 등록하되 관리자 seed 비활성·개발 데이터 seed 활성·Swagger 활성·FCM 비활성 기본값을 사용하는지 검증.
      */
     @Test
     void loadsDevSeedDefaults() {
@@ -71,7 +71,7 @@ class DevSeedProfileConfigTest {
     }
 
     /**
-     * test 프로필에는 관리자·개발 데이터 seeder와 ApplicationRunner가 등록되지 않는지 검증한다.
+     * test 프로필에는 관리자·개발 데이터 seeder와 ApplicationRunner가 등록되지 않는지 검증.
      */
     @Test
     void skipsSeedsInOtherProfiles() {
@@ -85,7 +85,7 @@ class DevSeedProfileConfigTest {
     }
 
     /**
-     * local에서도 두 seed 토글을 끄면 runner 실행이 저장소·비밀번호 인코더를 호출하지 않는지 검증한다.
+     * local에서도 두 seed 토글을 끄면 runner 실행이 저장소·비밀번호 인코더를 호출하지 않는지 검증.
      */
     @Test
     void disabledSeedsAvoidDataChanges() throws Exception {
@@ -112,7 +112,7 @@ class DevSeedProfileConfigTest {
     private static class SimplePlatformTransactionManager implements PlatformTransactionManager {
 
         /**
-         * seed 설정 컨텍스트에 필요한 단순 트랜잭션 상태를 제공하며 실제 DB 트랜잭션은 생성하지 않는다.
+         * 실제 DB 연결 없이 seed 설정 컨텍스트에 필요한 트랜잭션 대역 상태를 제공.
          */
         @Override
         public TransactionStatus getTransaction(TransactionDefinition definition) {
@@ -120,14 +120,14 @@ class DevSeedProfileConfigTest {
         }
 
         /**
-         * 설정 검증용 트랜잭션 대역이므로 커밋은 실제 저장소 작업을 수행하지 않는다.
+         * 설정 검증용 트랜잭션 대역의 빈 커밋 훅.
          */
         @Override
         public void commit(TransactionStatus status) {
         }
 
         /**
-         * 설정 검증용 트랜잭션 대역이므로 롤백은 실제 저장소 복구를 수행하지 않는다.
+         * 설정 검증용 트랜잭션 대역의 빈 롤백 훅.
          */
         @Override
         public void rollback(TransactionStatus status) {

@@ -7,8 +7,8 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 /**
- * 탐색 이미지의 업로드 URL 발급 요청입니다. fileSize의 단위는 바이트이며 최대 10MiB입니다.
- * 이 선언값 외에 등록 단계에서 S3 객체의 실제 메타데이터를 다시 검사합니다.
+ * 탐색 이미지의 업로드 URL 발급 요청. fileSize의 단위는 바이트이며 최대 10MiB.
+ * 이 선언값 외에 등록 단계에서 S3 객체의 실제 메타데이터를 다시 검사.
  */
 @Schema(description = "Merchant Owner 탐색 미디어 업로드 URL 요청")
 public record MerchantOwnerMediaUploadRequest(

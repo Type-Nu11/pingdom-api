@@ -19,8 +19,8 @@ import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 일반 검색은 공개·운영 상태와 좌표 범위를 적용하고 선택적 PostGIS 반경 검색을 수행합니다.
- * 거리 단위는 미터이며 POPULAR는 사진 수, NEAREST는 거리, 마지막 동률은 장소 ID 내림차순입니다.
+ * 일반 검색은 공개·운영 상태와 좌표 범위를 적용하고 선택적 PostGIS 반경 검색을 수행.
+ * 거리 단위는 미터이며 POPULAR는 사진 수, NEAREST는 거리, 마지막 동률은 장소 ID 내림차순.
  */
 public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
 

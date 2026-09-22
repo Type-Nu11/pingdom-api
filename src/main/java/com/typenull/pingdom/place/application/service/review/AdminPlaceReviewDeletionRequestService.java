@@ -22,8 +22,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 활성 관리자에게 리뷰 삭제 요청 조회·심사 기능을 제공합니다.
- * 심사 시 요청과 리뷰를 잠그며 승인만 리뷰를 DELETED로 바꾸고 거절은 숨김 상태를 복구하지 않습니다.
+ * 활성 관리자에게 리뷰 삭제 요청 조회·심사 기능을 제공.
+ * 심사 시 요청과 리뷰를 잠그며 승인만 리뷰를 DELETED로 바꾸고 거절 시 기존 숨김 상태는 유지.
  */
 @Service
 @RequiredArgsConstructor
@@ -35,8 +35,8 @@ public class AdminPlaceReviewDeletionRequestService {
     private final Clock clock;
 
     /**
-     * 탈퇴·현재 정지 상태가 아닌 ADMIN인지 확인하고 선택적 심사 상태로 삭제 요청을 조회합니다.
-     * 생성 시각·ID 역순이며 페이지는 1 이상, 크기는 1~100으로 보정하여 전체 건수와 함께 반환합니다.
+     * 탈퇴·현재 정지 상태가 아닌 ADMIN인지 확인하고 선택적 심사 상태로 삭제 요청을 조회.
+     * 생성 시각·ID 역순이며 페이지는 1 이상, 크기는 1~100으로 보정하여 전체 건수와 함께 반환.
      */
     @Transactional(readOnly = true)
     public AdminPlaceReviewDeletionRequestPageResponse list(
@@ -73,8 +73,8 @@ public class AdminPlaceReviewDeletionRequestService {
     }
 
     /**
-     * 활성 관리자임을 확인한 뒤 삭제 요청과 원본 리뷰를 순서대로 잠가 심사 결정을 반영합니다.
-     * 승인하면 리뷰를 논리 삭제하지만 반려 시 기존 숨김 상태를 복원하지는 않습니다. 잘못된 심사 상태·입력은 전용 오류로 변환합니다.
+     * 활성 관리자임을 확인한 뒤 삭제 요청과 원본 리뷰를 순서대로 잠가 심사 결정을 반영.
+     * 승인하면 리뷰를 논리 삭제하며 반려 시 기존 숨김 상태는 유지. 잘못된 심사 상태·입력은 전용 오류로 변환.
      */
     @Transactional
     public AdminPlaceReviewDeletionRequestResponse review(

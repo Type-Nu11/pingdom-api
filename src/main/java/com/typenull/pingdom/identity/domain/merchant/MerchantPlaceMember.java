@@ -16,8 +16,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 장소 팀원의 역할과 활성 상태를 관리합니다.
- * 일반 역할 변경·재활성화에서는 OWNER를 부여할 수 없고 소유권 이전용 전용 메서드로 구분합니다.
+ * 장소 팀원의 역할과 활성 상태를 관리.
+ * 일반 역할 변경·재활성화에서는 OWNER를 부여할 수 없고 소유권 이전용 전용 메서드로 구분.
  */
 @Getter
 @Entity
@@ -111,7 +111,7 @@ public class MerchantPlaceMember {
         this.updatedAt = now;
     }
 
-    /** 소유권 이전으로 회수된 기존 팀원을 동일한 장소의 OWNER로 복구합니다. */
+    /** 소유권 이전으로 회수된 기존 팀원을 동일한 장소의 OWNER로 복구. */
     public void restoreAsOwner(Long userId, LocalDateTime now) {
         if (!this.userId.equals(userId)) {
             throw new IllegalArgumentException("동일한 사용자만 장소 소유자로 복구할 수 있습니다.");

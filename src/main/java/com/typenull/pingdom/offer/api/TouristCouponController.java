@@ -29,7 +29,7 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
-/** 로그인 사용자가 발급받은 쿠폰의 목록과 상세를 조회하는 API입니다. 발급·사용 처리는 각각 별도 API가 담당합니다. */
+/** 로그인 사용자가 발급받은 쿠폰의 목록과 상세를 조회하는 API. 발급·사용 처리는 각각 별도 API가 담당. */
 @RestController
 @RequestMapping("/coupons")
 @RequiredArgsConstructor

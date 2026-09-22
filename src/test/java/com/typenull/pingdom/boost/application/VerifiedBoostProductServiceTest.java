@@ -38,7 +38,7 @@ class VerifiedBoostProductServiceTest {
     @InjectMocks private VerifiedBoostProductService service;
 
     /**
-     * 상품 상태 변경 시각을 고정하고 시각을 사용하지 않는 목록 테스트에서도 공통 설정을 허용한다.
+     * 상품 상태 변경 시각을 고정하고 시각을 사용하지 않는 목록 테스트에서도 공통 설정을 허용.
      */
     @BeforeEach
     void setUpClock() {
@@ -47,7 +47,7 @@ class VerifiedBoostProductServiceTest {
     }
 
     /**
-     * 유효한 상품 생성 요청을 저장하면 DRAFT 상태 응답을 반환하는지 검증한다. 관리자 인증 자체는 이 단위 테스트 범위가 아니다.
+     * 유효한 상품 생성 요청을 저장하면 DRAFT 상태 응답을 반환하는지 검증. 관리자 인증은 이 단위 테스트의 검증 범위에서 제외.
      */
     @Test
     void adminCanCreateDraft() {
@@ -60,7 +60,7 @@ class VerifiedBoostProductServiceTest {
     }
 
     /**
-     * 상품 잠금 조회가 성공하면 활성화 응답이 ACTIVE인지 검증한다.
+     * 상품 잠금 조회가 성공하면 활성화 응답이 ACTIVE인지 검증.
      */
     @Test
     void adminCanActivateProduct() {
@@ -73,7 +73,7 @@ class VerifiedBoostProductServiceTest {
     }
 
     /**
-     * 활성화 대상의 잠금 조회가 비어 있으면 PRODUCT_NOT_FOUND로 거절하는지 검증한다.
+     * 활성화 대상의 잠금 조회가 비어 있으면 PRODUCT_NOT_FOUND로 거절하는지 검증.
      */
     @Test
     void unknownProductIsNotExposed() {
@@ -85,7 +85,7 @@ class VerifiedBoostProductServiceTest {
     }
 
     /**
-     * 상품 목록이 ACTIVE 조건 저장소 조회를 사용하고 활성 상품 1건을 반환하는지 검증한다.
+     * 상품 목록이 ACTIVE 조건 저장소 조회를 사용하고 활성 상품 1건을 반환하는지 검증.
      */
     @Test
     void listsOnlyActiveProducts() {
@@ -102,7 +102,7 @@ class VerifiedBoostProductServiceTest {
     }
 
     /**
-     * 현재보다 하루 전에 생성된 가격 30,000·기간 7일의 상품 초안을 제공한다.
+     * 현재보다 하루 전에 생성된 가격 30,000·기간 7일의 상품 초안을 제공.
      */
     private VerifiedBoostProduct product() {
         return VerifiedBoostProduct.draft("Boost", "description", 30_000, 7, NOW.minusDays(1));

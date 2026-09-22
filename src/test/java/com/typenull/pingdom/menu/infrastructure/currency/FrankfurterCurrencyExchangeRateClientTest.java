@@ -32,7 +32,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
     private FrankfurterCurrencyExchangeRateClient client;
 
     /**
-     * 실제 네트워크 대신 MockRestServiceServer를 연결하고 고정 Clock으로 환율 캐시 기준 시각을 맞춘다.
+     * 실제 네트워크 대신 MockRestServiceServer를 연결하고 고정 Clock으로 환율 캐시 기준 시각을 맞춤.
      */
     @BeforeEach
     void setUp() {
@@ -42,7 +42,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
     }
 
     /**
-     * 환율 JSON의 값·기준일을 매핑하고 같은 통화 쌍의 재조회가 추가 HTTP 요청 없이 같은 결과를 반환하는지 검증한다.
+     * 환율 JSON의 값·기준일을 매핑하고 같은 통화 쌍의 재조회가 추가 HTTP 요청 없이 같은 결과를 반환하는지 검증.
      */
     @Test
     void mapsAndCachesCurrencyPair() {
@@ -63,7 +63,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
     }
 
     /**
-     * 환율 공급자 응답이 500이면 예외 대신 빈 결과를 반환하는지 검증한다.
+     * 환율 공급자 응답이 500이면 예외 대신 빈 결과를 반환하는지 검증.
      */
     @Test
     void returnsEmptyWhenProviderFails() {
@@ -75,7 +75,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
     }
 
     /**
-     * 첫 500 응답 이후 다시 조회하면 성공 환율을 받아오는지 확인해 실패 결과가 캐시되는 회귀를 방지한다.
+     * 첫 500 응답 이후 다시 조회하면 성공 환율을 받아오는지 확인해 실패 결과가 캐시되는 회귀를 방지.
      */
     @Test
     void retriesAfterProviderFailure() {
@@ -95,7 +95,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
     }
 
     /**
-     * Clock을 캐시 TTL인 10분만큼 전진하면 기존 0.000714 대신 새 환율 0.000715를 조회하는지 검증한다.
+     * Clock을 캐시 TTL인 10분만큼 전진하면 기존 0.000714 대신 새 환율 0.000715를 조회하는지 검증.
      */
     @Test
     void refreshesExpiredRate() {
@@ -122,8 +122,8 @@ class FrankfurterCurrencyExchangeRateClientTest {
     }
 
     /**
-     * 첫 환율 요청의 응답을 latch로 보류한 상태에서 두 번째 조회를 제출해 두 결과가 같고 HTTP 요청은 한 번인지 검증한다.
-     * Future와 latch의 대기 상한을 두고 executor를 종료해 실패 시에도 테스트 자원을 회수한다.
+     * 첫 환율 요청의 응답을 latch로 보류한 상태에서 두 번째 조회를 제출해 두 결과가 같고 HTTP 요청은 한 번인지 검증.
+     * Future와 latch의 대기 상한을 두고 executor를 종료해 실패 시에도 테스트 자원을 회수.
      */
     @Test
     void coalescesConcurrentCurrencyMisses() throws Exception {
@@ -161,7 +161,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
     }
 
     /**
-     * 2초 연결·3초 읽기 제한과 10분 캐시 TTL을 가진 클라이언트를 주어진 RestClient·Clock으로 생성한다.
+     * 2초 연결·3초 읽기 제한과 10분 캐시 TTL을 가진 클라이언트를 주어진 RestClient·Clock으로 생성.
      */
     private FrankfurterCurrencyExchangeRateClient newClient(RestClient.Builder builder, Clock clock) {
         return new FrankfurterCurrencyExchangeRateClient(builder.build(),
@@ -173,14 +173,14 @@ class FrankfurterCurrencyExchangeRateClientTest {
         private Instant current;
 
         /**
-         * 캐시 만료 경계에서 사용할 변경 가능한 현재 시각을 초기화한다.
+         * 캐시 만료 경계에서 사용할 변경 가능한 현재 시각을 초기화.
          */
         private MutableClock(Instant current) {
             this.current = current;
         }
 
         /**
-         * 테스트 시각 계산의 시간대를 UTC로 고정한다.
+         * 테스트 시각 계산의 시간대를 UTC로 고정.
          */
         @Override
         public ZoneId getZone() {
@@ -188,7 +188,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
         }
 
         /**
-         * 테스트용 Clock은 UTC만 사용하므로 요청 시간대와 무관하게 같은 인스턴스를 반환한다.
+         * 테스트용 Clock은 UTC만 사용하므로 요청 시간대와 무관하게 같은 인스턴스를 반환.
          */
         @Override
         public Clock withZone(ZoneId zone) {
@@ -196,7 +196,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
         }
 
         /**
-         * 테스트에서 직접 전진시킨 현재 Instant를 캐시 시간 판정에 제공한다.
+         * 테스트에서 직접 전진시킨 현재 Instant를 캐시 시간 판정에 제공.
          */
         @Override
         public Instant instant() {
@@ -204,7 +204,7 @@ class FrankfurterCurrencyExchangeRateClientTest {
         }
 
         /**
-         * 실제 대기 없이 현재 시각에 지정한 기간을 더해 캐시 TTL 경계를 재현한다.
+         * 실제 대기 없이 현재 시각에 지정한 기간을 더해 캐시 TTL 경계를 재현.
          */
         private void advance(Duration duration) {
             current = current.plus(duration);

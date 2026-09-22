@@ -29,7 +29,7 @@ class PlaceConversionEventServiceTest {
     );
 
     /**
-     * 처음 예약 전환을 저장하고 동일한 중복 키의 PLACE_CONVERSION_RECORDED Outbox를 한 번 발행하는지 확인합니다.
+     * 처음 예약 전환을 저장하고 동일한 중복 키의 PLACE_CONVERSION_RECORDED Outbox를 한 번 발행하는지 확인.
      */
     @Test
     void recordsConversionWithOutbox() {
@@ -51,7 +51,7 @@ class PlaceConversionEventServiceTest {
     }
 
     /**
-     * 이미 기록한 혜택 원천이면 전환 재저장과 Outbox 발행을 생략하는지 확인합니다.
+     * 이미 기록한 혜택 원천이면 전환 재저장과 Outbox 발행을 생략하는지 확인.
      */
     @Test
     void ignoresPreviouslyRecordedSource() {

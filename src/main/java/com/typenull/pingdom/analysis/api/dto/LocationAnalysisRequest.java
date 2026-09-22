@@ -12,8 +12,8 @@ import java.util.LinkedHashMap;
 import java.util.Map;
 
 /**
- * 지역·업종·이메일과 개인정보 동의를 검증하는 보고서 요청입니다.
- * 정의되지 않은 JSON 항목도 추가 분석 조건으로 보관하며, AI 조건 맵에서는 전용 이메일·동의 필드를 제외합니다.
+ * 지역·업종·이메일과 개인정보 동의를 검증하는 보고서 요청.
+ * 정의되지 않은 JSON 항목도 추가 분석 조건으로 보관하며, AI 조건 맵에서는 전용 이메일·동의 필드를 제외.
  */
 public class LocationAnalysisRequest {
 

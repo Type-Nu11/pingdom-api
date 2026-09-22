@@ -38,7 +38,7 @@ class CurrentActivityIntentRankingServiceTest {
     private MapPlaceRecommendationCandidateRepository candidateRepository;
 
     /**
-     * 활성 CAFE 의도와 일치한 후보에 0.15 맥락 가점을 더해 기본 점수가 높던 음식 후보보다 앞서는지 확인합니다.
+     * 활성 CAFE 의도와 일치한 후보에 0.15 맥락 가점을 더해 기본 점수가 높던 음식 후보보다 앞서는지 확인.
      */
     @Test
     void boostsActiveIntentMatch() {
@@ -66,7 +66,7 @@ class CurrentActivityIntentRankingServiceTest {
     }
 
     /**
-     * EXPLORE 의도는 적용 의도를 null로 두고 점수를 유지하며 카테고리 조회를 생략하는지 확인합니다.
+     * EXPLORE 의도는 적용 의도를 null로 두고 점수를 유지하며 카테고리 조회를 생략하는지 확인.
      */
     @Test
     void skipsExploreIntentBoost() {
@@ -88,7 +88,7 @@ class CurrentActivityIntentRankingServiceTest {
     }
 
     /**
-     * 1초 전에 만료된 활동 의도는 가점이나 순위 변경에 사용하지 않는지 확인합니다.
+     * 1초 전에 만료된 활동 의도는 가점이나 순위 변경에 사용하지 않는지 확인.
      */
     @Test
     void ignoresExpiredActivityIntent() {
@@ -111,7 +111,7 @@ class CurrentActivityIntentRankingServiceTest {
     }
 
     /**
-     * 활동 의도 만료 판단용 고정 시계와 모의 저장소를 주입합니다.
+     * 활동 의도 만료 판단용 고정 시계와 모의 저장소를 주입.
      */
     private CurrentActivityIntentRankingService service() {
         return new CurrentActivityIntentRankingService(
@@ -122,20 +122,20 @@ class CurrentActivityIntentRankingServiceTest {
     }
 
     /**
-     * 지정 장소와 관광 카테고리의 projection을 만듭니다.
+     * 지정 장소와 관광 카테고리의 projection을 생성.
      */
     private MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow row(
             Long placeId,
             TouristCategory category
     ) {
         return new MapPlaceRecommendationCandidateRepository.PlaceTouristCategoryRow() {
-            /** 현재 활동 의도와 비교할 후보 장소 ID를 반환한다. */
+            /** 현재 활동 의도와 비교할 후보 장소 ID를 반환. */
             @Override
             public Long getPlaceId() {
                 return placeId;
             }
 
-            /** 의도의 선호 카테고리와 대조할 장소 카테고리를 반환한다. */
+            /** 의도의 선호 카테고리와 대조할 장소 카테고리를 반환. */
             @Override
             public TouristCategory getCategory() {
                 return category;
@@ -144,7 +144,7 @@ class CurrentActivityIntentRankingServiceTest {
     }
 
     /**
-     * 관광 카테고리가 지정된 순위 비교용 장소를 만듭니다.
+     * 관광 카테고리가 지정된 순위 비교용 장소를 생성.
      */
     private MapPlace place(Long id, TouristCategory category) {
         return MapPlace.builder()
@@ -155,7 +155,7 @@ class CurrentActivityIntentRankingServiceTest {
     }
 
     /**
-     * 기본 점수만 다르고 다른 신호는 동일한 후보를 만듭니다.
+     * 기본 점수만 다르고 다른 신호는 동일한 후보를 생성.
      */
     private ScoredCandidate candidate(MapPlace place, double score) {
         return new ScoredCandidate(

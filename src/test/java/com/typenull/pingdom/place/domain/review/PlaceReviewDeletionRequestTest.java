@@ -11,7 +11,7 @@ class PlaceReviewDeletionRequestTest {
 
     private final LocalDateTime now = LocalDateTime.of(2026, 8, 25, 12, 0);
 
-    /** 리뷰 삭제 신청을 반려할 때 공백 검토 사유를 거부하는지 확인한다. */
+    /** 리뷰 삭제 신청을 반려할 때 공백 검토 사유를 거부하는지 확인. */
     @Test
     void rejectionRequiresReviewNote() {
         PlaceReviewDeletionRequest request = PlaceReviewDeletionRequest.submit(
@@ -22,7 +22,7 @@ class PlaceReviewDeletionRequestTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
-    /** 승인된 삭제 신청을 다시 반려하려 하면 상태 오류가 발생하는지 확인한다. */
+    /** 승인된 삭제 신청을 다시 반려하려 하면 상태 오류가 발생하는지 확인. */
     @Test
     void rejectsRepeatedDeletionReview() {
         PlaceReviewDeletionRequest request = PlaceReviewDeletionRequest.submit(

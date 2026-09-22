@@ -19,8 +19,8 @@ import java.time.LocalDateTime;
 import java.util.List;
 
 /**
- * 개인정보 내보내기에 사용하는 명시적 필드 집합입니다.
- * 활동 의도·사업자 프로필·검증 정보가 없으면 각 항목을 null로 유지하고 쿠폰 상태는 전달받은 시점으로 계산합니다.
+ * 개인정보 내보내기에 사용하는 명시적 필드 집합.
+ * 활동 의도·사업자 프로필·검증 정보가 없으면 각 항목을 null로 유지하고 쿠폰 상태는 전달받은 시점으로 계산.
  */
 public record UserDataExportResult(
         ExportUser user,

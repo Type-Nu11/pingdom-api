@@ -35,7 +35,7 @@ class OutboxEventWorkerTest {
     private OutboxEventWorker worker;
 
     /**
-     * 선점·처리·정리·상태 서비스와 executor 대역을 연결해 worker의 작업 제출만 검증한다.
+     * 선점·처리·정리·상태 서비스와 executor 대역을 연결해 worker의 작업 제출만 검증.
      */
     @BeforeEach
     void setUp() {
@@ -49,7 +49,7 @@ class OutboxEventWorkerTest {
     }
 
     /**
-     * 선점된 이벤트 ID 2개에 대해 executor에 Runnable을 두 번 제출하는지 검증한다. 작업 본문 실행은 이 테스트 범위가 아니다.
+     * 선점된 이벤트 ID 2개에 대해 executor에 Runnable을 두 번 제출하는지 검증. 작업 본문 실행은 검증 범위에서 제외.
      */
     @Test
     void claimedEventsAreSubmittedToExecutor() {
@@ -61,7 +61,7 @@ class OutboxEventWorkerTest {
     }
 
     /**
-     * 선점 후 executor가 작업을 거절하면 이벤트 ID와 TaskRejectedException을 상태 실패 처리에 전달하는지 검증한다.
+     * 선점 후 executor가 작업을 거절하면 이벤트 ID와 TaskRejectedException을 상태 실패 처리에 전달하는지 검증.
      */
     @Test
     void returnsRejectedTaskToFailureFlow() {

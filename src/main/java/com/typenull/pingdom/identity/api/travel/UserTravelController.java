@@ -37,8 +37,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
 /**
- * 현재 회원의 여행 일정과 단기 활동 의도를 관리하는 API입니다.
- * 일정 목록은 한 번 계산한 기준일로 표시 상태를 맞추고 소유권·기간·만료 판정은 서비스에 위임합니다.
+ * 현재 회원의 여행 일정과 단기 활동 의도를 관리하는 API.
+ * 일정 목록은 한 번 계산한 기준일로 표시 상태를 맞추고 소유권·기간·만료 판정은 서비스에 위임.
  */
 @RestController
 @RequestMapping("/users/me")

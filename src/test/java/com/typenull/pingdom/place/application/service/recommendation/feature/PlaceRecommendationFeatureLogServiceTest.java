@@ -27,7 +27,7 @@ class PlaceRecommendationFeatureLogServiceTest {
     private PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
 
     /**
-     * 특성 로그 저장소를 모의로 주입한 서비스를 준비합니다.
+     * 특성 로그 저장소를 모의로 주입한 서비스를 준비.
      */
     @BeforeEach
     void setUp() {
@@ -37,7 +37,7 @@ class PlaceRecommendationFeatureLogServiceTest {
     }
 
     /**
-     * requestId·사용자·장소·추천 버전이 일치하는 조회 결과의 특성 로그 ID를 반환하는지 확인합니다.
+     * requestId·사용자·장소·추천 버전이 일치하는 조회 결과의 특성 로그 ID를 반환하는지 확인.
      */
     @Test
     void matchesAttributedFeatureVersion() {
@@ -63,7 +63,7 @@ class PlaceRecommendationFeatureLogServiceTest {
     }
 
     /**
-     * requestId가 null 또는 공백이면 저장소를 조회하지 않고 null을 반환하는지 확인합니다.
+     * requestId가 null 또는 공백이면 저장소를 조회하지 않고 null을 반환하는지 확인.
      */
     @Test
     void skipsMissingFeatureRequestId() {
@@ -86,7 +86,7 @@ class PlaceRecommendationFeatureLogServiceTest {
     }
 
     /**
-     * 표시 후보의 프로모션 가점 0.08이 특성 로그 저장값에 유지되는지 확인합니다.
+     * 표시 후보의 프로모션 가점 0.08이 특성 로그 저장값에 유지되는지 확인.
      */
     @Test
     void persistsFeatureBoostContribution() {

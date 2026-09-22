@@ -6,8 +6,8 @@ import com.typenull.pingdom.verification.domain.CrowdLevel;
 import jakarta.validation.constraints.*;
 
 /**
- * 관광객 제보의 장소·유형·본문과 선택 증빙/구조화 값이다.
- * 대기 시간은 분 단위이며 유형별 필수 값과 다른 유형 값의 혼합 금지는 도메인이 검사한다.
+ * 관광객 제보의 장소·유형·본문과 선택 증빙/구조화 값.
+ * 대기 시간은 분 단위이며 유형별 필수 값과 다른 유형 값의 혼합 금지는 도메인이 검사.
  */
 public record VisitorVerificationReportCreateRequest(
         @NotNull Long placeId,
@@ -22,7 +22,7 @@ public record VisitorVerificationReportCreateRequest(
         CouponUsageStatus couponUsageStatus,
         CrowdLevel crowdLevel
 ) {
-    /** 언어 코드의 앞뒤 공백을 제거한다. null은 그대로 두어 유형별 필수 여부를 도메인에서 판단한다. */
+    /** 언어 코드의 앞뒤 공백을 제거. null은 그대로 두어 유형별 필수 여부를 도메인에서 판단. */
     public VisitorVerificationReportCreateRequest {
         languageCode = languageCode == null ? null : languageCode.trim();
     }

@@ -26,8 +26,8 @@ import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
 /**
- * 회원당 하나의 단기 탐색 의도와 만료 시각을 보관합니다.
- * 기준 시각이 만료 시각보다 엄격히 이전일 때만 활성으로 판정하며 TTL 길이는 서비스가 결정합니다.
+ * 회원당 하나의 단기 탐색 의도와 만료 시각을 보관.
+ * 기준 시각이 만료 시각보다 엄격히 이전일 때만 활성으로 판정하며 TTL 길이는 서비스가 결정.
  */
 @Entity
 @Getter

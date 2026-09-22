@@ -20,8 +20,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * 원본 방문 제보와 연결된 별도 정정 요청 및 심사 이력이다.
- * 정정 내용은 요청 시 복사하며 심사 승인 후 원본 반영은 서비스에서 수행한다.
+ * 원본 방문 제보와 연결된 별도 정정 요청 및 심사 이력.
+ * 정정 내용은 요청 시 복사하며 심사 승인 후 원본 반영은 서비스에서 수행.
  */
 @Entity
 @Getter
@@ -91,7 +91,7 @@ public class VisitorVerificationReportCorrection {
     @Column(nullable = false)
     private long version;
 
-    /** 원본 유형을 복사하고 같은 구조화 값 규칙으로 정정 내용을 검증해 미심사 요청을 만든다. */
+    /** 원본 유형을 복사하고 같은 구조화 값 규칙으로 정정 내용을 검증해 미심사 요청을 생성. */
     private VisitorVerificationReportCorrection(
             VisitorVerificationReport report,
             Long requesterUserId,
@@ -124,7 +124,7 @@ public class VisitorVerificationReportCorrection {
         this.updatedAt = submittedAt;
     }
 
-    /** 승인·거절된 원본 제보에만 정정 요청을 생성한다. 원본 내용을 이 단계에서 변경하지 않는다. */
+    /** 승인·거절된 원본 제보에만 정정 요청을 생성. 이 단계에서는 원본 내용 유지. */
     public static VisitorVerificationReportCorrection submit(
             VisitorVerificationReport report,
             Long requesterUserId,
@@ -153,8 +153,8 @@ public class VisitorVerificationReportCorrection {
     }
 
     /**
-     * 미심사 정정을 승인 또는 거절하고 심사자·시각을 남긴다.
-     * 거절에는 사유가 필요하며 이 메서드만 호출해도 원본 제보가 수정되지는 않는다.
+     * 미심사 정정을 승인 또는 거절하고 심사자·시각을 남김.
+     * 거절에는 사유가 필요하며 원본 제보 수정은 이 메서드의 처리 범위 외.
      */
     public void review(
             Long adminUserId,

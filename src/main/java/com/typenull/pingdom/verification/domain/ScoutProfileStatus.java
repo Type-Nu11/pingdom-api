@@ -1,6 +1,6 @@
 package com.typenull.pingdom.verification.domain;
 
-/** Scout 프로필의 심사 상태다. ACTIVE만으로 활동 기간까지 유효하다는 의미는 아니다. */
+/** Scout 프로필의 심사 상태. 활동 기간의 유효성은 ACTIVE 여부와 별도 판정. */
 public enum ScoutProfileStatus {
     PENDING,
     ACTIVE,

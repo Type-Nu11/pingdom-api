@@ -27,7 +27,7 @@ class MerchantVerifiedBoostProductControllerTest {
     private MockMvc mockMvc;
 
     /**
-     * Boost 상품 서비스 mock에 연결한 독립 MockMvc를 만들어 컨트롤러의 응답 계약을 검증한다.
+     * Boost 상품 서비스 mock에 연결한 독립 MockMvc를 만들어 컨트롤러의 응답 계약을 검증.
      */
     @BeforeEach
     void setUp() {
@@ -35,7 +35,7 @@ class MerchantVerifiedBoostProductControllerTest {
     }
 
     /**
-     * 기본 목록 요청이 200과 상품 ID·KRW 통화·7일 기간·ACTIVE 상태·페이지 1·다음 없음 필드를 반환하는지 검증한다.
+     * 기본 목록 요청이 200과 상품 ID·KRW 통화·7일 기간·ACTIVE 상태·페이지 1·다음 없음 필드를 반환하는지 검증.
      */
     @Test
     void returnsActiveProductPage() throws Exception {

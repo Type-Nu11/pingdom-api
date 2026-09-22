@@ -41,9 +41,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 운영 대시보드의 전체 건수·활동·미처리 항목을 현재 DB에서 조합합니다.
- * 등록 통계는 주입된 Clock의 오늘 자정 또는 6일 전 자정부터 현재까지이고, 정지 만료 예정은 이후 7일입니다.
- * 최근 활동의 limit는 종류마다 적용하며 미처리 목록은 신고와 장소 신청을 합쳐 한 번 더 제한합니다.
+ * 운영 대시보드의 전체 건수·활동·미처리 항목을 현재 DB에서 조합.
+ * 등록 통계는 주입된 Clock의 오늘 자정 또는 6일 전 자정부터 현재까지이고, 정지 만료 예정은 이후 7일.
+ * 최근 활동의 limit는 종류마다 적용하며 미처리 목록은 신고와 장소 신청을 합쳐 한 번 더 제한.
  */
 @Service
 @RequiredArgsConstructor
@@ -60,7 +60,7 @@ public class AdminDashboardQueryService {
     private final Clock clock;
 
     /**
-     * 장소·게시글 전체 건수와 미처리 신고·현재 정지 사용자를 집계하고 Clock 기준 오늘·최근 7일 운영 지표를 함께 반환합니다.
+     * 장소·게시글 전체 건수와 미처리 신고·현재 정지 사용자를 집계하고 Clock 기준 오늘·최근 7일 운영 지표를 함께 반환.
      */
     @Transactional(readOnly = true)
     public AdminDashboardSummaryResponse getSummary() {
@@ -123,8 +123,8 @@ public class AdminDashboardQueryService {
     }
 
     /**
-     * 최근 장소·게시글·처리된 신고·적용 또는 해제한 제재 이력을 종류별로 반환합니다.
-     * limit를 1~50으로 보정해 각 목록에 따로 적용하므로 합계 항목 수는 limit를 넘을 수 있습니다.
+     * 최근 장소·게시글·처리된 신고·적용 또는 해제한 제재 이력을 종류별로 반환.
+     * limit를 1~50으로 보정해 각 목록에 따로 적용하므로 합계 항목 수는 limit를 넘을 수 있음.
      */
     @Transactional(readOnly = true)
     public AdminDashboardRecentActivitiesResponse getRecentActivities(int limit) {
@@ -166,8 +166,8 @@ public class AdminDashboardQueryService {
     }
 
     /**
-     * PENDING 신고와 장소 신청을 각각 조회한 뒤 생성 시각·대상 ID 내림차순으로 합쳐 최대 1~50개를 반환합니다.
-     * 전체 건수는 제한된 응답 크기와 별도로 두 종류의 미처리 건수를 합산합니다.
+     * PENDING 신고와 장소 신청을 각각 조회한 뒤 생성 시각·대상 ID 내림차순으로 합쳐 최대 1~50개를 반환.
+     * 전체 건수는 제한된 응답 크기와 별도로 두 종류의 미처리 건수를 합산.
      */
     @Transactional(readOnly = true)
     public AdminDashboardPendingItemsResponse getPendingItems(int limit) {

@@ -21,8 +21,8 @@ import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
 /**
- * 장소 정보의 출처와 외부 ID·URL·설명 중 하나 이상의 근거를 저장합니다.
- * 소유자 제출·관리자 검증·거절·이의 상태를 기록하되 호출자 권한이나 전체 상태 전이 순서는 서비스가 통제합니다.
+ * 장소 정보의 출처와 외부 ID·URL·설명 중 하나 이상의 근거를 저장.
+ * 소유자 제출·관리자 검증·거절·이의 상태를 기록하되 호출자 권한이나 전체 상태 전이 순서는 서비스가 통제.
  */
 @Entity
 @Getter
