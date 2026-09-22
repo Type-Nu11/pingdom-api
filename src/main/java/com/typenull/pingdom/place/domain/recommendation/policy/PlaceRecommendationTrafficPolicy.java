@@ -13,6 +13,10 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+/**
+ * 추천 버전별 런타임 트래픽 배분·활성 여부·폴백 버전의 저장 모델입니다.
+ * 배분 합계와 폴백 유효성은 관리자 정책 서비스에서 검증하며 이 엔티티의 변경 메서드는 값을 그대로 반영합니다.
+ */
 @Entity
 @Getter
 @Builder

@@ -21,6 +21,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+/**
+ * 추천을 표시한 시점의 후보 출처·거리·개별 점수·최종 점수와 순위를 보존합니다.
+ * 이후 추천 설명과 전환 연결에 사용하며 장소 병합 시 연결 장소 ID는 재지정할 수 있습니다.
+ */
 @Entity
 @Table(name = "place_recommendation_feature_log")
 @Getter
