@@ -1,5 +1,8 @@
 package com.typenull.pingdom.availability.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.availability.api.dto.*;
@@ -20,7 +23,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.AVAILABILITY)
 public class MerchantAvailabilityController {
     private final PlaceAvailabilityService service;
 
