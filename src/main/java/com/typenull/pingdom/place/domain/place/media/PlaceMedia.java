@@ -22,6 +22,10 @@ import org.hibernate.annotations.OnDelete;
 import org.hibernate.annotations.OnDeleteAction;
 import org.springframework.util.StringUtils;
 
+/**
+ * 장소 이미지의 탐색·인증 목적과 원본 출처를 함께 보관합니다.
+ * 인증 이미지는 원본 게시물 ID가 필수이고 탐색 이미지는 신청 첨부 출처를 선택적으로 가질 수 있습니다.
+ */
 @Entity
 @Getter
 @Table(name = "place_media")
