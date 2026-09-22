@@ -16,8 +16,12 @@ import org.springframework.web.method.HandlerMethod;
 class SwaggerFunctionalGroupingTest {
     private final SpringdocGroupsConfig config = new SpringdocGroupsConfig();
 
+    /**
+     * 메서드 audience가 클래스 기본값을 덮어쓰고 태그만 있는 메서드는 미분류인지 확인한다.
+     * admin 필터가 명시적으로 ADMIN인 메서드만 포함하는지도 검증한다.
+     */
     @Test
-    void methodAudienceOverridesClassWithoutUsingDisplayTags() throws Exception {
+    void resolvesExplicitMethodAudience() throws Exception {
         assertThat(Group.resolve(ExampleController.class.getMethod("defaultAudience"))).isEqualTo(Group.APP);
         assertThat(Group.resolve(ExampleController.class.getMethod("overrideAudience"))).isEqualTo(Group.ADMIN);
         assertThat(Group.resolve(UngroupedController.class.getMethod("operation"))).isNull();
@@ -27,8 +31,11 @@ class SwaggerFunctionalGroupingTest {
         assertThat(filter.isMethodToInclude(UngroupedController.class.getMethod("operation"))).isFalse();
     }
 
+    /**
+     * 메서드 태그가 상속 태그 목록을 대체하면서 같은 Operation 객체와 operationId는 유지하는지 검증한다.
+     */
     @Test
-    void methodDisplayTagReplacesInheritedTagsWithoutChangingOperationContract() throws Exception {
+    void overridesMethodTagPreservingOperation() throws Exception {
         Operation operation = new Operation().operationId("stableId")
                 .tags(List.of(SwaggerTagCatalog.ACCOUNT, SwaggerTagCatalog.TRAVEL));
         Operation result = config.functionalTagCustomizer().customize(operation,
@@ -38,15 +45,21 @@ class SwaggerFunctionalGroupingTest {
         assertThat(result.getTags()).containsExactly(SwaggerTagCatalog.TRAVEL);
     }
 
+    /**
+     * 메서드 태그가 없으면 클래스 ACCOUNT 기능 태그가 적용되는지 검증한다.
+     */
     @Test
-    void classDisplayTagIsUsedWhenMethodHasNoTag() throws Exception {
+    void inheritsClassDisplayTag() throws Exception {
         Operation result = config.functionalTagCustomizer().customize(new Operation(),
                 new HandlerMethod(new ExampleController(), "defaultAudience"));
         assertThat(result.getTags()).containsExactly(SwaggerTagCatalog.ACCOUNT);
     }
 
+    /**
+     * 미분류 operation의 기존 태그는 유지하고 audience만 있고 기능 태그가 없는 메서드는 명시적 오류로 거절하는지 검증한다.
+     */
     @Test
-    void ungroupedOperationIsPreservedAndMissingGroupedTagFailsExplicitly() throws Exception {
+    void checksMissingGroupedFeatureTag() throws Exception {
         Operation operation = new Operation().tags(List.of("Voice AI"));
         assertThat(config.functionalTagCustomizer().customize(operation,
                 new HandlerMethod(new UngroupedController(), "operation")).getTags()).containsExactly("Voice AI");
@@ -55,8 +68,11 @@ class SwaggerFunctionalGroupingTest {
                 .isInstanceOf(IllegalStateException.class).hasMessageContaining("기능 분류가 없는 API");
     }
 
+    /**
+     * 사용된 관리자 기능 태그만 대시보드·예약·운영 순으로 배치하고 예약에 관리자용 설명을 적용하는지 검증한다.
+     */
     @Test
-    void documentListsOnlyUsedSectionsInWorkflowOrderWithGroupSpecificDescriptions() {
+    void ordersUsedGroupSections() {
         OpenAPI api = new OpenAPI().paths(new Paths()
                 .addPathItem("/storage", new PathItem().get(new Operation().tags(List.of(SwaggerTagCatalog.OPERATIONS))))
                 .addPathItem("/dashboard", new PathItem().get(new Operation().tags(List.of(SwaggerTagCatalog.DASHBOARD))))
@@ -68,6 +84,9 @@ class SwaggerFunctionalGroupingTest {
         assertThat(api.getTags().get(1).getDescription()).isEqualTo("예약 조회 및 승인·거절");
     }
 
+    /**
+     * 기능 카탈로그에 속하지 않는 Voice AI 태그의 기존 설명이 유지되는지 검증한다.
+     */
     @Test
     void ungroupedTagDescriptionIsPreserved() {
         OpenAPI api = new OpenAPI().paths(new Paths().addPathItem("/voice-ai/sessions",
@@ -81,22 +100,37 @@ class SwaggerFunctionalGroupingTest {
     @ApiAudience(Group.APP)
     @Tag(name = SwaggerTagCatalog.ACCOUNT)
     static class ExampleController {
+        /**
+         * 클래스 APP audience와 ACCOUNT 태그를 상속하는 reflection 조회용 빈 메서드다.
+         */
         public void defaultAudience() { }
 
+        /**
+         * 클래스 APP 기본값을 메서드의 ADMIN audience로 덮어쓰는 reflection 입력이다.
+         */
         @ApiAudience(Group.ADMIN)
         public void overrideAudience() { }
 
+        /**
+         * 클래스 ACCOUNT 태그를 메서드 TRAVEL 태그로 대체하는 HandlerMethod 입력이다.
+         */
         @Tag(name = SwaggerTagCatalog.TRAVEL)
         public void overrideTag() { }
     }
 
     @Tag(name = "Admin")
     static class UngroupedController {
+        /**
+         * 표시 태그만 있고 ApiAudience가 없는 미분류 메서드를 재현한다.
+         */
         public void operation() { }
     }
 
     @ApiAudience(Group.APP)
     static class MissingTagController {
+        /**
+         * ApiAudience는 있지만 기능 태그가 없는 잘못된 문서 구성을 재현한다.
+         */
         public void operation() { }
     }
 }
