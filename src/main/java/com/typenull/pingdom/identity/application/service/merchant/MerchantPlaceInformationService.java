@@ -14,6 +14,10 @@ import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소 관리 권한을 확인해 사업자가 제공하는 설명·연락처·예약 링크를 조회하거나 전체 갱신합니다.
+ * 기존 행은 잠금 조회하며 저장 후 생성 여부를 포함한 변경 이벤트를 발행합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class MerchantPlaceInformationService {
@@ -31,6 +35,10 @@ public class MerchantPlaceInformationService {
         return MerchantPlaceInformationResponse.from(information);
     }
 
+    /**
+     * 장소 관리 권한을 확인하고 기존 정보는 잠금 조회해 설명·연락처·웹사이트·예약 링크를 전체 갱신하거나 새로 만듭니다.
+     * 저장 결과를 반환하고 요청자·장소·생성 여부를 담은 정보 변경 이벤트를 발행합니다.
+     */
     @Transactional
     public MerchantPlaceInformationResponse upsert(
             Long actorId,
