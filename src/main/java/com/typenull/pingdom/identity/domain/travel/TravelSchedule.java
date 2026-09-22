@@ -26,6 +26,10 @@ import org.springframework.data.annotation.CreatedDate;
 import org.springframework.data.annotation.LastModifiedDate;
 import org.springframework.data.jpa.domain.support.AuditingEntityListener;
 
+/**
+ * 여행 날짜 범위와 취소 상태를 저장하고 기준일에 따른 표시 상태를 계산합니다.
+ * 시작일·종료일은 모두 진행 중 범위에 포함하며 @Version은 같은 일정 행의 동시 변경을 감지합니다.
+ */
 @Entity
 @Getter
 @Table(
