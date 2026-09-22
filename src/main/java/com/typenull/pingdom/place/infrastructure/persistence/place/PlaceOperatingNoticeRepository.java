@@ -13,6 +13,10 @@ import org.springframework.data.repository.query.Param;
 
 import jakarta.persistence.LockModeType;
 
+/**
+ * 공지 변경용 잠금 조회와 게시 시작·만료 대상 조회를 제공합니다.
+ * 생명주기 대상 쿼리는 시간·ID 순으로 정렬하며 Pageable이 없어 한 호출의 조회 건수 제한이 없습니다.
+ */
 public interface PlaceOperatingNoticeRepository extends JpaRepository<PlaceOperatingNotice, Long> {
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)

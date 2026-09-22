@@ -9,6 +9,10 @@ import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 장소·목적별 미디어 순서와 원천별 승격 여부를 조회합니다.
+ * 순서 일괄 이동은 먼저 flush한 뒤 영속성 컨텍스트를 비우므로 호출자는 이동 이후 엔티티를 다시 조회해야 합니다.
+ */
 public interface PlaceMediaRepository extends JpaRepository<PlaceMedia, Long> {
 
     List<PlaceMedia> findAllByPlace_IdAndPurposeOrderByDisplayOrderAscIdAsc(
