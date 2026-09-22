@@ -41,6 +41,9 @@ class VoiceAiContractIntegrationTest {
     static final PostgreSQLContainer<?> postgres = new PostgreSQLContainer<>(DockerImageName
             .parse("postgis/postgis:16-3.4").asCompatibleSubstituteFor("postgres"));
 
+    /**
+     * PostGIS 컨테이너의 JDBC 주소·계정·드라이버를 등록해 세션 행 잠금과 replay 경합을 실제 DB에서 검증한다.
+     */
     @DynamicPropertySource
     static void properties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -55,8 +58,12 @@ class VoiceAiContractIntegrationTest {
     @Autowired ObjectMapper mapper;
     @MockBean GeminiGenerateContentClient provider;
 
+    /**
+     * 음성 메시지의 ProviderEnvelopeV1 참조·8개 union·추가 필드 금지·버전/ID 조건과 operation별 오류·필수 세션 필드·인증을 검증한다.
+     * 만료 오프셋 문자열의 실제 직렬화는 다른 테스트가 담당한다.
+     */
     @Test
-    void generatedOpenApiContainsUnionOffsetAndOperationErrors() throws Exception {
+    void documentsVoiceEnvelopeAndErrors() throws Exception {
         JsonNode api = mapper.readTree(mvc.perform(get("/v3/api-docs")).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsString());
         JsonNode paths = api.path("paths");
@@ -79,8 +86,12 @@ class VoiceAiContractIntegrationTest {
         assertThat(send.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
+    /**
+     * 첫 메시지의 공급자 응답을 보류한 동안 동일 replay가 완료되지 않는지 PostgreSQL에서 검증한다.
+     * 해제 후 동일 요청은 같은 결과, 다른 텍스트는 REPLAY_CONFLICT이며 공급자는 한 번만 호출되고 반복 종료도 허용되어야 한다.
+     */
     @Test
-    void concurrentReplayCallsProviderOnceAndRejectsConflictingPayload() throws Exception {
+    void serializesConcurrentVoiceReplay() throws Exception {
         Long userId = users.saveAndFlush(User.builder().username("voice-" + UUID.randomUUID())
                 .email(UUID.randomUUID() + "@example.com").password("test").birthYear(1998)
                 .language("ko").country("KR").role(UserRole.USER).build()).getId();
@@ -116,9 +127,13 @@ class VoiceAiContractIntegrationTest {
         }
     }
 
+    /**
+     * 진행 중 메시지의 공급자 응답을 보류하면 세션 갱신/종료가 기다리는지 검증한다.
+     * 해제 후 갱신은 replay를 유지하고 종료는 SESSION_EXPIRED로 차단하며 공급자 호출은 한 번이어야 한다.
+     */
     @org.junit.jupiter.params.ParameterizedTest
     @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
-    void refreshAndCloseWaitForInFlightMessage(boolean close) throws Exception {
+    void serializesSessionMutationWithMessage(boolean close) throws Exception {
         Long userId = users.saveAndFlush(User.builder().username("voice-" + UUID.randomUUID())
                 .email(UUID.randomUUID() + "@example.com").password("test").birthYear(1998)
                 .language("ko").country("KR").role(UserRole.USER).build()).getId();
