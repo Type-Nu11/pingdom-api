@@ -2,6 +2,10 @@ package com.typenull.pingdom.merchant.api.dto;
 
 import io.swagger.v3.oas.annotations.media.Schema;
 
+/**
+ * 점주 성과 집계 응답입니다. clickThroughRate와 reservationConversionRate는 0~1 비율이 아닌 백분율입니다.
+ * 각 건수의 집계 기준이 다를 수 있어 두 비율을 100 이하로 제한하지 않습니다.
+ */
 @Schema(description = "Merchant 소유 장소의 탐색·예약 전환 성과 요약")
 public record MerchantPerformanceResponse(
         @Schema(description = "소유 장소 수", example = "3")
