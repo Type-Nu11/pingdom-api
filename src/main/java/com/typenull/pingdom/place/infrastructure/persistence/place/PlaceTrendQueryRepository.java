@@ -8,7 +8,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
-/** 사용자·장소별 상태 전이를 먼저 접어 반복 토글이 전국 순위에 누적되지 않게 합니다. */
+/**
+ * 사용자·장소별 상태 전이를 먼저 접어 반복 토글이 전국 순위에 누적되지 않게 합니다.
+ * 기간 시작 직전과 종료 시각 이하의 마지막 상태를 원래 장소별로 복원한 뒤 현재 장소·회원 단위로 합칩니다.
+ */
 public interface PlaceTrendQueryRepository extends Repository<MapPlace, Long> {
 
     @Query(value = """

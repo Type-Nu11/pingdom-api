@@ -9,6 +9,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 유효한 사업자가 소유한 공개·운영 장소에서 요청 기간과 겹치는 미래 예약 가능 슬롯을 찾습니다.
+ * 잔여 수량·상품 활성 상태를 검사한 뒤 장소별 가장 이른 슬롯 하나만 반환하며 count도 장소 기준입니다.
+ */
 public interface NearbyReservablePlaceQueryRepository extends Repository<MapPlace, Long> {
 
     @Query(value = """
