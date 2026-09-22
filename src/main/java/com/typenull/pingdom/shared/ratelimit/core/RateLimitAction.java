@@ -1,5 +1,6 @@
 package com.typenull.pingdom.shared.ratelimit.core;
 
+/** 요청 인자·쿠키·인증 사용자에서 제한 식별자를 추출할 때 사용하는 행위 분류다. */
 public enum RateLimitAction {
     SIGNUP,
     LOGIN,
