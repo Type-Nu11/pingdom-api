@@ -14,6 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 본인 소유의 관리자용 알림만 읽음 처리하고 감사 기록을 남깁니다.
+ * 단건 재호출은 읽음 상태를 유지해도 감사 기록은 추가됩니다. 전체 처리 응답은 사전 조회 건수가 아닌 bulk 갱신 행 수입니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional
@@ -22,6 +26,10 @@ public class AdminNotificationCommandService {
     private final NotificationsRepository notificationsRepository;
     private final AdminAuditLogService adminAuditLogService;
 
+    /**
+     * 해당 관리자 소유의 관리자용 알림만 읽음 처리하고 같은 트랜잭션에 감사 기록을 저장합니다.
+     * 대상 조건에 맞는 알림이 없으면 NOTIFICATION_NOT_FOUND이며 이미 읽은 알림도 감사 기록은 추가합니다.
+     */
     public AdminNotificationReadResponse markAsRead(Long notificationId, Long adminUserId) {
         Notifications notification = notificationsRepository.findByIdAndUserIdAndTypeIn(
                         notificationId,
@@ -48,6 +56,10 @@ public class AdminNotificationCommandService {
         return AdminNotificationReadResponse.of(notificationId);
     }
 
+    /**
+     * 해당 관리자의 관리자용 미읽음 알림을 bulk 갱신하고 감사 기록을 같은 트랜잭션에 저장합니다.
+     * 응답 건수는 사전 미읽음 조회 수가 아닌 실제 갱신 행 수이며, 감사용 변경 후 건수는 0으로 기록합니다.
+     */
     public AdminNotificationReadAllResponse markAllAsRead(Long adminUserId) {
         long unreadCount = notificationsRepository.countByUserIdAndTypeInAndIsReadFalse(
                 adminUserId,
