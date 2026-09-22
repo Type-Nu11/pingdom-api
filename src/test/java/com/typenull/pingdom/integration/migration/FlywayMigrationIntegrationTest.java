@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "135";
+    private static final String LATEST_MIGRATION_VERSION = "136";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -77,7 +77,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     /**
-     * 빈 PostGIS 스키마에 전체 135개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
+     * 빈 PostGIS 스키마에 전체 136개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
      */
     @Test
     @Tag("migration-smoke")
@@ -86,7 +86,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(135);
+        assertThat(result.migrationsExecuted).isEqualTo(136);
 
         assertPostMigrationSchema();
     }
