@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.merchant;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.place.api.dto.review.MerchantPlaceReviewDeletionRequestResponse;
 import com.typenull.pingdom.place.api.dto.review.MerchantPlaceReviewPageResponse;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewDeletionRequestCreateRequest;
@@ -31,7 +34,8 @@ import org.springframework.web.bind.annotation.RestController;
 @Validated
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.REVIEW_MANAGEMENT)
 public class MerchantPlaceReviewModerationController {
 
     private final MerchantPlaceReviewModerationService reviewModerationService;
