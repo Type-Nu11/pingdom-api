@@ -14,6 +14,10 @@ import java.util.Date;
 import javax.crypto.SecretKey;
 import org.springframework.stereotype.Component;
 
+/**
+ * 계정 연결 전용 oauth_link JWT를 5분 수명으로 발급하고 서명·유형·subject를 검사합니다.
+ * 발급은 주입 Clock을 사용하고 파서의 만료 검사는 JWT 라이브러리의 기본 시계를 사용합니다.
+ */
 @Component
 public class OAuth2LinkTokenService {
 
