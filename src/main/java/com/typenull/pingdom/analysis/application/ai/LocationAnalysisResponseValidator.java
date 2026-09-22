@@ -13,6 +13,10 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class LocationAnalysisResponseValidator {
 
+    /**
+     * HTML 보고서 계약의 기본 태그·금지 문자열·길이만 확인합니다. 범용 HTML sanitizer가 아니며,
+     * 구조화된 JSON을 사용하는 생성 경로의 validate와는 별도 계약입니다.
+     */
     public void validateHtml(AiAnalysisResponse response) {
         if (response == null || !StringUtils.hasText(response.reportName())
                 || !StringUtils.hasText(response.htmlReport())) {
@@ -29,6 +33,10 @@ public class LocationAnalysisResponseValidator {
         }
     }
 
+    /**
+     * 필수 분석 항목, 요청 지역 일치, 수치 범위와 데이터 부족 등급의 조합을 검증합니다.
+     * 근거 URL을 조회하거나 산식을 재계산하지 않으므로 형식 검증 통과를 실제 분석 사실의 검증으로 보장하지 않습니다.
+     */
     public void validate(LocationAnalysisRequest request, AiAnalysisResponse response) {
         if (response == null || response.content() == null || response.analysisBasisDate() == null) {
             invalid();
