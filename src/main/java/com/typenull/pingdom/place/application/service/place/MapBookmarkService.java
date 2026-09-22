@@ -23,6 +23,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 공개·운영 중인 장소의 북마크를 생성하거나 회원 소유 북마크를 제거합니다.
+ * 북마크 변경과 함께 증감 이력·추천 스냅샷을 갱신하고 생성에는 적격 추천 전환을 기록합니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -35,6 +39,11 @@ public class MapBookmarkService {
     private final PlaceRecommendationConversionService placeRecommendationConversionService;
     private final Clock clock;
 
+    /**
+     * 운영 중이며 공개된 장소에 사용자 북마크를 생성하고 생성된 북마크·장소 ID를 반환합니다.
+     * 중복 사전 조회와 saveAndFlush의 무결성 실패는 BOOKMARK_ALREADY_EXISTS로 변환합니다.
+     * 추세 추가 이력·추천 스냅샷 갱신·최근 클릭에 대한 전환 귀속도 현재 트랜잭션에 참여합니다.
+     */
     @Transactional
     public BookmarkCreateResponse createBookmark(BookmarkCreateRequest request, long userId) {
         Long placeId = request.placeId();
@@ -74,6 +83,10 @@ public class MapBookmarkService {
         return new BookmarkCreateResponse(saved.getId(), saved.getPlaceId(), MapMessages.BOOKMARK_CREATED);
     }
 
+    /**
+     * 사용자와 장소가 일치하는 북마크를 삭제하고 해제 추세 이력 및 추천 스냅샷을 같은 트랜잭션에서 갱신합니다.
+     * 삭제된 행이 없으면 BOOKMARK_NOT_FOUND로 거절하고, 성공하면 사용자·장소 ID를 반환합니다.
+     */
     @Transactional
     public BookmarkRemoveResponse removeBookmark(Long placeId, long userId) {
         if (mapBookmarkRepository.deleteByPlaceIdAndUserId(placeId, userId) == 0) {
