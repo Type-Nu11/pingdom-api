@@ -18,6 +18,11 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소 콘텐츠 집계를 갱신하고 추천 클릭·노출·전환을 증분 반영합니다.
+ * 스냅샷 최초 생성은 장소 행 잠금 후 재조회하지만 기존 스냅샷의 증가 경로는 별도 쓰기 잠금이나 version 검사가 없습니다.
+ * 따라서 최초 생성 조정과 기존 집계의 동시 증가 보장은 구분해야 합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceRecommendationSnapshotService {
@@ -32,6 +37,10 @@ public class PlaceRecommendationSnapshotService {
         refresh(placeId);
     }
 
+    /**
+     * 사진·북마크·좋아요·최신 게시 시각만 원본에서 갱신하고 기존 클릭·노출·전환 집계는 유지합니다.
+     * 원본 추천 이벤트까지 다시 세어야 할 때는 별도 재동기화 서비스를 사용합니다.
+     */
     @Transactional
     public void refresh(Long placeId) {
         LocalDateTime now = LocalDateTime.now();
@@ -68,6 +77,10 @@ public class PlaceRecommendationSnapshotService {
         increaseCounts(placeIds, CountType.CLICK);
     }
 
+    /**
+     * 장소 스냅샷을 읽거나 처음 생성하고 BOOKMARK이면 북마크 전환, 그 외에는 좋아요 전환 수를 1 증가시킵니다.
+     * 기존 스냅샷 경로는 일반 조회 후 갱신하므로 이 메서드만으로 동시 증가 손실을 방지하지는 않습니다.
+     */
     @Transactional
     public void increaseConversionCount(Long placeId, PlaceRecommendationConversionType conversionType) {
         LocalDateTime now = LocalDateTime.now();
