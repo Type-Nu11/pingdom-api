@@ -34,13 +34,20 @@ class AdminOutboxEventQueryServiceImplTest {
 
     private AdminOutboxEventQueryServiceImpl service;
 
+    /**
+     * 권한 검사와 저장소 필터 위임을 검증하도록 관리자 Outbox 조회 서비스를 만든다.
+     */
     @BeforeEach
     void setUp() {
         service = new AdminOutboxEventQueryServiceImpl(authorizationService, outboxEventRepository);
     }
 
+    /**
+     * 집계 유형·ID의 양끝 공백을 제거한 필터로 조회하고 OUTBOX_RECOVERY 권한을 검사하는지 검증한다.
+     * 응답에 조회된 이벤트 ID와 집계 유형이 매핑되는지도 확인한다.
+     */
     @Test
-    void listsOperationalMetadataWithoutPayload() {
+    void listsFilteredOutboxMetadata() {
         LocalDateTime now = LocalDateTime.of(2026, 8, 10, 10, 0);
         OutboxEvent event = OutboxEvent.create(
                 "EMAIL_VERIFICATION:10:code",
@@ -80,8 +87,11 @@ class AdminOutboxEventQueryServiceImplTest {
         assertThat(response.events().getFirst().aggregateType()).isEqualTo("USER");
     }
 
+    /**
+     * 시작보다 이른 종료 시각으로 조회하면 기간 필터 오류를 반환하고 저장소 조회를 호출하지 않는지 검증한다.
+     */
     @Test
-    void rejectsInvertedPeriodBeforeQueryingRepository() {
+    void rejectsInvertedOutboxPeriod() {
         LocalDateTime from = LocalDateTime.of(2026, 8, 11, 0, 0);
         LocalDateTime to = from.minusDays(1);
 
