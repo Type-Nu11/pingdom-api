@@ -19,6 +19,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 제공자와 제공자 내부 식별자의 고유 쌍을 로컬 회원에 연결합니다.
+ * 회원 이메일 일치 여부와 연결·해제 권한은 애플리케이션 서비스가 검증합니다.
+ */
 @Getter
 @Entity
 @Table(
