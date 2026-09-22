@@ -17,10 +17,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/** 관리자 장소 목록·상세·중복·추천 지표 조회를 읽기 모델로 조합합니다. */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
-/** 관리자 장소 목록·상세·중복·추천 지표 조회를 읽기 모델로 조합합니다. */
 public class AdminMapPlaceQueryServiceImpl implements AdminMapPlaceQueryService {
 
     private final AdminMapPlaceLookupQueryService lookupQueryService;
