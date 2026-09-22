@@ -14,6 +14,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 병합 복구에 필요한 원본·대상의 제한된 JSON 스냅샷, 이동 ID와 제거한 중복 항목을 보관합니다.
+ * 복구 상태를 바꾸는 메서드 자체에는 재복구 방어가 없으므로 서비스의 이력 잠금·상태 검사가 필요합니다.
+ */
 @Getter
 @Entity
 @Table(

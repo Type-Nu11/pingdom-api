@@ -18,6 +18,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.springframework.util.StringUtils;
 
+/**
+ * 서로 다른 장소 두 개의 중복 검토 상태를 관리합니다. 신뢰도는 0~1 소수 비율, 거리는 null 또는 0 이상 미터입니다.
+ * PENDING에서 판정하고 CONFIRMED에서만 MERGED로 전이하며 버전 필드로 동시 갱신을 감지합니다.
+ */
 @Getter
 @Entity
 @Table(
