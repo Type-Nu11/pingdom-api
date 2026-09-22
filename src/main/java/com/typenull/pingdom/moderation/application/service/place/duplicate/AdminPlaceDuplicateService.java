@@ -28,6 +28,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 장소 ID 쌍을 작은 ID·큰 ID 순으로 정규화해 중복 후보를 저장하고 관리자 판정·병합으로 연결합니다.
+ * 기존 후보는 재검출 시 점수나 상태를 덮어쓰지 않습니다. 판정·병합은 후보를 잠그지만 최초 검출 경쟁을 자체 재시도하지는 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminPlaceDuplicateService {
@@ -38,6 +42,10 @@ public class AdminPlaceDuplicateService {
     private final AdminNotificationOutboxPublisher adminNotificationOutboxPublisher;
     private final Clock clock;
 
+    /**
+     * 장소 ID 쌍을 작은 ID·큰 ID 순으로 조회해 기존 후보가 있으면 점수·상태를 바꾸지 않고 반환합니다.
+     * 새 후보만 도메인 입력 검증 후 저장하고 관리자 알림 outbox를 같은 트랜잭션에 등록하며 최초 삽입 경쟁을 재시도하지는 않습니다.
+     */
     @Transactional
     public AdminPlaceDuplicateCandidateResponse detect(
             Long firstPlaceId,
@@ -61,6 +69,9 @@ public class AdminPlaceDuplicateService {
                 ));
     }
 
+    /**
+     * 지정된 판정 상태의 중복 후보를 검출 시각·ID 내림차순으로 조회합니다. page는 1 이상·limit는 1~100으로 보정합니다.
+     */
     @Transactional(readOnly = true)
     public AdminPlaceDuplicateCandidateListResponse list(PlaceDuplicateDecisionStatus status, int page, int limit) {
         int safePage = Math.max(page, 1);
@@ -91,6 +102,10 @@ public class AdminPlaceDuplicateService {
         return decide(adminUserId, candidateId, reviewNote, false);
     }
 
+    /**
+     * 후보 행을 잠그고 CONFIRMED 상태이며 대상 ID가 후보의 두 장소 중 하나인지 확인합니다.
+     * 조건이 맞지 않으면 병합 오류로 거절하고 나머지 장소를 원본으로 정해 동일 트랜잭션의 병합 서비스에 처리를 위임합니다.
+     */
     @Transactional
     public AdminMapPlaceMergeResponse merge(Long adminUserId, Long candidateId, Long targetPlaceId) {
         PlaceDuplicateCandidate candidate = findForUpdate(candidateId);

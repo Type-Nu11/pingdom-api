@@ -29,6 +29,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소 이벤트를 초안으로 만들고 행 잠금 아래 수정·공개·취소와 감사 기록을 반영합니다.
+ * 초안만 수정 가능하고 종료 시각이 현재보다 이후인 초안만 공개할 수 있으며, 이미 시작된 이벤트의 공개도 허용합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminPlaceEventService {
@@ -38,6 +42,10 @@ public class AdminPlaceEventService {
     private final AdminAuditLogService adminAuditLogService;
     private final Clock clock;
 
+    /**
+     * 검색어·장소·이벤트 종류·공개 및 일정 상태를 조합해 최신순 조회하고 같은 현재 시각으로 응답 일정 상태를 계산합니다.
+     * page는 1~10,000, limit는 1~100으로 보정하며 빈 결과의 totalPages도 최소 1로 반환합니다.
+     */
     @Transactional(readOnly = true)
     public AdminPlaceEventListResponse list(String keyword, Long placeId, PlaceEventType eventType,
             PlaceEventPublicationStatus publicationStatus, PlaceEventScheduleStatus scheduleStatus,
@@ -75,6 +83,10 @@ public class AdminPlaceEventService {
                 event.getCreatedAt(), event.getUpdatedAt());
     }
 
+    /**
+     * 종료가 시작보다 늦은 기간을 검증하고 연결 장소를 잠근 뒤 DRAFT 이벤트와 감사 기록을 함께 저장합니다.
+     * 기간이 잘못되거나 장소가 없으면 거절하며 제목의 양끝 공백과 비어 있는 설명을 정규화해 새 이벤트를 반환합니다.
+     */
     @Transactional
     public AdminPlaceEventResponse create(Long adminUserId, AdminPlaceEventRequest request) {
         validatePeriod(request);
@@ -102,6 +114,10 @@ public class AdminPlaceEventService {
         return toResponse(event, now, "기간형 이벤트를 초안으로 등록했습니다.");
     }
 
+    /**
+     * 기간을 검증하고 이벤트를 잠가 DRAFT인 경우에만 내용·연결 장소·일정을 변경합니다.
+     * 대상 이벤트나 장소가 없거나 이미 공개·취소 상태이면 거절하며 변경 전후 감사 기록을 같은 트랜잭션에 저장합니다.
+     */
     @Transactional
     public AdminPlaceEventResponse update(Long adminUserId, Long eventId, AdminPlaceEventRequest request) {
         validatePeriod(request);
@@ -134,6 +150,10 @@ public class AdminPlaceEventService {
         return toResponse(event, now, "기간형 이벤트를 수정했습니다.");
     }
 
+    /**
+     * 이벤트를 잠그고 DRAFT이며 종료 시각이 현재보다 뒤일 때만 공개 상태로 전환합니다.
+     * 이미 시작한 일정도 허용하며 공개 전이와 감사 기록을 함께 저장합니다. 대상 없음과 공개 불가 상태는 오류로 반환합니다.
+     */
     @Transactional
     public AdminPlaceEventResponse publish(
             Long adminUserId,
@@ -160,6 +180,9 @@ public class AdminPlaceEventService {
         return toResponse(event, now, "기간형 이벤트를 공개했습니다.");
     }
 
+    /**
+     * 취소 상태만 재취소를 거절합니다. 초안·공개 및 이미 종료된 일정도 취소 가능하며 예약·결제 환불을 연동하지 않습니다.
+     */
     @Transactional
     public AdminPlaceEventResponse cancel(
             Long adminUserId,
