@@ -2,11 +2,20 @@ package com.typenull.pingdom.integration.migration.fixture;
 
 import java.util.List;
 
+/**
+ * 기존 데이터 이관 시 보존·변환·거절해야 할 상태를 migration 버전과 함께 기술한다.
+ */
 public final class FlywayBackfillFixtures {
 
+    /**
+     * 버전별 기존 데이터 이관 기대값을 정적으로 제공하며 마이그레이션 실행 상태를 보관할 인스턴스는 만들지 않는다.
+     */
     private FlywayBackfillFixtures() {
     }
 
+    /**
+     * 기존 이미지·소유권·출처 기본값의 정상·경계·실패·재시도 backfill 기대값을 제공한다. SQL 실행은 통합 테스트가 담당한다.
+     */
     public static List<FlywayBackfillScenario> scenarios() {
         return List.of(
                 new FlywayBackfillScenario(
