@@ -43,13 +43,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리합니다. */
 @RestController
 @RequestMapping("/admin")
 @RequiredArgsConstructor
 @AdminOnly
 @ApiAudience(ApiAudience.Group.ADMIN)
 @Tag(name = SwaggerTagCatalog.MEMBER)
-/** 관리자 사용자 검색과 제재·역할·제재 이력 관리 요청을 처리합니다. */
 public class AdminUserController {
 
     private final AdminUserService adminUserService;
