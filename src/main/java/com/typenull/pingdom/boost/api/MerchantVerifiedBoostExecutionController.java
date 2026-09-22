@@ -1,5 +1,8 @@
 package com.typenull.pingdom.boost.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.ActiveMerchantOwnerOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.boost.api.dto.VerifiedBoostExecutionPageResponse;
@@ -27,7 +30,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.MERCHANT_BOOST)
 public class MerchantVerifiedBoostExecutionController {
 
     private final VerifiedBoostExecutionService service;
