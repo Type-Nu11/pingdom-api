@@ -10,6 +10,10 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 비밀번호 재설정 Outbox의 수신자·토큰·만료 시각을 메일 발송기로 전달합니다.
+ * 여기서는 현재 시각과 만료 시각을 비교하거나 성공 이력을 통한 중복 발송을 차단하지 않고 실패를 상위 처리기로 전파합니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class PasswordResetOutboxHandler implements OutboxEventHandler {
