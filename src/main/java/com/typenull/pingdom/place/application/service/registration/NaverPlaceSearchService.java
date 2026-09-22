@@ -6,6 +6,11 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import org.springframework.stereotype.Service;
 
+/**
+ * 신청서용 장소 검색어의 공백을 정리하고 네이버 결과를 최대 5개로 변환합니다.
+ * 제목의 HTML 태그를 제거하고 mapx/mapy를 1천만으로 나누어 경도·위도로 반환합니다.
+ * 숫자로 읽을 수 없는 좌표는 해당 항목 생략 대신 검색 실패로 처리합니다.
+ */
 @Service
 public class NaverPlaceSearchService {
     private final NaverPlaceSearchClient client;
