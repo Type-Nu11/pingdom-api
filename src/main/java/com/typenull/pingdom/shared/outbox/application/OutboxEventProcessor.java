@@ -11,6 +11,10 @@ import java.util.Map;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+/**
+ * 선점된 이벤트의 handler를 호출하고 별도 상태 서비스로 성공·실패를 기록한다.
+ * handler 부작용과 상태 저장은 원자적이지 않아 재처리될 수 있다.
+ */
 @Component
 @Slf4j
 public class OutboxEventProcessor {
@@ -30,6 +34,10 @@ public class OutboxEventProcessor {
         handlers.forEach(handler -> this.handlers.put(handler.supportedType(), handler));
     }
 
+    /**
+     * 현재 PROCESSING 스냅샷이 있을 때만 타입별 handler를 호출한다.
+     * 지원 handler가 없거나 실행/성공 기록 중 예외가 발생하면 실패 처리로 전달한다.
+     */
     public void process(String eventId) {
         OutboxEventSnapshot event = stateService.findProcessingEvent(eventId);
         if (event == null) {
@@ -58,6 +66,10 @@ public class OutboxEventProcessor {
         }
     }
 
+    /**
+     * 재시도/최종 실패 상태를 기록하고 타입·handler별 실패 메트릭을 남긴다.
+     * 최종 실패 로그에는 원본 예외를 포함하므로 payload의 민감 정보가 안전하게 제거된다고 보장하지 않는다.
+     */
     private void handleFailure(OutboxEventSnapshot event, Exception exception, String handlerName) {
         OutboxEventStatus status = stateService.markFailed(event.eventId(), exception);
         outboxMetrics.recordFailure(event.eventType(), handlerName, status);
@@ -85,6 +97,7 @@ public class OutboxEventProcessor {
         );
     }
 
+    /** 메트릭과 실패 구분에 사용할 handler 클래스의 단순 이름을 반환한다. */
     private String handlerName(OutboxEventHandler handler) {
         return handler.getClass().getSimpleName();
     }
