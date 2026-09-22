@@ -11,6 +11,10 @@ import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 북마크 1.0·좋아요 0.6·업로드 0.3 가중치를 장소별로 합산해 상위 64개 개인화 시드를 만듭니다.
+ * 익명은 빈 맥락이며 이미 반응한 장소의 제외 집합도 이 64개 시드 범위로 제한됩니다.
+ */
 @Service
 @RequiredArgsConstructor
 class PlaceRecommendationUserSignalLoader {
