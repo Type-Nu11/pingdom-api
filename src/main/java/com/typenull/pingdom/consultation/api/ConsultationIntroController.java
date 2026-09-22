@@ -1,5 +1,8 @@
 package com.typenull.pingdom.consultation.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.consultation.api.dto.ConsultationIntroRequest;
 import com.typenull.pingdom.consultation.api.dto.ConsultationIntroResponse;
 import com.typenull.pingdom.consultation.application.ConsultationIntroService;
@@ -18,7 +21,8 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @RequestMapping("/consultations")
-@Tag(name = "Consulting", description = "컨설팅 API")
+@ApiAudience(ApiAudience.Group.CONSULTING)
+@Tag(name = SwaggerTagCatalog.INTRO)
 public class ConsultationIntroController {
 
     private final ConsultationIntroService consultationIntroService;
