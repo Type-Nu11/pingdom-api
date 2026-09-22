@@ -7,6 +7,7 @@ import java.util.List;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+/** credential CORS에서 사용할 명시적 Origin 목록이다. 빈 목록·빈 값·별표 전체 허용을 바인딩 검증으로 거부한다. */
 @Validated
 @ConfigurationProperties(prefix = "cors")
 public record CorsProperties(
