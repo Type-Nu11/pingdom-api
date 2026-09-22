@@ -39,8 +39,11 @@ class ChangeInfoServiceProfileImageTest {
     @InjectMocks
     private ChangeInfoService changeInfoService;
 
+    /**
+     * 검증·S3 업로드 후 사용자 저장이 실패하면 무결성 예외를 전파하고 방금 올린 객체의 삭제를 시도하는지 검증한다.
+     */
     @Test
-    void deletesUploadedObjectWhenProfileImagePersistenceFails() {
+    void compensatesFailedProfileImageSave() {
         User user = user();
         MockMultipartFile file = new MockMultipartFile("file", "profile.jpg", "image/jpeg", new byte[]{1});
         ProfileImageFileValidator.ValidatedProfileImage image =
@@ -58,6 +61,9 @@ class ChangeInfoServiceProfileImageTest {
         verify(s3ObjectStorage).delete(uploaded.key());
     }
 
+    /**
+     * 검증된 프로필 이미지의 업로드 URL을 사용자에 반영해 saveAndFlush하고 동일 URL을 반환하는지 검증한다.
+     */
     @Test
     void persistsUploadedProfileImageUrl() {
         User user = user();
@@ -78,6 +84,9 @@ class ChangeInfoServiceProfileImageTest {
         verify(userRepository).saveAndFlush(user);
     }
 
+    /**
+     * 프로필 업로드 경로와 소유자 조회에 사용할 ID 1의 필수 정보가 채워진 사용자를 만든다.
+     */
     private User user() {
         return User.builder()
                 .id(1L)

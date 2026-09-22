@@ -29,8 +29,11 @@ class ChangeInfoServiceTest {
     @InjectMocks
     private ChangeInfoService changeInfoService;
 
+    /**
+     * 현재 비밀번호가 인코더 검증을 통과하면 새 비밀번호를 암호화한 값으로 사용자 변경을 호출하는지 검증한다.
+     */
     @Test
-    void 비밀번호_변경_성공() {
+    void changesVerifiedPassword() {
         Long userId = 1L;
         ChangePasswordRequest request = new ChangePasswordRequest("1234", "abcd1234", "abcd1234");
 
@@ -46,8 +49,11 @@ class ChangeInfoServiceTest {
         verify(user).changePassword("encoded_abcd1234");
     }
 
+    /**
+     * 현재 비밀번호가 저장값과 일치하지 않으면 AuthException으로 변경을 거절하는지 검증한다.
+     */
     @Test
-    void 비밀번호_불일치_실패() {
+    void rejectsIncorrectCurrentPassword() {
         Long userId = 1L;
         ChangePasswordRequest request = new ChangePasswordRequest("wrong", "abcd1234", "abcd1234");
 
