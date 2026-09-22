@@ -81,6 +81,8 @@
 
 `X-Forwarded-For`와 `X-Forwarded-Proto`는 직접 연결된 프록시가 `TRUSTED_PROXY_IPS_REGEX`에 일치할 때만 해석합니다. 기본값은 loopback 주소뿐이므로, 운영 로드밸런서 또는 리버스 프록시의 IP 대역을 Tomcat 정규식으로 반드시 설정해야 합니다.
 
+운영 `compose.yaml`의 app 포트는 `127.0.0.1:8080`에만 바인딩합니다. 호스트 리버스 프록시와 배포 readiness probe는 이 loopback 경로를 사용해야 하며, `8080:8080`으로 변경해 TLS·접근 정책을 우회하는 직접 접근을 허용하면 안 됩니다.
+
 ## OpenAPI Contract
 ## OpenAPI Export
 
