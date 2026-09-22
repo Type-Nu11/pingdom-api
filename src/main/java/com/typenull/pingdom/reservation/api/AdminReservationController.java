@@ -1,5 +1,8 @@
 package com.typenull.pingdom.reservation.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.reservation.api.dto.*;
 import com.typenull.pingdom.reservation.application.ReservationService;
 import com.typenull.pingdom.reservation.domain.ReservationStatus;
@@ -22,7 +25,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.ADMIN_RESERVATION)
 @org.springframework.validation.annotation.Validated
 public class AdminReservationController {
     private final ReservationService service;
