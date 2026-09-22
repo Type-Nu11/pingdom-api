@@ -7,6 +7,10 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 이메일 소유 범위로 보관 보고서를 조회합니다. 목록·요약 projection과 HTML 단독 조회는 PDF 바이트 로딩을 피하고,
+ * 다운로드와 수정은 엔티티 조회를 사용합니다. 이메일 소유권 자체는 호출 전에 검증해야 합니다.
+ */
 public interface LocationAnalysisReportRepository extends JpaRepository<LocationAnalysisReport, String> {
 
     @Query("""
