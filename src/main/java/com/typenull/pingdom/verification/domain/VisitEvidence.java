@@ -7,6 +7,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 체크인 증빙의 소유자·S3 key·이미지 메타데이터·보관 기한을 보관한다.
+ * 파일 바이트는 S3에 있으며 DB 행 삭제 자체로 S3 객체가 지워지지는 않는다.
+ */
 @Entity
 @Getter
 @Table(name = "visit_evidence")
@@ -39,6 +43,10 @@ public class VisitEvidence {
     @Column(name = "expires_at", nullable = false)
     private Instant expiresAt;
 
+    /**
+     * 필수 메타데이터를 요구하고 양수 크기와 생성 시각 이후의 만료 시각으로 증빙을 생성한다.
+     * 체크인 소유권과 중복 여부는 이 객체의 생성만으로 확인하지 않으며 서비스·DB가 담당한다.
+     */
     public static VisitEvidence create(Long locationCheckInId, Long touristUserId, String s3Key,
             String originalFilename, String contentType, long fileSize, Instant createdAt, Instant expiresAt) {
         VisitEvidence evidence = new VisitEvidence();
