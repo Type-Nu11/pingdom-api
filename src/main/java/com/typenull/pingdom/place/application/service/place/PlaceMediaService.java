@@ -27,6 +27,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 장소 탐색 이미지와 방문 인증 이미지의 저장·조회·삭제 흐름을 구분합니다.
+ * 탐색 이미지는 공개 운영 장소에서 노출하고 인증 이미지는 등록자 또는 관리 capability를 가진 회원에게만 제공합니다.
+ */
 @Service
 public class PlaceMediaService {
 
@@ -54,6 +58,11 @@ public class PlaceMediaService {
         this.s3ObjectDeleteOutboxPublisher = s3ObjectDeleteOutboxPublisher;
     }
 
+    /**
+     * 장소를 잠가 등록자 또는 PLACE_INFO_EDIT 권한을 확인하고 신청자·장소에 속한 S3 키의 실제 객체 크기·형식을 검사합니다.
+     * 응답 이미지 URL은 저장소에서 구성하며 표시 순서 누락 시 마지막 뒤에 추가합니다. 요청의 썸네일 정보는 저장하지 않습니다.
+     * 잘못된 객체는 거절하고 저장소 설정·연결 오류는 대응하는 장소 오류로 전파합니다.
+     */
     @Transactional
     public PlaceMediaItem createExplorationMedia(Long placeId, Long userId, PlaceMediaCreateRequest request) {
         MapPlace place = getOwnedPlaceForUpdate(placeId, userId);
@@ -74,6 +83,10 @@ public class PlaceMediaService {
         return PlaceMediaItem.from(placeMediaRepository.save(media));
     }
 
+    /**
+     * 장소를 잠가 관리 권한을 확인한 뒤 해당 장소의 EXPLORATION 미디어만 삭제합니다.
+     * 원본·썸네일 키가 있으면 S3 삭제 outbox를 발행하므로 반환 시점에 객체 삭제 완료를 보장하지 않습니다.
+     */
     @Transactional
     public void deleteExplorationMedia(Long placeId, Long mediaId, Long userId) {
         getOwnedPlaceForUpdate(placeId, userId);
@@ -101,6 +114,11 @@ public class PlaceMediaService {
         return new PlaceMediaResponse(placeId, getMediaItems(placeId, PlaceMediaPurpose.VERIFICATION));
     }
 
+    /**
+     * 저장된 장소 게시물의 이미지·키·원본 ID를 검증 미디어로 기록합니다.
+     * 게시물·장소·ID가 없거나 이미 해당 원본으로 기록되었으면 건너뛰며 생성 시각 누락은 현재 시각으로 보충합니다.
+     * 기존 여부는 일반 조회로 검사하므로 동시 생성 경쟁을 잠그지는 않습니다.
+     */
     @Transactional
     public void recordVerificationMedia(MapImage mapImage) {
         if (mapImage == null || mapImage.getMapPlace() == null || mapImage.getId() == null) {

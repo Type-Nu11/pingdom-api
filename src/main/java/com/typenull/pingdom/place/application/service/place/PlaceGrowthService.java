@@ -10,6 +10,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사진 수 변경을 장소 성장 단계 스냅샷으로 변환합니다.
+ * ID를 받는 변경 메서드는 장소 행을 잠그지만 엔티티를 직접 받는 메서드는 호출자의 잠금·트랜잭션에 의존합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceGrowthService {
