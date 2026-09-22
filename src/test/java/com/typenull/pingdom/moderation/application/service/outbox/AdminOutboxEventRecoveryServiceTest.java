@@ -39,6 +39,9 @@ class AdminOutboxEventRecoveryServiceTest {
 
     private AdminOutboxEventRecoveryService service;
 
+    /**
+     * 실패 이벤트 재시도의 권한 검사·상태 변경·감사·지표 협력을 확인하도록 모의 의존성을 연결한다.
+     */
     @BeforeEach
     void setUp() {
         service = new AdminOutboxEventRecoveryService(
@@ -49,8 +52,12 @@ class AdminOutboxEventRecoveryServiceTest {
         );
     }
 
+    /**
+     * 재시도 성공 결과를 받으면 복구 권한 확인, 공백이 제거된 사유의 감사 기록과 성공 지표를 남기는지 검증한다.
+     * 응답 상태는 RETRY이며 시도 횟수는 0으로 초기화되는지도 확인한다.
+     */
     @Test
-    void retriesFailedEventWithPermissionAuditAndMetric() {
+    void retriesFailedEventWithAudit() {
         OutboxEventOperationSnapshot before = snapshot(OutboxEventStatus.FAILED, 5, "provider failure");
         OutboxEventOperationSnapshot after = snapshot(OutboxEventStatus.RETRY, 0, null);
         when(outboxEventStateService.retryFailedEvent("event-1"))
@@ -73,8 +80,11 @@ class AdminOutboxEventRecoveryServiceTest {
         assertThat(response.attemptCount()).isZero();
     }
 
+    /**
+     * 상태 서비스가 대상 없음 결과를 반환하면 OUTBOX_EVENT_NOT_FOUND와 not_found 지표로 표현하는지 검증한다.
+     */
     @Test
-    void rejectsMissingEventWithIdentifiableError() {
+    void reportsMissingRecoveryEvent() {
         when(outboxEventStateService.retryFailedEvent("missing"))
                 .thenReturn(new ManualRetryResult(ManualRetryOutcome.NOT_FOUND, null, null));
 
@@ -87,8 +97,11 @@ class AdminOutboxEventRecoveryServiceTest {
         verify(outboxMetrics).recordManualRetry(null, "not_found");
     }
 
+    /**
+     * 이미 대기 상태인 이벤트의 수동 재시도는 허용 불가 오류와 not_retryable 지표로 처리하는지 검증한다.
+     */
     @Test
-    void rejectsEventThatIsNoLongerFailed() {
+    void rejectsNonFailedRecoveryEvent() {
         OutboxEventOperationSnapshot pending = snapshot(OutboxEventStatus.PENDING, 0, null);
         when(outboxEventStateService.retryFailedEvent("event-1"))
                 .thenReturn(new ManualRetryResult(ManualRetryOutcome.NOT_RETRYABLE, pending, pending));
@@ -105,6 +118,9 @@ class AdminOutboxEventRecoveryServiceTest {
         );
     }
 
+    /**
+     * 상태·시도 횟수·최근 오류를 바꾸어 수동 복구 전후의 동일 이벤트 스냅샷을 만든다.
+     */
     private OutboxEventOperationSnapshot snapshot(OutboxEventStatus status, int attemptCount, String lastError) {
         LocalDateTime now = LocalDateTime.of(2026, 8, 10, 10, 0);
         return new OutboxEventOperationSnapshot(
