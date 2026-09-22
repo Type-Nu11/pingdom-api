@@ -17,6 +17,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * 외부 환율을 통화 쌍별 로컬 TTL 캐시에 보관하고 같은 쌍의 동시 요청은 진행 중 Future를 공유합니다.
+ * 호출·응답 해석 실패는 빈 결과로 반환하며 만료된 캐시를 대체값으로 사용하거나 실패를 캐시하지 않습니다.
+ */
 @Component
 public class FrankfurterCurrencyExchangeRateClient implements CurrencyExchangeRateClient {
 
@@ -37,6 +41,10 @@ public class FrankfurterCurrencyExchangeRateClient implements CurrencyExchangeRa
         this.clock = clock;
     }
 
+    /**
+     * 성공 응답만 요청 시작 시각 기준 TTL로 캐시합니다.
+     * 동시 요청 합류는 현재 프로세스에 한정되며 별도 join 제한 시간 없이 HTTP 클라이언트 제한 시간의 영향을 받습니다.
+     */
     @Override
     public Optional<CurrencyExchangeRate> findRate(MenuCurrency sourceCurrency, MenuCurrency targetCurrency) {
         if (!properties.enabled()) {

@@ -3,6 +3,10 @@ package com.typenull.pingdom.menu.infrastructure.currency;
 import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 
+/**
+ * 메뉴 환율 조회의 활성 여부, 외부 주소와 시간 제한을 바인딩합니다.
+ * 활성 여부 미설정은 true이고 시간 값이 null·0·음수이면 연결 2초, 읽기 3초, 캐시 10분 기본값을 사용합니다.
+ */
 @ConfigurationProperties(prefix = "menu.currency-exchange")
 public record FrankfurterCurrencyExchangeProperties(
         Boolean enabled,
