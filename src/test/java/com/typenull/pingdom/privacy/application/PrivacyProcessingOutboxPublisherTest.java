@@ -31,8 +31,11 @@ class PrivacyProcessingOutboxPublisherTest {
     @Mock
     private OutboxEventPublisher outboxEventPublisher;
 
+    /**
+     * 사용자 export 이벤트가 개인정보 Outbox 타입·집계 키로 발행되고 대상·행위자·행위·UTC 발생 시각이 payload에 담기는지 검증한다.
+     */
     @Test
-    void 개인정보_처리_이벤트를_대상_사용자별_Outbox로_발행한다() {
+    void publishesUserPrivacyEvent() {
         PrivacyProcessingOutboxPublisher publisher = new PrivacyProcessingOutboxPublisher(outboxEventPublisher, CLOCK);
 
         publisher.publish(PrivacyProcessingEvent.userAction(
@@ -65,8 +68,11 @@ class PrivacyProcessingOutboxPublisherTest {
                 );
     }
 
+    /**
+     * 대상 10·10·20의 삭제 이벤트가 집계 ID 10·20으로 두 번만 발행되어 중복 사용자를 제거하는지 검증한다.
+     */
     @Test
-    void 벌크_이벤트는_중복_대상_없이_사용자별로_발행한다() {
+    void deduplicatesBulkPrivacyTargets() {
         PrivacyProcessingOutboxPublisher publisher = new PrivacyProcessingOutboxPublisher(outboxEventPublisher, CLOCK);
 
         publisher.publish(PrivacyProcessingBulkEvent.systemAction(

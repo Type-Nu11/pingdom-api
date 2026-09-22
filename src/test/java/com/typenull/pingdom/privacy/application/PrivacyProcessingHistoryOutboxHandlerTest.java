@@ -31,13 +31,19 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
 
     private PrivacyProcessingHistoryOutboxHandler handler;
 
+    /**
+     * 실제 Jackson 역직렬화기와 감사 이력 저장소 mock을 연결해 Outbox payload 처리를 검증한다.
+     */
     @BeforeEach
     void setUp() {
         handler = new PrivacyProcessingHistoryOutboxHandler(privacyProcessingHistoryRepository, objectMapper);
     }
 
+    /**
+     * 처리되지 않은 개인정보 이벤트를 역직렬화하면 이벤트 ID·대상 사용자·EXPORT_REQUESTED·발생 시각을 이력에 저장하는지 검증한다.
+     */
     @Test
-    void Outbox_이벤트를_감사_이력으로_저장한다() throws Exception {
+    void storesPrivacyOutboxHistory() throws Exception {
         PrivacyProcessingOutboxPayload payload = payload();
         when(privacyProcessingHistoryRepository.existsByOutboxEventIdAndSubjectUserId(EVENT_ID, 10L)).thenReturn(false);
 
@@ -55,8 +61,11 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
                 .containsExactly(EVENT_ID, 10L, PrivacyProcessingAction.EXPORT_REQUESTED, payload.occurredAt());
     }
 
+    /**
+     * 같은 이벤트 ID와 대상 사용자 이력이 이미 있으면 재처리 시 저장하지 않는지 검증한다.
+     */
     @Test
-    void 동일_Outbox_이벤트가_재처리되면_이력_저장을_건너뛴다() throws Exception {
+    void skipsDuplicatePrivacyHistory() throws Exception {
         when(privacyProcessingHistoryRepository.existsByOutboxEventIdAndSubjectUserId(EVENT_ID, 10L)).thenReturn(true);
 
         handler.handle(EVENT_ID, objectMapper.writeValueAsString(payload()));
@@ -64,8 +73,11 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
         verify(privacyProcessingHistoryRepository, never()).save(any());
     }
 
+    /**
+     * 이력 저장의 임시 DB 오류가 같은 예외 타입·메시지로 전파되는지 확인해 Outbox 재시도 판단에 실패가 전달되도록 한다.
+     */
     @Test
-    void 저장_실패를_전파해_Outbox_재시도를_유도한다() throws Exception {
+    void propagatesPrivacyHistoryFailure() throws Exception {
         when(privacyProcessingHistoryRepository.existsByOutboxEventIdAndSubjectUserId(EVENT_ID, 10L)).thenReturn(false);
         org.mockito.Mockito.doThrow(new IllegalStateException("temporary database failure"))
                 .when(privacyProcessingHistoryRepository)
@@ -76,13 +88,19 @@ class PrivacyProcessingHistoryOutboxHandlerTest {
                 .hasMessage("temporary database failure");
     }
 
+    /**
+     * 빈 JSON payload는 필수 값 누락을 설명하는 IllegalArgumentException으로 거절되는지 검증한다.
+     */
     @Test
-    void 필수_값이_없는_payload는_실패로_처리한다() {
+    void rejectsMissingPrivacyPayloadFields() {
         assertThatThrownBy(() -> handler.handle(EVENT_ID, "{}"))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessage("개인정보 처리 이력 Outbox payload에 필수 값이 없습니다.");
     }
 
+    /**
+     * 사용자 10의 데이터 export 요청과 요청 ID·고정 발생 시각을 담은 유효한 개인정보 처리 payload를 제공한다.
+     */
     private PrivacyProcessingOutboxPayload payload() {
         return new PrivacyProcessingOutboxPayload(
                 10L,
