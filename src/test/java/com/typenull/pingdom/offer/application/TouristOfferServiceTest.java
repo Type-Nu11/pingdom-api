@@ -49,6 +49,9 @@ class TouristOfferServiceTest {
 
     @InjectMocks private TouristOfferService offerService;
 
+    /**
+     * 쿠폰 발급 기준 시각과 Offer 점주의 현재 활성 소유 상태를 공통 입력으로 설정한다.
+     */
     @BeforeEach
     void setUpClock() {
         when(clock.instant()).thenReturn(Instant.parse("2026-07-16T12:00:00Z"));
@@ -56,8 +59,11 @@ class TouristOfferServiceTest {
         when(merchantAccessPolicy.isActiveOwnerOfPlace(10L, 100L, NOW)).thenReturn(true);
     }
 
+    /**
+     * 여행 일정 자격 정책을 호출하고 발급한 쿠폰의 Offer ID·ISSUED 상태와 발급 수 1을 확인한다.
+     */
     @Test
-    void eligibleTouristCanIssueOneCoupon() {
+    void issuesEligibleTouristCoupon() {
         TouristOffer offer = publishedOffer(2);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
@@ -73,8 +79,11 @@ class TouristOfferServiceTest {
         assertThat(offer.getIssuedQuantity()).isEqualTo(1);
     }
 
+    /**
+     * PUBLIC Offer 발급에서 공개 자격 정책을 사용하고 쿠폰 만료를 Offer 종료 시각으로 설정하는지 검증한다.
+     */
     @Test
-    void publicOfferUsesPublicEligibilityPolicyWhenIssuing() {
+    void issuesWithPublicEligibility() {
         TouristOffer offer = TouristOffer.draft(
                 10L,
                 100L,
@@ -103,8 +112,11 @@ class TouristOfferServiceTest {
         assertThat(response.expiresAt()).isEqualTo(offer.getEndsAt());
     }
 
+    /**
+     * 이미 쿠폰이 있으면 COUPON_ALREADY_ISSUED이며 발급 수 0과 저장 미호출을 유지하는지 검증한다.
+     */
     @Test
-    void duplicateCouponIsRejectedBeforeQuantityChanges() {
+    void rejectsDuplicateBeforeIssuance() {
         TouristOffer offer = publishedOffer(2);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(true);
@@ -117,8 +129,11 @@ class TouristOfferServiceTest {
         verify(couponRepository, never()).saveAndFlush(any());
     }
 
+    /**
+     * 사전 조회 뒤 발급 저장에서 Offer·사용자 고유 제약 위반이 발생해도 COUPON_ALREADY_ISSUED로 변환하는지 검증한다.
+     */
     @Test
-    void duplicateCouponConstraintViolationIsMappedToDomainError() {
+    void mapsDuplicateCouponConstraint() {
         TouristOffer offer = publishedOffer(2);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(couponRepository.existsByOfferIdAndUserId(1L, 2L)).thenReturn(false);
@@ -131,8 +146,11 @@ class TouristOfferServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.COUPON_ALREADY_ISSUED));
     }
 
+    /**
+     * 쿠폰 외래 키 위반은 중복 발급으로 오인하지 않고 원래 무결성 예외 객체를 전파하는지 검증한다.
+     */
     @Test
-    void unrelatedConstraintViolationIsNotMappedToDuplicateCouponError() {
+    void preservesUnrelatedCouponConstraint() {
         TouristOffer offer = publishedOffer(2);
         DataIntegrityViolationException violation = constraintViolation("fk_tourist_coupon_offer");
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
@@ -143,6 +161,9 @@ class TouristOfferServiceTest {
         assertThatThrownBy(() -> offerService.issue(2L, 1L)).isSameAs(violation);
     }
 
+    /**
+     * 한정 수량이 이미 소진된 Offer에 새 발급을 요청하면 OFFER_SOLD_OUT인지 검증한다.
+     */
     @Test
     void soldOutOfferIsRejected() {
         TouristOffer offer = publishedOffer(1);
@@ -155,6 +176,9 @@ class TouristOfferServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.OFFER_SOLD_OUT));
     }
 
+    /**
+     * 게시하지 않은 초안 Offer에 발급을 요청하면 OFFER_NOT_AVAILABLE인지 검증한다.
+     */
     @Test
     void unavailableOfferIsRejected() {
         TouristOffer draft = draftOffer(2);
@@ -166,8 +190,11 @@ class TouristOfferServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(OfferErrorCode.OFFER_NOT_AVAILABLE));
     }
 
+    /**
+     * 점주가 현재 활성 소유자가 아니면 OFFER_NOT_AVAILABLE로 거절하고 기존 쿠폰 조회에도 도달하지 않는지 검증한다.
+     */
     @Test
-    void offerWhoseMerchantLostEligibilityIsRejected() {
+    void rejectsIneligibleOfferMerchant() {
         TouristOffer offer = publishedOffer(2);
         when(offerRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(offer));
         when(merchantAccessPolicy.isActiveOwnerOfPlace(10L, 100L, NOW)).thenReturn(false);
@@ -179,16 +206,25 @@ class TouristOfferServiceTest {
         verify(couponRepository, never()).existsByOfferIdAndUserId(1L, 2L);
     }
 
+    /**
+     * 주어진 수량의 초안을 현재보다 1분 전에 게시하여 유효한 발급 대상 Offer를 제공한다.
+     */
     private TouristOffer publishedOffer(int quantity) {
         TouristOffer offer = draftOffer(quantity);
         offer.publish(NOW.minusMinutes(1));
         return offer;
     }
 
+    /**
+     * 장소 상세 조회가 없도록 설정해 장소 부가 정보 없이 진행되는 쿠폰 발급 경로를 재현한다.
+     */
     private void stubMissingPlace() {
         when(mapPlaceRepository.findById(100L)).thenReturn(Optional.empty());
     }
 
+    /**
+     * 점주 10·장소 100의 발급 기간 내 초안을 지정 수량과 쿠폰 유효기간 7일로 생성한다.
+     */
     private TouristOffer draftOffer(int quantity) {
         return TouristOffer.draft(
                 10L,
@@ -204,6 +240,9 @@ class TouristOfferServiceTest {
         );
     }
 
+    /**
+     * 지정한 제약 이름을 담은 Hibernate 원인을 Spring 무결성 예외로 감싸 중복 판별 경로를 재현한다.
+     */
     private DataIntegrityViolationException constraintViolation(String constraintName) {
         return new DataIntegrityViolationException(
                 "coupon insert failed",
