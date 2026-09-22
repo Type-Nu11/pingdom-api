@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.community;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.moderation.api.dto.community.AdminCommunityCommentPageResponse;
 import com.typenull.pingdom.moderation.api.dto.community.AdminCommunityCommentResponse;
 import com.typenull.pingdom.moderation.api.dto.community.AdminCommunityPostPageResponse;
@@ -28,7 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.COMMUNITY_MANAGEMENT)
 public class AdminCommunityContentController {
 
     private final AdminCommunityContentQueryService adminCommunityContentQueryService;
