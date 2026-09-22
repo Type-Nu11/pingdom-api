@@ -53,6 +53,10 @@ class ScoutFieldReportServiceTest {
     private final ScoutEligibilityPolicy scoutEligibilityPolicy = mock(ScoutEligibilityPolicy.class);
     private ScoutFieldReportService service;
 
+    /**
+     * 시각을 고정하고 일반 사용자·관리자·장소 존재·유효 Scout 자격을 기본 응답으로 둔다.
+     * 저장 mock은 입력 제보를 반환하므로 각 테스트가 실패 조건만 덮어쓸 수 있다.
+     */
     @BeforeEach
     void setUp() {
         service = new ScoutFieldReportService(
@@ -76,8 +80,12 @@ class ScoutFieldReportServiceTest {
         when(reportRepository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    /**
+     * 일반 사용자여도 Scout 자격 정책이 false이면 SCOUT_ACCOUNT_REQUIRED로 거부한다.
+     * 제보 저장은 호출되지 않아야 한다.
+     */
     @Test
-    void ordinaryUserCannotSubmitScoutFieldReportBeforeScoutQualificationIsAvailable() {
+    void rejectUnqualifiedScout() {
         when(scoutEligibilityPolicy.isEligible(1L)).thenReturn(false);
         assertThatThrownBy(() -> service.submit(1L, new ScoutFieldReportCreateRequest(
                 2L,
@@ -91,8 +99,9 @@ class ScoutFieldReportServiceTest {
         verify(reportRepository, never()).saveAndFlush(any(ScoutFieldReport.class));
     }
 
+    /** 같은 Scout·장소·유형에 SUBMITTED 제보가 있으면 중복 제출 오류로 거부한다. */
     @Test
-    void duplicateActiveScoutFieldReportIsRejected() {
+    void rejectDuplicateSubmittedReport() {
         when(reportRepository.existsByScoutUserIdAndPlaceIdAndReportTypeAndStatus(
                 1L, 2L, ScoutFieldReportType.LOCATION, ScoutFieldReportStatus.SUBMITTED
         )).thenReturn(true);
@@ -104,8 +113,9 @@ class ScoutFieldReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.SCOUT_FIELD_REPORT_ALREADY_SUBMITTED);
     }
 
+    /** 사전 조회 이후 저장 flush에서 미심사 유일 제약 위반이 발생해도 동일한 중복 제출 오류로 변환한다. */
     @Test
-    void concurrentDuplicateConstraintIsReportedAsConflict() {
+    void mapConcurrentDuplicateReport() {
         ConstraintViolationException constraint = new ConstraintViolationException(
                 "duplicate", new SQLException(), "uq_scout_field_report_active"
         );
@@ -120,8 +130,9 @@ class ScoutFieldReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.SCOUT_FIELD_REPORT_ALREADY_SUBMITTED);
     }
 
+    /** 다른 Scout의 제보를 본인 조회로 요청하면 SCOUT_FIELD_REPORT_FORBIDDEN으로 거부한다. */
     @Test
-    void nonOwnerCannotReadScoutFieldReport() {
+    void rejectNonOwnerReportRead() {
         ScoutFieldReport report = ScoutFieldReport.submit(
                 3L,
                 2L,
@@ -138,8 +149,12 @@ class ScoutFieldReportServiceTest {
                 .isEqualTo(VisitorVerificationErrorCode.SCOUT_FIELD_REPORT_FORBIDDEN);
     }
 
+    /**
+     * 관리자 거절 결과에 상태·심사자·사유를 담고 감사 기록에 관리자·행위·대상 유형·사유를 전달한다.
+     * 미영속 제보 fixture이므로 감사 대상 ID는 null이다.
+     */
     @Test
-    void adminCanRejectScoutFieldReportWithReason() {
+    void rejectReportWithReason() {
         ScoutFieldReport report = ScoutFieldReport.submit(
                 1L,
                 2L,
@@ -169,8 +184,9 @@ class ScoutFieldReportServiceTest {
         );
     }
 
+    /** SCOUT_REVIEW 권한 검사가 실패하면 같은 관리자 오류를 전달하고 제보 잠금 조회를 호출하지 않는다. */
     @Test
-    void nonAdminCannotReviewScoutFieldReport() {
+    void rejectUnauthorizedReportReview() {
         doThrow(new AdminException(AdminErrorCode.ADMIN_PERMISSION_REQUIRED))
                 .when(adminRoleAuthorizationService)
                 .requirePermission(1L, AdminPermission.SCOUT_REVIEW);
