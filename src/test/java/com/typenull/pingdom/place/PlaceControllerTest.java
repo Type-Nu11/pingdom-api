@@ -119,6 +119,9 @@ class PlaceControllerTest {
 
     @TestConfiguration
     static class TestEmailSenderConfig {
+        /**
+         * 회원가입·로그인 흐름이 외부 메일 전송 없이 진행되도록 성공 결과를 반환하는 테스트 빈을 제공한다.
+         */
         @Bean
         @Primary
         EmailSender emailSender() {
@@ -198,6 +201,9 @@ class PlaceControllerTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3ObjectStorage s3ObjectStorage;
 
+    /**
+     * 이미지·추천 기록·영업 일정·장소·사용자를 비워 각 API 시나리오의 조회 및 집계 입력을 독립시킨다.
+     */
     @BeforeEach
     void setUp() {
         mapImageLikeRepository.deleteAllInBatch();
@@ -214,17 +220,26 @@ class PlaceControllerTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 테스트 후 별도 영업 일정 행을 정리하여 다음 시나리오에 자식 데이터가 남지 않게 한다.
+     */
     @AfterEach
     void tearDownOperatingScheduleRows() {
         clearOperatingScheduleRows();
     }
 
+    /**
+     * 예외 시간·예외 일정·정기 영업시간 순으로 삭제하여 장소 정리 전에 일정 참조를 제거한다.
+     */
     private void clearOperatingScheduleRows() {
         jdbcTemplate.update("DELETE FROM map_place_operating_exception_hour");
         jdbcTemplate.update("DELETE FROM map_place_operating_exception");
         jdbcTemplate.update("DELETE FROM map_place_regular_operating_hour");
     }
 
+    /**
+     * 두 장소를 조회하면 최신 ID부터 반환하고 요청 페이지·제한·전체 건수와 다음 페이지 여부가 일치하는지 확인한다.
+     */
     @Test
     void listPlacesReturnsPagedPlaces() throws Exception {
         String accessToken = signupAndLogin("reader01");
@@ -246,8 +261,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[1].name").value("첫 번째 장소"));
     }
 
+    /**
+     * 임시 휴업 장소가 일반·반경 목록, 자동완성, 상세, 사용자 북마크 조회에서 제외되는지 확인한다.
+     */
     @Test
-    void nonOperatingPlacesAreHiddenFromPublicPlaceQueries() throws Exception {
+    void hidesTemporarilyClosedPlaces() throws Exception {
         String accessToken = signupAndLogin("operatingStatusReader");
         User user = userRepository.findByUsername("operatingStatusReader").orElseThrow();
         MapPlace operatingPlace = createMapPlace("운영 중 장소", "경상남도 진주시 운영로 1");
@@ -298,8 +316,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(0));
     }
 
+    /**
+     * 영구 폐업 장소만 있을 때 컨트롤러 직접 호출의 추천 건수가 0인지 확인한다.
+     */
     @Test
-    void recommendationsExcludeNonOperatingPlaces() {
+    void excludesPermanentlyClosedRecommendations() {
         MapPlace closedPlace = createMapPlace("추천 제외 장소", "경상남도 진주시 추천로 1", 35.1801, 128.1078, 1L);
         closedPlace.updateOperatingStatus(
                 PlaceOperatingStatus.PERMANENTLY_CLOSED,
@@ -312,8 +333,11 @@ class PlaceControllerTest {
         assertEquals(0, response.getBody().recommendedCount());
     }
 
+    /**
+     * 101개 장소를 100개 제한으로 조회하면 최신 100개와 전체 2페이지·hasNext=true를 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesSupportsMaximumLimitWithoutKeyword() throws Exception {
+    void paginatesAtMaximumPlaceLimit() throws Exception {
         String accessToken = signupAndLogin("readerLimit100");
         for (int index = 1; index <= 101; index++) {
             createMapPlace("목록 장소 " + index, "경상남도 진주시 목록로 " + index);
@@ -334,8 +358,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[99].name").value("목록 장소 2"));
     }
 
+    /**
+     * 키워드 검색에도 100개 제한을 허용하고 일치하는 장소만 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesSupportsMaximumLimitWithKeyword() throws Exception {
+    void acceptsMaximumLimitWithKeyword() throws Exception {
         String accessToken = signupAndLogin("readerKeywordLimit100");
         MapPlace matchingPlace = createMapPlace("테스트 장소", "경상남도 진주시 테스트로 1");
         createMapPlace("일반 장소", "경상남도 진주시 일반로 1");
@@ -352,8 +379,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].id").value(matchingPlace.getId()));
     }
 
+    /**
+     * 위도가 91도인 장소를 목록과 전체 건수에서 제외하고 정상 좌표 장소만 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesExcludesPlacesWithInvalidCoordinates() throws Exception {
+    void excludesInvalidCoordinatePlaces() throws Exception {
         String accessToken = signupAndLogin("readerInvalidCoordinate");
         MapPlace validPlace = createMapPlace("정상 좌표 장소", "경상남도 진주시 정상로 1");
         mapPlaceRepository.save(MapPlace.builder()
@@ -376,8 +406,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].id").value(validPlace.getId()));
     }
 
+    /**
+     * 주소 키워드와 공백을 포함한 카테고리를 함께 적용하고 일치 장소의 정규화 주소·지오코딩 출처를 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesSearchesByAddressAndCategory() throws Exception {
+    void filtersAddressAndCategory() throws Exception {
         String accessToken = signupAndLogin("readerSearch" + Long.toUnsignedString(System.nanoTime()));
         MapPlace matchingPlace = createMapPlace(
                 "진주성",
@@ -414,8 +447,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /**
+     * 공백·소문자를 포함한 관광 카테고리 입력을 정규화하여 K_POP 장소만 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesFiltersByTouristCategory() throws Exception {
+    void filtersByTouristCategory() throws Exception {
         String accessToken = signupAndLogin("readerTouristCategory" + Long.toUnsignedString(System.nanoTime()));
         MapPlace kpopPlace = createMapPlace("케이팝 명소", "서울특별시 중구 케이팝로 1", "관광", 37.5665, 126.9780);
         kpopPlace.updateTouristInformation(
@@ -442,8 +478,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /**
+     * POPULAR 정렬에서 사진 수가 더 많은 장소를 먼저 반환하고 전체 건수를 유지하는지 확인한다.
+     */
     @Test
-    void listPlacesSortsPopularByPhotoCount() throws Exception {
+    void sortsPopularByPhotoCount() throws Exception {
         String accessToken = signupAndLogin("readerPopularSort" + Long.toUnsignedString(System.nanoTime()));
         createMapPlace("덜 인기 장소", "경상남도 진주시 인기고요로 1", "카페", 35.1801, 128.1078, 1L);
         MapPlace popularPlace = createMapPlace(
@@ -464,8 +503,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(2));
     }
 
+    /**
+     * HIDDEN 장소가 목록·자동완성·상세·사용자 북마크에서 제외되는지 확인한다.
+     */
     @Test
-    void hiddenDiscoveryPlacesAreExcludedFromPublicPlaceQueries() throws Exception {
+    void excludesHiddenDiscoveryPlaces() throws Exception {
         String username = "readerHiddenDiscovery" + Long.toUnsignedString(System.nanoTime());
         String accessToken = signupAndLogin(username);
         User user = userRepository.findByUsername(username).orElseThrow();
@@ -500,8 +542,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(0));
     }
 
+    /**
+     * 카드에 관광 요약·출처·검증 기본값을 반환하고 숨김·영구 폐업은 404, 임시 휴업은 영업 중 아님으로 제공하는지 확인한다.
+     */
     @Test
-    void touristPlaceCardReturnsDecisionReadySummaryAndHidesNonPublicPlaces() throws Exception {
+    void returnsCardByVisibilityStatus() throws Exception {
         String accessToken = signupAndLogin("touristPlaceCard" + Long.toUnsignedString(System.nanoTime()));
         MapPlace visiblePlace = mapPlaceRepository.saveAndFlush(MapPlace.builder()
                 .name("서울 K-컬처 스튜디오")
@@ -569,8 +614,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 카드 조회의 무인증 요청은 401, 인증 후 존재하지 않는 장소는 PLACE_NOT_FOUND 404로 구분하는지 확인한다.
+     */
     @Test
-    void touristPlaceCardRequiresAuthenticationAndReturnsNotFoundForUnknownPlace() throws Exception {
+    void rejectsUnauthenticatedAndMissingCards() throws Exception {
         mockMvc.perform(get("/places/{placeId}/card", 999_999_999L))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
@@ -583,8 +631,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 1km 반경 밖 장소를 제외하고 포함된 두 장소를 가까운 순으로 반환하며 거리 값을 제공하는지 확인한다.
+     */
     @Test
-    void listPlacesFiltersByRadiusAndSortsNearest() throws Exception {
+    void filtersRadiusAndSortsNearest() throws Exception {
         String accessToken = signupAndLogin("readerSearch02");
         MapPlace nearPlace = createMapPlace("가까운 장소", "경상남도 진주시 가까운로 1", "카페", 35.1802, 128.1079);
         createMapPlace("먼저 생성된 먼 장소", "경상남도 진주시 먼로 1", "카페", 35.1840, 128.1110);
@@ -603,8 +654,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(2));
     }
 
+    /**
+     * 위도만 전달한 불완전한 거리 조건을 PLACE_SEARCH_CONDITION_INVALID 400으로 거절하는지 확인한다.
+     */
     @Test
-    void listPlacesRejectsIncompleteDistanceCondition() throws Exception {
+    void rejectsIncompleteDistanceCondition() throws Exception {
         String accessToken = signupAndLogin("readerSearch03");
 
         mockMvc.perform(get("/places")
@@ -614,8 +668,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
     }
 
+    /**
+     * 좌표 없는 NEAREST 정렬 요청을 거리 조건 오류로 거절하는지 확인한다.
+     */
     @Test
-    void listPlacesRejectsNearestWithoutDistanceCondition() throws Exception {
+    void rejectsNearestWithoutCoordinates() throws Exception {
         String accessToken = signupAndLogin("readerSearch04");
 
         mockMvc.perform(get("/places")
@@ -625,8 +682,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
     }
 
+    /**
+     * 경도 Infinity를 포함한 거리 검색 요청이 400을 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesRejectsNonFiniteDistanceCondition() throws Exception {
+    void rejectsInfiniteLongitude() throws Exception {
         String accessToken = signupAndLogin("readerSearch05");
 
         mockMvc.perform(get("/places")
@@ -638,8 +698,11 @@ class PlaceControllerTest {
                 .andExpect(status().isBadRequest());
     }
 
+    /**
+     * 지원하지 않는 RATING 정렬 입력을 전용 오류 코드와 400으로 거절하는지 확인한다.
+     */
     @Test
-    void listPlacesRejectsUnsupportedSort() throws Exception {
+    void rejectsUnsupportedPlaceSort() throws Exception {
         String accessToken = signupAndLogin("readerUnsupportedSort" + Long.toUnsignedString(System.nanoTime()));
 
         mockMvc.perform(get("/places")
@@ -649,8 +712,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("UNSUPPORTED_PLACE_SEARCH_SORT"));
     }
 
+    /**
+     * 정의되지 않은 관광 카테고리를 장소 검색 조건 오류와 400으로 거절하는지 확인한다.
+     */
     @Test
-    void listPlacesRejectsUnsupportedTouristCategory() throws Exception {
+    void rejectsUnsupportedTouristCategory() throws Exception {
         String accessToken = signupAndLogin("readerUnsupportedTouristCategory" + Long.toUnsignedString(System.nanoTime()));
 
         mockMvc.perform(get("/places")
@@ -660,15 +726,21 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_SEARCH_CONDITION_INVALID"));
     }
 
+    /**
+     * 인증 토큰이 없는 장소 목록 요청에 INVALID_TOKEN 401을 반환하는지 확인한다.
+     */
     @Test
-    void listPlacesReturnsUnauthorizedWithoutToken() throws Exception {
+    void rejectsUnauthenticatedPlaceList() throws Exception {
         mockMvc.perform(get("/places"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 상세 조회가 저장한 장소의 ID·이름·주소·등록자를 반환하는지 확인한다.
+     */
     @Test
-    void getPlaceReturnsPlaceDetailOnly() throws Exception {
+    void returnsStoredPlaceDetail() throws Exception {
         String accessToken = signupAndLogin("reader02");
         MapPlace mapPlace = createMapPlace("진주성", "경상남도 진주시 남강로 626");
 
@@ -681,8 +753,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.registrant").value("placeOwner"));
     }
 
+    /**
+     * 보충 정보가 없는 장소의 방문 판단 응답에서 상점 정보와 행사·예약·혜택 목록은 비고 장소 및 확인 시각은 제공되는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionReturnsEmptySupplementalDataWhenNoneExists() throws Exception {
+    void returnsEmptyVisitDecisionSupplements() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader01");
         MapPlace mapPlace = createMapPlace("방문 결정 장소", "경상남도 진주시 방문로 1");
 
@@ -698,8 +773,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.checkedAt").isNotEmpty());
     }
 
+    /**
+     * 승인된 Merchant의 예약 URL, 진행 중 공개 행사, 예약 가능 수량, 공개 혜택을 한 응답에 합치고 정보 수정자 ID는 숨기는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionCombinesOnlyPublicVisitData() throws Exception {
+    void combinesPublishedVisitDecisionData() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReaderAggregate");
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         MapPlace mapPlace = createMapPlace("통합 방문 결정 장소", "경상남도 진주시 방문로 10");
@@ -752,8 +830,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.availableOffers.offers[0].title").value("방문 결정 혜택"));
     }
 
+    /**
+     * 아직 시작하지 않은 공개 행사와 현재 기간의 초안 행사를 방문 판단의 진행 중 목록에서 제외하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionExcludesScheduledAndDraftEvents() throws Exception {
+    void excludesScheduledAndDraftEvents() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReaderEventFilter");
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         MapPlace mapPlace = createMapPlace("이벤트 필터 장소", "경상남도 진주시 방문로 11");
@@ -775,8 +856,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.ongoingEvents.length()").value(0));
     }
 
+    /**
+     * 비활성 예약 슬롯과 초안 혜택을 방문 판단의 예약·혜택 목록에서 제외하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionExcludesInactiveAvailabilityAndDraftOffer() throws Exception {
+    void excludesInactiveSlotsAndDraftOffers() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReaderCommerceFilter");
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         MapPlace mapPlace = createMapPlace("전환 데이터 필터 장소", "경상남도 진주시 방문로 12");
@@ -799,8 +883,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.availableOffers.offers.length()").value(0));
     }
 
+    /**
+     * 장소에 연결된 Merchant가 REVOKED이면 기존 상점 정보를 방문 판단 응답에 노출하지 않는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionHidesMerchantInformationWhenOwnerIsRevoked() throws Exception {
+    void hidesRevokedOwnerInformation() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReaderRevokedMerchant");
         LocalDateTime now = LocalDateTime.now(java.time.ZoneOffset.UTC);
         MapPlace mapPlace = createMapPlace("회수 Merchant 장소", "경상남도 진주시 방문로 13");
@@ -839,8 +926,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.merchantInformation").isEmpty());
     }
 
+    /**
+     * 운영 중 장소의 방문 판단 조회 성공 시 해당 상태 태그의 조회 Counter가 정확히 1 증가하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionRecordsSuccessfulViewMetric() throws Exception {
+    void countsSuccessfulVisitDecisionViews() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReaderMetric");
         MapPlace mapPlace = createMapPlace("관측 방문 결정 장소", "경상남도 진주시 방문로 14");
         Counter counter = meterRegistry.find("pingdom.place.visit_decision_views")
@@ -861,8 +951,11 @@ class PlaceControllerTest {
         );
     }
 
+    /**
+     * 임시 휴업 장소의 방문 판단은 조회를 허용하되 operatingStatus와 currentlyOperating=false를 반환하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionKeepsTemporarilyClosedPlaceVisible() throws Exception {
+    void includesTemporarilyClosedVisitDecision() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader02");
         MapPlace mapPlace = createMapPlace("임시 휴업 방문 결정 장소", "경상남도 진주시 방문로 2");
         mapPlace.updateOperatingStatus(
@@ -878,8 +971,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.place.currentlyOperating").value(false));
     }
 
+    /**
+     * 영구 폐업 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionRejectsPermanentlyClosedPlace() throws Exception {
+    void rejectsPermanentlyClosedVisitDecision() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader03");
         MapPlace mapPlace = createMapPlace("영구 폐업 방문 결정 장소", "경상남도 진주시 방문로 3");
         mapPlace.updateOperatingStatus(
@@ -894,8 +990,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 인증 없는 방문 판단 요청을 INVALID_TOKEN 401로 거절하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionRejectsUnauthenticatedRequest() throws Exception {
+    void rejectsUnauthenticatedVisitDecision() throws Exception {
         MapPlace mapPlace = createMapPlace("인증 필요 방문 결정 장소", "경상남도 진주시 방문로 4");
 
         mockMvc.perform(get("/places/{placeId}/visit-decision", mapPlace.getId()))
@@ -903,8 +1002,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 탐색 상태가 HIDDEN인 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionRejectsHiddenPlace() throws Exception {
+    void rejectsHiddenVisitDecision() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader04");
         MapPlace mapPlace = createMapPlace("숨김 방문 결정 장소", "경상남도 진주시 방문로 5");
         mapPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
@@ -916,8 +1018,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 존재하지 않는 장소의 방문 판단 요청을 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     */
     @Test
-    void getPlaceVisitDecisionReturnsNotFoundForUnknownPlace() throws Exception {
+    void rejectsMissingVisitDecisionPlace() throws Exception {
         String accessToken = signupAndLogin("visitDecisionReader05");
 
         mockMvc.perform(get("/places/{placeId}/visit-decision", 999_999L)
@@ -926,8 +1031,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 로그인 사용자가 북마크한 두 장소만 최신 순으로 반환하고 페이지 건수가 일치하는지 확인한다.
+     */
     @Test
-    void listBookmarksReturnsOnlyBookmarkedPlaces() throws Exception {
+    void listsBookmarkedPlacesNewestFirst() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader01");
         User user = userRepository.findByUsername("bookmarkReader01").orElseThrow();
 
@@ -959,8 +1067,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[1].name").value("첫 번째 북마크 장소"));
     }
 
+    /**
+     * 장소는 있어도 사용자 북마크가 없으면 장소·건수·전체 페이지가 모두 0이고 다음 페이지가 없는지 확인한다.
+     */
     @Test
-    void listBookmarksReturnsEmptyListWhenNoBookmarkExists() throws Exception {
+    void returnsEmptyBookmarkPage() throws Exception {
         String accessToken = signupAndLogin("bookmarkReader02");
         createMapPlace("일반 장소", "경상남도 진주시 북마크로 4");
 
@@ -975,8 +1086,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /**
+     * 제거된 /place 및 /users/bookmarks 경로가 인증된 요청에도 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyPlaceAndBookmarkPathsAreNotMapped() throws Exception {
+    void rejectsLegacyPlaceAndBookmarkPaths() throws Exception {
         String accessToken = signupAndLogin("legacyPathReader01");
 
         mockMvc.perform(get("/place")
@@ -992,8 +1106,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 실제 장소가 존재해도 제거된 /place/{id} 상세 경로에는 매핑이 없는지 확인한다.
+     */
     @Test
-    void removedLegacyPlaceDetailPathIsNotMapped() throws Exception {
+    void rejectsLegacyPlaceDetailPath() throws Exception {
         String accessToken = signupAndLogin("legacyPlaceDetail" + Long.toUnsignedString(System.nanoTime()));
         MapPlace place = createMapPlace("구 장소 상세", "경상남도 진주시 호환로 1");
 
@@ -1002,8 +1119,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 직접 등록 경로 두 개는 404, 숫자 ID 경로의 지원하지 않는 POST는 405로 구분하는지 확인한다.
+     */
     @Test
-    void removedDirectPlaceCreationRoutesAreNotMappedAndNumericPathRejectsUnsupportedMethod() throws Exception {
+    void rejectsRemovedPlaceCreationRoutes() throws Exception {
         String accessToken = signupAndLogin("removedDirectPlaceCreation");
 
         mockMvc.perform(post("/places/coordinates")
@@ -1019,8 +1139,11 @@ class PlaceControllerTest {
                 .andExpect(status().isMethodNotAllowed());
     }
 
+    /**
+     * 영문 이름으로 일반·반경 목록과 자동완성을 검색하고 목록·상세에서 관광 요약·카테고리를 반환하는지 확인한다.
+     */
     @Test
-    void listDetailAndAutocompleteExposeTouristInformationAndSearchEnglishName() throws Exception {
+    void exposesTouristInformationAcrossQueries() throws Exception {
         String accessToken = signupAndLogin("readerTourist01");
         MapPlace touristPlace = createTouristMapPlace();
 
@@ -1068,8 +1191,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].englishName").value("Jinju Castle"));
     }
 
+    /**
+     * 상세 응답이 요일별 영업시간과 날짜별 휴무·대체 영업시간을 정해진 필드와 순서로 제공하는지 확인한다.
+     */
     @Test
-    void placeDetailExposesRegularHoursAndOperatingExceptions() throws Exception {
+    void returnsOperatingScheduleDetails() throws Exception {
         String accessToken = signupAndLogin("readerOperatingSchedule");
         MapPlace mapPlace = createMapPlace("영업시간 장소", "경상남도 진주시 영업로 3");
         mapPlace.replaceOperatingSchedule(
@@ -1100,8 +1226,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.operatingExceptions[1].hours[0].closesAt").value("16:00:00"));
     }
 
+    /**
+     * 같은 키워드가 지번 주소와 다른 장소의 카테고리에 일치하면 지번 주소 장소를 자동완성 상위에 두는지 확인한다.
+     */
     @Test
-    void autocompleteRanksNormalizedJibunAddressAboveCategoryMatch() throws Exception {
+    void ranksJibunMatchAboveCategory() throws Exception {
         String accessToken = signupAndLogin("addressRank" + Long.toUnsignedString(System.nanoTime()));
         MapPlace jibunAddressPlace = createMapPlace(
                 "지번 주소 장소",
@@ -1131,8 +1260,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].id").value(jibunAddressPlace.getId()));
     }
 
+    /**
+     * 공백을 포함한 coffee 별칭을 카페로 정규화하여 카페 장소만 검색하는지 확인한다.
+     */
     @Test
-    void listPlacesSearchesByStandardizedCategoryAlias() throws Exception {
+    void normalizesCategoryAliasForSearch() throws Exception {
         String accessToken = signupAndLogin("readerSearchCategory01");
         MapPlace matchingPlace = createMapPlace(
                 "표준 카페",
@@ -1152,8 +1284,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].category").value("카페"));
     }
 
+    /**
+     * 존재하지 않는 장소 상세 요청을 PLACE_NOT_FOUND 404로 반환하는지 확인한다.
+     */
     @Test
-    void getPlaceReturnsNotFoundWhenPlaceDoesNotExist() throws Exception {
+    void rejectsMissingPlaceDetail() throws Exception {
         String accessToken = signupAndLogin("reader03");
 
         mockMvc.perform(get("/places/{id}", 9999L)
@@ -1162,8 +1297,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 실제 객체 메타데이터가 확인된 S3 키로 탐색 미디어를 생성하고 요청 URL 대신 저장소 URL·용도·기본 순서를 반환하는지 확인한다.
+     */
     @Test
-    void createExplorationMediaReturnsCreatedMediaContract() throws Exception {
+    void createsExplorationMediaFromStorageKey() throws Exception {
         String accessToken = signupAndLogin("placeMediaOwner01");
         Long ownerId = userRepository.findByUsername("placeMediaOwner01").orElseThrow().getId();
         MapPlace place = createMapPlace("탐색 미디어 장소", "경상남도 진주시 미디어로 1", ownerId);
@@ -1188,8 +1326,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.displayOrder").value(0));
     }
 
+    /**
+     * 탐색·검증 미디어 조회가 각 용도의 항목만 반환하고 원본 게시물 ID는 검증 미디어에만 포함하는지 확인한다.
+     */
     @Test
-    void placeMediaEndpointsSeparateExplorationAndVerificationMedia() throws Exception {
+    void separatesMediaByPurpose() throws Exception {
         String accessToken = signupAndLogin("placeMediaOwner02");
         Long ownerId = userRepository.findByUsername("placeMediaOwner02").orElseThrow().getId();
         MapPlace place = createMapPlace("미디어 분리 장소", "경상남도 진주시 분리로 1", ownerId);
@@ -1232,8 +1373,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.media[0].sourceMapImageId").value(mapImage.getId()));
     }
 
+    /**
+     * URL만 있고 S3 키가 없는 탐색 미디어 생성 요청을 필드 검증 오류로 거절하는지 확인한다.
+     */
     @Test
-    void createExplorationMediaRejectsMissingS3Key() throws Exception {
+    void rejectsMissingExplorationStorageKey() throws Exception {
         String accessToken = signupAndLogin("placeMediaOwner03");
         Long ownerId = userRepository.findByUsername("placeMediaOwner03").orElseThrow().getId();
         MapPlace place = createMapPlace("미디어 검증 장소", "경상남도 진주시 검증로 1", ownerId);
@@ -1246,8 +1390,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.errors.s3Key").value("s3Key는 필수입니다."));
     }
 
+    /**
+     * 탐색 미디어가 저장되어 있어도 숨김 장소의 공개 조회를 PLACE_NOT_FOUND 404로 거절하는지 확인한다.
+     */
     @Test
-    void getExplorationMediaRejectsHiddenDiscoveryPlace() throws Exception {
+    void rejectsHiddenPlaceExplorationMedia() throws Exception {
         String accessToken = signupAndLogin("placeMediaReader01");
         Long ownerId = userRepository.findByUsername("placeMediaReader01").orElseThrow().getId();
         MapPlace hiddenPlace = createMapPlace("숨김 미디어 장소", "경상남도 진주시 숨김미디어로 1", ownerId);
@@ -1269,8 +1416,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("PLACE_NOT_FOUND"));
     }
 
+    /**
+     * 다른 사용자의 검증 미디어 조회는 403, 장소 등록자의 조회는 빈 목록 200으로 허용하는지 확인한다.
+     */
     @Test
-    void getVerificationMediaRequiresPlaceOwner() throws Exception {
+    void restrictsVerificationMediaToRegistrant() throws Exception {
         String ownerToken = signupAndLogin("placeMediaOwner04");
         String otherToken = signupAndLogin("placeMediaOther04");
         Long ownerId = userRepository.findByUsername("placeMediaOwner04").orElseThrow().getId();
@@ -1287,8 +1437,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.media.length()").value(0));
     }
 
+    /**
+     * 탐색 미디어 삭제 후 해당 행만 없어지고 같은 장소의 검증 미디어는 유지되는지 확인한다.
+     */
     @Test
-    void deleteExplorationMediaDoesNotDeleteVerificationMedia() throws Exception {
+    void preservesVerificationMediaWhenDeletingExploration() throws Exception {
         String accessToken = signupAndLogin("placeMediaOwner05");
         Long ownerId = userRepository.findByUsername("placeMediaOwner05").orElseThrow().getId();
         MapPlace place = createMapPlace("미디어 삭제 장소", "경상남도 진주시 삭제로 1", ownerId);
@@ -1321,8 +1474,11 @@ class PlaceControllerTest {
         assertNotNull(placeMediaRepository.findById(verificationMedia.getId()).orElseThrow());
     }
 
+    /**
+     * 컨트롤러를 null principal로 직접 호출해도 추천 1건과 요청 ID를 반환하는지 확인한다. HTTP 보안 경로를 검증하는 테스트는 아니다.
+     */
     @Test
-    void recommendPlacesAllowsAnonymousUserWhenPrincipalIsNull() {
+    void recommendsWithNullPrincipal() {
         MapPlace mapPlace = createMapPlace("비로그인 추천 장소", "경상남도 진주시 익명로 1", 35.1801, 128.1078, 1L);
         createMapImage(mapPlace, 0L, "비로그인 추천 사진");
 
@@ -1335,8 +1491,11 @@ class PlaceControllerTest {
         assertEquals("비로그인 추천 장소", response.getBody().places().get(0).name());
     }
 
+    /**
+     * 북마크와 사진 반응이 있는 입력에서 개인화 장소가 우선되고 정책 버전·요청 ID·개인화 사유 코드를 반환하는지 확인한다.
+     */
     @Test
-    void recommendPlacesReturnsPersonalizedNearbyPlaces() throws Exception {
+    void returnsPersonalizedNearbyRecommendations() throws Exception {
         String accessToken = signupAndLogin("reader04");
         User reader = userRepository.findByUsername("reader04").orElseThrow();
 
@@ -1372,8 +1531,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.limitReasons").isArray());
     }
 
+    /**
+     * 두 사용자가 seed와 함께 북마크한 장소를 더 가까운 일반 장소보다 먼저 추천하는지 확인한다.
+     */
     @Test
-    void recommendPlacesUsesBookmarkSimilarityForPersonalRanking() throws Exception {
+    void ranksBySharedBookmarkSimilarity() throws Exception {
         String accessToken = signupAndLogin("reader06");
         User reader = userRepository.findByUsername("reader06").orElseThrow();
 
@@ -1408,8 +1570,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].reason").value("저장한 장소와 가까운 추천 장소입니다."));
     }
 
+    /**
+     * 현재 위치는 서울이고 북마크는 진주에 있을 때 위치 반경 밖의 개인화 확장 장소도 추천되는지 확인한다.
+     */
     @Test
-    void recommendPlacesIncludesPersonalCandidatesOutsideCurrentGeoArea() throws Exception {
+    void includesDistantPersonalizedCandidates() throws Exception {
         String accessToken = signupAndLogin("reader19");
         User reader = userRepository.findByUsername("reader19").orElseThrow();
 
@@ -1436,8 +1601,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].name").value("개인화 확장 장소"));
     }
 
+    /**
+     * 개인화 신호가 없는 사용자는 주변 후보 중 사진·좋아요가 많은 장소를 먼저 받고 주변 추천 사유를 받는지 확인한다.
+     */
     @Test
-    void recommendPlacesFallsBackToPopularNearbyPlacesWhenUserHasNoSignals() throws Exception {
+    void ranksPopularWithoutUserSignals() throws Exception {
         String accessToken = signupAndLogin("reader05");
 
         MapPlace popularPlace = createMapPlace("인기 장소", "경상남도 진주시 남강로 10", 35.1803, 128.1079, 4L);
@@ -1461,8 +1629,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].reason", containsString("현재 위치 주변")));
     }
 
+    /**
+     * 현재 위치 주변에 후보가 없어도 최근 집계 스냅샷이 있는 원거리 트렌드 장소가 추천되는지 확인한다.
+     */
     @Test
-    void recommendPlacesIncludesTrendCandidatesWhenNoGeoCandidatesExist() throws Exception {
+    void includesTrendsWithoutNearbyCandidates() throws Exception {
         String accessToken = signupAndLogin("reader20");
         MapPlace trendPlace = createMapPlace("트렌드 후보 장소", "경상남도 진주시 트렌드로 1", 35.1803, 128.1079, 2L);
 
@@ -1489,6 +1660,9 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].name").value("트렌드 후보 장소"));
     }
 
+    /**
+     * 추천 요청 트랜잭션을 실제 커밋한 뒤 비동기 노출 2건의 순위·요청 정보와 각 스냅샷 노출 수 증가를 기다려 확인한다.
+     */
     @Test
     void recommendPlacesRecordsExposureLogs() throws Exception {
         String accessToken = signupAndLogin("reader10");
@@ -1539,8 +1713,11 @@ class PlaceControllerTest {
         cleanupCommittedRecommendationTestData();
     }
 
+    /**
+     * 위치와 사진 반응이 같은 두 후보 중 기존 노출 30건 장소보다 저노출 장소를 우선 선택하는지 확인한다.
+     */
     @Test
-    void recommendPlacesAppliesExplorationBonusForLowExposurePlace() throws Exception {
+    void prefersLowerExposurePlace() throws Exception {
         String accessToken = signupAndLogin("reader11");
 
         MapPlace lowExposurePlace = createMapPlace("저노출 장소", "경상남도 진주시 신안동 1", 35.1803, 128.1079, 1L);
@@ -1560,8 +1737,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].name").value("저노출 장소"));
     }
 
+    /**
+     * 클릭 요청이 201을 반환하고 장소·요청 ID·시각을 저장하며 새 스냅샷의 클릭은 1, 노출은 0으로 유지하는지 확인한다.
+     */
     @Test
-    void recordRecommendationClickStoresLogAndIncreasesSnapshotCount() throws Exception {
+    void recordsClickAndUpdatesSnapshot() throws Exception {
         String accessToken = signupAndLogin("reader12");
         MapPlace clickedPlace = createMapPlace("클릭 장소", "경상남도 진주시 클릭로 1", 35.1803, 128.1079, 1L);
         createMapImage(clickedPlace, 2L, "클릭 사진");
@@ -1591,8 +1771,11 @@ class PlaceControllerTest {
         assertEquals(0L, snapshot.getExposureCount());
     }
 
+    /**
+     * 숨김 장소 클릭을 PLACE_NOT_FOUND 404로 거절하고 클릭 기록과 추천 스냅샷을 생성하지 않는지 확인한다.
+     */
     @Test
-    void recordRecommendationClickRejectsHiddenDiscoveryPlace() throws Exception {
+    void rejectsClicksOnHiddenPlaces() throws Exception {
         String accessToken = signupAndLogin("readerHiddenRecommendationClick" + Long.toUnsignedString(System.nanoTime()));
         MapPlace hiddenPlace = createMapPlace("숨김 추천 클릭 장소", "경상남도 진주시 숨김추천로 1", 35.1803, 128.1079, 1L);
         hiddenPlace.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
@@ -1616,8 +1799,11 @@ class PlaceControllerTest {
         assertFalse(placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
+    /**
+     * 실험 버전 추천을 커밋하고 노출 기록을 기다린 뒤 클릭·북마크를 수행하면 전환이 클릭·특성 로그에 귀속되고 버전이 일치하는지 확인한다.
+     */
     @Test
-    void createBookmarkRecordsRecommendationBookmarkConversion() throws Exception {
+    void attributesBookmarkToRecommendationClick() throws Exception {
         String accessToken = signupAndLogin("reader15");
         MapPlace mapPlace = createMapPlace("북마크 전환 장소", "경상남도 진주시 전환로 1", 35.1803, 128.1079, 1L);
 
@@ -1689,8 +1875,11 @@ class PlaceControllerTest {
         cleanupCommittedRecommendationTestData();
     }
 
+    /**
+     * place-rec-v2를 명시한 추천을 커밋한 뒤 특성 로그와 비동기 노출 기록이 응답의 버전·요청 ID를 유지하는지 확인한다.
+     */
     @Test
-    void recommendPlacesSupportsExplicitExperimentalVersionAndLogsFeatures() throws Exception {
+    void recordsExplicitExperimentalVersion() throws Exception {
         String accessToken = signupAndLogin("reader18");
         MapPlace freshPlace = createMapPlace("실험 신선 후보", "경상남도 진주시 실험로 1", 35.1803, 128.1079, 1L);
         createMapImage(freshPlace, 5L, "실험 후보 사진");
@@ -1730,8 +1919,11 @@ class PlaceControllerTest {
         cleanupCommittedRecommendationTestData();
     }
 
+    /**
+     * 추천 응답의 요청 ID와 실험 버전을 클릭 요청에 전달하면 동일 값으로 클릭 기록이 저장되는지 확인한다.
+     */
     @Test
-    void recordRecommendationClickStoresRequestIdWhenProvided() throws Exception {
+    void preservesRecommendationRequestInClick() throws Exception {
         String accessToken = signupAndLogin("reader19");
         MapPlace clickedPlace = createMapPlace("요청 추적 클릭 장소", "경상남도 진주시 추적으로 1", 35.1803, 128.1079, 1L);
         createMapImage(clickedPlace, 1L, "요청 추적 사진");
@@ -1766,8 +1958,11 @@ class PlaceControllerTest {
         assertEquals(requestId, clicks.get(0).getRequestId());
     }
 
+    /**
+     * 같은 요청 ID에 두 사용자의 특성 로그가 있어도 각 사용자는 본인 장소와 점수 설명만 조회하는지 확인한다.
+     */
     @Test
-    void getRecommendationExplanationReturnsOnlyOwnedLogs() throws Exception {
+    void scopesExplanationsToCurrentUser() throws Exception {
         String ownerToken = signupAndLogin("reader20");
         String otherToken = signupAndLogin("reader21");
 
@@ -1835,8 +2030,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.items[0].placeId").value(otherPlace.getId()));
     }
 
+    /**
+     * 설명 로그가 없는 요청 ID에는 RECOMMENDATION_EXPLANATION_NOT_FOUND 404를 반환하는지 확인한다.
+     */
     @Test
-    void getRecommendationExplanationReturnsNotFoundWhenMissing() throws Exception {
+    void rejectsMissingRecommendationExplanation() throws Exception {
         String accessToken = signupAndLogin("reader22");
 
         mockMvc.perform(get("/places/recommendations/{requestId}/explanation", "missing-request-id")
@@ -1845,14 +2043,20 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.code").value("RECOMMENDATION_EXPLANATION_NOT_FOUND"));
     }
 
+    /**
+     * 인증 없이 추천 설명을 조회하면 401을 반환하는지 확인한다.
+     */
     @Test
-    void getRecommendationExplanationReturnsUnauthorizedWithoutToken() throws Exception {
+    void rejectsUnauthenticatedRecommendationExplanation() throws Exception {
         mockMvc.perform(get("/places/recommendations/{requestId}/explanation", "missing-request-id"))
                 .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * 제거된 단수형 /place 추천·클릭·설명 경로가 모두 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyRecommendationPathsAreNotMapped() throws Exception {
+    void rejectsLegacyRecommendationPaths() throws Exception {
         String accessToken = signupAndLogin("removedLegacyRecommendation");
 
         mockMvc.perform(get("/place/recommendations")
@@ -1874,8 +2078,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 제거된 /map/places/coordinates 경로에 좌표를 전송해도 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyPlaceCoordinatePathIsNotMapped() throws Exception {
+    void rejectsLegacyCoordinateRoute() throws Exception {
         String accessToken = signupAndLogin("removedLegacyCoordinate");
 
         mockMvc.perform(post("/map/places/coordinates")
@@ -1888,8 +2095,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 제거된 /map/places/upload 경로에 등록 본문을 전송해도 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyPlaceUploadPathIsNotMapped() throws Exception {
+    void rejectsLegacyUploadRoute() throws Exception {
         String accessToken = signupAndLogin("removedLegacyUpload");
 
         mockMvc.perform(post("/map/places/upload")
@@ -1905,8 +2115,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 제거된 /map/places/{id}/delete 경로가 인증 요청에도 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyPlaceDeletePathIsNotMapped() throws Exception {
+    void rejectsLegacyDeleteRoute() throws Exception {
         String accessToken = signupAndLogin("removedLegacyDelete");
 
         mockMvc.perform(delete("/map/places/{id}/delete", 1L)
@@ -1914,8 +2127,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 동일 노출 20건에서 클릭 6건인 후보를 클릭 0건인 후보보다 우선하고 클릭 반응 추천 사유를 반환하는지 확인한다.
+     */
     @Test
-    void recommendPlacesAppliesCtrScoreToWellClickedPlace() throws Exception {
+    void prefersStrongerClickResponse() throws Exception {
         String accessToken = signupAndLogin("reader13");
 
         MapPlace wellClickedPlace = createMapPlace("검증된 클릭 반응 장소", "경상남도 진주시 반응로 1", 35.1803, 128.1079, 1L);
@@ -1954,8 +2170,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].reason").value("현재 위치 주변에서 추천 클릭 반응이 좋은 장소입니다."));
     }
 
+    /**
+     * 1회 노출·1회 클릭 후보보다 20회 노출·6회 클릭 후보를 우선하여 작은 표본의 단순 CTR 과대평가를 방지하는지 확인한다.
+     */
     @Test
-    void recommendPlacesProtectsAgainstSingleLuckyClickSample() throws Exception {
+    void downweightsSingleClickSample() throws Exception {
         String accessToken = signupAndLogin("reader14");
 
         MapPlace luckyClickPlace = createMapPlace("우연 클릭 장소", "경상남도 진주시 반응로 3", 35.1803, 128.1079, 1L);
@@ -1993,8 +2212,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].name").value("검증된 반응 장소"));
     }
 
+    /**
+     * 클릭·노출이 같은 두 후보 중 북마크·좋아요 전환이 있는 장소를 우선하고 저장 전환 사유를 반환하는지 확인한다.
+     */
     @Test
-    void recommendPlacesPrefersPlaceWithBetterConversionQuality() throws Exception {
+    void prefersHigherConversionQuality() throws Exception {
         String accessToken = signupAndLogin("reader18");
 
         MapPlace highConversionPlace = createMapPlace("전환 우수 장소", "경상남도 진주시 반응로 5", 35.1803, 128.1079, 1L);
@@ -2037,8 +2259,11 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[0].reason").value("현재 위치 주변에서 저장 전환 반응이 좋은 장소입니다."));
     }
 
+    /**
+     * 북마크 생성 시 스냅샷 북마크 수가 1로 증가하고 삭제 시 0으로 돌아가며 좋아요 수는 유지되는지 확인한다.
+     */
     @Test
-    void createAndRemoveBookmarkRefreshRecommendationSnapshot() throws Exception {
+    void refreshesSnapshotForBookmarkChanges() throws Exception {
         String accessToken = signupAndLogin("reader08");
         MapPlace mapPlace = createMapPlace("북마크 검증 장소", "경상남도 진주시 칠암동 1");
 
@@ -2064,8 +2289,11 @@ class PlaceControllerTest {
         assertEquals(0L, removedSnapshot.getBookmarkCount());
     }
 
+    /**
+     * 숨김 장소 북마크 생성을 PLACE_NOT_FOUND 404로 거절하고 북마크와 추천 스냅샷을 만들지 않는지 확인한다.
+     */
     @Test
-    void createBookmarkRejectsHiddenDiscoveryPlace() throws Exception {
+    void rejectsBookmarkingHiddenPlace() throws Exception {
         String username = "readerHiddenBookmark" + Long.toUnsignedString(System.nanoTime());
         String accessToken = signupAndLogin(username);
         User user = userRepository.findByUsername(username).orElseThrow();
@@ -2087,8 +2315,11 @@ class PlaceControllerTest {
         assertFalse(placeRecommendationSnapshotRepository.existsById(hiddenPlace.getId()));
     }
 
+    /**
+     * 제거된 /map/bookmarks 생성·삭제 요청이 모두 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyBookmarkMethodsAreNotMapped() throws Exception {
+    void rejectsLegacyBookmarkWrites() throws Exception {
         String accessToken = signupAndLogin("legacyPathWriter01");
 
         mockMvc.perform(post("/map/bookmarks")
@@ -2103,8 +2334,11 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 장소 필드를 갖춘 요청 본문을 보내도 제거된 업로드 경로가 404를 반환하는지 확인한다.
+     */
     @Test
-    void removedLegacyPlaceUploadPathIsNotMappedWithValidRequest() throws Exception {
+    void rejectsLegacyUploadWithBody() throws Exception {
         String accessToken = signupAndLogin("legacyPlaceUploadBlocked01");
 
         mockMvc.perform(post("/map/places/upload")
@@ -2120,6 +2354,9 @@ class PlaceControllerTest {
                 .andExpect(status().isNotFound());
     }
 
+    /**
+     * 서로 가까운 인기 후보 둘을 함께 선택하지 않고 떨어진 다양성 후보를 포함한 2개 결과를 반환하는지 확인한다.
+     */
     @Test
     void recommendPlacesAppliesDiversityReranking() throws Exception {
         String accessToken = signupAndLogin("reader07");
@@ -2150,6 +2387,9 @@ class PlaceControllerTest {
                 .andExpect(jsonPath("$.places[*].name", containsInAnyOrder("중복 후보 A", "다양성 후보")));
     }
 
+    /**
+     * 회원가입과 로그인 API의 성공을 확인하고 보호된 장소 요청에 사용할 accessToken을 반환한다.
+     */
     private String signupAndLogin(String username) throws Exception {
         SignupRequest signupRequest = new SignupRequest(username, username + "@example.com", "password123", 1998, null, "ko", "KR");
 
@@ -2170,6 +2410,9 @@ class PlaceControllerTest {
                 .textValue();
     }
 
+    /**
+     * 활성 Merchant 계정·승인된 본인 및 사업자 검증·장소 소유 연결을 저장해 방문 판단의 공개 자격을 준비한다.
+     */
     private User createActiveMerchantForVisitDecision(MapPlace mapPlace, LocalDateTime now) {
         String suffix = Long.toUnsignedString(System.nanoTime());
         User merchant = userRepository.saveAndFlush(User.builder()
@@ -2209,18 +2452,30 @@ class PlaceControllerTest {
         return merchant;
     }
 
+    /**
+     * 이름과 주소만 필요한 테스트에 기본 진주 좌표와 사진 수 0인 장소를 저장한다.
+     */
     private MapPlace createMapPlace(String name, String address) {
         return createMapPlace(name, address, 35.1801, 128.1078, 0L);
     }
 
+    /**
+     * 카테고리·좌표가 필요한 검색 테스트에 사진 수 0인 장소를 저장한다.
+     */
     private MapPlace createMapPlace(String name, String address, String category, double latitude, double longitude) {
         return createMapPlace(name, address, category, latitude, longitude, 0L);
     }
 
+    /**
+     * 추천 비교에 사용할 좌표·사진 수를 받되 카테고리는 지정하지 않은 장소를 저장한다.
+     */
     private MapPlace createMapPlace(String name, String address, double latitude, double longitude, long photoCount) {
         return createMapPlace(name, address, null, latitude, longitude, photoCount);
     }
 
+    /**
+     * 미디어 관리 권한 비교를 위해 지정한 등록 사용자 ID를 가진 장소를 저장한다.
+     */
     private MapPlace createMapPlace(String name, String address, Long userId) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
@@ -2233,6 +2488,9 @@ class PlaceControllerTest {
                 .build());
     }
 
+    /**
+     * 검색·추천 조건에서 바꾸는 카테고리·위경도·사진 수를 받아 공통 등록자 정보와 함께 저장한다.
+     */
     private MapPlace createMapPlace(
             String name,
             String address,
@@ -2253,6 +2511,9 @@ class PlaceControllerTest {
                 .build());
     }
 
+    /**
+     * 영문 검색과 관광 정보 직렬화를 검증할 영문 이름·요약·복수 관광 카테고리 장소를 저장한다.
+     */
     private MapPlace createTouristMapPlace() {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name("진주성")
@@ -2269,6 +2530,9 @@ class PlaceControllerTest {
                 .build());
     }
 
+    /**
+     * 공동 북마크 신호를 만들기 위한 사용자를 API 로그인 없이 직접 저장한다.
+     */
     private User createUser(String username) {
         return userRepository.save(User.builder()
                 .username(username)
@@ -2280,6 +2544,9 @@ class PlaceControllerTest {
                 .build());
     }
 
+    /**
+     * 사용자와 장소의 북마크 연결을 저장하여 추천 유사도 입력을 만든다.
+     */
     private void createBookmark(Long userId, Long placeId) {
         mapBookmarkRepository.save(MapBookmark.builder()
                 .userId(userId)
@@ -2287,6 +2554,9 @@ class PlaceControllerTest {
                 .build());
     }
 
+    /**
+     * 지정한 좋아요 수를 가진 장소 게시물을 저장하여 추천 품질과 미디어 연결 입력을 만든다.
+     */
     private MapImage createMapImage(MapPlace mapPlace, long likeCount, String title) {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl("https://example.com/" + title + ".jpg")
@@ -2300,6 +2570,9 @@ class PlaceControllerTest {
                 .build());
     }
 
+    /**
+     * 서로 다른 사용자 ID로 지정 수만큼 노출 기록을 저장해 저노출 후보와 기존 노출 후보를 비교한다.
+     */
     private void createExposureLogs(Long placeId, int count, double latitude, double longitude) {
         for (int index = 0; index < count; index++) {
             placeRecommendationExposureRepository.save(PlaceRecommendationExposure.builder()
@@ -2313,6 +2586,9 @@ class PlaceControllerTest {
         }
     }
 
+    /**
+     * 커밋 후 비동기 저장 결과를 50ms 간격으로 최대 3초 조회하며 조건 미충족이나 인터럽트는 assertion 실패로 전환한다.
+     */
     private <T> T waitForValue(Supplier<T> supplier, java.util.function.Predicate<T> condition) {
         long deadline = System.currentTimeMillis() + 3_000L;
         T value = supplier.get();
@@ -2333,6 +2609,9 @@ class PlaceControllerTest {
         return value;
     }
 
+    /**
+     * 롤백되지 않는 추천 시나리오가 끝난 뒤 특성·전환·클릭·노출·스냅샷과 관련 장소 데이터를 직접 정리한다.
+     */
     private void cleanupCommittedRecommendationTestData() {
         placeRecommendationFeatureLogRepository.deleteAll();
         placeRecommendationConversionRepository.deleteAll();
