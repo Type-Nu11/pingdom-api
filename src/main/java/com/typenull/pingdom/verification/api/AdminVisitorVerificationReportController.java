@@ -1,5 +1,8 @@
 package com.typenull.pingdom.verification.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -26,7 +29,8 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.VISIT_SCOUT)
 @org.springframework.validation.annotation.Validated
 public class AdminVisitorVerificationReportController {
     private final VisitorVerificationReportService service;
