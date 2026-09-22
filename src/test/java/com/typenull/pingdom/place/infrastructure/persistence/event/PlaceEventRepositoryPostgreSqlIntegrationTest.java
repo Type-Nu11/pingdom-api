@@ -47,6 +47,7 @@ class PlaceEventRepositoryPostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /** Testcontainers PostgreSQL 접속 정보를 Spring datasource에 주입한다. */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -61,14 +62,16 @@ class PlaceEventRepositoryPostgreSqlIntegrationTest {
     @Autowired
     private MapPlaceRepository mapPlaceRepository;
 
+    /** 이벤트를 먼저 지우고 장소를 삭제해 외래 키 순서를 지키며 테스트 DB를 비운다. */
     @BeforeEach
     void cleanDatabase() {
         placeEventRepository.deleteAllInBatch();
         mapPlaceRepository.deleteAllInBatch();
     }
 
+    /** 실제 PostgreSQL에 이벤트를 저장한 뒤 선택 필터를 모두 비활성·null로 조회해 타입 추론 오류 없이 총 건수와 이벤트 제목을 얻는지 확인한다. */
     @Test
-    void adminListQuerySupportsAbsentOptionalFiltersOnPostgreSql() {
+    void queriesWithoutOptionalEventFilters() {
         MapPlace place = mapPlaceRepository.save(MapPlace.builder()
                 .name("진주성")
                 .address("경상남도 진주시 남강로 626")
