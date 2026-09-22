@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.user;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.identity.application.service.admin.AdminRoleAssignmentTargetQueryService;
 import com.typenull.pingdom.moderation.api.dto.user.AdminRoleAssignmentTargetSearchResponse;
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
@@ -25,7 +28,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @AdminOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.MEMBER)
 public class AdminRoleAssignmentTargetController {
 
     private final AdminRoleAssignmentTargetQueryService queryService;
