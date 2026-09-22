@@ -45,6 +45,9 @@ class CommunityReportApiIntegrationTest {
     private String bearer;
     private static final String BODY = "{\"reason\":\"SPAM\",\"description\":\" 도배입니다 \"}";
 
+    /**
+     * 인증 사용자와 신고 대상 글·댓글을 저장해 신고자 식별자 및 두 신고 경로를 준비한다.
+     */
     @BeforeEach
     void setup() {
         User user = users.saveAndFlush(User.builder().username("report-api-user")
@@ -57,8 +60,11 @@ class CommunityReportApiIntegrationTest {
         commentId = comments.saveAndFlush(CommunityPostComment.create(target, reporterId, "댓글")).getId();
     }
 
+    /**
+     * 글·댓글 신고가 201과 PENDING을 반환하고 인증 사용자 ID와 양끝 공백이 제거된 설명으로 저장되는지 검증한다.
+     */
     @Test
-    void 글과_댓글_신고를_인증된_사용자로_저장한다() throws Exception {
+    void storesAuthenticatedContentReports() throws Exception {
         mvc.perform(post(postUrl()).header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.reportId").isNumber())
                 .andExpect(jsonPath("$.status").value("PENDING"));
@@ -72,8 +78,11 @@ class CommunityReportApiIntegrationTest {
         });
     }
 
+    /**
+     * 같은 사용자의 글·댓글 재신고는 대기 중에도, 기존 신고 반려 후에도 409로 거절되는지 검증한다.
+     */
     @Test
-    void 글과_댓글_재신고는_처리_후에도_거절한다() throws Exception {
+    void rejectsRepeatedContentReports() throws Exception {
         for (String url : new String[] {postUrl(), commentUrl()}) {
             mvc.perform(post(url).header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON).content(BODY))
                     .andExpect(status().isCreated());
@@ -88,10 +97,13 @@ class CommunityReportApiIntegrationTest {
         }
     }
 
+    /**
+     * 필수값 누락·알 수 없는 사유·공백 설명을 글과 댓글 신고 API에 전달하면 모두 400이며 저장된 신고가 없는지 검증한다.
+     */
     @ParameterizedTest
     @ValueSource(strings = {"{}", "{\"reason\":\"SPAM\"}", "{\"reason\":\"UNKNOWN\",\"description\":\"설명\"}",
             "{\"reason\":\"SPAM\",\"description\":\"   \"}"})
-    void 잘못된_입력은_저장하지_않는다(String body) throws Exception {
+    void rejectsInvalidReportInput(String body) throws Exception {
         for (String url : new String[] {postUrl(), commentUrl()}) {
             mvc.perform(post(url).header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON).content(body))
                     .andExpect(status().isBadRequest());
@@ -99,24 +111,33 @@ class CommunityReportApiIntegrationTest {
         assertThat(reports.count()).isZero();
     }
 
+    /**
+     * 501자 설명으로 글을 신고하면 400을 반환하고 신고를 저장하지 않는지 검증한다.
+     */
     @Test
-    void 설명_최대_길이를_검증한다() throws Exception {
+    void rejectsOversizedReportDescription() throws Exception {
         String body = "{\"reason\":\"OTHER\",\"description\":\"" + "가".repeat(501) + "\"}";
         mvc.perform(post(postUrl()).header("Authorization", bearer).contentType(MediaType.APPLICATION_JSON).content(body))
                 .andExpect(status().isBadRequest());
         assertThat(reports.count()).isZero();
     }
 
+    /**
+     * 인증 없는 글·댓글 신고는 모두 401을 반환하고 신고 행을 만들지 않는지 검증한다.
+     */
     @Test
-    void 미인증_요청을_거절한다() throws Exception {
+    void rejectsUnauthenticatedReports() throws Exception {
         for (String url : new String[] {postUrl(), commentUrl()}) {
             mvc.perform(post(url).contentType(MediaType.APPLICATION_JSON).content(BODY)).andExpect(status().isUnauthorized());
         }
         assertThat(reports.count()).isZero();
     }
 
+    /**
+     * 없는 글·없는 댓글·다른 글에 속한 댓글을 신고하면 각각의 404 오류 코드를 반환하고 신고를 저장하지 않는지 검증한다.
+     */
     @Test
-    void 없는_글과_댓글_또는_다른_글의_댓글을_거절한다() throws Exception {
+    void rejectsUnavailableReportTargets() throws Exception {
         mvc.perform(post("/community/posts/999999/reports").header("Authorization", bearer)
                         .contentType(MediaType.APPLICATION_JSON).content(BODY))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
@@ -130,6 +151,12 @@ class CommunityReportApiIntegrationTest {
         assertThat(reports.count()).isZero();
     }
 
+    /**
+     * 현재 테스트의 글 신고 URL을 저장된 게시글 ID로 구성한다.
+     */
     private String postUrl() { return "/community/posts/" + postId + "/reports"; }
+    /**
+     * 현재 테스트의 댓글 신고 URL을 저장된 글·댓글 ID로 구성한다.
+     */
     private String commentUrl() { return "/community/posts/" + postId + "/comments/" + commentId + "/reports"; }
 }
