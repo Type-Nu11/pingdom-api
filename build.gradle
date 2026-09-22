@@ -12,6 +12,7 @@ version = '0.0.1-SNAPSHOT'
 description = 'Pingdom'
 
 ext['testcontainers.version'] = '1.21.4'
+ext['tomcat.version'] = '10.1.59'
 
 java {
     toolchain {
