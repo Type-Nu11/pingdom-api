@@ -66,9 +66,9 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 import org.springframework.web.server.ResponseStatusException;
 
+/** 장소 검색과 상세 조회에 필요한 영속성 조회 결과를 공개 응답으로 조합합니다. */
 @Service
 @RequiredArgsConstructor
-/** 장소 검색과 상세 조회에 필요한 영속성 조회 결과를 공개 응답으로 조합합니다. */
 public class PlaceQueryServiceImpl implements PlaceQueryService {
 
     private static final int MAX_SEARCH_LIMIT = 100;
@@ -93,9 +93,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private final PlaceVisitDecisionMetrics placeVisitDecisionMetrics;
     private final Clock clock;
 
+    /** 검색 조건을 조회 쿼리에 전달하고 장소별 부가 데이터를 일괄 조합합니다. */
     @Override
     @Transactional(readOnly = true)
-    /** 검색 조건을 조회 쿼리에 전달하고 장소별 부가 데이터를 일괄 조합합니다. */
     public PlaceListResponse listPlaces(PlaceSearchCondition condition) {
         if (condition == null) {
             throw new MapException(MapErrorCode.PLACE_SEARCH_CONDITION_INVALID);
@@ -155,6 +155,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
+    /**
+     * 좌표와 예약 기간·수량을 검증해 잔여 수용량이 있는 주변 장소를 조회합니다.
+     * 기본 반경은 3km, 기본 수량은 1이며 이 결과는 조회 시점 정보이므로 예약 용량을 점유하지 않습니다.
+     */
     @Override
     @Transactional(readOnly = true)
     public NearbyReservablePlaceResponse listNearbyReservablePlaces(NearbyReservablePlaceCondition condition) {
@@ -202,9 +206,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 place.getProductType(), place.getProductId(), place.getProductName());
     }
 
+    /** 후보를 제한한 뒤 이름·주소·거리 우선순위로 자동완성 결과를 정렬합니다. */
     @Override
     @Transactional(readOnly = true)
-    /** 후보를 제한한 뒤 이름·주소·거리 우선순위로 자동완성 결과를 정렬합니다. */
     public PlaceAutocompleteResponse autocompletePlaces(String keyword, int limit, Double latitude, Double longitude) {
         String normalizedKeyword = normalizeAutocompleteKeyword(keyword);
         int safeLimit = Math.max(1, Math.min(limit, AUTOCOMPLETE_MAX_LIMIT));
@@ -243,9 +247,9 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         return new PlaceAutocompleteResponse(normalizedKeyword, safeLimit, places.size(), places);
     }
 
+    /** 장소 본문과 운영·검증·상업 정보를 하나의 상세 DTO로 변환합니다. */
     @Override
     @Transactional(readOnly = true)
-    /** 장소 본문과 운영·검증·상업 정보를 하나의 상세 DTO로 변환합니다. */
     public PlaceDetailResponse getPlace(Long placeId) {
         MapPlace mapPlace = mapPlaceRepository.findById(placeId)
                 .orElseThrow(() -> new MapException(MapErrorCode.PLACE_NOT_FOUND));
@@ -259,6 +263,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
+    /**
+     * 공개된 장소의 상세·자격을 갖춘 Merchant 정보·진행 중 공개 행사·예약 가능 슬롯·첫 20개 혜택을 묶어 반환합니다.
+     * 임시 휴업은 포함하고 숨김·영구 폐업은 PLACE_NOT_FOUND로 거절합니다. 조합 성공 후 운영 상태별 조회 지표를 증가시킵니다.
+     */
     @Override
     @Transactional(readOnly = true)
     public PlaceVisitDecisionResponse getPlaceVisitDecision(Long placeId) {
@@ -346,6 +354,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
                 .orElse(null);
     }
 
+    /**
+     * 공개 장소의 관광 요약·현재 영업 판단·정보 검증 요약을 카드로 반환합니다.
+     * 임시 휴업은 상태를 보여주기 위해 포함하며 장소 부재·숨김·영구 폐업은 PLACE_NOT_FOUND로 처리합니다.
+     */
     @Override
     @Transactional(readOnly = true)
     public TouristPlaceCardResponse getTouristPlaceCard(Long placeId) {
@@ -384,6 +396,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         );
     }
 
+    /**
+     * 사용자의 북마크 중 운영 중·공개 장소만 페이지로 읽고 관광 카테고리·검증 요약을 일괄 보충합니다.
+     * 사용자 ID는 필수이며 페이지는 1 이상, 크기는 1~100으로 보정합니다.
+     */
     @Override
     @Transactional(readOnly = true)
     public PlaceListResponse listBookmarkedPlaces(Long userId, int page, int limit) {
@@ -629,6 +645,10 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         return normalizedKeyword;
     }
 
+    /**
+     * DB에서 이름·ID 순으로 제한한 최대 100개 후보 안에서 일치 점수·거리·이름·주소·ID 순으로 비교합니다.
+     * 전체 검색 결과에 대한 전역 점수 순위를 보장하는 정렬은 아닙니다.
+     */
     private int compareAutocompletePlaces(
             MapPlace first,
             MapPlace second,
