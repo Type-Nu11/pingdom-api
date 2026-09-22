@@ -36,6 +36,9 @@ class PlaceRecommendationCommerceSignalLoaderTest {
 
     private PlaceRecommendationCommerceSignalLoader loader;
 
+    /**
+     * 혜택과 예약을 같은 고정 시각에 조회하는 로더를 준비합니다.
+     */
     @BeforeEach
     void setUp() {
         loader = new PlaceRecommendationCommerceSignalLoader(
@@ -45,8 +48,11 @@ class PlaceRecommendationCommerceSignalLoaderTest {
         );
     }
 
+    /**
+     * 혜택만·예약만·두 가지 모두 있는 장소를 구분하고 두 저장소가 같은 기준 시각을 받는지 확인합니다.
+     */
     @Test
-    void combinesBenefitAndAvailabilitySignalsAtSameReferenceTime() {
+    void combinesCommerceSignalsAtSameTime() {
         List<Long> placeIds = List.of(1L, 2L, 3L);
         when(touristOfferRepository.findPlaceIdsWithAvailableOffers(placeIds, NOW))
                 .thenReturn(List.of(1L, 3L));
@@ -68,8 +74,11 @@ class PlaceRecommendationCommerceSignalLoaderTest {
         verify(placeAvailabilityRepository).findPlaceIdsWithReservableAvailability(placeIds, NOW);
     }
 
+    /**
+     * 후보가 비어 있으면 빈 맵을 반환하고 혜택·예약 조회를 생략하는지 확인합니다.
+     */
     @Test
-    void emptyCandidatesSkipCommerceQueries() {
+    void skipsEmptyCommerceCandidates() {
         assertThat(loader.load(List.of())).isEmpty();
 
         verifyNoInteractions(touristOfferRepository, placeAvailabilityRepository);

@@ -15,8 +15,11 @@ class PlaceRecommendationCommerceRankingServiceTest {
     private final PlaceRecommendationCommerceRankingService service =
             new PlaceRecommendationCommerceRankingService();
 
+    /**
+     * 혜택 0.05와 예약 0.07을 독립적으로 더해 기본 점수 0.40이 0.52가 되는지 확인합니다.
+     */
     @Test
-    void activeBenefitAndAvailabilityBoostAreAddedIndependently() {
+    void addsIndependentCommerceBoosts() {
         MapPlace place = mock(MapPlace.class);
         when(place.getId()).thenReturn(1L);
         ScoredCandidate candidate = candidate(place, 0.40d);
@@ -33,8 +36,11 @@ class PlaceRecommendationCommerceRankingServiceTest {
         assertThat(boosted.finalScore()).isEqualTo(0.52d);
     }
 
+    /**
+     * 상거래 신호가 없으면 각 가점은 0이고 기존 최종 점수가 유지되는지 확인합니다.
+     */
     @Test
-    void missingCommerceSignalKeepsScoreUnchanged() {
+    void preservesScoreWithoutCommerce() {
         MapPlace place = mock(MapPlace.class);
         when(place.getId()).thenReturn(1L);
         ScoredCandidate candidate = candidate(place, 0.40d);
@@ -51,6 +57,9 @@ class PlaceRecommendationCommerceRankingServiceTest {
         assertThat(unchanged.finalScore()).isEqualTo(0.40d);
     }
 
+    /**
+     * 지정 최종 점수를 가진 상거래 가점 전 후보를 만듭니다.
+     */
     private ScoredCandidate candidate(MapPlace place, double finalScore) {
         return new ScoredCandidate(
                 place,
