@@ -23,8 +23,11 @@ import org.springframework.data.domain.Pageable;
 
 class PlaceTrendQueryServiceTest {
 
+    /**
+     * 요청 기간이 이력 수집 시작보다 이르면 시작을 수집 시각으로 보정하고 두 번째 페이지 순위·순증·북마크 정보를 유지하는지 확인합니다.
+     */
     @Test
-    void 이력_수집_시작_전_기간은_기준_시점부터_집계하고_페이지_순위를_유지한다() {
+    void clampsTrendTrackingWindow() {
         LocalDateTime now = LocalDateTime.of(2026, 8, 27, 12, 0);
         LocalDateTime trackingStartedAt = now.minusDays(2);
         PlaceTrendQueryRepository queryRepository = mock(PlaceTrendQueryRepository.class);
@@ -58,6 +61,9 @@ class PlaceTrendQueryServiceTest {
         verify(queryRepository).findTrends(eq(trackingStartedAt), eq(now), eq(7L), any(Pageable.class));
     }
 
+    /**
+     * 추가·해제·순증·현재 북마크 수를 지정하는 트렌드 조회 행을 만듭니다.
+     */
     private PlaceTrendQueryRepository.PlaceTrendProjection projection(
             Long placeId,
             long bookmarkAdds,
@@ -67,15 +73,25 @@ class PlaceTrendQueryServiceTest {
             boolean bookmarked
     ) {
         return new PlaceTrendQueryRepository.PlaceTrendProjection() {
+            /** 트렌드 응답 행의 장소 ID를 제공한다. */
             @Override public Long getPlaceId() { return placeId; }
+            /** 트렌드 응답에 표시할 고정 장소명을 제공한다. */
             @Override public String getPlaceName() { return "트렌드 장소"; }
+            /** 응답 매핑에 사용할 카페 카테고리를 제공한다. */
             @Override public String getCategory() { return "카페"; }
+            /** 응답 매핑에 사용할 대표 이미지 URL을 제공한다. */
             @Override public String getImageUrl() { return "https://example.com/trend.jpg"; }
+            /** 응답 매핑에 사용할 서울 주소를 제공한다. */
             @Override public String getAddress() { return "서울특별시"; }
+            /** 기간 내 북마크 추가 집계값을 제공한다. */
             @Override public long getBookmarkAdds() { return bookmarkAdds; }
+            /** 기간 내 북마크 해제 집계값을 제공한다. */
             @Override public long getBookmarkRemoves() { return bookmarkRemoves; }
+            /** 추가에서 해제를 뺀 순증 집계값을 제공한다. */
             @Override public long getNetBookmarkGrowth() { return netBookmarkGrowth; }
+            /** 현재 누적 북마크 수를 제공한다. */
             @Override public long getBookmarkCount() { return bookmarkCount; }
+            /** 조회 사용자 본인의 북마크 여부를 제공한다. */
             @Override public boolean getBookmarked() { return bookmarked; }
         };
     }

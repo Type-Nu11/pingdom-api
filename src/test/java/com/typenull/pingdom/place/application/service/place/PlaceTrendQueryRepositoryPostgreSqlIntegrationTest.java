@@ -43,6 +43,9 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * 트렌드 원본 SQL을 실행할 테스트 PostGIS 데이터소스를 연결합니다.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -54,6 +57,9 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
     @Autowired private PlaceTrendQueryRepository placeTrendQueryRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
 
+    /**
+     * 추세 이력과 현재 북마크·이미지·장소 행을 의존 순서대로 제거합니다.
+     */
     @AfterEach
     void cleanUp() {
         jdbcTemplate.update("DELETE FROM map_bookmark_trend_event");
@@ -62,8 +68,11 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
         jdbcTemplate.update("DELETE FROM map_place");
     }
 
+    /**
+     * 기간 내 반복 추가·해제를 사용자별 순증으로 계산하고 숨김 장소 제외·동률 정렬·현재 북마크 정보를 실제 SQL 결과로 확인합니다.
+     */
     @Test
-    void 사용자별_시작과_종료_상태로_반복_토글을_한번만_집계하고_안정적으로_정렬한다() {
+    void deduplicatesBookmarkToggleGrowth() {
         LocalDateTime periodStart = LocalDateTime.now(ZoneOffset.UTC).minusDays(7);
         LocalDateTime periodEnd = LocalDateTime.now(ZoneOffset.UTC);
         Long firstPlaceId = insertPlace("토글 포함 트렌드", "카페");
@@ -105,6 +114,9 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
                 .containsExactly(2L, 1L, 1L, 2L, true);
     }
 
+    /**
+     * 동일 지역의 트렌드 비교용 장소를 생성합니다.
+     */
     private Long insertPlace(String name, String category) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO map_place (
@@ -114,6 +126,9 @@ class PlaceTrendQueryRepositoryPostgreSqlIntegrationTest {
                 """, Long.class, name, name + " 주소", category, 35.18d, 128.10d, 128.10d, 35.18d, "trend-test");
     }
 
+    /**
+     * 사용자·현재 장소·원본 장소와 발생 시각을 지정한 북마크 상태 이력을 삽입합니다.
+     */
     private void insertEvent(Long userId, Long placeId, Long originPlaceId, String eventType, LocalDateTime occurredAt) {
         jdbcTemplate.update("""
                 INSERT INTO map_bookmark_trend_event (
