@@ -41,6 +41,7 @@ enum CandidateSource {
     TREND
 }
 
+/** 여러 원천에서 합친 장소와 현재 영업 상태입니다. 일정이 없으면 영업 여부·확인 시각은 null입니다. */
 record CandidatePlace(
         MapPlace place,
         Set<CandidateSource> sources,
@@ -87,6 +88,7 @@ final class CandidatePlaceAccumulator {
     }
 }
 
+/** 품질·참여·전환·탐색 점수를 후보 집합 안에서 정규화하기 전의 계산 결과입니다. */
 record IntermediateCandidate(
         MapPlace place,
         double distanceMeters,
@@ -189,6 +191,7 @@ record ScoredCandidate(
     }
 }
 
+/** 원본 폴백과 저장 스냅샷을 구분하여 사진 수와 전환 수를 점수 계산에 전달합니다. */
 final class PlaceAggregate {
     long photoCount;
     long bookmarkCount;
