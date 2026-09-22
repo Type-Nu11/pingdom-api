@@ -46,6 +46,9 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * 테스트 전용 PostGIS 컨테이너의 접속 정보를 Spring 데이터소스에 연결합니다.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -59,6 +62,9 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
     @Autowired private PlaceAdministrativeRegionRepository regionRepository;
     @Autowired private JdbcTemplate jdbcTemplate;
 
+    /**
+     * 각 사례가 만든 북마크·이미지·장소·지역 행을 의존 순서대로 정리합니다.
+     */
     @AfterEach
     void cleanUp() {
         jdbcTemplate.update("DELETE FROM map_bookmark");
@@ -67,8 +73,11 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
         jdbcTemplate.update("DELETE FROM place_administrative_region");
     }
 
+    /**
+     * 지정 지역의 공개 장소만 현재 북마크 수로 집계하고 동률 ID 순서와 사용자 북마크 여부를 PostgreSQL 결과로 확인합니다.
+     */
     @Test
-    void 지역과_노출상태를_제한하고_현재_북마크수와_장소ID로_안정적으로_정렬한다() {
+    void ranksVisibleRegionalBookmarks() {
         insertRegion("11680", "서울특별시", "강남구");
         Long popularPlaceId = insertPlace("인기 장소", "11680");
         Long tiePlaceId = insertPlace("동률 장소", "11680");
@@ -98,8 +107,11 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
                 .containsExactly(true, true);
     }
 
+    /**
+     * 행정구역 생성 후 이름·시각 갱신과 장소 지역 코드 변경이 실제 저장소 재조회에 반영되는지 확인합니다.
+     */
     @Test
-    void 지역_신규_저장과_기존_갱신_그리고_장소_regionCode_저장이_PostgreSQL에_반영된다() {
+    void persistsAdministrativeRegionUpdates() {
         Long placeId = insertPlace("행정구역 저장 장소", null);
         LocalDateTime createdAt = LocalDateTime.of(2026, 9, 17, 10, 0);
         regionRepository.saveAndFlush(PlaceAdministrativeRegion.from(
@@ -125,8 +137,11 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
         assertThat(mapPlaceRepository.findById(placeId).orElseThrow().getRegionCode()).isEqualTo("11680");
     }
 
+    /**
+     * 지역 코드가 null인 장소만 백필 후보로 조회되는지 확인합니다.
+     */
     @Test
-    void backfill_대상은_regionCode가_없는_기존_장소로만_제한된다() {
+    void selectsMissingRegionBackfill() {
         Long missingRegionCodePlaceId = insertPlace("backfill 대상", null);
         Long assignedRegionCodePlaceId = insertPlace("backfill 제외", "11680");
 
@@ -136,6 +151,9 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
                 .doesNotContain(assignedRegionCodePlaceId);
     }
 
+    /**
+     * 지역 코드와 시도·시군구를 DB fixture로 삽입합니다.
+     */
     private void insertRegion(String code, String sido, String sigungu) {
         jdbcTemplate.update(
                 "INSERT INTO place_administrative_region (region_code, sido, sigungu, region_name, updated_at) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP)",
@@ -146,6 +164,9 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
         );
     }
 
+    /**
+     * 지정 지역 코드와 공간 좌표를 가진 장소를 삽입하고 생성 ID를 반환합니다.
+     */
     private Long insertPlace(String name, String regionCode) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO map_place (
@@ -155,6 +176,9 @@ class PlaceLocalHotQueryRepositoryPostgreSqlIntegrationTest {
                 """, Long.class, name, name + " 주소", "카페", 37.5d, 127.0d, 127.0d, 37.5d, "local-hot-test", regionCode);
     }
 
+    /**
+     * 사용자별 현재 북마크 수와 본인 저장 여부 검증용 행을 추가합니다.
+     */
     private void insertBookmark(Long userId, Long placeId) {
         jdbcTemplate.update("INSERT INTO map_bookmark (user_id, place_id, created_at) VALUES (?, ?, CURRENT_TIMESTAMP)", userId, placeId);
     }
