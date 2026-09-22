@@ -11,6 +11,11 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 개인 반응 시드와 후보를 최대 64개 노드로 묶어 유사도 그래프의 개인 친화도를 계산합니다.
+ * 시드를 먼저 넣으므로 시드 수에 따라 일부 후보는 그래프에 포함되지 않아 점수가 0으로 남습니다.
+ * 재시작 확률 0.35로 12번 전파한 점수를 후보 최대값으로 나누어 반환합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceRecommendationGraphAffinityService {
@@ -23,6 +28,11 @@ public class PlaceRecommendationGraphAffinityService {
 
     private final PlaceRecommendationSimilarityService placeRecommendationSimilarityService;
 
+    /**
+     * 양수 seed 가중치가 높은 노드를 먼저 선택해 최대 64개 노드의 유사도 그래프에서 개인화 점수를 전파합니다.
+     * 12회 재시작 전파 후 후보 최대값으로 정규화하며 seed나 후보가 없으면 모든 후보에 0을 반환합니다.
+     * 선택 한도 밖 후보도 응답에는 남지만 그래프 전파를 받지 않아 0점이 됩니다.
+     */
     public Map<Long, Double> score(
             Collection<Long> candidatePlaceIds,
             Map<Long, Double> seedWeights,
@@ -100,6 +110,10 @@ public class PlaceRecommendationGraphAffinityService {
         return prior;
     }
 
+    /**
+     * 유사도 0.05 이상인 이웃 중 노드별 상위 8개를 확률 합 1로 정규화합니다.
+     * 이웃이 없으면 자기 자신으로 돌아가는 간선을 두어 전파 점수가 사라지지 않게 합니다.
+     */
     private Map<Long, List<GraphEdge>> buildTransitionGraph(
             Set<Long> graphNodeIds,
             PlaceRecommendationSimilarityService.SimilarityContext similarityContext
