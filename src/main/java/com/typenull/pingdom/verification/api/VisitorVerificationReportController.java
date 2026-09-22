@@ -25,6 +25,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 인증 사용자의 방문 제보 및 정정 제출·이력 조회를 제공한다.
+ * 입력 validation 후 principal ID를 서비스에 전달해 관광객 계정·작성자 권한을 확인한다.
+ */
 @RestController
 @RequestMapping("/visitor-verification-reports")
 @RequiredArgsConstructor
