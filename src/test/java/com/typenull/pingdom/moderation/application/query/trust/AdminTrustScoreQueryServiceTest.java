@@ -36,13 +36,20 @@ class AdminTrustScoreQueryServiceTest {
 
     private AdminTrustScoreQueryService service;
 
+    /**
+     * 신고 제한의 현재 유효 여부를 판정할 서울 시간대 고정 Clock으로 신뢰도 조회 서비스를 만든다.
+     */
     @BeforeEach
     void setUp() {
         service = new AdminTrustScoreQueryService(reporterModerationPolicyRepository, FIXED_CLOCK);
     }
 
+    /**
+     * 신고 정책을 조회하면 신고자 정보·점수 80·HIGH 등급과 접수·수락·기각·허위 건수를 응답하는지 검증한다.
+     * 수락률 66.67%, 기본점수·가산·감점 근거와 비제한 상태도 확인한다.
+     */
     @Test
-    void getTrustScoreReturnsGradeAndEvidence() {
+    void returnsTrustGradeAndEvidence() {
         Long reporterUserId = 7L;
         ReporterModerationPolicy policy = ReporterModerationPolicy.builder()
                 .reporterUserId(reporterUserId)
@@ -72,8 +79,11 @@ class AdminTrustScoreQueryServiceTest {
         assertEquals(60L, response.evidence().falseReportScorePenalty());
     }
 
+    /**
+     * 낮은 점수와 미래 제한 기한이 있는 신고자는 LOW 등급, 제한 true, 기한과 사유를 응답하는지 검증한다.
+     */
     @Test
-    void getTrustScoreReturnsRestrictedState() {
+    void returnsActiveTrustRestriction() {
         Long reporterUserId = 7L;
         LocalDateTime restrictedUntil = LocalDateTime.of(2026, 7, 21, 21, 0);
         ReporterModerationPolicy policy = ReporterModerationPolicy.builder()
@@ -97,8 +107,11 @@ class AdminTrustScoreQueryServiceTest {
         assertEquals("FALSE_REPORT_THRESHOLD_EXCEEDED", response.restrictionReason());
     }
 
+    /**
+     * 신고자 정책이 없으면 TRUST_SCORE_REPORTER_POLICY_NOT_FOUND 오류를 반환하는지 검증한다.
+     */
     @Test
-    void getTrustScoreThrowsWhenPolicyNotFound() {
+    void rejectsMissingTrustPolicy() {
         Long reporterUserId = 7L;
         when(reporterModerationPolicyRepository.findById(reporterUserId)).thenReturn(Optional.empty());
 
