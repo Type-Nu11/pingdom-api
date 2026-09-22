@@ -21,6 +21,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.util.UriComponentsBuilder;
 
+/**
+ * OAuth 인증 성공 후 회원 상태를 재확인하고 로그인 토큰 쿠키 또는 계정 연결 완료 리다이렉트를 보냅니다.
+ * 로그인은 회원 행 잠금 안에서 refresh token을 교체하고 access token은 60초 전달용 쿠키에 담습니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class OAuth2SuccessHandler implements AuthenticationSuccessHandler {
