@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 활성 회원의 Google 계정 연결·해제를 처리합니다.
+ * 연결 시 이메일 일치를 확인하고 마지막 OAuth 연결을 해제할 때 로컬 비밀번호를 검증합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class OAuthAccountCommandService {
@@ -25,6 +29,10 @@ public class OAuthAccountCommandService {
     private final PasswordEncoder passwordEncoder;
     private final Clock clock;
 
+    /**
+     * 탈퇴·정지되지 않은 회원의 이메일과 Google 이메일이 일치할 때 공급자 식별자를 연결하고 회원을 반환합니다.
+     * 같은 회원에 이미 연결됐으면 그대로 반환하고, 다른 회원의 연결이나 누락된 Google 속성은 거절합니다.
+     */
     @Transactional
     public User linkGoogleAccount(Long userId, String providerId, String email) {
         User user = findActiveUser(userId);
@@ -51,6 +59,10 @@ public class OAuthAccountCommandService {
         return user;
     }
 
+    /**
+     * 탈퇴·정지되지 않은 회원의 Google 연결을 제거하며 미연결 상태는 거절합니다.
+     * 마지막 OAuth 연결이면 로컬 비밀번호 사용 가능 여부와 현재 비밀번호를 확인해 로그인 수단 상실을 막습니다.
+     */
     @Transactional
     public void unlinkGoogleAccount(Long userId, String currentPassword) {
         User user = findActiveUser(userId);
