@@ -11,6 +11,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소별 사업자 추가 정보를 보관하고 수정자를 기록합니다.
+ * 문자열은 앞뒤 공백을 제거하고 빈 값은 null로 바꾸며 수정 시 기존 필드를 모두 교체합니다.
+ */
 @Getter
 @Entity
 @Table(name = "merchant_place_information")
