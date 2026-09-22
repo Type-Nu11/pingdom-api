@@ -2,6 +2,9 @@ package com.typenull.pingdom.integration.swagger.fixture;
 
 import java.util.List;
 
+/**
+ * 문서 그룹의 경로·메서드·상태와 진단 설명을 묶는다. 오류 코드 대신 오류 설명을 쓰는 시나리오는 expectedErrorCode가 null이다.
+ */
 public record OpenApiCompatibilityScenario(
         String name,
         OpenApiCompatibilityDomain domain,
