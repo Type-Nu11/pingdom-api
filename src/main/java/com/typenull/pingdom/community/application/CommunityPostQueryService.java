@@ -25,6 +25,10 @@ import java.util.List;
 import java.util.Map;
 import java.util.function.Function;
 
+/**
+ * 숨김 게시글·댓글을 제외해 목록과 상세를 읽고 연결 장소 및 댓글 작성자 정보를 조합합니다.
+ * 삭제된 장소 연결은 보존된 ID와 삭제 안내로, 조회되지 않는 작성자는 대체 이름으로 반환합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class CommunityPostQueryService {
@@ -36,6 +40,10 @@ public class CommunityPostQueryService {
     private final CommunityPostCommentRepository communityPostCommentRepository;
     private final UserRepository userRepository;
 
+    /**
+     * 활성 카테고리인지 확인한 뒤 숨김되지 않은 게시글의 ID·제목을 최신 생성 시각·ID 순의 페이지로 반환합니다.
+     * 잘못된 카테고리는 거절하며 외부의 1부터 시작하는 페이지를 저장소 조회용 인덱스로 변환합니다.
+     */
     @Transactional(readOnly = true)
     public CommunityPostListResponse findByCategory(String categoryId, int page, int limit) {
         CommunityPostCategory.findEnabledById(categoryId)
@@ -59,6 +67,10 @@ public class CommunityPostQueryService {
         );
     }
 
+    /**
+     * 숨김되지 않은 게시글의 제목·본문과 연결 장소를 반환하고 없는 글은 POST_NOT_FOUND로 거절합니다.
+     * 이미 삭제된 장소 연결은 보존된 ID와 삭제 안내를 포함해 반환합니다.
+     */
     @Transactional(readOnly = true)
     public CommunityPostDetailResponse findDetail(long postId) {
         CommunityPost post = requirePost(postId);
@@ -71,6 +83,10 @@ public class CommunityPostQueryService {
         return new CommunityPostDetailResponse(post.getId(), post.getTitle(), post.getContent(), places);
     }
 
+    /**
+     * 공개 게시글의 숨김되지 않은 댓글을 최신순으로 조회하고 작성자를 일괄 조회해 페이지 응답에 결합합니다.
+     * 숨김·없는 게시글은 거절하며 조회되지 않는 작성자는 대체 이름으로 표시합니다.
+     */
     @Transactional(readOnly = true)
     public CommunityPostCommentListResponse findComments(long postId, int page, int limit) {
         requirePost(postId);
