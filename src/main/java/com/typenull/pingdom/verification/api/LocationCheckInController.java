@@ -21,6 +21,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.*;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 인증 principal의 사용자 ID와 검증한 관측 입력을 근접 체크인 서비스에 전달한다.
+ * 생성 응답은 201이며 본인 목록은 1부터 시작하는 페이지와 최대 100건 크기를 받는다.
+ */
 @RestController
 @RequestMapping("/location-check-ins")
 @RequiredArgsConstructor
