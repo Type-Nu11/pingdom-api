@@ -11,6 +11,10 @@ import java.util.HashSet;
 import java.util.List;
 import org.springframework.util.StringUtils;
 
+/**
+ * 리뷰 본문과 추천 사유, 미리 업로드한 사진 ID를 검증합니다.
+ * 추천 사유는 기존 단일 문자열과 새 코드 목록 중 하나만 허용하며 외부 imageUrls 입력과 중복 사진 ID는 거부합니다.
+ */
 @Schema(description = "장소 리뷰 작성 요청. recommendReasons와 reviewMediaIds가 새 표준 계약입니다.")
 public record PlaceReviewCreateRequest(
         @Deprecated
