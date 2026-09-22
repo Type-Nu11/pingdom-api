@@ -39,6 +39,10 @@ class PlaceRegistrationMediaBackfillRunner implements ApplicationRunner {
         );
     }
 
+    /**
+     * 완료 장소가 있는 신청을 페이지 단위로 순회하며 건별 독립 트랜잭션 서비스에 복구를 위임합니다.
+     * 개별 실패는 집계 후 다음 신청을 처리하며, 한 페이지만 처리하는 실행 횟수 제한은 없습니다.
+     */
     BackfillSummary runBackfill() {
         int processedApplications = 0;
         int skippedApplications = 0;
