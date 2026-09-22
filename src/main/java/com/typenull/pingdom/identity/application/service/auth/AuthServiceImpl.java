@@ -43,9 +43,9 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/** 회원가입, 로그인, 이메일·비밀번호 인증, 토큰 갱신과 탈퇴 흐름을 조정합니다. */
 @Service
 @RequiredArgsConstructor
-/** 회원가입, 로그인, 이메일·비밀번호 인증, 토큰 갱신과 탈퇴 흐름을 조정합니다. */
 public class AuthServiceImpl implements AuthService {
 
     private static final long EMAIL_VERIFICATION_EXPIRATION_MINUTES = 10L;
@@ -64,6 +64,10 @@ public class AuthServiceImpl implements AuthService {
     private final Clock clock;
     private final AuthMetrics authMetrics;
 
+    /**
+     * 중복 사용자명·이메일을 거절하고 암호화한 비밀번호로 회원을 저장해 가입 응답을 반환합니다.
+     * 이메일이 있으면 10분 유효 인증 코드를 발급하고 이메일 발송 요청을 Outbox에 기록합니다.
+     */
     @Override
     @Transactional
     // 이메일 포함 회원가입 저장 기능
@@ -106,14 +110,18 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    /** 자격 증명과 계정 상태를 확인한 뒤 access·refresh token을 발급합니다. */
     @Override
     @Transactional
-    /** 자격 증명과 계정 상태를 확인한 뒤 access·refresh token을 발급합니다. */
     public LoginResult login(LoginRequest request) {
         User user = authenticateUser(request);
         return issueLoginResponse(user);
     }
 
+    /**
+     * 사용자명으로 회원 행을 잠근 뒤 ADMIN 여부·정지·탈퇴 상태와 비밀번호를 확인합니다.
+     * 검증 실패는 인증 오류로 거절하고 성공하면 access token과 새 refresh token을 발급해 후자를 회원에 저장합니다.
+     */
     @Override
     @Transactional
     public LoginResult adminLogin(LoginRequest request) {
@@ -138,6 +146,10 @@ public class AuthServiceImpl implements AuthService {
         return issueLoginResponse(user);
     }
 
+    /**
+     * 이메일로 회원을 찾아 정지·탈퇴·인증 완료 상태를 거절한 뒤 10분 유효 인증 코드를 새로 발급합니다.
+     * 새 코드 발송을 Outbox에 요청하며 이메일이 없는 회원 조회는 USER_NOT_FOUND로 실패합니다.
+     */
     @Override
     @Transactional
     public void resendVerificationEmail(EmailResendRequest request) {
@@ -159,6 +171,10 @@ public class AuthServiceImpl implements AuthService {
         storeEmailVerificationOutboxEvent(user);
     }
 
+    /**
+     * 이메일과 인증 코드가 일치하는 회원의 탈퇴 여부와 코드 만료를 확인한 뒤 이메일을 인증 완료로 바꿉니다.
+     * 일치하는 코드가 없거나 만료됐으면 각각 인증 코드 오류로 거절합니다.
+     */
     @Override
     @Transactional
     // 이메일 기준 사용자 인증 처리 메서드
@@ -178,6 +194,10 @@ public class AuthServiceImpl implements AuthService {
         user.verifyEmail();
     }
 
+    /**
+     * 존재하며 탈퇴·정지되지 않은 이메일에만 재설정 토큰을 발급합니다.
+     * 해당하지 않는 이메일은 같은 정상 반환 경로를 사용해 이 메서드의 응답으로 계정 존재를 구분하지 않습니다.
+     */
     @Override
     @Transactional
     public void requestPasswordReset(PasswordResetRequest request) {
@@ -187,6 +207,10 @@ public class AuthServiceImpl implements AuthService {
                 .ifPresent(this::issuePasswordReset);
     }
 
+    /**
+     * 토큰 행과 사용자 행을 잠그고 만료·사용 여부·이메일·계정 상태를 확인한 후 비밀번호를 교체합니다.
+     * 저장된 refresh token과 남아 있는 재설정 토큰도 무효화하며 이미 발급된 access token을 여기서 회수하지는 않습니다.
+     */
     @Override
     @Transactional
     public void confirmPasswordReset(PasswordResetConfirmRequest request) {
@@ -221,10 +245,10 @@ public class AuthServiceImpl implements AuthService {
         passwordResetTokenRepository.markActiveTokensUsed(user.getId(), now);
     }
 
+    /** 쿠키의 refresh token과 저장된 세션을 대조해 access token을 재발급합니다. */
     @Override
     @Transactional
     // Refresh Token 기준 토큰 재발급 메서드
-    /** 쿠키의 refresh token과 저장된 세션을 대조해 access token을 재발급합니다. */
     public TokenRefreshResult refreshToken(String refreshToken) {
         try {
             Long userId = extractValidRefreshTokenUserId(refreshToken);
@@ -239,6 +263,7 @@ public class AuthServiceImpl implements AuthService {
                 throw new AuthException(AuthErrorCode.USER_BANNED);
             }
 
+            // 회원 행 잠금 안에서 현재 토큰을 대조하므로 회전이 완료된 뒤 이전 토큰을 재사용하면 거부됩니다.
             if (!user.matchesRefreshToken(refreshToken)) {
                 throw new AuthException(AuthErrorCode.INVALID_TOKEN);
             }
@@ -258,6 +283,10 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * 유효한 refresh token의 회원 행을 잠그고 현재 저장 토큰과 일치할 때만 세션 토큰을 제거합니다.
+     * 탈퇴 회원이나 이미 교체된 토큰은 변경 없이 종료하고, 잘못된 토큰·없는 회원은 인증 오류로 거절합니다.
+     */
     @Override
     @Transactional
     // Refresh Token 무효화 기반 로그아웃 메서드
@@ -306,6 +335,10 @@ public class AuthServiceImpl implements AuthService {
         }
     }
 
+    /**
+     * 기존 미사용 토큰을 사용 처리한 뒤 새 토큰의 SHA-256 해시를 저장합니다.
+     * 전달용 원문 토큰은 이메일 발송을 위한 outbox payload에 포함됩니다.
+     */
     private void issuePasswordReset(User user) {
         LocalDateTime issuedAt = now();
         LocalDateTime expiresAt = issuedAt.plusMinutes(PASSWORD_RESET_EXPIRATION_MINUTES);
@@ -347,6 +380,10 @@ public class AuthServiceImpl implements AuthService {
         );
     }
 
+    /**
+     * 회원 행을 잠그고 아직 탈퇴하지 않은 회원의 식별 정보를 익명화한 뒤 보존 대상 탈퇴 상태로 전환합니다.
+     * 탈퇴 요청·익명화 Outbox 기록, 접근 상태 캐시 제거와 사용자 소유 데이터 정리를 수행하며 반복 탈퇴는 그대로 종료합니다.
+     */
     @Override
     @Transactional
     // 회원탈퇴 익명화 및 보존 상태 전환 메서드

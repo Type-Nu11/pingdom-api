@@ -9,6 +9,10 @@ import com.typenull.pingdom.identity.api.dto.passwordreset.PasswordResetRequest;
 import com.typenull.pingdom.identity.api.dto.signup.SignupRequest;
 import com.typenull.pingdom.identity.api.dto.signup.UserResponse;
 
+/**
+ * 가입·로그인·인증 복구·세션 회전·탈퇴의 애플리케이션 진입 계약입니다.
+ * 토큰을 HTTP 쿠키에 넣거나 제거하는 책임은 이 계약을 호출하는 API 계층에 있습니다.
+ */
 public interface AuthService {
     public UserResponse signup(SignupRequest request);
 
