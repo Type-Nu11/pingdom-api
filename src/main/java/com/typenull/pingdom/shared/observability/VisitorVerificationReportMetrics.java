@@ -7,6 +7,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/** 방문자 제보와 정정 신청의 제출·상태 전이를 기록한다. 카운터 증가는 DB 트랜잭션 롤백과 함께 취소되지 않는다. */
 @Component
 public class VisitorVerificationReportMetrics {
 
