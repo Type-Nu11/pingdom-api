@@ -21,13 +21,13 @@ import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/** 신고 승인·반려와 신고 사용자 조회 요청을 관리자 서비스로 전달합니다. */
 @RestController
 @RequestMapping("/admin/reports")
 @RequiredArgsConstructor
 @AdminOnly
 @ApiAudience(ApiAudience.Group.ADMIN)
 @Tag(name = SwaggerTagCatalog.REPORT_APPEAL)
-/** 신고 승인·반려와 신고 사용자 조회 요청을 관리자 서비스로 전달합니다. */
 public class AdminReportController {
 
     private final AdminReportService adminReportService;
