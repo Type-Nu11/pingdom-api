@@ -95,14 +95,21 @@ class UserDataExportServiceTest {
     @InjectMocks
     private UserDataExportService userDataExportService;
 
+    /**
+     * 내보내기에서 활동 의도와 쿠폰의 만료 여부를 판정할 UTC 현재 시각을 고정한다.
+     */
     @BeforeEach
     void setUpClock() {
         when(clock.instant()).thenReturn(Instant.parse("2026-08-01T10:00:00Z"));
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 사용자·북마크·좋아요·여행 일정·활동 의도·점주 인증·혜택·쿠폰이 내보내기 결과에 매핑되는지 검증한다.
+     * 사업자 번호 복호화, 만료 쿠폰 상태 및 요청자와 대상자가 같은 개인정보 처리 이벤트도 확인한다.
+     */
     @Test
-    void 내_데이터를_정해진_형태로_내보낸다() {
+    void exportsPersonalData() {
         Long userId = 1L;
         User user = User.builder()
                 .id(userId)
@@ -212,8 +219,11 @@ class UserDataExportServiceTest {
                 .containsExactly(userId, userId, com.typenull.pingdom.privacy.domain.PrivacyProcessingAction.EXPORT_REQUESTED);
     }
 
+    /**
+     * 내보내기의 최근 좋아요 조회에 페이지 크기 50을 전달하는지 확인해 조회량 제한 계약을 검증한다.
+     */
     @Test
-    void 좋아요는_최대_50개만_조회한다() {
+    void limitsExportedLikesQuery() {
         Long userId = 1L;
         User user = User.builder()
                 .id(userId)
@@ -234,8 +244,11 @@ class UserDataExportServiceTest {
         assertThat(pageableCaptor.getValue().getPageSize()).isEqualTo(50);
     }
 
+    /**
+     * 현재 시각과 만료 시각이 같은 활동 의도는 내보내기 결과에서 null로 제외되는지 검증한다.
+     */
     @Test
-    void 만료된_현재_행동_의도는_내보내기에서_제외한다() {
+    void excludesExpiredActivityIntent() {
         Long userId = 1L;
         User user = User.builder().id(userId).username("pingdom_user").build();
         UserCurrentActivityIntent expiredIntent = UserCurrentActivityIntent.create(
