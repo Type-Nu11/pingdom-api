@@ -40,8 +40,11 @@ class NearbyReservablePlaceServiceTest {
     @InjectMocks
     private PlaceQueryServiceImpl service;
 
+    /**
+     * 반경 km를 m로 변환하고 인원·상품·정렬·기준 시각을 저장소에 전달하며 거리 반올림과 상품명을 응답에 반영하는지 확인합니다.
+     */
     @Test
-    void returnsOnePlaceWithTheNearestReservableSlot() {
+    void mapsNearbyReservablePlace() {
         LocalDateTime now = LocalDateTime.of(2026, 9, 2, 11, 0);
         when(clock.instant()).thenReturn(Instant.parse("2026-09-02T11:00:00Z"));
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
@@ -72,6 +75,9 @@ class NearbyReservablePlaceServiceTest {
                 eq(null), eq(null), eq("NEAREST"), eq(now), any(Pageable.class));
     }
 
+    /**
+     * 0번 페이지와 과도한 페이지 크기·역전된 기간을 가진 요청이 MapException으로 거절되는지 확인합니다.
+     */
     @Test
     void rejectsInvalidPagingAndDateRange() {
         assertThatThrownBy(() -> service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(
