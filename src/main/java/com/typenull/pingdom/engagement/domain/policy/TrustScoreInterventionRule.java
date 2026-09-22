@@ -19,6 +19,10 @@ import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 import org.hibernate.annotations.UpdateTimestamp;
 
+/**
+ * 신뢰도 범위와 신고/허위 신고 최소 건수로 신고자 정책에 매칭되는 관리자 규칙입니다.
+ * 현재 matches는 triggerType을 분기하지 않고 모든 수치 조건을 함께 검사하며, 액션의 실행은 서비스가 담당합니다.
+ */
 @Entity
 @Getter
 @Builder
