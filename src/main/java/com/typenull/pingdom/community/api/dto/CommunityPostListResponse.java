@@ -13,7 +13,7 @@ public record CommunityPostListResponse(
         @Schema(description = "다음 페이지 존재 여부", example = "true") boolean hasNext
 ) {
 
-    @Schema(description = "게시글 목록 항목")
+    @Schema(name = "CommunityPostSummary", description = "게시글 목록 항목")
     public record Item(
             @Schema(description = "게시글 ID", example = "1") Long postId,
             @Schema(description = "게시글 제목", example = "대소고 다녀왔어요") String title

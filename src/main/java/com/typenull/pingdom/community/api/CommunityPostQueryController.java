@@ -5,7 +5,11 @@ import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
 
 import com.typenull.pingdom.community.api.dto.CommunityPostListResponse;
 import com.typenull.pingdom.community.application.CommunityPostQueryService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.Parameter;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import io.swagger.v3.oas.annotations.responses.ApiResponses;
@@ -33,7 +37,7 @@ public class CommunityPostQueryController {
     @Operation(summary = "카테고리별 커뮤니티 게시글 목록 조회", description = "최신 등록순으로 게시글 ID와 제목만 조회합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "카테고리별 게시글 목록 조회 성공", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "400", description = "카테고리 또는 페이지 요청값이 올바르지 않음", useReturnTypeSchema = true)
+            @ApiResponse(responseCode = "400", description = "카테고리 또는 페이지 요청값이 올바르지 않음", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class})))
     })
     public ResponseEntity<CommunityPostListResponse> findByCategory(
             @PathVariable String categoryId,

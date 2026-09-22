@@ -35,6 +35,53 @@ class CommunityModerationOpenApiContractTest {
     @Autowired private MockMvc mockMvc;
     @Autowired private ObjectMapper objectMapper;
 
+    /** 앱 목록 항목이 다른 도메인의 Item 스키마와 충돌하지 않고 실제 필드를 유지하는지 검증. */
+    @Test
+    void usesDistinctAppCommunityItemSchemas() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs/app");
+
+        assertItemSchema(document, "CommunityPostCategoryListResponse", "categories", "CommunityCategoryItem",
+                "categoryId", "categoryName");
+        assertItemSchema(document, "CommunityPostListResponse", "posts", "CommunityPostSummary", "postId", "title");
+        assertItemSchema(document, "CommunityPostCommentListResponse", "comments", "CommunityCommentSummary",
+                "commentId", "content", "authorId", "authorName", "createdAt");
+        for (String name : List.of("CommunityCategoryItem", "CommunityPostSummary", "CommunityCommentSummary")) {
+            JsonNode properties = document.at("/components/schemas/" + name + "/properties");
+            assertThat(properties.has("rank")).isFalse();
+            assertThat(properties.has("placeId")).isFalse();
+            assertThat(properties.has("bookmarkCount")).isFalse();
+        }
+        assertSuccessResponse(operation(document, "/community/categories", "get"), "200", "CommunityPostCategoryListResponse");
+    }
+
+    /** 성공 응답은 유지하면서 400의 도메인·검증 오류와 404의 공통 오류 계약을 구분. */
+    @Test
+    void documentsAppCommunityErrorResponses() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs/app");
+        JsonNode posts = operation(document, "/community/categories/{categoryId}/posts", "get");
+        JsonNode detail = operation(document, "/community/posts/{postId}", "get");
+        JsonNode createPost = operation(document, "/community/posts", "post");
+        JsonNode comments = operation(document, "/community/posts/{postId}/comments", "get");
+        JsonNode createComment = operation(document, "/community/posts/{postId}/comments", "post");
+
+        assertSuccessResponse(posts, "200", "CommunityPostListResponse");
+        assertSuccessResponse(detail, "200", "CommunityPostDetailResponse");
+        assertSuccessResponse(createPost, "201", "CommunityPostCreateResponse");
+        assertSuccessResponse(comments, "200", "CommunityPostCommentListResponse");
+        assertSuccessResponse(createComment, "201", "CommunityPostCommentCreateResponse");
+        for (JsonNode operation : List.of(detail, createPost, comments, createComment)) {
+            assertErrorResponse(operation, "404");
+        }
+        for (JsonNode operation : List.of(posts, createPost, createComment)) {
+            JsonNode schema = operation.at("/responses/400/content/*~1*/schema");
+            assertThat(schema.has("$ref")).isFalse();
+            assertThat(schema.path("oneOf")).hasSize(2);
+            assertThat(schema.path("oneOf").findValuesAsText("$ref"))
+                    .containsExactlyInAnyOrder("#/components/schemas/ErrorResponse",
+                            "#/components/schemas/ValidationErrorResponse");
+        }
+    }
+
     /**
      * 일반 신고와 관리자 심사 경로가 각 OpenAPI 그룹에 분리되는지 검증.
      * 신고 생성·관리자 목록·상세·수락·반려의 성공 스키마, Bearer 인증, 요청 본문과 상태별 오류 스키마도 확인.

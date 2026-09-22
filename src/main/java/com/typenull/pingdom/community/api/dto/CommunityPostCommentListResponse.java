@@ -14,7 +14,7 @@ public record CommunityPostCommentListResponse(
         @Schema(description = "다음 페이지 존재 여부", example = "true") boolean hasNext
 ) {
 
-    @Schema(description = "댓글 목록 항목")
+    @Schema(name = "CommunityCommentSummary", description = "댓글 목록 항목")
     public record Item(
             @Schema(description = "댓글 ID", example = "1") Long commentId,
             @Schema(description = "댓글 내용", example = "저도 가보고 싶네요!") String content,
