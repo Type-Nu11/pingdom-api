@@ -39,6 +39,9 @@ class MerchantOwnerPlaceControllerTest {
 
     private MockMvc mockMvc;
 
+    /**
+     * 미디어 요청의 검증 오류와 응답 매핑을 확인하도록 예외 처리기·Bean Validation·고정 점주 인자를 연결한 MockMvc를 만든다.
+     */
     @BeforeEach
     void setUp() {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
@@ -47,11 +50,17 @@ class MerchantOwnerPlaceControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler(mock(AuthMetrics.class)))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    /**
+                     * CurrentUser가 붙은 컨트롤러 인자만 테스트용 인증 객체로 해석한다.
+                     */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
                         return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
+                    /**
+                     * 서비스 위임 인자의 점주 식별자를 일정하게 검증하도록 사용자 20의 인증 객체를 제공한다.
+                     */
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                                                   NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
@@ -61,8 +70,11 @@ class MerchantOwnerPlaceControllerTest {
                 .build();
     }
 
+    /**
+     * 발급된 S3 키와 순서로 미디어 생성을 요청하면 201과 서비스가 반환한 미디어 ID·키를 응답하는지 검증한다.
+     */
     @Test
-    void createsMerchantMediaWithIssuedS3Key() throws Exception {
+    void createsMerchantMedia() throws Exception {
         when(service.createMedia(20L, 10L, new MerchantOwnerMediaCreateRequest("places/10/exploration/20/new.jpg", 3)))
                 .thenReturn(new PlaceMediaItem(
                         30L, 10L, PlaceMediaPurpose.EXPLORATION, "https://image",
@@ -78,8 +90,11 @@ class MerchantOwnerPlaceControllerTest {
                 .andExpect(jsonPath("$.s3Key").value("places/10/exploration/20/new.jpg"));
     }
 
+    /**
+     * 빈 S3 키는 400과 필수 필드 메시지로 거절하며 미디어 서비스가 호출되지 않는지 검증한다.
+     */
     @Test
-    void rejectsBlankS3KeyBeforeCallingService() throws Exception {
+    void rejectsBlankMediaKey() throws Exception {
         mockMvc.perform(post("/merchant-owner/places/10/media")
                         .contentType("application/json")
                         .content("{\"s3Key\":\"\"}"))
@@ -89,8 +104,11 @@ class MerchantOwnerPlaceControllerTest {
         verifyNoInteractions(service);
     }
 
+    /**
+     * 미디어 순서를 0으로 수정하는 요청이 서비스 응답의 변경 순서를 200 응답에 담는지 검증한다.
+     */
     @Test
-    void updatesMediaOrderWithTargetPosition() throws Exception {
+    void updatesMediaOrder() throws Exception {
         when(service.updateMediaOrder(20L, 10L, 30L, new MerchantOwnerMediaOrderUpdateRequest(0)))
                 .thenReturn(new PlaceMediaItem(
                         30L, 10L, PlaceMediaPurpose.EXPLORATION, "https://image",
@@ -105,8 +123,11 @@ class MerchantOwnerPlaceControllerTest {
                 .andExpect(jsonPath("$.displayOrder").value(0));
     }
 
+    /**
+     * 음수 미디어 순서는 400과 최소값 검증 메시지로 거절하고 서비스를 호출하지 않는지 검증한다.
+     */
     @Test
-    void rejectsNegativeMediaOrderBeforeCallingService() throws Exception {
+    void rejectsNegativeMediaOrder() throws Exception {
         mockMvc.perform(patch("/merchant-owner/places/10/media/30")
                         .contentType("application/json")
                         .content("{\"displayOrder\":-1}"))
