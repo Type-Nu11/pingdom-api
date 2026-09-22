@@ -53,6 +53,9 @@ class MerchantPlaceApplicationAttachmentServiceTest {
 
     private MerchantPlaceApplicationAttachmentService service;
 
+    /**
+     * 본인 소유의 Claim 초안과 고정 보존 기준 시각을 준비합니다.
+     */
     @BeforeEach
     void setUp() {
         service = new MerchantPlaceApplicationAttachmentService(
@@ -69,8 +72,11 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         lenient().when(application.getStatus()).thenReturn(PlaceRegistrationStatus.DRAFT);
     }
 
+    /**
+     * 서버가 받은 객체 키와 계산한 해시·크기, 경로를 제거한 파일명·30일 기한을 저장하고 응답에서 private 키를 감추는지 확인합니다.
+     */
     @Test
-    void uploadCalculatesMetadataAndUsesPrivateServerGeneratedStorageKey() {
+    void storesValidatedPrivateAttachment() {
         MockMultipartFile file = jpeg("../../license.jpg");
         when(attachmentRepository.findAllByApplicationIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
                 APPLICATION_ID, PlaceRegistrationAttachmentType.BUSINESS_REGISTRATION)).thenReturn(List.of());
@@ -94,8 +100,11 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         verify(malwareScanner).scan(any());
     }
 
+    /**
+     * NEW_PLACE 초안도 악성 파일 검사와 private 업로드를 통과할 수 있는지 확인합니다.
+     */
     @Test
-    void uploadAlsoAllowsNewPlaceDraft() {
+    void allowsNewPlaceAttachment() {
         lenient().when(application.getApplicationType()).thenReturn(MerchantPlaceApplicationType.NEW_PLACE);
         when(attachmentRepository.findAllByApplicationIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
                 APPLICATION_ID, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT)).thenReturn(List.of());
@@ -112,8 +121,11 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         verify(storage).putPrivate(any(), eq("image/jpeg"), any());
     }
 
+    /**
+     * JPEG로 신고한 PDF 시그니처를 메타데이터 오류로 거절하고 스캔·저장 전에 중단하는지 확인합니다.
+     */
     @Test
-    void uploadRejectsMimeSignatureMismatchBeforeScanOrStorage() {
+    void rejectsMimeSignatureMismatch() {
         MockMultipartFile file = new MockMultipartFile("file", "fake.jpg", "image/jpeg", "%PDF-1.7".getBytes());
 
         assertThatThrownBy(() -> service.upload(USER_ID, APPLICATION_ID,
@@ -126,8 +138,11 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         verify(storage, never()).putPrivate(any(), any(), any());
     }
 
+    /**
+     * 악성 파일 검사 예외를 전파하면서 객체 저장을 실행하지 않는지 확인합니다.
+     */
     @Test
-    void uploadStopsBeforeStorageWhenMalwareScanFails() {
+    void stopsAfterMalwareFailure() {
         MockMultipartFile file = jpeg("id.jpg");
         org.mockito.Mockito.doThrow(new IllegalArgumentException("malware detected"))
                 .when(malwareScanner).scan(any());
@@ -139,8 +154,11 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         verify(storage, never()).putPrivate(any(), any(), any());
     }
 
+    /**
+     * 첨부 DB 저장 실패 시 원래 무결성 예외를 유지하면서 새 S3 객체 보상 삭제를 호출하는지 확인합니다.
+     */
     @Test
-    void uploadDeletesNewObjectWhenDatabasePersistenceFails() {
+    void cleansUploadAfterPersistenceFailure() {
         MockMultipartFile file = jpeg("id.jpg");
         when(attachmentRepository.findAllByApplicationIdAndDocumentTypeOrderByDisplayOrderAscIdAsc(
                 APPLICATION_ID, PlaceRegistrationAttachmentType.IDENTITY_DOCUMENT)).thenReturn(List.of());
@@ -156,8 +174,11 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         verify(storage).delete("private/generated-key");
     }
 
+    /**
+     * 다른 신청자의 첨부 업로드를 접근 거절로 처리하고 스캔·저장을 수행하지 않는지 확인합니다.
+     */
     @Test
-    void uploadRejectsOtherUsersBeforeReadingOrStoringFile() {
+    void rejectsOtherApplicantUpload() {
         when(application.getApplicantUserId()).thenReturn(99L);
 
         assertThatThrownBy(() -> service.upload(USER_ID, APPLICATION_ID,
@@ -170,6 +191,9 @@ class MerchantPlaceApplicationAttachmentServiceTest {
         verify(storage, never()).putPrivate(any(), any(), any());
     }
 
+    /**
+     * 시그니처 검사에 필요한 최소 JPEG 바이트와 지정 파일명을 가진 입력을 만듭니다.
+     */
     private MockMultipartFile jpeg(String filename) {
         return new MockMultipartFile("file", filename, "image/jpeg", new byte[] {(byte) 0xff, (byte) 0xd8, (byte) 0xff});
     }

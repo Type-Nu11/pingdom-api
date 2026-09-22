@@ -78,14 +78,20 @@ class MerchantPlaceApplicationAdminServiceTest {
     @InjectMocks
     private MerchantPlaceApplicationService service;
 
+    /**
+     * 심사·첨부 보존 경계가 실행 날짜에 흔들리지 않도록 UTC 시계를 고정합니다.
+     */
     @BeforeEach
     void setUpClock() {
         org.mockito.Mockito.lenient().when(clock.instant()).thenReturn(Instant.parse("2026-08-24T00:00:00Z"));
         org.mockito.Mockito.lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 관리자 상세에서 사업자등록번호를 복호화하여 반환하고 MERCHANT_REVIEW 권한 및 민감정보 조회 감사를 요청하는지 확인합니다.
+     */
     @Test
-    void adminDetailDecryptsRegistrationNumberAndRecordsAuditLog() {
+    void auditsDecryptedAdminDetail() {
         PlaceRegistrationApplication application = application(12L);
         when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
         when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
@@ -108,8 +114,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         );
     }
 
+    /**
+     * 단일 상태 조건을 넘긴 목록이 저장소의 총 41건·3페이지·다음 페이지 메타데이터를 반환하는지 확인합니다.
+     */
     @Test
-    void adminListSupportsSingleStatusAndUsesFilteredPageMetadata() {
+    void returnsSingleStatusPageMetadata() {
         PlaceRegistrationApplication application = application(12L);
         when(application.getEncryptedBusinessRegistrationNumber()).thenReturn("encrypted-number");
         when(verificationCipher.decrypt("encrypted-number")).thenReturn("1234567890");
@@ -128,8 +137,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         );
     }
 
+    /**
+     * 복수 상태·유형·검색어·기간을 전달한 조회가 저장소 페이지 번호·크기·총 건수를 응답으로 유지하는지 확인합니다. 실제 SQL 필터 결과는 이 모의 테스트 범위 밖입니다.
+     */
     @Test
-    void adminListFiltersMultipleStatusesAndApplicationTypeWithPageMetadata() {
+    void returnsFilteredPageMetadata() {
         PlaceRegistrationApplication application = application(12L);
         List<PlaceRegistrationStatus> statuses = List.of(
                 PlaceRegistrationStatus.APPROVED,
@@ -167,8 +179,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         );
     }
 
+    /**
+     * 마지막 페이지를 넘겨 항목이 없어도 요청 페이지와 전체 건수·페이지 수를 유지하는지 확인합니다.
+     */
     @Test
-    void adminListKeepsFilteredMetadataForAnOutOfRangePage() {
+    void preservesEmptyPageMetadata() {
         List<PlaceRegistrationStatus> statuses = List.of(PlaceRegistrationStatus.APPROVED);
         when(applicationRepository.findAll(
                 org.mockito.ArgumentMatchers.<Specification<PlaceRegistrationApplication>>any(), any(Pageable.class)
@@ -193,8 +208,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         assertThat(response.hasNext()).isFalse();
     }
 
+    /**
+     * 제출 기간 종료가 시작보다 이르면 관리자 도메인 예외로 거절하는지 확인합니다.
+     */
     @Test
-    void adminListRejectsReversedSubmittedPeriod() {
+    void rejectsReversedSubmittedPeriod() {
         assertThatThrownBy(() -> service.listForAdmin(
                 99L,
                 null,
@@ -207,8 +225,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         )).isInstanceOf(com.typenull.pingdom.moderation.domain.exception.AdminException.class);
     }
 
+    /**
+     * 신청에 속한 활성·미만료 첨부를 내려받을 때 바이트와 MIME을 유지하고 관리자 열람 감사를 기록하는지 확인합니다.
+     */
     @Test
-    void attachmentDownloadRequiresRelatedActiveFileAndRecordsAuditLog() {
+    void auditsActiveAttachmentDownload() {
         PlaceRegistrationApplication application = application(12L);
         PlaceRegistrationAttachment attachment = org.mockito.Mockito.mock(PlaceRegistrationAttachment.class);
         when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
@@ -240,8 +261,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         );
     }
 
+    /**
+     * 활성·미만료 첨부 목록을 반환하면서 해당 첨부의 메타데이터 조회 감사를 남기는지 확인합니다.
+     */
     @Test
-    void attachmentMetadataLookupRecordsAuditLogForEachVisibleAttachment() {
+    void auditsAttachmentMetadata() {
         PlaceRegistrationApplication application = application(12L);
         PlaceRegistrationAttachment attachment = org.mockito.Mockito.mock(PlaceRegistrationAttachment.class);
         when(applicationRepository.findById(12L)).thenReturn(Optional.of(application));
@@ -275,8 +299,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         );
     }
 
+    /**
+     * 필수 정보가 부족하여 제출이 실패해도 신청자 잠금 조회가 신청 잠금 조회보다 먼저 수행되는지 확인합니다.
+     */
     @Test
-    void submitLocksApplicantBeforeLoadingApplication() {
+    void locksApplicantBeforeApplication() {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(User.builder().id(1L).build()));
         when(applicationRepository.findByIdForUpdate(12L)).thenReturn(Optional.of(application));
@@ -290,8 +317,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         inOrder.verify(applicationRepository).findByIdForUpdate(12L);
     }
 
+    /**
+     * 심사 버전 불일치를 전용 오류로 거절하고 감사·심사 이력 저장에 접근하지 않는지 확인합니다.
+     */
     @Test
-    void reviewRejectsStaleVersionBeforeAnyStateChange() {
+    void rejectsStaleReviewVersion() {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         when(application.getStatus()).thenReturn(PlaceRegistrationStatus.PENDING);
         when(application.matchesVersion(3L)).thenReturn(false);
@@ -307,8 +337,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         org.mockito.Mockito.verifyNoInteractions(auditLogService, reviewHistoryRepository);
     }
 
+    /**
+     * 동일 장소의 대기 Claim이 있으면 DUPLICATE_PLACE로 거절하며 신청 submit 전이를 호출하지 않는지 확인합니다.
+     */
     @Test
-    void submitRejectsAnotherPendingClaimForSamePlaceBeforeStateTransition() {
+    void rejectsPendingPlaceClaim() {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         com.typenull.pingdom.place.domain.place.core.MapPlace place = org.mockito.Mockito.mock(
                 com.typenull.pingdom.place.domain.place.core.MapPlace.class);
@@ -337,8 +370,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         verify(application, org.mockito.Mockito.never()).submit(org.mockito.ArgumentMatchers.any());
     }
 
+    /**
+     * 제출 당시와 현재 소유자가 다르면 승인 전이와 사업자·팀·오퍼·감사 변경 전에 거절하는지 확인합니다.
+     */
     @Test
-    void approvalRejectsOwnershipChangeBeforeMerchantOrTeamStateChanges() {
+    void rejectsChangedClaimOwner() {
         PlaceRegistrationApplication application = application(12L);
         MerchantOwnerPlace currentOwner = org.mockito.Mockito.mock(MerchantOwnerPlace.class);
         com.typenull.pingdom.place.domain.place.core.MapPlace place = org.mockito.Mockito.mock(
@@ -364,8 +400,11 @@ class MerchantPlaceApplicationAdminServiceTest {
                 touristOfferRepository, auditLogService, reviewHistoryRepository);
     }
 
+    /**
+     * 기존 장소 Claim에서 신청 완료 후 이전 소유자 오퍼를 종료하고 사용자 역할 활성화 후 접근 캐시를 비우는 호출 순서를 확인합니다.
+     */
     @Test
-    void approvalCompletesApplicationBeforeClosingPreviousOwnersOffers() throws Exception {
+    void completesBeforeClosingPreviousOffers() throws Exception {
         PlaceRegistrationApplication application = application(12L);
         MerchantOwnerPlace currentOwner = org.mockito.Mockito.mock(MerchantOwnerPlace.class);
         com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile profile = org.mockito.Mockito.mock(
@@ -422,8 +461,11 @@ class MerchantPlaceApplicationAdminServiceTest {
         roleActivationOrder.verify(userAccessStatusService).evict(10L);
     }
 
+    /**
+     * 신규 장소 심사 승인이 장소 생성과 신청 완료를 순서대로 호출하고 신원·사업자 검증 승인을 함께 수행하는지 확인합니다.
+     */
     @Test
-    void newPlaceApprovalCreatesPlaceAndCompletesWithoutApplicantFollowUp() throws Exception {
+    void completesApprovedNewPlace() throws Exception {
         PlaceRegistrationApplication application = application(12L);
         com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile profile = org.mockito.Mockito.mock(
                 com.typenull.pingdom.identity.domain.merchant.MerchantOwnerProfile.class);
@@ -467,6 +509,9 @@ class MerchantPlaceApplicationAdminServiceTest {
         verify(verification).review(eq(99L), eq(true), eq(true), eq(null), org.mockito.ArgumentMatchers.any());
     }
 
+    /**
+     * 신청 ID를 가진 모의를 만들어 사례별 심사 상태와 민감정보를 추가할 수 있게 합니다.
+     */
     private PlaceRegistrationApplication application(Long id) {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         org.mockito.Mockito.lenient().when(application.getId()).thenReturn(id);
