@@ -7,6 +7,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 관광객의 장소 제보 내용과 심사 이력을 관리한다.
+ * 유형에 맞는 구조화 값만 허용하며 정정이 반영되면 이전 심사를 지우고 재심사 대기로 돌아간다.
+ */
 @Entity
 @Getter
 @Table(name = "visitor_verification_report")
@@ -67,12 +71,14 @@ public class VisitorVerificationReport {
     @Version @Column(nullable = false)
     private long version;
 
+    /** 구조화 값이 없는 제보를 생성한다. 구조화 값이 필수인 유형에는 이 overload를 사용할 수 없다. */
     public static VisitorVerificationReport submit(Long reporterUserId, Long placeId,
             VisitorVerificationReportType reportType, String description, String evidenceUrl, LocalDateTime now) {
         return submit(reporterUserId, placeId, reportType, description, evidenceUrl,
                 null, null, null, null, now);
     }
 
+    /** 필수 식별자·본문·시각과 유형별 구조화 값을 검증해 미심사 제보를 생성한다. */
     public static VisitorVerificationReport submit(Long reporterUserId, Long placeId,
             VisitorVerificationReportType reportType, String description, String evidenceUrl,
             Integer waitTimeMinutes, String languageCode, CouponUsageStatus couponUsageStatus,
@@ -100,6 +106,10 @@ public class VisitorVerificationReport {
         return report;
     }
 
+    /**
+     * 대기 시간·언어·쿠폰 사용·혼잡도 유형은 자신에게 해당하는 값 하나만 요구한다.
+     * 그 외 유형은 구조화 값이 없어야 하며 대기 시간은 0~1,440분, 언어는 지정 태그 패턴으로 제한한다.
+     */
     static void validateStructuredValue(
             VisitorVerificationReportType reportType,
             Integer waitTimeMinutes,
@@ -143,11 +153,16 @@ public class VisitorVerificationReport {
         }
     }
 
+    /** 승인 또는 거절된 제보만 별도 정정 요청의 대상이 될 수 있다. */
     public boolean canBeCorrected() {
         return status == VisitorVerificationReportStatus.ACCEPTED
                 || status == VisitorVerificationReportStatus.REJECTED;
     }
 
+    /**
+     * 심사 완료된 제보의 내용을 정정하고 SUBMITTED로 되돌려 재심사를 요구한다.
+     * 유형은 유지하고 기존 심사자·메모·심사 시각은 비운다.
+     */
     public void applyCorrection(
             String description,
             String evidenceUrl,
@@ -186,6 +201,7 @@ public class VisitorVerificationReport {
         updatedAt = Objects.requireNonNull(now);
     }
 
+    /** 미심사 제보만 승인·거절하며 거절 사유는 필수다. 심사 권한은 호출 서비스에서 확인해야 한다. */
     public void review(Long adminUserId, VisitorVerificationReportStatus decision, String reviewNote,
             LocalDateTime now) {
         if (status != VisitorVerificationReportStatus.SUBMITTED) {
@@ -205,12 +221,14 @@ public class VisitorVerificationReport {
         updatedAt = now;
     }
 
+    /** 공백을 정리한 필수 문자열을 반환하고 비어 있으면 인자 오류로 거부한다. */
     static String requireText(String value, String name) {
         String normalized = normalize(value);
         if (normalized == null) throw new IllegalArgumentException(name + " must not be blank");
         return normalized;
     }
 
+    /** 선택 문자열을 trim하고 null·빈 문자열은 null로 통일한다. */
     static String normalize(String value) {
         if (value == null) return null;
         String trimmed = value.trim();
