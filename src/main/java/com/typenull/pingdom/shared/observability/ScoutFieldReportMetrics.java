@@ -8,6 +8,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/** Scout 제보 종류와 제보·프로필·활동 자격 상태 전이 횟수를 기록한다. 저장 성공 여부는 호출 시점에 달려 있다. */
 @Component
 public class ScoutFieldReportMetrics {
 
