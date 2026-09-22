@@ -15,6 +15,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 혜택 공개 조회에서는 [startsAt, endsAt)·잔여 수량·현재 점주 자격 및 소유 관계를 함께 제한합니다.
+ * ForUpdate 조회는 호출 트랜잭션 동안 쓰기 잠금을 유지하며, 일괄 종료 쿼리는 버전을 증가시키고 영속성 컨텍스트를 비웁니다.
+ */
 public interface TouristOfferRepository extends JpaRepository<TouristOffer, Long> {
 
     @Query("""
