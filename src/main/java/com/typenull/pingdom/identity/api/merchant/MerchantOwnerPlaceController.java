@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.merchant;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaResponse;
@@ -41,7 +44,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @ActiveMerchantOwnerOnly
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "Merchant", description = "Merchant 전용 API")
+@ApiAudience(ApiAudience.Group.MERCHANT)
+@Tag(name = SwaggerTagCatalog.PLACE_MANAGEMENT)
 public class MerchantOwnerPlaceController {
 
     private final MerchantOwnerPlaceManagementService service;
