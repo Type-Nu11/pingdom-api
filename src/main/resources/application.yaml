@@ -110,9 +110,9 @@ postmark:
 
 springdoc:
   api-docs:
-    enabled: true
+    enabled: false
   swagger-ui:
-    enabled: true
+    enabled: false
     path: /swagger-ui
     doc-expansion: none
     filter: true
@@ -128,6 +128,11 @@ springdoc:
         url: /v3/api-docs/admin
       - name: merchant
         url: /v3/api-docs/merchant
+
+pingdom:
+  openapi:
+    public-access:
+      enabled: false
 
 management:
   endpoints:
