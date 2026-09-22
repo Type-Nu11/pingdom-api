@@ -51,6 +51,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 관리자 장소의 좌표·식별자·운영·관광·검증 품질을 수정하는 API 진입점. */
 @RestController
 @RequestMapping("/admin/places")
 @RequiredArgsConstructor
@@ -58,7 +59,6 @@ import org.springframework.web.bind.annotation.RestController;
 @AdminOnly
 @ApiAudience(ApiAudience.Group.ADMIN)
 @Tag(name = SwaggerTagCatalog.PLACE_QUALITY)
-/** 관리자 장소의 좌표·식별자·운영·관광·검증 품질을 수정하는 API 진입점입니다. */
 public class AdminPlaceQualityController {
 
     private final AdminMapPlaceService adminMapPlaceService;

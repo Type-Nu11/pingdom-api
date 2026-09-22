@@ -7,7 +7,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationStatus;
 import java.time.LocalDateTime;
 import java.util.List;
 
-/** MERCHANT_REVIEW 권한과 감사 로그를 거친 관리자 통합 신청 상세 응답입니다. */
+/** MERCHANT_REVIEW 권한과 감사 로그를 거친 관리자 통합 신청 상세 응답. */
 public record AdminMerchantPlaceApplicationResponse(
         Long id,
         Long applicantUserId,

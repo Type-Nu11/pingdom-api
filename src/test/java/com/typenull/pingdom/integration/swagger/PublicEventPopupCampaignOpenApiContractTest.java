@@ -16,6 +16,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
+/**
+ * 공개 행사·팝업 조회 문서와 상점 관리 문서의 응답 모델 경계를 검증.
+ */
 @Tag("integration")
 @SpringBootTest(properties = "pingdom.dev-profile.enabled=true")
 @AutoConfigureMockMvc
@@ -28,8 +31,11 @@ class PublicEventPopupCampaignOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * app 행사·팝업 문서의 인증·페이지 범위·UTC 예시·상태 enum·nullable을 확인하고 merchant 스키마와 구분되는지 검사.
+     */
     @Test
-    void exposesPublicEventAndPopupCampaignContractsWithoutLeakingMerchantResponses() throws Exception {
+    void publicEventCampaignContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
@@ -106,10 +112,16 @@ class PublicEventPopupCampaignOpenApiContractTest {
                 .isFalse();
     }
 
+    /**
+     * 문서에 Bearer 인증 요구가 배열로 선언됐는지 확인.
+     */
     private void assertBearerSecurity(JsonNode operation) {
         assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
+    /**
+     * 페이지 파라미터가 int32 정수이며 기대하는 최솟값·최댓값을 문서화했는지 확인.
+     */
     private void assertParameterRange(JsonNode operation, String parameterName, double minimum, double maximum) {
         JsonNode schema = parameter(operation, parameterName).path("schema");
         assertThat(schema.path("type").asText()).isEqualTo("integer");
@@ -118,6 +130,9 @@ class PublicEventPopupCampaignOpenApiContractTest {
         assertThat(schema.path("maximum").asDouble()).isEqualTo(maximum);
     }
 
+    /**
+     * 지정 오류 응답이 공통 ErrorResponse 참조와 일치하는 코드 예시를 갖는지 확인.
+     */
     private void assertErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode response = operation.path("responses").path(responseCode);
         assertThat(response.at("/content/*~1*/schema/$ref").asText())
@@ -126,23 +141,35 @@ class PublicEventPopupCampaignOpenApiContractTest {
                 .isEqualTo(errorCode);
     }
 
+    /**
+     * 필수 필드 집합이 기대값과 정확히 일치하는지 순서를 무시하고 확인.
+     */
     private void assertRequiredFields(JsonNode document, String schemaName, List<String> expectedFields) {
         assertThat(document.at("/components/schemas/" + schemaName + "/required"))
                 .extracting(JsonNode::asText)
                 .containsExactlyInAnyOrderElementsOf(expectedFields);
     }
 
+    /**
+     * 지정 스키마 필드의 nullable 표시가 참인지 확인.
+     */
     private void assertNullableProperty(JsonNode document, String schemaName, String propertyName) {
         assertThat(document.at("/components/schemas/" + schemaName + "/properties/" + propertyName + "/nullable").asBoolean())
                 .isTrue();
     }
 
+    /**
+     * 시간 필드가 date-time 형식이며 예시가 UTC Z 접미사로 끝나는지 확인.
+     */
     private void assertUtcDateTimeProperty(JsonNode document, String schemaName, String propertyName) {
         JsonNode property = document.at("/components/schemas/" + schemaName + "/properties/" + propertyName);
         assertThat(property.path("format").asText()).isEqualTo("date-time");
         assertThat(property.path("example").asText()).endsWith("Z");
     }
 
+    /**
+     * 이름이 일치하는 첫 파라미터를 찾고 없으면 MissingNode를 반환.
+     */
     private JsonNode parameter(JsonNode operation, String parameterName) {
         for (JsonNode parameter : operation.path("parameters")) {
             if (parameterName.equals(parameter.path("name").asText())) {
@@ -152,6 +179,9 @@ class PublicEventPopupCampaignOpenApiContractTest {
         return objectMapper.missingNode();
     }
 
+    /**
+     * 생성된 그룹 OpenAPI 문서를 MockMvc로 읽어 JSON 노드로 변환.
+     */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())

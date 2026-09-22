@@ -6,6 +6,10 @@ import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
 
+/**
+ * 누적 사진 수를 성장 단계와 다음 단계 진행률로 변환.
+ * 음수는 0으로 보정하고 필요 사진 수를 1.55배씩 늘리되 long 범위를 넘기기 전에 경계 생성을 종료.
+ */
 public final class PlaceLevelPolicy {
 
     private static final long BASE_REQUIRED_PHOTO_COUNT = 1L;

@@ -11,8 +11,12 @@ class LocationAnalysisPromptFactoryTest {
 
     private final LocationAnalysisPromptFactory factory = new LocationAnalysisPromptFactory(new ObjectMapper());
 
+    /**
+     * 지역·업종·타깃·영업시간과 추가 조건을 담은 프롬프트가 MCP 조회·근거 객체·7개 섹션·서버 디자인·JSON 출력 계약을 명시하는지 검증.
+     * AI가 HTML을 직접 반환하도록 요구하는 필드가 들어가지 않는지도 확인.
+     */
     @Test
-    void buildsPromptWithRequiredRegionAndArbitraryAdditionalCriteria() {
+    void buildsStructuredAnalysisPrompt() {
         LocationAnalysisRequest request = new LocationAnalysisRequest();
         request.setRegion("서울 강남구");
         request.setCategory("카페");
@@ -54,8 +58,11 @@ class LocationAnalysisPromptFactoryTest {
         assertThat(prompt.content()).doesNotContain("\"html\"");
     }
 
+    /**
+     * JSON 요청의 지역·업종·타깃·영업시간을 기준 맵에 유지하고 미정의 monthlyBudget을 additionalCriteria로 보존하는지 검증.
+     */
     @Test
-    void limitsAiCriteriaToRegionAndIndustry() throws Exception {
+    void preservesAdditionalAnalysisCriteria() throws Exception {
         LocationAnalysisRequest request = new ObjectMapper().readValue(
                 "{\"region\":\"부산 해운대구\",\"category\":\"카페\",\"targetCustomerGroup\":\"20-39 여성\",\"operatingHours\":\"18:00-22:00\",\"monthlyBudget\":5000000}",
                 LocationAnalysisRequest.class

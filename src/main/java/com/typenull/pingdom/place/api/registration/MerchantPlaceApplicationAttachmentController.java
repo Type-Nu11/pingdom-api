@@ -24,7 +24,7 @@ import org.springframework.web.bind.annotation.ResponseStatus;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.multipart.MultipartFile;
 
-/** 통합 Merchant 장소 신청 초안의 실제 파일 업로드 API입니다. */
+/** 통합 Merchant 장소 신청 초안의 실제 파일 업로드 API. */
 @RestController
 @RequiredArgsConstructor
 @RequestMapping("/users/me/merchant-place-applications/{applicationId}/attachments")

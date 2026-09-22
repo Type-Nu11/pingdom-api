@@ -5,6 +5,10 @@ import java.util.Locale;
 import java.util.Map;
 import org.springframework.stereotype.Component;
 
+/**
+ * 등록된 국가 코드의 표시 통화를 정하고 null·공백·미지원 코드는 KRW로 반환.
+ * 국가 코드 전체 표준을 해석하지 않고 이 클래스에 명시된 코드만 지원.
+ */
 @Component
 public class MenuDisplayCurrencyResolver {
 

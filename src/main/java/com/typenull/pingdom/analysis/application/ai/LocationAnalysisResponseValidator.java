@@ -8,11 +8,15 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 
-/** AI JSON의 스키마와 핵심 의미 규칙을 PDF 생성 전에 검증한다. */
+/** AI JSON의 스키마와 핵심 의미 규칙을 PDF 생성 전에 검증. */
 @Component
 @RequiredArgsConstructor
 public class LocationAnalysisResponseValidator {
 
+    /**
+     * HTML 보고서 계약의 기본 태그·금지 문자열·길이만 확인하는 제한된 검증.
+     * 구조화된 JSON을 사용하는 생성 경로의 validate와 별도 계약이며 범용 HTML 정화 기능은 검증 범위에서 제외.
+     */
     public void validateHtml(AiAnalysisResponse response) {
         if (response == null || !StringUtils.hasText(response.reportName())
                 || !StringUtils.hasText(response.htmlReport())) {
@@ -29,6 +33,10 @@ public class LocationAnalysisResponseValidator {
         }
     }
 
+    /**
+     * 필수 분석 항목, 요청 지역 일치, 수치 범위와 데이터 부족 등급의 조합 검증.
+     * 근거 URL 조회·산식 재계산은 검증 범위에서 제외하므로 형식 검증만으로 실제 분석 사실의 정확성 확인 불가.
+     */
     public void validate(LocationAnalysisRequest request, AiAnalysisResponse response) {
         if (response == null || response.content() == null || response.analysisBasisDate() == null) {
             invalid();

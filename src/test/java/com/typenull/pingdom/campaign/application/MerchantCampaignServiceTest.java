@@ -44,14 +44,20 @@ class MerchantCampaignServiceTest {
 
     @InjectMocks private MerchantCampaignService service;
 
+    /**
+     * 캠페인 생성·게시에서 사용할 현재 시각을 UTC로 고정.
+     */
     @BeforeEach
     void setUpClock() {
         when(clock.instant()).thenReturn(Instant.parse("2026-08-01T12:00:00Z"));
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 소유 브랜드로 캠페인을 생성할 때 장소 소유권을 확인하고 DRAFT 상태와 브랜드 ID를 반환하는지 검증.
+     */
     @Test
-    void createsDraftForOwnedBrandAndPlace() {
+    void createsOwnedCampaignDraft() {
         MerchantBrand brand = brand(1L);
         when(brandRepository.findByIdAndMerchantOwnerUserId(1L, OWNER_ID)).thenReturn(Optional.of(brand));
         when(campaignRepository.save(org.mockito.ArgumentMatchers.any(PopupCampaign.class)))
@@ -64,8 +70,11 @@ class MerchantCampaignServiceTest {
         assertThat(response.brandId()).isEqualTo(1L);
     }
 
+    /**
+     * 소유자 조건의 브랜드 조회가 비어 있으면 BRAND_NOT_FOUND로 캠페인 생성을 거절하는지 검증.
+     */
     @Test
-    void foreignBrandIsHiddenAsNotFound() {
+    void hidesUnownedBrand() {
         when(brandRepository.findByIdAndMerchantOwnerUserId(1L, OWNER_ID)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.createCampaign(OWNER_ID, request()))
@@ -73,6 +82,9 @@ class MerchantCampaignServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(CampaignErrorCode.BRAND_NOT_FOUND));
     }
 
+    /**
+     * 저장된 초안을 게시할 때 현재 장소 소유권을 다시 확인하고 PUBLISHED로 전이되는지 검증.
+     */
     @Test
     void publishingRevalidatesPlaceOwnership() {
         PopupCampaign campaign = PopupCampaign.draft(
@@ -95,8 +107,11 @@ class MerchantCampaignServiceTest {
         assertThat(response.status()).isEqualTo(PopupCampaignStatus.PUBLISHED);
     }
 
+    /**
+     * 사전 중복 조회 후에도 브랜드 이름 고유 제약이 발생하면 BRAND_NAME_DUPLICATED로 변환되는지 검증.
+     */
     @Test
-    void duplicateBrandConstraintIsMappedToDomainError() {
+    void mapsDuplicateBrandConstraint() {
         when(brandRepository.existsByMerchantOwnerUserIdAndName(OWNER_ID, "핑덤")).thenReturn(false);
         when(brandRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(MerchantBrand.class)))
                 .thenThrow(constraintViolation("uq_merchant_brand_owner_name"));
@@ -108,8 +123,11 @@ class MerchantCampaignServiceTest {
                 assertThat(exception.getErrorCode()).isEqualTo(CampaignErrorCode.BRAND_NAME_DUPLICATED));
     }
 
+    /**
+     * 브랜드 저장의 외래 키 위반은 이름 중복으로 오인하지 않고 원래 무결성 예외 객체를 전달하는지 검증.
+     */
     @Test
-    void unrelatedBrandConstraintIsNotHiddenAsDuplicate() {
+    void preservesUnrelatedBrandConstraint() {
         DataIntegrityViolationException violation = constraintViolation("fk_merchant_brand_owner");
         when(brandRepository.existsByMerchantOwnerUserIdAndName(OWNER_ID, "핑덤")).thenReturn(false);
         when(brandRepository.saveAndFlush(org.mockito.ArgumentMatchers.any(MerchantBrand.class)))
@@ -121,6 +139,9 @@ class MerchantCampaignServiceTest {
         )).isSameAs(violation);
     }
 
+    /**
+     * 소유 브랜드 1과 장소에 대해 한 시간 뒤 시작하는 유효한 캠페인 생성 요청을 제공.
+     */
     private PopupCampaignCreateRequest request() {
         return new PopupCampaignCreateRequest(
                 1L,
@@ -132,6 +153,9 @@ class MerchantCampaignServiceTest {
         );
     }
 
+    /**
+     * 주어진 브랜드 ID와 이름을 응답 매핑에 제공하는 브랜드 mock을 생성.
+     */
     private MerchantBrand brand(Long id) {
         MerchantBrand brand = mock(MerchantBrand.class);
         when(brand.getId()).thenReturn(id);
@@ -139,6 +163,9 @@ class MerchantCampaignServiceTest {
         return brand;
     }
 
+    /**
+     * 주어진 제약 이름을 가진 Hibernate 원인을 Spring 무결성 예외로 감싸 제약별 오류 변환을 재현.
+     */
     private DataIntegrityViolationException constraintViolation(String constraintName) {
         return new DataIntegrityViolationException(
                 "brand insert failed",

@@ -72,8 +72,8 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * Web의 사업자 검증과 장소 등록/소유권 신청을 단일 심사 단위로 관리합니다.
- * 기존 장소 등록 서비스는 신규 장소 생성과 운영시간 반영 책임을 계속 보유합니다.
+ * Web의 사업자 검증과 장소 등록/소유권 신청을 단일 심사 단위로 관리.
+ * 기존 장소 등록 서비스는 신규 장소 생성과 운영시간 반영 책임을 계속 보유.
  */
 @Service
 @RequiredArgsConstructor
@@ -99,6 +99,10 @@ public class MerchantPlaceApplicationService {
     private final ObjectMapper objectMapper;
     private final Clock clock;
 
+    /**
+     * NEW_PLACE는 장소 등록 서비스에 초안 생성을 위임하고 Claim은 기존 장소 정보로 초안을 만든 뒤 사업자 정보를 반영.
+     * 반환 시점은 제출 전이며 유형별 필수 장소 정보와 사업자 데이터 검증 실패는 전체 초안 저장을 롤백시킴.
+     */
     @Transactional
     public MerchantPlaceApplicationResponse create(Long userId, MerchantPlaceApplicationRequest request) {
         PlaceRegistrationApplication application;
@@ -124,6 +128,10 @@ public class MerchantPlaceApplicationService {
         return page(applicationRepository.findAll(pageable(page, limit)));
     }
 
+    /**
+     * MERCHANT_REVIEW 권한을 확인하고 상태·유형·장소/신청자 키워드·제출 기간으로 신청을 조회.
+     * 빈 상태 목록은 모든 상태, 제출 기간 양 끝은 포함하며 역전된 기간은 거절. 갱신 시각·ID 역순으로 페이지를 반환하고 사업자번호를 복호화.
+     */
     @Transactional(readOnly = true)
     public AdminMerchantPlaceApplicationPageResponse listForAdmin(
             Long adminUserId,
@@ -161,6 +169,10 @@ public class MerchantPlaceApplicationService {
         );
     }
 
+    /**
+     * 신청 ID와 신청자가 모두 일치하는 한 건을 응답으로 변환.
+     * 타인 신청과 존재하지 않는 신청을 모두 APPLICATION_NOT_FOUND로 처리.
+     */
     @Transactional(readOnly = true)
     public MerchantPlaceApplicationResponse get(Long userId, Long id) {
         PlaceRegistrationApplication application = applicationRepository.findByIdAndApplicantUserId(id, userId)
@@ -174,6 +186,10 @@ public class MerchantPlaceApplicationService {
         return response(application);
     }
 
+    /**
+     * MERCHANT_REVIEW 권한을 검사한 뒤 복호화한 사업자등록번호와 보존 기한 내 활성 첨부를 반환.
+     * 민감정보 및 첨부 메타데이터 조회 감사 기록을 함께 저장하므로 쓰기 트랜잭션 사용.
+     */
     @Transactional
     public AdminMerchantPlaceApplicationResponse getForAdmin(Long adminUserId, Long id) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
@@ -197,6 +213,10 @@ public class MerchantPlaceApplicationService {
         );
     }
 
+    /**
+     * 심사 권한을 확인하고 통합 신청의 활성·보존 기한 내 첨부 메타데이터를 문서 유형·표시 순서·ID 순으로 반환.
+     * 반환되는 첨부별 관리자 열람 감사 기록을 저장하므로 쓰기 트랜잭션 사용.
+     */
     @Transactional
     public List<AdminMerchantPlaceApplicationAttachmentResponse> listAttachmentsForAdmin(Long adminUserId, Long id) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
@@ -206,6 +226,10 @@ public class MerchantPlaceApplicationService {
         return attachments;
     }
 
+    /**
+     * 심사 권한과 신청 소속·활성 여부·보존 기한을 확인한 첨부의 S3 바이트와 MIME을 반환.
+     * 객체 조회 성공 후 열람 감사 기록을 저장하며 비활성·기한 만료·없는 첨부는 거절하고 저장소 실패는 전파.
+     */
     @Transactional
     public DownloadedAttachment downloadAttachmentForAdmin(Long adminUserId, Long applicationId, Long attachmentId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
@@ -231,6 +255,10 @@ public class MerchantPlaceApplicationService {
         return new DownloadedAttachment(bytes, attachment.getContentType());
     }
 
+    /**
+     * 본인 신청을 잠근 뒤 신청 유형 변경을 거절하고 초안의 장소 정보 또는 Claim 스냅샷과 사업자 정보를 함께 갱신.
+     * 잘못된 값은 INVALID_ATTACHMENT_METADATA, 허용되지 않는 상태는 INVALID_STATE로 변환하며 갱신된 신청 응답을 반환.
+     */
     @Transactional
     public MerchantPlaceApplicationResponse update(Long userId, Long id, MerchantPlaceApplicationRequest request) {
         PlaceRegistrationApplication application = mine(userId, id);
@@ -252,6 +280,10 @@ public class MerchantPlaceApplicationService {
         return response(application);
     }
 
+    /**
+     * 신청자와 신청 행을 잠그고 필수 사업자 정보·첨부를 검증하여 심사 대기로 전이.
+     * 기존 장소 Claim은 장소와 소유권도 잠가 현재 소유자를 다시 저장하고 같은 장소의 대기 신청을 거절.
+     */
     @Transactional
     public MerchantPlaceApplicationResponse submit(Long userId, Long id) {
         userRepository.findByIdForUpdate(userId)
@@ -267,6 +299,10 @@ public class MerchantPlaceApplicationService {
         return response(application);
     }
 
+    /**
+     * 본인 신청을 잠가 DRAFT 또는 PENDING에서 CANCELED로 전이하고 취소 시각을 기록.
+     * 그 밖의 상태는 INVALID_STATE로 거절하며 첨부 파일의 즉시 삭제는 미수행.
+     */
     @Transactional
     public MerchantPlaceApplicationResponse cancel(Long userId, Long id) {
         PlaceRegistrationApplication application = mine(userId, id);
@@ -278,6 +314,10 @@ public class MerchantPlaceApplicationService {
         return response(application);
     }
 
+    /**
+     * 본인 신청을 잠가 REJECTED에서 DRAFT로 되돌리고 이전 심사자·사유·제출 해시와 심사 시각을 비움.
+     * 첨부와 장소 입력은 유지하여 수정 후 재제출에 사용하며 다른 상태는 INVALID_STATE로 거절.
+     */
     @Transactional
     public MerchantPlaceApplicationResponse reopen(Long userId, Long id) {
         PlaceRegistrationApplication application = mine(userId, id);
@@ -289,7 +329,7 @@ public class MerchantPlaceApplicationService {
         return response(application);
     }
 
-    /** 심사 승인과 사업자 활성화, 장소 생성 또는 소유권 이전을 하나의 트랜잭션에서 완료합니다. */
+    /** 심사 승인과 사업자 활성화, 장소 생성 또는 소유권 이전을 하나의 트랜잭션에서 완료. */
     @Transactional
     public MerchantPlaceApplicationResponse approve(Long adminUserId, Long id, MerchantPlaceApplicationReviewRequest request) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
@@ -347,6 +387,10 @@ public class MerchantPlaceApplicationService {
         return response(application);
     }
 
+    /**
+     * 심사 권한을 확인하고 신청 행을 잠가 PENDING 상태와 화면에서 확인한 version의 일치를 요구.
+     * 반려 사유를 정규화하여 상태를 바꾸고 감사 로그·심사 이력을 같은 트랜잭션에 저장하며 상태·버전 충돌은 거절.
+     */
     @Transactional
     public MerchantPlaceApplicationResponse reject(Long adminUserId, Long id, MerchantPlaceApplicationReviewRequest request) {
         authorizationService.requirePermission(adminUserId, AdminPermission.MERCHANT_REVIEW);
@@ -480,6 +524,10 @@ public class MerchantPlaceApplicationService {
         }
     }
 
+    /**
+     * 새 소유자를 제외한 활성 팀원과 대기 초대를 회수한 뒤 새 소유자의 OWNER 참여를 보장.
+     * 오퍼 종료는 승인 흐름에서 별도로 수행하여 소유권 이전 전의 감사 스냅샷을 유지.
+     */
     private void synchronizePlaceTeam(Long placeId, Long previousOwnerUserId, Long newOwnerUserId, LocalDateTime now) {
         for (MerchantPlaceMember member : memberRepository.findAllByPlaceId(placeId)) {
             if (!member.getUserId().equals(newOwnerUserId) && member.getStatus() == MerchantPlaceMemberStatus.ACTIVE) {
@@ -615,6 +663,10 @@ public class MerchantPlaceApplicationService {
         return verificationCipher.decrypt(application.getEncryptedBusinessRegistrationNumber());
     }
 
+    /**
+     * 상태·선택 유형과 장소명/신청자명 검색을 조합하며 제출 기간 양 끝을 포함.
+     * 키워드는 SQL LIKE 패턴으로 전달되므로 %와 _도 와일드카드로 해석됨.
+     */
     private Specification<PlaceRegistrationApplication> adminListSpecification(
             List<PlaceRegistrationStatus> statuses,
             MerchantPlaceApplicationType applicationType,
@@ -714,6 +766,10 @@ public class MerchantPlaceApplicationService {
                 .orElse(null);
     }
 
+    /**
+     * Claim 승인 전에 장소·소유권을 잠그고 제출 당시 소유자와 일치하는지 확인.
+     * 이전 팀과 대기 초대, 잠금 조회한 이전 소유자의 오퍼를 변경 전 감사 스냅샷으로 보존.
+     */
     private ClaimReviewContext captureClaimReviewContext(PlaceRegistrationApplication application) {
         Long placeId = application.getExistingPlaceId();
         placeRepository.findByIdForUpdate(placeId)

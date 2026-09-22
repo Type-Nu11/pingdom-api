@@ -14,9 +14,11 @@ public final class VerificationSecurityFixture {
     public static final double PLACE_LATITUDE = 37.5665;
     public static final double PLACE_LONGITUDE = 126.9780;
 
+    /** 정적 fixture 생성 함수만 사용하도록 인스턴스 생성을 차단. */
     private VerificationSecurityFixture() {
     }
 
+    /** 이름과 역할을 지정한 미영속 사용자를 생성. 저장과 토큰 발급은 호출 테스트가 담당. */
     public static User user(String username, UserRole role) {
         return User.builder()
                 .username(username)
@@ -29,6 +31,7 @@ public final class VerificationSecurityFixture {
                 .build();
     }
 
+    /** 고정 서울 시청 좌표와 지정 등록자 ID를 가진 장소를 생성. */
     public static MapPlace place(Long registrantId) {
         return MapPlace.builder()
                 .name("서울 시청")
@@ -40,6 +43,7 @@ public final class VerificationSecurityFixture {
                 .build();
     }
 
+    /** 서울 날짜와 현재 시각 10초 전 관측으로 거리 3.5m의 근접 체크인을 생성. */
     public static LocationCheckIn checkIn(Long userId, Long placeId, Instant now) {
         return LocationCheckIn.proximityMatched(
                 userId,
@@ -51,6 +55,7 @@ public final class VerificationSecurityFixture {
         );
     }
 
+    /** ImageIO로 유효한 2×2 RGB JPEG 바이트를 메모리에서 생성. */
     public static byte[] jpegBytes() throws Exception {
         ByteArrayOutputStream output = new ByteArrayOutputStream();
         ImageIO.write(new BufferedImage(2, 2, BufferedImage.TYPE_INT_RGB), "jpg", output);

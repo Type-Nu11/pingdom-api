@@ -16,6 +16,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Isolation;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 좌표 또는 저장된 행정구역 코드 하나로 지역 인기 장소를 조회.
+ * 반복 읽기 트랜잭션에서 개수·목록을 계산하고 회원 북마크 상태와 페이지 기준 순위를 조합.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceLocalHotQueryService {
@@ -26,6 +30,11 @@ public class PlaceLocalHotQueryService {
     private final PlaceAdministrativeRegionRepository regionRepository;
     private final PlaceLocalHotQueryRepository localHotQueryRepository;
 
+    /**
+     * 위경도 쌍 또는 지역 코드 중 하나로 지역을 결정하고 지역 핫플 페이지와 사용자 북마크 상태를 반환.
+     * 페이지를 1 이상, 크기를 허용 범위로 보정하며 순위는 페이지 오프셋을 포함하고 빈 목록의 전체 페이지는 1.
+     * REPEATABLE_READ 경계에서 건수와 목록을 읽으며 잘못된 지역 조건·없는 지역은 도메인 오류로 거절.
+     */
     @Transactional(readOnly = true, isolation = Isolation.REPEATABLE_READ)
     public PlaceLocalHotResponse find(PlaceLocalHotQuery query, long userId) {
         ResolvedPlaceAdministrativeRegion region = resolveRegion(query);

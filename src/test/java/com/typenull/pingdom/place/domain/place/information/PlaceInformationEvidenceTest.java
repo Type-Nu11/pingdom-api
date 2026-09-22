@@ -9,8 +9,9 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class PlaceInformationEvidenceTest {
 
+    /** 출처 참조·URL·설명이 모두 비어 있으면 근거 제출을 거부하는지 확인. */
     @Test
-    void submitRequiresAtLeastOneEvidencePayload() {
+    void rejectsEmptyEvidencePayload() {
         MapPlace place = place();
 
         assertThatThrownBy(() -> PlaceInformationEvidence.submit(
@@ -26,8 +27,9 @@ class PlaceInformationEvidenceTest {
                 .hasMessage("evidence payload must not be empty");
     }
 
+    /** 관리자 검증 시 ADMIN_VERIFIED와 검증자·사유·검토 및 갱신 시각을 함께 저장하는지 확인. */
     @Test
-    void verifyByAdminStoresReviewerMetadata() {
+    void storesEvidenceReviewMetadata() {
         LocalDateTime submittedAt = LocalDateTime.of(2026, 7, 20, 10, 0);
         LocalDateTime reviewedAt = submittedAt.plusHours(2);
         PlaceInformationEvidence evidence = PlaceInformationEvidence.submit(
@@ -50,6 +52,7 @@ class PlaceInformationEvidenceTest {
         assertThat(evidence.getUpdatedAt()).isEqualTo(reviewedAt);
     }
 
+    /** 사진 근거 반려 시 공백 사유를 거부하고 필수 사유 오류를 반환하는지 확인. */
     @Test
     void rejectRequiresReviewReason() {
         PlaceInformationEvidence evidence = PlaceInformationEvidence.submit(
@@ -68,6 +71,7 @@ class PlaceInformationEvidenceTest {
                 .hasMessage("reviewReason must not be blank");
     }
 
+    /** 근거를 연결할 위치·주소가 있는 장소를 메모리에 생성. */
     private MapPlace place() {
         return MapPlace.builder()
                 .name("증빙 장소")

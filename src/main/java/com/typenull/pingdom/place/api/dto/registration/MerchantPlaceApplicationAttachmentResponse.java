@@ -4,7 +4,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmen
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType;
 import java.time.LocalDateTime;
 
-/** 통합 신청 조회에 사용하는 첨부파일 응답입니다. 저장소 내부 key는 노출하지 않습니다. */
+/** 통합 신청 조회에 사용하는 첨부파일 응답. 저장소 내부 key는 노출 대상에서 제외. */
 public record MerchantPlaceApplicationAttachmentResponse(
         Long id,
         String fileId,

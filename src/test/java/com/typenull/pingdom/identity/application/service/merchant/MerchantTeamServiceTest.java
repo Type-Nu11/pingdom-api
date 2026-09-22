@@ -38,8 +38,11 @@ class MerchantTeamServiceTest {
             clock
     );
 
+    /**
+     * 수락 시점에 만료된 대기 초대는 초대 만료 오류를 반환하고 상태를 EXPIRED로 전환하는지 검증.
+     */
     @Test
-    void mapsExpiredInvitationAcceptanceToGoneError() {
+    void rejectsExpiredInvitationAcceptance() {
         LocalDateTime now = LocalDateTime.now(clock);
         MerchantPlaceInvitation invitation = MerchantPlaceInvitation.pending(
                 1L,

@@ -5,6 +5,10 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
+/**
+ * 방문 인증·증빙·제보·Scout 기능에서 공통 예외 응답으로 전달할 HTTP 상태와 메시지.
+ * 계정 권한 실패, 입력 오류, 상태 충돌 및 저장소 일시 오류를 구분.
+ */
 @Getter
 @RequiredArgsConstructor
 public enum VisitorVerificationErrorCode implements ErrorCode {

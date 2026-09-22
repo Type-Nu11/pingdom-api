@@ -13,7 +13,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** PDF와 생성 당시 입력·HTML을 함께 보관하는 입지 분석 보고서입니다. */
+/** PDF와 생성 당시 입력·HTML을 함께 보관하는 입지 분석 보고서. */
 @Entity
 @Getter
 @Table(name = "location_analysis_report")
@@ -119,6 +119,9 @@ public class LocationAnalysisReport {
                 operatingHours, email, privacyConsent, publishedDate, analysisBasisDate, htmlContent, pdfContent, now);
     }
 
+    /**
+     * 제목·이메일·수정 시각만 변경. 저장된 PDF와 HTML은 생성 당시 내용을 유지.
+     */
     public void update(String reportName, String email, LocalDateTime now) {
         this.reportName = reportName;
         this.email = email;

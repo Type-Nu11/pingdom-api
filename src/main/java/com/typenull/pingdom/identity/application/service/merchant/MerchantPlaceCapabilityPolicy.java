@@ -14,6 +14,10 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 탈퇴·현재 정지 여부와 장소 팀 역할을 바탕으로 기능별 접근을 제한.
+ * 팀원 행이 없는 경우에만 기존 소유 매핑을 OWNER로 인정하므로 비활성 팀원의 소유 매핑을 통한 우회는 불가.
+ */
 @Component
 @RequiredArgsConstructor
 public class MerchantPlaceCapabilityPolicy {
@@ -23,6 +27,10 @@ public class MerchantPlaceCapabilityPolicy {
     private final UserRepository userRepository;
     private final Clock clock;
 
+    /**
+     * 탈퇴·정지되지 않은 요청자의 활성 장소 팀 역할로 지정 기능 접근을 검사하고 미충족 시 팀 권한 오류 발생.
+     * 팀원 행이 없을 때만 소유 매핑을 OWNER로 인정하며 비활성 팀원의 소유 매핑을 통한 우회는 불가.
+     */
     public void require(Long actorId, Long placeId, MerchantPlaceCapability capability) {
         User actor = userRepository.findById(actorId)
                 .filter(user -> !user.isWithdrawn() && !user.isCurrentlyBanned(LocalDateTime.now(clock)))

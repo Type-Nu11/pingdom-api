@@ -20,6 +20,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 운영 중이며 공개된 장소의 추천 클릭과 전체·버전별 집계 증가를 같은 트랜잭션에서 기록.
+ * 로그인 사용자의 requestId 재사용은 사전 조회로 거절하며 동시 요청의 유일성은 이 조회의 보장 범위에서 제외.
+ */
 @Service
 @Slf4j
 @RequiredArgsConstructor
@@ -31,6 +35,10 @@ public class PlaceRecommendationClickService {
     private final PlaceRecommendationVersionSnapshotService placeRecommendationVersionSnapshotService;
     private final MapPlaceRepository mapPlaceRepository;
 
+    /**
+     * 운영 중·공개 장소의 클릭을 저장하고 전체 및 해당 버전 스냅샷의 클릭 수를 증가시킴.
+     * 인증 사용자와 공백 아닌 요청 ID가 함께 주어지면 이미 사용한 요청을 거절하며, 이 중복 사전 조회는 잠금 없이 수행.
+     */
     @Transactional
     public void recordClick(Long userId, Long placeId, String recommendationVersion, String requestId) {
         if (!mapPlaceRepository.existsByIdAndOperatingStatusAndDiscoveryStatus(
@@ -61,6 +69,10 @@ public class PlaceRecommendationClickService {
         );
     }
 
+    /**
+     * 전달된 장소들의 누적 클릭 수를 일괄 집계해 불변 맵으로 반환.
+     * 빈 입력은 빈 맵이며 집계 결과가 없는 장소의 0 값 보충은 생략.
+     */
     public Map<Long, Long> loadClickCounts(Collection<Long> placeIds) {
         if (placeIds.isEmpty()) {
             return Map.of();

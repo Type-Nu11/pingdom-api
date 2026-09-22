@@ -3,9 +3,16 @@ package com.typenull.pingdom.fixture.moderation.place;
 import java.util.List;
 
 public final class PlaceDuplicateFixtures {
+    /**
+     * 중복 장소 계약은 정적 시나리오 목록으로 제공하므로 fixture 모음의 인스턴스화를 차단.
+     */
     private PlaceDuplicateFixtures() {
     }
 
+    /**
+     * 중복 후보 목록·확정·거절·병합과 미확정 병합·후보 없음·관리자 권한 실패의 HTTP 기대값을 제공.
+     * 실제 API 호출·상태 전이 대신 기대 계약을 표현하는 시나리오 데이터.
+     */
     public static List<PlaceDuplicateScenario> scenarios() {
         return List.of(
                 new PlaceDuplicateScenario("candidate-list-normal", "GET", "/admin/places/duplicate-candidates?status=PENDING", 200, null,

@@ -16,13 +16,22 @@ import java.time.LocalDateTime;
 
 final class PlaceMerchantOfferFixture {
 
+    /**
+     * Offer 데이터 계층의 정적 fixture 생성 모음이므로 인스턴스화를 차단.
+     */
     private PlaceMerchantOfferFixture() {
     }
 
+    /**
+     * 지정 역할의 활성·미차단 사용자를 만들어 정상 자격 조건의 기본값을 제공.
+     */
     static User user(String suffix, UserRole role) {
         return user(suffix, role, UserStatus.ACTIVE, false);
     }
 
+    /**
+     * 역할·활성/탈퇴 상태·영구 밴 여부에 맞춰 사용자와 관련 시각·사유를 구성해 Offer 공개 제외 조건을 재현.
+     */
     static User user(String suffix, UserRole role, UserStatus status, boolean banned) {
         return User.builder()
                 .username("data-fixture-" + suffix)
@@ -42,6 +51,9 @@ final class PlaceMerchantOfferFixture {
                 .build();
     }
 
+    /**
+     * 주어진 등록자 ID와 구분 문자열로 고정 좌표의 장소를 생성. 소유 관계 엔티티는 별도 생성 대상.
+     */
     static MapPlace place(Long registrantId, String suffix) {
         return MapPlace.builder()
                 .name("통합 테스트 장소 " + suffix)
@@ -53,6 +65,9 @@ final class PlaceMerchantOfferFixture {
                 .build();
     }
 
+    /**
+     * 지정한 점주 프로필 상태와 연락처·이전 생성/수정 시각을 구성해 활성 여부의 조회 조건을 제공.
+     */
     static MerchantOwnerProfile profile(Long merchantId, MerchantOwnerStatus status, LocalDateTime now) {
         return MerchantOwnerProfile.builder()
                 .userId(merchantId)
@@ -67,6 +82,9 @@ final class PlaceMerchantOfferFixture {
                 .build();
     }
 
+    /**
+     * 점주의 본인·사업자 검증을 같은 지정 상태로 설정해 승인/대기 자격 경계를 재현.
+     */
     static MerchantVerification verification(
             Long merchantId,
             MerchantVerificationStatus status,
@@ -84,6 +102,9 @@ final class PlaceMerchantOfferFixture {
                 .build();
     }
 
+    /**
+     * 점주와 장소의 현재 소유 관계를 만들어 Offer 작성자와 실제 소유자 비교에 사용.
+     */
     static MerchantOwnerPlace ownership(Long merchantId, Long placeId, LocalDateTime now) {
         return MerchantOwnerPlace.builder()
                 .merchantOwnerUserId(merchantId)
@@ -92,6 +113,9 @@ final class PlaceMerchantOfferFixture {
                 .build();
     }
 
+    /**
+     * 지정 점주·장소·기간·수량으로 초안을 만들고 주어진 시각에 게시해 공개 조회 테스트 입력을 제공.
+     */
     static TouristOffer publishedOffer(
             Long merchantId,
             Long placeId,
@@ -117,6 +141,9 @@ final class PlaceMerchantOfferFixture {
         return offer;
     }
 
+    /**
+     * 주어진 Offer·관광객·코드와 발급 시각으로 하루 유효 쿠폰을 만들어 고유 제약 및 롤백을 검증.
+     */
     static TouristCoupon coupon(
             Long offerId,
             Long touristId,

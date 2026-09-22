@@ -26,6 +26,9 @@ class PlaceRecommendationFeatureLogServiceTest {
 
     private PlaceRecommendationFeatureLogService placeRecommendationFeatureLogService;
 
+    /**
+     * 특성 로그 저장소를 모의로 주입한 서비스를 준비.
+     */
     @BeforeEach
     void setUp() {
         placeRecommendationFeatureLogService = new PlaceRecommendationFeatureLogService(
@@ -33,8 +36,11 @@ class PlaceRecommendationFeatureLogServiceTest {
         );
     }
 
+    /**
+     * requestId·사용자·장소·추천 버전이 일치하는 조회 결과의 특성 로그 ID를 반환하는지 확인.
+     */
     @Test
-    void findFeatureLogIdRequiresMatchingRecommendationVersion() {
+    void matchesAttributedFeatureVersion() {
         PlaceRecommendationFeatureLog featureLog = PlaceRecommendationFeatureLog.builder()
                 .id(40L)
                 .build();
@@ -56,8 +62,11 @@ class PlaceRecommendationFeatureLogServiceTest {
         assertThat(featureLogId).isEqualTo(40L);
     }
 
+    /**
+     * requestId가 null 또는 공백이면 저장소를 조회하지 않고 null을 반환하는지 확인.
+     */
     @Test
-    void findFeatureLogIdSkipsLookupWhenRequestIdIsMissing() {
+    void skipsMissingFeatureRequestId() {
         Long nullRequestFeatureLogId = placeRecommendationFeatureLogService.findFeatureLogId(
                 null,
                 10L,
@@ -76,8 +85,11 @@ class PlaceRecommendationFeatureLogServiceTest {
         verifyNoInteractions(placeRecommendationFeatureLogRepository);
     }
 
+    /**
+     * 표시 후보의 프로모션 가점 0.08이 특성 로그 저장값에 유지되는지 확인.
+     */
     @Test
-    void recordShownCandidatesPersistsBoostContribution() {
+    void persistsFeatureBoostContribution() {
         var record = new PlaceRecommendationFeatureRecord(
                 20L, PlaceRecommendationCandidateSource.FALLBACK, 1, 100L,
                 0.1d, 0.2d, 0.3d, 0.1d, 0.1d, 0.1d, 0.1d, 0.0d, 0.0d,

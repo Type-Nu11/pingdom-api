@@ -21,10 +21,10 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
 /**
- * MapImage가 사용하는 S3 객체와 S3에만 남은 객체를 같은 기준으로 비교한다.
+ * MapImage가 사용하는 S3 객체와 S3에만 남은 객체를 같은 기준으로 비교.
  *
- * <p>관리자 dry-run 조회와 비동기 전체 리포트가 모두 이 서비스를 사용해야
- * 원본·썸네일 키의 고아 객체 판별 결과가 달라지지 않는다.</p>
+ * <p>관리자 dry-run 조회와 비동기 전체 리포트가 모두 이 서비스를 사용해
+ * 원본·썸네일 키의 고아 객체 판별 결과를 통일.</p>
  */
 @Service
 @Slf4j
@@ -80,6 +80,11 @@ public class MapImageS3OrphanReportService {
         );
     }
 
+    /**
+     * 한 JVM에서 진행 중인 작업을 재사용하고 전용 실행기에 S3 전체 순회 작업을 제출.
+     * Redis에 보관하는 결과의 수명은 1시간이며, JVM 간 실행 중복을 막는 분산 잠금은 없음.
+     * 대기열 포화는 FAILED 리포트로 남기고 부분 스캔 실패의 자동 재시도는 미지원.
+     */
     public S3OrphanReportStatus refreshMapImageS3OrphanReport() {
         synchronized (refreshMonitor) {
             if (runningReportId != null) {
@@ -161,7 +166,9 @@ public class MapImageS3OrphanReportService {
     }
 
     /**
-     * 리포트 생성 시점의 후보 여부와 현재 DB 사용 여부를 모두 확인한 뒤 S3 객체를 삭제한다.
+     * 완료 리포트의 후보인지와 현재 DB 사용 여부를 재확인한 뒤 S3 객체를 개별 삭제.
+     * map/ 접두어 밖의 입력은 제외하며, 일부 삭제 실패 시 성공한 객체를 복구하지 않고 항목별 결과를 반환.
+     * DB 재확인과 S3 삭제 사이에 전역 잠금이 없으므로 동시 참조 생성의 차단은 보장 범위 외.
      */
     public S3OrphanDeleteResult deleteMapImageS3Candidates(String reportId, List<String> keys) {
         Set<String> requestedKeys = normalizeDeleteKeys(keys);

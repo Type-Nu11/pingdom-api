@@ -39,6 +39,11 @@ import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사진 신고의 승인·반려를 신고자 정책·사진 노출·사용자 제재·감사 기록·알림 outbox와 연결.
+ * 승인은 REPORT_REVIEW·USER_SANCTION 권한을 모두 요구하며 반려에는 신고자 정책 갱신 포함.
+ * 대기 상태 확인은 일반 조회이므로 동시 처리 간 경쟁 가능.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminReportServiceImpl implements AdminReportService {
@@ -57,12 +62,15 @@ public class AdminReportServiceImpl implements AdminReportService {
     private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
+    /**
+     * 대기 신고를 승인하고 신고자 승인 집계·신뢰 정책을 갱신한 뒤 피신고자를 무기한 정지하고 사진을 숨김.
+     * 관련 사용자·게시글이 없거나 후속 처리가 실패하면 같은 트랜잭션의 변경을 롤백.
+     */
     @Override
     @Transactional
-    /** 신고를 승인하고 대상 콘텐츠의 운영 상태 및 처리 이력을 갱신합니다. */
     public AdminReportActionResponse acceptReport(Long reportId, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가한다.
+        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가.
         authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         PostReport postReport = getPendingReport(reportId);
         User reportedUser = userRepository.findById(postReport.getReportedUserId())
@@ -76,7 +84,7 @@ public class AdminReportServiceImpl implements AdminReportService {
         postReport.accept(now);
         reportPolicyService.recordAccepted(postReport.getReporterUserId(), postReport.getReporterUsername());
         reporter.increaseReportCount();
-        // 신고 수락은 대상 사진 숨김과 소유자 제재까지 하나의 처리로 본다.
+        // 신고 수락은 대상 사진 숨김과 소유자 제재까지 하나의 처리로 판단.
         userSanctionCommandService.applyBan(reportedUser, postReport.getReason(), now, null, adminUserId);
         adminPostService.hidePost(postReport.getReportedImageId(), "REPORT_ACCEPTED", adminUserId);
         adminAuditLogService.record(
@@ -103,6 +111,11 @@ public class AdminReportServiceImpl implements AdminReportService {
         );
     }
 
+    /**
+     * REPORT_REVIEW 권한과 PENDING 신고·신고자 존재를 확인하고 반려 상태·신고자 신뢰 정책 갱신.
+     * 감사 기록·관리자 알림 outbox를 같은 트랜잭션에 저장하며 피신고자 제재·게시글 숨김은 유지.
+     * 신고 부재·기처리·신고자 부재는 오류 처리하며 정책 평가에 따라 신고자의 신고 제한 변경 가능.
+     */
     @Override
     @Transactional
     public AdminReportActionResponse declineReport(Long reportId, Long adminUserId) {
@@ -148,11 +161,15 @@ public class AdminReportServiceImpl implements AdminReportService {
         );
     }
 
+    /**
+     * 현재 조회되는 동일 사진의 PENDING 신고를 모두 승인하되 사용자 제재·사진 숨김은 한 번 수행.
+     * 처리 대상이 없으면 오류 반환. 이전 성공 응답 재생 없이 반복 요청도 현재 대기 신고를 기준으로 처리.
+     */
     @Override
     @Transactional
     public AdminPostReportBulkActionResponse acceptPostReports(Long postId, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가한다.
+        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가.
         authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         MapImage mapImage = getPost(postId);
         List<PostReport> pendingReports = getPendingReports(postId);
@@ -202,6 +219,11 @@ public class AdminReportServiceImpl implements AdminReportService {
         return toBulkActionResponse(mapImage, PostReportStatus.ACCEPTED, pendingReports.size(), now);
     }
 
+    /**
+     * REPORT_REVIEW 권한을 확인하고 존재하는 게시글의 현재 PENDING 신고를 모두 반려.
+     * 대기 신고가 없으면 거절하고 각 신고자의 정책·감사 기록·관리자 알림 outbox를 같은 트랜잭션에 반영.
+     * 게시글 숨김과 피신고자 제재 상태는 유지하며 관련 사용자가 없거나 후속 처리가 실패하면 전체 변경을 롤백.
+     */
     @Override
     @Transactional
     public AdminPostReportBulkActionResponse declinePostReports(Long postId, Long adminUserId) {
@@ -247,6 +269,10 @@ public class AdminReportServiceImpl implements AdminReportService {
         return toBulkActionResponse(mapImage, PostReportStatus.DECLINED, pendingReports.size(), now);
     }
 
+    /**
+     * PENDING 신고를 검색어와 숫자로 해석 가능한 ID 조건으로 조회. 신고 단위 결과이므로 동일 사용자 중복 가능.
+     * LIKE 특수문자는 이스케이프하고 page는 1 이상·limit는 1~100으로 보정해 신고 ID와 신고자·피신고자 정보 반환.
+     */
     @Transactional(readOnly = true)
     public ReportedUsersResponse getReportedUsers(int page, int limit, String keyword) {
         int safePage = Math.max(page, 1);

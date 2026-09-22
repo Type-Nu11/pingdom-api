@@ -24,6 +24,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.multipart.MultipartFile;
 
+/**
+ * 리뷰 사진을 24시간 임시 업로드로 보관하고 작성자·장소·만료를 확인해 리뷰에 연결.
+ * 취소·만료 사진은 DB에서 제거하고 S3 삭제는 outbox에 맡기며 연결 사진은 이 임시 정리 대상에서 제외.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -41,6 +45,10 @@ public class PlaceReviewMediaService {
     private final S3ObjectDeleteOutboxPublisher deletePublisher;
     private final Clock clock;
 
+    /**
+     * 이미지 처리 후 S3에 올리고 임시 업로드 행을 저장.
+     * 메서드 안에서 관찰한 저장 실패에는 S3 삭제를 시도하지만 지연 flush·최종 커밋 실패는 보상 범위에서 제외.
+     */
     @Transactional
     public PlaceReviewMediaUploadResponse upload(Long userId, Long placeId, MultipartFile file) {
         if (!placeRepository.existsById(placeId)) {
@@ -69,6 +77,10 @@ public class PlaceReviewMediaService {
         }
     }
 
+    /**
+     * 최대 3개의 중복 없는 업로드 ID를 요청 순서대로 잠가 본인·같은 장소·미연결·미만료 여부를 확인한 뒤 리뷰에 연결.
+     * null·빈 목록은 건너뛰고 표시 순서는 0부터 부여. 하나라도 거절되면 호출 트랜잭션의 연결 변경 전체가 실패.
+     */
     @Transactional
     public void connect(Long userId, Long placeId, PlaceReview review, List<Long> reviewMediaIds) {
         if (reviewMediaIds == null || reviewMediaIds.isEmpty()) {
@@ -96,6 +108,10 @@ public class PlaceReviewMediaService {
         }
     }
 
+    /**
+     * 업로드 행을 잠가 본인과 장소가 일치하는 미연결 사진인지 확인한 뒤 메타데이터를 삭제.
+     * S3 삭제는 outbox에 요청하며 이미 리뷰에 연결된 사진은 취소를 거절.
+     */
     @Transactional
     public void cancel(Long userId, Long placeId, Long reviewMediaId) {
         PlaceReviewMediaUpload media = mediaRepository.findByIdForUpdate(reviewMediaId)
@@ -110,6 +126,10 @@ public class PlaceReviewMediaService {
         mediaRepository.delete(media);
     }
 
+    /**
+     * 만료된 UPLOADED 사진을 100개씩 최대 10묶음 처리.
+     * 전체 반복이 하나의 트랜잭션이므로 중간 실패 시 이 호출의 DB 삭제와 outbox 기록도 함께 롤백됨.
+     */
     @Transactional
     public int purgeExpiredUploads() {
         int deletedCount = 0;

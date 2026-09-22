@@ -28,12 +28,12 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 사용자와 관리자 로그인 요청을 인증 서비스로 전달하고 토큰 응답을 구성. */
 @RestController
 @RequestMapping("/auth")
 @RequiredArgsConstructor
 @ApiAudience(ApiAudience.Group.COMMON)
 @Tag(name = SwaggerTagCatalog.LOGIN)
-/** 사용자와 관리자 로그인 요청을 인증 서비스로 전달하고 토큰 응답을 구성합니다. */
 public class AuthLoginController {
 
     private final AuthService authService;

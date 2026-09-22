@@ -40,14 +40,21 @@ class MerchantPlaceInformationServiceTest {
 
     @InjectMocks private MerchantPlaceInformationService informationService;
 
+    /**
+     * 장소 정보 변경 이벤트 시각을 비교할 수 있도록 UTC Clock을 고정.
+     */
     @BeforeEach
     void setUpClock() {
         lenient().when(clock.instant()).thenReturn(Instant.parse("2026-08-05T12:00:00Z"));
         lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 정보가 없는 장소를 수정 요청하면 관리 권한을 확인하고 장소·소개를 응답에 반영하는지 검증.
+     * 발행 이벤트에 신규 생성 여부가 true로 기록되는지도 확인.
+     */
     @Test
-    void managerCanCreateInformationAndEventMarksCreation() {
+    void createsInformationWithCreationEvent() {
         MerchantPlaceInformationUpdateRequest request = new MerchantPlaceInformationUpdateRequest(
                 "K-컬처 체험 공간",
                 "010-1234-5678",
@@ -69,8 +76,11 @@ class MerchantPlaceInformationServiceTest {
         assertThat(eventCaptor.getValue().created()).isTrue();
     }
 
+    /**
+     * 기존 장소 정보를 수정하면 소개와 예약 URL이 바뀌고 생성 여부가 false인 변경 이벤트를 고정 시각으로 발행하는지 검증.
+     */
     @Test
-    void managerCanUpdateExistingInformation() {
+    void updatesInformationWithChangeEvent() {
         MerchantPlaceInformation information = MerchantPlaceInformation.create(
                 10L,
                 "기존 소개",
@@ -97,8 +107,11 @@ class MerchantPlaceInformationServiceTest {
         verify(eventPublisher).publishEvent(new MerchantPlaceInformationUpdatedEvent(20L, 10L, false, NOW));
     }
 
+    /**
+     * 장소 정보가 없으면 PLACE_INFORMATION_NOT_FOUND 오류를 반환하고 관리 권한 검사도 호출하는지 검증.
+     */
     @Test
-    void missingInformationIsReportedAfterPermissionCheck() {
+    void rejectsMissingInformation() {
         when(informationRepository.findByPlaceId(10L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> informationService.get(20L, 10L))

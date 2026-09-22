@@ -10,6 +10,10 @@ import com.typenull.pingdom.notification.application.service.FcmSendException;
 import com.typenull.pingdom.notification.domain.NotificationType;
 import org.springframework.stereotype.Component;
 
+/**
+ * FCM 메시지에 앱 알림 ID·유형을 포함해 동기로 전송하고 사업자 오류를 공통 예외로 변환.
+ * 현재 분류는 UNREGISTERED와 INVALID_ARGUMENT를 무효 토큰으로 표시하며, 실제 삭제는 상위 서비스가 수행.
+ */
 @Component
 public class FirebaseFcmMessageSender implements FcmMessageSender {
 

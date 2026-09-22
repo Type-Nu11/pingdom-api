@@ -6,6 +6,7 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/** 운영 공지 생성과 상태 변경 횟수를 공지 종류 및 전후 상태별로 집계. */
 @Component
 public class PlaceOperatingNoticeMetrics {
 

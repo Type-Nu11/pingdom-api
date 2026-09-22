@@ -25,8 +25,11 @@ import org.springframework.data.domain.Pageable;
 
 class PlaceLocalHotQueryServiceTest {
 
+    /**
+     * 지역 장소가 없으면 지역 정보와 빈 목록·총 0건·총 1페이지·다음 없음으로 응답하는지 확인.
+     */
     @Test
-    void 지역에_장소가_없으면_정상_빈_목록을_반환한다() {
+    void returnsEmptyRegionalList() {
         PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
         PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
         PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
@@ -48,8 +51,11 @@ class PlaceLocalHotQueryServiceTest {
         assertThat(response.hasNext()).isFalse();
     }
 
+    /**
+     * 좌표 해석 결과를 조회에 사용하고 두 번째 페이지 첫 항목을 21위로 매핑하며 북마크 정보와 페이지 메타데이터를 유지하는지 확인.
+     */
     @Test
-    void 좌표로_법정동_시군구를_판정하고_페이지_순위를_유지한다() {
+    void preservesRegionalPageRanks() {
         PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
         PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
         PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
@@ -84,8 +90,11 @@ class PlaceLocalHotQueryServiceTest {
         verify(queryRepository).findLocalHotPlaces(eq("11680"), eq(7L), any(Pageable.class));
     }
 
+    /**
+     * 지역 코드를 직접 전달하면 저장 지역을 사용하고 외부 resolver를 호출하지 않는지 확인.
+     */
     @Test
-    void regionCode_직접_조회는_외부_행정구역_Resolver를_호출하지_않는다() {
+    void bypassesResolverForRegionCode() {
         PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
         PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
         PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
@@ -107,8 +116,11 @@ class PlaceLocalHotQueryServiceTest {
         verifyNoInteractions(regionResolver);
     }
 
+    /**
+     * 좌표 해석 실패를 그대로 전파하고 지역·핫플 조회를 진행하지 않는지 확인.
+     */
     @Test
-    void 좌표_조회에서_Resolver_실패는_조회_저장소를_호출하지_않고_전파한다() {
+    void propagatesRegionResolutionFailure() {
         PlaceAdministrativeRegionResolver regionResolver = mock(PlaceAdministrativeRegionResolver.class);
         PlaceAdministrativeRegionRepository regionRepository = mock(PlaceAdministrativeRegionRepository.class);
         PlaceLocalHotQueryRepository queryRepository = mock(PlaceLocalHotQueryRepository.class);
@@ -123,20 +135,32 @@ class PlaceLocalHotQueryServiceTest {
         verifyNoInteractions(regionRepository, queryRepository);
     }
 
+    /**
+     * 페이지 순위와 북마크 응답을 확인할 핫플 조회 행을 생성.
+     */
     private PlaceLocalHotQueryRepository.PlaceLocalHotProjection projection(
             Long placeId,
             long bookmarkCount,
             boolean bookmarked
     ) {
         return new PlaceLocalHotQueryRepository.PlaceLocalHotProjection() {
+            /** 지역 핫플 응답의 장소 ID를 제공. */
             @Override public Long getPlaceId() { return placeId; }
+            /** 핫플 응답에 표시할 고정 장소명을 제공. */
             @Override public String getPlaceName() { return "강남 핫플"; }
+            /** 응답 매핑에 사용할 카페 카테고리를 제공. */
             @Override public String getCategory() { return "카페"; }
+            /** 강남 지역 후보의 표시 주소를 제공. */
             @Override public String getAddress() { return "서울특별시 강남구"; }
+            /** 강남 지역 후보의 위도를 제공. */
             @Override public Double getLatitude() { return 37.5172d; }
+            /** 강남 지역 후보의 경도를 제공. */
             @Override public Double getLongitude() { return 127.0473d; }
+            /** 응답 매핑에 사용할 핫플 대표 이미지 URL을 제공. */
             @Override public String getImageUrl() { return "https://example.com/local-hot.jpg"; }
+            /** 순위 응답에 포함할 현재 북마크 수를 제공. */
             @Override public long getBookmarkCount() { return bookmarkCount; }
+            /** 조회 사용자 본인의 북마크 상태를 제공. */
             @Override public boolean getBookmarked() { return bookmarked; }
         };
     }

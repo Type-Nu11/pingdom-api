@@ -37,6 +37,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 인증 회원의 장소 운영 공지 관리 요청을 서비스에 연결.
+ * 목록의 capability 검사와 쓰기 경로의 소유 매핑 검사는 서비스의 각 진입 메서드에서 수행.
+ */
 @RestController
 @RequestMapping("/merchant-owner/places/{placeId}/operating-notices")
 @RequiredArgsConstructor

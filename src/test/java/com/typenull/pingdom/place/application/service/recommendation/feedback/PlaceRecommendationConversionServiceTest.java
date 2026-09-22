@@ -51,14 +51,20 @@ class PlaceRecommendationConversionServiceTest {
     @InjectMocks
     private PlaceRecommendationConversionService placeRecommendationConversionService;
 
+    /**
+     * 최근 클릭의 7일 귀속 구간을 확인할 UTC 현재 시각을 고정.
+     */
     @BeforeEach
     void setUpClock() {
         when(clock.instant()).thenReturn(Instant.parse("2026-08-05T12:00:00Z"));
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 7일 전을 포함한 최신 클릭 조회의 ID·버전·특성 로그를 전환에 연결하고 전체·버전별 집계를 증가하는지 확인.
+     */
     @Test
-    void recordConversionLinksFeatureLogFromAttributedClick() {
+    void linksAttributedConversionFeature() {
         Long userId = 10L;
         Long placeId = 20L;
         PlaceRecommendationClick click = PlaceRecommendationClick.builder()
@@ -113,8 +119,11 @@ class PlaceRecommendationConversionServiceTest {
                 );
     }
 
+    /**
+     * 특성 기록이 없는 클릭도 전환을 저장하며 featureLogId를 null로 두고 전체 집계를 갱신하는지 확인.
+     */
     @Test
-    void recordConversionContinuesWhenAttributedFeatureLogDoesNotExist() {
+    void recordsConversionWithoutFeatureLog() {
         Long userId = 11L;
         Long placeId = 21L;
         PlaceRecommendationClick click = PlaceRecommendationClick.builder()

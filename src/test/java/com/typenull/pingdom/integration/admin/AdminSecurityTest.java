@@ -40,6 +40,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관리자 경로와 로그인·감사 조회에서 미인증, 사용자 역할, 탈퇴 상태에 따른 접근 경계를 검증.
+ */
 @Tag("integration")
 @SpringBootTest(properties = {
         "spring.security.oauth2.client.registration.google.client-id=test-google-client-id",
@@ -76,6 +79,9 @@ class AdminSecurityTest {
     @Autowired
     private Clock clock;
 
+    /**
+     * 감사 로그·관리자 역할·사용자를 삭제해 인증 및 역할 경계 검증을 격리.
+     */
     @BeforeEach
     void setUp() {
         adminAuditLogRepository.deleteAllInBatch();
@@ -83,15 +89,21 @@ class AdminSecurityTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 게시물 관리자 경로가 토큰 없는 요청에 401과 INVALID_TOKEN을 반환하는지 확인.
+     */
     @Test
-    void adminEndpointRejectsUnauthenticatedUser() throws Exception {
+    void postsRequireToken() throws Exception {
         mockMvc.perform(get("/admin/posts"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 일반 사용자의 관리자 게시물 접근에서 JSON 403 응답과 관리자 권한 안내를 확인.
+     */
     @Test
-    void adminEndpointRejectsNonAdminUser() throws Exception {
+    void postsRejectUser() throws Exception {
         createUser("normalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("normalUser");
 
@@ -103,15 +115,21 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
     }
 
+    /**
+     * 요약 대시보드가 토큰 없는 요청을 INVALID_TOKEN으로 거절하는지 확인.
+     */
     @Test
-    void adminDashboardSummaryRejectsUnauthenticatedUser() throws Exception {
+    void summaryRequiresToken() throws Exception {
         mockMvc.perform(get("/admin/dashboard/summary"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 일반 사용자 토큰으로 요약 대시보드 조회 시 ACCESS_DENIED를 확인.
+     */
     @Test
-    void adminDashboardSummaryRejectsNonAdminUser() throws Exception {
+    void summaryRejectsUser() throws Exception {
         createUser("dashboardNormalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("dashboardNormalUser");
 
@@ -121,15 +139,21 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 최근 활동 조회의 미인증 요청이 401인지 확인.
+     */
     @Test
-    void adminDashboardRecentActivitiesRejectsUnauthenticatedUser() throws Exception {
+    void activitiesRequireToken() throws Exception {
         mockMvc.perform(get("/admin/dashboard/recent-activities"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 최근 활동 조회의 일반 사용자 요청이 403인지 확인.
+     */
     @Test
-    void adminDashboardRecentActivitiesRejectsNonAdminUser() throws Exception {
+    void activitiesRejectUser() throws Exception {
         createUser("recentActivitiesNormalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("recentActivitiesNormalUser");
 
@@ -139,8 +163,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 대기 항목 조회가 일반 사용자 역할을 ACCESS_DENIED로 거절하는지 확인.
+     */
     @Test
-    void adminDashboardPendingItemsRejectsNonAdminUser() throws Exception {
+    void pendingItemsRejectUser() throws Exception {
         createUser("dashboardPendingNormalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("dashboardPendingNormalUser");
 
@@ -150,22 +177,31 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 대기 항목 조회가 미인증 요청을 INVALID_TOKEN으로 거절하는지 확인.
+     */
     @Test
-    void adminDashboardPendingItemsRejectsUnauthenticatedUser() throws Exception {
+    void pendingItemsRequireToken() throws Exception {
         mockMvc.perform(get("/admin/dashboard/pending-items"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 신고자 신뢰도 조회가 토큰 없는 요청에 401을 반환하는지 확인.
+     */
     @Test
-    void adminTrustScoreRejectsUnauthenticatedUser() throws Exception {
+    void trustScoreRequiresToken() throws Exception {
         mockMvc.perform(get("/admin/trust-score/reporters/{reporterUserId}", 7L))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 신고자 신뢰도 조회가 일반 사용자에게 403을 반환하는지 확인.
+     */
     @Test
-    void adminTrustScoreRejectsNonAdminUser() throws Exception {
+    void trustScoreRejectsUser() throws Exception {
         createUser("trustScoreNormalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("trustScoreNormalUser");
 
@@ -175,15 +211,21 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 신뢰도 개입 평가 요청이 미인증 상태에서는 401인지 확인.
+     */
     @Test
-    void adminTrustScoreInterventionRejectsUnauthenticatedUser() throws Exception {
+    void interventionRequiresToken() throws Exception {
         mockMvc.perform(post("/admin/trust-score/reporters/{reporterUserId}/interventions/evaluate", 7L))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 일반 사용자의 신뢰도 개입 평가 요청이 ACCESS_DENIED로 거절되는지 확인.
+     */
     @Test
-    void adminTrustScoreInterventionRejectsNonAdminUser() throws Exception {
+    void interventionRejectsUser() throws Exception {
         createUser("trustScoreInterventionNormalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("trustScoreInterventionNormalUser");
 
@@ -193,8 +235,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 형식상 유효한 온보딩 변경 본문이어도 미인증 요청은 401인지 확인.
+     */
     @Test
-    void adminMerchantOnboardingMetricRejectsUnauthenticatedUser() throws Exception {
+    void onboardingRequiresToken() throws Exception {
         mockMvc.perform(put("/admin/merchant-owners/{userId}/onboarding", 7L)
                         .contentType(MediaType.APPLICATION_JSON)
                         .content("""
@@ -208,8 +253,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 운영 품질 변경 본문을 보낸 일반 사용자 요청이 403인지 확인.
+     */
     @Test
-    void adminMerchantQualityMetricRejectsNonAdminUser() throws Exception {
+    void merchantQualityRejectsUser() throws Exception {
         createUser("merchantMetricNormalUser", UserRole.USER);
         String accessToken = loginAndGetAccessToken("merchantMetricNormalUser");
 
@@ -229,8 +277,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 관리자 로그인 후 빈 데이터의 대시보드 집계 네 항목이 모두 0인지 확인.
+     */
     @Test
-    void adminDashboardSummaryAllowsAdminUser() throws Exception {
+    void adminDashboardSummary() throws Exception {
         createUser("dashboardAdmin", UserRole.ADMIN);
         String accessToken = loginAndGetAccessToken("dashboardAdmin");
 
@@ -243,8 +294,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.bannedUserCount").value(0));
     }
 
+    /**
+     * 관리자 로그인 경로에서는 일반 사용자의 올바른 자격 증명도 INVALID_CREDENTIALS로 거절하는지 확인.
+     */
     @Test
-    void adminLoginRejectsNonAdminUser() throws Exception {
+    void adminLoginRejectsUser() throws Exception {
         createUser("normalAdminPageUser", UserRole.USER);
         LoginRequest loginRequest = new LoginRequest("normalAdminPageUser", "password123");
 
@@ -256,8 +310,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.message").value("아이디 또는 비밀번호가 올바르지 않습니다."));
     }
 
+    /**
+     * 관리자 로그인은 접근 토큰을 본문에, 갱신 토큰을 쿠키에 반환하고 본문에는 갱신 토큰을 노출하지 않는지 확인.
+     */
     @Test
-    void adminLoginAllowsAdminUser() throws Exception {
+    void adminLoginCookie() throws Exception {
         createUser("adminLoginUser", UserRole.ADMIN);
         LoginRequest loginRequest = new LoginRequest("adminLoginUser", "password123");
 
@@ -271,8 +328,11 @@ class AdminSecurityTest {
                 .andExpect(header().string(HttpHeaders.SET_COOKIE, containsString("PINGDOM_REFRESH_TOKEN=")));
     }
 
+    /**
+     * 관리자 로그인에서 발급한 접근 토큰의 역할 claim이 ADMIN인지 확인.
+     */
     @Test
-    void adminLoginAccessTokenContainsAdminRoleClaim() throws Exception {
+    void adminTokenRole() throws Exception {
         createUser("adminClaimUser", UserRole.ADMIN);
         LoginRequest loginRequest = new LoginRequest("adminClaimUser", "password123");
 
@@ -290,8 +350,11 @@ class AdminSecurityTest {
         assertThat(jwtTokenProvider.getRoleFromAccessToken(accessToken)).isEqualTo("ADMIN");
     }
 
+    /**
+     * 관리자 토큰으로 게시물 목록을 조회할 때 이 시나리오가 기대하는 200 응답을 확인.
+     */
     @Test
-    void adminEndpointAllowsAdminUser() throws Exception {
+    void adminPostsAccess() throws Exception {
         createUser("adminUser", UserRole.ADMIN);
         String accessToken = loginAndGetAccessToken("adminUser");
 
@@ -300,8 +363,11 @@ class AdminSecurityTest {
                 .andExpect(status().isOk());
     }
 
+    /**
+     * 관리자가 기간 내 감사 두 건을 최신순으로 조회하고 대상·행위·요청 ID를 확인할 수 있는지 검증.
+     */
     @Test
-    void adminAuditScenarioAllowsAdminToReviewSecurityFixture() throws Exception {
+    void adminAuditFixture() throws Exception {
         SecurityRegressionFixture fixture = securityRegressionFixture();
 
         mockMvc.perform(get("/admin/audit-logs")
@@ -321,8 +387,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.totalCount").value(2));
     }
 
+    /**
+     * 상점 소유자 역할은 감사 로그에 접근할 수 없고 관리자 권한 안내를 받는지 확인.
+     */
     @Test
-    void adminAuditScenarioRejectsMerchantOwnerBoundaryRole() throws Exception {
+    void auditRejectsMerchantOwner() throws Exception {
         SecurityRegressionFixture fixture = securityRegressionFixture();
 
         mockMvc.perform(get("/admin/audit-logs")
@@ -333,8 +402,11 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.message").value("관리자 권한이 필요합니다."));
     }
 
+    /**
+     * 토큰 발급 뒤 탈퇴한 관리자의 기존 토큰도 감사 로그 접근 시 무효 처리되는지 확인.
+     */
     @Test
-    void adminAuditScenarioRejectsWithdrawnAdminExistingToken() throws Exception {
+    void auditRejectsWithdrawnAdmin() throws Exception {
         SecurityRegressionFixture fixture = securityRegressionFixture();
 
         User withdrawnAdmin = userRepository.findById(fixture.withdrawnAdminId()).orElseThrow();
@@ -352,6 +424,9 @@ class AdminSecurityTest {
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * 관리자·상점 소유자·탈퇴 예정 관리자와 시간순 감사 두 건을 저장하고 각 접근 토큰을 묶음.
+     */
     private SecurityRegressionFixture securityRegressionFixture() throws Exception {
         User admin = createUser("securityAuditAdmin", UserRole.ADMIN);
         adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
@@ -395,6 +470,9 @@ class AdminSecurityTest {
         );
     }
 
+    /**
+     * 지정 역할의 사용자를 저장하고 flush하여 이후 인증 필터가 읽을 수 있게 함.
+     */
     private User createUser(String username, UserRole role) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -407,6 +485,9 @@ class AdminSecurityTest {
                 .build());
     }
 
+    /**
+     * 일반 로그인 경로의 성공 응답에서 접근 토큰을 추출.
+     */
     private String loginAndGetAccessToken(String username) throws Exception {
         LoginRequest loginRequest = new LoginRequest(username, "password123");
 

@@ -40,6 +40,9 @@ import org.testcontainers.junit.jupiter.Container;
 import org.testcontainers.junit.jupiter.Testcontainers;
 import org.testcontainers.utility.DockerImageName;
 
+/**
+ * PostGIS 유일성 제약과 S3 대역을 사용해 체크인·증빙 중복 경쟁 및 패자 객체 보상 삭제를 검증.
+ */
 @Tag("postgres-integration")
 @Testcontainers
 @SpringBootTest(properties = {
@@ -64,6 +67,9 @@ class VerificationConcurrencyIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * Flyway와 Hibernate 검증이 실행될 PostGIS 컨테이너 접속 정보를 등록.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -82,6 +88,9 @@ class VerificationConcurrencyIntegrationTest {
     @MockBean
     private S3ObjectStorage objectStorage;
 
+    /**
+     * 증빙·체크인·장소·사용자를 순서대로 삭제하고 S3 대역 호출 기록과 응답 설정을 초기화.
+     */
     @BeforeEach
     void cleanDatabase() {
         evidenceRepository.deleteAllInBatch();
@@ -91,8 +100,11 @@ class VerificationConcurrencyIntegrationTest {
         reset(objectStorage);
     }
 
+    /**
+     * 같은 사용자·장소의 동시 체크인 두 건 중 한 건만 저장되고 패자는 DAILY_CHECK_IN_ALREADY_EXISTS를 받는지 확인.
+     */
     @Test
-    void concurrentDailyCheckInCreatesOneRecordAndMapsConstraintFailure() throws Exception {
+    void concurrentDailyCheckIn() throws Exception {
         User tourist = userRepository.saveAndFlush(user("concurrentCheckIn", UserRole.USER));
         MapPlace savedPlace = placeRepository.saveAndFlush(place(tourist.getId()));
         Instant observedAt = Instant.now();
@@ -114,8 +126,11 @@ class VerificationConcurrencyIntegrationTest {
         assertThat(checkInRepository.count()).isOne();
     }
 
+    /**
+     * 동시 증빙 업로드 중 하나만 저장하며 패자에게 중복 오류를 반환하고 저장된 객체와 다른 S3 키 하나만 보상 삭제하는지 확인.
+     */
     @Test
-    void concurrentEvidenceUploadKeepsOneRowAndDeletesOnlyLosingObject() throws Exception {
+    void concurrentEvidenceUpload() throws Exception {
         User tourist = userRepository.saveAndFlush(user("concurrentEvidence", UserRole.USER));
         MapPlace savedPlace = placeRepository.saveAndFlush(place(tourist.getId()));
         LocationCheckIn savedCheckIn = checkInRepository.saveAndFlush(
@@ -144,6 +159,9 @@ class VerificationConcurrencyIntegrationTest {
         assertThat(evidenceRepository.findAll().getFirst().getS3Key()).isNotEqualTo(deletedKey.getValue());
     }
 
+    /**
+     * 공통 fixture의 JPEG 바이트로 증빙 업로드 multipart 파일을 생성.
+     */
     private MockMultipartFile jpeg() throws Exception {
         return new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
     }

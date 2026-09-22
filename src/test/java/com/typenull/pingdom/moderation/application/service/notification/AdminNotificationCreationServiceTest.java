@@ -30,13 +30,19 @@ class AdminNotificationCreationServiceTest {
 
     private AdminNotificationCreationService service;
 
+    /**
+     * 알림 본문과 생성 시각을 비교할 수 있도록 고정 Clock으로 관리자 알림 생성 서비스를 구성.
+     */
     @BeforeEach
     void setUp() {
         service = new AdminNotificationCreationService(recipientResolver, notificationsRepository, CLOCK);
     }
 
+    /**
+     * 수신 대상 관리자 두 명에게 동일한 신고 접수 본문·이벤트 키·현재 시각으로 중복 방지 삽입을 호출하고 생성 수 2를 반환하는지 검증.
+     */
     @Test
-    void createsUnreadNotificationForEachEligibleAdmin() {
+    void createsNotificationsForEligibleAdmins() {
         when(recipientResolver.resolve(NotificationType.ADMIN_REPORT_RECEIVED)).thenReturn(List.of(1L, 2L));
         when(notificationsRepository.insertAdminNotificationIfAbsent(
                 org.mockito.ArgumentMatchers.anyLong(),
@@ -76,6 +82,9 @@ class AdminNotificationCreationServiceTest {
         );
     }
 
+    /**
+     * 일반 사용자용 좋아요 유형을 관리자 알림으로 생성하려 하면 IllegalArgumentException으로 거절하는지 검증.
+     */
     @Test
     void rejectsUserNotificationType() {
         assertThatThrownBy(() -> service.create(

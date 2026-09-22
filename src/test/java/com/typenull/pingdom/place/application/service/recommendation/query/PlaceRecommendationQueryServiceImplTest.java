@@ -125,6 +125,9 @@ class PlaceRecommendationQueryServiceImplTest {
     private PlaceRecommendationUserSignalLoader placeRecommendationUserSignalLoader;
     private PlaceRecommendationCandidateCollector placeRecommendationCandidateCollector;
 
+    /**
+     * 후보 수집·점수·포트폴리오 구성은 실제 협력 객체로 연결하고 저장소·정책·노출 이벤트 경계는 모의하여 추천 흐름을 검증.
+     */
     @BeforeEach
     void setUp() {
         placeRecommendationUserSignalLoader = new PlaceRecommendationUserSignalLoader(
@@ -199,8 +202,11 @@ class PlaceRecommendationQueryServiceImplTest {
                 new VerifiedBoostRankingService.RankingResult(invocation.getArgument(0), java.util.Set.of()));
     }
 
+    /**
+     * 사용자 북마크 seed의 위도가 null이면 개인화 후보에서 제외하고 정상 seed와 확장 후보는 유지하는지 확인.
+     */
     @Test
-    void loadPersonalCandidates는_null_좌표_seed를_개인화_후보에서_제외한다() {
+    void excludesSeedsWithMissingCoordinates() {
         Long userId = 7L;
         MapPlace invalidSeed = createPlace(101L, "null-seed", null, 128.1070d);
         MapPlace validSeed = createPlace(102L, "valid-seed", 35.1800d, 128.1070d);
@@ -238,8 +244,11 @@ class PlaceRecommendationQueryServiceImplTest {
                 .containsExactlyInAnyOrder(validSeed.getId(), expandedCandidate.getId());
     }
 
+    /**
+     * 추천 결과에 포함된 장소 ID·사용자·정책 버전을 가진 노출 기록 요청 이벤트가 발행되는지 확인.
+     */
     @Test
-    void recommendAndRecordObservations는_노출_로그_기록_이벤트를_발행한다() {
+    void publishesRecommendationExposureEvent() {
         Long userId = 7L;
         MapPlace candidate = createPlace(201L, "candidate", 35.1800d, 128.1070d);
 
@@ -283,8 +292,11 @@ class PlaceRecommendationQueryServiceImplTest {
         }));
     }
 
+    /**
+     * 특성 로그 저장이 실패하면 동일 예외를 요청에 전파하고 노출 이벤트는 발행하지 않는지 확인.
+     */
     @Test
-    void recommendAndRecordObservations는_feature_log_저장_실패를_요청_실패로_전파한다() {
+    void propagatesFeatureLogFailure() {
         MapPlace candidate = createPlace(225L, "feature-log", 35.1800d, 128.1070d);
         when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
@@ -304,8 +316,11 @@ class PlaceRecommendationQueryServiceImplTest {
         verify(eventPublisher, never()).publishEvent(any());
     }
 
+    /**
+     * Boost 협력 객체가 적용 대상으로 반환한 장소는 추천 응답에서도 boosted=true로 표시되는지 확인.
+     */
     @Test
-    void recommendAndRecordObservations는_Boost_적용_여부를_응답한다() {
+    void returnsVerifiedBoostFlag() {
         MapPlace candidate = createPlace(250L, "boosted", 35.1800d, 128.1070d);
         when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
                 anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(), anyDouble(),
@@ -329,8 +344,11 @@ class PlaceRecommendationQueryServiceImplTest {
         });
     }
 
+    /**
+     * 고정 시각에 영업 중인 장소를 영업 외 장소보다 먼저 반환하고 특성 로그와 노출 이벤트에도 같은 순서를 전달하는지 확인.
+     */
     @Test
-    void recommendAndRecordObservations는_현재_영업중인_후보를_영업외_후보보다_우선한다() {
+    void prioritizesCurrentlyOperatingCandidates() {
         MapPlace closedCandidate = createPlace(301L, "closed", 35.1800d, 128.1070d);
         closedCandidate.replaceOperatingSchedule(Set.of(
                 PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))
@@ -383,8 +401,11 @@ class PlaceRecommendationQueryServiceImplTest {
         ));
     }
 
+    /**
+     * 반환 제한이 1건일 때 가까운 영업 외 장소보다 영업 중인 장소를 선택하는지 확인.
+     */
     @Test
-    void recommendAndRecordObservations는_limit이_부족해도_영업중_후보를_먼저_선택한다() {
+    void selectsOperatingCandidateWithinLimit() {
         MapPlace closedCandidate = createPlace(401L, "high-score-closed", 35.1800d, 128.1070d);
         closedCandidate.replaceOperatingSchedule(Set.of(
                 PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(8, 0), LocalTime.of(10, 0))
@@ -410,6 +431,9 @@ class PlaceRecommendationQueryServiceImplTest {
                 .containsExactly(openCandidate.getId());
     }
 
+    /**
+     * 특성 로그 활성 여부만 바꾸면서 공통 가중치와 후보 비율을 사용하는 STABLE 정책을 생성.
+     */
     private PlaceRecommendationPolicyService.ResolvedRecommendationPolicy stablePolicy(boolean featureLoggingEnabled) {
         return new PlaceRecommendationPolicyService.ResolvedRecommendationPolicy(
                 "place-rec-v1",
@@ -427,6 +451,9 @@ class PlaceRecommendationQueryServiceImplTest {
         );
     }
 
+    /**
+     * 좌표 누락·영업 일정·후보 순서를 비교할 수 있도록 입력 ID와 좌표로 장소를 생성.
+     */
     private MapPlace createPlace(Long id, String name, Double latitude, Double longitude) {
         return MapPlace.builder()
                 .id(id)

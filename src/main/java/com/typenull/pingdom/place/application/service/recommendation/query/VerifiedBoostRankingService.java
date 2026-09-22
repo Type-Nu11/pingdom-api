@@ -10,6 +10,10 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * 현재 활성 조건을 만족하는 검증 프로모션 장소에 설정된 점수를 한 번 더함.
+ * 반환된 장소 ID 집합은 응답의 boosted 표시에 사용하며 설정값 0이면 조회와 가점을 모두 생략.
+ */
 @Service
 @RequiredArgsConstructor
 class VerifiedBoostRankingService {

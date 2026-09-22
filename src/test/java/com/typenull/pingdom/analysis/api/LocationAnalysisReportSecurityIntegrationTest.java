@@ -35,8 +35,11 @@ class LocationAnalysisReportSecurityIntegrationTest {
     @Autowired private UserRepository userRepository;
     @Autowired private JwtTokenProvider jwtTokenProvider;
 
+    /**
+     * 인증 없는 보고서 생성·목록·상세·다운로드·HTML·수정·삭제 요청을 모두 401 INVALID_TOKEN으로 거절하는지 검증.
+     */
     @Test
-    void rejectsUnauthenticatedLocationAnalysisRequest() throws Exception {
+    void rejectsUnauthenticatedReportRequests() throws Exception {
         assertUnauthorized(post("/analysis/reports/location"));
         assertUnauthorized(get("/analysis/reports").param("email", "owner@example.com"));
         assertUnauthorized(get("/analysis/reports/report-1").param("email", "owner@example.com"));
@@ -46,8 +49,11 @@ class LocationAnalysisReportSecurityIntegrationTest {
         assertUnauthorized(delete("/analysis/reports/report-1").param("email", "owner@example.com"));
     }
 
+    /**
+     * 인증 사용자와 다른 이메일의 보관 목록 조회가 403 ANALYSIS_REPORT_FORBIDDEN인지 검증.
+     */
     @Test
-    void rejectsAnotherUsersEmailForArchiveLookup() throws Exception {
+    void rejectsUnownedArchiveEmail() throws Exception {
         User user = createUser("reportOwner", "owner@example.com");
 
         mockMvc.perform(get("/analysis/reports")
@@ -57,8 +63,11 @@ class LocationAnalysisReportSecurityIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ANALYSIS_REPORT_FORBIDDEN"));
     }
 
+    /**
+     * PDF 생성 요청의 이메일이 로그인 계정과 다르면 403 ANALYSIS_REPORT_FORBIDDEN인지 검증.
+     */
     @Test
-    void rejectsAnotherUsersEmailBeforeGeneratingReport() throws Exception {
+    void rejectsUnownedGenerationEmail() throws Exception {
         User user = createUser("reportGenerator", "generator@example.com");
 
         mockMvc.perform(post("/analysis/reports/location")
@@ -75,8 +84,11 @@ class LocationAnalysisReportSecurityIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ANALYSIS_REPORT_FORBIDDEN"));
     }
 
+    /**
+     * 본인 이메일로 접근해도 수정 본문을 타인 이메일로 바꾸면 403 ANALYSIS_REPORT_FORBIDDEN인지 검증.
+     */
     @Test
-    void rejectsChangingReportEmailToAnotherUsersEmail() throws Exception {
+    void rejectsUnownedReportEmailChange() throws Exception {
         User user = createUser("reportEditor", "editor@example.com");
 
         mockMvc.perform(patch("/analysis/reports/report-1")
@@ -91,8 +103,11 @@ class LocationAnalysisReportSecurityIntegrationTest {
                 .andExpect(jsonPath("$.code").value("ANALYSIS_REPORT_FORBIDDEN"));
     }
 
+    /**
+     * 본인 이메일의 대소문자·양끝 공백 차이를 허용하고 보관 보고서가 없으면 200 빈 배열을 반환하는지 검증.
+     */
     @Test
-    void allowsAuthenticatedUserToLookUpOwnEmail() throws Exception {
+    void allowsNormalizedOwnedEmail() throws Exception {
         User user = createUser("reportReader", "reader@example.com");
 
         mockMvc.perform(get("/analysis/reports")
@@ -103,6 +118,9 @@ class LocationAnalysisReportSecurityIntegrationTest {
                 .andExpect(jsonPath("$.length()").value(0));
     }
 
+    /**
+     * 주어진 이름·이메일의 일반 사용자를 저장해 JWT와 이메일 소유 검증의 실제 입력으로 사용.
+     */
     private User createUser(String username, String email) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -115,11 +133,17 @@ class LocationAnalysisReportSecurityIntegrationTest {
                 .build());
     }
 
+    /**
+     * 사용자의 ID·이름·역할로 액세스 JWT를 발급하고 Bearer 인증 헤더를 구성.
+     */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(
                 user.getId(), user.getUsername(), user.getRole().name());
     }
 
+    /**
+     * 인증 정보 없는 요청이 401과 INVALID_TOKEN 코드를 반환하는지 공통으로 확인.
+     */
     private void assertUnauthorized(MockHttpServletRequestBuilder request) throws Exception {
         mockMvc.perform(request)
                 .andExpect(status().isUnauthorized())

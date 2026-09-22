@@ -53,18 +53,28 @@ class ProfileImageControllerTest {
     @MockBean
     private S3ObjectStorage s3ObjectStorage;
 
+    /**
+     * 프로필 이미지 업로드를 독립적으로 검증하도록 기존 사용자를 정리.
+     */
     @BeforeEach
     void setUp() {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 업로드 요청으로 생성·수정한 사용자를 제거해 다음 통합 테스트에 데이터가 남지 않게 함.
+     */
     @AfterEach
     void tearDown() {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 인증 사용자가 JPEG를 올리면 S3 반환 URL이 업로드 응답, 내 정보 응답, 저장 사용자에 동일하게 반영되는지 검증.
+     * S3에는 정규화된 파일명과 사용자별 저장 경로가 전달되는지도 확인.
+     */
     @Test
-    void uploadsProfileImageAndUpdatesMyPageProfileImageUrl() throws Exception {
+    void uploadsAndPersistsProfileImage() throws Exception {
         User user = saveUser("profileImageOwner");
         String imageUrl = "https://bucket.s3.ap-northeast-2.amazonaws.com/users/profile-images/1/profile.jpg";
         when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
@@ -90,8 +100,11 @@ class ProfileImageControllerTest {
                 eq("users/profile-images/" + user.getId()));
     }
 
+    /**
+     * JPEG 바이트를 PNG로 선언하면 400과 파일 유효성 오류를 반환하고 S3 업로드를 호출하지 않는지 검증.
+     */
     @Test
-    void rejectsMismatchedImageContentTypeBeforeUploading() throws Exception {
+    void rejectsMismatchedImageContentType() throws Exception {
         User user = saveUser("profileImageInvalid");
 
         mockMvc.perform(multipart("/users/me/profile-image")
@@ -103,8 +116,11 @@ class ProfileImageControllerTest {
         verifyNoInteractions(s3ObjectStorage);
     }
 
+    /**
+     * S3 연결 오류가 발생하면 프로필 이미지 업로드 응답을 503과 저장소 사용 불가 코드로 변환하는지 검증.
+     */
     @Test
-    void returnsStorageUnavailableWhenS3UploadFails() throws Exception {
+    void reportsProfileStorageFailure() throws Exception {
         User user = saveUser("profileImageStorageFailure");
         when(s3ObjectStorage.put(any(byte[].class), eq("profile.jpg"), eq("image/jpeg"),
                 eq("users/profile-images/" + user.getId())))
@@ -117,13 +133,19 @@ class ProfileImageControllerTest {
                 .andExpect(jsonPath("$.code").value("PROFILE_IMAGE_STORAGE_UNAVAILABLE"));
     }
 
+    /**
+     * 인증 토큰 없이 프로필 이미지를 업로드하면 401을 반환하는지 검증.
+     */
     @Test
-    void profileImageUploadRequiresAuthentication() throws Exception {
+    void requiresProfileUploadAuthentication() throws Exception {
         mockMvc.perform(multipart("/users/me/profile-image")
                         .file(new MockMultipartFile("file", "photo.jpg", "image/jpeg", JPEG)))
                 .andExpect(status().isUnauthorized());
     }
 
+    /**
+     * 실제 JWT 발급과 프로필 저장 검증에 사용할 사용자를 저장하고 즉시 flush함.
+     */
     private User saveUser(String username) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -135,10 +157,16 @@ class ProfileImageControllerTest {
                 .build());
     }
 
+    /**
+     * 저장된 사용자의 현재 식별자와 역할로 HTTP 인증에 사용할 Bearer 토큰을 생성.
+     */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
     }
 
+    /**
+     * 실제 이미지 형식 검증을 통과하도록 1픽셀 JPEG 바이트를 생성하며 인코더 실패는 테스트 준비 오류로 명시.
+     */
     private static byte[] validJpeg() {
         try (ByteArrayOutputStream output = new ByteArrayOutputStream()) {
             BufferedImage image = new BufferedImage(1, 1, BufferedImage.TYPE_INT_RGB);

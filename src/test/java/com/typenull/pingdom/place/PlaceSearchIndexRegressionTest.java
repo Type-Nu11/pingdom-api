@@ -32,6 +32,9 @@ class PlaceSearchIndexRegressionTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * PostGIS·trigram 확장과 전체 마이그레이션을 적용하고 검색 실행 계획 비교용 장소 데이터를 준비.
+     */
     @BeforeAll
     static void setUp() throws Exception {
         resetDatabase();
@@ -55,8 +58,11 @@ class PlaceSearchIndexRegressionTest {
         seedPlaces();
     }
 
+    /**
+     * 순차 탐색을 비활성화한 EXPLAIN에서 이름·주소 부분 검색에 해당 trigram 인덱스 중 하나가 나타나는지 확인.
+     */
     @Test
-    void 장소_키워드_검색은_trgm_인덱스를_사용한다() throws Exception {
+    void usesTrigramForKeywordSearch() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
@@ -71,8 +77,11 @@ class PlaceSearchIndexRegressionTest {
                         || line.contains("idx_map_place_address_trgm"));
     }
 
+    /**
+     * 순차 탐색을 비활성화한 도로명 주소 부분 검색 실행 계획에 정규화 주소 trigram 인덱스가 나타나는지 확인.
+     */
     @Test
-    void 정규화_주소_검색은_trgm_인덱스를_사용한다() throws Exception {
+    void usesTrigramForRoadAddress() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
@@ -85,8 +94,11 @@ class PlaceSearchIndexRegressionTest {
                 .anyMatch(line -> line.contains("idx_map_place_road_address_trgm"));
     }
 
+    /**
+     * 5km ST_DWithin 검색을 순차 탐색 없이 계획할 때 geography 변환용 GiST 인덱스가 나타나는지 확인.
+     */
     @Test
-    void 장소_반경_검색은_location_geography_gist_인덱스를_사용한다() throws Exception {
+    void usesGeographyIndexForRadius() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
@@ -104,8 +116,11 @@ class PlaceSearchIndexRegressionTest {
                 .anyMatch(line -> line.contains("idx_map_place_location_geography_gist"));
     }
 
+    /**
+     * 공개·운영 중 장소의 지도 영역 검색을 순차 탐색 없이 계획할 때 geometry GiST 인덱스가 나타나는지 확인.
+     */
     @Test
-    void 지도_viewport_검색은_location_geometry_gist_인덱스를_사용한다() throws Exception {
+    void usesGeometryIndexForViewport() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
@@ -119,8 +134,11 @@ class PlaceSearchIndexRegressionTest {
                 .anyMatch(line -> line.contains("idx_map_place_location_gist"));
     }
 
+    /**
+     * 위경도 구간과 근접 정렬을 사용하는 후보 조회를 순차 탐색 없이 계획할 때 좌표 B-tree 인덱스가 나타나는지 확인.
+     */
     @Test
-    void 추천_후보_바운딩박스_조회는_latitude_longitude_btree_인덱스를_사용한다() throws Exception {
+    void usesCoordinateIndexForCandidates() throws Exception {
         List<String> planLines = explain("""
                 SELECT mp.map_place_id
                 FROM map_place mp
@@ -140,6 +158,9 @@ class PlaceSearchIndexRegressionTest {
                 .anyMatch(line -> line.contains("idx_map_place_latitude_longitude"));
     }
 
+    /**
+     * 공간 기준 테이블을 제외한 public 테이블을 제거하여 빈 컨테이너 스키마에 마이그레이션을 적용.
+     */
     private static void resetDatabase() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -160,6 +181,9 @@ class PlaceSearchIndexRegressionTest {
         }
     }
 
+    /**
+     * 12,000개 일반 장소와 3개 표적 장소를 넣고 ANALYZE로 실행 계획에 필요한 통계를 갱신.
+     */
     private static void seedPlaces() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -242,6 +266,9 @@ class PlaceSearchIndexRegressionTest {
         }
     }
 
+    /**
+     * 현재 연결에서 순차 탐색을 비활성화한 뒤 SQL을 실행하지 않고 EXPLAIN 계획 문자열을 수집.
+     */
     private static List<String> explain(String sql) throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {

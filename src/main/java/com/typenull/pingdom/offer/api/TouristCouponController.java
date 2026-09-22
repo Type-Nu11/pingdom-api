@@ -29,13 +29,13 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/** 로그인 사용자가 발급받은 쿠폰의 목록과 상세를 조회하는 API. 발급·사용 처리는 각각 별도 API가 담당. */
 @RestController
 @RequestMapping("/coupons")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @ApiAudience(ApiAudience.Group.APP)
 @Tag(name = SwaggerTagCatalog.OFFER)
-/** 관광 쿠폰 발급·조회·사용 요청의 API 진입점입니다. */
 public class TouristCouponController {
 
     private final TouristOfferService offerService;

@@ -13,6 +13,11 @@ import java.util.UUID;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 
+/**
+ * 분석 조건을 AI에 전달하고 응답 검증, 주변 장소 보강, 파생 표시값 계산, XHTML·PDF 생성을 순서대로 수행.
+ * 외부 AI 호출과 PDF 변환을 DB 트랜잭션으로 묶지 않으며, 결과 저장은 호출자의 보관 서비스가 담당.
+ * 각 단계의 실패는 요청 실패로 전파되고 이 서비스 자체의 재시도·결과 캐시는 없음.
+ */
 @Service
 @Slf4j
 public class LocationAnalysisReportService {
@@ -43,6 +48,10 @@ public class LocationAnalysisReportService {
         this.clock = clock;
     }
 
+    /**
+     * 요청 기준일로 AI 분석을 실행·검증하고 주변 경쟁 정보를 보강한 뒤 고정 XHTML과 PDF를 생성.
+     * AI가 기준일을 생략하면 요청 시 기준일을 사용하며, 생성 ID·이름·본문·발행일을 반환. 단계 실패는 전파되고 보고서 보관은 별도 호출자가 담당.
+     */
     public LocationAnalysisPdf generate(LocationAnalysisRequest request) {
         long startedAt = System.nanoTime();
         LocalDate analysisBasisDate = LocalDate.now(clock);
@@ -62,7 +71,7 @@ public class LocationAnalysisReportService {
                 ? content.analysisScope().radiusMeters() : null;
         log.info("입지 분석 AI 결과 수신. grade={}, recommendationCount={}, trafficTotal={}, analysisRadiusMeters={}",
                 grade, recommendationCount, trafficTotal, analysisRadius);
-        // PDF 디자인과 한글 폰트를 요청마다 동일하게 유지하기 위해 AI가 반환한 HTML은 사용하지 않는다.
+        // 요청 간 PDF 디자인·한글 폰트 일관성을 위해 AI 응답의 HTML 대신 서버 템플릿 사용.
         try {
             responseValidator.validate(request, aiResponse);
         } catch (RuntimeException exception) {

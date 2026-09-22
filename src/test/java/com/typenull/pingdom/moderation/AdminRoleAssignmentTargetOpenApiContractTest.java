@@ -26,8 +26,11 @@ class AdminRoleAssignmentTargetOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * 관리자 OpenAPI의 역할 부여 대상 검색이 Bearer 인증과 200 검색 응답, 401·403 공통 오류 스키마를 선언하는지 검증.
+     */
     @Test
-    void adminOpenApiDocumentsRoleAssignmentTargetSearch() throws Exception {
+    void documentsRoleAssignmentTargetSearch() throws Exception {
         JsonNode api = objectMapper.readTree(mockMvc.perform(get("/v3/api-docs/admin"))
                 .andExpect(status().isOk())
                 .andReturn()
@@ -47,6 +50,9 @@ class AdminRoleAssignmentTargetOpenApiContractTest {
                 .isEqualTo("#/components/schemas/ErrorResponse");
     }
 
+    /**
+     * 응답 코드에 해당하는 application/json 스키마를 우선 찾고 없으면 와일드카드 콘텐츠의 참조를 읽음.
+     */
     private String responseSchemaRef(JsonNode operation, String responseCode) {
         JsonNode content = operation.path("responses").path(responseCode).path("content");
         JsonNode schema = content.path("application/json").path("schema");

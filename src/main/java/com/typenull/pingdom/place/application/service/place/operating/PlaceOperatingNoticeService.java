@@ -32,6 +32,10 @@ import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소 운영 공지의 작성·수정·취소와 예약 공개·만료 상태 전이를 조정.
+ * 조회는 기준 시각의 노출 여부를 계산하고 변경은 outbox와 지표, 관리자 변경은 감사 로그에 반영.
+ */
 @Service
 @RequiredArgsConstructor
 public class PlaceOperatingNoticeService {
@@ -51,6 +55,10 @@ public class PlaceOperatingNoticeService {
     private final PlaceOperatingHoursEvaluator operatingHoursEvaluator;
     private final Clock clock;
 
+    /**
+     * 장소의 영업 판단 시각에 노출 가능한 미종결 공지만 시작 시각·ID 순으로 반환.
+     * 응답에는 현재 영업 여부와 동일 확인 시각을 포함하며 장소 부재는 거절. 장소 공개 상태는 별도 검사 대상에서 제외.
+     */
     @Transactional(readOnly = true)
     public PlaceOperatingNoticeListResponse listActive(Long placeId) {
         MapPlace place = findPlace(placeId);
@@ -70,6 +78,10 @@ public class PlaceOperatingNoticeService {
         );
     }
 
+    /**
+     * OPERATING_NOTICE_MANAGE 권한을 확인한 뒤 종료·취소를 포함한 장소 공지 전체를 시작 시각·ID 순으로 반환.
+     * 현재 영업 여부와 각 공지 상태는 같은 확인 시각으로 계산.
+     */
     @Transactional(readOnly = true)
     public PlaceOperatingNoticeListResponse listByMerchant(Long userId, Long placeId) {
         MapPlace place = findPlace(placeId);
@@ -89,6 +101,10 @@ public class PlaceOperatingNoticeService {
         );
     }
 
+    /**
+     * 현재 장소 소유 연결을 확인하고 유형·기간·내용이 유효한 운영 공지를 생성하여 응답.
+     * 접수 지표와 outbox를 기록하며 같은 유형의 활성 공지 유일 제약 위반은 이미 활성인 공지 오류로 변환.
+     */
     @Transactional
     public PlaceOperatingNoticeResponse createByMerchant(
             Long userId,
@@ -110,6 +126,10 @@ public class PlaceOperatingNoticeService {
         return create(adminUserId, place, request, true);
     }
 
+    /**
+     * 공지 행을 잠가 경로의 장소와 현재 소유권을 확인한 뒤 심각도·내용을 수정하고 outbox를 기록.
+     * 허용되지 않는 상태·입력은 거절하며 관리자 감사 기록은 이 경로의 생성 대상에서 제외.
+     */
     @Transactional
     public PlaceOperatingNoticeResponse updateByMerchant(
             Long userId,
@@ -123,6 +143,10 @@ public class PlaceOperatingNoticeService {
         return update(userId, notice, request, false);
     }
 
+    /**
+     * 공지 행을 잠가 경로의 장소와 일치하는지 확인하고 심각도·내용 수정과 outbox·감사 기록을 저장.
+     * 관리자 권한은 호출 경계에서 검증해야 하며 허용되지 않는 상태·입력은 공지 요청 오류로 변환.
+     */
     @Transactional
     public PlaceOperatingNoticeResponse updateByAdmin(
             Long adminUserId,
@@ -135,6 +159,10 @@ public class PlaceOperatingNoticeService {
         return update(adminUserId, notice, request, true);
     }
 
+    /**
+     * 공지 행을 잠가 경로의 장소와 현재 소유권을 확인하고 취소 사유와 함께 취소 상태로 전이.
+     * 상태 지표·outbox를 기록하고 변경 결과를 반환하며 도메인이 거절한 상태·사유는 공지 요청 오류로 변환.
+     */
     @Transactional
     public PlaceOperatingNoticeResponse cancelByMerchant(
             Long userId,
@@ -148,6 +176,10 @@ public class PlaceOperatingNoticeService {
         return cancel(userId, notice, request, false);
     }
 
+    /**
+     * 공지 행을 잠가 경로의 장소와 일치하는지 확인한 뒤 취소 상태·사유를 반영하고 지표·outbox·관리자 감사 기록을 남김.
+     * 관리자 권한은 호출 경계의 책임이며 허용되지 않는 상태·사유는 거절.
+     */
     @Transactional
     public PlaceOperatingNoticeResponse cancelByAdmin(
             Long adminUserId,
@@ -160,6 +192,10 @@ public class PlaceOperatingNoticeService {
         return cancel(adminUserId, notice, request, true);
     }
 
+    /**
+     * 예약 공지 중 공개 시각이 된 항목을 활성화한 뒤 종료 시각이 지난 비종결 공지를 만료시킴.
+     * 반환값은 활성화 건수를 제외한 만료 건수.
+     */
     @Transactional
     public int expireDueNotices(Long adminUserId) {
         LocalDateTime now = LocalDateTime.now(clock);

@@ -14,6 +14,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 역할 관리 권한이 있는 요청자의 관리자 대상 검색을 수행.
+ * 외부 페이지는 1부터 시작하고 크기는 1~100으로 보정하며 사용자명·ID 오름차순으로 조회.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminRoleAssignmentTargetQueryService {
@@ -25,6 +29,10 @@ public class AdminRoleAssignmentTargetQueryService {
     private final UserRepository userRepository;
     private final AdminRoleAuthorizationService authorizationService;
 
+    /**
+     * 역할 관리 권한을 확인한 뒤 ADMIN 계정을 정규화한 검색어로 조회하고 페이지 메타데이터와 함께 반환.
+     * 페이지는 최소 1, 크기는 1~100으로 보정하며 사용자명·ID 오름차순을 적용. 권한이 없으면 조회 전에 거절.
+     */
     @Transactional(readOnly = true)
     public AdminRoleAssignmentTargetSearchResponse search(
             Long actorUserId,

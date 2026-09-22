@@ -39,6 +39,9 @@ class ReservationServiceTest {
     private final PlaceConversionEventService conversionEventService = mock(PlaceConversionEventService.class);
     private ReservationService service;
 
+    /**
+     * 사용자 1의 일반/잠금 조회를 활성 관광객으로 고정하고 예약 저장·슬롯 예약 결과와 UTC Clock을 구성.
+     */
     @BeforeEach
     void setUp() {
         service = new ReservationService(reservationRepository, availabilityRepository, availabilityService,
@@ -55,8 +58,11 @@ class ReservationServiceTest {
                 now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
     }
 
+    /**
+     * 수량 2 예약 생성이 슬롯 정원 차감·예약 저장·장소 전환 이벤트 발행을 호출하고 PENDING·GENERAL 응답을 반환하는지 검증.
+     */
     @Test
-    void createReservesCapacityAndStartsPending() {
+    void createsPendingReservation() {
         var response = service.create(1L, new ReservationCreateRequest(9L, "request-1", 2));
 
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
@@ -66,8 +72,11 @@ class ReservationServiceTest {
         verify(conversionEventService).publish(eq(1L), eq(11L), any(), isNull(), any());
     }
 
+    /**
+     * 티켓 슬롯의 상품 ID·유형·시작/종료 시각과 예약자 이름·전화·요청사항이 응답에 반영되고, 저장 대상의 상품 유형이 TICKET인지 검증.
+     */
     @Test
-    void createSnapshotsTicketProductTypeFromAvailability() {
+    void snapshotsTicketReservationDetails() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
         when(availabilityService.reserve(9L, 2)).thenReturn(PlaceAvailability.create(
                 7L, 11L, 31L, AvailabilityProductType.TICKET,
@@ -87,6 +96,9 @@ class ReservationServiceTest {
                 reservation.getProductType() == AvailabilityProductType.TICKET));
     }
 
+    /**
+     * 확정 예약을 취소하면 수량 2를 반환하고 반복 취소는 예외가 되어 정원을 한 번만 복구하는지 검증.
+     */
     @Test
     void cancelReleasesCapacityOnlyOnce() {
         Reservation reservation = Reservation.create(1L, 9L, "request-1", 2,
@@ -101,8 +113,11 @@ class ReservationServiceTest {
         verify(availabilityService, times(1)).release(9L, 2);
     }
 
+    /**
+     * 같은 사용자·멱등 키의 동일 예약 요청이 있으면 슬롯 예약과 추가 저장을 실행하지 않는지 검증.
+     */
     @Test
-    void repeatedIdempotencyKeyReturnsExistingReservationWithoutReservingAgain() {
+    void reusesIdempotentReservation() {
         Reservation existing = Reservation.create(1L, 9L, "request-1", 2,
                 LocalDateTime.of(2026, 7, 20, 13, 0));
         when(reservationRepository.findByTouristUserIdAndIdempotencyKey(1L, "request-1"))
@@ -114,8 +129,11 @@ class ReservationServiceTest {
         verify(reservationRepository, never()).save(any());
     }
 
+    /**
+     * 같은 멱등 키로 다른 슬롯을 요청하면 IDEMPOTENCY_KEY_REUSED를 반환하고 정원 처리에 도달하지 않는지 검증.
+     */
     @Test
-    void reusedIdempotencyKeyWithDifferentPayloadIsRejected() {
+    void rejectsIdempotentSlotMismatch() {
         Reservation existing = Reservation.create(1L, 9L, "request-1", 2,
                 LocalDateTime.of(2026, 7, 20, 13, 0));
         when(reservationRepository.findByTouristUserIdAndIdempotencyKey(1L, "request-1"))
@@ -128,8 +146,11 @@ class ReservationServiceTest {
         verifyNoInteractions(availabilityService);
     }
 
+    /**
+     * 같은 키·슬롯·수량이어도 예약자 이름이 바뀌면 IDEMPOTENCY_KEY_REUSED를 반환하고 정원 처리에 도달하지 않는지 검증.
+     */
     @Test
-    void reusedIdempotencyKeyWithDifferentBookerIsRejected() {
+    void rejectsIdempotentBookerMismatch() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
         Reservation existing = Reservation.create(1L, 9L, null, AvailabilityProductType.GENERAL,
                 "request-1", 2, now.plusDays(1), now.plusDays(1).plusHours(1),
@@ -145,8 +166,11 @@ class ReservationServiceTest {
         verifyNoInteractions(availabilityService);
     }
 
+    /**
+     * 사용자 1이 관광객 2의 예약을 단건 조회하면 RESERVATION_FORBIDDEN인지 검증.
+     */
     @Test
-    void getMineRejectsAnotherTouristReservation() {
+    void rejectsAnotherTouristReservation() {
         Reservation reservation = Reservation.create(2L, 9L, "request-1", 2,
                 LocalDateTime.of(2026, 7, 20, 13, 0));
         when(reservationRepository.findById(3L)).thenReturn(Optional.of(reservation));
@@ -156,8 +180,11 @@ class ReservationServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.RESERVATION_FORBIDDEN));
     }
 
+    /**
+     * 없는 예약을 단건 조회하면 RESERVATION_NOT_FOUND인지 검증.
+     */
     @Test
-    void getMineReturnsNotFoundForUnknownReservation() {
+    void rejectsUnknownReservation() {
         when(reservationRepository.findById(3L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.getMine(1L, 3L))
@@ -165,6 +192,9 @@ class ReservationServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.RESERVATION_NOT_FOUND));
     }
 
+    /**
+     * 예약 소유자라도 MERCHANT_OWNER 계정이면 내 예약 조회에서 TOURIST_ACCOUNT_REQUIRED인지 검증.
+     */
     @Test
     void getMineRequiresTouristAccount() {
         Reservation reservation = Reservation.create(2L, 9L, "request-1", 2,
@@ -179,8 +209,11 @@ class ReservationServiceTest {
                                 .isEqualTo(ReservationErrorCode.TOURIST_ACCOUNT_REQUIRED));
     }
 
+    /**
+     * 관리자 목록의 예약 기간 값이 모두 없으면 저장소의 두 기간 적용 플래그를 false로 전달하는지 검증.
+     */
     @Test
-    void adminListMarksAbsentReservationPeriodFiltersAsDisabled() {
+    void disablesAbsentReservationPeriodFilters() {
         when(reservationRepository.findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
                 isNull(), eq(false), isNull(), eq(false), isNull(), any()))
                 .thenReturn(Page.empty());
@@ -191,8 +224,11 @@ class ReservationServiceTest {
                 isNull(), eq(false), isNull(), eq(false), isNull(), any());
     }
 
+    /**
+     * 이전 점주 슬롯의 예약도 현재 소유자를 잠금 조회하여 확인하고 활성 점주 8이 CONFIRMED로 전이시킬 수 있는지 검증.
+     */
     @Test
-    void currentPlaceOwnerCanConfirmReservationCreatedBeforeOwnershipTransfer() {
+    void currentOwnerConfirmsTransferredReservation() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
         Reservation reservation = Reservation.create(1L, 9L, "request-1", 2, now);
         PlaceAvailability availability = PlaceAvailability.create(
@@ -209,8 +245,12 @@ class ReservationServiceTest {
         assertThat(reservation.getStatus()).isEqualTo(ReservationStatus.CONFIRMED);
     }
 
+    /**
+     * 장소가 점주 8로 이전된 뒤 이전 점주 7의 확정 요청은 RESERVATION_FORBIDDEN이며 예약은 PENDING으로 유지되는지 검증.
+     * 활성 점주 정책 미호출도 확인해 현재 소유권 검증 경계를 고정.
+     */
     @Test
-    void previousOwnerCannotConfirmAfterOwnershipTransfer() {
+    void rejectsPreviousOwnerConfirmation() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
         Reservation reservation = Reservation.create(1L, 9L, "request-1", 2, now);
         PlaceAvailability availability = PlaceAvailability.create(

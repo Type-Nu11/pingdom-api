@@ -5,6 +5,7 @@ import jakarta.validation.constraints.Pattern;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.validation.annotation.Validated;
 
+/** refresh 쿠키의 보안·배포 범위를 바인딩. domain은 생략 가능하며 SameSite는 Strict 또는 Lax만 허용. */
 @Validated
 @ConfigurationProperties(prefix = "auth.refresh-cookie")
 public record RefreshTokenCookieProperties(

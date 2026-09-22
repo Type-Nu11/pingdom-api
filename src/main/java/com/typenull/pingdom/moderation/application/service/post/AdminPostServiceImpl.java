@@ -27,6 +27,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * REPORT_REVIEW 권한을 확인하고 사진 게시글의 삭제·숨김·복구와 장소 사진 집계를 변경.
+ * DB 상태·감사 기록·객체 삭제 outbox를 함께 처리하며, 숨김·복구가 실제 전이된 경우에만 집계를 증감.
+ */
 @Service
 @RequiredArgsConstructor
 public class AdminPostServiceImpl implements AdminPostService {
@@ -39,6 +43,12 @@ public class AdminPostServiceImpl implements AdminPostService {
     private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
+    /**
+     * REPORT_REVIEW 권한과 게시글 존재를 확인한 뒤 신고 연결을 끊고 게시글 영구 삭제.
+     * 연결된 장소의 사진 수는 게시글의 현재 숨김 여부와 무관하게 감소.
+     * DB 삭제·사진 집계·감사 기록·확보된 원본/썸네일 키의 삭제 outbox 저장은 같은 트랜잭션에 참여.
+     * 응답 범위는 DB 반영까지이며 실제 S3 삭제는 커밋 후 worker에서 비동기 처리.
+     */
     @Override
     @Transactional
     public void deletePost(Long postId, Long adminUserId) {
@@ -47,7 +57,7 @@ public class AdminPostServiceImpl implements AdminPostService {
                 .orElseThrow(() -> new AdminException(AdminErrorCode.POST_NOT_FOUND));
         Map<String, Object> beforeState = postState(mapImage, false, null);
 
-        // 게시글 삭제 전에 신고 연관을 먼저 끊어 FK 제약 위반을 방지한다.
+        // 게시글 삭제 전에 신고 연관을 먼저 끊어 FK 제약 위반을 방지.
         postReportRepository.detachMapImageByMapImageId(postId);
 
         String keyToDelete = resolveS3Key(mapImage);
@@ -71,6 +81,11 @@ public class AdminPostServiceImpl implements AdminPostService {
         );
     }
 
+    /**
+     * REPORT_REVIEW 권한과 게시글 존재를 확인하고 공개 중인 게시글만 AUTO_HIDDEN으로 전환.
+     * 실제 전이 시 사유·시각·관리자를 기록하고 연결 장소의 사진 수를 감소시키며 S3 객체는 유지.
+     * 이미 숨겨진 게시글은 상태·집계를 바꾸지 않아도 감사 기록을 추가하며 모든 DB 변경은 같은 트랜잭션에 참여.
+     */
     @Override
     @Transactional
     public void hidePost(Long postId, String reason, Long adminUserId) {
@@ -94,6 +109,11 @@ public class AdminPostServiceImpl implements AdminPostService {
         );
     }
 
+    /**
+     * REPORT_REVIEW 권한과 게시글 존재를 확인하고 비공개 상태를 ACTIVE로 전환. 영구 삭제된 게시글은 복구 불가.
+     * 실제 전이 시 복구 사유·시각·관리자를 기록하고 연결 장소의 사진 수 증가. S3 작업은 처리 범위에서 제외.
+     * 이미 공개된 게시글의 상태·집계는 유지하되 감사 기록을 추가하며 모든 DB 변경은 같은 트랜잭션에 참여.
+     */
     @Override
     @Transactional
     public void restorePost(Long postId, String reason, Long adminUserId) {
@@ -124,7 +144,7 @@ public class AdminPostServiceImpl implements AdminPostService {
         return extractKeyFromUrlIfPossible(mapImage.getImageUrl());
     }
 
-    // imageUrl이 S3 URL(virtual-hosted style / path style)일 때 key를 추출
+    // 저장 키가 없는 과거 데이터는 URL의 path를 후보 키로 사용. 호스트의 실제 S3 여부는 검사 범위에서 제외.
     private String extractKeyFromUrlIfPossible(String imageUrl) {
         if (!StringUtils.hasText(imageUrl)) {
             return null;
@@ -143,7 +163,7 @@ public class AdminPostServiceImpl implements AdminPostService {
                 return null;
             }
 
-            // bucket을 모르더라도 path에서 key를 얻을 수 있으면 그대로 사용 (S3ObjectStorage가 bucket 설정을 검증)
+            // 선행 슬래시만 제거하므로 path-style URL의 bucket 부분도 여기에 포함될 수 있음.
             return normalizedPath;
         } catch (URISyntaxException ignored) {
             return null;

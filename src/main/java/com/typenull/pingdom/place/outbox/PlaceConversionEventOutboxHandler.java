@@ -8,6 +8,10 @@ import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
+/**
+ * 장소 전환 Outbox payload를 검증 가능한 타입으로 읽고 처리 로그를 남김.
+ * 별도 외부 발송·추가 집계는 현재 처리 범위에서 제외. 역직렬화 실패는 호출 워커로 전파.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j

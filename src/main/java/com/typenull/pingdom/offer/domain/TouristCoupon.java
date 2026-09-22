@@ -15,11 +15,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** 발급된 관광 쿠폰의 유효 기간, 사용 주체와 사용 상태를 관리. */
 @Entity
 @Getter
 @Table(name = "tourist_coupon")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-/** 발급된 관광 쿠폰의 유효 기간, 사용 주체와 사용 상태를 관리합니다. */
 public class TouristCoupon {
 
     @Id
@@ -29,7 +29,7 @@ public class TouristCoupon {
     @Column(name = "offer_id", nullable = false)
     private Long offerId;
 
-    /** 발급 이후 Offer·장소 변경과 무관하게 쿠폰 표기를 유지하는 발급 시점 스냅샷입니다. */
+    /** 발급 이후 Offer·장소 변경과 무관하게 쿠폰 표기를 유지하는 발급 시점 스냅샷. */
     @Column(name = "offer_title", length = 100)
     private String offerTitle;
 
@@ -128,7 +128,10 @@ public class TouristCoupon {
         );
     }
 
-    /** 유효 기간과 사용 권한을 확인한 뒤 쿠폰을 사용 완료 상태로 전환합니다. */
+    /**
+     * 미사용 쿠폰이고 만료 전인 경우 사용 완료로 전환하고 사용 처리자를 기록.
+     * 점주의 장소 소유권은 호출 서비스에서 검사하며, 이 메서드는 처리자 ID의 null 여부만 검사.
+     */
     public void redeem(Long merchantOwnerUserId, LocalDateTime now) {
         Objects.requireNonNull(merchantOwnerUserId);
         if (status != CouponStatus.ISSUED || !now.isBefore(expiresAt)) {
@@ -139,6 +142,9 @@ public class TouristCoupon {
         redeemedAt = now;
     }
 
+    /**
+     * 조회 시각이 만료 시각 이상인 미사용 쿠폰만 EXPIRED로 표현하며 저장 상태는 유지.
+     */
     public CouponStatus statusAt(LocalDateTime now) {
         if (status == CouponStatus.ISSUED && !now.isBefore(expiresAt)) {
             return CouponStatus.EXPIRED;

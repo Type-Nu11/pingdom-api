@@ -38,16 +38,19 @@ class PlaceReviewMediaControllerTest {
 
     private MockMvc mockMvc;
 
+    /** 7번 사용자를 주입하는 resolver와 공통 예외 처리기로 리뷰 미디어 라우팅을 격리. */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new PlaceReviewMediaController(mediaService))
                 .setControllerAdvice(new GlobalExceptionHandler(mock(AuthMetrics.class)))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    /** CurrentUser 파라미터만 고정 인증 주체 주입 대상으로 선택. */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
                         return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
+                    /** 보안 필터 대신 이 테스트에 고정된 JWT 사용자를 반환해 컨트롤러 전달 값을 검증. */
                     @Override
                     public Object resolveArgument(MethodParameter parameter, ModelAndViewContainer mavContainer,
                             NativeWebRequest webRequest, WebDataBinderFactory binderFactory) {
@@ -57,8 +60,9 @@ class PlaceReviewMediaControllerTest {
                 .build();
     }
 
+    /** 고정 인증 사용자·경로 장소·multipart 파일이 서비스에 전달되고 미디어 ID와 MIME이 201 응답에 포함되는지 확인. */
     @Test
-    void uploadsReviewMediaWithAuthenticatedUserAndPlace() throws Exception {
+    void uploadsAuthenticatedReviewMedia() throws Exception {
         MockMultipartFile file = new MockMultipartFile("file", "review.png", "image/png", new byte[] {1, 2, 3});
         when(mediaService.upload(eq(7L), eq(10L), eq(file)))
                 .thenReturn(new PlaceReviewMediaUploadResponse(1L, "https://cdn.test/review.png", "image/png", 3,
@@ -72,8 +76,9 @@ class PlaceReviewMediaControllerTest {
         verify(mediaService).upload(7L, 10L, file);
     }
 
+    /** 삭제 요청의 사용자·장소·미디어 ID를 취소 서비스에 전달하고 204를 반환하는지 확인. 실제 S3 삭제는 검증 범위에서 제외. */
     @Test
-    void cancelsOnlyTheSpecifiedReviewMediaUpload() throws Exception {
+    void delegatesReviewMediaCancellation() throws Exception {
         mockMvc.perform(delete("/places/10/reviews/media/1"))
                 .andExpect(status().isNoContent());
 

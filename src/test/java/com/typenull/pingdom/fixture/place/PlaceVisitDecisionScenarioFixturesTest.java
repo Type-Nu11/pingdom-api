@@ -6,18 +6,24 @@ import java.util.EnumSet;
 import java.util.stream.Collectors;
 import org.junit.jupiter.api.Test;
 
-/** 방문 판단 테스트 fixture가 일관된 상태와 입력을 제공하는지 검증합니다. */
+/** 방문 판단 테스트 fixture가 일관된 상태와 입력을 제공하는지 검증. */
 class PlaceVisitDecisionScenarioFixturesTest {
 
+    /**
+     * 방문 판단 시나리오가 정상·경계·인가·실패 enum 값을 중복 없이 모두 포함하는지 검증.
+     */
     @Test
-    void coversNormalBoundaryAuthorizationAndFailureScenarios() {
+    void coversVisitDecisionCategories() {
         assertThat(PlaceVisitDecisionScenarioFixtures.scenarios())
                 .extracting(PlaceVisitDecisionScenario::type)
                 .containsExactlyInAnyOrderElementsOf(EnumSet.allOf(PlaceVisitDecisionScenarioType.class));
     }
 
+    /**
+     * 모든 방문 판단 시나리오에 이름과 검증 문구가 있고 HTTP 상태가 200~499 범위인지 검증.
+     */
     @Test
-    void providesDiagnosticAssertionsForEveryScenario() {
+    void providesScenarioDiagnostics() {
         assertThat(PlaceVisitDecisionScenarioFixtures.scenarios())
                 .allSatisfy(scenario -> {
                     assertThat(scenario.name()).isNotBlank();
@@ -26,16 +32,22 @@ class PlaceVisitDecisionScenarioFixturesTest {
                 });
     }
 
+    /**
+     * 인가 및 실패 시나리오에 비어 있지 않은 오류 코드가 지정되어 실패 원인을 식별할 수 있는지 검증.
+     */
     @Test
-    void declaresErrorCodesForAuthorizationAndFailureScenarios() {
+    void declaresFailureErrorCodes() {
         assertThat(PlaceVisitDecisionScenarioFixtures.scenarios())
                 .filteredOn(scenario -> scenario.type() == PlaceVisitDecisionScenarioType.AUTHORIZATION
                         || scenario.type() == PlaceVisitDecisionScenarioType.FAILURE)
                 .allSatisfy(scenario -> assertThat(scenario.expectedErrorCode()).isNotBlank());
     }
 
+    /**
+     * 방문 판단 시나리오 이름 집합의 크기가 원본과 같은지 확인해 중복 사례 이름을 방지.
+     */
     @Test
-    void usesUniqueFixtureNamesForFailureDiagnosis() {
+    void usesUniqueFixtureNames() {
         assertThat(PlaceVisitDecisionScenarioFixtures.scenarios().stream()
                 .map(PlaceVisitDecisionScenario::name)
                 .collect(Collectors.toSet()))

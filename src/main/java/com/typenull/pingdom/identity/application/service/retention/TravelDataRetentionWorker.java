@@ -7,6 +7,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * 여행 데이터 정리를 주기적으로 실행하고 삭제 건수 또는 실패를 지표에 기록.
+ * 실패는 로그에 남겨 다음 스케줄에서 다시 처리하도록 함.
+ */
 @Component
 @ConditionalOnProperty(prefix = "travel.data-retention", name = "cleanup-enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor
@@ -16,6 +20,10 @@ public class TravelDataRetentionWorker {
     private final TravelDataRetentionService travelDataRetentionService;
     private final TravelDataRetentionMetrics travelDataRetentionMetrics;
 
+    /**
+     * 정해진 스케줄마다 여행 데이터 정리를 한 번 호출하고 총 삭제 건수를 성공 지표에 기록.
+     * 실패는 지표·로그에 남기고 호출 밖으로 전파하지 않아 후속 스케줄에서 다시 시도하도록 함.
+     */
     @Scheduled(
             fixedDelayString = "${travel.data-retention.cleanup-delay:PT1H}",
             initialDelayString = "${travel.data-retention.cleanup-initial-delay:PT1H}"

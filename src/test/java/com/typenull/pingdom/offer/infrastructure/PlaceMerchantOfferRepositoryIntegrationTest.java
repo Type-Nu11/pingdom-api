@@ -61,6 +61,9 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * PostGIS 컨테이너의 JDBC 접속값을 Spring에 등록해 실제 PostgreSQL 쿼리·제약 검증을 수행.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -78,6 +81,9 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
     @Autowired private TouristCouponRepository couponRepository;
     @Autowired private PlatformTransactionManager transactionManager;
 
+    /**
+     * 쿠폰부터 사용자까지 종속 데이터 순서로 삭제해 Offer 공개 조건과 중복 제약 테스트를 격리.
+     */
     @BeforeEach
     void cleanDatabase() {
         couponRepository.deleteAllInBatch();
@@ -89,8 +95,12 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 프로필·검증·역할·탈퇴·밴·소유권·기간·상태·재고가 다른 Offer 중 유효한 2건과 해당 장소만 조회되는지 검증.
+     * 시작 시각은 포함하고 종료 시각은 제외하는 공개 경계도 고정.
+     */
     @Test
-    void availableOfferRequiresActiveVerifiedMerchantAndOwnedPlace() {
+    void filtersAvailableMerchantOffers() {
         MerchantContext active = merchant("active", UserRole.MERCHANT_OWNER, UserStatus.ACTIVE, false,
                 MerchantOwnerStatus.ACTIVE, MerchantVerificationStatus.APPROVED);
         MerchantContext pendingProfile = merchant("pending-profile", UserRole.MERCHANT_OWNER, UserStatus.ACTIVE, false,
@@ -148,8 +158,12 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
         )).containsExactly(active.place().getId());
     }
 
+    /**
+     * 같은 Offer·사용자의 중복 쿠폰 저장이 고유 제약으로 실패한 뒤 별도 트랜잭션에서 다른 관광객 쿠폰이 저장되는지 검증.
+     * 실패 트랜잭션이 이후 독립 저장을 오염시키지 않고 최초 쿠폰은 유지되어야 함.
+     */
     @Test
-    void duplicateCouponRollbackAllowsRetryForAnotherTourist() {
+    void recoversAfterDuplicateCouponRollback() {
         MerchantContext merchant = merchant("coupon-owner", UserRole.MERCHANT_OWNER, UserStatus.ACTIVE, false,
                 MerchantOwnerStatus.ACTIVE, MerchantVerificationStatus.APPROVED);
         TouristOffer offer = savePublished(merchant, "coupon", NOW.minusHours(1), NOW.plusDays(1), 2);
@@ -178,6 +192,9 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
                 .containsExactlyInAnyOrder(firstTourist.getId(), retryTourist.getId());
     }
 
+    /**
+     * 지정한 사용자·프로필·검증 상태로 점주와 장소·소유 관계를 DB에 저장해 공개 조건별 입력을 구성.
+     */
     private MerchantContext merchant(
             String suffix,
             UserRole role,
@@ -196,6 +213,9 @@ class PlaceMerchantOfferRepositoryIntegrationTest {
         return new MerchantContext(user, place);
     }
 
+    /**
+     * 점주의 장소에 지정 기간·수량의 게시 Offer를 저장하며 게시 시각을 시작 시각으로 맞춤.
+     */
     private TouristOffer savePublished(
             MerchantContext merchant,
             String suffix,

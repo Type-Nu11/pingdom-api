@@ -9,7 +9,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationTag;
 import java.util.List;
 import java.util.Set;
 
-/** NEW_PLACE 초안을 다시 열어 수정할 때 사용하는 저장된 장소 입력값입니다. */
+/** NEW_PLACE 초안을 다시 열어 수정할 때 사용하는 저장된 장소 입력값. */
 public record MerchantPlaceApplicationNewPlaceResponse(
         String placeName,
         PlaceRegistrationCategory category,

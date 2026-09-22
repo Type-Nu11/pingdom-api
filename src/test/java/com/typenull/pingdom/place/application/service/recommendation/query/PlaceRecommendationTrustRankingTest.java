@@ -14,8 +14,11 @@ import org.junit.jupiter.api.Test;
 
 class PlaceRecommendationTrustRankingTest {
 
+    /**
+     * 신뢰 조회에 없는 장소는 맵에서 제외되어 호출자의 기본값 0.5를 적용할 수 있는지 확인.
+     */
     @Test
-    void loader는_조회되지_않은_장소를_중립_점수로_해석할_수_있도록_결과에서_제외한다() {
+    void defaultsMissingTrustToNeutral() {
         PlaceRecommendationTrustScoreRepository repository = mock(PlaceRecommendationTrustScoreRepository.class);
         PlaceRecommendationTrustScoreRepository.PlaceTrustScoreProjection projection =
                 mock(PlaceRecommendationTrustScoreRepository.PlaceTrustScoreProjection.class);
@@ -36,8 +39,11 @@ class PlaceRecommendationTrustRankingTest {
                 .isEqualTo(0.5d);
     }
 
+    /**
+     * 신뢰 가중치만 1이면 후보 최종 점수가 각각의 신뢰도 0.2와 0.9가 되는지 확인.
+     */
     @Test
-    void trustWeight만_활성화하면_신뢰도가_높은_장소의_최종_점수가_높다() {
+    void usesExclusiveTrustWeight() {
         PlaceRecommendationScoringService service = new PlaceRecommendationScoringService(mock(
                 com.typenull.pingdom.place.application.service.recommendation.similarity.PlaceRecommendationSimilarityService.class
         ));
@@ -52,21 +58,33 @@ class PlaceRecommendationTrustRankingTest {
         assertThat(result).extracting(ScoredCandidate::finalScore).containsExactly(0.2d, 0.9d);
     }
 
+    /**
+     * 신뢰 가중치를 포함한 가중치 합이 1이 아니면 생성 시 명확한 예외로 거절하는지 확인.
+     */
     @Test
-    void trustWeight가_활성화된_가중치의_합은_1이어야_한다() {
+    void rejectsInvalidTrustWeightSum() {
         assertThatThrownBy(() -> new RankingWeights(0.3d, 0.3d, 0.1d, 0.1d, 0.1d, 0.1d, 0.1d, 0.1d))
                 .isInstanceOf(IllegalArgumentException.class)
                 .hasMessageContaining("sum to 1.0");
     }
 
+    /**
+     * 신뢰도 비교용 최소 장소를 생성.
+     */
     private MapPlace place(Long id) {
         return MapPlace.builder().id(id).name("place-" + id).build();
     }
 
+    /**
+     * 같은 거리와 영업 상태를 가진 조회 후보를 생성.
+     */
     private PlaceDistance distance(MapPlace place) {
         return new PlaceDistance(place, java.util.Set.of(), 100d, true, null);
     }
 
+    /**
+     * 신뢰도만 다르고 다른 신호는 0인 정규화 전 후보를 생성.
+     */
     private IntermediateCandidate candidate(MapPlace place, double trustScore) {
         return new IntermediateCandidate(
                 place,

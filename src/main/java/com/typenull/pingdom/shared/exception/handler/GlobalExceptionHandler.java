@@ -31,6 +31,7 @@ import org.springframework.web.method.annotation.MethodArgumentTypeMismatchExcep
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
+/** 컨트롤러 예외를 도메인·검증·공통 오류 응답으로 변환. Security 필터 오류는 별도 보안 응답기가 담당. */
 @Slf4j
 @RestControllerAdvice
 public class GlobalExceptionHandler {
@@ -43,8 +44,8 @@ public class GlobalExceptionHandler {
 
     @ExceptionHandler(AnalysisReportException.class)
     public ResponseEntity<ErrorResponse> handleAnalysisReportException(AnalysisReportException exception) {
-        // PDF 응답 요청이라도 분석 실패는 항상 JSON 오류 계약으로 반환한다.
-        // Content-Type을 명시하지 않으면 Accept: application/pdf와 협상 충돌해 502가 500으로 변질될 수 있다.
+        // PDF 응답 요청이라도 분석 실패는 항상 JSON 오류 계약으로 반환.
+        // Content-Type을 명시하지 않으면 Accept: application/pdf와 협상 충돌해 502가 500으로 변질될 수 있음.
         return ResponseEntity.status(exception.getErrorCode().getStatus())
                 .contentType(MediaType.APPLICATION_JSON)
                 .body(ErrorResponse.from(exception.getErrorCode()));
@@ -56,6 +57,7 @@ public class GlobalExceptionHandler {
         this.authMetrics = authMetrics;
     }
 
+    /** 도메인 코드의 상태·공개 메시지를 반환. 인증 예외는 advice 발생 위치의 실패 메트릭도 기록. */
     @ExceptionHandler(DomainException.class)
     public ResponseEntity<ErrorResponse> handleDomainException(DomainException exception) {
         if (exception instanceof AuthException authException) {
@@ -66,6 +68,7 @@ public class GlobalExceptionHandler {
                 .body(ErrorResponse.from(exception.getErrorCode()));
     }
 
+    /** 같은 필드의 여러 Bean Validation 오류 중 먼저 만난 메시지만 유지. 필드 오류만 응답에 포함. */
     @ExceptionHandler(MethodArgumentNotValidException.class)
     public ResponseEntity<ValidationErrorResponse> handleValidationException(
             MethodArgumentNotValidException exception
@@ -91,6 +94,7 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.INVALID_REQUEST_PARAMETER);
     }
 
+    /** 제약 위반의 property path를 키로 사용하고 같은 경로는 처음 수집한 메시지를 유지. */
     @ExceptionHandler(ConstraintViolationException.class)
     public ResponseEntity<ValidationErrorResponse> handleConstraintViolationException(
             ConstraintViolationException exception
@@ -104,6 +108,7 @@ public class GlobalExceptionHandler {
                 .body(ValidationErrorResponse.of(errors));
     }
 
+    /** 예외 메시지의 알려진 제약명·테이블 문자열로 중복 오류를 분류. 매칭되지 않은 무결성 실패는 공통 500으로 반환. */
     @ExceptionHandler(DataIntegrityViolationException.class)
     public ResponseEntity<ErrorResponse> handleDataIntegrityViolationException(
             DataIntegrityViolationException exception
@@ -128,6 +133,7 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.DATA_INTEGRITY_VIOLATION);
     }
 
+    /** 요청한 HTTP 상태와 reason을 유지. reason이 null일 때만 공통 요청 실패 메시지로 대체. */
     @ExceptionHandler(ResponseStatusException.class)
     public ResponseEntity<ErrorResponse> handleResponseStatusException(ResponseStatusException exception) {
         String message = exception.getReason() == null
@@ -149,6 +155,7 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.METHOD_NOT_ALLOWED);
     }
 
+    /** 처리되지 않은 예외의 클래스명만 로그에 남기고 내부 상세를 제외한 공통 500 응답을 반환. */
     @ExceptionHandler(Exception.class)
     public ResponseEntity<ErrorResponse> handleUnexpectedException(Exception exception) {
         log.error("Unhandled exception type={}", exception.getClass().getName());

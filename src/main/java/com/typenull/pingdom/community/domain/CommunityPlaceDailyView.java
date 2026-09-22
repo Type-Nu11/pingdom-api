@@ -12,7 +12,7 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
-/** 사용자·장소·KST 일자별 최초 커뮤니티 유입만 보관하는 중복 방지 레코드입니다. */
+/** 사용자·장소·KST 일자별 최초 커뮤니티 유입만 보관하는 중복 방지 레코드. */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)

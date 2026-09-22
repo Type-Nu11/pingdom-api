@@ -3,7 +3,7 @@ package com.typenull.pingdom.shared.config.swagger;
 import com.typenull.pingdom.shared.config.swagger.ApiAudience.Group;
 import java.util.List;
 
-/** 사용자 업무 흐름에 따른 표시 순서와 설명. Controller 수와 독립적으로 분류한다. */
+/** 사용자 업무 흐름에 따른 표시 순서와 설명. Controller 수와 독립적으로 분류. */
 public final class SwaggerTagCatalog {
     public static final String ACCOUNT = "내 정보·계정 연동";
     public static final String TRAVEL = "여행";

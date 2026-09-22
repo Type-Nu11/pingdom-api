@@ -9,6 +9,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Component;
 
+/**
+ * 기간 정지 만료를 기본 1시간 간격으로 한 배치씩 정리(최초 5분, 배치 100).
+ * 한 실행에서 전체를 소진하지 않으며 실패는 로그에 남기고 다음 스케줄에서 다시 시도.
+ */
 @Component
 @ConditionalOnProperty(prefix = "user.sanction", name = "expiration-enabled", havingValue = "true", matchIfMissing = true)
 @RequiredArgsConstructor

@@ -13,6 +13,10 @@ import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 현재 점주 역할·활성 프로필·본인 및 사업자 승인·장소 소유 관계를 함께 검사.
+ * 탈퇴 또는 유효한 정지 상태의 사용자는 제외하며, 조회와 검사만 수행하므로 쓰기 경합 제어는 호출자가 담당.
+ */
 @Component
 @RequiredArgsConstructor
 public class MerchantOfferAccessPolicy {
@@ -28,6 +32,10 @@ public class MerchantOfferAccessPolicy {
         }
     }
 
+    /**
+     * 지정 시점에 탈퇴·정지되지 않은 점주의 역할·ACTIVE 프로필·본인 및 사업자 승인과 장소 소유 관계를 함께 검사.
+     * 회원 부재나 자격·소유 조건 미충족은 예외 대신 false를 반환.
+     */
     public boolean isActiveOwnerOfPlace(Long merchantOwnerUserId, Long placeId, LocalDateTime now) {
         User user = userRepository.findById(merchantOwnerUserId)
                 .orElse(null);

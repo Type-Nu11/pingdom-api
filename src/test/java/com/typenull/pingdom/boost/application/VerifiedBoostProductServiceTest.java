@@ -37,12 +37,18 @@ class VerifiedBoostProductServiceTest {
     @Mock private Clock clock;
     @InjectMocks private VerifiedBoostProductService service;
 
+    /**
+     * 상품 상태 변경 시각을 고정하고 시각을 사용하지 않는 목록 테스트에서도 공통 설정을 허용.
+     */
     @BeforeEach
     void setUpClock() {
         lenient().when(clock.instant()).thenReturn(Instant.parse("2026-07-26T12:00:00Z"));
         lenient().when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 유효한 상품 생성 요청을 저장하면 DRAFT 상태 응답을 반환하는지 검증. 관리자 인증은 이 단위 테스트의 검증 범위에서 제외.
+     */
     @Test
     void adminCanCreateDraft() {
         var request = new VerifiedBoostProductCreateRequest("Boost", "description", 30_000L, 7);
@@ -53,6 +59,9 @@ class VerifiedBoostProductServiceTest {
         assertThat(response.status()).isEqualTo(VerifiedBoostProductStatus.DRAFT);
     }
 
+    /**
+     * 상품 잠금 조회가 성공하면 활성화 응답이 ACTIVE인지 검증.
+     */
     @Test
     void adminCanActivateProduct() {
         VerifiedBoostProduct product = product();
@@ -63,6 +72,9 @@ class VerifiedBoostProductServiceTest {
         assertThat(response.status()).isEqualTo(VerifiedBoostProductStatus.ACTIVE);
     }
 
+    /**
+     * 활성화 대상의 잠금 조회가 비어 있으면 PRODUCT_NOT_FOUND로 거절하는지 검증.
+     */
     @Test
     void unknownProductIsNotExposed() {
         when(repository.findByIdForUpdate(3L)).thenReturn(Optional.empty());
@@ -72,8 +84,11 @@ class VerifiedBoostProductServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.PRODUCT_NOT_FOUND));
     }
 
+    /**
+     * 상품 목록이 ACTIVE 조건 저장소 조회를 사용하고 활성 상품 1건을 반환하는지 검증.
+     */
     @Test
-    void merchantCanListOnlyActiveProducts() {
+    void listsOnlyActiveProducts() {
         VerifiedBoostProduct active = product();
         active.activate(NOW);
         when(repository.findAllByStatus(eq(VerifiedBoostProductStatus.ACTIVE), any()))
@@ -86,6 +101,9 @@ class VerifiedBoostProductServiceTest {
         verify(repository).findAllByStatus(eq(VerifiedBoostProductStatus.ACTIVE), any());
     }
 
+    /**
+     * 현재보다 하루 전에 생성된 가격 30,000·기간 7일의 상품 초안을 제공.
+     */
     private VerifiedBoostProduct product() {
         return VerifiedBoostProduct.draft("Boost", "description", 30_000, 7, NOW.minusDays(1));
     }

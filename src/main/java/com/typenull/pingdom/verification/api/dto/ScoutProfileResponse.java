@@ -26,6 +26,10 @@ public record ScoutProfileResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt
 ) {
 
+    /**
+     * 프로필과 활동 자격의 상태·심사 정보를 각각 담음.
+     * 생성 시각은 프로필 기준이며 수정 시각은 두 모델 중 더 늦은 값.
+     */
     public static ScoutProfileResponse from(
             ScoutProfile profile,
             ScoutActivityEligibility eligibility

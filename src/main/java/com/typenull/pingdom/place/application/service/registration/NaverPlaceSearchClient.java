@@ -10,6 +10,10 @@ import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * 네이버 지역 검색을 인증 헤더와 연결·읽기 제한 시간으로 호출.
+ * 미설정은 이용 불가, HTTP 통신 실패나 빈 본문은 검색 실패로 변환하며 응답의 items만 전달.
+ */
 @Component
 public class NaverPlaceSearchClient {
     private final RestClient restClient;
@@ -23,6 +27,10 @@ public class NaverPlaceSearchClient {
         this.restClient = RestClient.builder().baseUrl(properties.baseUrl()).requestFactory(factory).build();
     }
 
+    /**
+     * 설정된 인증 헤더로 네이버 지역 검색에 최대 5건을 요청하고 응답의 items 노드를 반환.
+     * 설정 누락은 사용 불가, 빈 응답·HTTP 클라이언트 실패는 검색 실패로 변환. 검색어와 items 구조 검증은 호출 측 책임이며 자동 재시도는 없음.
+     */
     public JsonNode search(String query) {
         if (!properties.isConfigured()) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_UNAVAILABLE);
         try {

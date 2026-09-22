@@ -7,6 +7,9 @@ import org.springframework.data.domain.PageImpl;
 import org.springframework.data.domain.PageRequest;
 
 class DataQualityMonitoringServiceTest {
+    /**
+     * OPEN 상태로 조회한 품질 이슈 페이지의 항목을 모니터링 서비스가 그대로 반환하는지 검증.
+     */
     @Test
     void returnsOpenIssuesForMonitoring() {
         var repository = mock(DataQualityIssueRepository.class);

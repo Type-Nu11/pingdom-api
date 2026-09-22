@@ -11,8 +11,11 @@ import org.springframework.core.io.FileSystemResource;
 
 class ForwardedHeadersConfigurationTest {
 
+    /**
+     * 운영 YAML이 native 전달 헤더 처리·정해진 IP/프로토콜 헤더·환경 변수 기반 신뢰 프록시 정규식을 설정하는지 검증.
+     */
     @Test
-    void productionConfigurationUsesTrustedNativeForwardedHeaders() throws IOException {
+    void configuresTrustedNativeForwardedHeaders() throws IOException {
         PropertySource<?> properties = new YamlPropertySourceLoader()
                 .load("application", new FileSystemResource("src/main/resources/application.yaml"))
                 .getFirst();

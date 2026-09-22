@@ -19,6 +19,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소 행사의 초안·게시·취소 상태와 행사 시간표를 관리.
+ * 수정·게시 전환은 초안에서만 허용하고 진행 상태는 게시 상태와 별도로 시작 포함·종료 제외 시각으로 계산.
+ */
 @Entity
 @Getter
 @Table(name = "place_event")

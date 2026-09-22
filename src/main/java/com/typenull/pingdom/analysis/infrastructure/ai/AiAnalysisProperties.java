@@ -4,7 +4,11 @@ import java.time.Duration;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.boot.context.properties.bind.ConstructorBinding;
 
-/** 로컬 AI 공급자를 환경변수로 교체할 수 있도록 하는 설정이다. */
+/**
+ * AI 공급자·주소·모델·인증키와 HTTP 제한 시간 바인딩.
+ * null 제한 시간은 연결 2초·응답 2분으로 보충. 0·음수 제한 시간의 유효성 검사는 별도 책임.
+ * 레코드의 기본 공급자와 실제 Bean 선택 조건은 별개이며, 설정 누락 시 선택은 구성 클래스 기준.
+ */
 @ConfigurationProperties(prefix = "analysis.ai")
 public record AiAnalysisProperties(
         String provider,

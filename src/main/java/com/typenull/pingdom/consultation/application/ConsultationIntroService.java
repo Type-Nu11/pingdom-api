@@ -5,8 +5,8 @@ import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import org.springframework.stereotype.Service;
 import org.springframework.util.StringUtils;
 
+/** 상담 입력을 외부 생성 클라이언트에 전달하고 응답 형식으로 변환. */
 @Service
-/** 상담 입력을 외부 생성 클라이언트에 전달하고 응답 형식으로 변환합니다. */
 public class ConsultationIntroService {
 
     static final String FALLBACK_MESSAGE = "어떤 업종을 준비하고 계신가요? 카테고리를 선택해 주세요.";
@@ -19,6 +19,10 @@ public class ConsultationIntroService {
         this.geminiIntroClient = geminiIntroClient;
     }
 
+    /**
+     * Gemini 비활성·키 누락·빈 응답·호출 예외는 고정 안내와 source=fallback으로 대체.
+     * 외부 응답의 길이·의미 재검증과 저장·재시도는 처리 범위에서 제외.
+     */
     public ConsultationIntroResponse createIntro(String message) {
         if (!geminiProperties.enabled() || !StringUtils.hasText(geminiProperties.apiKey())) {
             return fallback();

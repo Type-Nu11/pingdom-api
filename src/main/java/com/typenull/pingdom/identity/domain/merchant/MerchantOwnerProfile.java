@@ -14,6 +14,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 사업자 신청 상태와 연락처, 심사 이력 및 온보딩 진행도를 관리.
+ * 재신청은 REJECTED·REVOKED에서만 허용하고 승인·거절은 PENDING에서만 처리.
+ */
 @Getter
 @Entity
 @Table(name = "merchant_owner_profile")

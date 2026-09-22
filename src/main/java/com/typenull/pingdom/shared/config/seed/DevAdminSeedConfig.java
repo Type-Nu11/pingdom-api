@@ -30,6 +30,10 @@ import org.springframework.transaction.PlatformTransactionManager;
 import org.springframework.transaction.support.TransactionTemplate;
 import org.springframework.util.StringUtils;
 
+/**
+ * dev·local 프로필에서 관리자와 API 확인용 사용자·장소·게시글을 별도 트랜잭션으로 시드.
+ * 존재하는 항목은 덮어쓰지 않으며 관리자는 명시적 비밀번호 설정이 필요.
+ */
 @Configuration
 @Profile({"dev", "local"})
 @Slf4j
@@ -55,6 +59,7 @@ public class DevAdminSeedConfig {
     @Value("${seed.dev-data.user-password:user1234!}")
     private String devUserPassword;
 
+    /** 관리자 시드가 활성일 때 필수 설정을 검증하고 username 또는 email이 이미 있으면 생성을 생략. */
     @Bean
     public ApplicationRunner devAdminSeeder(
             UserRepository userRepository,
@@ -98,6 +103,7 @@ public class DevAdminSeedConfig {
         };
     }
 
+    /** 고정 개발 데이터를 하나의 트랜잭션에 생성. 이미지 URL과 S3 key는 샘플 문자열이며 실제 객체 업로드는 미수행. */
     @Bean
     public ApplicationRunner devDataSeeder(
             UserRepository userRepository,
@@ -150,6 +156,7 @@ public class DevAdminSeedConfig {
         }
     }
 
+    /** username이 같은 사용자를 재사용하고 없는 경우에만 비밀번호를 인코딩해 새 계정을 저장. */
     private User seedUser(
             UserRepository userRepository,
             PasswordEncoder passwordEncoder,
@@ -173,6 +180,7 @@ public class DevAdminSeedConfig {
                         .build()));
     }
 
+    /** 고정 Kakao 식별자로 중복 생성을 회피. WGS84 공간 좌표는 경도·위도 순서로 구성. */
     private MapPlace seedPlace(
             MapPlaceRepository mapPlaceRepository,
             String kakaoPlaceId,
@@ -212,6 +220,7 @@ public class DevAdminSeedConfig {
                         .build()));
     }
 
+    /** 사용자·장소 게시글이 없을 때만 생성하고 장소 사진 수를 함께 증가시켜 재시드 중복 집계를 회피. */
     private void seedImage(
             MapImageRepository mapImageRepository,
             MapPlaceRepository mapPlaceRepository,

@@ -54,13 +54,15 @@ class VerificationSecurityControllerIntegrationTest {
     @MockBean
     private S3ObjectStorage objectStorage;
 
+    /** 각 요청 시나리오가 이전 S3 stubbing과 호출 기록에 영향을 받지 않도록 mock을 초기화. */
     @BeforeEach
     void setUp() {
         reset(objectStorage);
     }
 
+    /** 토큰 없이 체크인·증빙 메타데이터/파일·세션 조회/관측·제보/정정 조회에 접근하면 모두 401이어야 함. */
     @Test
-    void verificationEndpointsRequireAuthentication() throws Exception {
+    void requireEndpointAuthentication() throws Exception {
         mockMvc.perform(get("/location-check-ins"))
                 .andExpect(status().isUnauthorized());
         mockMvc.perform(get("/location-check-ins/{checkInId}/evidence", 1L))
@@ -81,8 +83,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(status().isUnauthorized());
     }
 
+    /** 인증 관광객이 page=0으로 제보 목록을 요청하면 400과 VALIDATION_FAILED, 비어 있지 않은 오류 목록을 반환. */
     @Test
-    void visitorVerificationListValidationReturnsStableErrorCode() throws Exception {
+    void rejectInvalidListPage() throws Exception {
         User tourist = userRepository.saveAndFlush(user("reportValidationTourist", UserRole.USER));
 
         mockMvc.perform(get("/visitor-verification-reports")
@@ -93,8 +96,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.errors").isNotEmpty());
     }
 
+    /** 체크인 위도 91은 400이며 공통 입력 오류 메시지와 latitude 필드 오류가 있어야 함. */
     @Test
-    void checkInRejectsInvalidCoordinatesWithIdentifiableValidationCause() throws Exception {
+    void rejectInvalidLatitude() throws Exception {
         User tourist = userRepository.saveAndFlush(user("coordinateTourist", UserRole.USER));
 
         mockMvc.perform(post("/location-check-ins")
@@ -112,8 +116,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.errors.latitude").isNotEmpty());
     }
 
+    /** 유효한 관리자 토큰으로 존재하지 않는 장소에 체크인해도 장소 부재 대신 관광객 계정 필요 403을 반환. */
     @Test
-    void checkInRejectsAuthenticatedNonTouristBeforePlaceLookup() throws Exception {
+    void rejectAdminCheckIn() throws Exception {
         User admin = userRepository.saveAndFlush(user("checkInAdmin", UserRole.ADMIN));
 
         mockMvc.perform(post("/location-check-ins")
@@ -130,8 +135,12 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("TOURIST_ACCOUNT_REQUIRED"));
     }
 
+    /**
+     * 관광객은 장소에 근접 체크인을 201로 생성할 수 있음.
+     * 본인 목록은 1건, 다른 관광객 목록은 0건으로 소유자별 조회를 구분.
+     */
     @Test
-    void activeTouristCreatesAndListsOnlyOwnCheckIn() throws Exception {
+    void listOnlyOwnedCheckIns() throws Exception {
         User owner = userRepository.saveAndFlush(user("successfulCheckInOwner", UserRole.USER));
         User other = userRepository.saveAndFlush(user("successfulCheckInOther", UserRole.USER));
         MapPlace savedPlace = placeRepository.saveAndFlush(place(owner.getId()));
@@ -160,8 +169,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.totalElements").value(0));
     }
 
+    /** 토큰 발급 후 계정을 정지·탈퇴시키면 기존 토큰 요청이 각각 INVALID_TOKEN 401로 거부되어야 함. */
     @Test
-    void bannedAndWithdrawnTouristsAreRejectedByAuthenticationFilter() throws Exception {
+    void rejectDisabledAccountTokens() throws Exception {
         User banned = userRepository.saveAndFlush(user("bannedCheckInTourist", UserRole.USER));
         String bannedToken = bearerToken(banned);
         banned.ban("security fixture", LocalDateTime.now());
@@ -176,8 +186,9 @@ class VerificationSecurityControllerIntegrationTest {
         assertInvalidToken(withdrawnToken);
     }
 
+    /** 타인의 증빙이 DB에 있어도 메타데이터 요청은 CHECK_IN_NOT_FOUND 404로 반환. */
     @Test
-    void evidenceMetadataIsHiddenFromAnotherAuthenticatedUser() throws Exception {
+    void hideForeignEvidenceMetadata() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("evidenceOwner");
         User other = userRepository.saveAndFlush(user("evidenceOther", UserRole.USER));
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
@@ -191,8 +202,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("CHECK_IN_NOT_FOUND"));
     }
 
+    /** 타인 체크인에 업로드·다운로드 요청을 하면 모두 CHECK_IN_NOT_FOUND 404이며 S3 접근이 없어야 함. */
     @Test
-    void otherUserCannotUploadOrDownloadEvidenceAndStorageIsNotAccessed() throws Exception {
+    void rejectForeignEvidenceAccess() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("privateEvidenceOwner");
         User other = userRepository.saveAndFlush(user("privateEvidenceOther", UserRole.USER));
         MockMultipartFile file = new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
@@ -210,8 +222,9 @@ class VerificationSecurityControllerIntegrationTest {
         verifyNoInteractions(objectStorage);
     }
 
+    /** JPEG를 PNG라고 선언한 업로드의 파일 형식 오류 400 응답과 S3 미호출 확인. */
     @Test
-    void uploadRejectsSignatureAndDeclaredContentTypeMismatchBeforeStorage() throws Exception {
+    void rejectMismatchedEvidenceType() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("invalidFileOwner");
         MockMultipartFile invalid = new MockMultipartFile(
                 "file", "fake.png", "image/png", jpegBytes());
@@ -225,8 +238,9 @@ class VerificationSecurityControllerIntegrationTest {
         verifyNoInteractions(objectStorage);
     }
 
+    /** 1KB 제한에 1,025바이트를 업로드할 때 크기 초과 413·전용 오류 코드 반환과 S3 미호출 확인. */
     @Test
-    void uploadRejectsOversizedEvidenceBeforeStorage() throws Exception {
+    void rejectOversizedEvidence() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("oversizedFileOwner");
         MockMultipartFile oversized = new MockMultipartFile(
                 "file", "oversized.jpg", "image/jpeg", new byte[1025]);
@@ -240,8 +254,12 @@ class VerificationSecurityControllerIntegrationTest {
         verifyNoInteractions(objectStorage);
     }
 
+    /**
+     * 본인 체크인에 유효 JPEG를 업로드하면 201과 체크인 ID·MIME 타입을 반환.
+     * 이어 메타데이터를 조회하면 저장한 원본 파일명이 반환되어야 함.
+     */
     @Test
-    void ownerUploadsAndReadsEvidenceThroughHttpApi() throws Exception {
+    void uploadAndReadOwnedEvidence() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("successfulEvidenceOwner");
         MockMultipartFile file = new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
         when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
@@ -260,8 +278,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.originalFilename").value("visit.jpg"));
     }
 
+    /** S3 업로드 연결 실패는 저장소 사용 불가 503으로 변환되고 DB 증빙 행이 남지 않아야 함. */
     @Test
-    void storageFailuresReturnServiceUnavailableWithoutPersistingEvidence() throws Exception {
+    void rejectFailedEvidenceUpload() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("storageFailureOwner");
         MockMultipartFile file = new MockMultipartFile("file", "visit.jpg", "image/jpeg", jpegBytes());
         when(objectStorage.put(any(byte[].class), anyString(), eq("image/jpeg"), eq("visit-evidence")))
@@ -276,8 +295,9 @@ class VerificationSecurityControllerIntegrationTest {
         org.assertj.core.api.Assertions.assertThat(evidenceRepository.count()).isZero();
     }
 
+    /** 다운로드는 JPEG 콘텐츠 타입과 mock 바이트를 반환하고 no-store·nosniff 헤더를 포함해야 함. */
     @Test
-    void evidenceDownloadPreventsCachingAndContentTypeSniffing() throws Exception {
+    void returnProtectedImageResponse() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("downloadOwner");
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         evidenceRepository.saveAndFlush(VisitEvidence.create(
@@ -294,8 +314,9 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(content().bytes(new byte[]{1, 2, 3, 4}));
     }
 
+    /** 소유권을 통과한 다운로드라도 S3 연결이 실패하면 저장소 사용 불가 503과 전용 코드를 반환. */
     @Test
-    void downloadStorageFailureReturnsServiceUnavailable() throws Exception {
+    void reportDownloadStorageFailure() throws Exception {
         OwnedCheckIn owned = ownedCheckIn("downloadFailureOwner");
         Instant now = Instant.now().truncatedTo(ChronoUnit.MILLIS);
         evidenceRepository.saveAndFlush(VisitEvidence.create(
@@ -309,6 +330,7 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("VISIT_EVIDENCE_STORAGE_UNAVAILABLE"));
     }
 
+    /** 사용자·장소·근접 체크인을 DB에 flush하고 소유자와 체크인 식별자를 후속 요청에 제공. */
     private OwnedCheckIn ownedCheckIn(String username) {
         User owner = userRepository.saveAndFlush(user(username, UserRole.USER));
         MapPlace savedPlace = placeRepository.saveAndFlush(place(owner.getId()));
@@ -317,11 +339,13 @@ class VerificationSecurityControllerIntegrationTest {
         return new OwnedCheckIn(owner, savedCheckIn);
     }
 
+    /** 저장한 사용자 ID·이름·역할로 액세스 토큰을 발급해 Authorization 헤더 형식으로 반환. */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(
                 user.getId(), user.getUsername(), user.getRole().name());
     }
 
+    /** 주어진 토큰으로 체크인 요청을 보내 INVALID_TOKEN 401을 확인. */
     private void assertInvalidToken(String token) throws Exception {
         mockMvc.perform(post("/location-check-ins")
                         .header(HttpHeaders.AUTHORIZATION, token)
@@ -337,6 +361,7 @@ class VerificationSecurityControllerIntegrationTest {
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /** S3 연결 장애를 재현할 저장소 예외를 생성. */
     private S3StorageException storageUnavailable() {
         return new S3StorageException(S3StorageError.CONNECTION_ERROR, "temporary failure", null);
     }

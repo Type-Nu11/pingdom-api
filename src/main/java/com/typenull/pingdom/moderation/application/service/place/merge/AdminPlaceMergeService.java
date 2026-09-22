@@ -72,7 +72,11 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.data.domain.Sort;
 import org.springframework.util.StringUtils;
 
-/** 장소 병합·이력 조회·복구 구현을 담당한다. */
+/**
+ * 지원하는 장소 연관 데이터를 대상 장소로 이동하고 복구용 ID·스냅샷과 감사 기록 저장.
+ * 원본·대상 장소를 ID 오름차순으로 잠그며 지원하지 않는 FK 참조가 남아 있으면 병합 거절.
+ * 복구 범위는 기록된 항목의 재배치·재생성으로 한정하며 병합 전 DB 전체 상태의 원상 복구는 제외.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -98,8 +102,12 @@ public class AdminPlaceMergeService {
     private final JdbcTemplate jdbcTemplate;
     private final Clock clock;
 
+    /**
+     * 확정 후보가 있으면 ID 쌍을 검증하고, 없으면 현재 중복 판별 결과를 요구.
+     * 북마크는 사용자, 전환은 사용자·전환 유형이 겹치면 원본 항목을 이력에 저장한 뒤 제거.
+     * 이동과 원본 삭제·사진 수 재계산·추천 재동기화·감사 기록은 같은 DB 트랜잭션에 참여.
+     */
     @Transactional
-    /** 원본 장소의 병합 가능성을 검증한 뒤 대상 장소로 데이터를 이동하고 이력을 남깁니다. */
     public AdminMapPlaceMergeResponse mergePlaces(Long adminUserId, AdminMapPlaceMergeRequest request) {
         validateMergeRequest(request);
 
@@ -135,6 +143,7 @@ public class AdminPlaceMergeService {
             throw new AdminException(AdminErrorCode.PLACE_SCOUT_FIELD_REPORT_CONNECTED);
         }
         rejectUnsupportedRelatedData(sourcePlace.getId());
+        // 확정된 후보가 없는 직접 병합 요청만 현재 좌표·식별자 기반 판별을 다시 요구.
         if (duplicateCandidate == null && !adminPlaceDuplicateResolver.areDuplicates(sourcePlace, targetPlace)) {
             throw new AdminException(AdminErrorCode.PLACE_MERGE_NOT_ALLOWED);
         }
@@ -204,6 +213,10 @@ public class AdminPlaceMergeService {
         );
     }
 
+    /**
+     * 원본·대상 ID와 복구 여부가 포함된 병합 이력을 병합 시각·ID 내림차순으로 반환.
+     * page는 1 이상·limit는 1~100으로 보정하며 복구 가능성 재검증은 조회 범위에서 제외.
+     */
     @Transactional(readOnly = true)
     public AdminPlaceMergeHistoryResponse listMergeHistories(int page, int limit) {
         int safePage = Math.max(page, 1);
@@ -225,6 +238,11 @@ public class AdminPlaceMergeService {
                 histories, result.getNumber() + 1, result.getSize(), result.getTotalElements(), result.getTotalPages(), result.hasNext());
     }
 
+    /**
+     * 미복구 이력을 잠그고 원본 ID가 비어 있으며 대상 장소가 남아 있을 때 기록된 데이터 복원.
+     * 복원 시 원본의 노출·정보 검증 상태에 기본값 적용. 생성 시각·일부 재생성 항목 ID는 과거 값과 차이 가능.
+     * 이동 후 삭제된 행은 ID 조회 복구 대상에서 제외. 대상의 병합 후 변경 전체에 대한 보호·되돌리기는 보장 범위에서 제외.
+     */
     @Transactional
     public AdminPlaceMergeRestoreResponse restoreMerge(Long adminUserId, Long historyId) {
         AdminPlaceMergeHistory history = adminPlaceMergeHistoryRepository.findByIdForUpdate(historyId)
@@ -489,6 +507,9 @@ public class AdminPlaceMergeService {
         return LocalDateTime.now(clock);
     }
 
+    /**
+     * 대상이 Kakao ID를 갖지 않은 경우에만 원본 ID를 이동. 원본의 값을 먼저 flush해 유일 제약 충돌을 회피.
+     */
     private void transferKakaoPlaceIdIfNeeded(MapPlace sourcePlace, MapPlace targetPlace) {
         if (StringUtils.hasText(targetPlace.getKakaoPlaceId()) || !StringUtils.hasText(sourcePlace.getKakaoPlaceId())) {
             return;

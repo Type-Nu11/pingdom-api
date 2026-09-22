@@ -48,6 +48,9 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * Flyway와 실제 공간 쿼리에 사용할 PostGIS 데이터소스를 테스트 컨테이너에 연결.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -60,6 +63,9 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
     @Autowired private JdbcTemplate jdbcTemplate;
     @Autowired private EntityManagerFactory entityManagerFactory;
 
+    /**
+     * 랭킹 사례의 북마크·이미지·장소 데이터를 정리.
+     */
     @AfterEach
     void cleanUp() {
         jdbcTemplate.update("DELETE FROM map_bookmark");
@@ -67,8 +73,11 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
         jdbcTemplate.update("DELETE FROM map_place");
     }
 
+    /**
+     * 1km 후보 부족 시 50km로 확장하여 기간 내 ACTIVE 게시물만 집계하고 동률·대표 이미지·북마크 및 SQL 4회 상한을 확인.
+     */
     @Test
-    void local_랭킹은_반경을_한번만_확장하고_기간내_활성_게시물만_집계한다() {
+    void expandsLocalRankingOnce() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         Long firstPlaceId = insertPlace("가까운 A", "카페", 35.1801d, 128.1078d);
         Long secondPlaceId = insertPlace("가까운 B", "카페", 35.1802d, 128.1079d);
@@ -123,8 +132,11 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
                 .isLessThanOrEqualTo(4L);
     }
 
+    /**
+     * 일·주·월에 포함되는 게시물을 구분하고 월별 두 번째 페이지의 절대 순위와 전체 건수를 유지하는지 확인.
+     */
     @Test
-    void national_랭킹은_day_week_month_기간과_페이지_순위를_유지한다() {
+    void preservesNationalRankingPeriods() {
         LocalDateTime now = LocalDateTime.now(ZoneOffset.UTC);
         Long dayPlaceId = insertPlace("DAY", "관광", 35.1801d, 128.1078d);
         Long weekPlaceId = insertPlace("WEEK", "관광", 35.1802d, 128.1079d);
@@ -145,6 +157,9 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
         assertThat(monthPageTwo.hasNext()).isTrue();
     }
 
+    /**
+     * 거리 조건 없는 전국 랭킹을 지정 기간과 페이지로 조회.
+     */
     private PlaceRankingResponse findNational(PlaceRankingPeriod period, int page, int limit) {
         return placeRankingQueryService.find(
                 PlaceRankingScope.NATIONAL,
@@ -159,6 +174,9 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
         );
     }
 
+    /**
+     * 랭킹 거리와 카테고리 필터에 사용할 공간 좌표 장소를 DB에 삽입.
+     */
     private Long insertPlace(String name, String category, double latitude, double longitude) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO map_place (
@@ -168,6 +186,9 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
                 """, Long.class, name, name + " 주소", category, latitude, longitude, longitude, latitude, "ranking-test");
     }
 
+    /**
+     * 좋아요 수·생성 시각·노출 상태를 지정한 게시물을 DB에 삽입.
+     */
     private Long insertImage(Long placeId, String name, long likeCount, LocalDateTime createdAt, String visibilityStatus) {
         return jdbcTemplate.queryForObject("""
                 INSERT INTO map_image (
@@ -185,6 +206,9 @@ class PlaceRankingQueryServicePostgreSqlIntegrationTest {
         );
     }
 
+    /**
+     * 랭킹 조회 횟수 상한을 검증할 Hibernate 통계를 가져옴.
+     */
     private Statistics statistics() {
         return entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     }

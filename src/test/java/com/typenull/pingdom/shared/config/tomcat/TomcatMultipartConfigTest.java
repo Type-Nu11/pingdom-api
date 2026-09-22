@@ -10,6 +10,9 @@ class TomcatMultipartConfigTest {
 
     private final TomcatMultipartConfig config = new TomcatMultipartConfig();
 
+    /**
+     * Tomcat customizer 적용 후 Connector의 part 수·part 헤더 크기가 설정 상수와 일치하는지 검증.
+     */
     @Test
     void customizesMultipartLimits() {
         TomcatServletWebServerFactory factory = new TomcatServletWebServerFactory(0);

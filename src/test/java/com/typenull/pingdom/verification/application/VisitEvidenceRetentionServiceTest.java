@@ -21,8 +21,13 @@ class VisitEvidenceRetentionServiceTest {
             new VisitEvidenceProperties(Duration.ofDays(30), 1024L, 10, 10), publisher,
             Clock.fixed(NOW, ZoneOffset.UTC));
 
+    /**
+     * 하루 전에 만료된 증빙 하나를 조회하도록 구성하고 삭제 건수 1을 확인.
+     * S3 삭제 Outbox 발행에 key·유형·사유가 전달되고 DB 일괄 삭제가 호출되어야 함.
+     * 영속화하지 않은 fixture의 ID가 null이므로 발행 인자의 ID 문자열도 "null".
+     */
     @Test
-    void publishesS3DeletionAndRemovesExpiredRowsInConfiguredBatch() {
+    void purgeExpiredEvidence() {
         VisitEvidence evidence = VisitEvidence.create(2L, 1L, "visit-evidence/key", "visit.jpg",
                 "image/jpeg", 4, NOW.minus(Duration.ofDays(31)), NOW.minus(Duration.ofDays(1)));
         when(repository.findAllByExpiresAtLessThanEqualOrderByExpiresAtAscIdAsc(eq(NOW), any(Pageable.class)))
@@ -36,8 +41,13 @@ class VisitEvidenceRetentionServiceTest {
         verify(repository).deleteAllInBatch(List.of(evidence));
     }
 
+    /**
+     * 첫 조회에 25건, 다음 조회에 1건을 반환해 총 26건과 두 번의 DB 삭제를 확인.
+     * 첫 mock 결과는 설정 배치 크기 10을 초과하므로 실제 Pageable 제한 준수는 검증 범위에서 제외.
+     * 반환 건수가 배치 크기보다 작은 두 번째 조회에서 순회를 끝내는 흐름을 처리.
+     */
     @Test
-    void continuesUntilPartialBatchIsProcessed() {
+    void stopAfterPartialBatch() {
         List<VisitEvidence> fullBatch = IntStream.range(0, 25)
                 .mapToObj(index -> evidence("visit-evidence/key-" + index))
                 .toList();
@@ -49,6 +59,7 @@ class VisitEvidenceRetentionServiceTest {
         verify(repository, times(2)).deleteAllInBatch(anyList());
     }
 
+    /** 지정한 S3 key로 고정 시각보다 하루 전에 만료된 미영속 증빙을 생성. */
     private VisitEvidence evidence(String key) {
         return VisitEvidence.create(2L, 1L, key, "visit.jpg", "image/jpeg", 4,
                 NOW.minus(Duration.ofDays(31)), NOW.minus(Duration.ofDays(1)));

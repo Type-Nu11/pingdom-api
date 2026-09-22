@@ -14,8 +14,9 @@ class PlaceEventTest {
     private static final LocalDateTime START_AT = LocalDateTime.of(2026, 8, 1, 10, 0);
     private static final LocalDateTime END_AT = LocalDateTime.of(2026, 8, 31, 20, 0);
 
+    /** 이벤트가 DRAFT로 생성되고 시작 직전·시작 시각·종료 시각을 UPCOMING·ONGOING·ENDED로 구분하는지 확인. */
     @Test
-    void createsDraftAndCalculatesScheduleStatus() {
+    void calculatesDraftScheduleStatus() {
         PlaceEvent event = createEvent();
 
         assertThat(event.getPublicationStatus()).isEqualTo(PlaceEventPublicationStatus.DRAFT);
@@ -24,6 +25,7 @@ class PlaceEventTest {
         assertThat(event.scheduleStatusAt(END_AT)).isEqualTo(PlaceEventScheduleStatus.ENDED);
     }
 
+    /** 시작과 종료가 같은 이벤트 기간을 거부하는지 확인. */
     @Test
     void rejectsNonIncreasingPeriod() {
         assertThatIllegalArgumentException().isThrownBy(() -> PlaceEvent.create(
@@ -37,8 +39,9 @@ class PlaceEventTest {
         ));
     }
 
+    /** 초안을 발행한 뒤 중복 발행과 내용 수정을 모두 거부하는지 확인. */
     @Test
-    void publishesOnlyDraftThatHasNotEnded() {
+    void rejectsPublishedEventMutation() {
         PlaceEvent event = createEvent();
 
         event.publish(CREATED_AT);
@@ -56,8 +59,9 @@ class PlaceEventTest {
         ));
     }
 
+    /** 종료 시각의 발행을 거부하고 초안 취소 후 다시 취소할 수 없는지 확인. */
     @Test
-    void doesNotPublishEndedEventAndCancelsOnce() {
+    void guardsEventPublicationAndCancellation() {
         PlaceEvent event = createEvent();
 
         assertThatIllegalStateException().isThrownBy(() -> event.publish(END_AT));
@@ -68,6 +72,7 @@ class PlaceEventTest {
         assertThatIllegalStateException().isThrownBy(() -> event.cancel(CREATED_AT));
     }
 
+    /** 이미 발행된 이벤트도 취소 상태로 전환할 수 있는지 확인. */
     @Test
     void cancelsPublishedEvent() {
         PlaceEvent event = createEvent();
@@ -78,6 +83,7 @@ class PlaceEventTest {
         assertThat(event.getPublicationStatus()).isEqualTo(PlaceEventPublicationStatus.CANCELLED);
     }
 
+    /** 고정 전시 기간과 생성 시각을 가진 초안을 만들어 경계 시각 전이를 비교. */
     private PlaceEvent createEvent() {
         return PlaceEvent.create(
                 place(),
@@ -90,6 +96,7 @@ class PlaceEventTest {
         );
     }
 
+    /** 저장소 호출 없이 이벤트 연결용 고정 식별자 장소를 생성. */
     private MapPlace place() {
         return MapPlace.builder()
                 .id(1L)

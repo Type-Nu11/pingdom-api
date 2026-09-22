@@ -12,8 +12,8 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 
 /**
- * AI provider와 분리된 인증 사용자 세션입니다.
- * 대화 원문과 provider 응답은 개인정보 보호를 위해 저장하지 않습니다.
+ * AI provider와 분리된 인증 사용자 세션.
+ * 대화 원문·provider 응답은 엔티티 저장 범위에서 제외. 응답 재전송용 envelope와 원문 해시는 VoiceAiReplay에 별도 저장.
  */
 @Getter
 @Entity
@@ -61,7 +61,7 @@ public class VoiceAiSession {
         this.expiresAt = expiresAt;
     }
 
-    /** 종료 요청은 반복돼도 같은 CLOSED 상태를 유지해 DELETE를 멱등하게 만든다. */
+    /** 종료 요청의 반복 호출에도 CLOSED 상태를 유지해 DELETE 멱등성 보장. */
     public void close(LocalDateTime now) {
         if (status == VoiceAiSessionStatus.ACTIVE) {
             status = VoiceAiSessionStatus.CLOSED;

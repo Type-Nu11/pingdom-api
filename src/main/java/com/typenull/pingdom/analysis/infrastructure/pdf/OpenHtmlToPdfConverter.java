@@ -15,6 +15,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+/**
+ * XHTML을 메모리 내 PDF 바이트로 변환. 설정 경로, 내장 TTF, 운영체제 경로 순서로 한글 폰트를 탐색.
+ * 폰트 준비·등록 실패는 경고 후 렌더링을 계속하므로 한글 표시 품질을 보장하지 않으며, 변환 실패는 도메인 오류로 전달.
+ */
 @Component
 @Slf4j
 public class OpenHtmlToPdfConverter implements HtmlToPdfConverter {
@@ -82,7 +86,7 @@ public class OpenHtmlToPdfConverter implements HtmlToPdfConverter {
                 .orElse(null);
     }
 
-    /** JAR 내부 TTF는 File로 바로 전달할 수 없으므로 실행 중 한 번만 임시 파일로 풀어 등록한다. */
+    /** JAR 내부 TTF는 File로 바로 전달할 수 없으므로 실행 중 한 번만 임시 파일로 풀어 등록. */
     private File resolveBundledFont() {
         File cached = bundledFontFile;
         if (cached != null && cached.isFile()) {

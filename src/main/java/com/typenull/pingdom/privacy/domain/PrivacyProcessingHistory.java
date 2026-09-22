@@ -17,6 +17,7 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** 개인정보 처리 주체·행위·대상과 처리 시점을 감사 이력으로 보존. */
 @Getter
 @Entity
 @Table(
@@ -37,7 +38,6 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 @AllArgsConstructor
 @Builder
-/** 개인정보 처리 주체·행위·대상과 처리 시점을 감사 이력으로 보존합니다. */
 public class PrivacyProcessingHistory {
 
     @Id
@@ -47,7 +47,7 @@ public class PrivacyProcessingHistory {
     @Column(name = "subject_user_id")
     private Long subjectUserId;
 
-    /** Outbox 재처리 시 동일 감사 이력의 중복 생성을 막는 원본 이벤트 식별자입니다. */
+    /** Outbox 재처리 시 동일 감사 이력의 중복 생성을 막는 원본 이벤트 식별자. */
     @Column(name = "outbox_event_id", length = 36, updatable = false)
     private String outboxEventId;
 

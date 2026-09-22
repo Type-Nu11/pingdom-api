@@ -6,6 +6,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 동일 Kakao ID 또는 이름·주소와 좌표 상자 조건으로 장소 중복 후보를 조회.
+ * 이 결과는 후보이며 물리 거리의 최종 판정·병합 가능 여부·접근 권한은 호출 서비스에서 확인.
+ */
 public interface MapPlaceDuplicateQueryRepository extends Repository<MapPlace, Long> {
 
     @Query("""

@@ -36,6 +36,7 @@ class MyPlaceReviewControllerTest {
 
     private MockMvc mockMvc;
 
+    /** JWT 주체를 고정하는 argument resolver와 Bean Validation·공통 오류 처리기를 붙인 standalone MVC를 생성. */
     @BeforeEach
     void setUp() {
         LocalValidatorFactoryBean validator = new LocalValidatorFactoryBean();
@@ -44,11 +45,13 @@ class MyPlaceReviewControllerTest {
                 .setControllerAdvice(new GlobalExceptionHandler(mock(AuthMetrics.class)))
                 .setValidator(validator)
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    /** CurrentUser 파라미터만 고정 인증 주체 주입 대상으로 선택. */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
                         return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
+                    /** 보안 필터 대신 이 테스트에 고정된 JWT 사용자를 반환해 컨트롤러 전달 값을 검증. */
                     @Override
                     public Object resolveArgument(
                             MethodParameter parameter,
@@ -62,8 +65,9 @@ class MyPlaceReviewControllerTest {
                 .build();
     }
 
+    /** 인증 주체를 20번 사용자로 주입하고 2페이지·10건 조회가 서비스에 전달되는지 확인. 응답의 전체 건수와 다음 페이지 여부도 유지. */
     @Test
-    void returnsTheAuthenticatedUsersReviewPageIncludingTotalElements() throws Exception {
+    void returnsMyReviewPage() throws Exception {
         when(placeReviewService.listMine(20L, 2, 10))
                 .thenReturn(new MyPlaceReviewPageResponse(java.util.List.of(), 2, 10, 31, 4, true));
 

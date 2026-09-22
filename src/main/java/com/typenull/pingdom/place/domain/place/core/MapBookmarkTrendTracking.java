@@ -7,7 +7,7 @@ import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import lombok.Getter;
 
-/** 이력 집계가 신뢰 가능한 기준 시점을 단일 행으로 관리합니다. */
+/** 이력 집계가 신뢰 가능한 기준 시점을 단일 행으로 관리. */
 @Entity
 @Getter
 @Table(name = "map_bookmark_trend_tracking")

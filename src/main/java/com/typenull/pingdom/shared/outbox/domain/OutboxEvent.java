@@ -15,6 +15,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 중복 키·payload와 처리 상태를 저장하는 Outbox 행.
+ * 실패 때 attemptCount가 증가하며 version으로 동시 DB 갱신을 감지. 외부 handler 중복 실행을 막는 토큰은 없음.
+ */
 @Entity
 @Table(
         name = "outbox_event",
@@ -98,6 +102,7 @@ public class OutboxEvent {
     @Version
     private long version;
 
+    /** 새 UUID와 PENDING 상태로 생성하며 현재 시각부터 선점 허용. */
     public static OutboxEvent create(
             String deduplicationKey,
             OutboxEventType eventType,
@@ -120,6 +125,7 @@ public class OutboxEvent {
         return event;
     }
 
+    /** PENDING/RETRY만 PROCESSING으로 전환해 시작 시각을 기록. 이 단계에서는 시도 횟수 유지. */
     public void claim(LocalDateTime now) {
         if (status != OutboxEventStatus.PENDING && status != OutboxEventStatus.RETRY) {
             return;
@@ -129,6 +135,7 @@ public class OutboxEvent {
         updatedAt = now;
     }
 
+    /** PROCESSING만 성공으로 바꾸고 처리 시작 시각·오류를 비움. 다른 상태는 변경 대상에서 제외. */
     public void succeed(LocalDateTime now) {
         if (status != OutboxEventStatus.PROCESSING) {
             return;
@@ -140,6 +147,10 @@ public class OutboxEvent {
         updatedAt = now;
     }
 
+    /**
+     * PROCESSING 실패 횟수를 증가시키고 한도 도달 시 FAILED, 아니면 지정 시각의 RETRY로 전환.
+     * 오류는 최대 2,000자로 잘라 보관하며 처리 중 시각을 비움.
+     */
     public void fail(LocalDateTime now, int maxAttempts, LocalDateTime nextAttemptAt, String errorMessage) {
         if (status != OutboxEventStatus.PROCESSING) {
             return;
@@ -159,6 +170,7 @@ public class OutboxEvent {
         this.nextAttemptAt = nextAttemptAt;
     }
 
+    /** 고착 복구도 실패와 같은 횟수·한도 규칙을 적용해 무한 복구 반복을 제한. */
     public void recover(
             LocalDateTime now,
             int maxAttempts,
@@ -168,6 +180,7 @@ public class OutboxEvent {
         fail(now, maxAttempts, nextAttemptAt, reason);
     }
 
+    /** FAILED만 수동 재시도 상태로 돌리고 실패 횟수·처리 시각·오류를 초기화. */
     public void retry(LocalDateTime now) {
         if (status != OutboxEventStatus.FAILED) {
             return;
@@ -181,6 +194,7 @@ public class OutboxEvent {
         updatedAt = now;
     }
 
+    /** DB 오류 필드 길이 제한에 맞춰 앞 2,000자만 남기며 null은 유지. */
     private String truncate(String value) {
         if (value == null) {
             return null;

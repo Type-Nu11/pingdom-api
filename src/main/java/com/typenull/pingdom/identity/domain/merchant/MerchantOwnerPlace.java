@@ -13,6 +13,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 장소 하나의 사업자 소유 매핑과 0~100 정수 비율의 운영 품질 지표를 저장.
+ * 소유권 변경은 사용자 ID만 교체하므로 소유권 적격성과 연관 데이터 처리는 호출자가 확인.
+ */
 @Getter
 @Entity
 @Table(name = "merchant_owner_place")

@@ -9,8 +9,9 @@ import org.junit.jupiter.api.Test;
 
 class PlaceInformationReportTest {
 
+    /** 제보 입력 공백을 정리하고 승인 메타데이터를 기록한 뒤 반박 제출 시 원 제보와 반박 상태·연결이 함께 반영되는지 확인. */
     @Test
-    void submittedReportCanBeReviewedAcceptedAndDisputed() {
+    void acceptsReportThenDispute() {
         LocalDateTime submittedAt = LocalDateTime.of(2026, 7, 21, 10, 0);
         PlaceInformationReport report = PlaceInformationReport.submit(
                 place(),
@@ -48,8 +49,9 @@ class PlaceInformationReportTest {
         assertThat(dispute.getDescription()).isEqualTo("관리자가 확인한 자료가 오래된 정보입니다.");
     }
 
+    /** 반려 사유 공백을 거부하고 반려 후 재심사 시작과 반박 제출을 막는지 확인. */
     @Test
-    void reportReviewRequiresReasonAndTerminalReportCannotBeReviewedAgain() {
+    void guardsRejectedReportTransitions() {
         PlaceInformationReport report = PlaceInformationReport.submit(
                 place(),
                 null,
@@ -76,8 +78,9 @@ class PlaceInformationReportTest {
         )).isInstanceOf(IllegalStateException.class);
     }
 
+    /** 반박 승인에 사유가 필요하고 승인 후 반려로 다시 처리할 수 없는지 확인. */
     @Test
-    void disputeReviewRequiresReasonAndCannotBeProcessedTwice() {
+    void guardsDisputeReviewTransitions() {
         PlaceInformationReport report = PlaceInformationReport.submit(
                 place(),
                 null,
@@ -106,6 +109,7 @@ class PlaceInformationReportTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
+    /** 제보·반박 흐름에서 공통으로 사용할 소유자 1번의 장소를 생성. */
     private MapPlace place() {
         return MapPlace.builder()
                 .id(1L)

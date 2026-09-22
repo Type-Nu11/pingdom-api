@@ -21,7 +21,7 @@ import org.locationtech.jts.geom.Point;
 import org.locationtech.jts.geom.PrecisionModel;
 import org.springframework.util.StringUtils;
 
-/** 관리자 장소 서비스들이 공유하는 순수 상태 변환·입력 정규화 함수 모음이다. */
+/** 관리자 장소 서비스들이 공유하는 순수 상태 변환·입력 정규화 함수 모음. */
 public final class AdminPlaceServiceSupport {
 
     private static final GeometryFactory WGS84 = new GeometryFactory(new PrecisionModel(), 4326);
@@ -33,6 +33,9 @@ public final class AdminPlaceServiceSupport {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
+    /**
+     * 위도·경도를 WGS84(SRID 4326) Point의 x=경도, y=위도 순으로 변환. 범위 검증은 호출자 책임.
+     */
     public static Point toPoint(double latitude, double longitude) {
         return WGS84.createPoint(new Coordinate(longitude, latitude));
     }

@@ -20,6 +20,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 게시글 또는 댓글 중 정확히 하나를 대상으로 하는 신고와 관리자 처리 이력을 보관.
+ * PENDING 상태에서만 처리 가능하며 신고 생성 시각 이상의 처리 시각만 허용. 경합은 엔티티 버전으로 검증.
+ */
 @Entity
 @Getter
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
@@ -85,7 +89,7 @@ public class CommunityReport {
         this.status = CommunityReportStatus.PENDING;
     }
 
-    // 게시글과 댓글 중 정확히 하나만 신고 대상으로 지정한다.
+    // 게시글과 댓글 중 정확히 하나만 신고 대상으로 지정.
     public static CommunityReport reportPost(Long reporterUserId, CommunityPost post,
                                             CommunityReportReason reason, String description, LocalDateTime createdAt) {
         return new CommunityReport(reporterUserId, post, null, reason, description, createdAt);
@@ -112,7 +116,7 @@ public class CommunityReport {
         process(CommunityReportStatus.DECLINED, adminUserId, processedAt);
     }
 
-    // 처리된 신고는 되돌리지 않으며 동시 수정은 version으로 검증한다.
+    // 처리된 신고는 되돌리지 않으며 동시 수정은 version으로 검증.
     private void process(CommunityReportStatus nextStatus, Long adminUserId, LocalDateTime processedAt) {
         if (status != CommunityReportStatus.PENDING) {
             throw new CommunityException(CommunityErrorCode.REPORT_ALREADY_PROCESSED);

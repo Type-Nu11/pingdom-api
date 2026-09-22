@@ -20,13 +20,19 @@ class NotificationDeliveryRecorderTest {
 
     private NotificationDeliveryRecorder recorder;
 
+    /**
+     * 채널별 이력 요청 매핑만 검사하도록 저장 writer를 대체한 recorder를 구성.
+     */
     @BeforeEach
     void setUp() {
         recorder = new NotificationDeliveryRecorder(writer);
     }
 
+    /**
+     * 좋아요 FCM 성공을 기록하면 writer 요청의 Outbox 유형이 MAP_IMAGE_LIKED로 매핑되는지 검증.
+     */
     @Test
-    void recordFcmSuccessMapsNewLikeToMapImageLikedOutboxType() {
+    void mapsLikeNotificationEventType() {
         recorder.recordFcmSuccess(
                 1L,
                 10L,
@@ -43,8 +49,11 @@ class NotificationDeliveryRecorderTest {
         assertThat(captor.getValue().outboxEventType()).isEqualTo("MAP_IMAGE_LIKED");
     }
 
+    /**
+     * 명시적으로 연결되지 않은 신규 핫플 알림은 이력 요청의 Outbox 유형을 null로 두는지 검증.
+     */
     @Test
-    void recordFcmSuccessDoesNotGuessOutboxTypeForUnmappedNotificationType() {
+    void leavesUnmappedEventTypeEmpty() {
         recorder.recordFcmSuccess(
                 1L,
                 10L,
@@ -61,8 +70,11 @@ class NotificationDeliveryRecorderTest {
         assertThat(captor.getValue().outboxEventType()).isNull();
     }
 
+    /**
+     * 재시도 가능한 FCM 실패를 기록하면 writer에 RETRY_SCHEDULED 상태와 retryable true를 전달하는지 검증.
+     */
     @Test
-    void recordRetryableFcmFailureSchedulesDeliveryRetry() {
+    void schedulesRetryableFcmFailure() {
         recorder.recordFcmFailure(
                 1L,
                 10L,

@@ -37,7 +37,7 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.format.annotation.DateTimeFormat;
 
-/** Web 통합 신청의 관리자 심사 API입니다. */
+/** Web 통합 신청의 관리자 심사 API. */
 @RestController
 @RequiredArgsConstructor
 @AdminOnly

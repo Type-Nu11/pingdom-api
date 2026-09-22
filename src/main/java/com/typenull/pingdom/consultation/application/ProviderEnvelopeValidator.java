@@ -10,7 +10,7 @@ import java.time.format.DateTimeParseException;
 import java.util.Set;
 import org.springframework.stereotype.Component;
 
-/** 앱 ProviderEnvelope v1 schema의 허용 union만 gateway 경계에서 통과시킨다. */
+/** gateway 경계에서 앱 ProviderEnvelope v1 schema의 허용 union만 통과. */
 @Component
 public class ProviderEnvelopeValidator {
     private static final Set<String> COMMON = Set.of("schemaVersion", "id", "kind");
@@ -25,6 +25,10 @@ public class ProviderEnvelopeValidator {
             "K_POP", "BEAUTY", "FASHION", "CAFE", "FOOD", "POP_UP", "EXHIBITION", "NIGHTLIFE", "OTHER"
     );
 
+    /**
+     * 공급자 응답의 버전 1·요청 ID 일치·ID 형식을 확인한 뒤 종류별 필드와 명령 인자 검증.
+     * 지원하지 않는 종류·필드·값은 PROVIDER_RESPONSE_INVALID로 거절. 명령 실행·자원 접근 인가는 별도 검증 책임.
+     */
     public void validate(JsonNode envelope, String requestId) {
         if (envelope == null || !envelope.isObject()
                 || !integer(envelope.path("schemaVersion"))
@@ -105,10 +109,14 @@ public class ProviderEnvelopeValidator {
 
     private void required(JsonNode node, String... fields) { for (String field : fields) if (node.path(field).isMissingNode() || node.path(field).isNull()) invalid(); }
     private boolean integer(JsonNode node) {
-        // JSON Schema와 JavaScript number의 정수 의미에 맞춰 1.0은 허용하되 1.5는 거부한다.
+        // JSON Schema와 JavaScript number의 정수 의미에 맞춰 1.0은 허용하되 1.5는 거부.
         return node.isNumber() && node.decimalValue().stripTrailingZeros().scale() <= 0;
     }
 
+    /**
+     * 클라이언트의 JavaScript 정수 표현 범위를 넘지 않는 양수 ID만 허용.
+     * 실제 DB 존재 여부와 해당 자원에 대한 사용자 권한은 스키마 검증 범위에서 제외.
+     */
     private void positiveId(JsonNode node) {
         if (!integer(node) || !node.canConvertToLong() || node.asLong() < 1
                 || node.asLong() > 9_007_199_254_740_991L) invalid();

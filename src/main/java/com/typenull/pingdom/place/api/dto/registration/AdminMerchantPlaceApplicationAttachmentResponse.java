@@ -4,7 +4,7 @@ import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmen
 import com.typenull.pingdom.place.domain.registration.PlaceRegistrationAttachmentType;
 import java.time.LocalDateTime;
 
-/** 관리자 심사 화면에서 사용하는 통합 신청 첨부파일 메타데이터입니다. */
+/** 관리자 심사 화면에서 사용하는 통합 신청 첨부파일 메타데이터. */
 public record AdminMerchantPlaceApplicationAttachmentResponse(
         Long id,
         PlaceRegistrationAttachmentType documentType,

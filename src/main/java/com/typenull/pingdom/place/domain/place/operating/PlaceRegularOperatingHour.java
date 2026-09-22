@@ -12,6 +12,9 @@ import lombok.EqualsAndHashCode;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 요일별 반복 영업 구간. 요일·시작·종료는 필수이며 자정 통과 구간도 표현할 수 있음.
+ */
 @Embeddable
 @Getter
 @EqualsAndHashCode

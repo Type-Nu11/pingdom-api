@@ -44,14 +44,20 @@ class VerifiedBoostExecutionServiceTest {
     @Mock private Clock clock;
     @InjectMocks private VerifiedBoostExecutionService service;
 
+    /**
+     * Boost 실행의 시작·중단·만료 경계를 재현하도록 UTC 현재 시각을 고정.
+     */
     @BeforeEach
     void setUpClock() {
         when(clock.instant()).thenReturn(Instant.parse("2026-07-26T12:00:00Z"));
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 기존 실행이 없는 소유 장소에서 품질 정책 검사를 호출하고 상품 기간 7일 뒤를 종료 시각으로 반환하는지 검증.
+     */
     @Test
-    void healthyOwnedPlaceStartsExecutionForProductDuration() {
+    void startsEligibleProductExecution() {
         MerchantVerifiedBoostSelection selection = selection();
         MerchantOwnerPlace ownerPlace = healthyOwnerPlace();
         VerifiedBoostProduct product = VerifiedBoostProduct.draft("Boost", "description", 30_000, 7, NOW);
@@ -68,6 +74,9 @@ class VerifiedBoostExecutionServiceTest {
         assertThat(response.endsAt()).isEqualTo(NOW.plusDays(7));
     }
 
+    /**
+     * 장소에 다른 활성 실행이 있으면 EXECUTION_ALREADY_ACTIVE로 시작을 거절하는지 검증.
+     */
     @Test
     void anotherActiveExecutionBlocksStart() {
         MerchantVerifiedBoostSelection selection = selection();
@@ -83,8 +92,11 @@ class VerifiedBoostExecutionServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.EXECUTION_ALREADY_ACTIVE));
     }
 
+    /**
+     * 소유 실행을 중단할 때 장소 소유권을 확인하고 STOPPED 상태와 현재 중단 시각을 반환하는지 검증.
+     */
     @Test
-    void activeOwnedExecutionCanBeStopped() {
+    void stopsOwnedActiveExecution() {
         VerifiedBoostExecution execution = VerifiedBoostExecution.start(selection(), 7, NOW);
         ReflectionTestUtils.setField(execution, "id", 5L);
         when(executionRepository.findOwnedByIdForUpdate(5L, 1L)).thenReturn(Optional.of(execution));
@@ -96,8 +108,11 @@ class VerifiedBoostExecutionServiceTest {
         assertThat(response.stoppedAt()).isEqualTo(NOW);
     }
 
+    /**
+     * 같은 선택의 실행이 이미 있으면 ACTIVE 응답을 반환하고 품질 검사와 상품 조회를 반복하지 않는지 검증.
+     */
     @Test
-    void repeatedStartReturnsExistingExecutionWithoutReapplyingGuardrail() {
+    void reusesExistingBoostExecution() {
         MerchantVerifiedBoostSelection selection = selection();
         VerifiedBoostExecution execution = VerifiedBoostExecution.start(selection, 7, NOW);
         when(selectionRepository.findByIdAndMerchantOwnerUserId(4L, 1L)).thenReturn(Optional.of(selection));
@@ -110,6 +125,9 @@ class VerifiedBoostExecutionServiceTest {
         verifyNoInteractions(qualityGuardrail, productRepository);
     }
 
+    /**
+     * 종료 시각에 도달한 실행의 중단 요청은 INVALID_EXECUTION_STATE로 변환되는지 검증.
+     */
     @Test
     void expiredExecutionCannotBeStopped() {
         VerifiedBoostExecution execution = VerifiedBoostExecution.start(selection(), 1, NOW.minusDays(1));
@@ -120,8 +138,11 @@ class VerifiedBoostExecutionServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.INVALID_EXECUTION_STATE));
     }
 
+    /**
+     * 소유자 조건의 잠금 조회가 비어 있으면 EXECUTION_NOT_FOUND를 반환해 다른 점주의 실행을 노출하지 않는지 검증.
+     */
     @Test
-    void anotherOwnersExecutionIsNotExposed() {
+    void hidesUnownedExecution() {
         when(executionRepository.findOwnedByIdForUpdate(5L, 1L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> service.stop(1L, 5L))
@@ -129,12 +150,18 @@ class VerifiedBoostExecutionServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(VerifiedBoostErrorCode.EXECUTION_NOT_FOUND));
     }
 
+    /**
+     * 점주 1·장소 2·상품 3의 선택을 생성하고 저장된 상태를 재현할 ID 4를 설정.
+     */
     private MerchantVerifiedBoostSelection selection() {
         MerchantVerifiedBoostSelection selection = MerchantVerifiedBoostSelection.create(3L, 1L, 2L, "key", NOW);
         ReflectionTestUtils.setField(selection, "id", 4L);
         return selection;
     }
 
+    /**
+     * 실행 조건의 품질 정책 입력으로 사용할 HEALTHY 상태의 점주 소유 장소를 생성.
+     */
     private MerchantOwnerPlace healthyOwnerPlace() {
         return MerchantOwnerPlace.builder()
                 .placeId(2L)

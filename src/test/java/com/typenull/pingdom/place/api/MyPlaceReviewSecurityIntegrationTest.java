@@ -19,6 +19,7 @@ class MyPlaceReviewSecurityIntegrationTest {
     @Autowired
     private MockMvc mockMvc;
 
+    /** 인증 없이 내 리뷰를 요청하면 보안 체인이 401과 INVALID_TOKEN을 반환하는지 확인. */
     @Test
     void rejectsUnauthenticatedRequests() throws Exception {
         mockMvc.perform(get("/users/me/reviews"))

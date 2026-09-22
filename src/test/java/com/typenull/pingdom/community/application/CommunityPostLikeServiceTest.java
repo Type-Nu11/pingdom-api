@@ -15,8 +15,11 @@ class CommunityPostLikeServiceTest {
     private final CommunityPostLikeRepository likeRepository = mock(CommunityPostLikeRepository.class);
     private final CommunityPostLikeService service = new CommunityPostLikeService(postRepository, likeRepository);
 
+    /**
+     * 좋아요 요청이 중복 무시 삽입을 호출하고 현재 집계 수와 좋아요 상태를 응답하는지 검증.
+     */
     @Test
-    void 중복_좋아요도_하나의_좋아요_상태로_반환한다() {
+    void returnsExistingLikeState() {
         when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(likeRepository.countByCommunityPostId(10L)).thenReturn(3L);
         when(likeRepository.existsByCommunityPostIdAndUserId(10L, 7L)).thenReturn(true);
@@ -27,8 +30,11 @@ class CommunityPostLikeServiceTest {
         verify(likeRepository).insertIgnoreDuplicate(10L, 7L);
     }
 
+    /**
+     * 이미 좋아요가 없는 상태에서 취소해도 현재 집계 수와 false 상태를 정상 응답하는지 검증.
+     */
     @Test
-    void 이미_취소한_좋아요도_취소된_상태를_반환한다() {
+    void returnsCancelledLikeState() {
         when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(likeRepository.countByCommunityPostId(10L)).thenReturn(2L);
         when(likeRepository.existsByCommunityPostIdAndUserId(10L, 7L)).thenReturn(false);
@@ -36,8 +42,11 @@ class CommunityPostLikeServiceTest {
         assertThat(service.cancel(10L, 7L)).isEqualTo(new CommunityPostLikeResponse(10L, 2L, false));
     }
 
+    /**
+     * 공개 게시글이 없으면 예외를 반환하고 좋아요 저장소를 호출하지 않는지 검증.
+     */
     @Test
-    void 없는_게시글에는_좋아요를_등록하지_않는다() {
+    void rejectsLikeForMissingPost() {
         when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(false);
         assertThatThrownBy(() -> service.like(10L, 7L)).isInstanceOf(CommunityException.class);
         verifyNoInteractions(likeRepository);

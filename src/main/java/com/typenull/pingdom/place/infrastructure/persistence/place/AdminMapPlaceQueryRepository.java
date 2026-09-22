@@ -10,6 +10,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.Repository;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 관리 화면의 장소명·영문명·주소·등록자 ID 검색과 관광 분류 일괄 조회를 제공.
+ * 운영·탐색 공개 상태를 제한하지 않으며 숫자 키워드는 장소 ID가 아닌 등록자 userId와 비교.
+ */
 public interface AdminMapPlaceQueryRepository extends Repository<MapPlace, Long> {
 
     @Query("""

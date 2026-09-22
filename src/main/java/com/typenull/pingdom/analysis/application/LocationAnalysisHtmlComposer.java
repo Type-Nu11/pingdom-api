@@ -7,7 +7,10 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.springframework.stereotype.Component;
 
-/** 구조화된 AI 응답을 고정된 7페이지 XHTML 디자인으로 변환한다. */
+/**
+ * 구조화된 분석을 일곱 보고서 구역의 XHTML과 표·차트 표시값으로 조립.
+ * 상위 추천은 다섯 곳, 주변 시설은 종류를 합쳐 여섯 곳까지 표시하며 실제 PDF 쪽수는 렌더링 결과에 따름.
+ */
 @Component
 public class LocationAnalysisHtmlComposer {
 
@@ -15,6 +18,10 @@ public class LocationAnalysisHtmlComposer {
     private static final int MAX_TABLE_ROWS = 5;
     private static final int MAX_FACILITY_ROWS = 2;
 
+    /**
+     * 검증된 분석 내용을 입력받아 표지와 여섯 본문 구역을 XHTML 문자열로 조립.
+     * 선택 구역의 누락 값은 표시용 기본 문구로 처리. PDF 변환·외부 리소스 조회는 처리 범위에서 제외.
+     */
     public String compose(
             String reportId,
             String reportName,
@@ -371,8 +378,8 @@ public class LocationAnalysisHtmlComposer {
     }
 
     private String escape(String value) {
-        // OpenHTMLtoPDF는 XHTML(XML) 파서라 &middot; 같은 HTML 전용 named entity를 허용하지 않는다.
-        // AI·사용자 입력은 XML 기본 문자와 작은따옴표만 숫자 entity로 치환해 PDF 변환을 안정화한다.
+        // XHTML(XML) 파서인 OpenHTMLtoPDF의 &middot; 등 HTML 전용 named entity 미지원.
+        // AI·사용자 입력은 XML 기본 문자와 작은따옴표만 숫자 entity로 치환해 PDF 변환을 안정화.
         return (value == null ? "데이터 없음" : value)
                 .replace("&", "&amp;")
                 .replace("<", "&lt;")

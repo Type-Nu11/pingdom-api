@@ -24,6 +24,9 @@ import org.springframework.transaction.support.TransactionTemplate;
 import org.testcontainers.containers.PostgreSQLContainer;
 import org.testcontainers.utility.DockerImageName;
 
+/**
+ * PostgreSQL의 사용자 행 잠금을 별도 스레드·트랜잭션으로 검증. 컨테이너를 직접 시작하고 정리.
+ */
 @Tag("postgres-integration")
 @Tag("postgres-smoke")
 @SpringBootTest(properties = "spring.docker.compose.enabled=false")
@@ -44,6 +47,9 @@ class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSuppo
         ensureRequiredExtensions();
     }
 
+    /**
+     * 실행 중인 PostGIS 컨테이너의 JDBC 접속 정보를 Spring 데이터소스에 등록.
+     */
     @DynamicPropertySource
     static void registerPostgresProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -52,6 +58,9 @@ class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSuppo
         registry.add("spring.datasource.driver-class-name", () -> "org.postgresql.Driver");
     }
 
+    /**
+     * 테스트 클래스 종료 시 직접 시작한 PostgreSQL 컨테이너를 정리.
+     */
     @AfterAll
     static void stopPostgres() {
         postgres.stop();
@@ -60,8 +69,11 @@ class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSuppo
     @Autowired
     private PlatformTransactionManager transactionManager;
 
+    /**
+     * 첫 트랜잭션의 사용자 행 잠금 동안 두 번째 잠금이 300ms 내 획득되지 않고 첫 잠금 해제 뒤 획득되는지 확인. 토큰 갱신 API 호출은 검증 범위에서 제외.
+     */
     @Test
-    void refreshTokenStateLockSerializesConcurrentUpdates() throws Exception {
+    void refreshStateRowLock() throws Exception {
         User user = createUser("refreshTokenLockUser");
         TransactionTemplate transactionTemplate = new TransactionTemplate(transactionManager);
         CountDownLatch firstLockAcquired = new CountDownLatch(1);
@@ -98,6 +110,9 @@ class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSuppo
         }
     }
 
+    /**
+     * 스키마 초기화 전에 PostGIS 확장을 준비하고 실패하면 테스트 준비 오류로 중단.
+     */
     private static void ensureRequiredExtensions() {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -107,6 +122,9 @@ class RefreshTokenLockIntegrationTest extends AuthRegressionIntegrationTestSuppo
         }
     }
 
+    /**
+     * 행 잠금 해제 신호를 최대 3초 기다리고 시간 초과나 인터럽트를 실패로 전파. 인터럽트 상태는 복원.
+     */
     private void await(CountDownLatch latch) {
         try {
             if (!latch.await(3, TimeUnit.SECONDS)) {

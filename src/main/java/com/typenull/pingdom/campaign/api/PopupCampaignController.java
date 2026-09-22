@@ -26,13 +26,13 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/** 노출 가능한 팝업 캠페인을 조회하는 API 진입점. */
 @RestController
 @RequestMapping("/popup-campaigns")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
 @ApiAudience(ApiAudience.Group.APP)
 @Tag(name = SwaggerTagCatalog.EVENT)
-/** 노출 가능한 팝업 캠페인을 조회하는 API 진입점입니다. */
 public class PopupCampaignController {
 
     private final PopupCampaignQueryService queryService;

@@ -41,6 +41,10 @@ import org.springframework.data.domain.Sort;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 피신고자의 이의제기를 접수하고 관리자 검토 결과를 신고·사진 노출·제재·감사 기록에 반영.
+ * 이의제기 행 잠금 없이 일반 조회로 접수 가능 여부·미처리 여부 확인.
+ */
 @Service
 @RequiredArgsConstructor
 public class ReportAppealService {
@@ -55,6 +59,10 @@ public class ReportAppealService {
     private final AdminRoleAuthorizationService authorizationService;
     private final Clock clock;
 
+    /**
+     * 피신고자 본인이며 신고가 승인되었거나 대상 사진이 숨김 상태일 때 접수.
+     * 중복 거절 범위는 같은 신고·신청자의 SUBMITTED 건으로 한정하며 처리 완료 후 재신청은 허용.
+     */
     @Transactional
     public ReportAppealCreateResponse submit(Long reportId, String reason, Long userId, String username) {
         PostReport report = postReportRepository.findById(reportId)
@@ -99,6 +107,9 @@ public class ReportAppealService {
         return acceptedReport || hiddenPost;
     }
 
+    /**
+     * 처리 상태가 주어지면 해당 상태의 이의제기만, 없으면 전체를 최신순 페이지로 반환. page는 1 이상·limit는 1~100으로 보정.
+     */
     @Transactional(readOnly = true)
     public AdminReportAppealResponse list(ReportAppealStatus status, int page, int limit) {
         int safePage = Math.max(page, 1);
@@ -124,10 +135,15 @@ public class ReportAppealService {
         );
     }
 
+    /**
+     * 신고 심사와 사용자 제재 권한을 모두 확인한 후 신고·사진 복구.
+     * 다른 승인 신고가 없고 복구된 신고 사유와 현재 제재 사유가 일치하는 경우에만 제재 해제.
+     * 신고자 신뢰 점수·누적 신고 집계는 원상 복구 범위에서 제외.
+     */
     @Transactional
     public AdminReportAppealActionResponse approve(Long appealId, String reason, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
-        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가한다.
+        // 승인에 포함된 사용자 제재 변경도 작업 시작 전에 인가.
         authorizationService.requirePermission(adminUserId, AdminPermission.USER_SANCTION);
         ReportAppeal appeal = getSubmittedAppeal(appealId);
         PostReport report = postReportRepository.findById(appeal.getReportId())
@@ -155,6 +171,10 @@ public class ReportAppealService {
         return toActionResponse(appeal);
     }
 
+    /**
+     * REPORT_REVIEW 권한을 확인하고 SUBMITTED 이의제기만 거절해 결과·처리 시각 반환.
+     * 대상 부재·기처리 상태는 오류 처리. 이의제기 전이와 감사 기록을 함께 저장하며 신고·게시글·사용자 제재는 유지.
+     */
     @Transactional
     public AdminReportAppealActionResponse reject(Long appealId, String reason, Long adminUserId) {
         authorizationService.requirePermission(adminUserId, AdminPermission.REPORT_REVIEW);
@@ -208,6 +228,7 @@ public class ReportAppealService {
                 PostReportStatus.ACCEPTED,
                 report.getId()
         );
+        // 이번 이의제기 외의 승인 신고가 남아 있으면 사용자 제재 유지.
         if (hasOtherAcceptedReport) {
             return false;
         }

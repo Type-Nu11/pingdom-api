@@ -48,8 +48,11 @@ class PlaceRegistrationServiceTest {
     @Mock private UserAccessStatusService userAccessStatusService;
     @Mock private PlaceRegistrationMediaPromotionService mediaPromotionService;
 
+    /**
+     * 이미 ACTIVE인 상점주 프로필의 신규 장소 승인에서 상태 충돌 없이 장소를 만들고 Merchant 역할 활성화를 요청하는지 확인.
+     */
     @Test
-    void createApprovedPlaceDoesNotReapproveActiveMerchantOwnerProfile() {
+    void preservesActiveMerchantProfile() {
         PlaceRegistrationApplication application = mock(PlaceRegistrationApplication.class);
         MapPlace place = mock(MapPlace.class);
         MerchantOwnerProfile profile = MerchantOwnerProfile.builder()

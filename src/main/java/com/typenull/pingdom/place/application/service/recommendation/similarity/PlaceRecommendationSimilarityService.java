@@ -22,6 +22,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 장소 쌍의 저장된 유사도를 우선 사용하고 없으면 거리·공동 북마크·공동 좋아요·콘텐츠 추세로 계산.
+ * 북마크 참여자 전체 수는 인스턴스 내부 잠금과 1시간 캐시를 사용하며 저장 유사도의 최신성은 별도 검사 대상에서 제외.
+ */
 @Service
 @RequiredArgsConstructor
 @Transactional(readOnly = true)
@@ -54,6 +58,11 @@ public class PlaceRecommendationSimilarityService {
         return buildContext(placeIds, placeIndex, loadSimilaritySnapshots, null);
     }
 
+    /**
+     * 대상 장소의 북마크·좋아요 사용자 집합과 추세를 일괄 조회해 유사도 계산 컨텍스트를 구성.
+     * 옵션이 true이면 대상 집합 안의 저장된 유사도도 읽고, 누락된 추세는 placeIndex의 사진 수로 보충.
+     * 대상 ID가 비면 사용자 총수는 0이며 그 외에는 전달된 사전 집계 또는 캐시된 전체 북마크 사용자 수를 사용.
+     */
     public SimilarityContext buildContext(
             Collection<Long> placeIds,
             Map<Long, MapPlace> placeIndex,
@@ -287,7 +296,7 @@ public class PlaceRecommendationSimilarityService {
             return 0d;
         }
 
-        // 현재는 시계열 성장 로그가 없어서 사진 누적량과 최신 업로드 신선도를 성장 패턴 대용 지표로 사용한다.
+        // 현재는 시계열 성장 로그가 없어서 사진 누적량과 최신 업로드 신선도를 성장 패턴 대용 지표로 사용.
         double volumeSimilarity = 1d / (1d + Math.abs(Math.log1p(left.photoCount()) - Math.log1p(right.photoCount())));
         double freshnessSimilarity = 1d - Math.abs(left.freshnessScore() - right.freshnessScore());
 

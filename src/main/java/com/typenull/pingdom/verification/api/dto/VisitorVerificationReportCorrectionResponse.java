@@ -8,6 +8,7 @@ import com.typenull.pingdom.verification.domain.VisitorVerificationReportStatus;
 import com.typenull.pingdom.verification.domain.VisitorVerificationReportType;
 import java.time.LocalDateTime;
 
+/** 관리자 정정 심사용 응답. 원본 제보의 현재 상태와 정정 요청의 상태를 별도로 반환. */
 public record VisitorVerificationReportCorrectionResponse(
         Long id,
         Long reportId,
@@ -28,6 +29,7 @@ public record VisitorVerificationReportCorrectionResponse(
         LocalDateTime reviewedAt,
         LocalDateTime updatedAt
 ) {
+    /** 정정 요청의 내용과 심사 이력에 원본 제보의 식별자·장소·현재 상태를 결합. */
     public static VisitorVerificationReportCorrectionResponse from(
             VisitorVerificationReportCorrection correction
     ) {

@@ -47,6 +47,9 @@ import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 import software.amazon.awssdk.services.s3.S3Client;
 
+/**
+ * 관리자 역할에 따른 제재 조회·적용·해제와 이력·알림·감사의 연결을 검증.
+ */
 @Tag("integration")
 @SpringBootTest(properties = {
         "spring.cloud.aws.s3.bucket=test-bucket",
@@ -93,6 +96,9 @@ class AdminUserControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    /**
+     * outbox·감사·제재 이력·관리자 역할을 사용자보다 먼저 비워 제재 검증을 격리.
+     */
     @BeforeEach
     void setUp() {
         outboxEventRepository.deleteAllInBatch();
@@ -102,8 +108,11 @@ class AdminUserControllerTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * SUPPORT_OPERATOR가 제재 사용자 목록을 조회하고 대상 사용자에게 제재를 적용할 수 있는지 확인.
+     */
     @Test
-    void supportOperatorCanReadAndSanctionUsers() throws Exception {
+    void supportSanctionPermissions() throws Exception {
         String adminAccessToken = createAdminAndLogin("supportOperator", AdminRole.SUPPORT_OPERATOR);
         User targetUser = createUser("supportOperatorTarget");
 
@@ -119,8 +128,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.banned").value(true));
     }
 
+    /**
+     * ANALYST의 제재 목록 조회와 제재 적용이 모두 ADMIN_PERMISSION_REQUIRED로 거절되는지 확인.
+     */
     @Test
-    void analystCannotReadOrSanctionUsers() throws Exception {
+    void analystSanctionDenied() throws Exception {
         String adminAccessToken = createAdminAndLogin("analystOperator", AdminRole.ANALYST);
         User targetUser = createUser("analystOperatorTarget");
 
@@ -137,8 +149,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
+    /**
+     * ADMIN 사용자라도 세부 역할이 없으면 제재 목록 조회를 거절하는지 확인.
+     */
     @Test
-    void adminWithoutActiveRoleCannotReadUsers() throws Exception {
+    void unassignedAdminDenied() throws Exception {
         String adminAccessToken = createAdminAndLogin("unassignedAdmin", null);
 
         mockMvc.perform(get("/admin/users/banned")
@@ -147,8 +162,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
+    /**
+     * 비제재 사용자를 제외하고 최근 제재 순으로 두 영구 제재 사용자와 유형별 집계를 반환하는지 확인.
+     */
     @Test
-    void listBannedUsersReturnsOnlyBannedUsersOrderedByBannedAtDesc() throws Exception {
+    void bannedUsersNewestFirst() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
         User olderBannedUser = createUser("bannedUser01");
@@ -181,8 +199,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.counts.temporary").value(0));
     }
 
+    /**
+     * 숫자 ID 검색과 사용자명 부분 검색으로 각각 해당 제재 사용자 한 명을 찾는지 확인.
+     */
     @Test
-    void listBannedUsersFiltersByKeywordForUserIdAndUsername() throws Exception {
+    void bannedUserKeyword() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
         User idMatchedUser = createUser("alphaBlocked");
@@ -208,8 +229,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.users[0].username").value("keywordBlocked"));
     }
 
+    /**
+     * 사용자명에 숫자가 포함돼도 숫자 검색어는 정확한 사용자 ID로만 해석하는지 확인.
+     */
     @Test
-    void listBannedUsersTreatsNumericKeywordAsExactUserIdOnly() throws Exception {
+    void numericKeywordIsUserId() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
         User numericNameUser = createUser("user12345");
@@ -223,8 +247,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.users.length()").value(0));
     }
 
+    /**
+     * TEMPORARY 및 from/to 기간 필터와 만료일 오름차순 정렬을 함께 적용하는지 확인.
+     */
     @Test
-    void listBannedUsersFiltersByBanTypePeriodAndSortWithCanonicalPeriodParams() throws Exception {
+    void banPeriodAndExpirySort() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now().withNano(0);
 
@@ -269,8 +296,11 @@ class AdminUserControllerTest {
 
     }
 
+    /**
+     * 만료된 제재와 검색어 불일치 사용자를 제외한 집계가 페이지 크기 1과 무관하게 영구·임시 각각 한 건인지 확인.
+     */
     @Test
-    void listBannedUsersReturnsCountsForCurrentBannedUsersWithKeywordApplied() throws Exception {
+    void filteredActiveBanCounts() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         LocalDateTime now = LocalDateTime.now();
 
@@ -305,8 +335,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.counts.temporary").value(1));
     }
 
+    /**
+     * 활성 사용자만 존재할 때 제재 목록과 유형별 집계가 모두 비어 있는지 확인.
+     */
     @Test
-    void listBannedUsersReturnsEmptyListWhenNoBannedUserExists() throws Exception {
+    void emptyBannedUsers() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         createUser("activeUser02");
 
@@ -322,8 +355,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.counts.temporary").value(0));
     }
 
+    /**
+     * 영구 제재 상세에 사용자 정보·사유·제재 시점이 포함되고 만료 시점은 비어 있는지 확인.
+     */
     @Test
-    void getBannedUserReturnsUserDetail() throws Exception {
+    void bannedUserDetail() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
         User bannedUser = createUser("bannedDetailUser");
@@ -348,8 +384,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.banReason").value("반복적인 신고 누적"));
     }
 
+    /**
+     * 제재되지 않은 사용자는 제재 상세 경로에서 USER_NOT_FOUND로 반환하는지 확인.
+     */
     @Test
-    void getBannedUserReturnsNotFoundWhenUserIsNotBanned() throws Exception {
+    void detailForActiveUser() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User activeUser = createUser("activeDetailUser");
 
@@ -359,8 +398,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 
+    /**
+     * 7일 제재의 저장 상태·제재 이력·알림 outbox와 감사 로그의 전후 상태를 확인.
+     */
     @Test
-    void banUserAppliesTemporaryBanAndStoresHistory() throws Exception {
+    void temporaryBanSideEffects() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("temporaryBanUser");
 
@@ -409,8 +451,11 @@ class AdminUserControllerTest {
         assertTrue(auditLog.getAfterState().contains("\"banned\":true"));
     }
 
+    /**
+     * 3일 제재 후 상태 조회와 유형·행위 필터를 적용한 이력 조회에서 대상과 관리자 정보를 확인.
+     */
     @Test
-    void getSanctionStatusAndHistoryReturnsAuditInfo() throws Exception {
+    void sanctionStatusAndHistory() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("historyTargetUser");
 
@@ -450,8 +495,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.histories[0].adminUsername").value("adminTester"));
     }
 
+    /**
+     * 이력이 없는 기존 사용자는 빈 목록과 현재 계약의 totalPages 1을 반환하는지 확인.
+     */
     @Test
-    void listUserSanctionHistoriesReturnsEmptyPageWhenUserHasNoHistory() throws Exception {
+    void emptySanctionHistory() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("noSanctionHistoryUser");
 
@@ -468,8 +516,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /**
+     * 존재하지 않는 사용자의 이력 조회가 USER_NOT_FOUND로 거절되는지 확인.
+     */
     @Test
-    void listUserSanctionHistoriesReturnsNotFoundWhenUserDoesNotExist() throws Exception {
+    void missingSanctionUser() throws Exception {
         String adminAccessToken = createAdminAndLogin();
 
         mockMvc.perform(get("/admin/users/{userId}/sanctions", 999_999L)
@@ -480,8 +531,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("USER_NOT_FOUND"));
     }
 
+    /**
+     * 역전된 제재 이력 기간에 INVALID_SANCTION_FILTER_PERIOD를 반환하는지 확인.
+     */
     @Test
-    void listUserSanctionHistoriesReturnsBadRequestWhenPeriodFilterIsInvalid() throws Exception {
+    void reversedSanctionPeriod() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("invalidSanctionPeriodUser");
 
@@ -495,8 +549,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_SANCTION_FILTER_PERIOD"));
     }
 
+    /**
+     * 제재 해제가 상태 조회에 반영되고 적용·해제 이력 두 건과 해제 감사·알림 요청이 남는지 확인.
+     */
     @Test
-    void unbanUserReleasesCurrentBanAndStoresHistory() throws Exception {
+    void releaseBanSideEffects() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("releaseTargetUser");
 
@@ -543,8 +600,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.banned").value(false));
     }
 
+    /**
+     * 비제재 사용자 해제 요청이 USER_NOT_BANNED로 충돌하는지 확인.
+     */
     @Test
-    void unbanUserReturnsConflictWhenUserIsNotBanned() throws Exception {
+    void releaseUnbannedUser() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("notBannedUser");
 
@@ -560,8 +620,11 @@ class AdminUserControllerTest {
                 .andExpect(jsonPath("$.code").value("USER_NOT_BANNED"));
     }
 
+    /**
+     * 만료된 임시 제재를 상태 조회 중 해제하고 EXPIRED 이력 및 알림 outbox를 남기는지 확인.
+     */
     @Test
-    void getSanctionStatusExpiresTemporaryBanAndStoresHistory() throws Exception {
+    void expireBanOnStatusRead() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User targetUser = createUser("expiredTemporaryBanUser");
         LocalDateTime now = LocalDateTime.now();
@@ -588,6 +651,9 @@ class AdminUserControllerTest {
         ));
     }
 
+    /**
+     * 관리자 식별자가 없는 제재 서비스 호출이 AuthException으로 거절되는지 확인.
+     */
     @Test
     void applyBanRejectsNullAdminUserId() {
         User targetUser = createUser("nullAdminBanUser");
@@ -601,6 +667,9 @@ class AdminUserControllerTest {
         ));
     }
 
+    /**
+     * 제재 대상으로 사용할 일반 사용자를 암호화된 비밀번호와 함께 저장.
+     */
     private User createUser(String username) {
         return userRepository.save(User.builder()
                 .username(username)
@@ -613,10 +682,16 @@ class AdminUserControllerTest {
                 .build());
     }
 
+    /**
+     * 기본 SUPER_ADMIN인 adminTester의 접근 토큰을 반환.
+     */
     private String createAdminAndLogin() throws Exception {
         return createAdminAndLogin("adminTester", AdminRole.SUPER_ADMIN);
     }
 
+    /**
+     * 관리자를 저장하고 역할이 null이 아닐 때만 배정하여 미배정 권한 경계도 구성.
+     */
     private String createAdminAndLogin(String username, AdminRole adminRole) throws Exception {
         User admin = userRepository.save(User.builder()
                 .username(username)

@@ -16,6 +16,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 제재 적용·해제·자동 만료 당시 사용자명과 기간을 보관하는 이력.
+ * 자동 만료는 관리자 ID가 없고, endedAt은 실제 처리 시각과 별도로 기존 제재의 예정 종료 시각을 담을 수 있음.
+ */
 @Getter
 @Entity
 @Table(name = "user_sanction_history")

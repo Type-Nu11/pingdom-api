@@ -14,6 +14,10 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
 
+/**
+ * 재확인 요청의 현재 소유자 목록과 처리 대상 잠금 조회를 제공.
+ * 내 목록은 요청 당시의 merchantOwnerUserId 대신 현재 장소 소유 매핑에 연결해 소유권 이전을 반영.
+ */
 public interface PlaceInformationReverificationRequestRepository
         extends JpaRepository<PlaceInformationReverificationRequest, Long> {
 

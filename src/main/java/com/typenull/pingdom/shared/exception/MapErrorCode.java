@@ -4,6 +4,7 @@ import lombok.Getter;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 
+/** 장소·게시글·미디어 관련 실패의 기존 공개 오류 코드와 HTTP 상태 계약을 정의. */
 @Getter
 @RequiredArgsConstructor
 public enum MapErrorCode implements ErrorCode {

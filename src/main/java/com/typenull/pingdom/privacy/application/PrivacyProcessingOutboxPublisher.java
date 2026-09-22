@@ -12,7 +12,7 @@ import lombok.RequiredArgsConstructor;
 import org.slf4j.MDC;
 import org.springframework.stereotype.Component;
 
-/** 개인정보 처리 작업과 같은 트랜잭션에서 재처리 가능한 감사 이력 이벤트를 기록합니다. */
+/** 개인정보 처리 작업과 같은 트랜잭션에서 재처리 가능한 감사 이력 이벤트를 기록. */
 @Component
 @RequiredArgsConstructor
 public class PrivacyProcessingOutboxPublisher {
@@ -33,6 +33,10 @@ public class PrivacyProcessingOutboxPublisher {
         );
     }
 
+    /**
+     * 한 번의 bulk 입력에서 같은 사용자 ID는 한 번만 발행.
+     * 개별 이벤트에는 매번 새 UUID를 부여하므로 별도의 publish 재호출은 새로운 처리 이력으로 기록됨.
+     */
     public void publish(PrivacyProcessingBulkEvent event) {
         event.subjectUserIds().stream()
                 .distinct()

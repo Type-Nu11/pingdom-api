@@ -1,6 +1,6 @@
 package com.typenull.pingdom.place.domain.recommendation.explanation;
 
-/** 추천 결과가 선택된 대표 근거 코드. 표시 문구는 API 계층에서 결정한다. */
+/** 추천 결과가 선택된 대표 근거 코드. 표시 문구는 API 계층에서 결정. */
 public enum PlaceRecommendationReason {
     BENEFIT_AND_RESERVABLE,
     ACTIVE_BENEFIT,

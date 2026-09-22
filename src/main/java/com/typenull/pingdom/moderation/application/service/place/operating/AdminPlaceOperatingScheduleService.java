@@ -33,7 +33,11 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
-/** 정규 영업시간과 예외 일정 검증·변경을 담당한다. */
+/**
+ * 정규·예외 영업시간을 검증한 뒤 장소 잠금 아래 전체 교체하고 감사 기록을 남김.
+ * null 목록은 빈 목록으로 처리. 자정을 넘는 구간은 다음 날까지 나누어 겹침을 검사하며 맞닿는 경계는 허용.
+ * 시작·종료가 같은 시각은 24시간 영업으로 해석하지 않고 거절.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
@@ -43,6 +47,11 @@ public class AdminPlaceOperatingScheduleService {
     private final MapPlaceRepository mapPlaceRepository;
     private final AdminAuditLogService adminAuditLogService;
 
+    /**
+     * 사유와 정규·예외 일정의 중복·겹침을 검증한 뒤 장소를 잠가 전체 일정을 교체하고 감사 기록을 함께 저장.
+     * null 목록은 빈 일정으로 반영하며 이 호출 경로는 기존 정규 휴게시간도 빈 집합으로 교체.
+     * 요청 검증 실패 또는 장소 없음은 오류이며 자정 통과 구간의 겹침 규칙은 클래스 설명을 따름.
+     */
     @Transactional
     public AdminMapPlaceOperatingScheduleUpdateResponse updatePlaceOperatingSchedule(
             Long adminUserId,
@@ -144,6 +153,7 @@ public class AdminPlaceOperatingScheduleService {
             if (!exception.closed() && hours.isEmpty()) {
                 throw new AdminException(AdminErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
             }
+            // 휴무일을 하루 전체 구간으로 넣어 전날 시작한 심야 영업과의 충돌도 같은 검사에서 탐지.
             if (exception.closed()) {
                 segmentsByDate.computeIfAbsent(exception.date(), ignored -> new ArrayList<>())
                         .add(new TimeSegment(0, NANOS_PER_DAY));

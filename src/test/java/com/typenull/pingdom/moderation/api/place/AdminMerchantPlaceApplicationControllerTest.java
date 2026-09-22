@@ -34,15 +34,24 @@ class AdminMerchantPlaceApplicationControllerTest {
 
     private MockMvc mockMvc;
 
+    /**
+     * 관리자 신청 목록의 쿼리 인자 바인딩을 검증하도록 서비스와 고정 관리자 인증 인자를 연결.
+     */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new AdminMerchantPlaceApplicationController(service))
                 .setCustomArgumentResolvers(new HandlerMethodArgumentResolver() {
+                    /**
+                     * CurrentUser 어노테이션을 가진 인자만 관리자 인증 객체로 해석.
+                     */
                     @Override
                     public boolean supportsParameter(MethodParameter parameter) {
                         return parameter.hasParameterAnnotation(CurrentUser.class);
                     }
 
+                    /**
+                     * 신청 목록 서비스에 전달할 심사 관리자 식별자를 99로 고정.
+                     */
                     @Override
                     public Object resolveArgument(
                             MethodParameter parameter,
@@ -56,8 +65,12 @@ class AdminMerchantPlaceApplicationControllerTest {
                 .build();
     }
 
+    /**
+     * 반복 status 파라미터와 신청 유형·키워드·기간·페이지 조건이 정확한 타입과 값으로 서비스에 전달되는지 검증.
+     * 응답의 전체 수·페이지 수·다음 페이지 여부도 확인.
+     */
     @Test
-    void listBindsRepeatedStatusesWithApplicationType() throws Exception {
+    void bindsApplicationListFilters() throws Exception {
         List<PlaceRegistrationStatus> statuses = List.of(
                 PlaceRegistrationStatus.APPROVED,
                 PlaceRegistrationStatus.COMPLETED,

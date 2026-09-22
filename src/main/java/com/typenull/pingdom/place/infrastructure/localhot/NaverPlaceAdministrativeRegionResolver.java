@@ -14,6 +14,10 @@ import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 
+/**
+ * Naver legalcode 결과를 시·군·구로 변환하고 프로세스 내부 TTL 캐시에 보관.
+ * 네이버 사용 설정이 켜진 경우 선택되며 인증 정보 누락·요청 실패 시 Kakao로의 자동 전환은 미지원.
+ */
 @Component
 @ConditionalOnProperty(prefix = "place.local-hot.naver", name = "enabled", havingValue = "true")
 public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrativeRegionResolver {
@@ -85,7 +89,7 @@ public class NaverPlaceAdministrativeRegionResolver implements PlaceAdministrati
             throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);
         }
 
-        // 세종특별자치시는 네이버 응답의 area2가 비어 있으므로 시·도명을 지역 표시와 시군구 값으로 사용한다.
+        // 세종특별자치시는 네이버 응답의 area2가 비어 있으므로 시·도명을 지역 표시와 시군구 값으로 사용.
         if (sigungu.isBlank()) {
             if (!"세종특별자치시".equals(sido)) {
                 throw new MapException(MapErrorCode.LOCAL_HOT_REGION_NOT_FOUND);

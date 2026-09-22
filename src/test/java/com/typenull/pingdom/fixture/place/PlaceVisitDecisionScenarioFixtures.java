@@ -4,9 +4,15 @@ import java.util.List;
 
 public final class PlaceVisitDecisionScenarioFixtures {
 
+    /**
+     * 정적 목록으로 제공하는 방문 판단 시나리오 모음의 인스턴스화를 차단.
+     */
     private PlaceVisitDecisionScenarioFixtures() {
     }
 
+    /**
+     * 공개 장소 조합·임시 휴업·인증 실패·숨김 또는 폐업 장소의 HTTP 상태와 기대 진단 항목을 제공.
+     */
     public static List<PlaceVisitDecisionScenario> scenarios() {
         return List.of(
                 new PlaceVisitDecisionScenario(

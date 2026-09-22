@@ -32,8 +32,12 @@ class ReservationPaymentOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * 예약 상세·결제 목록/상세가 app에만 노출되고 성공 스키마·JWT 인증·401/403/404 및 검증 오류 예제가 문서화되는지 확인.
+     * 응답 필수/nullable 필드·상태 열거값·빈 결제 목록의 404 미노출과 merchant 결제 스키마의 failedAt도 검증.
+     */
     @Test
-    void exposesReservationAndPaymentContractsInTheAppGroup() throws Exception {
+    void documentsAppReservationPaymentContracts() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
 
@@ -108,15 +112,24 @@ class ReservationPaymentOpenApiContractTest {
                 .path("properties").has("failedAt")).isTrue();
     }
 
+    /**
+     * 200 응답의 참조 스키마가 지정된 응답 DTO를 가리키는지 확인.
+     */
     private void assertSuccessResponse(JsonNode operation, String schemaName) {
         assertThat(operation.at("/responses/200/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/" + schemaName);
     }
 
+    /**
+     * operation에 bearerAuth 보안 요구사항 배열이 존재하는지 확인.
+     */
     private void assertBearerSecurity(JsonNode operation) {
         assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
+    /**
+     * 지정 HTTP 상태가 ErrorResponse를 참조하고 해당 오류 코드 예제를 포함하는지 확인.
+     */
     private void assertErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode response = operation.path("responses").path(responseCode);
 
@@ -126,6 +139,9 @@ class ReservationPaymentOpenApiContractTest {
                 .isEqualTo(errorCode);
     }
 
+    /**
+     * 입력 검증 오류가 ValidationErrorResponse와 지정 코드 예제를 사용하도록 문서 계약을 확인.
+     */
     private void assertValidationErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode response = operation.path("responses").path(responseCode);
 
@@ -135,6 +151,9 @@ class ReservationPaymentOpenApiContractTest {
                 .isEqualTo(errorCode);
     }
 
+    /**
+     * 응답 스키마의 필수 필드가 기대 목록과 정확히 일치하고 지정 필드가 nullable인지 확인.
+     */
     private void assertResponseSchema(
             JsonNode document,
             String schemaName,
@@ -153,6 +172,9 @@ class ReservationPaymentOpenApiContractTest {
         }
     }
 
+    /**
+     * OpenAPI 경로의 200 응답을 UTF-8로 읽고 Jackson 트리로 변환해 문서 계약 검증에 제공.
+     */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())

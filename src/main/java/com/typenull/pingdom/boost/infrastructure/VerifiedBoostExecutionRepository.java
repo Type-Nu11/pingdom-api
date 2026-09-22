@@ -13,6 +13,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import jakarta.persistence.LockModeType;
 
+/**
+ * 집행의 시작 포함·종료 제외 기간으로 활성 상태 조회.
+ * 추천용 장소 목록은 현재 소유 점주 일치와 HEALTHY 조건을 추가하며 장소 자체의 운영·노출 상태는 검사 범위에서 제외.
+ */
 public interface VerifiedBoostExecutionRepository extends JpaRepository<VerifiedBoostExecution, Long> {
 
     Optional<VerifiedBoostExecution> findBySelectionId(Long selectionId);

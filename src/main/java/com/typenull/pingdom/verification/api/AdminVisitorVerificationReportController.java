@@ -24,6 +24,10 @@ import jakarta.validation.constraints.*;
 import lombok.RequiredArgsConstructor;
 import org.springframework.web.bind.annotation.*;
 
+/**
+ * 관리자 방문 제보 및 정정 목록·심사를 각 서비스에 위임.
+ * 원본 제보와 정정 심사 경로를 분리하고 인증 principal의 ID로 관리자 계정을 확인.
+ */
 @RestController
 @RequestMapping("/admin/visitor-verification-reports")
 @RequiredArgsConstructor

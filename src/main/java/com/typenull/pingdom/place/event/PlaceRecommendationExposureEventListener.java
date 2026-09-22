@@ -9,6 +9,11 @@ import org.springframework.stereotype.Component;
 import org.springframework.transaction.event.TransactionPhase;
 import org.springframework.transaction.event.TransactionalEventListener;
 
+/**
+ * 추천 조회 트랜잭션 커밋 후 실행기에 노출 기록을 제출.
+ * 실행기 이름은 outboxExecutor지만 이 이벤트 자체는 메모리 이벤트이므로 영속 Outbox 재시도 대상에서 제외.
+ * 제출·저장 실패는 호출자에게 전파 없이 로그로 남기므로 노출 집계 누락 가능.
+ */
 @Component
 @RequiredArgsConstructor
 @Slf4j

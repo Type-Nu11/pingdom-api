@@ -4,6 +4,10 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 import java.util.Set;
 
+/**
+ * 사업자에게 연결할 전체 장소 ID 집합.
+ * placeIds가 null이면 빈 집합으로 정규화되어 기존 장소 연결을 모두 제거하는 요청으로 처리됨.
+ */
 public record MerchantOwnerPlaceUpdateRequest(
         @Size(max = 100) Set<@NotNull Long> placeIds,
         @Size(max = 500) String reason

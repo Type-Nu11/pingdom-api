@@ -8,7 +8,7 @@ import java.lang.annotation.RetentionPolicy;
 import java.lang.annotation.Target;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 
-/** 인증된 JWT 사용자를 Controller 파라미터로 전달한다. */
+/** 인증된 JWT 사용자를 Controller 파라미터로 전달. */
 @Documented
 @Target(ElementType.PARAMETER)
 @Retention(RetentionPolicy.RUNTIME)

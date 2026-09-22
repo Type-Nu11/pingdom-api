@@ -14,6 +14,10 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import org.hibernate.annotations.CreationTimestamp;
 
+/**
+ * 회원과 장소의 현재 북마크 연결. 회원·장소 쌍의 DB 고유 제약으로 중복 저장을 제한.
+ * 장소 병합 시 연결 ID만 재지정하며 변경 이력 기록은 호출 서비스의 책임.
+ */
 @Entity
 @Getter
 @AllArgsConstructor

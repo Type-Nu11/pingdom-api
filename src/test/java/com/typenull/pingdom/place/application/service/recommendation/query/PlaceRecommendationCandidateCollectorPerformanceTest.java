@@ -56,6 +56,9 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
     @org.springframework.boot.test.mock.mockito.MockBean
     private S3Client s3Client;
 
+    /**
+     * 이전 북마크·스냅샷·장소 데이터를 지우고 조회 통계를 초기화.
+     */
     @BeforeEach
     void setUp() {
         mapBookmarkRepository.deleteAllInBatch();
@@ -64,8 +67,11 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
         statistics().clear();
     }
 
+    /**
+     * 개인 신호가 없으면 GEO·TREND 후보를 포함하고 PERSONAL 출처는 부여하지 않는지 확인.
+     */
     @Test
-    void 비로그인_후보_수집은_PERSONAL_후보_없이_GEO와_TREND만_포함한다() {
+    void collectsAnonymousGeoAndTrend() {
         MapPlace geoPlace = createPlace("geo-place", 37.5000d, 127.0300d);
         MapPlace trendPlace = createPlace("trend-place", 37.5010d, 127.0310d);
         saveSnapshot(trendPlace.getId(), nowUtc().minusDays(1));
@@ -87,8 +93,11 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .anySatisfy(candidate -> assertThat(candidate.sources()).contains(CandidateSource.TREND));
     }
 
+    /**
+     * 북마크 시드와 주변 장소가 PERSONAL 출처 후보로 포함되는지 확인.
+     */
     @Test
-    void 로그인_후보_수집은_북마크_seed를_기반으로_PERSONAL_후보를_포함한다() {
+    void expandsPersonalBookmarkSeed() {
         Long userId = 91L;
         MapPlace personalSeed = createPlace("personal-seed", 37.5000d, 127.0300d);
         MapPlace personalNeighbor = createPlace("personal-neighbor", 37.5007d, 127.0307d);
@@ -116,8 +125,11 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .contains(personalSeed.getId(), personalNeighbor.getId());
     }
 
+    /**
+     * 6일 전 갱신 스냅샷은 추세 후보에 포함하고 8일 전 것은 제외하는지 확인.
+     */
     @Test
-    void trend_후보_수집은_최근_7일_이내_snapshot만_사용한다() {
+    void limitsTrendSnapshotAge() {
         MapPlace freshTrendPlace = createPlace("fresh-trend", 37.5100d, 127.0400d);
         MapPlace staleTrendPlace = createPlace("stale-trend", 37.5200d, 127.0500d);
         saveSnapshot(freshTrendPlace.getId(), nowUtc().minusDays(6));
@@ -136,8 +148,11 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .doesNotContain(staleTrendPlace.getId());
     }
 
+    /**
+     * 후보 12개의 영속 맥락을 비운 후 수집 SQL이 6회를 넘지 않는지 확인하여 반복 영업 일정 조회를 방지.
+     */
     @Test
-    void trend_후보_다건_조회시_쿼리_수가_과도하게_증가하지_않는다() {
+    void boundsCandidateCollectionQueries() {
         for (int index = 0; index < 12; index++) {
             MapPlace place = createPlace("trend-" + index, 37.5000d + (index * 0.001d), 127.0300d + (index * 0.001d));
             saveSnapshot(place.getId(), nowUtc().minusHours(index + 1L));
@@ -161,6 +176,9 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .isLessThanOrEqualTo(6L);
     }
 
+    /**
+     * 위치와 사진 수가 있는 후보 수집용 장소를 저장.
+     */
     private MapPlace createPlace(String name, double latitude, double longitude) {
         return mapPlaceRepository.save(MapPlace.builder()
                 .name(name)
@@ -173,6 +191,9 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .build());
     }
 
+    /**
+     * 추세 포함 여부를 조절할 갱신 시각의 추천 집계 스냅샷을 저장.
+     */
     private void saveSnapshot(Long placeId, LocalDateTime updatedAt) {
         placeRecommendationSnapshotRepository.save(PlaceRecommendationSnapshot.builder()
                 .placeId(placeId)
@@ -188,10 +209,16 @@ class PlaceRecommendationCandidateCollectorPerformanceTest {
                 .build());
     }
 
+    /**
+     * 운영 후보 수집과 같은 UTC 기준 현재 시각을 가져옴.
+     */
     private LocalDateTime nowUtc() {
         return LocalDateTime.now(ZoneOffset.UTC);
     }
 
+    /**
+     * 후보 수집 SQL 횟수를 확인할 Hibernate 통계를 가져옴.
+     */
     private Statistics statistics() {
         return entityManagerFactory.unwrap(SessionFactory.class).getStatistics();
     }

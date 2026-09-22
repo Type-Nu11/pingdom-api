@@ -7,6 +7,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 회원 기본 프로필을 읽어 API 표현과 분리된 조회 결과로 반환.
+ * 존재하지 않는 ID는 빈 응답 대신 USER_NOT_FOUND로 처리.
+ */
 @Service
 @RequiredArgsConstructor
 public class MyPageService {

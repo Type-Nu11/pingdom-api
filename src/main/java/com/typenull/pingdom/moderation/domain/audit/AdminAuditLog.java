@@ -16,6 +16,10 @@ import lombok.Builder;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 관리자 작업의 행위자 이름·대상 식별자·전후 상태와 요청 ID를 당시 값으로 보관.
+ * 현재 엔티티를 참조해 이름이나 상태를 다시 계산하지 않으며, 전후 상태는 호출자가 제공한 문자열.
+ */
 @Getter
 @Entity
 @Table(

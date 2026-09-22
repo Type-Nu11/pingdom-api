@@ -49,6 +49,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import software.amazon.awssdk.services.s3.S3Client;
 
+/**
+ * 신고 처리 권한 및 단일·일괄 승인/기각의 게시물·제재·통계·감사 부작용을 검증.
+ */
 @Tag("integration")
 @SpringBootTest(properties = {
         "spring.cloud.aws.s3.bucket=test-bucket",
@@ -99,6 +102,9 @@ class AdminReportControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    /**
+     * outbox·감사·제재·신고·신고자 정책을 게시물과 사용자보다 먼저 삭제해 처리 부작용을 격리.
+     */
     @BeforeEach
     void setUp() {
         outboxEventRepository.deleteAllInBatch();
@@ -111,6 +117,9 @@ class AdminReportControllerTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 단일·일괄 신고 처리에 권한이 없는 역할 조합과 승인만 금지된 CONTENT_MODERATOR 조합을 제공.
+     */
     static Stream<Arguments> deniedReportActions() {
         return Stream.concat(
                 Stream.of("ANALYST", "NO_ROLE", "REVOKED", "SUPPORT_OPERATOR")
@@ -120,9 +129,12 @@ class AdminReportControllerTest {
         );
     }
 
+    /**
+     * 권한 거절 뒤 신고·게시물·사용자 상태와 감사·outbox·제재·신고자 정책 건수가 모두 유지되는지 확인.
+     */
     @ParameterizedTest(name = "{0}: {1}")
     @MethodSource("deniedReportActions")
-    void deniedReportActionDoesNotChangeDatabase(String role, String action) throws Exception {
+    void deniedActionPreservesState(String role, String action) throws Exception {
         String token = createAdminAndLogin(role);
         User owner = createUser("denied-owner");
         User reporter = createUser("denied-reporter");
@@ -150,9 +162,12 @@ class AdminReportControllerTest {
         assertEquals(policyCount, reporterModerationPolicyRepository.count());
     }
 
+    /**
+     * 승인 가능한 역할에서 신고 수락, 작성자 제재, 게시물 자동 숨김과 감사·관리자 알림 outbox를 확인.
+     */
     @ParameterizedTest
     @ValueSource(strings = {"SUPER_ADMIN", "CONTENT_AND_SUPPORT"})
-    void acceptReportMarksAcceptedAndBansReportedUser(String role) throws Exception {
+    void acceptReportSideEffects(String role) throws Exception {
         String adminAccessToken = createAdminAndLogin(role);
         User owner = createUser("owner03");
         User reporter = createUser("reporter03");
@@ -198,9 +213,12 @@ class AdminReportControllerTest {
         ));
     }
 
+    /**
+     * 기각 가능한 역할에서 신고만 기각하고 작성자는 제재하지 않으며 처리 감사와 알림 요청을 남기는지 확인.
+     */
     @ParameterizedTest
     @ValueSource(strings = {"SUPER_ADMIN", "CONTENT_MODERATOR"})
-    void declineReportMarksDeclinedWithoutBanningUser(String role) throws Exception {
+    void declineReportSideEffects(String role) throws Exception {
         String adminAccessToken = createAdminAndLogin(role);
         User owner = createUser("owner04");
         User reporter = createUser("reporter04");
@@ -231,8 +249,11 @@ class AdminReportControllerTest {
         ));
     }
 
+    /**
+     * 대기 신고 두 건을 수락하고 게시물 숨김·작성자 제재 한 건·신고자별 승인 통계·감사 기록을 확인.
+     */
     @Test
-    void acceptPostReportsProcessesAllPendingReportsAndBansReportedUserOnce() throws Exception {
+    void bulkAcceptReports() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("bulkOwner01");
         User reporter1 = createUser("bulkReporter01");
@@ -285,8 +306,11 @@ class AdminReportControllerTest {
                         && log.getTargetId().equals(String.valueOf(mapImage.getId()))));
     }
 
+    /**
+     * 대기 신고 두 건을 기각하면서 게시물 노출과 작성자 비제재 상태를 보존하고 신고자 통계와 감사를 확인.
+     */
     @Test
-    void declinePostReportsProcessesAllPendingReportsWithoutHidingOrBanningUser() throws Exception {
+    void bulkDeclineReports() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("bulkOwner02");
         User reporter1 = createUser("bulkReporter03");
@@ -334,8 +358,11 @@ class AdminReportControllerTest {
                 .count());
     }
 
+    /**
+     * 기각된 신고만 있는 게시물의 일괄 승인이 PENDING_REPORT_NOT_FOUND로 충돌하는지 확인.
+     */
     @Test
-    void acceptPostReportsFailsWhenNoPendingReportExists() throws Exception {
+    void bulkAcceptWithoutPending() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("bulkOwner03");
         User reporter = createUser("bulkReporter05");
@@ -355,8 +382,11 @@ class AdminReportControllerTest {
                 .andExpect(jsonPath("$.code").value("PENDING_REPORT_NOT_FOUND"));
     }
 
+    /**
+     * 이미 기각된 신고를 승인하면 REPORT_ALREADY_PROCESSED로 충돌하는지 확인.
+     */
     @Test
-    void acceptReportFailsWhenReportAlreadyProcessed() throws Exception {
+    void acceptProcessedReport() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User owner = createUser("owner05");
         MapImage mapImage = createMapImage(owner.getId(), "https://example.com/image-5.jpg");
@@ -370,8 +400,11 @@ class AdminReportControllerTest {
                 .andExpect(jsonPath("$.code").value("REPORT_ALREADY_PROCESSED"));
     }
 
+    /**
+     * 검색어 %가 LIKE 전체 일치로 확장되지 않고 사유에 실제 %가 있는 신고만 찾는지 확인.
+     */
     @Test
-    void reportedUsersSearchEscapesLikeWildcards() throws Exception {
+    void literalWildcardSearch() throws Exception {
         String adminAccessToken = createAdminAndLogin();
         User firstOwner = createUser("ownerWildcard01");
         User secondOwner = createUser("ownerWildcard02");
@@ -388,6 +421,9 @@ class AdminReportControllerTest {
                 .andExpect(jsonPath("$.users[0].reason").value("문자 % 포함 신고입니다."));
     }
 
+    /**
+     * 게시물 소유자 또는 신고자로 사용할 일반 사용자를 저장.
+     */
     private User createUser(String username) {
         return userRepository.save(User.builder()
                 .username(username)
@@ -400,10 +436,16 @@ class AdminReportControllerTest {
                 .build());
     }
 
+    /**
+     * 기본 SUPER_ADMIN 권한의 로그인 토큰을 생성.
+     */
     private String createAdminAndLogin() throws Exception {
         return createAdminAndLogin("SUPER_ADMIN");
     }
 
+    /**
+     * 복합 역할·미배정·회수 상태를 포함한 관리자 fixture를 저장하고 실제 로그인 토큰을 반환.
+     */
     private String createAdminAndLogin(String role) throws Exception {
         String username = "adminTester" + System.nanoTime();
         User admin = userRepository.save(User.builder()
@@ -444,6 +486,9 @@ class AdminReportControllerTest {
                 .textValue();
     }
 
+    /**
+     * 소유자 ID와 삭제용 S3 키를 가진 신고 대상 게시물을 저장.
+     */
     private MapImage createMapImage(Long userId, String imageUrl) {
         return mapImageRepository.save(MapImage.builder()
                 .imageUrl(imageUrl)
@@ -454,6 +499,9 @@ class AdminReportControllerTest {
                 .build());
     }
 
+    /**
+     * 게시물 연관관계와 신고 당시 작성자·이미지 URL을 함께 저장해 처리 대상 신고를 생성.
+     */
     private PostReport createPostReport(Long reporterUserId, String reporterUsername, MapImage mapImage, String reason) {
         return postReportRepository.save(PostReport.builder()
                 .reporterUserId(reporterUserId)

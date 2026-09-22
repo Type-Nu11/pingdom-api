@@ -39,6 +39,10 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 활성 사업자 전용 장소 운영·이미지 관리 요청을 연결.
+ * 컨트롤러의 사업자 자격 조건에 더해 서비스에서 개별 장소와 작업의 capability를 검사.
+ */
 @RestController
 @RequestMapping("/merchant-owner/places/{placeId}")
 @RequiredArgsConstructor

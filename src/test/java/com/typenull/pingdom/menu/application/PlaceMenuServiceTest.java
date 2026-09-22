@@ -35,6 +35,9 @@ class PlaceMenuServiceTest {
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-02T00:00:00Z"), ZoneOffset.UTC);
     private PlaceMenuService service;
 
+    /**
+     * 메뉴 서비스 의존성을 대역으로 연결하고 장소 존재·생성 저장 결과를 고정해 요청 처리에 집중.
+     */
     @BeforeEach
     void setUp() {
         service = new PlaceMenuService(menuRepository, placeRepository, capabilityPolicy, userRepository,
@@ -43,8 +46,11 @@ class PlaceMenuServiceTest {
         when(menuRepository.save(any(PlaceMenu.class))).thenAnswer(invocation -> invocation.getArgument(0));
     }
 
+    /**
+     * 메뉴 생성이 이름·원가격·통화·AVAILABLE 상태를 응답하고 PRODUCT_MANAGE 권한을 요구하는지 검증.
+     */
     @Test
-    void createsMenuWithExplicitCurrencyAndPrice() {
+    void createsMenuWithPriceAndCurrency() {
         PlaceMenuResponse response = service.create(7L, 10L,
                 new PlaceMenuCreateRequest("짜장면", "대표 메뉴", 9000L, MenuCurrency.KRW,
                         "https://cdn.example/menu.jpg", 0));
@@ -56,8 +62,12 @@ class PlaceMenuServiceTest {
         verify(capabilityPolicy).require(7L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
     }
 
+    /**
+     * 공개 상태·표시 순서 저장소 조회의 결과를 공개 메뉴 응답으로 변환하는지 검증.
+     * 검증 범위는 저장소 대역이 반환한 A 한 건의 비교로 한정하며 실제 DB 필터링·정렬은 제외.
+     */
     @Test
-    void returnsOnlyPublicMenusInDisplayOrder() {
+    void returnsPublicMenuProjection() {
         PlaceMenu available = PlaceMenu.create(10L, 7L, "A", null, 1000L, MenuCurrency.KRW, null, 1,
                 LocalDateTime.now(clock));
         PlaceMenu hidden = PlaceMenu.create(10L, 7L, "B", null, 1000L, MenuCurrency.KRW, null, 0,
@@ -70,8 +80,11 @@ class PlaceMenuServiceTest {
         assertThat(service.listPublic(10L)).extracting(PlaceMenuPublicResponse::name).containsExactly("A");
     }
 
+    /**
+     * 미국 사용자 조회 시 USD 환산 서비스를 통해 받은 6.43 USD가 공개 응답에 반영되는지 검증.
+     */
     @Test
-    void usesRequestingUsersCountryToSelectConvertedMenuPrice() {
+    void selectsUserCountryMenuCurrency() {
         PlaceMenu menu = PlaceMenu.create(10L, 7L, "짜장면", null, 9000L, MenuCurrency.KRW, null, 0,
                 LocalDateTime.now(clock));
         User user = mock(User.class);
@@ -89,8 +102,11 @@ class PlaceMenuServiceTest {
         assertThat(response.convertedPrice().amount()).isEqualByComparingTo("6.43");
     }
 
+    /**
+     * 같은 메뉴를 미국·일본 사용자가 연속 조회하면 각 USD·JPY 환산이 따로 호출되어 응답 통화가 섞이지 않는지 검증.
+     */
     @Test
-    void isolatesConvertedMenuPriceByRequestingUsersCountry() {
+    void isolatesCurrencyPerRequestingUser() {
         PlaceMenu menu = PlaceMenu.create(10L, 7L, "짜장면", null, 9000L, MenuCurrency.KRW, null, 0,
                 LocalDateTime.now(clock));
         User usUser = mock(User.class);
@@ -117,8 +133,11 @@ class PlaceMenuServiceTest {
         verify(priceConversionService).convert(menu, MenuCurrency.JPY);
     }
 
+    /**
+     * 메뉴 관리 권한이 없다는 MerchantOwnerException을 MENU_FORBIDDEN으로 변환하는지 검증.
+     */
     @Test
-    void rejectsMenuAccessWhenActorLacksPlaceCapability() {
+    void mapsMissingMenuCapability() {
         doThrow(new MerchantOwnerException(MerchantOwnerErrorCode.MERCHANT_TEAM_PERMISSION_REQUIRED)).when(capabilityPolicy)
                 .require(99L, 10L, MerchantPlaceCapability.PRODUCT_MANAGE);
 

@@ -8,8 +8,11 @@ import org.junit.jupiter.api.Test;
 
 class MerchantOwnerPlaceModelTest {
 
+    /**
+     * 소유 장소 생성 시 품질 UNMEASURED·응답/취소/노쇼 비율 0·미평가 시각을 기본값으로 갖는지 검증.
+     */
     @Test
-    void defaultsOperationalQualityToUnmeasuredAndZeroRates() {
+    void defaultsUnmeasuredOperationalQuality() {
         MerchantOwnerPlace place = place();
 
         assertThat(place.getOperationalQualityStatus()).isEqualTo(MerchantOperationalQualityStatus.UNMEASURED);
@@ -19,8 +22,11 @@ class MerchantOwnerPlaceModelTest {
         assertThat(place.getQualityEvaluatedAt()).isNull();
     }
 
+    /**
+     * 운영 품질 갱신에서 비율 경계 0·100을 허용하고 HEALTHY 상태·평가 시각을 보존하는지 검증.
+     */
     @Test
-    void acceptsZeroAndHundredPercentQualityRates() {
+    void acceptsQualityRateBoundaries() {
         MerchantOwnerPlace place = place();
 
         place.updateOperationalQuality(
@@ -38,8 +44,11 @@ class MerchantOwnerPlaceModelTest {
         assertThat(place.getQualityEvaluatedAt()).isEqualTo(LocalDateTime.of(2026, 8, 4, 12, 0));
     }
 
+    /**
+     * 응답률 -1·취소율 101·노쇼율 101 입력이 각각 IllegalArgumentException으로 거절되는지 검증.
+     */
     @Test
-    void rejectsQualityRatesOutsideDatabaseConstraintRange() {
+    void rejectsOutOfRangeQualityRates() {
         assertThatThrownBy(() -> place().updateOperationalQuality(
                 MerchantOperationalQualityStatus.AT_RISK, -1, 0, 0, LocalDateTime.now()))
                 .isInstanceOf(IllegalArgumentException.class);
@@ -51,8 +60,11 @@ class MerchantOwnerPlaceModelTest {
                 .isInstanceOf(IllegalArgumentException.class);
     }
 
+    /**
+     * 품질 enum이 미평가·정상·주의·위험 네 상태를 정해진 순서로 유지하는지 검증.
+     */
     @Test
-    void exposesAllPersistedOperationalQualityStatuses() {
+    void exposesPersistedQualityStatuses() {
         assertThat(MerchantOperationalQualityStatus.values())
                 .containsExactly(
                         MerchantOperationalQualityStatus.UNMEASURED,
@@ -62,6 +74,9 @@ class MerchantOwnerPlaceModelTest {
                 );
     }
 
+    /**
+     * 점주 2의 장소 1 소유 관계를 만들어 품질 기본값·갱신 경계의 입력으로 제공.
+     */
     private MerchantOwnerPlace place() {
         return MerchantOwnerPlace.builder()
                 .placeId(1L)

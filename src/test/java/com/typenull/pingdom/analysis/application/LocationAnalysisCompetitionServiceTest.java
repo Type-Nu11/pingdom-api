@@ -15,8 +15,12 @@ import org.springframework.data.domain.Pageable;
 
 class LocationAnalysisCompetitionServiceTest {
 
+    /**
+     * 추천 좌표 반경 1,500m 조회 결과의 42.5m 거리 동일 업종 장소가 주변 경쟁업체로 반영되는지 검증.
+     * 저장소 대역 사용으로 실제 거리 필터의 100m 제한은 검증 범위에서 제외.
+     */
     @Test
-    void enrichesReportWithSameCategoryPlacesWithinOneHundredMeters() {
+    void enrichesNearbySameCategoryCompetitors() {
         MapPlaceCoordinateQueryRepository repository = mock(MapPlaceCoordinateQueryRepository.class);
         MapPlaceCoordinateQueryRepository.NearbyAnalysisPlace nearby = mock(
                 MapPlaceCoordinateQueryRepository.NearbyAnalysisPlace.class
@@ -48,8 +52,11 @@ class LocationAnalysisCompetitionServiceTest {
         verify(repository).findNearbyPlacesForAnalysis(eq(35.1d), eq(128.1d), eq(1500d), any(Pageable.class));
     }
 
+    /**
+     * 한 주변 장소 조회 결과의 카페·역·쇼핑몰을 경쟁·교통·편의 시설로 분류하고 경쟁점 수 1과 요약을 반영하는지 검증.
+     */
     @Test
-    void classifiesNearbyTransportAndConveniencePlacesFromSingleQuery() {
+    void classifiesNearbyFacilityTypes() {
         MapPlaceCoordinateQueryRepository repository = mock(MapPlaceCoordinateQueryRepository.class);
         List<MapPlaceCoordinateQueryRepository.NearbyAnalysisPlace> nearbyPlaces = List.of(
                 nearby(1L, "잠실역 2호선", "OTHER", 120d),
@@ -85,6 +92,9 @@ class LocationAnalysisCompetitionServiceTest {
         assertThat(enriched.competitionAnalysis().summary()).contains("경쟁점 1건");
     }
 
+    /**
+     * ID·명칭·분류·거리와 공통 주소를 반환하는 주변 장소 projection mock을 구성.
+     */
     private MapPlaceCoordinateQueryRepository.NearbyAnalysisPlace nearby(
             long id, String name, String category, double distance
     ) {

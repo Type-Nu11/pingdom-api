@@ -40,14 +40,20 @@ class PopupCampaignQueryServiceTest {
 
     @InjectMocks private PopupCampaignQueryService service;
 
+    /**
+     * 공개 캠페인의 탐색 가능 조회 기준과 응답 시간 변환에 사용할 UTC 시각을 고정.
+     */
     @BeforeEach
     void setUpClock() {
         when(clock.instant()).thenReturn(Instant.parse("2026-08-01T12:00:00Z"));
         when(clock.getZone()).thenReturn(ZoneOffset.UTC);
     }
 
+    /**
+     * 현재 시각의 PUBLISHED 탐색 가능 조회가 비어 있으면 CAMPAIGN_NOT_FOUND를 반환하는지 검증.
+     */
     @Test
-    void campaignRejectedByDiscoverabilityPolicyIsHiddenAsNotFound() {
+    void hidesUndiscoverableCampaign() {
         when(campaignRepository.findDiscoverableById(1L, PopupCampaignStatus.PUBLISHED, NOW))
                 .thenReturn(Optional.empty());
 
@@ -58,8 +64,12 @@ class PopupCampaignQueryServiceTest {
         verify(campaignRepository).findDiscoverableById(1L, PopupCampaignStatus.PUBLISHED, NOW);
     }
 
+    /**
+     * 최소 정수 페이지·최대 정수 크기 요청을 저장소의 0번 페이지·100건으로 정규화하는지 검증.
+     * 빈 결과의 외부 페이지 1·전체 수 0·다음 페이지 없음 계약도 고정.
+     */
     @Test
-    void normalizesPublicCampaignPaginationToThePublishedContract() {
+    void normalizesCampaignPagination() {
         when(campaignRepository.findDiscoverable(any(), any(), any(), any()))
                 .thenAnswer(invocation -> Page.empty(invocation.getArgument(3)));
         when(brandRepository.findAllById(any())).thenReturn(List.of());
@@ -83,8 +93,12 @@ class PopupCampaignQueryServiceTest {
         assertThat(response.hasNext()).isFalse();
     }
 
+    /**
+     * 게시 캠페인의 시작·종료·생성 시각을 UTC OffsetDateTime으로 매핑하고 게시 상태·null 로고를 유지하는지 검증.
+     * JSON 직렬화 실행은 검증 범위에서 제외.
+     */
     @Test
-    void publicCampaignResponseSerializesDomainTimesAsUtcOffsets() {
+    void mapsCampaignTimesToUtc() {
         PopupCampaign campaign = PopupCampaign.draft(
                 10L,
                 20L,

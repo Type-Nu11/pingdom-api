@@ -37,6 +37,9 @@ class CurrentActivityIntentServiceTest {
 
     private CurrentActivityIntentService currentActivityIntentService;
 
+    /**
+     * 사용자·의도 저장소 대역과 UTC 고정 Clock을 연결해 서버 관리 만료를 검증.
+     */
     @BeforeEach
     void setUp() {
         currentActivityIntentService = new CurrentActivityIntentService(
@@ -46,8 +49,11 @@ class CurrentActivityIntentServiceTest {
         );
     }
 
+    /**
+     * 사용자 잠금 조회 후 새 CAFE 의도를 저장하면 요청값과 서버 현재 시각 2시간 뒤 만료가 반영되는지 검증.
+     */
     @Test
-    void replacesIntentWithServerManagedTwoHourExpiry() {
+    void setsTwoHourIntentExpiry() {
         User user = User.builder().id(USER_ID).build();
         when(userRepository.findByIdForUpdate(USER_ID)).thenReturn(Optional.of(user));
         when(currentActivityIntentRepository.findByUser_Id(USER_ID)).thenReturn(Optional.empty());
@@ -60,8 +66,11 @@ class CurrentActivityIntentServiceTest {
         assertThat(result.getExpiresAt()).isEqualTo(LocalDateTime.of(2026, 8, 1, 12, 0));
     }
 
+    /**
+     * 만료 시각에 도달한 의도 조회는 null을 반환하고 읽기 중 저장소 삭제를 실행하지 않는지 검증.
+     */
     @Test
-    void returnsNullForExpiredIntentWithoutDeletingItDuringRead() {
+    void hidesExpiredIntentWithoutDeletion() {
         User user = User.builder().id(USER_ID).build();
         UserCurrentActivityIntent expiredIntent = UserCurrentActivityIntent.create(
                 user,

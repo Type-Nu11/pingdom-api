@@ -19,6 +19,10 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.jpa.repository.QueryHints;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 회원 식별 조회, 세션·계정 변경용 행 잠금, 정지·탈퇴 정리 대상 쿼리를 제공.
+ * 정리 대상은 만료·탈퇴 시각과 ID 오름차순으로 조회하며 Pageable로 처리량을 제한.
+ */
 public interface UserRepository extends JpaRepository<User, Long> {
 
     boolean existsByUsername(String username);

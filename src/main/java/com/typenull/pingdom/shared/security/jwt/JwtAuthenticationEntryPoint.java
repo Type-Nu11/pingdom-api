@@ -11,7 +11,7 @@ import org.springframework.security.core.AuthenticationException;
 import org.springframework.security.web.AuthenticationEntryPoint;
 import org.springframework.stereotype.Component;
 
-// JWT 인증 실패 시 401 JSON 응답 생성 클래스
+/** JWT 필터가 남긴 만료 표시로 오류 코드를 구분하고 인증 실패 메트릭과 JSON 응답을 작성. */
 @Component
 public class JwtAuthenticationEntryPoint implements AuthenticationEntryPoint {
 

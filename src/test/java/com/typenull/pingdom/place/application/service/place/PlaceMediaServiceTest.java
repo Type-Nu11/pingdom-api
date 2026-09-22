@@ -38,6 +38,9 @@ class PlaceMediaServiceTest {
             org.mockito.Mockito.mock(S3ObjectDeleteOutboxPublisher.class);
     private PlaceMediaService placeMediaService;
 
+    /**
+     * 미디어 저장과 S3 검증·삭제 예약을 모의로 관찰할 서비스를 준비.
+     */
     @BeforeEach
     void setUp() {
         placeMediaService = new PlaceMediaService(
@@ -49,8 +52,11 @@ class PlaceMediaServiceTest {
         );
     }
 
+    /**
+     * 장소 소유자가 아닌 사용자의 탐색 미디어 등록을 거절하고 저장하지 않는지 확인.
+     */
     @Test
-    void createExplorationMediaRequiresPlaceOwner() {
+    void rejectsNonOwnerExplorationMedia() {
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 99L)));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
                 "https://cdn.pingdom.test/place.jpg",
@@ -67,8 +73,11 @@ class PlaceMediaServiceTest {
         verify(placeMediaRepository, never()).save(any());
     }
 
+    /**
+     * 순서 누락 시 기존 최대 순서 다음 값을 부여하고 요청 URL 대신 검증한 S3 키의 공개 URL을 반환하는지 확인.
+     */
     @Test
-    void createExplorationMediaUsesNextDisplayOrderWhenOrderIsMissing() {
+    void assignsNextExplorationOrder() {
         MapPlace place = place(1L, 7L);
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place));
         when(placeMediaRepository.findMaxDisplayOrder(1L, PlaceMediaPurpose.EXPLORATION)).thenReturn(2);
@@ -93,8 +102,11 @@ class PlaceMediaServiceTest {
         assertThat(response.imageUrl()).isEqualTo("https://s3.pingdom.test/places/1/exploration/7/issued.jpg");
     }
 
+    /**
+     * 다른 장소 prefix의 키는 S3 조회와 저장 전에 거절하는지 확인.
+     */
     @Test
-    void createExplorationMediaRejectsKeyIssuedForAnotherPlace() {
+    void rejectsOtherPlaceMediaKey() {
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
                 null,
@@ -112,8 +124,11 @@ class PlaceMediaServiceTest {
         verify(placeMediaRepository, never()).save(any());
     }
 
+    /**
+     * HEAD 메타데이터가 10MiB를 1바이트 넘으면 요청을 거절하고 미디어를 저장하지 않는지 확인.
+     */
     @Test
-    void createExplorationMediaRejectsObjectLargerThanLimit() {
+    void rejectsOversizedExplorationObject() {
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(s3ObjectStorage.headObject("places/1/exploration/7/oversized.jpg"))
                 .thenReturn(new S3ObjectMetadata(10L * 1024 * 1024 + 1, "image/jpeg"));
@@ -132,8 +147,11 @@ class PlaceMediaServiceTest {
         verify(placeMediaRepository, never()).save(any());
     }
 
+    /**
+     * 객체 메타데이터가 PDF이면 탐색 이미지로 등록할 수 없는지 확인.
+     */
     @Test
-    void createExplorationMediaRejectsUnsupportedObjectContentType() {
+    void rejectsUnsupportedExplorationMime() {
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(s3ObjectStorage.headObject("places/1/exploration/7/invalid-type.jpg"))
                 .thenReturn(new S3ObjectMetadata(1_024L, "application/pdf"));
@@ -152,8 +170,11 @@ class PlaceMediaServiceTest {
         verify(placeMediaRepository, never()).save(any());
     }
 
+    /**
+     * 새 게시물 이미지의 URL·장소·원본 ID로 VERIFICATION 미디어 한 건을 저장하는지 확인.
+     */
     @Test
-    void recordVerificationMediaCreatesMediaFromMapImageOnce() {
+    void recordsMapImageVerification() {
         MapPlace place = place(1L, 7L);
         MapImage mapImage = MapImage.builder()
                 .id(10L)
@@ -177,8 +198,11 @@ class PlaceMediaServiceTest {
         assertThat(saved.getImageUrl()).isEqualTo("https://cdn.pingdom.test/post.jpg");
     }
 
+    /**
+     * 이미 원본 게시물 ID로 미디어가 있으면 다시 저장하지 않는지 확인.
+     */
     @Test
-    void recordVerificationMediaSkipsAlreadyRecordedMapImage() {
+    void skipsRecordedVerificationImage() {
         MapImage mapImage = MapImage.builder()
                 .id(10L)
                 .imageUrl("https://cdn.pingdom.test/post.jpg")
@@ -192,8 +216,11 @@ class PlaceMediaServiceTest {
         verify(placeMediaRepository, never()).save(any());
     }
 
+    /**
+     * 공개 장소의 EXPLORATION 조회 결과를 해당 장소의 미디어 응답으로 매핑하는지 확인.
+     */
     @Test
-    void getExplorationMediaReturnsOnlyExplorationMediaForVisiblePlace() {
+    void loadsVisibleExplorationMedia() {
         MapPlace place = place(1L, 7L);
         PlaceMedia exploration = PlaceMedia.exploration(
                 place,
@@ -217,8 +244,11 @@ class PlaceMediaServiceTest {
         assertThat(response.media().get(0).purpose()).isEqualTo(PlaceMediaPurpose.EXPLORATION);
     }
 
+    /**
+     * 검색 비노출 장소는 탐색 미디어 조회에서도 PLACE_NOT_FOUND로 처리하는지 확인.
+     */
     @Test
-    void getExplorationMediaRejectsHiddenDiscoveryPlace() {
+    void rejectsHiddenExplorationPlace() {
         MapPlace place = place(1L, 7L);
         place.updateDiscoveryStatus(PlaceDiscoveryStatus.HIDDEN);
         when(mapPlaceRepository.findById(1L)).thenReturn(Optional.of(place));
@@ -228,8 +258,11 @@ class PlaceMediaServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_NOT_FOUND));
     }
 
+    /**
+     * EXPLORATION 범위에 해당 ID가 없으면 다른 용도의 미디어를 삭제하지 않고 미디어 없음 오류를 반환하는지 확인.
+     */
     @Test
-    void deleteExplorationMediaRejectsVerificationMediaId() {
+    void rejectsMissingExplorationMedia() {
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(placeMediaRepository.findByIdAndPlace_IdAndPurpose(
                 10L,
@@ -242,8 +275,11 @@ class PlaceMediaServiceTest {
                         assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.PLACE_MEDIA_NOT_FOUND));
     }
 
+    /**
+     * 탐색 미디어 행을 삭제하면서 해당 S3 키와 삭제 사유를 Outbox publisher에 전달하는지 확인.
+     */
     @Test
-    void deleteExplorationMediaPublishesS3DeleteOutboxEvent() {
+    void queuesExplorationObjectDeletion() {
         MapPlace place = place(1L, 7L);
         PlaceMedia media = PlaceMedia.exploration(
                 place,
@@ -269,6 +305,9 @@ class PlaceMediaServiceTest {
         );
     }
 
+    /**
+     * 원본 게시물 10에 연결된 기존 검증 미디어를 생성.
+     */
     private PlaceMedia existingVerification() {
         return PlaceMedia.verification(
                 place(1L, 7L),
@@ -281,6 +320,9 @@ class PlaceMediaServiceTest {
         );
     }
 
+    /**
+     * ID와 등록자를 지정한 공개·운영 장소 fixture를 생성.
+     */
     private MapPlace place(Long id, Long userId) {
         return MapPlace.builder()
                 .id(id)
