@@ -26,6 +26,10 @@ import org.springframework.data.domain.PageRequest;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 사용자 소유 데이터를 모아 내보내고 개인정보 처리 요청을 outbox에 기록합니다.
+ * 좋아요는 최근 50건으로 제한하며, 활성 활동 의도와 복호화된 사업자등록번호를 포함합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserDataExportService {
@@ -46,6 +50,10 @@ public class UserDataExportService {
     private final PrivacyProcessingOutboxPublisher privacyProcessingOutboxPublisher;
     private final Clock clock;
 
+    /**
+     * 회원의 북마크·여행·점주 정보·혜택·쿠폰과 최근 좋아요 50건을 모아 내보내기 결과를 반환합니다.
+     * 회원 부재는 거절하고 활동 의도는 유효한 것만 포함하며, 사업자등록번호를 복호화하고 EXPORT_REQUESTED Outbox 기록을 발행합니다.
+     */
     @Transactional
     public UserDataExportResult exportMyData(Long userId) {
         User user = userRepository.findById(userId)
