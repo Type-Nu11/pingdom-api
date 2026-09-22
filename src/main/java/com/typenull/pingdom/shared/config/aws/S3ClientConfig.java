@@ -9,6 +9,10 @@ import software.amazon.awssdk.regions.Region;
 import software.amazon.awssdk.services.s3.S3Client;
 import software.amazon.awssdk.services.s3.presigner.S3Presigner;
 
+/**
+ * bucket 프로퍼티 조건이 맞을 때 동기 S3 client와 presigner를 생성한다.
+ * 자격 증명은 AWS 기본 provider chain에서 얻고 region이 비어 있으면 ap-northeast-2를 사용한다.
+ */
 @Configuration
 public class S3ClientConfig {
 
