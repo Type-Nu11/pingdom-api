@@ -40,8 +40,11 @@ class PlaceRecommendationSnapshotResyncServiceTest {
     @InjectMocks
     private PlaceRecommendationSnapshotResyncService resyncService;
 
+    /**
+     * 단일 장소의 원본 집계와 유사도·버전 단건 결과를 합치고 전체 장소 순회를 호출하지 않는지 확인합니다.
+     */
     @Test
-    void 단건_재동기화는_대상_장소만_집계하고_하위_단건_경로를_호출한다() {
+    void resyncsOnlyRequestedPlace() {
         MapPlace place = createPlace(17L);
         when(mapPlaceRepository.findByIdForUpdate(17L)).thenReturn(Optional.of(place));
         when(placeSimilaritySnapshotResyncService.resyncPlace(place))
@@ -67,8 +70,11 @@ class PlaceRecommendationSnapshotResyncServiceTest {
         verify(mapPlaceRepository, never()).findAll(any(Pageable.class));
     }
 
+    /**
+     * 대상 장소가 없으면 전체·유사도·버전 스냅샷 정리를 호출하고 삭제 건수를 반환하는지 확인합니다.
+     */
     @Test
-    void 대상_장소가_삭제됐으면_해당_snapshot만_정리한다() {
+    void cleansDeletedPlaceSnapshots() {
         when(mapPlaceRepository.findByIdForUpdate(17L)).thenReturn(Optional.empty());
         when(placeRecommendationSnapshotRepository.existsById(17L)).thenReturn(true);
         when(placeSimilaritySnapshotResyncService.deleteForPlace(17L)).thenReturn(2L);
@@ -86,6 +92,9 @@ class PlaceRecommendationSnapshotResyncServiceTest {
         verify(placeRecommendationVersionSnapshotService).resyncPlace(17L);
     }
 
+    /**
+     * 단일 재동기화 대상 장소를 고정된 콘텐츠 수로 만듭니다.
+     */
     private MapPlace createPlace(Long placeId) {
         return MapPlace.builder()
                 .id(placeId)
