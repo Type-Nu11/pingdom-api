@@ -1,6 +1,6 @@
 package com.typenull.pingdom.notification.outbox;
 
-/** 영속화된 FCM 임시 실패를 기존 Outbox 재시도 정책으로 회수하기 위한 예외입니다. */
+/** FCM 서비스가 보고한 임시 실패를 Outbox 재시도로 연결합니다. 발송 결과 기록 성공 여부 자체를 보장하는 예외는 아닙니다. */
 public class RetryableFcmDeliveryException extends RuntimeException {
 
     public RetryableFcmDeliveryException(String eventId) {
