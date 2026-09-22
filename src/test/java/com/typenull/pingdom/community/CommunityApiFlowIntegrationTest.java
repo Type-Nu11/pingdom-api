@@ -47,6 +47,9 @@ class CommunityApiFlowIntegrationTest {
     @Autowired private CommunityPostPlaceRepository postPlaceRepository;
     @Autowired private CommunityPlaceDailyViewRepository dailyViewRepository;
 
+    /**
+     * 일일 조회·댓글·좋아요·장소 연결을 먼저 지우고 게시글·장소·사용자를 정리해 통합 흐름의 데이터를 제거한다.
+     */
     @AfterEach
     void cleanup() {
         dailyViewRepository.deleteAllInBatch();
@@ -59,8 +62,11 @@ class CommunityApiFlowIntegrationTest {
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 인증 사용자가 카테고리를 조회하고 장소를 연결한 게시글을 만든 뒤 목록·상세·댓글 생성·댓글 조회로 이어지는 HTTP 흐름을 검증한다.
+     */
     @Test
-    void 카테고리부터_게시글_댓글_좋아요_장소_조회까지_연결한다() throws Exception {
+    void connectsCategoryPostAndCommentFlow() throws Exception {
         User author = userRepository.saveAndFlush(user("community-flow-author"));
         MapPlace place = mapPlaceRepository.saveAndFlush(MapPlace.builder()
                 .name("통합 테스트 장소").address("서울시 중구").latitude(37.5).longitude(127.0)
@@ -92,8 +98,11 @@ class CommunityApiFlowIntegrationTest {
 
     }
 
+    /**
+     * 미인증 게시글 생성은 401, PLACE 카테고리의 연결 장소 누락은 400과 PLACE_REQUIRED, 없는 글 조회는 404와 POST_NOT_FOUND를 반환하는지 검증한다.
+     */
     @Test
-    void 미인증과_장소_필수_누락은_오류_계약을_반환한다() throws Exception {
+    void returnsCommunityRequestErrors() throws Exception {
         mockMvc.perform(post("/community/posts").contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CommunityPostCreateRequest("PLACE", "제목", "본문", java.util.List.of()))))
                 .andExpect(status().isUnauthorized());
@@ -108,11 +117,17 @@ class CommunityApiFlowIntegrationTest {
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
     }
 
+    /**
+     * 커뮤니티 API 인증과 게시글 작성을 위한 이메일 인증 완료 일반 사용자를 만든다.
+     */
     private User user(String username) {
         return User.builder().username(username).email(username + "@example.com").emailVerified(true)
                 .password("password").birthYear(1995).language("ko").country("KR").role(UserRole.USER).build();
     }
 
+    /**
+     * 저장한 작성자 식별자와 역할을 JWT에 담아 통합 요청의 Bearer 헤더를 만든다.
+     */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
     }
