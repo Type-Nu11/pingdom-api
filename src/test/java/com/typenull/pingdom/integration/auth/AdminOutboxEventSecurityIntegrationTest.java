@@ -29,6 +29,9 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 
+/**
+ * outbox worker를 끄고 관리자 복구 권한, 민감 payload 비노출, 수동 재시도 상태와 감사를 검증한다.
+ */
 @Tag("integration")
 @SpringBootTest(properties = "outbox.enabled=false")
 @AutoConfigureMockMvc
@@ -39,13 +42,19 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
     @Autowired private AdminAuditLogRepository adminAuditLogRepository;
     @Autowired private OutboxEventRepository outboxEventRepository;
 
+    /**
+     * 공통 인증 fixture 정리에 더해 이전 수동 복구 감사 로그를 제거한다.
+     */
     @BeforeEach
     void cleanOutboxAuditLogs() {
         adminAuditLogRepository.deleteAllInBatch();
     }
 
+    /**
+     * outbox 조회와 수동 재시도 모두 미인증 요청을 INVALID_TOKEN으로 거절하는지 확인한다.
+     */
     @Test
-    void outboxOperationsRejectUnauthenticatedRequests() throws Exception {
+    void outboxRequiresToken() throws Exception {
         mockMvc.perform(get("/admin/outbox-events"))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
@@ -56,8 +65,11 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
     }
 
+    /**
+     * ANALYST 배정만 가진 관리자의 outbox 조회가 복구 권한 부족으로 거절되는지 확인한다.
+     */
     @Test
-    void specializedAdminWithoutRecoveryPermissionIsRejected() throws Exception {
+    void analystCannotRecover() throws Exception {
         User actor = saveAdmin("outbox-analyst");
         assignmentRepository.saveAndFlush(AdminRoleAssignment.assign(
                 actor.getId(), AdminRole.ANALYST, actor.getId(), LocalDateTime.now()
@@ -69,8 +81,11 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 .andExpect(jsonPath("$.code").value("ADMIN_PERMISSION_REQUIRED"));
     }
 
+    /**
+     * SUPER_ADMIN이 payload 노출 없이 실패 이벤트를 조회하고 한 번만 재시도 상태로 바꾸며 감사 로그 한 건을 남기는지 확인한다.
+     */
     @Test
-    void superAdminCanQueryAndRetryFailedEventOnceWithAuditHistory() throws Exception {
+    void retryOnceWithAudit() throws Exception {
         User actor = saveAdmin("outbox-super-admin");
         assignmentRepository.saveAndFlush(AdminRoleAssignment.assign(
                 actor.getId(), AdminRole.SUPER_ADMIN, actor.getId(), LocalDateTime.now()
@@ -115,8 +130,11 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 });
     }
 
+    /**
+     * 기간 없는 FAILED 필터 조회와 삭제 후 빈 페이지 메타데이터를 확인한다.
+     */
     @Test
-    void superAdminCanQueryFailedEventsWithoutPeriodAndReceiveEmptyPage() throws Exception {
+    void failedEventPages() throws Exception {
         User actor = saveAdmin("outbox-filter-admin");
         assignmentRepository.saveAndFlush(AdminRoleAssignment.assign(
                 actor.getId(), AdminRole.SUPER_ADMIN, actor.getId(), LocalDateTime.now()
@@ -151,6 +169,9 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /**
+     * 직접 토큰 발급에 사용할 ADMIN 사용자를 저장하고 flush한다. 세부 권한은 각 테스트가 배정한다.
+     */
     private User saveAdmin(String username) {
         return userRepository.saveAndFlush(User.builder()
                 .username(username)
@@ -163,6 +184,9 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
                 .build());
     }
 
+    /**
+     * 생성·선점·실패 전이를 거쳐 공급자 오류로 최종 실패한 이메일 이벤트를 저장한다.
+     */
     private OutboxEvent saveFailedEvent() {
         LocalDateTime now = LocalDateTime.now();
         OutboxEvent event = OutboxEvent.create(
@@ -178,6 +202,9 @@ class AdminOutboxEventSecurityIntegrationTest extends AuthRegressionIntegrationT
         return outboxEventRepository.saveAndFlush(event);
     }
 
+    /**
+     * 사용자의 현재 ID·이름·역할로 접근 토큰을 직접 발급해 Authorization 헤더 값을 구성한다.
+     */
     private String bearerToken(User user) {
         return "Bearer " + jwtTokenProvider.generateAccessToken(
                 user.getId(), user.getUsername(), user.getRole().name()
