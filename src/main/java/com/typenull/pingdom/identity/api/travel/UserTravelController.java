@@ -1,5 +1,8 @@
 package com.typenull.pingdom.identity.api.travel;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentResponse;
 import com.typenull.pingdom.identity.api.dto.travel.CurrentActivityIntentUpdateRequest;
@@ -36,7 +39,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/users/me")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.TRAVEL)
 public class UserTravelController {
 
     private final TravelScheduleService travelScheduleService;
