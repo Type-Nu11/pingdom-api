@@ -17,8 +17,11 @@ class MapImageLikedOutboxHandlerTest {
     @Mock
     private FcmService fcmService;
 
+    /**
+     * 좋아요 알림 발송 결과에 재시도 가능한 실패가 있으면 이벤트 ID를 포함한 RetryableFcmDeliveryException으로 Outbox 처리자에게 전달하는지 검증한다.
+     */
     @Test
-    void retryableFcmFailureIsPropagatedToOutboxProcessor() {
+    void propagatesRetryableLikeDeliveryFailure() {
         MapImageLikedOutboxHandler handler = new MapImageLikedOutboxHandler(fcmService, new ObjectMapper());
         when(fcmService.sendLikeNotification(1L, 2L, "event-id"))
                 .thenReturn(new FcmDispatchResult(null, true));
