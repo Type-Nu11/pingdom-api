@@ -11,6 +11,9 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.identity.api.dto.login.LoginRequest;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRole;
+import com.typenull.pingdom.identity.domain.admin.AdminRoleAssignment;
+import com.typenull.pingdom.identity.domain.repository.AdminRoleAssignmentRepository;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -21,6 +24,7 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEvent;
 import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import com.typenull.pingdom.shared.outbox.infrastructure.OutboxEventRepository;
 import java.util.List;
+import java.time.LocalDateTime;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
@@ -63,6 +67,9 @@ class AdminPostControllerTest {
     private ObjectMapper objectMapper;
 
     @Autowired
+    private AdminRoleAssignmentRepository adminRoleAssignmentRepository;
+
+    @Autowired
     private UserRepository userRepository;
 
     @Autowired
@@ -82,6 +89,7 @@ class AdminPostControllerTest {
         adminAuditLogRepository.deleteAllInBatch();
         outboxEventRepository.deleteAllInBatch();
         mapImageRepository.deleteAllInBatch();
+        adminRoleAssignmentRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
@@ -179,7 +187,7 @@ class AdminPostControllerTest {
 
     private String createAdminAndLogin() throws Exception {
         String username = "adminTester" + System.nanoTime();
-        userRepository.save(User.builder()
+        User admin = userRepository.save(User.builder()
                 .username(username)
                 .email(username + "@example.com")
                 .password(passwordEncoder.encode("password123"))
@@ -188,6 +196,9 @@ class AdminPostControllerTest {
                 .country("KR")
                 .role(UserRole.ADMIN)
                 .build());
+        adminRoleAssignmentRepository.save(AdminRoleAssignment.assign(
+                admin.getId(), AdminRole.SUPER_ADMIN, admin.getId(), LocalDateTime.now()
+        ));
 
         LoginRequest loginRequest = new LoginRequest(username, "password123");
         MvcResult loginResult = mockMvc.perform(post("/auth/login")
