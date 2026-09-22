@@ -34,6 +34,10 @@ public record LocationAnalysisContent(
     }
 
     /** Backend가 map_place에서 확인한 주변 장소를 시설 유형별로 반영한다. */
+    /**
+     * 경쟁업체 목록은 조회 결과로 교체합니다. 편의·교통시설은 보강 목록이 비어 있으면 기존 AI 목록을 유지합니다.
+     * 따라서 보강 후에도 모든 시설이 내부 장소 DB로 검증되었다고 해석해서는 안 됩니다.
+     */
     public LocationAnalysisContent withNearbyPlaces(
             List<Facility> competitors,
             List<Facility> convenienceFacilities,
@@ -63,6 +67,9 @@ public record LocationAnalysisContent(
     }
 
     /** 관측된 유동 데이터가 있지만 AI 사업성 섹션이 비어 있을 때만 서버가 수치를 재사용해 보강한다. */
+    /**
+     * 유동인구와 기존 분석 항목으로 사업성 표시용 설명을 보충합니다. 별도의 매출 예측 모델을 실행하지 않습니다.
+     */
     public LocationAnalysisContent withDerivedBusinessPerformance() {
         if (footTrafficAnalysis == null || footTrafficAnalysis.total() == null || footTrafficAnalysis.total() <= 0d) {
             return this;
