@@ -31,8 +31,12 @@ class CommunityPlaceViewServiceTest {
             Clock.fixed(Instant.parse("2026-09-12T15:00:00Z"), ZoneOffset.UTC)
     );
 
+    /**
+     * 게시글에 연결된 공개 장소의 일일 조회 기록이 새로 삽입되면 장소 조회수를 증가시키고 상세 응답을 그대로 반환하는지 검증한다.
+     * UTC 15시가 한국 날짜의 다음 날로 기록되는지도 확인한다.
+     */
     @Test
-    void 게시글에서_연결된_장소로_처음_이동하면_조회수를_증가한다() {
+    void countsFirstLinkedPlaceView() {
         PlaceDetailResponse response = mock(PlaceDetailResponse.class);
         givenLinkedPlace();
         when(dailyViewRepository.insertIgnoreDuplicate(anyLong(), anyLong(), any())).thenReturn(1);
@@ -45,8 +49,11 @@ class CommunityPlaceViewServiceTest {
         verify(placeQueryService).getPlace(20L);
     }
 
+    /**
+     * 이미 같은 날의 조회 기록이 있어 삽입 결과가 0이면 장소 조회수를 다시 증가시키지 않는지 검증한다.
+     */
     @Test
-    void 같은_날_재진입은_조회수를_증가하지_않는다() {
+    void skipsDuplicateDailyViewCount() {
         givenLinkedPlace();
         when(dailyViewRepository.insertIgnoreDuplicate(anyLong(), anyLong(), any())).thenReturn(0);
 
@@ -55,8 +62,11 @@ class CommunityPlaceViewServiceTest {
         verify(mapPlaceRepository, never()).increaseCommunityViewCount(anyLong());
     }
 
+    /**
+     * 게시글과 연결되지 않은 장소로 이동하면 예외를 반환하고 일일 기록·장소 집계·상세 조회를 호출하지 않는지 검증한다.
+     */
     @Test
-    void 연결되지_않은_장소는_조회_기록을_남기지_않는다() {
+    void rejectsUnlinkedPlaceView() {
         when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(postPlaceRepository.existsByCommunityPost_IdAndMapPlace_Id(10L, 20L)).thenReturn(false);
 
@@ -65,6 +75,9 @@ class CommunityPlaceViewServiceTest {
         verifyNoInteractions(dailyViewRepository, mapPlaceRepository, placeQueryService);
     }
 
+    /**
+     * 숨겨지지 않은 게시글에 공개 영업 장소가 연결된 정상 조회 조건을 설정한다.
+     */
     private void givenLinkedPlace() {
         when(postRepository.existsByIdAndHiddenFalse(10L)).thenReturn(true);
         when(postPlaceRepository.existsByCommunityPost_IdAndMapPlace_Id(10L, 20L)).thenReturn(true);
