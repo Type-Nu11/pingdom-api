@@ -32,8 +32,12 @@ class VisitorVerificationReportOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    /**
+     * 작성자 제보·정정 경로가 app에 있고 admin에는 없는지 확인한다.
+     * 성공/오류 schema와 예시, JWT 선언 및 응답 required/nullable 계약을 검사한다.
+     */
     @Test
-    void exposesVisitorVerificationReportContractsInTheAppGroup() throws Exception {
+    void exposeVisitorReportContract() throws Exception {
         JsonNode appDocument = readApiDocs("/v3/api-docs/app");
         JsonNode webDocument = readApiDocs("/v3/api-docs/admin");
 
@@ -139,15 +143,18 @@ class VisitorVerificationReportOpenApiContractTest {
         );
     }
 
+    /** 성공 응답이 지정한 components schema를 참조하는지 확인한다. */
     private void assertSuccessResponse(JsonNode operation, String responseCode, String schemaName) {
         assertThat(operation.at("/responses/" + responseCode + "/content/*~1*/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/" + schemaName);
     }
 
+    /** operation에 bearerAuth security 배열이 선언되어 있는지 확인한다. */
     private void assertBearerSecurity(JsonNode operation) {
         assertThat(operation.at("/security/0/bearerAuth").isArray()).isTrue();
     }
 
+    /** 지정 HTTP 응답의 ErrorResponse 참조와 예시의 실제 오류 코드를 대조한다. */
     private void assertErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode response = operation.path("responses").path(responseCode);
 
@@ -157,6 +164,7 @@ class VisitorVerificationReportOpenApiContractTest {
                 .isEqualTo(errorCode);
     }
 
+    /** validation 오류 응답의 schema와 예시 코드를 함께 대조한다. */
     private void assertValidationErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode response = operation.path("responses").path(responseCode);
 
@@ -166,6 +174,7 @@ class VisitorVerificationReportOpenApiContractTest {
                 .isEqualTo(errorCode);
     }
 
+    /** 같은 HTTP 응답에서 validation·도메인 오류가 oneOf로 표현되고 각 예시가 존재하는지 확인한다. */
     private void assertValidationOrDomainErrorResponse(JsonNode operation, String responseCode, String errorCode) {
         JsonNode schema = operation.at("/responses/" + responseCode + "/content/*~1*/schema");
 
@@ -176,6 +185,7 @@ class VisitorVerificationReportOpenApiContractTest {
                 .asText()).isEqualTo(errorCode);
     }
 
+    /** required 필드 목록이 정확히 일치하고 지정된 필드들이 null을 허용하는지 확인한다. */
     private void assertResponseSchema(
             JsonNode document,
             String schemaName,
@@ -194,6 +204,7 @@ class VisitorVerificationReportOpenApiContractTest {
         }
     }
 
+    /** MockMvc로 지정 문서를 조회해 HTTP 200을 요구하고 UTF-8 JSON 트리로 파싱한다. */
     private JsonNode readApiDocs(String path) throws Exception {
         String body = mockMvc.perform(get(path))
                 .andExpect(status().isOk())
