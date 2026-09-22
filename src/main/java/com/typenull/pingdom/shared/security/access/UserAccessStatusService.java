@@ -14,6 +14,10 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.scheduling.annotation.Scheduled;
 import org.springframework.stereotype.Service;
 
+/**
+ * 계정 활성·정지 상태를 조회해 JWT 인증 가능 여부를 판단하고 결과를 인스턴스 로컬 캐시에 최대 10초 보관한다.
+ * 변경 직후 반영에는 evict가 필요하며, 다른 서버 인스턴스의 캐시까지 무효화하지는 않는다.
+ */
 @Service
 @RequiredArgsConstructor
 public class UserAccessStatusService {
@@ -24,6 +28,7 @@ public class UserAccessStatusService {
     private final Clock clock;
     private final Map<Long, CacheEntry> cache = new ConcurrentHashMap<>();
 
+    /** 활성 계정 중 현재 정지되지 않은 사용자만 허용한다. 임시 정지의 거절 캐시는 정지 종료 시각을 넘기지 않는다. */
     public boolean canAuthenticate(Long userId) {
         if (userId == null) {
             return false;
@@ -44,6 +49,7 @@ public class UserAccessStatusService {
         return allowed;
     }
 
+    /** 이의신청 경로는 캐시를 사용하지 않고 ACTIVE 여부만 확인해 정지 중 사용자도 허용한다. */
     public boolean canAuthenticateForAppeal(Long userId) {
         if (userId == null) {
             return false;
@@ -53,12 +59,14 @@ public class UserAccessStatusService {
         return user != null && user.getStatus() == UserStatus.ACTIVE;
     }
 
+    /** 사용자 상태 변경 후 이 인스턴스의 판정 결과를 제거한다. null 식별자는 무시한다. */
     public void evict(Long userId) {
         if (userId != null) {
             cache.remove(userId);
         }
     }
 
+    /** 만료 시각에 도달한 로컬 항목을 제거한다. 인증 조회 자체도 만료 여부를 검사하므로 청소 주기가 허용 기간을 늘리지 않는다. */
     @Scheduled(
             fixedDelayString = "${user.access-status.cache-cleanup-delay:PT1M}",
             initialDelayString = "${user.access-status.cache-cleanup-initial-delay:PT1M}"
@@ -71,6 +79,7 @@ public class UserAccessStatusService {
     private record CacheEntry(boolean allowed, Instant expiresAt) {
     }
 
+    /** 임시 정지 종료까지 남은 시간과 10초 중 짧은 값을 선택해 정지 종료 후 불필요한 거절을 줄인다. */
     private Instant resolveCacheExpiresAt(User user, Instant now, LocalDateTime localNow) {
         if (user == null
                 || !user.isCurrentlyBanned(localNow)
