@@ -44,6 +44,9 @@ class AdminAdRepositoryPostgreSqlIntegrationTest {
             .withUsername("pingdom")
             .withPassword("pingdom");
 
+    /**
+     * 광고 목록의 선택적 필터를 실제 PostgreSQL에서 실행하도록 PostGIS 컨테이너 접속 정보를 등록한다.
+     */
     @DynamicPropertySource
     static void databaseProperties(DynamicPropertyRegistry registry) {
         registry.add("spring.datasource.url", postgres::getJdbcUrl);
@@ -55,13 +58,19 @@ class AdminAdRepositoryPostgreSqlIntegrationTest {
     @Autowired
     private AdminAdRepository adminAdRepository;
 
+    /**
+     * 광고 기간·노출 상태 필터 결과가 이전 행의 영향을 받지 않도록 테이블을 비운다.
+     */
     @BeforeEach
     void cleanDatabase() {
         adminAdRepository.deleteAllInBatch();
     }
 
+    /**
+     * 필터가 없거나 시작일 하한·상한만 지정한 경우와 진행 중 상태 필터의 광고 결과를 PostgreSQL에서 검증한다.
+     */
     @Test
-    void listQuerySupportsAbsentAndPartialOptionalFiltersOnPostgreSql() {
+    void filtersAdsByOptionalCriteria() {
         adminAdRepository.saveAndFlush(ad("종료된 광고", NOW.minusDays(10), NOW.minusDays(3)));
         adminAdRepository.saveAndFlush(ad("진행 중인 광고", NOW.minusDays(2), NOW.plusDays(3)));
 
@@ -82,6 +91,9 @@ class AdminAdRepositoryPostgreSqlIntegrationTest {
                 .containsExactly("진행 중인 광고");
     }
 
+    /**
+     * 선택적 키워드·시작 기간·노출 상태와 고정 현재 시각을 전달해 최신 생성 시각·ID 순으로 광고를 조회한다.
+     */
     private Page<AdminAd> find(
             boolean hasKeyword,
             String keyword,
@@ -104,6 +116,9 @@ class AdminAdRepositoryPostgreSqlIntegrationTest {
         );
     }
 
+    /**
+     * 지정 제목과 시작·종료 시각으로 광고를 만들어 종료된 광고와 진행 중 광고를 구분한다.
+     */
     private AdminAd ad(String title, LocalDateTime startAt, LocalDateTime endAt) {
         return AdminAd.builder()
                 .title(title)
