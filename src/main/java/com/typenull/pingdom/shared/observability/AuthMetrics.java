@@ -5,6 +5,10 @@ import io.micrometer.core.instrument.MeterRegistry;
 import io.micrometer.core.instrument.Tags;
 import org.springframework.stereotype.Component;
 
+/**
+ * 인증 실패의 코드·HTTP 상태·발생 위치와 refresh 성공·실패를 카운터로 기록한다.
+ * 문자열 태그는 공백만 unknown으로 바꾸므로 호출자는 제한된 값만 전달해야 한다.
+ */
 @Component
 public class AuthMetrics {
 
