@@ -31,6 +31,9 @@ class MapPlaceServiceTest {
             mock(MapBookmarkTrendEventRepository.class);
     private MapPlaceService mapPlaceService;
 
+    /**
+     * 장소·소유권·북마크·추천 집계 저장소의 호출 순서를 모의로 관찰할 서비스를 준비합니다.
+     */
     @BeforeEach
     void setUp() {
         mapPlaceService = new MapPlaceService(
@@ -42,8 +45,11 @@ class MapPlaceServiceTest {
         );
     }
 
+    /**
+     * 소유자의 삭제에서 북마크 추세·북마크·장소·추천 스냅샷 순으로 정리하는지 확인합니다.
+     */
     @Test
-    void deletePlaceDeletesBookmarkDataBeforeDeletingOwnedPlace() {
+    void deletesBookmarkBeforeOwnedPlace() {
         MapPlace place = MapPlace.builder()
                 .id(10L)
                 .name("즐겨찾기 연결 장소")
@@ -69,8 +75,11 @@ class MapPlaceServiceTest {
         inOrder.verify(placeRecommendationSnapshotService).delete(10L);
     }
 
+    /**
+     * 소유권이 없으면 전용 오류로 거절하고 북마크·장소 삭제를 호출하지 않는지 확인합니다.
+     */
     @Test
-    void deletePlaceDoesNotDeleteBookmarkDataWhenRequesterDoesNotOwnPlace() {
+    void preservesPlaceForNonOwner() {
         MapPlace place = MapPlace.builder()
                 .id(10L)
                 .name("다른 사장님 장소")

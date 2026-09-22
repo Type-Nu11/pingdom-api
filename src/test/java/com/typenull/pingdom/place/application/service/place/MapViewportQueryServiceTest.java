@@ -31,8 +31,11 @@ class MapViewportQueryServiceTest {
     @InjectMocks
     private MapViewportQueryService service;
 
+    /**
+     * zoom 13에서는 클러스터만 조회하고 마커 목록은 비우며 잘림 표시가 없는지 확인합니다.
+     */
     @Test
-    void 낮은_zoom에서는_cluster를_조회한다() {
+    void loadsClustersAtLowZoom() {
         MapClusterItem cluster = new MapClusterItem("10:20", 35.18, 128.10, 12);
         when(repository.findClusters(eq(128.0), eq(35.1), eq(128.2), eq(35.3), anyDouble(), eq(501)))
                 .thenReturn(List.of(cluster));
@@ -46,8 +49,11 @@ class MapViewportQueryServiceTest {
         verify(repository, never()).findMarkers(anyDouble(), anyDouble(), anyDouble(), anyDouble(), eq(501));
     }
 
+    /**
+     * zoom 14에서 501개 조회 결과를 마커 500개와 truncated=true로 반환하고 클러스터 조회를 생략하는지 확인합니다.
+     */
     @Test
-    void 높은_zoom에서는_marker를_최대_500개까지_반환한다() {
+    void capsHighZoomMarkers() {
         List<MapMarkerItem> markers = new ArrayList<>();
         for (int index = 0; index < 501; index++) {
             markers.add(new MapMarkerItem(index + 1L, "장소", "카페", null, 35.18, 128.10, 0));
@@ -65,8 +71,11 @@ class MapViewportQueryServiceTest {
         );
     }
 
+    /**
+     * 서쪽 경도가 동쪽보다 큰 요청은 검색 조건 오류로 거절하며 저장소를 조회하지 않는지 확인합니다.
+     */
     @Test
-    void 잘못된_viewport는_조회하지_않고_예외를_반환한다() {
+    void rejectsInvalidViewport() {
         assertThatThrownBy(() -> service.find(128.2, 35.1, 128.0, 35.3, 14))
                 .isInstanceOfSatisfying(MapException.class, exception ->
                         assertThat(exception.getErrorCode())
