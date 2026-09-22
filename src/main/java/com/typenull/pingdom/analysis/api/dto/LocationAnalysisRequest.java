@@ -11,7 +11,10 @@ import java.util.Collections;
 import java.util.LinkedHashMap;
 import java.util.Map;
 
-/** 프론트가 전달하는 입지 분석 조건이다. 지역은 필수이며 나머지 조건은 AI 입력으로 사용한다. */
+/**
+ * 지역·업종·이메일과 개인정보 동의를 검증하는 보고서 요청입니다.
+ * 정의되지 않은 JSON 항목도 추가 분석 조건으로 보관하며, AI 조건 맵에서는 전용 이메일·동의 필드를 제외합니다.
+ */
 public class LocationAnalysisRequest {
 
     @Schema(description = "희망 지역", example = "대구광역시 북구 서변동", requiredMode = Schema.RequiredMode.REQUIRED)
