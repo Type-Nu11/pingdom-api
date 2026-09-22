@@ -2,20 +2,25 @@ package com.typenull.pingdom.shared.config.swagger;
 
 import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
-import io.swagger.v3.oas.annotations.tags.Tag;
+import com.typenull.pingdom.shared.config.swagger.ApiAudience.Group;
 import io.swagger.v3.core.converter.ModelConverters;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.models.OpenAPI;
-import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.ComposedSchema;
+import io.swagger.v3.oas.models.media.Content;
 import io.swagger.v3.oas.models.media.MediaType;
 import io.swagger.v3.oas.models.media.Schema;
 import io.swagger.v3.oas.models.responses.ApiResponse;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
-import java.lang.reflect.Method;
+import java.util.LinkedHashMap;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Map;
-import org.springdoc.core.models.GroupedOpenApi;
+import java.util.Set;
 import org.springdoc.core.customizers.GlobalOpenApiCustomizer;
+import org.springdoc.core.customizers.GlobalOperationCustomizer;
 import org.springdoc.core.customizers.OpenApiCustomizer;
+import org.springdoc.core.models.GroupedOpenApi;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -28,32 +33,32 @@ public class SpringdocGroupsConfig {
             @Qualifier("placeExplorationNullableReferenceCustomizer")
             OpenApiCustomizer placeExplorationNullableReferenceCustomizer
     ) {
-        return apiGroup("App")
+        return apiGroup(Group.APP)
                 .addOpenApiCustomizer(placeExplorationNullableReferenceCustomizer)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi adminApi() {
-        return apiGroup("Admin")
+        return apiGroup(Group.ADMIN)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi merchantApi() {
-        return apiGroup("Merchant")
+        return apiGroup(Group.MERCHANT)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi commonApi() {
-        return apiGroup("Common")
+        return apiGroup(Group.COMMON)
                 .build();
     }
 
     @Bean
     public GroupedOpenApi consultingApi() {
-        return apiGroup("Consulting")
+        return apiGroup(Group.CONSULTING)
                 .build();
     }
 
@@ -62,19 +67,62 @@ public class SpringdocGroupsConfig {
         return this::applyAuthorizationContract;
     }
 
-    private GroupedOpenApi.Builder apiGroup(String tagName) {
+    private GroupedOpenApi.Builder apiGroup(Group audience) {
         return GroupedOpenApi.builder()
-                .group(tagName.toLowerCase())
-                .addOpenApiMethodFilter(method -> hasTag(method, tagName));
+                .group(audience.documentName())
+                .addOpenApiMethodFilter(method -> Group.resolve(method) == audience)
+                .addOpenApiCustomizer(api -> applyDisplayTags(api, audience));
     }
 
-    private boolean hasTag(Method method, String tagName) {
-        Tag methodTag = method.getAnnotation(Tag.class);
-        if (methodTag != null) {
-            return tagName.equals(methodTag.name());
+    @Bean
+    public GlobalOperationCustomizer functionalTagCustomizer() {
+        return (operation, handlerMethod) -> {
+            if (Group.resolve(handlerMethod.getMethod()) == null) {
+                return operation;
+            }
+            // Springdoc가 합친 클래스/메서드 태그 대신 가장 구체적인 분류 하나만 표시한다.
+            Tag tag = handlerMethod.getMethodAnnotation(Tag.class);
+            if (tag == null) {
+                tag = handlerMethod.getBeanType().getAnnotation(Tag.class);
+            }
+            if (tag == null || tag.name().isBlank()) {
+                throw new IllegalStateException("기능 분류가 없는 API: " + handlerMethod);
+            }
+            operation.setTags(List.of(tag.name()));
+            return operation;
+        };
+    }
+
+    @Bean
+    public GlobalOpenApiCustomizer functionalTagDescriptionsCustomizer() {
+        return api -> applyDisplayTags(api, null);
+    }
+
+    private void applyDisplayTags(OpenAPI api, Group audience) {
+        if (api.getPaths() == null) {
+            return;
         }
-        Tag tag = method.getDeclaringClass().getAnnotation(Tag.class);
-        return tag != null && tagName.equals(tag.name());
+        Set<String> used = new LinkedHashSet<>();
+        api.getPaths().values().forEach(path -> path.readOperations().forEach(operation -> {
+            if (operation.getTags() != null) {
+                used.addAll(operation.getTags());
+            }
+        }));
+        Map<String, io.swagger.v3.oas.models.tags.Tag> tags = new LinkedHashMap<>();
+        List<SwaggerTagCatalog.Section> sections = audience == null
+                ? SwaggerTagCatalog.SECTIONS : SwaggerTagCatalog.sections(audience);
+        sections.stream().filter(section -> used.contains(section.name())).forEach(section -> {
+            io.swagger.v3.oas.models.tags.Tag tag = tags.computeIfAbsent(section.name(),
+                    name -> new io.swagger.v3.oas.models.tags.Tag().name(name));
+            // 전체 문서에서는 여러 소속이 공유하는 기능명의 설명을 함께 보존한다.
+            tag.setDescription(tag.getDescription() == null ? section.description()
+                    : tag.getDescription() + " / " + section.description());
+        });
+        if (api.getTags() != null) {
+            api.getTags().stream().filter(tag -> used.contains(tag.getName()))
+                    .forEach(tag -> tags.putIfAbsent(tag.getName(), tag));
+        }
+        api.setTags(List.copyOf(tags.values()));
     }
 
     /**
