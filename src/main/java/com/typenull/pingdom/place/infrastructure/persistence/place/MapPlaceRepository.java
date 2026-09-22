@@ -41,7 +41,7 @@ public interface MapPlaceRepository extends JpaRepository<MapPlace, Long> {
             SET m.userId = NULL
             WHERE m.userId IN :userIds
             """)
-    // 지정된 사용자들과 장소의 소유자 연결을 해제합니다.
+    // 지정된 사용자들과 장소의 등록자 참조를 해제합니다.
     int clearUserIdByUserIds(@Param("userIds") Collection<Long> userIds);
 
     // Kakao 장소 식별자의 중복 여부를 확인합니다.
