@@ -2,6 +2,10 @@ package com.typenull.pingdom.identity.domain.admin;
 
 import java.util.Set;
 
+/**
+ * 관리자 업무 역할을 세부 권한 집합으로 해석합니다.
+ * SUPER_ADMIN은 내부 빈 집합과 무관하게 모든 권한을 허용하고 전체 권한 목록을 반환합니다.
+ */
 public enum AdminRole {
     SUPER_ADMIN(Set.of()),
     CONTENT_MODERATOR(Set.of(
