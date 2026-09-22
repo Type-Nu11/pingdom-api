@@ -52,6 +52,10 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
+/**
+ * 장소별 capability를 검사한 뒤 영업 일정과 탐색 이미지를 관리합니다.
+ * 등록용 S3 업로드 기록과 장소 미디어를 연결하고 삭제할 객체는 outbox로 전달합니다.
+ */
 @Service
 @RequiredArgsConstructor
 public class MerchantOwnerPlaceManagementService {
@@ -74,6 +78,10 @@ public class MerchantOwnerPlaceManagementService {
         return toDetail(findPlace(placeId));
     }
 
+    /**
+     * 장소 정보 조회 권한과 장소 존재를 확인한 뒤 영업 상태·정규 일정·예외 일정과 현재 영업 여부를 함께 반환합니다.
+     * 현재 영업 여부는 평가기로 계산하며 저장된 운영 상태를 변경하지 않습니다.
+     */
     @Transactional(readOnly = true)
     public MerchantOwnerOperatingResponse getOperating(Long userId, Long placeId) {
         requireCapability(userId, placeId, MerchantPlaceCapability.PLACE_INFO_VIEW);
@@ -92,6 +100,10 @@ public class MerchantOwnerPlaceManagementService {
         );
     }
 
+    /**
+     * 일정 관리 권한과 필수 영업 상태를 확인한 뒤 장소 행을 잠가 운영 상태와 확인 시각을 갱신합니다.
+     * 정보 출처를 점주·OWNER_SUBMITTED로 표시하고 같은 시각으로 평가한 현재 영업 상태를 반환합니다.
+     */
     @Transactional
     public MerchantOwnerOperatingResponse updateOperatingStatus(
             Long userId,
@@ -120,6 +132,10 @@ public class MerchantOwnerPlaceManagementService {
         );
     }
 
+    /**
+     * 일정 관리 권한을 확인하고 장소 행을 잠가 정규·예외 영업 일정을 전체 교체합니다.
+     * 누락된 요청·잘못된 시간·중복 예외 날짜는 거절하며, 반영 후 점주 제출 정보로 표시하고 정렬된 일정을 반환합니다.
+     */
     @Transactional
     public MerchantOwnerOperatingScheduleResponse updateOperatingSchedule(
             Long userId,
@@ -144,6 +160,10 @@ public class MerchantOwnerPlaceManagementService {
         );
     }
 
+    /**
+     * 조회 권한과 장소 존재를 확인해 탐색용 미디어를 표시 순서·ID 순으로 반환합니다.
+     * 장소 이미지 URL과 일치하는 미디어를 대표 ID로 표시하며 일치하는 항목이 없으면 대표 ID는 null입니다.
+     */
     @Transactional(readOnly = true)
     public MerchantOwnerMediaResponse getMedia(Long userId, Long placeId) {
         requireCapability(userId, placeId, MerchantPlaceCapability.PLACE_INFO_VIEW);
@@ -161,6 +181,10 @@ public class MerchantOwnerPlaceManagementService {
         );
     }
 
+    /**
+     * 편집 권한과 장소를 확인하고 지원 확장자·MIME 및 최대 10MiB 크기 조건을 검사해 S3 업로드 URL을 발급합니다.
+     * 발급 키·요청자·장소·만료 시각을 등록용 기록에 저장하고 URL 정보를 반환하며 이 단계에서는 미디어 행을 생성하지 않습니다.
+     */
     @Transactional
     public MerchantOwnerMediaUploadResponse createUploadUrl(
             Long userId,
@@ -189,6 +213,10 @@ public class MerchantOwnerPlaceManagementService {
         );
     }
 
+    /**
+     * 발급한 업로드가 요청자·장소에 속하고 아직 등록되지 않았는지 잠금 상태에서 검사합니다.
+     * S3 HEAD의 크기·MIME을 확인하지만 이미지 바이트를 디코딩하지는 않으며 순서 미지정 시 현재 최댓값 뒤에 추가합니다.
+     */
     @Transactional
     public PlaceMediaItem createMedia(
             Long userId,
@@ -226,6 +254,10 @@ public class MerchantOwnerPlaceManagementService {
         return PlaceMediaItem.from(media);
     }
 
+    /**
+     * 편집 권한과 요청 순서 범위를 확인하고 장소 행을 잠가 지정 탐색 미디어를 새 위치로 옮긴 결과를 반환합니다.
+     * 같은 위치이면 그대로 반환하며, 변경 시 기존 순서를 임시 범위로 이동한 뒤 0부터 재배열해 고유 제약 충돌을 피합니다.
+     */
     @Transactional
     public PlaceMediaItem updateMediaOrder(
             Long userId,
@@ -248,6 +280,7 @@ public class MerchantOwnerPlaceManagementService {
             return PlaceMediaItem.from(media.get(currentIndex));
         }
 
+        // 최종 순서를 덮어쓰기 전에 기존 순서를 겹치지 않는 영역으로 옮겨 순서 고유 제약 충돌을 피합니다.
         int temporaryOffset = temporaryDisplayOrderOffset(media);
         placeMediaRepository.increaseDisplayOrder(placeId, PlaceMediaPurpose.EXPLORATION, temporaryOffset);
 
@@ -260,6 +293,10 @@ public class MerchantOwnerPlaceManagementService {
         return PlaceMediaItem.from(movedMedia);
     }
 
+    /**
+     * 편집 권한을 확인하고 장소 행을 잠근 뒤 그 장소의 탐색 미디어 URL을 대표 이미지로 설정합니다.
+     * 장소나 대상 미디어가 없으면 거절하고, 변경된 대표 ID와 미디어 목록을 반환합니다.
+     */
     @Transactional
     public MerchantOwnerMediaResponse updateRepresentative(
             Long userId,
@@ -273,6 +310,10 @@ public class MerchantOwnerPlaceManagementService {
         return getMedia(userId, placeId);
     }
 
+    /**
+     * 편집 권한을 확인하고 장소 행을 잠가 탐색 미디어를 삭제하며 대표 이미지와 같으면 대표 URL도 비웁니다.
+     * 원본·썸네일 키가 있는 경우 각각 S3 삭제 Outbox를 발행하고, 없는 장소나 미디어는 거절합니다.
+     */
     @Transactional
     public void deleteMedia(Long userId, Long placeId, Long mediaId) {
         requireCapability(userId, placeId, MerchantPlaceCapability.PLACE_INFO_EDIT);
