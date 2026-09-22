@@ -30,6 +30,9 @@ import org.springframework.test.web.servlet.MockMvc;
 import org.springframework.test.web.servlet.MvcResult;
 import org.springframework.transaction.annotation.Transactional;
 
+/**
+ * 관리자 발송 이력의 복합 필터·빈 페이지 및 수신자 해시 비노출 계약을 검증한다.
+ */
 @Tag("integration")
 @SpringBootTest
 @AutoConfigureMockMvc
@@ -51,14 +54,20 @@ class AdminNotificationDeliveryControllerTest {
     @Autowired
     private PasswordEncoder passwordEncoder;
 
+    /**
+     * 발송 이력과 사용자를 비워 필터 및 빈 페이지 결과를 격리한다.
+     */
     @BeforeEach
     void setUp() {
         notificationDeliveryRepository.deleteAllInBatch();
         userRepository.deleteAllInBatch();
     }
 
+    /**
+     * 사용자·채널·상태·알림 유형·기간에 맞는 한 건을 조회하고 수신자 해시가 응답에 노출되지 않는지 확인한다.
+     */
     @Test
-    void listDeliveriesFiltersByUserChannelStatusTypeAndPeriod() throws Exception {
+    void combinedDeliveryFilters() throws Exception {
         String adminAccessToken = createUserAndLogin("deliveryAdmin", UserRole.ADMIN);
         saveDelivery(
                 10L,
@@ -104,8 +113,11 @@ class AdminNotificationDeliveryControllerTest {
                 .andExpect(jsonPath("$.totalCount").value(1));
     }
 
+    /**
+     * 기간 없이 FAILED 이력을 조회하고 일치하지 않는 상태에서는 빈 페이지 메타데이터를 확인한다.
+     */
     @Test
-    void listDeliveriesSupportsStatusFilterWithoutPeriodAndEmptyResult() throws Exception {
+    void statusOnlyDeliveryPages() throws Exception {
         String adminAccessToken = createUserAndLogin("deliveryStatusAdmin", UserRole.ADMIN);
         saveDelivery(
                 10L,
@@ -144,8 +156,11 @@ class AdminNotificationDeliveryControllerTest {
                 .andExpect(jsonPath("$.hasNext").value(false));
     }
 
+    /**
+     * 시작이 종료보다 늦으면 INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD가 반환되는지 확인한다.
+     */
     @Test
-    void listDeliveriesRejectsInvalidPeriod() throws Exception {
+    void reversedDeliveryPeriod() throws Exception {
         String adminAccessToken = createUserAndLogin("deliveryPeriodAdmin", UserRole.ADMIN);
 
         mockMvc.perform(get("/admin/notification-deliveries")
@@ -156,8 +171,11 @@ class AdminNotificationDeliveryControllerTest {
                 .andExpect(jsonPath("$.code").value("INVALID_NOTIFICATION_DELIVERY_FILTER_PERIOD"));
     }
 
+    /**
+     * 일반 사용자 토큰으로 발송 이력 조회 시 403과 ACCESS_DENIED를 확인한다.
+     */
     @Test
-    void listDeliveriesRejectsNonAdminUser() throws Exception {
+    void deliveriesRejectUser() throws Exception {
         String userAccessToken = createUserAndLogin("deliveryNormalUser", UserRole.USER);
 
         mockMvc.perform(get("/admin/notification-deliveries")
@@ -166,6 +184,9 @@ class AdminNotificationDeliveryControllerTest {
                 .andExpect(jsonPath("$.code").value("ACCESS_DENIED"));
     }
 
+    /**
+     * 발송 이력을 생성한 뒤 지정 결과와 1회 시도 정보를 기록한다. RETRY_SCHEDULED일 때만 재시도 플래그를 켠다.
+     */
     private void saveDelivery(
             Long userId,
             NotificationDeliveryChannel channel,
@@ -205,6 +226,9 @@ class AdminNotificationDeliveryControllerTest {
         notificationDeliveryRepository.save(delivery);
     }
 
+    /**
+     * 지정 역할의 사용자를 저장하고 로그인 성공 응답의 접근 토큰을 반환한다.
+     */
     private String createUserAndLogin(String username, UserRole role) throws Exception {
         userRepository.save(User.builder()
                 .username(username)
