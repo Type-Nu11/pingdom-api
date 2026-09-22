@@ -13,6 +13,11 @@ import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
+/**
+ * 장소 전체 집계 스냅샷과 합계를 읽습니다.
+ * 명시적 잠금 메서드는 기존 행에 PESSIMISTIC_READ를 적용하며 없는 행 생성이나 쓰기 직렬화를 뜻하지 않습니다.
+ * 전체 SUM 결과는 행이 없으면 null일 수 있어 서비스가 0으로 보완합니다.
+ */
 public interface PlaceRecommendationSnapshotRepository extends JpaRepository<PlaceRecommendationSnapshot, Long> {
     List<PlaceRecommendationSnapshot> findByPlaceIdIn(Collection<Long> placeIds);
 
