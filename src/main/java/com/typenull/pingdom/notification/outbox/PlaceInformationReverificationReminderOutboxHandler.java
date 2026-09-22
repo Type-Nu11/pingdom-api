@@ -11,6 +11,10 @@ import com.typenull.pingdom.shared.outbox.domain.OutboxEventType;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
+/**
+ * 재확인 기한 리마인드 Outbox에 저장된 장소명과 점주 ID로 FCM을 요청합니다.
+ * 현재 재확인 상태나 기한을 다시 조회하지 않으며, 토큰별 실패 집계에 따라 Outbox 재시도를 요청합니다.
+ */
 @Component
 @RequiredArgsConstructor
 public class PlaceInformationReverificationReminderOutboxHandler implements OutboxEventHandler {
