@@ -38,10 +38,14 @@ import java.util.Arrays;
 import java.util.List;
 import java.util.Objects;
 
+/**
+ * 원본·썸네일을 S3에 먼저 올린 뒤 게시글·장소 집계와 삭제 outbox를 DB 트랜잭션으로 반영합니다.
+ * DB 롤백 시 새 객체 삭제는 best-effort이며 프로세스 종료·보상 실패까지 원자적으로 복구하지 않습니다.
+ * 기존 객체 삭제는 커밋되는 outbox에 위임하므로 API 성공 직후 S3에서 사라진다고 보장하지 않습니다.
+ */
 @Service
 @RequiredArgsConstructor
 @Slf4j
-/** 게시글 이미지의 업로드·교체·삭제와 S3 객체 URL 변환을 조정합니다. */
 public class S3Service {
 
     private final S3ObjectStorage s3ObjectStorage;
@@ -56,7 +60,10 @@ public class S3Service {
     private final S3ObjectDeleteOutboxPublisher s3ObjectDeleteOutboxPublisher;
     private final ImageUploadProcessor imageUploadProcessor;
 
-    // 장소를 확인하고 이미지를 변환·업로드한 뒤 게시글과 장소 집계를 저장합니다.
+    /**
+     * Kakao ID가 있으면 내부 placeId보다 우선해 장소를 결정하고 사용자별 기존 게시글을 확인합니다.
+     * 이미지 업로드 후 별도 DB 트랜잭션에서 게시글·미디어·장소 집계를 저장합니다. 사전 중복 조회 자체는 잠금이 아닙니다.
+     */
     public PostResponse uploadImage(PostUploadRequest request, long userId) {
         Long placeId = resolvePlaceId(request);
 
@@ -297,7 +304,7 @@ public class S3Service {
         return new MapException(MapErrorCode.UPLOAD_ERROR);
     }
 
-    // 실제 트랜잭션 커밋 이후 S3 객체 삭제 이벤트를 발행합니다.
+    // 현재 DB 트랜잭션에서 삭제 요청을 outbox에 저장하며, 실제 S3 삭제는 이후 작업자가 수행합니다.
     private void publishS3Delete(String s3Key, Long mapImageId, String reason) {
         if (!StringUtils.hasText(s3Key)) {
             return;
