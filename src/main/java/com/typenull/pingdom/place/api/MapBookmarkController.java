@@ -27,6 +27,9 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 현재 인증 회원의 북마크 추가·삭제 API입니다. 삭제 경로의 ID는 북마크 ID가 아닌 장소 ID입니다.
+ */
 @RestController
 @RequestMapping("/users/me/bookmarks")
 @RequiredArgsConstructor
