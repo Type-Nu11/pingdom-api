@@ -29,6 +29,10 @@ import org.hibernate.annotations.JdbcTypeCode;
 import org.hibernate.type.SqlTypes;
 import org.locationtech.jts.geom.Point;
 
+/**
+ * 장소의 좌표·탐색 노출·운영 일정·관광 정보와 조회용 집계를 보관합니다.
+ * 회원 등록자와 사업자 소유권은 별도 개념이며 이 엔티티의 setter 성격 메서드가 호출자 권한을 검사하지는 않습니다.
+ */
 @Entity
 @Getter
 @AllArgsConstructor
@@ -249,6 +253,10 @@ public class MapPlace {
                 && touristInformationGuards.contains(TOURIST_INFORMATION_GUARD_ACTIVE);
     }
 
+    /**
+     * 관광 정보와 카테고리를 교체하고 하나라도 정보가 있으면 guard를 함께 유지합니다.
+     * Hibernate가 관리하는 컬렉션은 같은 인스턴스에서 바꾸며 불변 컬렉션만 가변 복사본으로 교체합니다.
+     */
     public void updateTouristInformation(
             String englishName,
             String touristSummary,
@@ -395,6 +403,10 @@ public class MapPlace {
         return List.copyOf(operatingExceptions);
     }
 
+    /**
+     * 정규 영업시간·예외 일정만 전달하는 호환 경로입니다.
+     * 휴게시간은 빈 집합으로 넘기므로 이전 휴게시간도 제거됩니다.
+     */
     public void replaceOperatingSchedule(
             Set<PlaceRegularOperatingHour> regularOperatingHours,
             List<PlaceOperatingException> operatingExceptions
