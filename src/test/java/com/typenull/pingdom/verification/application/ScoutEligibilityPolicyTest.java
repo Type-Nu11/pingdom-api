@@ -28,8 +28,12 @@ class ScoutEligibilityPolicyTest {
             Clock.fixed(Instant.parse("2026-08-05T03:00:00Z"), ZoneOffset.UTC)
     );
 
+    /**
+     * 활성 프로필과 유효 기간의 활동 자격이 있으면 허용한다.
+     * 같은 프로필을 정지한 후에는 자격 기간이 유효해도 거부해야 한다.
+     */
     @Test
-    void requiresBothAnActiveProfileAndCurrentEligibility() {
+    void requireActiveEligibleProfile() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
         profile.activate(9L, NOW);
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(1L, NOW);
@@ -44,8 +48,9 @@ class ScoutEligibilityPolicyTest {
         assertThat(policy.isEligible(1L)).isFalse();
     }
 
+    /** 프로필 저장소가 빈 결과를 반환하면 활동 가능으로 판단하지 않는다. */
     @Test
-    void failsClosedWhenEitherModelIsMissing() {
+    void rejectMissingProfile() {
         when(profileRepository.findById(1L)).thenReturn(Optional.empty());
 
         assertThat(policy.isEligible(1L)).isFalse();

@@ -28,8 +28,9 @@ class ScoutEligibilityPolicyBoundaryTest {
             Clock.fixed(Instant.parse("2026-08-05T03:00:00Z"), ZoneOffset.UTC)
     );
 
+    /** 프로필만 활성이고 활동 자격 행은 없으면 거부한다. */
     @Test
-    void activeProfileWithoutEligibilityFailsClosed() {
+    void rejectMissingEligibility() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
         profile.activate(9L, NOW);
         when(profileRepository.findById(1L)).thenReturn(Optional.of(profile));
@@ -38,8 +39,9 @@ class ScoutEligibilityPolicyBoundaryTest {
         assertThat(policy.isEligible(1L)).isFalse();
     }
 
+    /** 프로필이 활성이어도 이미 EXPIRED로 전환한 활동 자격은 거부한다. */
     @Test
-    void expiredEligibilityIsRejectedEvenWhenProfileRemainsActive() {
+    void rejectExpiredEligibility() {
         ScoutProfile profile = ScoutProfile.pending(1L, "Scout", null, NOW);
         profile.activate(9L, NOW);
         ScoutActivityEligibility eligibility = ScoutActivityEligibility.pending(1L, NOW);
