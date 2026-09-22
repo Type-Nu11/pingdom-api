@@ -33,6 +33,10 @@ public class PrivacyProcessingOutboxPublisher {
         );
     }
 
+    /**
+     * 한 번의 bulk 입력에서 같은 사용자 ID는 한 번만 발행합니다.
+     * 개별 이벤트에는 매번 새 UUID를 부여하므로 별도의 publish 재호출은 새로운 처리 이력으로 기록됩니다.
+     */
     public void publish(PrivacyProcessingBulkEvent event) {
         event.subjectUserIds().stream()
                 .distinct()
