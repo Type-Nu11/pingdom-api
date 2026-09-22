@@ -50,8 +50,8 @@ public class VoiceAiSessionController {
             ProviderEnvelope v1 최종 JSON 1개만 반환합니다. SSE/WebSocket/reconnect cursor는 지원하지 않습니다.
             최종 envelope는 UTF-8 16 KiB 이하이며 id는 requestId와 정확히 일치합니다.
             활성 세션 내 requestId를 대소문자 구분하여 비교합니다. 동일 ID·동일 text(UTF-8 SHA-256)는 저장된 결과를
-            반환하고 다른 text는 409 REPLAY_CONFLICT입니다. 세션 단위로 전송·갱신·종료를 직렬화하므로 진행 중 재요청은
-            선행 트랜잭션 완료 후 재검사합니다. 실패하여 결과가 저장되지 않았다면 재시도에서 provider를 다시 호출합니다.
+            반환하고 다른 text는 409 REPLAY_CONFLICT입니다. 진행 중 재요청은 provider 호출을 중복하지 않고 결과 저장까지
+            잠금 없이 재조회합니다. 갱신·종료도 진행 중 요청 완료 후 반영합니다. 실패하여 결과가 저장되지 않았다면 재시도에서 provider를 다시 호출합니다.
             결과는 세션이 활성인 동안 재사용하며 refresh는 이 기간을 연장합니다. 만료·종료 후에는 replay도 410입니다.
             현재 저장 데이터의 자동 삭제 기간은 설정되어 있지 않습니다. 앱의 epoch/generation 및 256개 ledger는 앱 소유입니다.
             앱의 30초 deadline이나 연결 종료는 서버/provider 취소를 보장하지 않습니다. 서버 처리가 커밋되었다면

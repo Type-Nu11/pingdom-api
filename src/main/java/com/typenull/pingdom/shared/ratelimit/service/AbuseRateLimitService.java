@@ -256,6 +256,22 @@ public class AbuseRateLimitService {
         );
     }
 
+    /** 고비용 입지 보고서 생성을 사용자·IP별 고정 구간으로 제한. */
+    public void checkLocationAnalysisReport(Long userId, String clientIp) {
+        acquireWithLogging(
+                "location-analysis-report",
+                "userId=" + userId + ", ip=" + normalizeIp(clientIp),
+                () -> store.acquire(
+                        DEFAULT_MESSAGE,
+                        List.of(
+                                windowRule("location-analysis-report:user:" + userId, properties.locationAnalysisReportUser()),
+                                windowRule("location-analysis-report:ip:" + normalizeIp(clientIp), properties.locationAnalysisReportIp())
+                        ),
+                        List.of()
+                )
+        );
+    }
+
     private void acquireWithLogging(String action, String subject, Runnable acquireAction) {
         try {
             acquireAction.run();
