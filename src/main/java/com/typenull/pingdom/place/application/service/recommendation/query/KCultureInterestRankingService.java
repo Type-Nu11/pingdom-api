@@ -12,6 +12,10 @@ import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
+/**
+ * OTHER를 제외한 여행 관심사와 후보 카테고리가 일치하면 장소별로 일정 가점을 더합니다.
+ * 여러 관심사가 일치해도 가점은 한 번이며 응답의 적용 관심사는 후보에 대응 카테고리가 존재하는 항목만 담습니다.
+ */
 @Service
 @RequiredArgsConstructor
 class KCultureInterestRankingService {
