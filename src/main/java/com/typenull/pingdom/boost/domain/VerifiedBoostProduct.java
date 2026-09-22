@@ -15,6 +15,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 부스트 상품의 가격·일 단위 기간과 판매 활성 상태를 보관합니다.
+ * 동일 활성/비활성 요청은 갱신 시각도 변경하지 않고 반환하며, 상품 상태 변경은 기존 집행에 전파되지 않습니다.
+ */
 @Entity
 @Getter
 @Table(name = "verified_boost_product")

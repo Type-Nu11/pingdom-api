@@ -15,11 +15,11 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/** 검증된 부스트 상품의 집행 기간과 시점별 유효 상태를 관리합니다. */
 @Entity
 @Getter
 @Table(name = "verified_boost_execution")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
-/** 검증된 부스트 상품의 집행 기간과 시점별 유효 상태를 관리합니다. */
 public class VerifiedBoostExecution {
 
     @Id
@@ -77,6 +77,10 @@ public class VerifiedBoostExecution {
                 && endsAt.isAfter(now);
     }
 
+    /**
+     * ACTIVE 집행의 종료 시각에 도달하면 EXPIRED로 표현하며 저장 상태는 바꾸지 않습니다.
+     * 활성 기간 판정은 시작 포함·종료 제외이므로 종료 시각과 같은 시점에는 중단할 수 없습니다.
+     */
     public VerifiedBoostExecutionStatus effectiveStatusAt(LocalDateTime now) {
         if (status == VerifiedBoostExecutionStatus.ACTIVE && !endsAt.isAfter(now)) {
             return VerifiedBoostExecutionStatus.EXPIRED;
