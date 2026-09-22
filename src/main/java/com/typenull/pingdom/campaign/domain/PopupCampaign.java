@@ -15,6 +15,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * 팝업 캠페인의 기간·브랜드·장소와 DRAFT→PUBLISHED→CLOSED 상태 전이를 보관합니다.
+ * 초안만 수정할 수 있으며, 기간 경과만으로 저장 상태가 자동 변경되지는 않습니다.
+ */
 @Entity
 @Getter
 @Table(name = "popup_campaign")
