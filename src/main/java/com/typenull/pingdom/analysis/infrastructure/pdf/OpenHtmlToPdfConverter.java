@@ -15,6 +15,10 @@ import org.springframework.beans.factory.annotation.Value;
 import org.springframework.core.io.ClassPathResource;
 import org.springframework.stereotype.Component;
 
+/**
+ * XHTML을 메모리 내 PDF 바이트로 변환합니다. 설정 경로, 내장 TTF, 운영체제 경로 순서로 한글 폰트를 찾습니다.
+ * 폰트 준비·등록 실패는 경고 후 렌더링을 계속하므로 한글 표시 품질을 보장하지 않으며, 변환 실패는 도메인 오류로 전달합니다.
+ */
 @Component
 @Slf4j
 public class OpenHtmlToPdfConverter implements HtmlToPdfConverter {
