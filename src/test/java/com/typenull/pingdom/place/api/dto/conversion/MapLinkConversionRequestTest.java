@@ -14,21 +14,24 @@ class MapLinkConversionRequestTest {
 
     private static Validator validator;
 
+    /** 테스트 클래스가 공유할 Bean Validation 검증기를 초기화한다. */
     @BeforeAll
     static void setUpValidator() {
         validator = Validation.buildDefaultValidatorFactory().getValidator();
     }
 
+    /** NAVER provider와 길찾기 유형·요청 ID가 채워진 DTO에 검증 오류가 없는지 확인한다. */
     @Test
-    void NAVER_provider와_필수_입력이_있으면_검증을_통과한다() {
+    void acceptsValidNaverRequest() {
         Set<String> invalidFields = invalidFields(new MapLinkConversionRequest(
                 MapLinkConversionType.DIRECTIONS, "NAVER", "request-1"));
 
         assertThat(invalidFields).isEmpty();
     }
 
+    /** 비어 있는 필수 세 필드를 거부하고 provider 길이 31자가 상한을 넘는지 검증한다. */
     @Test
-    void provider와_linkType과_requestId의_필수값과_길이를_검증한다() {
+    void rejectsMissingConversionFields() {
         Set<String> invalidFields = invalidFields(new MapLinkConversionRequest(
                 null, " ", " "));
         Set<String> longProviderInvalidFields = invalidFields(new MapLinkConversionRequest(
@@ -38,6 +41,7 @@ class MapLinkConversionRequestTest {
         assertThat(longProviderInvalidFields).containsExactly("provider");
     }
 
+    /** 위반 메시지 대신 property path를 모아 DTO 필드별 계약을 비교한다. */
     private Set<String> invalidFields(MapLinkConversionRequest request) {
         return validator.validate(request).stream()
                 .map(violation -> violation.getPropertyPath().toString())
