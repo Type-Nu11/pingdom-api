@@ -30,6 +30,10 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 
+/**
+ * 인증 사용자의 현장 제보 생성·목록·상세 API다.
+ * 활동 가능한 Scout인지와 본인 소유인지의 판단은 서비스에 위임한다.
+ */
 @RestController
 @RequestMapping("/scout-field-reports")
 @RequiredArgsConstructor
