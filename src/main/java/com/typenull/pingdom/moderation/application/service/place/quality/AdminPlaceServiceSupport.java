@@ -33,6 +33,9 @@ public final class AdminPlaceServiceSupport {
         return StringUtils.hasText(value) ? value.trim() : null;
     }
 
+    /**
+     * 위도·경도를 WGS84(SRID 4326) Point의 x=경도, y=위도 순으로 변환합니다. 범위 검증은 호출자 책임입니다.
+     */
     public static Point toPoint(double latitude, double longitude) {
         return WGS84.createPoint(new Coordinate(longitude, latitude));
     }
