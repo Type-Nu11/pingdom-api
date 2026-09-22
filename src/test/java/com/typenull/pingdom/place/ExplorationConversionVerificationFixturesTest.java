@@ -8,8 +8,11 @@ import org.junit.jupiter.params.provider.MethodSource;
 import java.util.stream.Stream;
 
 class ExplorationConversionVerificationFixturesTest {
+    /**
+     * 탐색·전환·검증 fixture 세 개의 순서와 필수 메타데이터를 확인합니다. 실제 전체 API 흐름을 실행하는 검증은 아닙니다.
+     */
     @Test
-    void definesEndToEndExplorationConversionVerificationLoop() {
+    void definesExplorationLoopFixtures() {
         var scenarios = ExplorationConversionVerificationFixtures.scenarios();
 
         assertThat(scenarios).hasSize(3);
@@ -22,6 +25,9 @@ class ExplorationConversionVerificationFixturesTest {
         });
     }
 
+    /**
+     * 각 시나리오의 HTTP 메서드·경로·성공 상태·검증 문구가 유효한 형식인지 확인합니다.
+     */
     @ParameterizedTest(name = "{0}")
     @MethodSource("scenarios")
     void verifiesEachLoopContract(ExplorationConversionVerificationScenario scenario) {
@@ -31,6 +37,9 @@ class ExplorationConversionVerificationFixturesTest {
         assertThat(scenario.assertions()).allSatisfy(assertion -> assertThat(assertion).isNotBlank());
     }
 
+    /**
+     * 공통 시나리오 목록을 파라미터 테스트의 입력 스트림으로 제공합니다.
+     */
     private static Stream<ExplorationConversionVerificationScenario> scenarios() {
         return ExplorationConversionVerificationFixtures.scenarios().stream();
     }
