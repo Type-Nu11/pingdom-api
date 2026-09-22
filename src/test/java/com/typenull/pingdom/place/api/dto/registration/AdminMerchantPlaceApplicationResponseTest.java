@@ -20,8 +20,9 @@ class AdminMerchantPlaceApplicationResponseTest {
 
     private static final LocalDateTime NOW = LocalDateTime.of(2026, 8, 29, 16, 0);
 
+    /** 신규 신청의 위치·주소·설명·연락처·태그와 JSON으로 저장된 월요일 영업시간이 관리자 응답에 보존되는지 확인한다. */
     @Test
-    void returnsStoredNewPlaceFieldsForNewPlaceApplication() throws Exception {
+    void mapsNewPlaceApplication() throws Exception {
         PlaceRegistrationApplication application = newPlaceDraft(Set.of(PlaceRegistrationTag.ENGLISH_MENU_AVAILABLE));
         application.updateContactPhones("+821012345678", "+821098765432");
         application.updateOperatingSchedule(
@@ -61,8 +62,9 @@ class AdminMerchantPlaceApplicationResponseTest {
         ));
     }
 
+    /** 기존 장소 운영권 신청으로 전환하면 신청 유형을 유지하면서 newPlace를 null로 반환하는지 확인한다. */
     @Test
-    void returnsNullNewPlaceForExistingPlaceClaim() {
+    void omitsClaimNewPlaceDetails() {
         PlaceRegistrationApplication application = newPlaceDraft(Set.of());
         application.configureMerchantSubmission(
                 MerchantPlaceApplicationType.EXISTING_PLACE_CLAIM,
@@ -76,18 +78,21 @@ class AdminMerchantPlaceApplicationResponseTest {
         assertThat(response.newPlace()).isNull();
     }
 
+    /** 태그와 영업일을 제공하지 않은 신규 신청은 응답에 빈 컬렉션을 반환하는지 확인한다. */
     @Test
-    void returnsEmptyCollectionsWhenTagsAndOperatingDaysAreNotProvided() {
+    void defaultsMissingApplicationCollections() {
         AdminMerchantPlaceApplicationResponse response = response(newPlaceDraft(Set.of()));
 
         assertThat(response.newPlace().tags()).isEmpty();
         assertThat(response.newPlace().operatingDays()).isEmpty();
     }
 
+    /** 고정 사업자 번호와 빈 첨부 목록으로 관리자 응답 매핑을 실행한다. */
     private AdminMerchantPlaceApplicationResponse response(PlaceRegistrationApplication application) {
         return AdminMerchantPlaceApplicationResponse.from(application, "1234567890", List.of(), objectMapper());
     }
 
+    /** 고정 위치·주소·설명에 전달된 태그를 넣은 신규 신청 초안을 만든다. */
     private PlaceRegistrationApplication newPlaceDraft(Set<PlaceRegistrationTag> tags) {
         return PlaceRegistrationApplication.merchantPlaceDraft(
                 1L,
@@ -104,6 +109,7 @@ class AdminMerchantPlaceApplicationResponseTest {
         );
     }
 
+    /** LocalDate·LocalTime 기반 영업일 JSON을 처리하도록 JavaTimeModule을 등록한다. */
     private ObjectMapper objectMapper() {
         return new ObjectMapper().registerModule(new JavaTimeModule());
     }
