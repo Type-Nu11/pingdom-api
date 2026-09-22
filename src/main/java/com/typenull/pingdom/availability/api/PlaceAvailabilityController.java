@@ -1,5 +1,8 @@
 package com.typenull.pingdom.availability.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.availability.api.dto.AvailabilityResponse;
 import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -11,7 +14,8 @@ import org.springframework.web.bind.annotation.*;
 @RestController
 @RequestMapping("/places/{placeId}/availabilities")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.RESERVATION)
 public class PlaceAvailabilityController {
     private final PlaceAvailabilityService service;
 
