@@ -119,6 +119,9 @@ public class LocationAnalysisReport {
                 operatingHours, email, privacyConsent, publishedDate, analysisBasisDate, htmlContent, pdfContent, now);
     }
 
+    /**
+     * 제목·이메일·수정 시각만 변경합니다. 저장된 PDF와 HTML은 생성 당시 내용을 유지합니다.
+     */
     public void update(String reportName, String email, LocalDateTime now) {
         this.reportName = reportName;
         this.email = email;
