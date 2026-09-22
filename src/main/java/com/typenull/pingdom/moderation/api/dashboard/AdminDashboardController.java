@@ -1,5 +1,8 @@
 package com.typenull.pingdom.moderation.api.dashboard;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.AdminOnly;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardPendingItemsResponse;
 import com.typenull.pingdom.moderation.api.dto.dashboard.AdminDashboardRecentActivitiesResponse;
@@ -24,7 +27,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/admin/dashboard")
 @RequiredArgsConstructor
 @AdminOnly
-@Tag(name = "Admin", description = "관리자 전용 API")
+@ApiAudience(ApiAudience.Group.ADMIN)
+@Tag(name = SwaggerTagCatalog.DASHBOARD)
 public class AdminDashboardController {
 
     private final AdminDashboardQueryService adminDashboardQueryService;
