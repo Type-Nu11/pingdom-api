@@ -23,6 +23,10 @@ public record VisitVerificationSessionResponse(
         @Schema(nullable = true) Long completedCheckInId,
         boolean reviewEligible
 ) {
+    /**
+     * 활성 세션에만 다음 관측 권장 시각을 제공하고 남은 초는 0 아래로 내려가지 않게 한다.
+     * reviewEligible은 세션 COMPLETED 여부를 뜻하며 별도 리뷰 존재 여부까지 조회하지 않는다.
+     */
     public static VisitVerificationSessionResponse from(VisitVerificationSession session,
             VisitVerificationProperties properties) {
         boolean completed = session.getStatus() == VisitVerificationSessionStatus.COMPLETED;
