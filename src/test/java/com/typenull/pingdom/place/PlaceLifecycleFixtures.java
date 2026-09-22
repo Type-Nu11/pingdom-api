@@ -3,9 +3,15 @@ package com.typenull.pingdom.place;
 import java.util.List;
 
 public final class PlaceLifecycleFixtures {
+    /**
+     * 장소 노출·영업·삭제 상태별 계약을 정적으로 제공하며 장소 상태를 저장하는 인스턴스의 생성을 막는다.
+     */
     private PlaceLifecycleFixtures() {
     }
 
+    /**
+     * 노출 숨김·폐업·소유자 삭제·권한 거절·삭제 후 조회의 기대 계약을 시나리오 데이터로 제공합니다.
+     */
     public static List<PlaceLifecycleScenario> scenarios() {
         return List.of(
                 new PlaceLifecycleScenario("hide-place", "PATCH", "/admin/places/101/discovery-status", 200, null,
