@@ -5,14 +5,16 @@ import java.time.LocalDateTime;
 import org.junit.jupiter.api.Test;
 
 class MapLinkConversionEventTest {
+    /** 길찾기 전환을 생성하면 DIRECTIONS 유형과 KAKAO provider가 저장되는지 확인한다. 중복 키 값 자체는 assertion하지 않는다. */
     @Test
-    void createsDirectionsEventWithProviderAndDeduplicationKey() {
+    void createsDirectionsProviderEvent() {
         var event = MapLinkConversionEvent.create(1L, 2L, MapLinkConversionType.DIRECTIONS,
                 "KAKAO", "MAP_LINK:DIRECTIONS:1:2", LocalDateTime.now());
         assertThat(event.getLinkType()).isEqualTo(MapLinkConversionType.DIRECTIONS);
         assertThat(event.getProvider()).isEqualTo("KAKAO");
     }
 
+    /** 장소 식별자가 0인 지도 링크 전환 생성을 IllegalArgumentException으로 거부하는지 확인한다. */
     @Test
     void rejectsInvalidIdentifiers() {
         assertThatThrownBy(() -> MapLinkConversionEvent.create(0L, 2L, MapLinkConversionType.EXTERNAL_MAP,
