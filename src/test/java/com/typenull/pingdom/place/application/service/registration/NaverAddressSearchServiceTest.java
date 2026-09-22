@@ -15,6 +15,7 @@ import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
 
 @ExtendWith(MockitoExtension.class)
+/** Naver Geocoding 주소 후보를 API 응답 DTO로 변환하는 규칙을 검증합니다. */
 class NaverAddressSearchServiceTest {
 
     private final ObjectMapper objectMapper = new ObjectMapper();

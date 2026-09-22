@@ -41,6 +41,10 @@ public class MerchantPlaceApplicationController {
     private final NaverAddressSearchService naverAddressSearchService;
     private final NaverPlaceSearchService naverPlaceSearchService;
 
+    /**
+     * 인증된 신규 장소 신청자가 입력한 도로명 또는 지번 주소를 좌표 후보로 조회.
+     * 장소 신청을 생성하거나 변경하지 않으며, 활성 Merchant 소유 여부와 관계없이 신청 단계에서 사용할 수 있도록 허용.
+     */
     @GetMapping("/naver-address-search")
     @Operation(
             summary = "신규 장소 등록용 네이버 주소 검색",

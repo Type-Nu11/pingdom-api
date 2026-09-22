@@ -16,11 +16,13 @@ import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
 
+/** Naver Geocoding 요청 형식과 외부 오류 변환을 검증합니다. */
 class NaverAddressSearchClientTest {
 
     private RestClient.Builder builder;
     private MockRestServiceServer server;
 
+    /** 실제 Naver API 대신 요청 URL·헤더·응답 상태를 검증할 mock HTTP 서버를 구성합니다. */
     @BeforeEach
     void setUp() {
         builder = RestClient.builder().baseUrl("https://naver.test");
@@ -64,6 +66,7 @@ class NaverAddressSearchClientTest {
         server.verify();
     }
 
+    /** 테스트별 활성 상태와 인증값으로 주소 검색 클라이언트를 생성합니다. */
     private NaverAddressSearchClient client(boolean enabled, String clientId, String clientSecret) {
         return new NaverAddressSearchClient(
                 builder.build(),
@@ -71,6 +74,7 @@ class NaverAddressSearchClientTest {
         );
     }
 
+    /** 외부 호출 실패가 기대한 공통 지도 오류 코드로 변환되는지 검증합니다. */
     private void assertFailure(NaverAddressSearchClient client, MapErrorCode errorCode) {
         assertThatThrownBy(() -> client.search("분당구 불정로 6"))
                 .isInstanceOfSatisfying(MapException.class, exception ->

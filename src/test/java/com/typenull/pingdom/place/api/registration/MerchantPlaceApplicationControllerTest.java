@@ -28,6 +28,7 @@ import org.springframework.web.method.support.HandlerMethodArgumentResolver;
 import org.springframework.web.method.support.ModelAndViewContainer;
 
 @ExtendWith(MockitoExtension.class)
+/** 신규 장소 신청 주소 검색 경로가 조회만 수행하는지 검증합니다. */
 class MerchantPlaceApplicationControllerTest {
 
     @Mock
@@ -41,6 +42,7 @@ class MerchantPlaceApplicationControllerTest {
 
     private MockMvc mockMvc;
 
+    /** CurrentUser resolver를 포함한 독립 컨트롤러 테스트 환경을 구성합니다. */
     @BeforeEach
     void setUp() {
         mockMvc = MockMvcBuilders.standaloneSetup(new MerchantPlaceApplicationController(
@@ -71,12 +73,15 @@ class MerchantPlaceApplicationControllerTest {
         verifyNoInteractions(applicationService, naverPlaceSearchService);
     }
 
+    /** 인증 필터 없이도 신규 신청자의 조회 전용 경로를 검증하기 위한 현재 사용자 resolver입니다. */
     private static class CurrentUserResolver implements HandlerMethodArgumentResolver {
+        /** {@code @CurrentUser} 파라미터만 이 resolver가 처리하도록 제한합니다. */
         @Override
         public boolean supportsParameter(MethodParameter parameter) {
             return parameter.hasParameterAnnotation(CurrentUser.class);
         }
 
+        /** 활성 Merchant 소유 여부와 무관한 신규 신청자 사용자 정보를 반환합니다. */
         @Override
         public Object resolveArgument(
                 MethodParameter parameter,
