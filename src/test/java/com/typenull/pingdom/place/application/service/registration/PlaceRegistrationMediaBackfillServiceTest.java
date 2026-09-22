@@ -25,8 +25,11 @@ class PlaceRegistrationMediaBackfillServiceTest {
             promotionService
     );
 
+    /**
+     * 승격 서비스가 신규 0건·기존 2건을 반환하면 백필 결과가 미처리로 표시되고 건수가 유지되는지 확인합니다.
+     */
     @Test
-    void returnsSkippedWhenAllRepresentativeImagesWereAlreadyPromoted() {
+    void skipsAlreadyPromotedMedia() {
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         MapPlace place = org.mockito.Mockito.mock(MapPlace.class);
         when(application.getStatus()).thenReturn(PlaceRegistrationStatus.COMPLETED);

@@ -31,8 +31,11 @@ class PlaceRegistrationMediaPromotionServiceTest {
             Clock.fixed(Instant.parse("2026-08-27T00:00:00Z"), ZoneOffset.UTC)
     );
 
+    /**
+     * 신분증을 제외한 대표 이미지 두 개를 표시 순서대로 승격하고 첫 이미지와 신청 설명을 장소에 반영하는지 확인합니다.
+     */
     @Test
-    void promotesOnlyActiveRepresentativeImagesInDisplayOrderAndSetsCanonicalImage() {
+    void promotesOrderedRepresentativeImages() {
         MapPlace place = org.mockito.Mockito.mock(MapPlace.class);
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         PlaceRegistrationAttachment second = attachment(12L, 1, "second.webp", "image/webp");
@@ -71,8 +74,11 @@ class PlaceRegistrationMediaPromotionServiceTest {
         assertThat(result.alreadyPromotedCount()).isZero();
     }
 
+    /**
+     * 원본 첨부 ID의 미디어가 이미 있으면 S3 복사와 새 미디어 저장 없이 기존 승격 건수만 증가하는지 확인합니다.
+     */
     @Test
-    void skipsAlreadyPromotedAttachmentToMakeBackfillIdempotent() {
+    void skipsPromotedAttachment() {
         MapPlace place = org.mockito.Mockito.mock(MapPlace.class);
         PlaceRegistrationApplication application = org.mockito.Mockito.mock(PlaceRegistrationApplication.class);
         PlaceRegistrationAttachment attachment = attachment(11L, 0, "first.jpg", "image/jpeg");
@@ -88,6 +94,9 @@ class PlaceRegistrationMediaPromotionServiceTest {
         assertThat(result.alreadyPromotedCount()).isOne();
     }
 
+    /**
+     * ID·표시 순서·MIME을 가진 활성 대표 이미지 모의를 만듭니다.
+     */
     private PlaceRegistrationAttachment attachment(Long id, int displayOrder, String filename, String contentType) {
         PlaceRegistrationAttachment attachment = org.mockito.Mockito.mock(PlaceRegistrationAttachment.class);
         when(attachment.isActive()).thenReturn(true);
