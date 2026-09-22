@@ -1,5 +1,8 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.application.CommunityPlaceViewService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
@@ -19,7 +22,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/community/posts/{postId}/places/{placeId}/view")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.COMMUNITY_POST)
 public class CommunityPlaceViewController {
 
     private final CommunityPlaceViewService communityPlaceViewService;

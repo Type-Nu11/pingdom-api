@@ -1,5 +1,8 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.api.dto.CommunityPostListResponse;
 import com.typenull.pingdom.community.application.CommunityPostQueryService;
 import io.swagger.v3.oas.annotations.Operation;
@@ -20,7 +23,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RestController
 @RequestMapping("/community/categories")
 @RequiredArgsConstructor
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.COMMUNITY_POST)
 public class CommunityPostQueryController {
 
     private final CommunityPostQueryService communityPostQueryService;
