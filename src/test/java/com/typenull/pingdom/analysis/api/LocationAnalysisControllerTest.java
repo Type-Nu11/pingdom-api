@@ -31,8 +31,11 @@ class LocationAnalysisControllerTest {
 
     private static final JwtAuthenticatedUser OWNER = new JwtAuthenticatedUser(1L, "owner");
 
+    /**
+     * 이메일 소유 정책을 통과한 보관 HTML 조회가 200·text/html과 보고서 내용을 반환하는지 검증한다.
+     */
     @Test
-    void exposesArchivedHtmlForPdfDebugging() throws Exception {
+    void returnsArchivedReportHtml() throws Exception {
         LocationAnalysisReportService reportService = mock(LocationAnalysisReportService.class);
         LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
         LocationAnalysisReportAccessPolicy accessPolicy = accessPolicy();
@@ -47,8 +50,11 @@ class LocationAnalysisControllerTest {
                 .andExpect(content().string(org.hamcrest.Matchers.containsString("보고서")));
     }
 
+    /**
+     * 동의와 본인 이메일을 포함한 생성 요청이 200·application/pdf·고정 다운로드 파일명·PDF 바이트를 반환하는지 검증한다.
+     */
     @Test
-    void returnsPdfResponseForAnalysisRequest() throws Exception {
+    void returnsAnalysisPdfAttachment() throws Exception {
         LocationAnalysisReportService reportService = mock(LocationAnalysisReportService.class);
         LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
         LocationAnalysisReportAccessPolicy accessPolicy = accessPolicy();
@@ -74,8 +80,11 @@ class LocationAnalysisControllerTest {
                 .andExpect(content().bytes(new byte[]{'%', 'P', 'D', 'F', '-'}));
     }
 
+    /**
+     * Accept가 application/pdf인 요청도 AI 응답 오류 시 502 JSON과 AI_RESPONSE_INVALID 코드·메시지를 반환하는지 검증한다.
+     */
     @Test
-    void returnsJsonBadGatewayWhenAiResponseIsInvalidForPdfAcceptRequest() throws Exception {
+    void returnsJsonForInvalidPdfAnalysis() throws Exception {
         LocationAnalysisReportService reportService = mock(LocationAnalysisReportService.class);
         LocationAnalysisReportArchiveService archiveService = mock(LocationAnalysisReportArchiveService.class);
         LocationAnalysisReportAccessPolicy accessPolicy = accessPolicy();
@@ -102,6 +111,9 @@ class LocationAnalysisControllerTest {
                         """));
     }
 
+    /**
+     * 고정 사용자 1의 owner@example.com 요청을 허용하는 접근 정책 mock을 제공한다.
+     */
     private LocationAnalysisReportAccessPolicy accessPolicy() {
         LocationAnalysisReportAccessPolicy accessPolicy = mock(LocationAnalysisReportAccessPolicy.class);
         when(accessPolicy.requireOwnedEmail(OWNER.userId(), "owner@example.com"))
@@ -109,17 +121,26 @@ class LocationAnalysisControllerTest {
         return accessPolicy;
     }
 
+    /**
+     * 보고서 생성·보관·접근 정책 대역과 고정 인증 사용자 resolver를 연결한 컨트롤러 MockMvc builder를 제공한다.
+     */
     private StandaloneMockMvcBuilder mockMvcBuilder(
             LocationAnalysisReportService reportService,
             LocationAnalysisReportArchiveService archiveService,
             LocationAnalysisReportAccessPolicy accessPolicy
     ) {
         HandlerMethodArgumentResolver currentUserResolver = new HandlerMethodArgumentResolver() {
+            /**
+             * JwtAuthenticatedUser 타입 인자만 고정 사용자 resolver의 대상으로 선택한다.
+             */
             @Override
             public boolean supportsParameter(org.springframework.core.MethodParameter parameter) {
                 return parameter.getParameterType().equals(JwtAuthenticatedUser.class);
             }
 
+            /**
+             * 실제 인증 절차 대신 OWNER 객체를 반환해 컨트롤러의 응답 처리만 분리한다.
+             */
             @Override
             public Object resolveArgument(
                     org.springframework.core.MethodParameter parameter,
