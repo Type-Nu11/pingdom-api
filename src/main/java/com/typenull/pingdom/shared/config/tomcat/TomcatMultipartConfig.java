@@ -5,6 +5,7 @@ import org.springframework.boot.web.server.WebServerFactoryCustomizer;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 
+/** Tomcat multipart 요청의 part 수를 10개, 각 part 헤더를 512바이트로 제한한다. 본문 파일 크기 제한과 별도다. */
 @Configuration(proxyBeanMethods = false)
 public class TomcatMultipartConfig {
 
