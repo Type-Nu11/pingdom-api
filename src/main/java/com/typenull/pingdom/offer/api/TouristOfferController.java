@@ -1,5 +1,8 @@
 package com.typenull.pingdom.offer.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.offer.api.dto.CouponResponse;
 import com.typenull.pingdom.offer.api.dto.OfferPageResponse;
@@ -28,7 +31,8 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping("/offers")
 @RequiredArgsConstructor
 @SecurityRequirement(name = "bearerAuth")
-@Tag(name = "App", description = "앱 전용 API")
+@ApiAudience(ApiAudience.Group.APP)
+@Tag(name = SwaggerTagCatalog.OFFER)
 public class TouristOfferController {
 
     private final TouristOfferService offerService;
