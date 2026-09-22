@@ -33,6 +33,10 @@ import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.RestController;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
 
+/**
+ * 공개 행사 검색·상세 API에서 입력 offset을 UTC 시각으로 변환합니다.
+ * 파라미터 타입 변환 실패는 행사 검색 조건 오류로 통일하고 행사 노출 판단은 조회 서비스에 위임합니다.
+ */
 @RestController
 @RequestMapping("/events")
 @RequiredArgsConstructor
