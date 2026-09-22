@@ -15,6 +15,10 @@ import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 
+/**
+ * Scout의 장소 현장 제보와 일회성 심사 결과를 보관한다.
+ * 제출은 장소 데이터를 직접 수정하지 않으며 심사 권한과 활동 자격 확인은 서비스가 담당한다.
+ */
 @Entity
 @Getter
 @Table(name = "scout_field_report")
@@ -64,6 +68,10 @@ public class ScoutFieldReport {
     @Column(nullable = false)
     private long version;
 
+    /**
+     * 필수 사용자·장소·유형·본문·시각으로 SUBMITTED 제보를 만든다.
+     * 본문은 공백 제거 후 필수이고 선택 증빙 URL은 빈 값이면 null이다.
+     */
     public static ScoutFieldReport submit(
             Long scoutUserId,
             Long placeId,
@@ -84,6 +92,10 @@ public class ScoutFieldReport {
         return report;
     }
 
+    /**
+     * 미심사 제보만 승인 또는 거절할 수 있으며 거절에는 비어 있지 않은 사유가 필요하다.
+     * 심사자와 심사 시각을 기록하되 이 메서드 자체는 관리자 권한을 검사하지 않는다.
+     */
     public void review(
             Long adminUserId,
             ScoutFieldReportStatus decision,
@@ -109,6 +121,7 @@ public class ScoutFieldReport {
         updatedAt = now;
     }
 
+    /** 정규화 후 비어 있는 필수 본문을 인자 오류로 거부한다. */
     static String requireText(String value, String name) {
         String normalized = normalize(value);
         if (normalized == null) {
@@ -117,6 +130,7 @@ public class ScoutFieldReport {
         return normalized;
     }
 
+    /** 선택 문자열의 앞뒤 공백을 제거하고 빈 값은 null로 통일한다. */
     static String normalize(String value) {
         if (value == null) {
             return null;
