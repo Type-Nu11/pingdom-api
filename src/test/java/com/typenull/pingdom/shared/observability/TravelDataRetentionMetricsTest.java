@@ -7,6 +7,9 @@ import org.junit.jupiter.api.Test;
 
 class TravelDataRetentionMetricsTest {
 
+    /**
+     * 정리 성공·실패 횟수와 실패 예외 클래스 태그를 기록하고 삭제 누적 수가 3인지 검증한다.
+     */
     @Test
     void recordsCleanupSuccessAndFailure() {
         SimpleMeterRegistry meterRegistry = new SimpleMeterRegistry();
