@@ -19,8 +19,9 @@ import org.springframework.data.domain.Pageable;
 
 class PlaceAdministrativeRegionBackfillRunnerTest {
 
+    /** 지역 코드 누락 조회에 첫 페이지·설정 크기 2를 전달하고 반환된 장소 ID의 지역 동기화를 요청하는지 확인한다. */
     @Test
-    void regionCode가_없는_장소만_설정된_batchSize만큼_조회한다() {
+    void requestsConfiguredBackfillBatch() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceAdministrativeRegionService regionService = mock(PlaceAdministrativeRegionService.class);
         MapPlace place = place(10L);
@@ -38,8 +39,9 @@ class PlaceAdministrativeRegionBackfillRunnerTest {
         verify(regionService).synchronizeByIdIfConfigured(10L);
     }
 
+    /** 첫 장소 지역 조회가 도메인 오류를 내도 다음 장소의 동기화를 계속 호출하는지 확인한다. */
     @Test
-    void 한_장소의_지역_조회가_실패해도_다음_장소를_계속_처리한다() {
+    void continuesAfterRegionBackfillFailure() {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceAdministrativeRegionService regionService = mock(PlaceAdministrativeRegionService.class);
         MapPlace failedPlace = place(10L);
@@ -56,6 +58,7 @@ class PlaceAdministrativeRegionBackfillRunnerTest {
         verify(regionService).synchronizeByIdIfConfigured(11L);
     }
 
+    /** 활성화된 backfill 설정과 전달된 배치 크기·서비스 대역을 묶어 시작 runner를 만든다. */
     private PlaceAdministrativeRegionBackfillRunner runner(
             int batchSize,
             MapPlaceRepository placeRepository,
@@ -68,6 +71,7 @@ class PlaceAdministrativeRegionBackfillRunnerTest {
         );
     }
 
+    /** backfill이 읽는 장소 식별자만 고정한 mock을 만든다. */
     private MapPlace place(long id) {
         MapPlace place = mock(MapPlace.class);
         when(place.getId()).thenReturn(id);
