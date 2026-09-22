@@ -33,11 +33,11 @@ import com.typenull.pingdom.identity.infrastructure.oauth.CustomOidcUserService;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2FailureHandler;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2SuccessHandler;
 
+/** OAuth2 로그인 세션과 stateless API JWT 체인을 경로·순서로 분리해 인증 및 오류 처리기를 조립한다. */
 @Configuration
 @EnableWebSecurity
 @EnableMethodSecurity
 @Order(Ordered.HIGHEST_PRECEDENCE)
-/** OAuth2와 API JWT 보안 체인을 분리하고 공통 인증·인가·예외 처리 구성을 조립합니다. */
 public class SecurityConfig {
 
     private static final RequestMatcher OAUTH2_ENDPOINTS = new OrRequestMatcher(
@@ -45,6 +45,7 @@ public class SecurityConfig {
             new AntPathRequestMatcher("/login/oauth2/**")
     );
 
+    /** OAuth2 시작·콜백 경로를 우선 처리하고 세션의 authorization request를 이용해 로그인 상태를 연결한다. */
     @Bean
     @Order(1)
     public SecurityFilterChain oauth2SecurityFilterChain(
@@ -78,6 +79,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /** 나머지 API에 stateless 세션 정책과 JWT 필터를 적용한다. 인증 실패와 권한 부족은 공통 JSON 응답기로 전달한다. */
     @Bean
     @Order(2)
     public SecurityFilterChain apiSecurityFilterChain(
@@ -103,6 +105,7 @@ public class SecurityConfig {
         return http.build();
     }
 
+    /** OAuth2 authorization request를 HTTP 세션에 보관한다. API 체인의 stateless 정책과 별도 경로에서 사용한다. */
     @Bean
     public AuthorizationRequestRepository<OAuth2AuthorizationRequest> authorizationRequestRepository() {
         return new HttpSessionOAuth2AuthorizationRequestRepository();
@@ -113,6 +116,7 @@ public class SecurityConfig {
         return new BCryptPasswordEncoder();
     }
 
+    /** 설정된 Origin에 credential을 허용하고 요청 추적 ID를 브라우저에 노출한다. 허용 헤더는 지정된 세 종류로 제한한다. */
     @Bean
     public CorsConfigurationSource corsConfigurationSource(CorsProperties corsProperties) {
         CorsConfiguration configuration = new CorsConfiguration();
