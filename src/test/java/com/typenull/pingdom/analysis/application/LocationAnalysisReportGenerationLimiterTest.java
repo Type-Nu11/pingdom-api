@@ -11,8 +11,10 @@ import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
 import java.util.concurrent.TimeUnit;
+import java.util.concurrent.Semaphore;
 import java.util.concurrent.atomic.AtomicBoolean;
 import org.junit.jupiter.api.Test;
+import org.springframework.test.util.ReflectionTestUtils;
 
 class LocationAnalysisReportGenerationLimiterTest {
 
@@ -31,22 +33,34 @@ class LocationAnalysisReportGenerationLimiterTest {
                 await(releaseFirst);
                 return "first";
             }));
-            assertTrue(firstStarted.await(1, TimeUnit.SECONDS));
+            try {
+                assertTrue(firstStarted.await(5, TimeUnit.SECONDS));
 
-            var second = executor.submit(() -> limiter.execute(() -> {
-                secondStarted.countDown();
-                return "second";
-            }));
-            assertThrows(RateLimitException.class, () -> limiter.execute(() -> {
-                thirdStarted.set(true);
-                return "third";
-            }));
-            assertFalse(thirdStarted.get());
+                var second = executor.submit(() -> limiter.execute(() -> {
+                    secondStarted.countDown();
+                    return "second";
+                }));
+                // submit 완료는 admission 획득을 보장하지 않으므로 실행 슬롯 대기 상태까지 확인한다.
+                Semaphore execution = (Semaphore) ReflectionTestUtils.getField(limiter, "execution");
+                long deadline = System.nanoTime() + TimeUnit.SECONDS.toNanos(5);
+                while (!execution.hasQueuedThreads() && System.nanoTime() < deadline) {
+                    Thread.sleep(10);
+                }
+                assertTrue(execution.hasQueuedThreads(), "두 번째 요청이 실행 슬롯을 기다려야 합니다.");
+                assertThrows(RateLimitException.class, () -> limiter.execute(() -> {
+                    thirdStarted.set(true);
+                    return "third";
+                }));
+                assertFalse(thirdStarted.get());
 
-            releaseFirst.countDown();
-            assertEquals("first", first.get(1, TimeUnit.SECONDS));
-            assertTrue(secondStarted.await(1, TimeUnit.SECONDS));
-            assertEquals("second", second.get(1, TimeUnit.SECONDS));
+                releaseFirst.countDown();
+                assertEquals("first", first.get(5, TimeUnit.SECONDS));
+                assertTrue(secondStarted.await(5, TimeUnit.SECONDS));
+                assertEquals("second", second.get(5, TimeUnit.SECONDS));
+            } finally {
+                // 검증 실패 시에도 executor.close() 전에 실행 중인 요청을 해제한다.
+                releaseFirst.countDown();
+            }
         }
     }
 
@@ -69,9 +83,7 @@ class LocationAnalysisReportGenerationLimiterTest {
 
     private void await(CountDownLatch latch) {
         try {
-            if (!latch.await(1, TimeUnit.SECONDS)) {
-                throw new AssertionError("테스트 대기 시간이 초과되었습니다.");
-            }
+            latch.await();
         } catch (InterruptedException exception) {
             Thread.currentThread().interrupt();
             throw new AssertionError(exception);

@@ -243,7 +243,18 @@ jobs:
               exit 1
             fi
 
-            readiness_endpoint="http://127.0.0.1:8080/actuator/health/readiness"
+            # Compose의 실제 host 바인딩을 따라가 사설 IP 지정 배포에서도 readiness를 확인한다.
+            app_binding="$(docker compose port app 8080 2>/dev/null || true)"
+            case "$app_binding" in
+              0.0.0.0:*) app_binding="127.0.0.1:${app_binding##*:}" ;;
+              \[::\]:*) app_binding="[::1]:${app_binding##*:}" ;;
+            esac
+            if [ -z "$app_binding" ]; then
+              echo "App port binding is missing."
+              rollback_app
+              exit 1
+            fi
+            readiness_endpoint="http://$app_binding/actuator/health/readiness"
             attempt=1
             until curl --fail --silent --show-error "$readiness_endpoint"; do
               if [ "$attempt" -ge 37 ]; then

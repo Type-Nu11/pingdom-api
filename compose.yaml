@@ -35,15 +35,17 @@ services:
 
   app:
     image: ${PINGDOM_APP_IMAGE:?PINGDOM_APP_IMAGE is required}
-    # 호스트 리버스 프록시와 배포 readiness probe만 앱 포트에 접근한다.
-    # 전체 인터페이스에 공개하면 TLS·접근 정책을 거치지 않고 애플리케이션에 직접 연결될 수 있다.
+    # 기본은 호스트 프록시 전용. 원격 프록시 연결 시 출발지 접근 제한을 먼저 적용하고 바인딩 주소를 지정한다.
     ports:
-      - '127.0.0.1:8080:8080'
+      - '${PINGDOM_APP_BIND_ADDRESS:-127.0.0.1}:8080:8080'
     env_file:
       - .env
     environment:
       # 배포 Compose는 공유 .env에 남은 개발 프로필을 상속하지 않는다.
       SPRING_PROFILES_ACTIVE: ''
+      PINGDOM_OPENAPI_PUBLIC_ACCESS_ENABLED: ${PINGDOM_OPENAPI_PUBLIC_ACCESS_ENABLED:-false}
+      SPRINGDOC_API_DOCS_ENABLED: ${SPRINGDOC_API_DOCS_ENABLED:-false}
+      SPRINGDOC_SWAGGER_UI_ENABLED: ${SPRINGDOC_SWAGGER_UI_ENABLED:-false}
       FCM_KEY_PATH: /app/fcm-key.json
       DB_URL: jdbc:postgresql://postgres:5432/${POSTGRES_DB:-pingdom}
       DB_USERNAME: ${POSTGRES_USER:-pingdom}
