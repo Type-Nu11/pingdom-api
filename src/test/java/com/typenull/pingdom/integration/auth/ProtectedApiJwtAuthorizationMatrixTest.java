@@ -2,10 +2,12 @@ package com.typenull.pingdom.integration.auth;
 
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
+import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
 import com.typenull.pingdom.identity.domain.User;
+import com.typenull.pingdom.place.infrastructure.persistence.place.MapViewportQueryRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtProperties;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import io.jsonwebtoken.Jwts;
@@ -27,8 +29,10 @@ import org.junit.jupiter.params.provider.MethodSource;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
+import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
 
 /**
  * 보호 API에서 JWT 누락·만료·변조·유형 및 사용자 탈퇴·제재 상태를 구분해 검증.
@@ -47,13 +51,18 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     @Autowired
     private Clock clock;
 
+    // 이 테스트는 JWT 경계를 검증. H2에서 실행할 수 없는 PostGIS 조회만 빈 결과 mock으로 대체하며,
+    // 실제 지도 SQL 검증은 PostgreSQL 테스트와 운영 회귀 확인에서 별도로 수행.
+    @MockBean
+    private MapViewportQueryRepository mapViewportQueryRepository;
+
     /**
      * 각 보호 GET 경로에서 토큰 누락을 JSON 401과 INVALID_TOKEN으로 반환하는지 확인.
      */
     @ParameterizedTest(name = "{0} rejects missing token")
     @MethodSource("protectedGetEndpoints")
     void missingToken(String endpoint) throws Exception {
-        mockMvc.perform(get(endpoint))
+        mockMvc.perform(queryRequest(endpoint))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
@@ -68,7 +77,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
         User user = createUser("expiredUser" + endpointName(endpoint));
         String expiredToken = generateExpiredAccessToken(user);
 
-        mockMvc.perform(get(endpoint)
+        mockMvc.perform(queryRequest(endpoint)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + expiredToken))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -84,7 +93,7 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
         User user = createUser("tamperedUser" + endpointName(endpoint));
         String accessToken = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
 
-        mockMvc.perform(get(endpoint)
+        mockMvc.perform(queryRequest(endpoint)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + tamper(accessToken)))
                 .andExpect(status().isUnauthorized())
                 .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
@@ -196,26 +205,54 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     }
 
     /**
-     * 장소 목록·정보 제보·내 정보의 공통 인증 경계를 확인할 GET 경로를 제공.
+     * 앱 조회 경로의 공통 JWT 인증 경계를 확인. 부가 디바이스 서명 헤더는 전송하지 않음.
      */
     private static Stream<String> protectedGetEndpoints() {
-        return Stream.of("/places", "/places/information-reports", "/users/me");
+        return Stream.of("/places", "/places/information-reports", "/users/me",
+                "/users/me/bookmarks", "/places/map", "/reservations");
+    }
+
+    /** 지도는 유효한 viewport를, 목록은 페이지 조건을 전달해 인증 이후 입력 오류와 구분. */
+    private MockHttpServletRequestBuilder queryRequest(String endpoint) {
+        MockHttpServletRequestBuilder request = get(endpoint);
+        if ("/places/map".equals(endpoint)) {
+            return request.param("west", "128.0").param("south", "35.0")
+                    .param("east", "129.0").param("north", "36.0").param("zoom", "14");
+        }
+        return request.param("page", "1").param("limit", "1");
+    }
+
+    /** 빈 북마크·예약도 인증 오류 대신 정상 목록 응답으로 반환해야 함. */
+    @Test
+    void emptyPersonalListsWithoutDeviceSignature() throws Exception {
+        User user = createUser("emptyPersonalListsUser");
+        String token = jwtTokenProvider.generateAccessToken(user.getId(), user.getUsername(), user.getRole().name());
+        mockMvc.perform(queryRequest("/users/me/bookmarks").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.places").isEmpty())
+                .andExpect(jsonPath("$.totalCount").value(0));
+        mockMvc.perform(queryRequest("/reservations").header(HttpHeaders.AUTHORIZATION, "Bearer " + token))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.reservations").isEmpty())
+                .andExpect(jsonPath("$.totalElements").value(0));
     }
 
     /**
      * 접근 토큰을 Bearer 헤더에 넣어 지정 경로의 200 응답을 확인.
      */
     private void assertProtectedGetSucceeds(String endpoint, String accessToken) throws Exception {
-        mockMvc.perform(get(endpoint)
+        mockMvc.perform(queryRequest(endpoint)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
-                .andExpect(status().isOk());
+                .andExpect(status().isOk())
+                .andExpect(content().contentTypeCompatibleWith(MediaType.APPLICATION_JSON))
+                .andExpect(header().doesNotExist(HttpHeaders.LOCATION));
     }
 
     /**
      * 지정 보호 경로에서 401과 INVALID_TOKEN을 함께 확인.
      */
     private void assertInvalidToken(String endpoint, String accessToken) throws Exception {
-        mockMvc.perform(get(endpoint)
+        mockMvc.perform(queryRequest(endpoint)
                         .header(HttpHeaders.AUTHORIZATION, "Bearer " + accessToken))
                 .andExpect(status().isUnauthorized())
                 .andExpect(jsonPath("$.code").value("INVALID_TOKEN"));
