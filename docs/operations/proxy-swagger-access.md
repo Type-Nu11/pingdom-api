@@ -27,6 +27,37 @@ SPRINGDOC_SWAGGER_UI_ENABLED=true
 
 Swagger 공개에는 세 토글이 모두 필요하다. `dev` 프로필은 활성화하지 않는다. 기본 설정과 일반 API 인증은 유지된다. 프록시에서도 Swagger UI/명세와 인증 전 API가 Bearer 검사에 막히지 않아야 한다.
 
+## 장소·예약 경로 리다이렉트 방지
+
+OpenResty에서 `location ^~ /places/` 또는 `location ^~ /reservations/`만 선언하면, slash가 없는 요청을 내부 listen 포트가 포함된 URL로 301 리다이렉트할 수 있다. 외부 도메인으로 유입되는 API는 이 리다이렉트를 만들지 않아야 한다.
+
+slash 경로와 동일한 rate limit, HMAC 검사, upstream 설정을 사용해 exact 경로를 함께 선언한다.
+
+```nginx
+location = /places {
+    limit_req zone=app_ip_limit burst=40 nodelay;
+    limit_conn app_conn_limit 30;
+    access_by_lua_file /src/lua/app_entry.lua;
+    proxy_pass http://127.0.0.1:8080;
+}
+
+location = /reservations {
+    limit_req zone=app_ip_limit burst=40 nodelay;
+    limit_conn app_conn_limit 30;
+    access_by_lua_file /src/lua/app_entry.lua;
+    proxy_pass http://127.0.0.1:8080;
+}
+```
+
+HMAC 검사를 해제하거나 임의의 서명 규칙을 추가하지 않는다. 로그인 후 조회 API의 서명 헤더는 기존 앱-프록시 계약을 유지한 상태에서, 실제 클라이언트 요청으로 검증한다.
+
+## 장소·예약 경로 검증
+
+1. OpenResty 설정 검증 후 reload한다.
+2. 외부 도메인으로 `/places?page=1&limit=1`, `/reservations`를 요청해 `Location: http://...:8081/...`가 응답에 없는지 확인한다.
+3. 서명 헤더가 없는 요청은 리다이렉트가 아닌 기존 프록시 정책의 실패 응답을 반환하는지 확인한다.
+4. 기존 서명 계약을 따르는 로그인 후 요청이 성공하고, Bearer 또는 서명 검증이 필요한 API의 접근 정책이 유지되는지 확인한다.
+
 ## 적용 및 검증
 
 - 변경 전 저장소 커밋, 실행 이미지, Compose와 `.env`의 원본을 권한 제한된 위치에 백업한다. 비밀값을 콘솔이나 이슈에 출력하지 않는다.
