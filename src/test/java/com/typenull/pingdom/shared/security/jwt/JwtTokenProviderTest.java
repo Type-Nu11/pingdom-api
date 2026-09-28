@@ -2,10 +2,15 @@ package com.typenull.pingdom.shared.security.jwt;
 
 import static org.assertj.core.api.Assertions.assertThat;
 
+import io.jsonwebtoken.Jwts;
+import io.jsonwebtoken.security.Keys;
+import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 
 class JwtTokenProviderTest {
+
+    private static final String JWT_SECRET = "test-jwt-secret-key-with-at-least-sixty-four-characters-for-hs512-signing";
 
     private JwtTokenProvider jwtTokenProvider;
 
@@ -15,7 +20,7 @@ class JwtTokenProviderTest {
     @BeforeEach
     void setUp() {
         JwtProperties properties = new JwtProperties(
-                "test-jwt-secret-key-with-at-least-32-characters",
+                JWT_SECRET,
                 3600,
                 1209600
         );
@@ -42,5 +47,22 @@ class JwtTokenProviderTest {
 
         assertThat(jwtTokenProvider.parseAccessToken(refreshToken).status())
                 .isEqualTo(JwtTokenProvider.TokenStatus.INVALID);
+    }
+
+    /**
+     * Gateway가 요구하는 JWT protected header의 typ과 HS512 서명 알고리즘을 access token에 포함하는지 검증.
+     */
+    @Test
+    void generatesAccessTokenWithJwtTypeHeaderAndHs512Algorithm() {
+        String accessToken = jwtTokenProvider.generateAccessToken(1L, "tester", "USER");
+
+        var header = Jwts.parser()
+                .verifyWith(Keys.hmacShaKeyFor(JWT_SECRET.getBytes(StandardCharsets.UTF_8)))
+                .build()
+                .parseSignedClaims(accessToken)
+                .getHeader();
+
+        assertThat(header.getType()).isEqualTo("JWT");
+        assertThat(header.getAlgorithm()).isEqualTo("HS512");
     }
 }

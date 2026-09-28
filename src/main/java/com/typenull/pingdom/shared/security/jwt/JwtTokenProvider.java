@@ -144,11 +144,15 @@ public class JwtTokenProvider {
         Instant expiration = now.plusSeconds(expirationSeconds);
 
         var builder = Jwts.builder()
+                // Gateway의 JWT 검증 규약에 맞춰 protected header의 토큰 타입을 명시.
+                .header()
+                .type("JWT")
+                .and()
                 .subject(String.valueOf(userId))
                 .claim("type", tokenType)
                 .issuedAt(Date.from(now))
                 .expiration(Date.from(expiration))
-                .signWith(secretKey);
+                .signWith(secretKey, Jwts.SIG.HS512);
 
         if (username != null) {
             builder.claim("username", username);
