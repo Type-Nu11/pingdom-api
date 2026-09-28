@@ -30,7 +30,8 @@ import org.springframework.http.ResponseEntity;
         webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT,
         properties = {
                 "server.forward-headers-strategy=native",
-                "server.tomcat.remoteip.internal-proxies=127\\.0\\.0\\.1|::1",
+                // properties 파싱에서 역슬래시가 소실되지 않도록 점을 문자 클래스로 표현.
+                "server.tomcat.remoteip.internal-proxies=127[.]0[.]0[.]1|::1",
                 "server.tomcat.remoteip.remote-ip-header=X-Forwarded-For",
                 "server.tomcat.remoteip.protocol-header=X-Forwarded-Proto"
         }
@@ -60,7 +61,7 @@ class ForwardedHeadersIntegrationTest {
                 .map(RemoteIpValve.class::cast)
                 .findFirst()
                 .orElseThrow();
-        assertEquals("127\\.0\\.0\\.1|::1", remoteIpValve.getInternalProxies());
+        assertEquals("127[.]0[.]0[.]1|::1", remoteIpValve.getInternalProxies());
 
         HttpHeaders headers = new HttpHeaders();
         headers.add("X-Forwarded-For", "203.0.113.250, 127.0.0.1");

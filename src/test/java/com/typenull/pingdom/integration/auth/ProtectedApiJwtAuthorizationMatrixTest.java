@@ -1,5 +1,9 @@
 package com.typenull.pingdom.integration.auth;
 
+import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.Mockito.doReturn;
+
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.header;
@@ -8,6 +12,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapViewportQueryRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceSearchQueryRepository;
 import com.typenull.pingdom.shared.security.jwt.JwtProperties;
 import com.typenull.pingdom.shared.security.jwt.JwtTokenProvider;
 import io.jsonwebtoken.Jwts;
@@ -23,6 +28,7 @@ import java.util.Date;
 import java.util.stream.Stream;
 import javax.crypto.SecretKey;
 import org.junit.jupiter.api.Tag;
+import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.MethodSource;
@@ -30,6 +36,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
+import org.springframework.boot.test.mock.mockito.SpyBean;
+import org.springframework.data.domain.Page;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.request.MockHttpServletRequestBuilder;
@@ -55,6 +63,17 @@ class ProtectedApiJwtAuthorizationMatrixTest extends AuthRegressionIntegrationTe
     // 실제 지도 SQL 검증은 PostgreSQL 테스트와 운영 회귀 확인에서 별도로 수행.
     @MockBean
     private MapViewportQueryRepository mapViewportQueryRepository;
+
+    @SpyBean
+    private PlaceSearchQueryRepository placeSearchQueryRepository;
+
+    /** 인증 검증에서 H2 미지원 공간 검색만 분리하고 북마크 등 나머지 조회는 실제 DB를 사용. */
+    @BeforeEach
+    void isolateSpatialSearch() {
+        doReturn(Page.empty()).when(placeSearchQueryRepository).searchPlaces(
+                any(), any(), any(), any(), any(), anyBoolean(),
+                any(), any(), any(), any(), any());
+    }
 
     /**
      * 각 보호 GET 경로에서 토큰 누락을 JSON 401과 INVALID_TOKEN으로 반환하는지 확인.
