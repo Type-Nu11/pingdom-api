@@ -8,6 +8,12 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum MapErrorCode implements ErrorCode {
+    INVALID_ROUTE_REQUEST(HttpStatus.BAD_REQUEST, "경로 조회 입력값이 올바르지 않습니다."),
+    UNSUPPORTED_ROUTE_MODE(HttpStatus.UNPROCESSABLE_ENTITY, "지원하지 않는 이동수단입니다."),
+    ROUTE_NOT_FOUND(HttpStatus.UNPROCESSABLE_ENTITY, "자동차 경로를 찾을 수 없습니다."),
+    ROUTE_RATE_LIMITED(HttpStatus.TOO_MANY_REQUESTS, "경로 조회 요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
+    ROUTE_PROVIDER_TIMEOUT(HttpStatus.GATEWAY_TIMEOUT, "경로 공급자 응답 시간이 초과되었습니다."),
+    ROUTE_PROVIDER_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "경로 조회 서비스를 일시적으로 사용할 수 없습니다."),
     IMAGE_NOT_FOUND(HttpStatus.NOT_FOUND, "게시글을 찾을 수 없습니다."),
     REPORT_NOT_FOUND(HttpStatus.NOT_FOUND, "신고 내역을 찾을 수 없습니다."),
     ALREADY_REPORTED_IMAGE(HttpStatus.CONFLICT, "같은 게시글은 한 번만 신고할 수 있습니다."),
