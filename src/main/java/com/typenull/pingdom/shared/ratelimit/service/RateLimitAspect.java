@@ -80,6 +80,7 @@ public class RateLimitAspect {
             case CONSULTATION_INTRO -> abuseRateLimitService.checkConsultationIntro(clientIp);
             case LOCATION_ANALYSIS_REPORT ->
                     abuseRateLimitService.checkLocationAnalysisReport(requiredUser(args).userId(), clientIp);
+            case ROUTE_QUERY -> abuseRateLimitService.checkRouteQuery(requiredUser(args).userId(), clientIp);
         }
     }
 

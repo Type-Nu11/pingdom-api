@@ -70,11 +70,33 @@ class AbuseRateLimitServiceTest {
                 new WindowPolicy(2, Duration.ofMinutes(1)),
                 new WindowPolicy(2, Duration.ofHours(1)),
                 new WindowPolicy(100, Duration.ofHours(1)),
+                new WindowPolicy(2, Duration.ofMinutes(1)),
+                new WindowPolicy(3, Duration.ofMinutes(1)),
                 "test:rate-limit:",
                 true
         );
         store = new FakeRateLimitStore(clock);
         abuseRateLimitService = new AbuseRateLimitService(properties, store);
+    }
+
+    @Test
+    void routeLimitIsPerUserAndExpires() {
+        abuseRateLimitService.checkRouteQuery(7L, "203.0.113.1");
+        abuseRateLimitService.checkRouteQuery(7L, "203.0.113.2");
+        assertThrows(RateLimitException.class, () -> abuseRateLimitService.checkRouteQuery(7L, "203.0.113.3"));
+        assertDoesNotThrow(() -> abuseRateLimitService.checkRouteQuery(8L, "203.0.113.1"));
+        clock.advance(Duration.ofMinutes(1));
+        assertDoesNotThrow(() -> abuseRateLimitService.checkRouteQuery(7L, "203.0.113.1"));
+    }
+
+    @Test
+    void routeIpLimitAppliesAcrossUsersAndDoesNotConsumeOtherActions() {
+        for (long id = 1; id <= 3; id++) {
+            abuseRateLimitService.checkRouteQuery(id, "203.0.113.1");
+        }
+        assertThrows(RateLimitException.class, () -> abuseRateLimitService.checkRouteQuery(4L, "203.0.113.1"));
+        assertDoesNotThrow(() -> abuseRateLimitService.checkRouteQuery(4L, "203.0.113.2"));
+        assertDoesNotThrow(() -> abuseRateLimitService.checkLocationAnalysisReport(1L, "203.0.113.1"));
     }
 
     /**

@@ -272,6 +272,15 @@ public class AbuseRateLimitService {
         );
     }
 
+    /** 유료 경로 조회를 사용자·IP별로 제한하며 좌표는 제한 키나 로그에 포함하지 않습니다. */
+    public void checkRouteQuery(Long userId, String clientIp) {
+        acquireWithLogging("route-query", "userId=" + userId,
+                () -> store.acquire(DEFAULT_MESSAGE,
+                        List.of(windowRule("route-query:user:" + userId, properties.routeQueryUser()),
+                                windowRule("route-query:ip:" + normalizeIp(clientIp), properties.routeQueryIp())),
+                        List.of()));
+    }
+
     private void acquireWithLogging(String action, String subject, Runnable acquireAction) {
         try {
             acquireAction.run();
