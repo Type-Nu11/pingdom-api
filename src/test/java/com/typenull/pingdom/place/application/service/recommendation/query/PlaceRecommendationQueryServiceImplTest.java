@@ -355,7 +355,7 @@ class PlaceRecommendationQueryServiceImplTest {
         ), List.of());
         MapPlace openCandidate = createPlace(302L, "open", 35.1810d, 128.1080d);
         openCandidate.replaceOperatingSchedule(Set.of(
-                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(11, 0), LocalTime.of(14, 0))
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(20, 0), LocalTime.of(22, 0))
         ), List.of());
 
         when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
@@ -412,7 +412,7 @@ class PlaceRecommendationQueryServiceImplTest {
         ), List.of());
         MapPlace openCandidate = createPlace(402L, "open", 35.1900d, 128.1170d);
         openCandidate.replaceOperatingSchedule(Set.of(
-                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(11, 0), LocalTime.of(14, 0))
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(20, 0), LocalTime.of(22, 0))
         ), List.of());
 
         when(mapPlaceRecommendationCandidateRepository.findRecommendationCandidatesInBoundingBox(
