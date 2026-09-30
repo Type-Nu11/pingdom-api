@@ -7,7 +7,7 @@ services:
   postgres:
     image: 'postgis/postgis:16-3.4'
     env_file:
-      - .env
+      - ${PINGDOM_ENV_FILE:-.env}
     environment:
       - 'POSTGRES_DB=${POSTGRES_DB}'
       - 'POSTGRES_PASSWORD=${POSTGRES_PASSWORD}'
@@ -39,7 +39,7 @@ services:
     ports:
       - '${PINGDOM_APP_BIND_ADDRESS:-127.0.0.1}:8080:8080'
     env_file:
-      - .env
+      - ${PINGDOM_ENV_FILE:-.env}
     environment:
       # 배포 Compose는 공유 .env에 남은 개발 프로필을 상속하지 않는다.
       SPRING_PROFILES_ACTIVE: ''
