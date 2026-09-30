@@ -5,6 +5,7 @@ import com.typenull.pingdom.availability.api.dto.AvailabilityUpsertRequest;
 import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.AvailabilityStatus;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
+import com.typenull.pingdom.availability.domain.ReservationTerms;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityErrorCode;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
@@ -35,6 +36,25 @@ public class PlaceAvailabilityService {
     private final AvailabilityAccessPolicy accessPolicy;
     private final ReservableProductRepository productRepository;
     private final Clock clock;
+
+    @Transactional
+    public ReservationTerms updateReservationTerms(Long ownerId, Long availabilityId,
+            com.typenull.pingdom.availability.api.dto.ReservationTermsRequest request) {
+        PlaceAvailability slot = repository.findByIdForUpdate(availabilityId)
+                .orElseThrow(() -> new AvailabilityException(AvailabilityErrorCode.AVAILABILITY_NOT_FOUND));
+        LocalDateTime now = LocalDateTime.now(clock);
+        accessPolicy.requireOwnedPlace(ownerId, slot.getPlaceId(), now);
+        if (!slot.getMerchantOwnerUserId().equals(ownerId)) {
+            throw new AvailabilityException(AvailabilityErrorCode.PLACE_NOT_OWNED);
+        }
+        try {
+            ReservationTerms terms = request.toTerms();
+            slot.setReservationTerms(terms, now);
+            return terms;
+        } catch (IllegalArgumentException | java.time.DateTimeException exception) {
+            throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
+        }
+    }
 
     /**
      * 현재 점주의 장소 소유권과 연결 상품의 활성 상태·유형 일치를 확인해 예약 슬롯을 저장·flush하고 상품명을 포함해 반환.

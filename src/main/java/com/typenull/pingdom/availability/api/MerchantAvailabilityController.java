@@ -28,6 +28,13 @@ import org.springframework.web.bind.annotation.*;
 public class MerchantAvailabilityController {
     private final PlaceAvailabilityService service;
 
+    @PutMapping("/{availabilityId}/reservation-terms")
+    @Operation(summary = "예약 가격·취소 조건 설정", description = "가격은 통화의 최소 단위 정수입니다. 추가 비용은 예약당 한 번 적용합니다. 취소 정책은 명시적 취소 불가 또는 기한 내 수수료 0·전액 환불입니다. 기존 예약의 수락 조건은 변경하지 않습니다.")
+    public com.typenull.pingdom.availability.domain.ReservationTerms updateTerms(@PathVariable Long availabilityId,
+            @Valid @RequestBody ReservationTermsRequest request, @CurrentUser JwtAuthenticatedUser user) {
+        return service.updateReservationTerms(user.userId(), availabilityId, request);
+    }
+
     @PostMapping
     @Operation(summary = "예약 가능 시간 등록")
     @ApiResponse(responseCode = "201", description = "예약 가능 시간 등록 성공")
