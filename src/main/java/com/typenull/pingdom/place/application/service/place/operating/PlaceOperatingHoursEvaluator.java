@@ -7,9 +7,12 @@ import com.typenull.pingdom.place.domain.place.operating.PlaceOperatingTimeRange
 import com.typenull.pingdom.place.domain.place.operating.PlaceRegularOperatingHour;
 import java.time.Clock;
 import java.time.DayOfWeek;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.Objects;
 import org.springframework.stereotype.Component;
 
@@ -20,6 +23,8 @@ import org.springframework.stereotype.Component;
 @Component
 public class PlaceOperatingHoursEvaluator {
 
+    private static final ZoneId OPERATING_ZONE = ZoneId.of("Asia/Seoul");
+
     private final Clock clock;
 
     public PlaceOperatingHoursEvaluator(Clock clock) {
@@ -27,17 +32,20 @@ public class PlaceOperatingHoursEvaluator {
     }
 
     public PlaceCurrentOperatingState evaluate(MapPlace place) {
-        return evaluate(place, LocalDateTime.now(clock));
+        return evaluate(place, clock.instant());
     }
 
-    public PlaceCurrentOperatingState evaluate(MapPlace place, LocalDateTime checkedAt) {
+    /** UTC 기준 시점을 한국 영업 일정의 현지 시각으로 변환해 평가합니다. */
+    public PlaceCurrentOperatingState evaluate(MapPlace place, Instant checkedAt) {
         Objects.requireNonNull(place, "place must not be null");
-        LocalDateTime safeCheckedAt = Objects.requireNonNull(checkedAt, "checkedAt must not be null");
+        Instant safeCheckedAt = Objects.requireNonNull(checkedAt, "checkedAt must not be null");
+        LocalDateTime utcCheckedAt = LocalDateTime.ofInstant(safeCheckedAt, ZoneOffset.UTC);
+        LocalDateTime operatingLocalDateTime = LocalDateTime.ofInstant(safeCheckedAt, OPERATING_ZONE);
         if (place.getOperatingStatus() != PlaceOperatingStatus.OPERATING) {
-            return new PlaceCurrentOperatingState(false, safeCheckedAt);
+            return new PlaceCurrentOperatingState(false, utcCheckedAt);
         }
 
-        return new PlaceCurrentOperatingState(isOpenBySchedule(place, safeCheckedAt), safeCheckedAt);
+        return new PlaceCurrentOperatingState(isOpenBySchedule(place, operatingLocalDateTime), utcCheckedAt);
     }
 
     private boolean isOpenBySchedule(MapPlace place, LocalDateTime checkedAt) {

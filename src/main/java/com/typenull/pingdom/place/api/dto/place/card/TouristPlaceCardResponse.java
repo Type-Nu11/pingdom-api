@@ -29,7 +29,11 @@ public record TouristPlaceCardResponse(
         PlaceOperatingStatus operatingStatus,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean currentlyOperating,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "현재 영업 여부를 평가한 UTC 기준 시각. 영업 일정은 Asia/Seoul 기준으로 해석합니다.",
+                example = "2026-09-29T12:24:00",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         LocalDateTime currentlyOperatingCheckedAt,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         String category,

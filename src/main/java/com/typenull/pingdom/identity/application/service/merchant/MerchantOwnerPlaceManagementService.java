@@ -39,6 +39,7 @@ import com.typenull.pingdom.shared.support.S3ObjectDeleteOutboxPublisher;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3ObjectMetadata;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import java.time.Clock;
+import java.time.Instant;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
@@ -115,10 +116,11 @@ public class MerchantOwnerPlaceManagementService {
             throw new MapException(MapErrorCode.PLACE_OPERATING_SCHEDULE_INVALID_REQUEST);
         }
         MapPlace place = findPlaceForUpdate(placeId);
-        LocalDateTime now = LocalDateTime.now(clock);
+        Instant checkedAt = clock.instant();
+        LocalDateTime now = LocalDateTime.ofInstant(checkedAt, clock.getZone());
         place.updateOperatingStatus(request.operatingStatus(), now);
         markOwnerSubmitted(place, now);
-        PlaceCurrentOperatingState current = operatingHoursEvaluator.evaluate(place, now);
+        PlaceCurrentOperatingState current = operatingHoursEvaluator.evaluate(place, checkedAt);
         return new MerchantOwnerOperatingResponse(
                 placeId,
                 place.getOperatingStatus(),
