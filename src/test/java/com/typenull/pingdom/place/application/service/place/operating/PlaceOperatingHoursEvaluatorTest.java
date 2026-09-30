@@ -11,6 +11,7 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
 import java.time.ZoneId;
+import java.time.ZoneOffset;
 import java.util.List;
 import java.util.Set;
 import org.junit.jupiter.api.Test;
@@ -55,6 +56,40 @@ class PlaceOperatingHoursEvaluatorTest {
         assertThat(result.currentlyOperating())
                 .as("정기 영업 종료 시각 이후면 운영 중이 아니어야 한다")
                 .isFalse();
+    }
+
+    /**
+     * UTC 화요일 12시 24분이 서울 화요일 21시 24분으로 변환되어 20시 종료 뒤 닫힘으로 판단되는지 확인.
+     */
+    @Test
+    void convertsUtcClockToSeoulOperatingTime() {
+        PlaceOperatingHoursEvaluator evaluator = new PlaceOperatingHoursEvaluator(Clock.fixed(
+                java.time.Instant.parse("2026-09-29T12:24:00Z"),
+                ZoneOffset.UTC
+        ));
+        MapPlace place = place();
+        place.replaceOperatingSchedule(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(20, 0))
+        ), List.of());
+
+        PlaceCurrentOperatingState result = evaluator.evaluate(place);
+
+        assertThat(result.currentlyOperating()).isFalse();
+        assertThat(result.checkedAt()).isEqualTo(LocalDateTime.of(2026, 9, 29, 12, 24));
+    }
+
+    /** 정규 영업시간은 시작 시각을 포함하고 종료 시각은 제외하는지 확인. */
+    @Test
+    void includesOpeningTimeAndExcludesClosingTime() {
+        MapPlace place = place();
+        place.replaceOperatingSchedule(Set.of(
+                PlaceRegularOperatingHour.of(DayOfWeek.TUESDAY, LocalTime.of(10, 0), LocalTime.of(20, 0))
+        ), List.of());
+
+        assertThat(evaluatorAt(LocalDateTime.of(2026, 7, 21, 10, 0))
+                .evaluate(place).currentlyOperating()).isTrue();
+        assertThat(evaluatorAt(LocalDateTime.of(2026, 7, 21, 20, 0))
+                .evaluate(place).currentlyOperating()).isFalse();
     }
 
     /**
@@ -142,7 +177,7 @@ class PlaceOperatingHoursEvaluatorTest {
      * 주어진 서울 지역 시각에 고정된 평가기를 생성.
      */
     private PlaceOperatingHoursEvaluator evaluatorAt(LocalDateTime now) {
-        return new PlaceOperatingHoursEvaluator(Clock.fixed(now.atZone(SEOUL).toInstant(), SEOUL));
+        return new PlaceOperatingHoursEvaluator(Clock.fixed(now.atZone(SEOUL).toInstant(), ZoneOffset.UTC));
     }
 
     /**

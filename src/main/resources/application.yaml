@@ -280,6 +280,13 @@ abuse:
       limit: ${LOCATION_ANALYSIS_REPORT_IP_LIMIT:20}
       window: ${LOCATION_ANALYSIS_REPORT_IP_WINDOW:PT1H}
 
+    route-query-user:
+      limit: ${ROUTE_QUERY_USER_LIMIT:10}
+      window: ${ROUTE_QUERY_USER_WINDOW:PT1M}
+    route-query-ip:
+      limit: ${ROUTE_QUERY_IP_LIMIT:100}
+      window: ${ROUTE_QUERY_IP_WINDOW:PT1M}
+
 gemini:
   enabled: ${GEMINI_ENABLED:false}
   api-key: ${GEMINI_API_KEY:}
@@ -296,6 +303,15 @@ menu:
     cache-ttl: ${MENU_CURRENCY_EXCHANGE_CACHE_TTL:10m}
 
 place:
+  routes:
+    naver:
+      enabled: ${NAVER_DIRECTIONS_ENABLED:false}
+      client-id: ${NAVER_DIRECTIONS_CLIENT_ID:}
+      client-secret: ${NAVER_DIRECTIONS_CLIENT_SECRET:}
+      base-url: ${NAVER_DIRECTIONS_BASE_URL:https://maps.apigw.ntruss.com}
+      connect-timeout: ${NAVER_DIRECTIONS_CONNECT_TIMEOUT:2s}
+      read-timeout: ${NAVER_DIRECTIONS_READ_TIMEOUT:8s}
+      request-timeout: ${NAVER_DIRECTIONS_REQUEST_TIMEOUT:10s}
   registration:
     naver-search:
       enabled: ${NAVER_PLACE_SEARCH_ENABLED:false}

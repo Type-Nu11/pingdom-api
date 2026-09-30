@@ -15,6 +15,7 @@ public record MerchantOwnerOperatingResponse(
         PlaceOperatingStatus operatingStatus,
         LocalDateTime operatingStatusCheckedAt,
         boolean currentlyOperating,
+        @Schema(description = "현재 영업 여부를 평가한 UTC 기준 시각", example = "2026-09-29T12:24:00")
         LocalDateTime checkedAt,
         List<PlaceRegularOperatingHourResponse> regularHours,
         List<PlaceOperatingExceptionResponse> operatingExceptions,

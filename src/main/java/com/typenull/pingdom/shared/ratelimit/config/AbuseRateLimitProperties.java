@@ -37,6 +37,8 @@ public record AbuseRateLimitProperties(
         @Valid WindowPolicy consultationIntroIp,
         @Valid WindowPolicy locationAnalysisReportUser,
         @Valid WindowPolicy locationAnalysisReportIp,
+        @Valid WindowPolicy routeQueryUser,
+        @Valid WindowPolicy routeQueryIp,
         String redisKeyPrefix,
         Boolean failOpen
 ) {
@@ -70,6 +72,8 @@ public record AbuseRateLimitProperties(
         consultationIntroIp = WindowPolicy.withDefaults(consultationIntroIp, 10, Duration.ofMinutes(1));
         locationAnalysisReportUser = WindowPolicy.withDefaults(locationAnalysisReportUser, 3, Duration.ofHours(1));
         locationAnalysisReportIp = WindowPolicy.withDefaults(locationAnalysisReportIp, 20, Duration.ofHours(1));
+        routeQueryUser = WindowPolicy.withDefaults(routeQueryUser, 10, Duration.ofMinutes(1));
+        routeQueryIp = WindowPolicy.withDefaults(routeQueryIp, 100, Duration.ofMinutes(1));
         if (redisKeyPrefix == null || redisKeyPrefix.isBlank()) {
             redisKeyPrefix = DEFAULT_REDIS_KEY_PREFIX;
         }

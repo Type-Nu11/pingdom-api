@@ -169,13 +169,24 @@ jobs:
     steps:
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
+        env:
+          ENV_FILE_PATH: ${{ secrets.ENV_FILE_PATH }}
         with:
           host: ${{ secrets.HOST }}
           username: ${{ secrets.USERNAME }}
           key: ${{ secrets.KEY }}
+          envs: ENV_FILE_PATH
           script: |
             set -eu
             cd ~/Pingdom_Backend
+
+            deployment_env_file="${ENV_FILE_PATH:-}"
+            if [ -z "$deployment_env_file" ] || [ ! -f "$deployment_env_file" ]; then
+              echo "Deployment environment file is missing."
+              exit 1
+            fi
+
+            export PINGDOM_ENV_FILE="$deployment_env_file"
 
             deployment_env="$HOME/.pingdom-deploy.env"
             if [ -f "$deployment_env" ]; then
@@ -184,7 +195,7 @@ jobs:
               set +a
             fi
 
-            previous_app_container_id="$(docker compose ps -q app 2>/dev/null || true)"
+            previous_app_container_id="$(docker compose --env-file "$deployment_env_file" ps -q app 2>/dev/null || true)"
             previous_image=""
             if [ -n "$previous_app_container_id" ]; then
               previous_image="$(docker inspect --format='{{.Config.Image}}' "$previous_app_container_id")"
@@ -219,17 +230,17 @@ jobs:
 
               echo "Rolling back app to $previous_image"
               export PINGDOM_APP_IMAGE="$previous_image"
-              docker compose up -d --force-recreate app
+              docker compose --env-file "$deployment_env_file" up -d --force-recreate app
               persist_deployment_image "$previous_image"
             }
 
-            docker compose pull app
-            if ! docker compose up -d --force-recreate app; then
+            docker compose --env-file "$deployment_env_file" pull app
+            if ! docker compose --env-file "$deployment_env_file" up -d --force-recreate app; then
               rollback_app
               exit 1
             fi
 
-            app_container_id="$(docker compose ps -q app)"
+            app_container_id="$(docker compose --env-file "$deployment_env_file" ps -q app)"
             if [ -z "$app_container_id" ]; then
               echo "App container was not created."
               rollback_app
@@ -244,7 +255,7 @@ jobs:
             fi
 
             # Compose의 실제 host 바인딩을 따라가 사설 IP 지정 배포에서도 readiness를 확인한다.
-            app_binding="$(docker compose port app 8080 2>/dev/null || true)"
+            app_binding="$(docker compose --env-file "$deployment_env_file" port app 8080 2>/dev/null || true)"
             case "$app_binding" in
               0.0.0.0:*) app_binding="127.0.0.1:${app_binding##*:}" ;;
               \[::\]:*) app_binding="[::1]:${app_binding##*:}" ;;
@@ -259,8 +270,8 @@ jobs:
             until curl --fail --silent --show-error "$readiness_endpoint"; do
               if [ "$attempt" -ge 37 ]; then
                 echo "Readiness probe failed after $attempt attempts: $readiness_endpoint"
-                docker compose ps
-                docker compose logs --tail=100 app
+                docker compose --env-file "$deployment_env_file" ps
+                docker compose --env-file "$deployment_env_file" logs --tail=100 app
                 rollback_app
                 exit 1
               fi
