@@ -82,6 +82,26 @@ class CommunityModerationOpenApiContractTest {
         }
     }
 
+    @Test
+    void documentsPostDetailAuthorCategoryAndCreationTime() throws Exception {
+        JsonNode document = readApiDocs("/v3/api-docs/app");
+        JsonNode properties = document.at("/components/schemas/CommunityPostDetailResponse/properties");
+        for (String field : List.of("postId", "title", "content", "places", "author", "category", "createdAt")) {
+            assertThat(properties.has(field)).as(field).isTrue();
+        }
+        JsonNode author = document.at(properties.path("author").path("$ref").asText().substring(1));
+        assertThat(author.path("properties").size()).isEqualTo(3);
+        for (String field : List.of("authorId", "authorName", "profileImageUrl")) {
+            assertThat(author.path("properties").has(field)).as(field).isTrue();
+        }
+        JsonNode category = document.at(properties.path("category").path("$ref").asText().substring(1));
+        assertThat(category.path("properties").has("categoryId")).isTrue();
+        assertThat(category.path("properties").has("categoryName")).isTrue();
+        assertThat(properties.path("createdAt").path("type").asText()).isEqualTo("string");
+        assertThat(properties.path("createdAt").path("format").asText()).isEqualTo("date-time");
+        assertSuccessResponse(operation(document, "/community/posts/{postId}", "get"), "200", "CommunityPostDetailResponse");
+    }
+
     /**
      * 일반 신고와 관리자 심사 경로가 각 OpenAPI 그룹에 분리되는지 검증.
      * 신고 생성·관리자 목록·상세·수락·반려의 성공 스키마, Bearer 인증, 요청 본문과 상태별 오류 스키마도 확인.

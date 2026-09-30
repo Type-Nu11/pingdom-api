@@ -1,5 +1,6 @@
 package com.typenull.pingdom.community;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
@@ -8,6 +9,7 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentCreateRequest;
 import com.typenull.pingdom.community.api.dto.CommunityPostCreateRequest;
+import com.typenull.pingdom.community.domain.CommunityPost;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPlaceDailyViewRepository;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostCommentRepository;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostLikeRepository;
@@ -29,6 +31,8 @@ import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.servlet.MockMvc;
+import java.nio.charset.StandardCharsets;
+import java.time.LocalDateTime;
 
 @Tag("integration")
 @SpringBootTest
@@ -115,6 +119,70 @@ class CommunityApiFlowIntegrationTest {
         mockMvc.perform(get("/community/posts/{postId}", Long.MAX_VALUE)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(author)))
                 .andExpect(status().isNotFound()).andExpect(jsonPath("$.code").value("POST_NOT_FOUND"));
+    }
+
+    @Test
+    void returnsPostAuthorCategoryAndCreationTime() throws Exception {
+        User author = user("community-detail-author");
+        author.changeProfileImageUrl("https://example.com/profile.png");
+        author = userRepository.saveAndFlush(author);
+        CommunityPost post = postRepository.saveAndFlush(
+                CommunityPost.create("TRAVEL", "제목", "본문", author.getId()));
+        LocalDateTime storedCreatedAt = postRepository.findById(post.getId()).orElseThrow().getCreatedAt();
+
+        String body = mockMvc.perform(get("/community/posts/{postId}", post.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(author)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.postId").value(post.getId()))
+                .andExpect(jsonPath("$.title").value("제목"))
+                .andExpect(jsonPath("$.content").value("본문"))
+                .andExpect(jsonPath("$.places").isEmpty())
+                .andExpect(jsonPath("$.author.authorId").value(author.getId()))
+                .andExpect(jsonPath("$.author.authorName").value(author.getUsername()))
+                .andExpect(jsonPath("$.author.profileImageUrl").value("https://example.com/profile.png"))
+                .andExpect(jsonPath("$.category.categoryId").value("TRAVEL"))
+                .andExpect(jsonPath("$.category.categoryName").value("여행"))
+                .andExpect(jsonPath("$.createdAt").isString())
+                .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
+
+        var document = objectMapper.readTree(body);
+        assertThat(LocalDateTime.parse(document.path("createdAt").asText())).isEqualTo(storedCreatedAt);
+        assertThat(document.path("author").size()).isEqualTo(3);
+        assertThat(document.path("author").has("email")).isFalse();
+        assertThat(document.path("author").has("password")).isFalse();
+    }
+
+    @Test
+    void hidesWithdrawnAuthorInformationInHttpResponse() throws Exception {
+        User reader = userRepository.saveAndFlush(user("community-detail-reader"));
+        User author = user("community-withdrawn-author");
+        author.changeProfileImageUrl("https://example.com/old-profile.png");
+        author = userRepository.saveAndFlush(author);
+        CommunityPost post = postRepository.saveAndFlush(
+                CommunityPost.create("TRAVEL", "제목", "본문", author.getId()));
+        author.withdraw("withdrawn-detail-author", "withdrawn@example.com", "unusable-password", LocalDateTime.now());
+        userRepository.saveAndFlush(author);
+
+        mockMvc.perform(get("/community/posts/{postId}", post.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(reader)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.author.authorId").value(author.getId()))
+                .andExpect(jsonPath("$.author.authorName").value(User.WITHDRAWN_DISPLAY_NAME))
+                .andExpect(jsonPath("$.author.profileImageUrl").value(org.hamcrest.Matchers.nullValue()));
+    }
+
+    @Test
+    void returnsMissingAuthorFallbackInHttpResponse() throws Exception {
+        User reader = userRepository.saveAndFlush(user("community-missing-author-reader"));
+        CommunityPost post = postRepository.saveAndFlush(
+                CommunityPost.create("TRAVEL", "제목", "본문", Long.MAX_VALUE));
+
+        mockMvc.perform(get("/community/posts/{postId}", post.getId())
+                        .header(HttpHeaders.AUTHORIZATION, bearerToken(reader)))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.author.authorId").value(Long.MAX_VALUE))
+                .andExpect(jsonPath("$.author.authorName").value("알 수 없는 사용자"))
+                .andExpect(jsonPath("$.author.profileImageUrl").value(org.hamcrest.Matchers.nullValue()));
     }
 
     /**

@@ -80,7 +80,22 @@ public class CommunityPostQueryService {
                 .map(this::toPlace)
                 .toList();
 
-        return new CommunityPostDetailResponse(post.getId(), post.getTitle(), post.getContent(), places);
+        User author = post.getUserId() == null ? null : userRepository.findById(post.getUserId()).orElse(null);
+        CommunityPostCategory category = CommunityPostCategory.findEnabledById(post.getCategoryId()).orElse(null);
+        return new CommunityPostDetailResponse(post.getId(), post.getTitle(), post.getContent(), places,
+                toAuthor(post.getUserId(), author),
+                category == null ? null : new CommunityPostDetailResponse.Category(category.getId(), category.getDisplayName()),
+                post.getCreatedAt());
+    }
+
+    private CommunityPostDetailResponse.Author toAuthor(Long authorId, User author) {
+        if (author == null) {
+            return new CommunityPostDetailResponse.Author(authorId, "알 수 없는 사용자", null);
+        }
+        if (author.isWithdrawn()) {
+            return new CommunityPostDetailResponse.Author(authorId, User.WITHDRAWN_DISPLAY_NAME, null);
+        }
+        return new CommunityPostDetailResponse.Author(authorId, author.getUsername(), author.getProfileImageUrl());
     }
 
     /**
