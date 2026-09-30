@@ -10,7 +10,11 @@ public record PlaceOperatingNoticeListResponse(
         Long placeId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         boolean currentlyOperating,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(
+                description = "현재 영업 여부와 공지 노출 상태를 평가한 UTC 기준 시각",
+                example = "2026-09-29T12:24:00",
+                requiredMode = Schema.RequiredMode.REQUIRED
+        )
         LocalDateTime checkedAt,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED)
         List<PlaceOperatingNoticeResponse> notices

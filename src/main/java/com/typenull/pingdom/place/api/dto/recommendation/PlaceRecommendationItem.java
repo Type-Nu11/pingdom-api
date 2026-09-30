@@ -29,7 +29,11 @@ public record PlaceRecommendationItem(
         LocalDateTime operatingStatusCheckedAt,
         @Schema(description = "현재 영업 여부. 영업시간 미등록 시 null", nullable = true)
         Boolean currentlyOperating,
-        @Schema(description = "현재 영업 여부 판정 시각", nullable = true)
+        @Schema(
+                description = "현재 영업 여부를 평가한 UTC 기준 시각. 영업 일정은 Asia/Seoul 기준으로 해석합니다.",
+                example = "2026-09-29T12:24:00",
+                nullable = true
+        )
         LocalDateTime currentlyOperatingCheckedAt,
         @Schema(description = "장소 위도", example = "35.1894")
         Double latitude,

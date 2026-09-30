@@ -1064,6 +1064,12 @@ class OpenApiDocumentationValidationTest {
                 .path("properties").path("opensAt").path("type").asText()).isEqualTo("string");
         assertThat(document.path("components").path("schemas").path("PlaceOperatingTimeRangeResponse")
                 .path("properties").path("opensAt").path("format").asText()).isEqualTo("time");
+        assertThat(document.path("components").path("schemas").path("PlaceRegularOperatingHourResponse")
+                .path("description").asText()).contains("Asia/Seoul");
+        assertThat(document.path("components").path("schemas").path("MerchantOwnerOperatingResponse")
+                .path("properties").path("checkedAt").path("description").asText()).contains("UTC");
+        assertThat(document.path("components").path("schemas").path("PlaceOperatingNoticeListResponse")
+                .path("properties").path("checkedAt").path("description").asText()).contains("UTC");
         assertThat(document.at("/paths/~1admin~1places~1{id}~1operating-schedule/patch/responses/400/content/*~1*/schema/$ref")
                 .asText()).isEqualTo("#/components/schemas/ErrorResponse");
         assertThat(document.at("/paths/~1admin~1places~1{id}~1operating-schedule/patch/responses/404/content/*~1*/schema/$ref")
