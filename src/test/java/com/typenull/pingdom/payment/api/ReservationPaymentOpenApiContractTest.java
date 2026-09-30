@@ -32,6 +32,34 @@ class ReservationPaymentOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
+    @Test
+    void documentsConfirmationQuoteAndLegacyCompatibility() throws Exception {
+        JsonNode app = readApiDocs("/v3/api-docs/app");
+        String path = "/places/{placeId}/availabilities/{availabilityId}/quote";
+        var quote = app.path("paths").path(path).path("get");
+        assertSuccessResponse(quote, "ReservationQuoteResponse");
+        assertBearerSecurity(quote);
+        assertThat(quote.path("parameters").toString()).contains("quantity");
+        for (String status : List.of("401", "403", "404", "409", "422", "429")) {
+            assertThat(quote.path("responses").has(status)).as(status).isTrue();
+        }
+        var create = app.path("paths").path("/reservations").path("post");
+        assertThat(create.path("description").asText()).contains("토큰 생략", "동일 키", "PENDING");
+        assertThat(create.at("/responses/409/description").asText()).contains("IDEMPOTENCY_KEY_REUSED", "QUOTE_CONDITIONS_CHANGED");
+        assertThat(create.at("/responses/410/description").asText()).contains("QUOTE_EXPIRED");
+        var request = app.at("/components/schemas/ReservationCreateRequest");
+        assertThat(request.path("properties").has("confirmationToken")).isTrue();
+        assertThat(request.path("required").toString()).doesNotContain("confirmationToken");
+        var confirmation = app.at("/components/schemas/ReservationConfirmation");
+        assertThat(confirmation.path("required").toString()).contains("totalAmountMinor", "currency", "paymentRequired", "cancellable", "expiresAt");
+        assertThat(confirmation.at("/properties/productId/nullable").asBoolean()).isTrue();
+        assertThat(confirmation.at("/properties/cancellationDeadline/nullable").asBoolean()).isTrue();
+        assertThat(app.at("/components/schemas/ReservationResponse/properties/confirmation/nullable").asBoolean()).isTrue();
+        var merchant = readApiDocs("/v3/api-docs/merchant");
+        assertThat(merchant.path("paths").has("/merchant-owner/availabilities/{availabilityId}/reservation-terms")).isTrue();
+        assertThat(merchant.path("paths").has(path)).isFalse();
+    }
+
     /**
      * 예약 상세·결제 목록/상세가 app에만 노출되고 성공 스키마·JWT 인증·401/403/404 및 검증 오류 예제가 문서화되는지 확인.
      * 응답 필수/nullable 필드·상태 열거값·빈 결제 목록의 404 미노출과 merchant 결제 스키마의 failedAt도 검증.
@@ -82,9 +110,11 @@ class ReservationPaymentOpenApiContractTest {
                 "ReservationResponse",
                 List.of(
                         "id", "touristUserId", "availabilityId", "productId", "productType", "quantity",
-                        "status", "createdAt", "confirmedAt", "canceledAt", "updatedAt"
+                        "reservationStartsAt", "reservationEndsAt", "bookerName", "bookerPhone", "requestNote",
+                        "status", "createdAt", "confirmedAt", "canceledAt", "updatedAt", "confirmation"
                 ),
-                List.of("productId", "confirmedAt", "canceledAt")
+                List.of("productId", "reservationStartsAt", "reservationEndsAt", "bookerName", "bookerPhone",
+                        "requestNote", "confirmedAt", "canceledAt", "confirmation")
         );
         assertResponseSchema(
                 appDocument,

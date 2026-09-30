@@ -8,6 +8,7 @@ import org.springframework.http.HttpStatus;
 @Getter
 @RequiredArgsConstructor
 public enum PaymentErrorCode implements ErrorCode {
+    PAYMENT_QUOTE_MISMATCH(HttpStatus.SERVICE_UNAVAILABLE, "결제 금액 또는 통화가 수락한 견적과 달라 확인이 필요합니다. 같은 키를 유지하세요."),
     PAYMENT_NOT_FOUND(HttpStatus.NOT_FOUND, "결제 거래를 찾을 수 없습니다."),
     PAYMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "이 결제 거래를 처리할 권한이 없습니다."),
     INVALID_PAYMENT_INPUT(HttpStatus.BAD_REQUEST, "결제 입력값이 올바르지 않습니다."),

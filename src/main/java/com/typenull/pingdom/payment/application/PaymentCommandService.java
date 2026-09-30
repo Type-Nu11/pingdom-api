@@ -30,7 +30,7 @@ public class PaymentCommandService {
         try {
             PaymentProviderResult result = provider.authorize(new PaymentProviderCommand(
                     preparation.paymentId(), preparation.reservationId(), request.paymentToken(),
-                    request.idempotencyKey()));
+                    request.idempotencyKey(), preparation.expectedAmountMinor(), preparation.expectedCurrency()));
             return ledgerWriter.complete(preparation.paymentId(), result);
         } catch (PaymentProviderException exception) {
             if (exception.getFailureType() == PaymentProviderFailureType.DECLINED) {

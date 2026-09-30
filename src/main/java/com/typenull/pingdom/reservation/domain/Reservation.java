@@ -14,6 +14,17 @@ import lombok.NoArgsConstructor;
 @Table(name = "reservation")
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class Reservation {
+    @Column(name = "confirmation_token", length = 36)
+    private String confirmationToken;
+
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "confirmation", columnDefinition = "jsonb")
+    private ReservationConfirmation confirmation;
+
+    public void acceptConfirmation(String token, ReservationConfirmation snapshot) {
+        confirmationToken = Objects.requireNonNull(token);
+        confirmation = Objects.requireNonNull(snapshot);
+    }
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
