@@ -48,7 +48,12 @@ public class PaymentLedgerWriter {
                     || !existing.getProvider().equalsIgnoreCase(request.provider())) {
                 throw new PaymentException(PaymentErrorCode.IDEMPOTENCY_KEY_REUSED);
             }
-            return new PaymentPreparation(existing.getId(), existing.getReservationId(), existing.getStatus());
+            if (existing.getStatus() != PaymentStatus.PROCESSING) {
+                return new PaymentPreparation(existing.getId(), existing.getReservationId(), existing.getStatus());
+            }
+            Reservation reservation = reservationRepository.findByIdForUpdate(existing.getReservationId())
+                    .orElseThrow(() -> new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE));
+            return preparation(existing, reservation);
         }
 
         Reservation reservation = reservationRepository.findByIdForUpdate(request.reservationId())
@@ -57,6 +62,9 @@ public class PaymentLedgerWriter {
             throw new PaymentException(PaymentErrorCode.PAYMENT_FORBIDDEN);
         }
         if (reservation.getStatus() == ReservationStatus.CANCELED) {
+            throw new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE);
+        }
+        if (reservation.getConfirmation() != null && !reservation.getConfirmation().paymentRequired()) {
             throw new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE);
         }
         if (paymentRepository.findFirstByReservationIdAndStatusIn(reservation.getId(),
@@ -70,7 +78,7 @@ public class PaymentLedgerWriter {
             PaymentTransaction saved = paymentRepository.save(PaymentTransaction.processing(
                     reservation.getId(), userId, availability.getMerchantOwnerUserId(), request.provider(),
                     request.idempotencyKey(), now));
-            return new PaymentPreparation(saved.getId(), saved.getReservationId(), saved.getStatus());
+            return preparation(saved, reservation);
         } catch (IllegalArgumentException exception) {
             throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_INPUT);
         }
@@ -84,6 +92,13 @@ public class PaymentLedgerWriter {
     public PaymentResponse complete(Long paymentId, PaymentProviderResult result) {
         PaymentTransaction payment = findForUpdate(paymentId);
         if (payment.getStatus() != PaymentStatus.PROCESSING) return PaymentResponse.from(payment);
+        Reservation reservation = reservationRepository.findById(payment.getReservationId()).orElse(null);
+        if (reservation != null && reservation.getConfirmation() != null
+                && (reservation.getConfirmation().totalAmountMinor() != result.amountMinor()
+                || !reservation.getConfirmation().currency().equals(result.currency()))) {
+            // 공급자는 승인했을 수 있으므로 FAILED나 PAID로 확정하지 않고 PROCESSING을 유지해 새 결제를 차단.
+            throw new PaymentException(PaymentErrorCode.PAYMENT_QUOTE_MISMATCH);
+        }
         try {
             payment.succeed(result.providerPaymentId(), result.amountMinor(), result.currency(), LocalDateTime.now(clock));
             ledgerRepository.save(SettlementLedgerEntry.payment(payment.getId(), payment.getMerchantOwnerUserId(),
@@ -186,5 +201,12 @@ public class PaymentLedgerWriter {
         if (value == null || value.isBlank()) return "PROVIDER_ERROR";
         String normalized = value.trim().toUpperCase();
         return normalized.substring(0, Math.min(normalized.length(), 50));
+    }
+
+    private PaymentPreparation preparation(PaymentTransaction payment, Reservation reservation) {
+        var confirmation = reservation.getConfirmation();
+        return new PaymentPreparation(payment.getId(), payment.getReservationId(), payment.getStatus(),
+                confirmation == null ? null : confirmation.totalAmountMinor(),
+                confirmation == null ? null : confirmation.currency());
     }
 }
