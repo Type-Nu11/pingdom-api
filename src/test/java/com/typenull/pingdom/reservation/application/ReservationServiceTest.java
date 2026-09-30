@@ -39,6 +39,46 @@ class ReservationServiceTest {
     private final PlaceConversionEventService conversionEventService = mock(PlaceConversionEventService.class);
     private ReservationService service;
 
+    @Test
+    void storesAcceptedConfirmationAndReplaysSuccessBeforeRevalidatingExpiredQuote() {
+        ReservationQuoteService quotes = mock(ReservationQuoteService.class);
+        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService,
+                availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, null,
+                conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
+        var snapshot = mock(com.typenull.pingdom.reservation.domain.ReservationConfirmation.class);
+        var request = new ReservationCreateRequest(9L, "confirmed-1", 2, "이름", "01012345678", null,
+                "11111111-1111-1111-1111-111111111111");
+        when(quotes.verify(1L, request)).thenReturn(snapshot);
+        var result = service.create(1L, request);
+        assertThat(result.confirmation()).isSameAs(snapshot);
+        var captor = org.mockito.ArgumentCaptor.forClass(Reservation.class);
+        verify(reservationRepository).save(captor.capture());
+        Reservation saved = captor.getValue();
+        assertThat(saved.getConfirmationToken()).isEqualTo(request.confirmationToken());
+        when(reservationRepository.findByTouristUserIdAndIdempotencyKey(1L, "confirmed-1")).thenReturn(Optional.of(saved));
+        clearInvocations(quotes, availabilityService, reservationRepository);
+        assertThat(service.create(1L, request).confirmation()).isSameAs(snapshot);
+        verifyNoInteractions(quotes, availabilityService);
+        verify(reservationRepository, never()).save(any());
+        assertThatThrownBy(() -> service.create(1L, new ReservationCreateRequest(9L, "confirmed-1", 2,
+                "이름", "01012345678", null))).isInstanceOfSatisfying(ReservationException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.IDEMPOTENCY_KEY_REUSED));
+    }
+
+    @Test
+    void finalQuoteRejectionDoesNotReserveOrPublish() {
+        ReservationQuoteService quotes = mock(ReservationQuoteService.class);
+        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService,
+                availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, null,
+                conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
+        var request = new ReservationCreateRequest(9L, "confirmed-1", 2, "이름", "01012345678", null,
+                "11111111-1111-1111-1111-111111111111");
+        when(quotes.verify(1L, request)).thenThrow(new com.typenull.pingdom.reservation.domain.exception.ConfirmedReservationRejectedException(ReservationErrorCode.QUOTE_EXPIRED));
+        assertThatThrownBy(() -> service.create(1L, request)).isInstanceOf(ReservationException.class);
+        verifyNoInteractions(availabilityService, conversionEventService);
+        verify(reservationRepository, never()).save(any());
+    }
+
     /**
      * 사용자 1의 일반/잠금 조회를 활성 관광객으로 고정하고 예약 저장·슬롯 예약 결과와 UTC Clock을 구성.
      */

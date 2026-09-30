@@ -53,6 +53,7 @@ public class ReservationService {
     private final AdminAuditLogService adminAuditLogService;
     private final PlaceConversionEventService conversionEventService;
     private final Clock clock;
+    private final ReservationQuoteService quoteService;
 
     @Autowired
     public ReservationService(ReservationRepository reservationRepository,
@@ -61,7 +62,7 @@ public class ReservationService {
             AvailabilityAccessPolicy availabilityAccessPolicy, MerchantOwnerPlaceRepository ownerPlaceRepository,
             UserRepository userRepository, MapPlaceRepository mapPlaceRepository,
             ReservableProductRepository reservableProductRepository, AdminAuditLogService adminAuditLogService,
-            PlaceConversionEventService conversionEventService, Clock clock) {
+            PlaceConversionEventService conversionEventService, Clock clock, ReservationQuoteService quoteService) {
         this.reservationRepository = reservationRepository;
         this.reservationStatusHistoryRepository = reservationStatusHistoryRepository;
         this.availabilityRepository = availabilityRepository;
@@ -74,6 +75,7 @@ public class ReservationService {
         this.adminAuditLogService = adminAuditLogService;
         this.conversionEventService = conversionEventService;
         this.clock = clock;
+        this.quoteService = quoteService;
     }
 
     /** 기존 단위 테스트와 내부 호출의 생성자 호환을 위한 보조 생성자. */
@@ -94,13 +96,14 @@ public class ReservationService {
         this.adminAuditLogService = null;
         this.conversionEventService = conversionEventService;
         this.clock = clock;
+        this.quoteService = null;
     }
 
     /**
      * 같은 사용자·멱등 키의 요청 값이 같으면 기존 예약을 반환.
      * 신규 요청은 재고를 먼저 예약하고 PENDING 예약·이력을 저장한 뒤 전환 이벤트를 발행.
      */
-    @Transactional
+    @Transactional(noRollbackFor = ConfirmedReservationRejectedException.class)
     public ReservationResponse create(Long userId, ReservationCreateRequest request) {
         User user = userRepository.findByIdForUpdate(userId).orElse(null);
         requireTourist(user);
@@ -112,19 +115,26 @@ public class ReservationService {
                     || existing.getQuantity() != request.quantity()
                     || !java.util.Objects.equals(existing.getBookerName(), request.bookerName().trim())
                     || !java.util.Objects.equals(existing.getBookerPhone(), request.bookerPhone().trim())
-                    || !java.util.Objects.equals(existing.getRequestNote(), normalize(request.requestNote()))) {
+                    || !java.util.Objects.equals(existing.getRequestNote(), normalize(request.requestNote()))
+                    || !java.util.Objects.equals(existing.getConfirmationToken(), request.confirmationToken())) {
                 throw new ReservationException(ReservationErrorCode.IDEMPOTENCY_KEY_REUSED);
             }
             return ReservationResponse.from(existing);
         }
+        if (quoteService != null) quoteService.checkPriorResult(userId, request);
+        if (request.confirmationToken() != null && quoteService == null) {
+            throw new ReservationException(ReservationErrorCode.QUOTE_NOT_FOUND);
+        }
+        var confirmation = quoteService == null ? null : quoteService.verify(userId, request);
         LocalDateTime now = LocalDateTime.now(clock);
         PlaceAvailability availability = availabilityService.reserve(request.availabilityId(), request.quantity());
         try {
-            Reservation saved = reservationRepository.save(
-                    Reservation.create(userId, request.availabilityId(), availability.getProductId(),
+            Reservation reservation = Reservation.create(userId, request.availabilityId(), availability.getProductId(),
                             availability.getProductType(), request.idempotencyKey(), request.quantity(),
                             availability.getStartsAt(), availability.getEndsAt(), request.bookerName(),
-                            request.bookerPhone(), request.requestNote(), now));
+                            request.bookerPhone(), request.requestNote(), now);
+            if (confirmation != null) reservation.acceptConfirmation(request.confirmationToken(), confirmation);
+            Reservation saved = reservationRepository.save(reservation);
             saveHistory(saved.getId(), saved.getStatus(), userId, null, now);
             conversionEventService.publish(
                     userId,
@@ -195,6 +205,7 @@ public class ReservationService {
     // 예약 상태를 취소로 전환하고 예약 수량을 가용 재고로 반환.
     private ReservationResponse cancel(Reservation reservation, Long canceledBy) {
         try {
+            if (quoteService != null) quoteService.requireCancellationAllowed(reservation);
             LocalDateTime now = LocalDateTime.now(clock);
             reservation.cancel(canceledBy, now);
             availabilityService.release(reservation.getAvailabilityId(), reservation.getQuantity());

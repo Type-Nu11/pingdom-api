@@ -43,7 +43,9 @@ public record ReservationResponse(
         )
         LocalDateTime canceledAt,
         Long canceledBy,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime updatedAt,
+        @Schema(requiredMode = Schema.RequiredMode.REQUIRED, nullable = true, description = "실제 수락한 확인 조건. 구버전 예약이면 null")
+        com.typenull.pingdom.reservation.domain.ReservationConfirmation confirmation
 ) {
     public static ReservationResponse from(Reservation reservation) {
         return new ReservationResponse(reservation.getId(), reservation.getTouristUserId(),
@@ -53,6 +55,6 @@ public record ReservationResponse(
                 reservation.getStatus(),
                 reservation.getCreatedAt(), reservation.getConfirmedAt(), reservation.getReviewedBy(),
                 reservation.getReviewedAt(), reservation.getReviewReason(), reservation.getRejectedAt(), reservation.getCanceledAt(), reservation.getCanceledBy(),
-                reservation.getUpdatedAt());
+                reservation.getUpdatedAt(), reservation.getConfirmation());
     }
 }

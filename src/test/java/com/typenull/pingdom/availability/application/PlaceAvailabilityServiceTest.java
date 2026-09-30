@@ -34,6 +34,24 @@ class PlaceAvailabilityServiceTest {
     private final ReservableProductRepository productRepository = mock(ReservableProductRepository.class);
     private PlaceAvailabilityService service;
 
+    @Test
+    void termsAreExplicitAndChangeOnlyTheConditionsRevision() {
+        var slot = PlaceAvailability.create(7L, 11L, LocalDateTime.of(2026, 7, 21, 13, 0),
+                LocalDateTime.of(2026, 7, 21, 14, 0), 10, LocalDateTime.of(2026, 7, 20, 13, 0));
+        when(repository.findByIdForUpdate(9L)).thenReturn(java.util.Optional.of(slot));
+        var terms = new com.typenull.pingdom.availability.api.dto.ReservationTermsRequest(0L, 0L, "KRW", "Asia/Seoul", false, null);
+        assertThat(service.updateReservationTerms(7L, 9L, terms).unitAmountMinor()).isZero();
+        assertThat(slot.getConditionsVersion()).isEqualTo(1);
+        assertThat(slot.getRemainingCapacity()).isEqualTo(10);
+        assertThatThrownBy(() -> service.updateReservationTerms(8L, 9L, terms))
+                .isInstanceOfSatisfying(AvailabilityException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(AvailabilityErrorCode.PLACE_NOT_OWNED));
+        assertThatThrownBy(() -> service.updateReservationTerms(7L, 9L,
+                new com.typenull.pingdom.availability.api.dto.ReservationTermsRequest(0L, 0L, "KRW", "UTC", true, null)))
+                .isInstanceOfSatisfying(AvailabilityException.class,
+                        exception -> assertThat(exception.getErrorCode()).isEqualTo(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT));
+    }
+
     /**
      * UTC 고정 Clock과 저장소·접근 정책 mock을 사용해 시간 조건이 재현되는 서비스를 구성.
      */
