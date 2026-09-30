@@ -25,7 +25,7 @@ public class PlaceAvailability {
     @Column(name = "conditions_version", nullable = false)
     private long conditionsVersion;
 
-    public void setReservationTerms(ReservationTerms terms, LocalDateTime now) {
+    public void updateReservationTerms(ReservationTerms terms, LocalDateTime now) {
         reservationTerms = Objects.requireNonNull(terms);
         conditionsVersion++;
         updatedAt = now;

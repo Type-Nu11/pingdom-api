@@ -70,7 +70,7 @@ class ReservationConfirmationPostgreSqlIntegrationTest {
                 .latitude(37.0).longitude(127.0).userId(userId).build()).getId();
         var slot = PlaceAvailability.create(7L, placeId, LocalDateTime.now(clock).plusDays(1),
                 LocalDateTime.now(clock).plusDays(1).plusHours(1), 10, LocalDateTime.now(clock));
-        slot.setReservationTerms(new ReservationTerms(1000, 50, "KRW", "Asia/Seoul", true, 60), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(1000, 50, "KRW", "Asia/Seoul", true, 60), LocalDateTime.now(clock));
         slotId = slots.saveAndFlush(slot).getId();
         doAnswer(call -> slots.findByIdForUpdate(call.getArgument(0)))
                 .when(slots).findReservableByIdForUpdate(anyLong(), any());
@@ -106,7 +106,7 @@ class ReservationConfirmationPostgreSqlIntegrationTest {
         var quote = quoteService.issue(userId, placeId, slotId, 2);
         var request = request(quote.confirmationToken());
         var slot = slots.findById(slotId).orElseThrow();
-        slot.setReservationTerms(new ReservationTerms(2000, 0, "KRW", "Asia/Seoul", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(2000, 0, "KRW", "Asia/Seoul", false, null), LocalDateTime.now(clock));
         slots.saveAndFlush(slot);
         assertThatThrownBy(() -> service.create(userId, request)).isInstanceOfSatisfying(ReservationException.class,
                 exception -> assertThat(exception.getErrorCode()).isEqualTo(ReservationErrorCode.QUOTE_CONDITIONS_CHANGED));

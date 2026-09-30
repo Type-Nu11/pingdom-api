@@ -46,7 +46,7 @@ class ReservationQuoteServiceTest {
         slot = PlaceAvailability.create(7L, 11L, LocalDateTime.now(clock).plusDays(1),
                 LocalDateTime.now(clock).plusDays(1).plusHours(1), 10, LocalDateTime.now(clock));
         ReflectionTestUtils.setField(slot, "id", 9L);
-        slot.setReservationTerms(new ReservationTerms(1000, 50, "KRW", "Asia/Seoul", true, 60), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(1000, 50, "KRW", "Asia/Seoul", true, 60), LocalDateTime.now(clock));
         when(slots.findByIdForUpdate(9L)).thenReturn(Optional.of(slot));
         when(slots.findReservableByIdForUpdate(eq(9L), any())).thenReturn(Optional.of(slot));
         MapPlace place = mock(MapPlace.class);
@@ -102,7 +102,7 @@ class ReservationQuoteServiceTest {
 
     @Test
     void distinguishesExplicitFreeAndNonCancellableFromUnconfigured() {
-        slot.setReservationTerms(new ReservationTerms(0, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(0, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
         var quote = issue().confirmation();
         assertThat(quote.paymentRequired()).isFalse();
         assertThat(quote.totalAmountMinor()).isZero();
@@ -132,7 +132,7 @@ class ReservationQuoteServiceTest {
                     LocalDateTime.now(clock).plusDays(1), LocalDateTime.now(clock).plusDays(1).plusHours(1),
                     10, LocalDateTime.now(clock));
             ReflectionTestUtils.setField(slot, "id", 9L);
-            slot.setReservationTerms(new ReservationTerms(1000, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+            slot.updateReservationTerms(new ReservationTerms(1000, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
             when(slots.findByIdForUpdate(9L)).thenReturn(Optional.of(slot));
             when(slots.findReservableByIdForUpdate(eq(9L), any())).thenReturn(Optional.of(slot));
             when(products.findByIdForUpdate(31L)).thenReturn(Optional.of(ReservableProduct.create(
@@ -231,7 +231,7 @@ class ReservationQuoteServiceTest {
     @Test
     void changedTermsAndSlotTimeInvalidateQuote() {
         var first = issue();
-        slot.setReservationTerms(new ReservationTerms(1100, 50, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(1100, 50, "KRW", "UTC", false, null), LocalDateTime.now(clock));
         rejects(() -> service.verify(1L, request(first.confirmationToken())), QUOTE_CONDITIONS_CHANGED);
         var next = issue();
         slot.update(slot.getStartsAt().plusHours(1), slot.getEndsAt().plusHours(1), 10, LocalDateTime.now(clock));
@@ -266,7 +266,7 @@ class ReservationQuoteServiceTest {
         slot = PlaceAvailability.create(7L, 11L, 31L, type, LocalDateTime.now(clock).plusDays(1),
                 LocalDateTime.now(clock).plusDays(1).plusHours(1), 10, LocalDateTime.now(clock));
         ReflectionTestUtils.setField(slot, "id", 9L);
-        slot.setReservationTerms(new ReservationTerms(1000, 0, "USD", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(1000, 0, "USD", "UTC", false, null), LocalDateTime.now(clock));
         when(slots.findByIdForUpdate(9L)).thenReturn(Optional.of(slot));
         when(slots.findReservableByIdForUpdate(eq(9L), any())).thenReturn(Optional.of(slot));
         var product = ReservableProduct.create(7L, 11L, type, "실제 상품", LocalDateTime.now(clock));
@@ -294,7 +294,7 @@ class ReservationQuoteServiceTest {
         var response = issue();
         Reservation reservation = Reservation.create(1L, 9L, "intent-1", 2, LocalDateTime.now(clock));
         reservation.acceptConfirmation(response.confirmationToken(), response.confirmation());
-        slot.setReservationTerms(new ReservationTerms(0, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(0, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
         service.requireCancellationAllowed(reservation);
         when(payments.findFirstByReservationIdAndStatusIn(isNull(), any())).thenReturn(Optional.of(mock(com.typenull.pingdom.payment.domain.PaymentTransaction.class)));
         rejects(() -> service.requireCancellationAllowed(reservation), RESERVATION_REFUND_REQUIRED);
@@ -302,7 +302,7 @@ class ReservationQuoteServiceTest {
 
     @Test
     void overflowingPriceIsNotPublished() {
-        slot.setReservationTerms(new ReservationTerms(Long.MAX_VALUE, 1, "USD", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms(Long.MAX_VALUE, 1, "USD", "UTC", false, null), LocalDateTime.now(clock));
         rejects(this::issue, QUOTE_TERMS_UNAVAILABLE);
     }
 }

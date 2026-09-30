@@ -49,7 +49,7 @@ public class PlaceAvailabilityService {
         }
         try {
             ReservationTerms terms = request.toTerms();
-            slot.setReservationTerms(terms, now);
+            slot.updateReservationTerms(terms, now);
             return terms;
         } catch (IllegalArgumentException | java.time.DateTimeException exception) {
             throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
