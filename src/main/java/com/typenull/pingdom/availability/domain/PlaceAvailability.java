@@ -17,6 +17,20 @@ import lombok.NoArgsConstructor;
 @NoArgsConstructor(access = AccessLevel.PROTECTED)
 public class PlaceAvailability {
 
+    @org.hibernate.annotations.JdbcTypeCode(org.hibernate.type.SqlTypes.JSON)
+    @Column(name = "reservation_terms", columnDefinition = "jsonb")
+    private ReservationTerms reservationTerms;
+
+    // 재고 차감은 견적 조건을 바꾸지 않으므로 JPA version과 별도로 추적.
+    @Column(name = "conditions_version", nullable = false)
+    private long conditionsVersion;
+
+    public void setReservationTerms(ReservationTerms terms, LocalDateTime now) {
+        reservationTerms = Objects.requireNonNull(terms);
+        conditionsVersion++;
+        updatedAt = now;
+    }
+
     @Id @GeneratedValue(strategy = GenerationType.IDENTITY)
     private Long id;
 
@@ -115,6 +129,7 @@ public class PlaceAvailability {
             throw new IllegalStateException("예약이 존재하는 슬롯의 일시는 변경할 수 없습니다.");
         }
         this.productId = productId;
+        conditionsVersion++;
         this.productType = nextProductType;
         this.startsAt = startsAt;
         this.endsAt = endsAt;
@@ -124,12 +139,14 @@ public class PlaceAvailability {
     }
 
     public void deactivate(LocalDateTime now) {
+        conditionsVersion++;
         status = AvailabilityStatus.INACTIVE;
         updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
 
     public void activate(LocalDateTime now) {
         if (!endsAt.isAfter(now)) throw new IllegalStateException("종료된 슬롯은 활성화할 수 없습니다.");
+        conditionsVersion++;
         status = AvailabilityStatus.ACTIVE;
         updatedAt = Objects.requireNonNull(now, "now must not be null");
     }
