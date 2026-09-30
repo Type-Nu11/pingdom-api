@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "136";
+    private static final String LATEST_MIGRATION_VERSION = "137";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -77,7 +77,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     /**
-     * 빈 PostGIS 스키마에 전체 136개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
+     * 빈 PostGIS 스키마에 전체 137개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
      */
     @Test
     @Tag("migration-smoke")
@@ -86,7 +86,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(136);
+        assertThat(result.migrationsExecuted).isEqualTo(137);
 
         assertPostMigrationSchema();
     }
@@ -1674,6 +1674,18 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, """
+                    SELECT count(*) = 2 FROM information_schema.columns
+                    WHERE table_name = 'place_availability'
+                      AND ((column_name = 'reservation_terms' AND data_type = 'jsonb' AND is_nullable = 'YES')
+                        OR (column_name = 'conditions_version' AND data_type = 'bigint' AND is_nullable = 'NO'))
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT count(*) = 5 FROM pg_constraint
+                    WHERE conname IN ('uq_reservation_quote_user_key', 'ck_reservation_quote_binding',
+                        'fk_reservation_confirmation_token', 'uq_reservation_confirmation_token',
+                        'ck_reservation_confirmation_pair') AND convalidated = true
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT COUNT(*) = 15
                     FROM information_schema.columns
