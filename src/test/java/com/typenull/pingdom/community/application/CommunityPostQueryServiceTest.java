@@ -162,4 +162,54 @@ class CommunityPostQueryServiceTest {
         verify(communityPostCommentRepository).findByCommunityPost_IdAndHiddenFalse(any(), any());
         verify(userRepository).findAllById(List.of(7L));
     }
+    @Test
+    void exposesPostAuthorAndCategory() {
+        CommunityPost post = mock(CommunityPost.class);
+        User author = mock(User.class);
+        when(post.getId()).thenReturn(10L);
+        when(post.getUserId()).thenReturn(7L);
+        when(post.getCategoryId()).thenReturn("TRAVEL");
+        LocalDateTime createdAt = LocalDateTime.of(2026, 9, 30, 12, 34, 56);
+        when(post.getCreatedAt()).thenReturn(createdAt);
+        when(author.getUsername()).thenReturn("여행자");
+        when(author.getProfileImageUrl()).thenReturn("https://example.com/profile.png");
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(author));
+
+        CommunityPostDetailResponse response = service.findDetail(10L);
+
+        assertThat(response.author()).isEqualTo(new CommunityPostDetailResponse.Author(
+                7L, "여행자", "https://example.com/profile.png"));
+        assertThat(response.category()).isEqualTo(new CommunityPostDetailResponse.Category("TRAVEL", "여행"));
+        assertThat(response.createdAt()).isEqualTo(createdAt);
+    }
+
+    @Test
+    void doesNotExposeWithdrawnAuthorProfile() {
+        CommunityPost post = mock(CommunityPost.class);
+        User author = mock(User.class);
+        when(post.getId()).thenReturn(10L);
+        when(post.getUserId()).thenReturn(7L);
+        when(author.isWithdrawn()).thenReturn(true);
+        when(author.getUsername()).thenReturn("이전 작성자 이름");
+        when(author.getProfileImageUrl()).thenReturn("https://example.com/old-profile.png");
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
+        when(userRepository.findById(7L)).thenReturn(Optional.of(author));
+
+        assertThat(service.findDetail(10L).author()).isEqualTo(
+                new CommunityPostDetailResponse.Author(7L, User.WITHDRAWN_DISPLAY_NAME, null));
+    }
+
+    @Test
+    void preservesAuthorIdWhenAuthorRowIsMissing() {
+        CommunityPost post = mock(CommunityPost.class);
+        when(post.getId()).thenReturn(10L);
+        when(post.getUserId()).thenReturn(7L);
+        when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
+        when(userRepository.findById(7L)).thenReturn(Optional.empty());
+
+        assertThat(service.findDetail(10L).author()).isEqualTo(
+                new CommunityPostDetailResponse.Author(7L, "알 수 없는 사용자", null));
+    }
+
 }
