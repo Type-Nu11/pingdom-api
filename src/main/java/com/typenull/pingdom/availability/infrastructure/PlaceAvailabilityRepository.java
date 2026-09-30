@@ -40,7 +40,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
-              and (availability.productId is null or exists (
+              and ((availability.productId is null and availability.productType = com.typenull.pingdom.availability.domain.AvailabilityProductType.GENERAL) or exists (
                   select product.id from ReservableProduct product
                   where product.id = availability.productId
                     and product.placeId = availability.placeId
@@ -84,7 +84,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
-              and (availability.productId is null or exists (
+              and ((availability.productId is null and availability.productType = com.typenull.pingdom.availability.domain.AvailabilityProductType.GENERAL) or exists (
                   select product.id from ReservableProduct product
                   where product.id = availability.productId
                     and product.placeId = availability.placeId
@@ -131,7 +131,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
-              and (availability.productId is null or exists (
+              and ((availability.productId is null and availability.productType = com.typenull.pingdom.availability.domain.AvailabilityProductType.GENERAL) or exists (
                   select product.id from ReservableProduct product
                   where product.id = availability.productId
                     and product.placeId = availability.placeId
