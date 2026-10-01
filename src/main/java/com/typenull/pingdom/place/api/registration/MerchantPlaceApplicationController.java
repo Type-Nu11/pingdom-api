@@ -11,10 +11,17 @@ import com.typenull.pingdom.place.api.dto.registration.NaverPlaceSearchResponse;
 import com.typenull.pingdom.place.application.service.registration.NaverAddressSearchService;
 import com.typenull.pingdom.place.application.service.registration.NaverPlaceSearchService;
 import com.typenull.pingdom.place.application.service.registration.MerchantPlaceApplicationService;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
@@ -50,8 +57,18 @@ public class MerchantPlaceApplicationController {
             summary = "신규 장소 등록용 네이버 주소 검색",
             description = "도로명·지번 주소 후보를 최대 10건 반환합니다. 좌표는 WGS84 기준이며, 우편번호가 없는 후보는 null로 반환합니다."
     )
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "주소 검색 후보", content = @Content(schema = @Schema(implementation = NaverAddressSearchResponse.class))),
+            @ApiResponse(responseCode = "400", description = "INVALID_REQUEST_PARAMETER: query 누락. PLACE_SEARCH_CONDITION_INVALID: trim 후 빈 검색어. 입력 검증 오류는 기존 공통 오류 계약을 유지합니다.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}))),
+            @ApiResponse(responseCode = "429", description = "NAVER_ADDRESS_SEARCH_RATE_LIMITED: 외부 Geocoding 호출 한도 초과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "502", description = "NAVER_ADDRESS_SEARCH_FAILED: 외부 호출 실패·비정상 응답·좌표 변환 실패", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "NAVER_ADDRESS_SEARCH_UNAVAILABLE: 비활성·미설정·외부 서버 장애·연결 실패", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "504", description = "NAVER_ADDRESS_SEARCH_TIMEOUT: 외부 Geocoding 응답 시간 초과", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public NaverAddressSearchResponse searchNaverAddress(
-            @RequestParam @NotBlank @Size(max = 100) String query,
+            @Parameter(description = "도로명 또는 지번 주소. 입력값은 1~100자이며, 앞뒤 공백을 trim한 검색어로 조회합니다. 공백만 있는 값은 허용하지 않습니다.", schema = @Schema(minLength = 1, maxLength = 100))
+            @RequestParam @NotBlank @Size(min = 1, max = 100) String query,
             @CurrentUser JwtAuthenticatedUser user
     ) {
         return naverAddressSearchService.search(query);
@@ -59,7 +76,15 @@ public class MerchantPlaceApplicationController {
 
     @GetMapping("/naver-place-search")
     @Operation(summary = "신규 장소 등록용 네이버 업체명 검색", description = "네이버 Local Search 결과를 최대 5건의 장소명·도로명 주소·지번 주소·WGS84 좌표로 반환합니다.")
+    @ApiResponses({
+            @ApiResponse(responseCode = "200", description = "업체명 검색 후보", content = @Content(schema = @Schema(implementation = NaverPlaceSearchResponse.class))),
+            @ApiResponse(responseCode = "400", description = "INVALID_REQUEST_PARAMETER: query 누락. PLACE_SEARCH_CONDITION_INVALID: trim 후 빈 검색어. 입력 검증 오류는 기존 공통 오류 계약을 유지합니다.",
+                    content = @Content(mediaType = "application/json", schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}))),
+            @ApiResponse(responseCode = "502", description = "NAVER_PLACE_SEARCH_FAILED: 외부 호출 실패·빈 응답·좌표 변환 실패", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class))),
+            @ApiResponse(responseCode = "503", description = "NAVER_PLACE_SEARCH_UNAVAILABLE: 비활성 또는 인증값 미설정", content = @Content(mediaType = "application/json", schema = @Schema(implementation = ErrorResponse.class)))
+    })
     public NaverPlaceSearchResponse searchNaverPlace(
+            @Parameter(description = "업체명. 입력값은 1~100자이며, 앞뒤 공백을 trim한 검색어로 조회합니다. 공백만 있는 값은 허용하지 않습니다.", schema = @Schema(minLength = 1, maxLength = 100))
             @RequestParam @Size(min = 1, max = 100) String query,
             @CurrentUser JwtAuthenticatedUser user
     ) {
