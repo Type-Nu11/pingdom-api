@@ -3,15 +3,17 @@ package com.typenull.pingdom.integration.swagger;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.typenull.pingdom.shared.web.OpenApiProxyTestRunner;
 import org.junit.jupiter.api.Tag;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.AutoConfigureMockMvc;
 import org.springframework.boot.test.context.SpringBootTest;
+import org.springframework.boot.test.web.server.LocalServerPort;
 import org.springframework.test.web.servlet.MockMvc;
 
 @Tag("integration")
-@SpringBootTest(properties = {
+@SpringBootTest(webEnvironment = SpringBootTest.WebEnvironment.RANDOM_PORT, properties = {
         "springdoc.api-docs.enabled=true",
         "springdoc.swagger-ui.enabled=true",
         "pingdom.openapi.public-access.enabled=false"
@@ -19,8 +21,16 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class SwaggerProductionSecurityTest {
 
+    @LocalServerPort
+    private int port;
+
     @Autowired
     private MockMvc mockMvc;
+
+    @Test
+    void blocksPublicDocsThroughActualOpenResty() throws Exception {
+        OpenApiProxyTestRunner.run(port, 401);
+    }
 
     /**
      * Springdoc를 활성화해도 운영 공개 접근 토글이 꺼져 있으면 Swagger UI와 기본·그룹 OpenAPI 문서가 인증 없이 노출되지 않는지 검증.
