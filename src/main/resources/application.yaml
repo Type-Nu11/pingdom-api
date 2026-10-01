@@ -6,6 +6,8 @@ server:
       internal-proxies: '${TRUSTED_PROXY_IPS_REGEX:127\.0\.0\.1|::1}'
       remote-ip-header: X-Forwarded-For
       protocol-header: X-Forwarded-Proto
+      host-header: X-Forwarded-Host
+      port-header: X-Forwarded-Port
 
 analysis:
   location-report-generation:
