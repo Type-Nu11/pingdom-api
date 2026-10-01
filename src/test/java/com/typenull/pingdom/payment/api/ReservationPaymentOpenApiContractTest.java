@@ -57,6 +57,11 @@ class ReservationPaymentOpenApiContractTest {
         assertThat(app.at("/components/schemas/ReservationResponse/properties/confirmation/nullable").asBoolean()).isTrue();
         var merchant = readApiDocs("/v3/api-docs/merchant");
         assertThat(merchant.path("paths").has("/merchant-owner/availabilities/{availabilityId}/reservation-terms")).isTrue();
+        assertSuccessResponse(
+                merchant.path("paths").path("/merchant-owner/availabilities/{availabilityId}/reservation-terms")
+                        .path("put"),
+                "ReservationTermsResponse"
+        );
         assertThat(merchant.path("paths").has(path)).isFalse();
     }
 

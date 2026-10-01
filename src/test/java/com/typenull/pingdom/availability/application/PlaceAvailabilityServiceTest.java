@@ -76,6 +76,31 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
+     * 상점주 재접속 후에도 저장된 무료·취소 불가 조건과 미설정 상태를 구분해 편집 화면에 전달한다.
+     * 조건 버전은 조건이 없는 신규 슬롯에도 포함해 이후 변경 감지 기준으로 사용한다.
+     */
+    @Test
+    void returnsStoredTermsAndKeepsUnconfiguredTermsNull() {
+        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
+        PlaceAvailability configured = PlaceAvailability.create(
+                7L, 3L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
+        configured.updateReservationTerms(new com.typenull.pingdom.availability.domain.ReservationTerms(
+                0, 0, "KRW", "Asia/Seoul", false, null), now);
+        PlaceAvailability unconfigured = PlaceAvailability.create(
+                7L, 3L, now.plusDays(2), now.plusDays(2).plusHours(1), 10, now);
+        when(repository.findAllCurrentlyOwned(7L)).thenReturn(List.of(configured, unconfigured));
+
+        List<AvailabilityResponse> responses = service.listOwned(7L);
+
+        assertThat(responses.get(0).conditionsVersion()).isEqualTo(1);
+        assertThat(responses.get(0).reservationTerms())
+                .extracting("unitAmountMinor", "additionalAmountMinor", "cancellable", "cancellationCutoffMinutes")
+                .containsExactly(0L, 0L, false, null);
+        assertThat(responses.get(1).conditionsVersion()).isZero();
+        assertThat(responses.get(1).reservationTerms()).isNull();
+    }
+
+    /**
      * GENERAL·TICKET·CLASS 슬롯 조회에서 상품명이 null·티켓명·클래스명 순으로 반환되는지 검증.
      * 상품 ID 집합의 일괄 조회와 단건 조회 미호출을 확인해 슬롯별 추가 조회를 방지.
      */
