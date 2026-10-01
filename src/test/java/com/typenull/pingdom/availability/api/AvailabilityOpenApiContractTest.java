@@ -33,7 +33,9 @@ class AvailabilityOpenApiContractTest {
             "endsAt",
             "totalCapacity",
             "remainingCapacity",
-            "status"
+            "status",
+            "conditionsVersion",
+            "reservationTerms"
     );
 
     @Autowired
@@ -92,6 +94,14 @@ class AvailabilityOpenApiContractTest {
                 .contains("GENERAL", "TICKET/CLASS");
         assertThat(textValues(schema.at("/properties/productType/enum")))
                 .containsExactly("GENERAL", "TICKET", "CLASS");
+        assertThat(schema.at("/properties/reservationTerms/nullable").asBoolean()).isTrue();
+        JsonNode termsSchema = resolveSchema(document, schema.at("/properties/reservationTerms"));
+        assertThat(textValues(termsSchema.path("required"))).containsExactlyInAnyOrder(
+                "unitAmountMinor", "additionalAmountMinor", "currency", "timezone", "cancellable",
+                "cancellationCutoffMinutes");
+        assertThat(termsSchema.at("/properties/unitAmountMinor/minimum").asText()).isEqualTo("0");
+        assertThat(termsSchema.at("/properties/additionalAmountMinor/minimum").asText()).isEqualTo("0");
+        assertThat(termsSchema.at("/properties/cancellationCutoffMinutes/nullable").asBoolean()).isTrue();
     }
 
     /**

@@ -2,6 +2,8 @@ package com.typenull.pingdom.availability.application;
 
 import com.typenull.pingdom.availability.api.dto.AvailabilityResponse;
 import com.typenull.pingdom.availability.api.dto.AvailabilityUpsertRequest;
+import com.typenull.pingdom.availability.api.dto.ReservationTermsRequest;
+import com.typenull.pingdom.availability.api.dto.ReservationTermsResponse;
 import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.AvailabilityStatus;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
@@ -38,8 +40,8 @@ public class PlaceAvailabilityService {
     private final Clock clock;
 
     @Transactional
-    public ReservationTerms updateReservationTerms(Long ownerId, Long availabilityId,
-            com.typenull.pingdom.availability.api.dto.ReservationTermsRequest request) {
+    public ReservationTermsResponse updateReservationTerms(Long ownerId, Long availabilityId,
+            ReservationTermsRequest request) {
         PlaceAvailability slot = repository.findByIdForUpdate(availabilityId)
                 .orElseThrow(() -> new AvailabilityException(AvailabilityErrorCode.AVAILABILITY_NOT_FOUND));
         LocalDateTime now = LocalDateTime.now(clock);
@@ -50,7 +52,7 @@ public class PlaceAvailabilityService {
         try {
             ReservationTerms terms = request.toTerms();
             slot.updateReservationTerms(terms, now);
-            return terms;
+            return ReservationTermsResponse.from(terms);
         } catch (IllegalArgumentException | java.time.DateTimeException exception) {
             throw new AvailabilityException(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT);
         }

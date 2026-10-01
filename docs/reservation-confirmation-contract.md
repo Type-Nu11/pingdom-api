@@ -30,6 +30,13 @@
 - 기존 슬롯의 LocalDateTime은 기존 주입 Clock 시간대 기준으로 해석한다. 현재 기본 Clock은 UTC다. 지정 timezone은 같은 예약 순간을 표시하는 IANA 시간대이며 기존 시각을 다른 순간으로 재해석하지 않는다. offset이 포함된 시작·종료·취소 기한을 응답한다.
 - 설정 변경은 조건 버전을 증가시킨다. 이미 생성된 예약에는 수락한 스냅샷이 유지된다.
 
+## 상점주 저장 조건 조회
+
+활성 점주는 `GET /merchant-owner/availabilities`로 본인 슬롯의 현재 편집값을 조회한다. 각 응답의
+`reservationTerms`는 미설정일 때만 null이며, `0` 금액 또는 `cancellable=false`는 저장된 명시값이다.
+`conditionsVersion`은 조건 변경 감지용 버전으로 항상 제공한다. 목록은 현재 소유 관계가 있는 슬롯만
+반환하므로 타 점주·삭제된 소유 관계의 슬롯은 노출하지 않는다.
+
 ## 견적 준비와 최종 확인
 
 1. 활성 일반 사용자가 `GET /places/{placeId}/availabilities/{availabilityId}/quote?quantity=2`를 호출한다.
