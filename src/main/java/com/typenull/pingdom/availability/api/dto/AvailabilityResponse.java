@@ -29,13 +29,22 @@ public record AvailabilityResponse(
         @Schema(example = "42", requiredMode = Schema.RequiredMode.REQUIRED)
         int remainingCapacity,
         @Schema(example = "ACTIVE", requiredMode = Schema.RequiredMode.REQUIRED)
-        AvailabilityStatus status
+        AvailabilityStatus status,
+        @Schema(description = "가격·취소 조건 변경 버전. 조건이 미설정이어도 반환합니다.", example = "1", minimum = "0",
+                requiredMode = Schema.RequiredMode.REQUIRED)
+        long conditionsVersion,
+        @Schema(description = "저장된 가격·취소 조건. null은 미설정이며 무료 또는 취소 불가를 뜻하지 않습니다.",
+                nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
+        ReservationTermsResponse reservationTerms
 ) {
     public static AvailabilityResponse from(PlaceAvailability availability, String productName) {
         return new AvailabilityResponse(availability.getId(), availability.getPlaceId(), availability.getProductId(),
                 availability.getProductType(), productName,
                 availability.getStartsAt(),
                 availability.getEndsAt(), availability.getTotalCapacity(), availability.getRemainingCapacity(),
-                availability.getStatus());
+                availability.getStatus(), availability.getConditionsVersion(),
+                availability.getReservationTerms() == null
+                        ? null
+                        : ReservationTermsResponse.from(availability.getReservationTerms()));
     }
 }
