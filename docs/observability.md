@@ -23,6 +23,31 @@ HTTP 오류 코드, Outbox 상태, notification delivery 오류 코드의 구분
 - Missing or unsafe values are replaced with a generated UUID.
 - The resolved value is returned as `X-Request-Id` and added to MDC as `requestId`.
 
+## 공급자 실패 추적
+
+`POST /routes`와 음성 AI 메시지 실패는 WARN 로그의 `provider`, `outcome`과
+응답 헤더 `X-Request-Id`에 대응하는 `[requestId:...]`로 추적한다. 음성 메시지 본문의
+`requestId`는 envelope/replay 식별자이며 HTTP 요청 추적 헤더와 별개다.
+
+```sh
+docker logs --since 30m pingdom-app-1 2>&1 | grep -F '[requestId:응답의-X-Request-Id]'
+```
+
+- 네이버 설정 누락: `outcome=configuration`, 활성화 여부와 각 키의 존재 여부만 기록한다.
+- 네이버 호출 실패: 인증(`authentication`), 쿼터(`quota`), timeout, 비정상 응답(`invalid_response`)
+  등과 `httpStatus`, 숫자 `providerCode`를 기록한다. `-1`은 아직 확보하지 못한 값이다.
+- Gemini 호출 실패: 인증, 쿼터, HTTP 오류(`http_error`), timeout, 전송 오류(`transport_error`)를
+  기록한다. 서비스의 `provider_call_failed`는 실패 정규화 기록이며 어댑터의 상세 분류와 함께 확인한다.
+- Gemini 응답 검증 실패: `reason`은 `missing_text`, `invalid_json`, `schema_version`,
+  `request_id_mismatch`, `unsupported_kind`, `field_count`, `unexpected_field`, `missing_field`,
+  `resource_id`, `date_format`, `time_format` 등 고정 사유다. 앱의 공개 오류 코드는 유지한다.
+
+키·JWT·좌표·사용자 발화·공급자 원문·예외 메시지와 stack trace는 이 로그에 기록하지 않는다.
+따라서 과거 원문 복원은 지원하지 않으며 새 요청의 안전한 메타데이터로 실패를 분류한다.
+`json-file` Docker 로그는 CloudWatch 전송을 의미하지 않는다. CloudWatch 조회가 필요하면
+해당 배포의 수집 agent·수집 경로·권한을 별도로 확인한다. 수집 설정만으로 애플리케이션이
+기록하지 않은 과거 오류가 생성되지는 않는다.
+
 ## Metrics
 
 | Metric | Tags | Purpose |

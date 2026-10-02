@@ -15,10 +15,14 @@ import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
 import org.junit.jupiter.params.ParameterizedTest;
 import org.junit.jupiter.params.provider.CsvSource;
 import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class NaverDirectionsClientTest {
     private static final RouteCoordinate ORIGIN = new RouteCoordinate(37.5665, 126.9780);
     private static final RouteCoordinate DESTINATION = new RouteCoordinate(37.4979, 127.0276);
@@ -116,6 +120,44 @@ class NaverDirectionsClientTest {
                 .isInstanceOf(IllegalArgumentException.class);
         assertThatThrownBy(() -> new NaverDirectionsClient.Properties(true, "id", "secret", null, Duration.ZERO, null, null))
                 .isInstanceOf(IllegalArgumentException.class);
+    }
+
+    @Test
+    void logsConfigurationFailureWithoutCredentialsOrCoordinates(CapturedOutput output) {
+        assertThatThrownBy(() -> api(false, "test-secret").findRoute(ORIGIN, DESTINATION))
+                .isInstanceOf(MapException.class);
+        assertThat(output).contains("outcome=configuration enabled=false clientIdPresent=true clientSecretPresent=true")
+                .doesNotContain("test-secret", "test-id", "37.5665", "126.978");
+        verifyNoInteractions(transport);
+    }
+
+    @Test
+    void logsProviderCodeWithoutOriginalBody(CapturedOutput output) throws Exception {
+        respond(200, "{\"code\":99,\"message\":\"private-provider-body test-secret\"}");
+        assertFailure(MapErrorCode.ROUTE_PROVIDER_UNAVAILABLE);
+        assertThat(output).contains("outcome=invalid_response httpStatus=200 providerCode=99")
+                .doesNotContain("private-provider-body", "test-secret", "37.5665", "126.978");
+    }
+
+    @Test
+    void attachesHttpRequestIdToFailureEvent() {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(NaverDirectionsClient.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        org.slf4j.MDC.put("requestId", "http-request-1");
+        try {
+            assertThatThrownBy(() -> api(false, "test-secret").findRoute(ORIGIN, DESTINATION))
+                    .isInstanceOf(MapException.class);
+            assertThat(appender.list).singleElement().satisfies(event -> {
+                assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "http-request-1");
+                assertThat(event.getThrowableProxy()).isNull();
+            });
+        } finally {
+            org.slf4j.MDC.remove("requestId");
+            logger.detachAppender(appender);
+            appender.stop();
+        }
     }
 
     private void respond(int status, String body) throws IOException {
