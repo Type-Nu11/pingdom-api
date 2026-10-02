@@ -7,6 +7,12 @@ OpenAPI 3.0에서는 const를 단일 enum으로, $defs를 인라인으로 변환
 날짜의 실제 유효성, 시작 < 종료, UTF-16 텍스트 길이 등은 runtime validator가 검사한다.
 앱도 generated type을 신뢰 경계로 사용하지 않고 최종 unknown을 기존 parser로 검증한다.
 
+Gemini 생성 요청은 같은 고정 원본에서 변환한 `responseJsonSchema`를 사용한다.
+숫자 `schemaVersion=1`, 필수 `kind`와 종류별 필드, 추가 필드 금지, 요청별 `id`를 생성 단계에
+명시한다. 공급자가 지원하지 않는 길이·pattern 제약과 날짜·시간 등 의미 검증은 기존 runtime
+validator를 유지한다. 생성 스키마는 응답 검증을 대신하지 않는다. 실패 분류 로그는
+[운영 관측성](../observability.md#공급자-실패-추적)을 따른다.
+
 ## API
 
 모든 API는 기존 Bearer JWT 인증을 유지한다. canonical 문서는 `/v3/api-docs`이다.

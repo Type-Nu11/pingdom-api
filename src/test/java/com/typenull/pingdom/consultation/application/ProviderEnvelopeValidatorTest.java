@@ -1,12 +1,17 @@
 package com.typenull.pingdom.consultation.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class ProviderEnvelopeValidatorTest {
     private final ProviderEnvelopeValidator validator = new ProviderEnvelopeValidator();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -112,5 +117,15 @@ class ProviderEnvelopeValidatorTest {
     void rejectsDatesOutsideAppContract(String date) throws Exception {
         var node = objectMapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"command_request\",\"command\":\"getAvailabilities\",\"args\":{\"placeId\":1,\"quantity\":1,\"date\":\"" + date + "\"}}");
         assertThatThrownBy(() -> validator.validate(node, "r1")).isInstanceOf(VoiceAiException.class);
+    }
+
+    @Test
+    void logsFixedReasonWithoutProviderFieldsOrText(CapturedOutput output) throws Exception {
+        var node = objectMapper.readTree("""
+                {"schemaVersion":1,"id":"r1","kind":"assistant_message","text":"private-user-text","private-secret-field":"test-api-key"}
+                """);
+        assertThatThrownBy(() -> validator.validate(node, "r1")).isInstanceOf(VoiceAiException.class);
+        assertThat(output).contains("outcome=invalid_response reason=field_count")
+                .doesNotContain("private-user-text", "private-secret-field", "test-api-key");
     }
 }

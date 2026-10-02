@@ -8,10 +8,12 @@ import java.time.LocalTime;
 import java.time.format.DateTimeFormatter;
 import java.time.format.DateTimeParseException;
 import java.util.Set;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 /** gateway 경계에서 앱 ProviderEnvelope v1 schema의 허용 union만 통과. */
 @Component
+@Slf4j
 public class ProviderEnvelopeValidator {
     private static final Set<String> COMMON = Set.of("schemaVersion", "id", "kind");
     private static final Set<String> COMMANDS = Set.of(
@@ -30,21 +32,17 @@ public class ProviderEnvelopeValidator {
      * 지원하지 않는 종류·필드·값은 PROVIDER_RESPONSE_INVALID로 거절. 명령 실행·자원 접근 인가는 별도 검증 책임.
      */
     public void validate(JsonNode envelope, String requestId) {
-        if (envelope == null || !envelope.isObject()
-                || !integer(envelope.path("schemaVersion"))
-                || !envelope.path("schemaVersion").canConvertToInt()
-                || envelope.path("schemaVersion").intValue() != 1
-                || !envelope.path("id").isTextual()
-                || !requestId.equals(envelope.path("id").asText())
-                || !envelope.path("id").asText().matches("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")) {
-            invalid();
-        }
+        if (envelope == null || !envelope.isObject()) invalid("not_object");
+        if (!integer(envelope.path("schemaVersion")) || !envelope.path("schemaVersion").canConvertToInt()
+                || envelope.path("schemaVersion").intValue() != 1) invalid("schema_version");
+        if (!envelope.path("id").isTextual() || !requestId.equals(envelope.path("id").asText())) invalid("request_id_mismatch");
+        if (!envelope.path("id").asText().matches("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")) invalid("request_id_format");
         switch (envelope.path("kind").asText()) {
             case "command_request" -> validateCommand(envelope);
             case "clarification_request" -> validateClarification(envelope);
             case "assistant_message" -> validateAssistantMessage(envelope);
             case "protocol_error" -> validateProtocolError(envelope);
-            default -> invalid();
+            default -> invalid("unsupported_kind");
         }
     }
 
@@ -52,35 +50,35 @@ public class ProviderEnvelopeValidator {
         exactFields(node, Set.of("schemaVersion", "id", "kind", "command", "args"));
         String command = node.path("command").asText();
         JsonNode args = node.path("args");
-        if (!COMMANDS.contains(command) || !args.isObject()) invalid();
+        if (!COMMANDS.contains(command) || !args.isObject()) invalid("unsupported_command_or_args");
         switch (command) {
             case "searchNearbyReservablePlaces" -> {
                 allowedFields(args, Set.of("touristCategory", "date", "startTime", "endTime", "quantity", "useCurrentLocation"));
                 required(args, "date", "startTime", "endTime", "quantity", "useCurrentLocation");
-                if (args.has("touristCategory") && !CATEGORIES.contains(args.path("touristCategory").asText())) invalid();
+                if (args.has("touristCategory") && !CATEGORIES.contains(args.path("touristCategory").asText())) invalid("tourist_category");
                 validDate(args.path("date").asText());
                 LocalTime start = validTime(args.path("startTime").asText());
                 LocalTime end = validTime(args.path("endTime").asText());
-                if (!start.isBefore(end) || !quantity(args.path("quantity")) || !args.path("useCurrentLocation").isBoolean()) invalid();
+                if (!start.isBefore(end) || !quantity(args.path("quantity")) || !args.path("useCurrentLocation").isBoolean()) invalid("search_arguments");
             }
             case "getPlaceDetails" -> { exactFields(args, Set.of("placeId")); required(args, "placeId"); positiveId(args.path("placeId")); }
             case "getAvailabilities" -> {
                 exactFields(args, Set.of("placeId", "date", "quantity")); required(args, "placeId", "date", "quantity");
-                positiveId(args.path("placeId")); validDate(args.path("date").asText()); if (!quantity(args.path("quantity"))) invalid();
+                positiveId(args.path("placeId")); validDate(args.path("date").asText()); if (!quantity(args.path("quantity"))) invalid("invalid_argument");
             }
             case "prepareReservation" -> {
                 exactFields(args, Set.of("placeId", "availabilityId", "quantity")); required(args, "placeId", "availabilityId", "quantity");
-                positiveId(args.path("placeId")); positiveId(args.path("availabilityId")); if (!quantity(args.path("quantity"))) invalid();
+                positiveId(args.path("placeId")); positiveId(args.path("availabilityId")); if (!quantity(args.path("quantity"))) invalid("invalid_argument");
             }
             case "cancelVoiceSession" -> exactFields(args, Set.of());
-            default -> invalid();
+            default -> invalid("invalid_argument");
         }
     }
 
     private void validateClarification(JsonNode node) {
         exactFields(node, Set.of("schemaVersion", "id", "kind", "field", "text"));
         required(node, "field", "text");
-        if (!CLARIFICATION_FIELDS.contains(node.path("field").asText())) invalid();
+        if (!CLARIFICATION_FIELDS.contains(node.path("field").asText())) invalid("clarification_field");
         validText(node.path("text"));
     }
 
@@ -92,22 +90,22 @@ public class ProviderEnvelopeValidator {
     private void validateProtocolError(JsonNode node) {
         exactFields(node, Set.of("schemaVersion", "id", "kind", "code"));
         required(node, "code");
-        if (!Set.of("UNSUPPORTED_REQUEST", "PROVIDER_UNAVAILABLE", "INVALID_RESPONSE").contains(node.path("code").asText())) invalid();
+        if (!Set.of("UNSUPPORTED_REQUEST", "PROVIDER_UNAVAILABLE", "INVALID_RESPONSE").contains(node.path("code").asText())) invalid("invalid_argument");
     }
 
     private void exactFields(JsonNode node, Set<String> allowed) {
-        if (node.size() != allowed.size()) invalid();
+        if (node.size() != allowed.size()) invalid("field_count");
         allowedFields(node, allowed);
     }
 
     private void allowedFields(JsonNode node, Set<String> allowed) {
         java.util.Iterator<String> fieldNames = node.fieldNames();
         while (fieldNames.hasNext()) {
-            if (!allowed.contains(fieldNames.next())) invalid();
+            if (!allowed.contains(fieldNames.next())) invalid("unexpected_field");
         }
     }
 
-    private void required(JsonNode node, String... fields) { for (String field : fields) if (node.path(field).isMissingNode() || node.path(field).isNull()) invalid(); }
+    private void required(JsonNode node, String... fields) { for (String field : fields) if (node.path(field).isMissingNode() || node.path(field).isNull()) invalid("missing_field"); }
     private boolean integer(JsonNode node) {
         // JSON Schema와 JavaScript number의 정수 의미에 맞춰 1.0은 허용하되 1.5는 거부.
         return node.isNumber() && node.decimalValue().stripTrailingZeros().scale() <= 0;
@@ -119,7 +117,7 @@ public class ProviderEnvelopeValidator {
      */
     private void positiveId(JsonNode node) {
         if (!integer(node) || !node.canConvertToLong() || node.asLong() < 1
-                || node.asLong() > 9_007_199_254_740_991L) invalid();
+                || node.asLong() > 9_007_199_254_740_991L) invalid("resource_id");
     }
 
     private boolean quantity(JsonNode node) {
@@ -128,23 +126,27 @@ public class ProviderEnvelopeValidator {
 
     private void validDate(String value) {
         try {
-            if (!value.matches("^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$")) invalid();
+            if (!value.matches("^(?!0000)[0-9]{4}-[0-9]{2}-[0-9]{2}$")) invalid("date_format");
             LocalDate.parse(value, DateTimeFormatter.ISO_LOCAL_DATE);
         } catch (DateTimeParseException exception) {
-            invalid();
+            invalid("invalid_date_or_time");
         }
     }
 
     private LocalTime validTime(String value) {
         try {
-            if (!value.matches("^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")) invalid();
+            if (!value.matches("^(?:[01][0-9]|2[0-3]):[0-5][0-9]$")) invalid("time_format");
             return LocalTime.parse(value, DateTimeFormatter.ISO_LOCAL_TIME);
         } catch (DateTimeParseException exception) {
-            invalid();
+            invalid("invalid_date_or_time");
             return LocalTime.MIDNIGHT;
         }
     }
 
-    private void validText(JsonNode node) { if (!node.isTextual() || node.asText().isBlank() || node.asText().length() > 2_000) invalid(); }
-    private void invalid() { throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID); }
+    private void validText(JsonNode node) { if (!node.isTextual() || node.asText().isBlank() || node.asText().length() > 2_000) invalid("text_type_or_length"); }
+    private void invalid(String reason) {
+        // 값이나 원본 필드명 대신 고정 사유만 기록해 공급자 생성 내용의 로그 유출을 막는다.
+        log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={}", reason);
+        throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
+    }
 }
