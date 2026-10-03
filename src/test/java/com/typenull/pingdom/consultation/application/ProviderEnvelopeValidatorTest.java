@@ -1,12 +1,17 @@
 package com.typenull.pingdom.consultation.application;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatCode;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class ProviderEnvelopeValidatorTest {
     private final ProviderEnvelopeValidator validator = new ProviderEnvelopeValidator();
     private final ObjectMapper objectMapper = new ObjectMapper();
@@ -112,5 +117,33 @@ class ProviderEnvelopeValidatorTest {
     void rejectsDatesOutsideAppContract(String date) throws Exception {
         var node = objectMapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"command_request\",\"command\":\"getAvailabilities\",\"args\":{\"placeId\":1,\"quantity\":1,\"date\":\"" + date + "\"}}");
         assertThatThrownBy(() -> validator.validate(node, "r1")).isInstanceOf(VoiceAiException.class);
+    }
+
+    @Test
+    void logsFixedReasonWithoutProviderFieldsOrText(CapturedOutput output) throws Exception {
+        var node = objectMapper.readTree("""
+                {"schemaVersion":1,"id":"r1","kind":"assistant_message","text":"private-user-text","private-secret-field":"test-api-key"}
+                """);
+        assertThatThrownBy(() -> validator.validate(node, "r1")).isInstanceOf(VoiceAiException.class);
+        assertThat(output).contains("outcome=invalid_response reason=field_count")
+                .doesNotContain("private-user-text", "private-secret-field", "test-api-key");
+    }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource(delimiter = '|', value = {
+            "{\"schemaVersion\":\"private-version\",\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"private-reply\"}|schema_version|schemaVersion|STRING",
+            "{\"schemaVersion\":1,\"id\":\"r1\",\"assistant_message\":\"private-reply\"}|unsupported_kind|kind|MISSING",
+            "{\"schemaVersion\":1,\"id\":false,\"kind\":\"assistant_message\",\"text\":\"private-reply\"}|request_id_mismatch|id|BOOLEAN",
+            "{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":null}|missing_field|text|NULL"
+    })
+    void diagnosesContractFieldTypesWithoutValues(String json, String reason, String field, String type,
+                                                 CapturedOutput output) throws Exception {
+        var envelope = objectMapper.readTree(json);
+        assertThatThrownBy(() -> validator.validate(envelope, "r1"))
+                .isInstanceOf(VoiceAiException.class)
+                .satisfies(error -> assertThat(((VoiceAiException) error).getErrorCode().getCode())
+                        .isEqualTo("PROVIDER_RESPONSE_INVALID"));
+        assertThat(output).contains("reason=" + reason + " field=" + field + " valueType=" + type)
+                .doesNotContain("private-version", "private-reply", "assistant_message=");
     }
 }

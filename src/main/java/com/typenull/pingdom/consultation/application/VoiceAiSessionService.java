@@ -8,16 +8,17 @@ import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
 import com.typenull.pingdom.consultation.infrastructure.gemini.GeminiProperties;
 import com.typenull.pingdom.consultation.infrastructure.persistence.VoiceAiSessionRepository;
 import java.nio.charset.StandardCharsets;
+import java.security.MessageDigest;
+import java.security.NoSuchAlgorithmException;
 import java.time.Clock;
 import java.time.Duration;
 import java.time.LocalDateTime;
-import java.util.UUID;
-import java.security.MessageDigest;
-import java.security.NoSuchAlgorithmException;
 import java.util.HexFormat;
-import org.springframework.stereotype.Service;
-import org.springframework.beans.factory.annotation.Autowired;
+import java.util.UUID;
 import java.util.concurrent.locks.LockSupport;
+import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import org.springframework.util.StringUtils;
 
@@ -26,6 +27,7 @@ import org.springframework.util.StringUtils;
  * provider 호출 전후에만 짧은 트랜잭션을 사용한다. 외부 호출은 DB 잠금 및 커넥션 점유 범위에서 제외한다.
  */
 @Service
+@Slf4j
 public class VoiceAiSessionService {
     private static final java.time.Duration SESSION_TTL = java.time.Duration.ofMinutes(5);
     private static final int MAX_ENVELOPE_BYTES = 16 * 1024;
@@ -101,6 +103,8 @@ public class VoiceAiSessionService {
                 continue;
             }
             if (!geminiProperties.enabled() || !StringUtils.hasText(geminiProperties.apiKey())) {
+                log.warn("Voice AI provider failure provider=gemini outcome=configuration enabled={} apiKeyPresent={}",
+                        geminiProperties.enabled(), StringUtils.hasText(geminiProperties.apiKey()));
                 replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
                 throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE);
             }
@@ -116,6 +120,8 @@ public class VoiceAiSessionService {
                 replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
                 throw exception;
             } catch (RuntimeException exception) {
+                log.warn("Voice AI provider failure provider=gemini outcome=provider_call_failed exceptionType={}",
+                        exception.getClass().getSimpleName());
                 replayTransactionService.release(sessionId, userId, requestId, claim.processingToken());
                 throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_UNAVAILABLE, exception);
             }
@@ -128,14 +134,23 @@ public class VoiceAiSessionService {
     }
 
     private void validateEnvelope(JsonNode envelope, String requestId) {
-        if (envelope == null || !envelope.isObject()
-                || envelope.toString().getBytes(StandardCharsets.UTF_8).length > MAX_ENVELOPE_BYTES
-                || envelope.path("schemaVersion").asInt() != 1
-                || !requestId.equals(envelope.path("id").asText())
-                || envelope.has("source") || envelope.has("command_result")) {
-            throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
-        }
+        if (envelope == null || !envelope.isObject()) invalidEnvelope("not_object", "$", envelope);
+        if (envelope.toString().getBytes(StandardCharsets.UTF_8).length > MAX_ENVELOPE_BYTES) invalidEnvelope("envelope_too_large");
+        if (envelope.path("schemaVersion").asInt() != 1) invalidEnvelope("schema_version", "schemaVersion", envelope.path("schemaVersion"));
+        if (!requestId.equals(envelope.path("id").asText())) invalidEnvelope("request_id_mismatch", "id", envelope.path("id"));
+        if (envelope.has("source") || envelope.has("command_result")) invalidEnvelope("forbidden_field");
         envelopeValidator.validate(envelope, requestId);
+    }
+
+    private void invalidEnvelope(String reason) {
+        log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={}", reason);
+        throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
+    }
+
+    private void invalidEnvelope(String reason, String field, JsonNode value) {
+        log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={} field={} valueType={}",
+                reason, field, value == null ? "NULL" : value.getNodeType());
+        throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
     }
 
     private String sha256(String value) {

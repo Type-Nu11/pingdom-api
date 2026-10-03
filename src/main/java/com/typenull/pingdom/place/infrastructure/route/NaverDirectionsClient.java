@@ -14,11 +14,13 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 /** 공급자 HTTP 상태·본문 코드를 분리하여 해석하며 원본 본문·좌표·키를 로그나 공개 오류에 넣지 않습니다. */
 @Component
+@Slf4j
 public class NaverDirectionsClient {
     private final NaverDirectionsTransport transport;
     private final Properties properties;
@@ -35,14 +37,19 @@ public class NaverDirectionsClient {
 
     public RouteResponse findRoute(RouteCoordinate origin, RouteCoordinate destination) {
         if (!properties.isConfigured()) {
+            log.warn("Route provider failure provider=naver outcome=configuration enabled={} clientIdPresent={} clientSecretPresent={}",
+                    properties.enabled(), properties.clientId() != null && !properties.clientId().isBlank(),
+                    properties.clientSecret() != null && !properties.clientSecret().isBlank());
             throw new MapException(MapErrorCode.ROUTE_PROVIDER_UNAVAILABLE);
         }
         long started = System.nanoTime();
         // 태그는 고정 분류만 사용하여 키·좌표 유출과 고유 시계열 증가를 방지합니다.
         String outcome = "unavailable";
+        int status = -1;
+        int providerCode = -1;
         try {
             var response = transport.get(origin, destination);
-            int status = response.status();
+            status = response.status();
             if (status == 401 || status == 403) {
                 outcome = "authentication";
                 throw unavailable();
@@ -64,6 +71,7 @@ public class NaverDirectionsClient {
                 throw unavailable();
             }
             int code = body.path("code").intValue();
+            providerCode = code;
             if (code == 1 || code == 5) {
                 outcome = "invalid_request";
                 throw new MapException(MapErrorCode.INVALID_ROUTE_REQUEST);
@@ -87,6 +95,10 @@ public class NaverDirectionsClient {
             }
             throw unavailable();
         } finally {
+            if (!"success".equals(outcome)) {
+                log.warn("Route provider failure provider=naver outcome={} httpStatus={} providerCode={}",
+                        outcome, status, providerCode);
+            }
             metrics.timer("pingdom.route.provider.duration", "provider", "naver", "outcome", outcome)
                     .record(System.nanoTime() - started, TimeUnit.NANOSECONDS);
         }

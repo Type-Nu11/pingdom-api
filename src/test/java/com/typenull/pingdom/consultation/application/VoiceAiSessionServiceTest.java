@@ -20,7 +20,11 @@ import java.util.Map;
 import java.util.Optional;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class VoiceAiSessionServiceTest {
     private final VoiceAiSessionRepository sessions = mock(VoiceAiSessionRepository.class);
     private final VoiceAiReplayRepository replays = mock(VoiceAiReplayRepository.class);
@@ -106,13 +110,31 @@ class VoiceAiSessionServiceTest {
      * 공급자 실패·잘못된 envelope는 502로 변환하고 PROCESSING 소유권을 해제해 같은 requestId를 재시도할 수 있는지 검증.
      */
     @Test
-    void skipsFailedProviderReplayStorage() throws Exception {
-        when(provider.generateEnvelope(anyString(), anyString())).thenThrow(new RuntimeException("timeout"));
+    void skipsFailedProviderReplayStorage(CapturedOutput output) throws Exception {
+        when(provider.generateEnvelope(anyString(), anyString())).thenThrow(new RuntimeException("private-provider-error test-key"));
         assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_UNAVAILABLE");
         reset(provider);
-        when(provider.generateEnvelope(anyString(), anyString())).thenReturn(mapper.readTree("{\"id\":\"wrong\"}"));
+        when(provider.generateEnvelope(anyString(), anyString())).thenReturn(mapper.readTree("{\"schemaVersion\":1,\"id\":\"wrong\"}"));
         assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_RESPONSE_INVALID");
         assertThat(replayStore).isEmpty();
+        assertThat(output).contains("outcome=provider_call_failed exceptionType=RuntimeException",
+                        "reason=request_id_mismatch field=id valueType=STRING")
+                .doesNotContain("private-provider-error", "test-key");
+    }
+
+    @Test
+    void releasesInvalidVersionBeforeRetryingGreeting(CapturedOutput output) throws Exception {
+        when(provider.generateEnvelope("hello", "r1"))
+                .thenReturn(mapper.readTree("{\"schemaVersion\":false,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"private-reply\"}"))
+                .thenReturn(mapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"안녕하세요.\"}"));
+        assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_RESPONSE_INVALID");
+        assertThat(replayStore).isEmpty();
+        var result = service.send("session", 1L, "hello", "r1");
+        assertThat(result.path("text").asText()).isEqualTo("안녕하세요.");
+        assertThat(service.send("session", 1L, "hello", "r1")).isEqualTo(result);
+        verify(provider, times(2)).generateEnvelope("hello", "r1");
+        assertThat(output).contains("reason=schema_version field=schemaVersion valueType=BOOLEAN")
+                .doesNotContain("private-reply");
     }
 
     /**

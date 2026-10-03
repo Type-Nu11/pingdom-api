@@ -7,6 +7,12 @@ OpenAPI 3.0에서는 const를 단일 enum으로, $defs를 인라인으로 변환
 날짜의 실제 유효성, 시작 < 종료, UTF-16 텍스트 길이 등은 runtime validator가 검사한다.
 앱도 generated type을 신뢰 경계로 사용하지 않고 최종 unknown을 기존 parser로 검증한다.
 
+Gemini 생성 요청은 같은 고정 원본에서 변환한 `responseJsonSchema`를 사용한다.
+숫자 `schemaVersion=1`, 필수 `kind`와 종류별 필드, 추가 필드 금지, 요청별 `id`를 생성 단계에
+명시한다. 공급자가 지원하지 않는 길이·pattern 제약과 날짜·시간 등 의미 검증은 기존 runtime
+validator를 유지한다. 생성 스키마는 응답 검증을 대신하지 않는다. 실패 분류 로그는
+[운영 관측성](../observability.md#공급자-실패-추적)을 따른다.
+
 ## API
 
 모든 API는 기존 Bearer JWT 인증을 유지한다. canonical 문서는 `/v3/api-docs`이다.
@@ -70,3 +76,25 @@ provider 지연 중에는 DB 커넥션과 세션 행 잠금을 점유하지 않�
 배포 후 https://www.typenull.xyz/v3/api-docs 의 schema·오류 응답·필수 필드를 확인하고
 배포 commit, 확인 시각, 인증된 생성/갱신/전송/종료 결과를 기록해야 이슈 완료 조건을 충족한다.
 이 문서 자체는 배포 또는 실 provider 검증 완료 증거가 아니다.
+
+### 인증 메시지 경로 검증 (#1759)
+
+1. 실행 중인 애플리케이션 이미지의 commit과 Gemini 활성화·모델·connect/read timeout을
+   확인한다. API 키는 존재 여부만 확인한다. `develop` 병합이나 Gemini 직접 진단 성공만으로
+   실행 중인 Java 코드가 수정됐다고 판단하지 않는다.
+2. 기존 테스트 계정의 정상 로그인으로 Bearer JWT를 확보하고 세션을 생성한다.
+   새 requestId로 `안녕` 또는 `hi`를 전송한다. JWT·사용자 식별자·발화 원문을 공유 로그에 남기지 않는다.
+3. 응답 HTTP 200, 숫자 `schemaVersion=1`, 전송한 requestId와 같은 `id`,
+   `kind=assistant_message`, 문자열 `text`를 확인한다. 같은 ID/text의 재요청은 같은 결과를
+   반환하고 공급자를 추가 호출하지 않아야 한다. 테스트 세션을 종료한다.
+4. 각 응답의 `X-Request-Id`로 시작·HTTP 결과·검증 실패 로그를 연결한다.
+   앱의 traceId가 이 헤더와 같은 값인지 먼저 확인한다. 메시지 본문 requestId는 별도 replay
+   식별자이므로 대신 사용하지 않는다. 모델·HTTP 상태·elapsedMs·고정 실패 사유를 기록하고,
+   두 종류의 502를 별도로 분류한다. 전체 API가 약 5초 걸렸다는 이유만으로 timeout으로 단정하지 않는다.
+5. 앱의 기존 Command Registry와 validator로 command 응답을 확인한다. 필수 인자 누락·잘못된
+   자원 ID·금지 필드가 거절되고 예약 준비 후에도 최종 사용자 확인 전 예약 Mutation이 0회인지
+   확인한다. 운영에서 의도하지 않은 예약·결제를 실행하지 않는다.
+
+완료 증거에는 배포 commit·확인 시각·응답 상태·X-Request-Id·계약 검사 결과를 남긴다.
+개별 모델의 JSON schema 지원·quota·timeout은 실제 실행 설정에서 확인하며, 필요한 추가 수정은
+재현된 실패에 한정한다. DB 잠금·replay lease·인증·명령 실행 경계를 변경해야 한다면 별도 범위로 검토한다.

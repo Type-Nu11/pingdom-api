@@ -1,25 +1,36 @@
 package com.typenull.pingdom.consultation.infrastructure.gemini;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
+import com.fasterxml.jackson.databind.node.ArrayNode;
+import com.fasterxml.jackson.databind.node.ObjectNode;
 import com.typenull.pingdom.consultation.application.GeminiIntroClient;
 import com.typenull.pingdom.consultation.application.GeminiVoiceClient;
+import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.stereotype.Component;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.client.RestClientException;
+import org.springframework.web.client.RestClientResponseException;
 
 /**
  * Gemini 첫 후보의 텍스트 조각을 안내 문구 또는 ProviderEnvelope JSON으로 읽는 HTTP 어댑터.
  * 안내 문구 누락은 빈 Optional, JSON 해석 실패는 null로 표현하고 전송 예외 및 최종 스키마 검증은 호출 서비스가 처리.
  */
 @Component
+@Slf4j
 public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoiceClient {
 
     private static final int MAX_OUTPUT_TOKENS = 80;
     private static final int CANDIDATE_COUNT = 1;
+    private static final ObjectMapper ENVELOPE_MAPPER = new ObjectMapper();
+    private static final JsonNode VOICE_RESPONSE_SCHEMA = loadVoiceResponseSchema();
     private static final String SYSTEM_INSTRUCTION = """
             사용자의 첫 상담 질문에 한국어로 짧고 공감하는 안내를 작성하세요.
             업종 카테고리를 선택하도록 자연스럽게 안내하고, 두 문장을 넘기지 마세요.
@@ -27,11 +38,15 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
             """;
     private static final String VOICE_SYSTEM_INSTRUCTION = """
             Return exactly one JSON object for Pingdom ProviderEnvelope v1. Never use markdown.
-            Allowed output only: schemaVersion=1, id, and one of assistant_message,
-            clarification_request, command_request, protocol_error. Never emit command_result,
+            Use numeric schemaVersion=1 and the supplied request id in id. The kind field must be
+            assistant_message, clarification_request, command_request, or protocol_error.
+            For assistant_message, put the reply in the top-level text field, never in an assistant_message field.
+            Follow the supplied JSON schema exactly. Never emit command_result,
             source=app, credentials, location coordinates, reservation confirmation, or provider details.
             If a request is ambiguous, use clarification_request. If no safe command applies, use assistant_message.
             The envelope id must equal the supplied request id.
+            Do not invent place or availability ids, dates, times, quantity, or location permission.
+            Ask for missing command arguments with clarification_request. Write user-facing text in Korean.
             """;
 
     private final RestClient geminiRestClient;
@@ -51,7 +66,7 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
                 .body(new GenerateContentRequest(
                         List.of(new Content(List.of(new Part(message)))),
                         new Content(List.of(new Part(SYSTEM_INSTRUCTION))),
-                        new GenerationConfig(MAX_OUTPUT_TOKENS, CANDIDATE_COUNT, null)
+                        new GenerationConfig(MAX_OUTPUT_TOKENS, CANDIDATE_COUNT, null, null)
                 ))
                 .retrieve()
                 .body(JsonNode.class);
@@ -76,24 +91,103 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
 
     @Override
     public JsonNode generateEnvelope(String message, String requestId) {
-        JsonNode response = geminiRestClient.post()
+        long started = System.nanoTime();
+        String model = properties.model().matches("[A-Za-z0-9._-]{1,128}") ? properties.model() : "unrecognized";
+        log.info("Voice AI provider call provider=gemini outcome=started model={}", model);
+        try {
+            return requestEnvelope(message, requestId, model, started);
+        } catch (RestClientResponseException exception) {
+            int status = exception.getStatusCode().value();
+            String outcome = status == 401 || status == 403 ? "authentication"
+                    : status == 429 ? "quota" : status == 504 ? "timeout" : "http_error";
+            log.warn("Voice AI provider failure provider=gemini outcome={} httpStatus={} model={} elapsedMs={}",
+                    outcome, status, model, elapsedMillis(started));
+            throw exception;
+        } catch (RestClientException exception) {
+            String outcome = exception.getCause() instanceof java.net.SocketTimeoutException
+                    ? "timeout" : "transport_error";
+            log.warn("Voice AI provider failure provider=gemini outcome={} exceptionType={} model={} elapsedMs={}",
+                    outcome, exception.getClass().getSimpleName(), model, elapsedMillis(started));
+            throw exception;
+        }
+    }
+
+    private JsonNode requestEnvelope(String message, String requestId, String model, long started) {
+        var response = geminiRestClient.post()
                 .uri("/models/{model}:generateContent", properties.model())
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-goog-api-key", properties.apiKey())
                 .body(new GenerateContentRequest(
                         List.of(new Content(List.of(new Part(message)))),
-                        new Content(List.of(new Part(VOICE_SYSTEM_INSTRUCTION + "\\nrequest id: " + requestId))),
-                        new GenerationConfig(512, CANDIDATE_COUNT, MediaType.APPLICATION_JSON_VALUE)
+                        new Content(List.of(new Part(VOICE_SYSTEM_INSTRUCTION + "\nrequest id: " + requestId))),
+                        new GenerationConfig(512, CANDIDATE_COUNT, MediaType.APPLICATION_JSON_VALUE,
+                                voiceResponseSchema(requestId))
                 ))
                 .retrieve()
-                .body(JsonNode.class);
+                .toEntity(JsonNode.class);
 
-        String text = extractText(response).orElse("");
-        try {
-            return new com.fasterxml.jackson.databind.ObjectMapper().readTree(text);
-        } catch (Exception exception) {
+        // HTTP 성공과 envelope 검증 성공을 구분한다. 발화·응답 원문과 replay ID는 기록하지 않는다.
+        log.info("Voice AI provider call provider=gemini outcome=http_success httpStatus={} model={} elapsedMs={}",
+                response.getStatusCode().value(), model, elapsedMillis(started));
+
+        String text = extractText(response.getBody()).orElse("");
+        if (text.isBlank()) {
+            log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason=missing_text");
             return null;
         }
+        try {
+            return ENVELOPE_MAPPER.readTree(text);
+        } catch (IOException exception) {
+            log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason=invalid_json");
+            return null;
+        }
+    }
+
+    private long elapsedMillis(long started) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
+    }
+
+    private static JsonNode loadVoiceResponseSchema() {
+        try (var input = GeminiGenerateContentClient.class.getResourceAsStream("/openapi/provider-envelope.v1.schema.json")) {
+            if (input == null) throw new IllegalStateException("Voice AI response schema is missing");
+            JsonNode source = ENVELOPE_MAPPER.readTree(input);
+            return toGeminiSchema(source, source);
+        } catch (IOException exception) {
+            throw new IllegalStateException("Voice AI response schema cannot be read", exception);
+        }
+    }
+
+    private static JsonNode toGeminiSchema(JsonNode node, JsonNode root) {
+        if (node.isArray()) {
+            ArrayNode result = ENVELOPE_MAPPER.createArrayNode();
+            node.forEach(child -> result.add(toGeminiSchema(child, root)));
+            return result;
+        }
+        if (!node.isObject()) return node.deepCopy();
+        if (node.has("$ref")) return toGeminiSchema(root.at(node.path("$ref").asText().substring(1)), root);
+        ObjectNode result = ENVELOPE_MAPPER.createObjectNode();
+        node.fields().forEachRemaining(entry -> {
+            String key = entry.getKey();
+            // 고정된 앱 계약을 재사용하되 공급자가 지원하지 않는 길이·pattern 검증은 runtime validator에 맡긴다.
+            if (List.of("$schema", "$defs", "$comment", "minLength", "maxLength", "pattern").contains(key)) return;
+            if ("const".equals(key)) {
+                result.putArray("enum").add(entry.getValue());
+                result.put("type", entry.getValue().isIntegralNumber() ? "integer" : "string");
+            } else {
+                result.set("oneOf".equals(key) ? "anyOf" : key, toGeminiSchema(entry.getValue(), root));
+            }
+        });
+        if (result.has("enum") && !result.has("type")) result.put("type", "string");
+        return result;
+    }
+
+    private JsonNode voiceResponseSchema(String requestId) {
+        // 요청별 복사본에만 ID 제약을 적용해 동시 요청 간 schema 공유 변경을 방지한다.
+        JsonNode schema = VOICE_RESPONSE_SCHEMA.deepCopy();
+        for (JsonNode variant : schema.path("anyOf")) {
+            ((ObjectNode) variant.path("properties").path("id")).putArray("enum").add(requestId);
+        }
+        return schema;
     }
 
     private Optional<String> extractText(JsonNode response) {
@@ -126,6 +220,8 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
     private record Part(String text) {
     }
 
-    private record GenerationConfig(int maxOutputTokens, int candidateCount, String responseMimeType) {
+    @com.fasterxml.jackson.annotation.JsonInclude(com.fasterxml.jackson.annotation.JsonInclude.Include.NON_NULL)
+    private record GenerationConfig(int maxOutputTokens, int candidateCount, String responseMimeType,
+                                    JsonNode responseJsonSchema) {
     }
 }
