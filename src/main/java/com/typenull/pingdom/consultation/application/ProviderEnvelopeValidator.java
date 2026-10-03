@@ -32,17 +32,17 @@ public class ProviderEnvelopeValidator {
      * 지원하지 않는 종류·필드·값은 PROVIDER_RESPONSE_INVALID로 거절. 명령 실행·자원 접근 인가는 별도 검증 책임.
      */
     public void validate(JsonNode envelope, String requestId) {
-        if (envelope == null || !envelope.isObject()) invalid("not_object");
+        if (envelope == null || !envelope.isObject()) invalid("not_object", "$", envelope);
         if (!integer(envelope.path("schemaVersion")) || !envelope.path("schemaVersion").canConvertToInt()
-                || envelope.path("schemaVersion").intValue() != 1) invalid("schema_version");
-        if (!envelope.path("id").isTextual() || !requestId.equals(envelope.path("id").asText())) invalid("request_id_mismatch");
-        if (!envelope.path("id").asText().matches("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")) invalid("request_id_format");
+                || envelope.path("schemaVersion").intValue() != 1) invalid("schema_version", "schemaVersion", envelope.path("schemaVersion"));
+        if (!envelope.path("id").isTextual() || !requestId.equals(envelope.path("id").asText())) invalid("request_id_mismatch", "id", envelope.path("id"));
+        if (!envelope.path("id").asText().matches("^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$")) invalid("request_id_format", "id", envelope.path("id"));
         switch (envelope.path("kind").asText()) {
             case "command_request" -> validateCommand(envelope);
             case "clarification_request" -> validateClarification(envelope);
             case "assistant_message" -> validateAssistantMessage(envelope);
             case "protocol_error" -> validateProtocolError(envelope);
-            default -> invalid("unsupported_kind");
+            default -> invalid("unsupported_kind", "kind", envelope.path("kind"));
         }
     }
 
@@ -105,7 +105,7 @@ public class ProviderEnvelopeValidator {
         }
     }
 
-    private void required(JsonNode node, String... fields) { for (String field : fields) if (node.path(field).isMissingNode() || node.path(field).isNull()) invalid("missing_field"); }
+    private void required(JsonNode node, String... fields) { for (String field : fields) if (node.path(field).isMissingNode() || node.path(field).isNull()) invalid("missing_field", field, node.path(field)); }
     private boolean integer(JsonNode node) {
         // JSON Schema와 JavaScript number의 정수 의미에 맞춰 1.0은 허용하되 1.5는 거부.
         return node.isNumber() && node.decimalValue().stripTrailingZeros().scale() <= 0;
@@ -143,10 +143,17 @@ public class ProviderEnvelopeValidator {
         }
     }
 
-    private void validText(JsonNode node) { if (!node.isTextual() || node.asText().isBlank() || node.asText().length() > 2_000) invalid("text_type_or_length"); }
+    private void validText(JsonNode node) { if (!node.isTextual() || node.asText().isBlank() || node.asText().length() > 2_000) invalid("text_type_or_length", "text", node); }
     private void invalid(String reason) {
         // 값이나 원본 필드명 대신 고정 사유만 기록해 공급자 생성 내용의 로그 유출을 막는다.
         log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={}", reason);
+        throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
+    }
+
+    private void invalid(String reason, String field, JsonNode value) {
+        // field는 코드에서 지정한 계약 필드만 사용하고 공급자가 반환한 이름·값은 기록하지 않는다.
+        log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={} field={} valueType={}",
+                reason, field, value == null ? "NULL" : value.getNodeType());
         throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
     }
 }

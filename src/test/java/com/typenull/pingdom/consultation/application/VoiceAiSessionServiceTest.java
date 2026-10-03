@@ -117,8 +117,24 @@ class VoiceAiSessionServiceTest {
         when(provider.generateEnvelope(anyString(), anyString())).thenReturn(mapper.readTree("{\"schemaVersion\":1,\"id\":\"wrong\"}"));
         assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_RESPONSE_INVALID");
         assertThat(replayStore).isEmpty();
-        assertThat(output).contains("outcome=provider_call_failed exceptionType=RuntimeException", "reason=request_id_mismatch")
+        assertThat(output).contains("outcome=provider_call_failed exceptionType=RuntimeException",
+                        "reason=request_id_mismatch field=id valueType=STRING")
                 .doesNotContain("private-provider-error", "test-key");
+    }
+
+    @Test
+    void releasesInvalidVersionBeforeRetryingGreeting(CapturedOutput output) throws Exception {
+        when(provider.generateEnvelope("hello", "r1"))
+                .thenReturn(mapper.readTree("{\"schemaVersion\":false,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"private-reply\"}"))
+                .thenReturn(mapper.readTree("{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"안녕하세요.\"}"));
+        assertCode(() -> service.send("session", 1L, "hello", "r1"), "PROVIDER_RESPONSE_INVALID");
+        assertThat(replayStore).isEmpty();
+        var result = service.send("session", 1L, "hello", "r1");
+        assertThat(result.path("text").asText()).isEqualTo("안녕하세요.");
+        assertThat(service.send("session", 1L, "hello", "r1")).isEqualTo(result);
+        verify(provider, times(2)).generateEnvelope("hello", "r1");
+        assertThat(output).contains("reason=schema_version field=schemaVersion valueType=BOOLEAN")
+                .doesNotContain("private-reply");
     }
 
     /**
