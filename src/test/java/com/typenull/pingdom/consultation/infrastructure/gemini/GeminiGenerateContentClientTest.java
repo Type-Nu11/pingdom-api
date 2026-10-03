@@ -120,6 +120,7 @@ class GeminiGenerateContentClientTest {
         String outcome = status == 401 || status == 403 ? "authentication"
                 : status == 429 ? "quota" : status == 504 ? "timeout" : "http_error";
         assertThat(output).contains("outcome=" + outcome, "httpStatus=" + status)
+                .contains("model=gemini-test elapsedMs=")
                 .doesNotContain("private-provider-body", "test-api-key", "private-user-message");
         server.verify();
     }
@@ -133,6 +134,7 @@ class GeminiGenerateContentClientTest {
                 .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
         assertThat(client.generateEnvelope("private-user-message", "request-1")).isNull();
         assertThat(output).contains("reason=" + (text.isEmpty() ? "missing_text" : "invalid_json"))
+                .contains("outcome=http_success httpStatus=200 model=gemini-test elapsedMs=")
                 .doesNotContain("private-invalid-json", "private-user-message", "test-api-key");
         server.verify();
     }
@@ -147,7 +149,64 @@ class GeminiGenerateContentClientTest {
         assertThatThrownBy(() -> client.generateEnvelope("private-user-message", "request-1"))
                 .isInstanceOf(org.springframework.web.client.ResourceAccessException.class);
         assertThat(output).contains("outcome=" + (timeout ? "timeout" : "transport_error"))
+                .contains("model=gemini-test elapsedMs=")
                 .doesNotContain("private-provider-url", "test-api-key", "private-user-message");
         server.verify();
+    }
+
+    @Test
+    void correlatesSuccessfulHttpCallWithRequestHeaderId() throws Exception {
+        var logger = (ch.qos.logback.classic.Logger) org.slf4j.LoggerFactory.getLogger(GeminiGenerateContentClient.class);
+        var appender = new ch.qos.logback.core.read.ListAppender<ch.qos.logback.classic.spi.ILoggingEvent>();
+        appender.start();
+        logger.addAppender(appender);
+        org.slf4j.MDC.put("requestId", "http-trace-1759");
+        try {
+            String envelope = "{\"schemaVersion\":1,\"id\":\"private-replay-id\",\"kind\":\"assistant_message\",\"text\":\"private-reply\"}";
+            expectEnvelopeResponse(envelope);
+            var actual = client.generateEnvelope("private-user-message", "private-replay-id");
+            new ProviderEnvelopeValidator().validate(actual, "private-replay-id");
+
+            assertThat(appender.list).hasSize(2).allSatisfy(event -> {
+                assertThat(event.getMDCPropertyMap()).containsEntry("requestId", "http-trace-1759");
+                assertThat(event.getThrowableProxy()).isNull();
+                assertThat(event.getFormattedMessage()).doesNotContain(
+                        "private-user-message", "private-reply", "private-replay-id", "test-api-key");
+            });
+            assertThat(appender.list.get(0).getFormattedMessage()).contains("outcome=started model=gemini-test");
+            assertThat(appender.list.get(1).getFormattedMessage())
+                    .contains("outcome=http_success httpStatus=200 model=gemini-test")
+                    .matches(".*elapsedMs=[0-9]+$");
+            server.verify();
+        } finally {
+            org.slf4j.MDC.remove("requestId");
+            logger.detachAppender(appender);
+            appender.stop();
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"command\":\"searchNearbyReservablePlaces\",\"args\":{\"date\":\"2026-10-03\",\"startTime\":\"14:00\",\"endTime\":\"17:00\",\"quantity\":2,\"useCurrentLocation\":true}}",
+            "{\"command\":\"getPlaceDetails\",\"args\":{\"placeId\":1}}",
+            "{\"command\":\"getAvailabilities\",\"args\":{\"placeId\":1,\"date\":\"2026-10-03\",\"quantity\":2}}",
+            "{\"command\":\"prepareReservation\",\"args\":{\"placeId\":1,\"availabilityId\":2,\"quantity\":2}}",
+            "{\"command\":\"cancelVoiceSession\",\"args\":{}}"
+    })
+    void preservesExistingCommandsThroughProviderResponseParsing(String fields) throws Exception {
+        var envelope = (com.fasterxml.jackson.databind.node.ObjectNode) new ObjectMapper().readTree(fields);
+        envelope.put("schemaVersion", 1).put("id", "request-1").put("kind", "command_request");
+        expectEnvelopeResponse(envelope.toString());
+        var actual = client.generateEnvelope("private-user-message", "request-1");
+        new ProviderEnvelopeValidator().validate(actual, "request-1");
+        assertThat(actual).isEqualTo(envelope);
+        server.verify();
+    }
+
+    private void expectEnvelopeResponse(String envelope) throws Exception {
+        String response = new ObjectMapper().writeValueAsString(java.util.Map.of("candidates", java.util.List.of(
+                java.util.Map.of("content", java.util.Map.of("parts", java.util.List.of(java.util.Map.of("text", envelope)))))));
+        server.expect(requestTo("https://gemini.test/v1beta/models/gemini-test:generateContent"))
+                .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
     }
 }

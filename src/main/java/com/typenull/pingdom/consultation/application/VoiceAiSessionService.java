@@ -134,16 +134,22 @@ public class VoiceAiSessionService {
     }
 
     private void validateEnvelope(JsonNode envelope, String requestId) {
-        if (envelope == null || !envelope.isObject()) invalidEnvelope("not_object");
+        if (envelope == null || !envelope.isObject()) invalidEnvelope("not_object", "$", envelope);
         if (envelope.toString().getBytes(StandardCharsets.UTF_8).length > MAX_ENVELOPE_BYTES) invalidEnvelope("envelope_too_large");
-        if (envelope.path("schemaVersion").asInt() != 1) invalidEnvelope("schema_version");
-        if (!requestId.equals(envelope.path("id").asText())) invalidEnvelope("request_id_mismatch");
+        if (envelope.path("schemaVersion").asInt() != 1) invalidEnvelope("schema_version", "schemaVersion", envelope.path("schemaVersion"));
+        if (!requestId.equals(envelope.path("id").asText())) invalidEnvelope("request_id_mismatch", "id", envelope.path("id"));
         if (envelope.has("source") || envelope.has("command_result")) invalidEnvelope("forbidden_field");
         envelopeValidator.validate(envelope, requestId);
     }
 
     private void invalidEnvelope(String reason) {
         log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={}", reason);
+        throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
+    }
+
+    private void invalidEnvelope(String reason, String field, JsonNode value) {
+        log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason={} field={} valueType={}",
+                reason, field, value == null ? "NULL" : value.getNodeType());
         throw new VoiceAiException(VoiceAiErrorCode.PROVIDER_RESPONSE_INVALID);
     }
 

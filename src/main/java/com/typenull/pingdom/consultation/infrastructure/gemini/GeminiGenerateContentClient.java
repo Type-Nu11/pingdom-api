@@ -9,6 +9,7 @@ import com.typenull.pingdom.consultation.application.GeminiVoiceClient;
 import java.io.IOException;
 import java.util.List;
 import java.util.Optional;
+import java.util.concurrent.TimeUnit;
 import java.util.stream.StreamSupport;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
@@ -90,25 +91,29 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
 
     @Override
     public JsonNode generateEnvelope(String message, String requestId) {
+        long started = System.nanoTime();
+        String model = properties.model().matches("[A-Za-z0-9._-]{1,128}") ? properties.model() : "unrecognized";
+        log.info("Voice AI provider call provider=gemini outcome=started model={}", model);
         try {
-            return requestEnvelope(message, requestId);
+            return requestEnvelope(message, requestId, model, started);
         } catch (RestClientResponseException exception) {
             int status = exception.getStatusCode().value();
             String outcome = status == 401 || status == 403 ? "authentication"
                     : status == 429 ? "quota" : status == 504 ? "timeout" : "http_error";
-            log.warn("Voice AI provider failure provider=gemini outcome={} httpStatus={}", outcome, status);
+            log.warn("Voice AI provider failure provider=gemini outcome={} httpStatus={} model={} elapsedMs={}",
+                    outcome, status, model, elapsedMillis(started));
             throw exception;
         } catch (RestClientException exception) {
             String outcome = exception.getCause() instanceof java.net.SocketTimeoutException
                     ? "timeout" : "transport_error";
-            log.warn("Voice AI provider failure provider=gemini outcome={} exceptionType={}",
-                    outcome, exception.getClass().getSimpleName());
+            log.warn("Voice AI provider failure provider=gemini outcome={} exceptionType={} model={} elapsedMs={}",
+                    outcome, exception.getClass().getSimpleName(), model, elapsedMillis(started));
             throw exception;
         }
     }
 
-    private JsonNode requestEnvelope(String message, String requestId) {
-        JsonNode response = geminiRestClient.post()
+    private JsonNode requestEnvelope(String message, String requestId, String model, long started) {
+        var response = geminiRestClient.post()
                 .uri("/models/{model}:generateContent", properties.model())
                 .contentType(MediaType.APPLICATION_JSON)
                 .header("x-goog-api-key", properties.apiKey())
@@ -119,9 +124,13 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
                                 voiceResponseSchema(requestId))
                 ))
                 .retrieve()
-                .body(JsonNode.class);
+                .toEntity(JsonNode.class);
 
-        String text = extractText(response).orElse("");
+        // HTTP 성공과 envelope 검증 성공을 구분한다. 발화·응답 원문과 replay ID는 기록하지 않는다.
+        log.info("Voice AI provider call provider=gemini outcome=http_success httpStatus={} model={} elapsedMs={}",
+                response.getStatusCode().value(), model, elapsedMillis(started));
+
+        String text = extractText(response.getBody()).orElse("");
         if (text.isBlank()) {
             log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason=missing_text");
             return null;
@@ -132,6 +141,10 @@ public class GeminiGenerateContentClient implements GeminiIntroClient, GeminiVoi
             log.warn("Voice AI provider failure provider=gemini outcome=invalid_response reason=invalid_json");
             return null;
         }
+    }
+
+    private long elapsedMillis(long started) {
+        return TimeUnit.NANOSECONDS.toMillis(System.nanoTime() - started);
     }
 
     private static JsonNode loadVoiceResponseSchema() {

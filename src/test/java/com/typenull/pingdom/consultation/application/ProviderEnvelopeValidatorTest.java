@@ -128,4 +128,22 @@ class ProviderEnvelopeValidatorTest {
         assertThat(output).contains("outcome=invalid_response reason=field_count")
                 .doesNotContain("private-user-text", "private-secret-field", "test-api-key");
     }
+
+    @org.junit.jupiter.params.ParameterizedTest
+    @org.junit.jupiter.params.provider.CsvSource(delimiter = '|', value = {
+            "{\"schemaVersion\":\"private-version\",\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":\"private-reply\"}|schema_version|schemaVersion|STRING",
+            "{\"schemaVersion\":1,\"id\":\"r1\",\"assistant_message\":\"private-reply\"}|unsupported_kind|kind|MISSING",
+            "{\"schemaVersion\":1,\"id\":false,\"kind\":\"assistant_message\",\"text\":\"private-reply\"}|request_id_mismatch|id|BOOLEAN",
+            "{\"schemaVersion\":1,\"id\":\"r1\",\"kind\":\"assistant_message\",\"text\":null}|missing_field|text|NULL"
+    })
+    void diagnosesContractFieldTypesWithoutValues(String json, String reason, String field, String type,
+                                                 CapturedOutput output) throws Exception {
+        var envelope = objectMapper.readTree(json);
+        assertThatThrownBy(() -> validator.validate(envelope, "r1"))
+                .isInstanceOf(VoiceAiException.class)
+                .satisfies(error -> assertThat(((VoiceAiException) error).getErrorCode().getCode())
+                        .isEqualTo("PROVIDER_RESPONSE_INVALID"));
+        assertThat(output).contains("reason=" + reason + " field=" + field + " valueType=" + type)
+                .doesNotContain("private-version", "private-reply", "assistant_message=");
+    }
 }
