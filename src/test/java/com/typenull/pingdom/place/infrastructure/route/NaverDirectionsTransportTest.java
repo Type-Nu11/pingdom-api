@@ -7,14 +7,21 @@ import static org.mockito.Mockito.when;
 
 import com.sun.net.httpserver.HttpServer;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
+import java.io.BufferedReader;
 import java.io.IOException;
+import java.io.InputStreamReader;
 import java.net.InetSocketAddress;
+import java.net.ServerSocket;
+import java.net.Socket;
+import java.net.SocketException;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import java.time.Duration;
+import java.util.concurrent.ConcurrentLinkedQueue;
 import java.util.concurrent.CountDownLatch;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.concurrent.Future;
 import java.util.concurrent.TimeUnit;
 import java.util.concurrent.atomic.AtomicBoolean;
 import java.util.concurrent.atomic.AtomicInteger;
@@ -34,6 +41,7 @@ class NaverDirectionsTransportTest {
     private ExecutorService handlers;
     private CloseableHttpAsyncClient client;
     private NaverDirectionsTransport transport;
+    private NaverDirectionsClient.Properties properties;
 
     @BeforeEach
     void setUp() throws Exception {
@@ -42,7 +50,7 @@ class NaverDirectionsTransportTest {
         server.setExecutor(handlers);
         server.start();
         // 운영 Properties의 HTTPS 제약은 유지하고 로컬 소켓 테스트에서만 HTTP를 사용합니다.
-        var properties = mock(NaverDirectionsClient.Properties.class);
+        properties = mock(NaverDirectionsClient.Properties.class);
         when(properties.baseUrl()).thenReturn("http://127.0.0.1:" + server.getAddress().getPort());
         when(properties.clientId()).thenReturn("test-id");
         when(properties.clientSecret()).thenReturn("test-secret");
@@ -87,35 +95,20 @@ class NaverDirectionsTransportTest {
 
     @Test
     void cancelsTricklingBodyAtOverallDeadlineAndAllowsNextRequest() throws Exception {
-        var calls = new AtomicInteger();
-        var chunks = new AtomicInteger();
-        var disconnected = new CountDownLatch(1);
-        server.createContext("/", exchange -> {
-            if (calls.incrementAndGet() > 1) {
-                exchange.sendResponseHeaders(200, 2);
-                try (var output = exchange.getResponseBody()) { output.write("ok".getBytes(StandardCharsets.UTF_8)); }
-                return;
-            }
-            exchange.sendResponseHeaders(200, 0);
-            try (var output = exchange.getResponseBody()) {
-                for (int i = 0; i < 100; i++) {
-                    output.write('x');
-                    output.flush();
-                    chunks.incrementAndGet();
-                    pause(50);
-                }
-            } catch (IOException exception) {
-                disconnected.countDown();
-            }
-        });
-        long start = System.nanoTime();
-        assertThatThrownBy(() -> transport.get(ORIGIN, DESTINATION)).isInstanceOf(SocketTimeoutException.class)
-                .hasMessageContaining("전체 응답");
-        assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
-        assertThat(chunks.get()).isGreaterThan(2);
-        assertThat(disconnected.await(3, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
-        assertThat(transport.get(ORIGIN, DESTINATION).status()).isEqualTo(200);
-        assertThat(calls.get()).isEqualTo(2);
+        try (var peer = new TricklingHttpPeer(2)) {
+            when(properties.baseUrl()).thenReturn(peer.baseUrl());
+            long start = System.nanoTime();
+            assertThatThrownBy(() -> transport.get(ORIGIN, DESTINATION)).isInstanceOf(SocketTimeoutException.class)
+                    .hasMessageContaining("전체 응답");
+            assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
+            assertThat(peer.chunks.get()).isGreaterThan(2);
+            assertThat(peer.disconnected.await(3, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
+            var response = transport.get(ORIGIN, DESTINATION);
+            assertThat(response.status()).isEqualTo(200);
+            assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("ok");
+            peer.serving.get(2, TimeUnit.SECONDS);
+            assertThat(peer.calls.get()).isEqualTo(2);
+        }
     }
 
     @Test
@@ -162,40 +155,104 @@ class NaverDirectionsTransportTest {
 
     @Test
     void interruptionCancelsExchangeAndPreservesInterruptFlag() throws Exception {
-        var started = new CountDownLatch(1);
-        var disconnected = new CountDownLatch(1);
-        var interrupted = new AtomicBoolean();
-        server.createContext("/", exchange -> {
-            exchange.sendResponseHeaders(200, 0);
-            try (var output = exchange.getResponseBody()) {
-                for (int i = 0; i < 100; i++) {
-                    output.write('x');
-                    output.flush();
-                    started.countDown();
-                    pause(50);
+        try (var peer = new TricklingHttpPeer(1)) {
+            when(properties.baseUrl()).thenReturn(peer.baseUrl());
+            // interrupt 검증 중 전체 deadline이 먼저 도달해 결과를 혼동하지 않도록 분리한다.
+            when(properties.requestTimeout()).thenReturn(Duration.ofSeconds(10));
+            var interrupted = new AtomicBoolean();
+            var caller = new Thread(() -> {
+                try {
+                    transport.get(ORIGIN, DESTINATION);
+                } catch (IOException exception) {
+                    interrupted.set(Thread.currentThread().isInterrupted());
                 }
-            } catch (IOException exception) {
-                disconnected.countDown();
-            }
-        });
-        var caller = new Thread(() -> {
+            });
+            caller.start();
             try {
-                transport.get(ORIGIN, DESTINATION);
-            } catch (IOException exception) {
-                interrupted.set(Thread.currentThread().isInterrupted());
+                assertThat(peer.started.await(2, TimeUnit.SECONDS)).isTrue();
+                caller.interrupt();
+                caller.join(2000);
+                assertThat(caller.isAlive()).isFalse();
+                assertThat(interrupted).isTrue();
+                assertThat(peer.disconnected.await(3, TimeUnit.SECONDS)).as("interrupt cancels socket I/O").isTrue();
+                peer.serving.get(2, TimeUnit.SECONDS);
+            } finally {
+                caller.interrupt();
+                caller.join(2000);
             }
-        });
-        caller.start();
-        try {
-            assertThat(started.await(2, TimeUnit.SECONDS)).isTrue();
-            caller.interrupt();
-            caller.join(2000);
-            assertThat(caller.isAlive()).isFalse();
-            assertThat(interrupted).isTrue();
-            assertThat(disconnected.await(3, TimeUnit.SECONDS)).isTrue();
-        } finally {
-            caller.interrupt();
-            caller.join(2000);
+        }
+    }
+
+    /**
+     * 취소 후 작은 응답 쓰기가 언제 실패하는지 대신, 연결 읽기의 EOF/reset을 직접 관측한다.
+     * chunked 응답은 계속 진행하므로 전체 timeout이나 interrupt가 소켓을 닫아야 검증이 끝난다.
+     */
+    private final class TricklingHttpPeer implements AutoCloseable {
+        private final ServerSocket listener = new ServerSocket();
+        private final ConcurrentLinkedQueue<Socket> sockets = new ConcurrentLinkedQueue<>();
+        private final AtomicInteger calls = new AtomicInteger();
+        private final AtomicInteger chunks = new AtomicInteger();
+        private final CountDownLatch started = new CountDownLatch(1);
+        private final CountDownLatch disconnected = new CountDownLatch(1);
+        private final Future<?> serving;
+
+        private TricklingHttpPeer(int expectedRequests) throws IOException {
+            listener.bind(new InetSocketAddress("127.0.0.1", 0));
+            serving = handlers.submit(() -> {
+                for (int i = 0; i < expectedRequests; i++) {
+                    try (Socket socket = listener.accept()) {
+                        sockets.add(socket);
+                        if (listener.isClosed()) return null;
+                        socket.setSoTimeout(5_000);
+                        var input = new BufferedReader(new InputStreamReader(socket.getInputStream(), StandardCharsets.US_ASCII));
+                        String line;
+                        while ((line = input.readLine()) != null && !line.isEmpty()) { }
+                        if (line == null) throw new IOException("HTTP 요청 헤더가 완료되지 않았습니다.");
+                        var output = socket.getOutputStream();
+                        if (calls.incrementAndGet() > 1) {
+                            output.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
+                                    .getBytes(StandardCharsets.US_ASCII));
+                            output.flush();
+                            continue;
+                        }
+                        output.write("HTTP/1.1 200 OK\r\nTransfer-Encoding: chunked\r\n\r\n"
+                                .getBytes(StandardCharsets.US_ASCII));
+                        output.flush();
+                        var writer = handlers.submit(() -> {
+                            try {
+                                while (!socket.isClosed()) {
+                                    output.write("1\r\nx\r\n".getBytes(StandardCharsets.US_ASCII));
+                                    output.flush();
+                                    chunks.incrementAndGet();
+                                    started.countDown();
+                                    pause(50);
+                                }
+                            } catch (IOException ignored) {
+                                // 쓰기 실패는 종료 판단에 사용하지 않는다. 읽기에서 실제 EOF/reset을 확인한다.
+                            }
+                        });
+                        try {
+                            if (input.read() == -1) disconnected.countDown();
+                        } catch (SocketException reset) {
+                            disconnected.countDown();
+                        } finally {
+                            writer.cancel(true);
+                        }
+                    }
+                }
+                return null;
+            });
+        }
+
+        private String baseUrl() {
+            return "http://127.0.0.1:" + listener.getLocalPort();
+        }
+
+        @Override
+        public void close() throws IOException {
+            listener.close();
+            for (Socket socket : sockets) socket.close();
+            serving.cancel(true);
         }
     }
 
