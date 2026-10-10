@@ -29,6 +29,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 @SpringBootTest(properties = {
         "spring.docker.compose.enabled=false", "spring.flyway.enabled=true",
+        "spring.flyway.postgresql.transactional-lock=false",
         "spring.flyway.locations=classpath:db/test-pre-migration,classpath:db/migration",
         "spring.jpa.hibernate.ddl-auto=validate", "spring.cloud.aws.s3.enabled=false",
         "management.health.redis.enabled=false", "fcm.enabled=false", "outbox.enabled=false"

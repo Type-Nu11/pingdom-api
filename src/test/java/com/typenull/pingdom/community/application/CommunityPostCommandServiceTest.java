@@ -27,7 +27,7 @@ class CommunityPostCommandServiceTest {
     private final CommunityPostCommandService service = new CommunityPostCommandService(
             communityPostRepository,
             communityPostPlaceRepository,
-            mapPlaceRepository
+            mapPlaceRepository, mock(CommunityPostImageService.class)
     );
 
     /**

@@ -38,7 +38,8 @@ class CommunityPostQueryServiceTest {
             communityPostRepository,
             communityPostPlaceRepository,
             communityPostCommentRepository,
-            userRepository
+            userRepository, mock(com.typenull.pingdom.community.infrastructure.persistence.CommunityPostImageRepository.class),
+            mock(com.typenull.pingdom.place.infrastructure.persistence.place.PlaceAdministrativeRegionRepository.class)
     );
 
     /**
@@ -145,6 +146,7 @@ class CommunityPostQueryServiceTest {
         LocalDateTime createdAt = LocalDateTime.of(2026, 9, 12, 12, 0);
         when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.of(post));
         when(comment.getId()).thenReturn(20L);
+        when(comment.getParentCommentId()).thenReturn(null);
         when(comment.getContent()).thenReturn("댓글 내용");
         when(comment.getUserId()).thenReturn(7L);
         when(comment.getCreatedAt()).thenReturn(createdAt);
