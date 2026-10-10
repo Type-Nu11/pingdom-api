@@ -37,6 +37,11 @@ public class CommunityPostComment {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "parent_comment_id")
+    private Long parentCommentId;
+
+    public void replyTo(Long parentCommentId) { this.parentCommentId = parentCommentId; }
+
     @Column(name = "content", nullable = false, length = 1000)
     private String content;
 
