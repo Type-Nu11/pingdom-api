@@ -12,7 +12,10 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.consultation.application.ProviderEnvelopeValidator;
+import java.time.Clock;
 import java.time.Duration;
+import java.time.Instant;
+import java.time.ZoneId;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
@@ -42,7 +45,8 @@ class GeminiGenerateContentClientTest {
         server = MockRestServiceServer.bindTo(builder).build();
         client = new GeminiGenerateContentClient(
                 builder.build(),
-                new GeminiProperties(true, "test-api-key", "gemini-test", Duration.ofSeconds(2), Duration.ofSeconds(5))
+                new GeminiProperties(true, "test-api-key", "gemini-test", Duration.ofSeconds(2), Duration.ofSeconds(5)),
+                Clock.fixed(Instant.parse("2026-10-08T16:00:00Z"), ZoneId.of("Asia/Seoul"))
         );
     }
 
@@ -90,15 +94,15 @@ class GeminiGenerateContentClientTest {
             server.expect(requestTo("https://gemini.test/v1beta/models/gemini-test:generateContent"))
                     .andExpect(jsonPath("$.generationConfig.responseMimeType").value("application/json"))
                     .andExpect(jsonPath("$.generationConfig.maxOutputTokens").value(512))
-                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf.length()").value(8))
-                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[6].properties.schemaVersion.type").value("integer"))
-                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[6].properties.schemaVersion.enum[0]").value(1))
-                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[6].properties.kind.enum[0]").value("assistant_message"))
+                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf.length()").value(9))
+                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[7].properties.schemaVersion.type").value("integer"))
+                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[7].properties.schemaVersion.enum[0]").value(1))
+                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[7].properties.kind.enum[0]").value("assistant_message"))
                     .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[*].properties.id.enum[0]")
                             .value(org.hamcrest.Matchers.everyItem(org.hamcrest.Matchers.is(requestId))))
-                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[6].required")
+                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[7].required")
                             .value(org.hamcrest.Matchers.containsInAnyOrder("schemaVersion", "id", "kind", "text")))
-                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[6].additionalProperties").value(false))
+                    .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[7].additionalProperties").value(false))
                     .andExpect(jsonPath("$.systemInstruction.parts[0].text")
                             .value(org.hamcrest.Matchers.containsString("\nrequest id: " + requestId)))
                     .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
@@ -107,6 +111,67 @@ class GeminiGenerateContentClientTest {
             var actual = client.generateEnvelope("안녕하세요", requestId);
             new ProviderEnvelopeValidator().validate(actual, requestId);
         }
+        server.verify();
+    }
+
+    @Test
+    void suppliesGeneralDiscoveryAndReservationBoundariesWithKoreanDate() throws Exception {
+        String message = "내일 두 명 예약할 곳 찾아줘. 전달된 조건: 시간은 14:00~17:00";
+        server.expect(requestTo("https://gemini.test/v1beta/models/gemini-test:generateContent"))
+                .andExpect(jsonPath("$.contents[0].parts[0].text").value(message))
+                .andExpect(request -> {
+                    var body = new ObjectMapper().readTree(
+                            ((org.springframework.mock.http.client.MockClientHttpRequest) request).getBodyAsString());
+                    assertThat(body.at("/systemInstruction/parts/0/text").asText()).contains(
+                            "근처에 뭐 있는지 알려줘", "근처 뭐 있어?", "주변 아무거나 보여줘", "근처 카페 보여줘",
+                            "Omit touristCategory when no category was requested", "touristCategory=CAFE for cafe requests",
+                            "Do not ask for date, time, quantity, or a mandatory category for general discovery.",
+                            "clarification_request field=useCurrentLocation", "cannot carry a named search area",
+                            "Use searchNearbyReservablePlaces only for explicit reservation intent",
+                            "Keep the supplied date and quantity", "Reuse conversation context and conditions actually included",
+                            "previous turns, location state, tool", "User-written ids are not app verification",
+                            "never guess ids or bypass final user confirmation", "A general search does not prove reservability",
+                            "current opening status, ratings, prices, currency, or cancellation terms without data",
+                            "current date: 2026-10-09", "timezone: Asia/Seoul", "request id: request-1");
+                })
+                .andRespond(withSuccess("{\"candidates\":[]}", MediaType.APPLICATION_JSON));
+        assertThat(client.generateEnvelope(message, "request-1")).isNull();
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"useCurrentLocation\":true}", "{\"useCurrentLocation\":false}",
+            "{\"useCurrentLocation\":true,\"touristCategory\":\"CAFE\"}"
+    })
+    void requestsAndParsesReadOnlyGeneralSearch(String args) throws Exception {
+        var mapper = new ObjectMapper();
+        var envelope = mapper.readTree("{\"schemaVersion\":1,\"id\":\"request-1\",\"kind\":\"command_request\","
+                + "\"command\":\"searchNearbyPlaces\",\"args\":" + args + "}");
+        String response = mapper.writeValueAsString(java.util.Map.of("candidates", java.util.List.of(
+                java.util.Map.of("content", java.util.Map.of("parts", java.util.List.of(
+                        java.util.Map.of("text", envelope.toString())))))));
+        server.expect(requestTo("https://gemini.test/v1beta/models/gemini-test:generateContent"))
+                .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[0].properties.command.enum[0]")
+                        .value("searchNearbyPlaces"))
+                .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[0].properties.args.required")
+                        .value(org.hamcrest.Matchers.contains("useCurrentLocation")))
+                .andExpect(jsonPath("$.generationConfig.responseJsonSchema.anyOf[0].properties.args.additionalProperties").value(false))
+                .andExpect(request -> {
+                    var body = mapper.readTree(((org.springframework.mock.http.client.MockClientHttpRequest) request).getBodyAsString());
+                    var properties = body.at("/generationConfig/responseJsonSchema/anyOf/0/properties/args/properties");
+                    assertThat(properties).hasSize(2);
+                    assertThat(properties.path("useCurrentLocation").path("type").asText()).isEqualTo("boolean");
+                    try (var input = getClass().getResourceAsStream("/openapi/provider-envelope.v1.schema.json")) {
+                        var source = mapper.readTree(input);
+                        assertThat(properties.at("/touristCategory/enum"))
+                                .isEqualTo(source.at("/oneOf/0/properties/args/properties/touristCategory/enum"));
+                    }
+                })
+                .andRespond(withSuccess(response, MediaType.APPLICATION_JSON));
+        var actual = client.generateEnvelope("근처에 뭐 있는지 알려줘", "request-1");
+        new ProviderEnvelopeValidator().validate(actual, "request-1");
+        assertThat(actual).isEqualTo(envelope);
         server.verify();
     }
 

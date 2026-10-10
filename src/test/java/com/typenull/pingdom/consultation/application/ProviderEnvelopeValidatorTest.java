@@ -6,8 +6,11 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.consultation.domain.exception.VoiceAiException;
+import java.util.List;
 import org.junit.jupiter.api.Test;
 import org.junit.jupiter.api.extension.ExtendWith;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.boot.test.system.CapturedOutput;
 import org.springframework.boot.test.system.OutputCaptureExtension;
 
@@ -51,6 +54,89 @@ class ProviderEnvelopeValidatorTest {
                 """);
 
         assertThatCode(() -> validator.validate(envelope, "request-1")).doesNotThrowAnyException();
+    }
+
+    @ParameterizedTest
+    @ValueSource(booleans = {true, false})
+    void acceptsGeneralSearchWithoutReservationConditionsOrCategory(boolean useCurrentLocation) throws Exception {
+        var envelope = generalSearch("{\"useCurrentLocation\":" + useCurrentLocation + "}");
+        assertThatCode(() -> validator.validate(envelope, "request-1")).doesNotThrowAnyException();
+    }
+
+    @Test
+    void acceptsEveryGeneralSearchCategoryFromPublishedSchema() throws Exception {
+        try (var input = getClass().getResourceAsStream("/openapi/provider-envelope.v1.schema.json")) {
+            var schema = objectMapper.readTree(input);
+            var command = java.util.stream.StreamSupport.stream(schema.path("oneOf").spliterator(), false)
+                    .filter(node -> node.at("/properties/command/const").asText().equals("searchNearbyPlaces"))
+                    .findFirst().orElseThrow();
+            var categories = command.at("/properties/args/properties/touristCategory/enum");
+            assertThat(categories).hasSize(9);
+            for (var category : categories) {
+                var envelope = generalSearch("{\"useCurrentLocation\":true,\"touristCategory\":" + category + "}");
+                assertThatCode(() -> validator.validate(envelope, "request-1")).doesNotThrowAnyException();
+            }
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{}", "{\"useCurrentLocation\":null}", "{\"useCurrentLocation\":\"true\"}",
+            "{\"useCurrentLocation\":1}", "{\"useCurrentLocation\":{}}", "{\"useCurrentLocation\":[]}",
+            "{\"useCurrentLocation\":true,\"touristCategory\":null}",
+            "{\"useCurrentLocation\":true,\"touristCategory\":\"CAFE_UNKNOWN\"}",
+            "{\"useCurrentLocation\":true,\"touristCategory\":[\"CAFE\"]}"
+    })
+    void rejectsInvalidGeneralSearchArguments(String args) throws Exception {
+        assertInvalid(generalSearch(args));
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "date", "startTime", "endTime", "quantity", "latitude", "longitude", "coordinates",
+            "route", "api", "method", "confirmed", "confirmationToken", "placeId", "availabilityId", "source"
+    })
+    void rejectsInjectedGeneralSearchFields(String field) throws Exception {
+        var envelope = generalSearch("{\"useCurrentLocation\":true}");
+        ((com.fasterxml.jackson.databind.node.ObjectNode) envelope.path("args")).put(field, "injected");
+        assertInvalid(envelope);
+    }
+
+    @Test
+    void preservesReservationSearchRequiredArguments() throws Exception {
+        List<String> required = List.of("date", "startTime", "endTime", "quantity", "useCurrentLocation");
+        for (String field : required) {
+            var envelope = objectMapper.readTree("""
+                    {"schemaVersion":1,"id":"request-1","kind":"command_request","command":"searchNearbyReservablePlaces",
+                    "args":{"date":"2026-10-09","startTime":"14:00","endTime":"17:00","quantity":2,"useCurrentLocation":true}}
+                    """);
+            ((com.fasterxml.jackson.databind.node.ObjectNode) envelope.path("args")).remove(field);
+            assertInvalid(envelope);
+        }
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {
+            "{\"command\":\"prepareReservation\",\"args\":{\"placeId\":1,\"quantity\":2}}",
+            "{\"command\":\"prepareReservation\",\"args\":{\"placeId\":1,\"availabilityId\":2,\"quantity\":2,\"confirmed\":true}}",
+            "{\"command\":\"createReservation\",\"args\":{\"placeId\":1,\"availabilityId\":2,\"quantity\":2}}"
+    })
+    void rejectsMissingSelectionAndReservationExecutionCommands(String fields) throws Exception {
+        var envelope = (com.fasterxml.jackson.databind.node.ObjectNode) objectMapper.readTree(fields);
+        envelope.put("schemaVersion", 1).put("id", "request-1").put("kind", "command_request");
+        assertInvalid(envelope);
+    }
+
+    private com.fasterxml.jackson.databind.JsonNode generalSearch(String args) throws Exception {
+        return objectMapper.readTree("{\"schemaVersion\":1,\"id\":\"request-1\",\"kind\":\"command_request\","
+                + "\"command\":\"searchNearbyPlaces\",\"args\":" + args + "}");
+    }
+
+    private void assertInvalid(com.fasterxml.jackson.databind.JsonNode envelope) {
+        assertThatThrownBy(() -> validator.validate(envelope, "request-1"))
+                .isInstanceOf(VoiceAiException.class)
+                .satisfies(error -> assertThat(((VoiceAiException) error).getErrorCode().getCode())
+                        .isEqualTo("PROVIDER_RESPONSE_INVALID"));
     }
 
     /**

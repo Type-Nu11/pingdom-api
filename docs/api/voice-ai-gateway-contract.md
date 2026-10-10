@@ -1,6 +1,6 @@
 # 음성 AI Gateway v1 계약
 
-기준 앱 schema: Type-Nu11/pingdom-app `f7cb022`,
+초기 기준 앱 schema: Type-Nu11/pingdom-app `f7cb022`,
 `docs/architecture/voice-assistant/provider-envelope.v1.schema.json`.
 서버에 고정한 원본은 `src/main/resources/openapi/provider-envelope.v1.schema.json`이다.
 OpenAPI 3.0에서는 const를 단일 enum으로, $defs를 인라인으로 변환한다.
@@ -12,6 +12,65 @@ Gemini 생성 요청은 같은 고정 원본에서 변환한 `responseJsonSchema
 명시한다. 공급자가 지원하지 않는 길이·pattern 제약과 날짜·시간 등 의미 검증은 기존 runtime
 validator를 유지한다. 생성 스키마는 응답 검증을 대신하지 않는다. 실패 분류 로그는
 [운영 관측성](../observability.md#공급자-실패-추적)을 따른다.
+
+## 일반 장소 탐색 (#1764)
+
+`searchNearbyPlaces`를 ProviderEnvelope v1에 읽기 전용 명령으로 추가한다. 응답 union은
+기존 8개에서 9개로 확장되며 예약 검색·availability·예약 초안 명령의 인자 계약은 유지한다.
+
+```json
+{
+  "schemaVersion": 1,
+  "id": "request-1",
+  "kind": "command_request",
+  "command": "searchNearbyPlaces",
+  "args": { "useCurrentLocation": true, "touristCategory": "CAFE" }
+}
+```
+
+필수 인자는 boolean `useCurrentLocation` 하나이다. `touristCategory`는 선택 조건이며
+기존 `K_POP`, `BEAUTY`, `FASHION`, `CAFE`, `FOOD`, `POP_UP`, `EXHIBITION`, `NIGHTLIFE`, `OTHER`를
+사용한다. 카테고리 없는 일반 탐색도 허용한다. 날짜·시간·인원·좌표·route/API·예약 확인 플래그 등
+추가 필드는 거부한다. 일반 탐색은 예약 가능 여부를 보장하지 않는다.
+
+“근처에 뭐 있는지 알려줘”, “주변 아무거나 보여줘”, “근처 카페 보여줘”에는 예약 조건을
+질문하지 않는다. `useCurrentLocation=true`는 앱에 현재 위치 사용을 요청하는 의도이며,
+위치 권한이나 좌표를 이미 확보했다는 의미가 아니다. 실제 권한 확인·좌표·검색 반경·API 실행은
+앱의 Command Registry가 담당한다. 앱은 기존 `GET /places`의 위치·선택 카테고리 검색을
+재사용하여 실제 결과를 최대 3개 표시하고, 결과가 없으면 장소를 만들어내지 않는다.
+앱 결과 표시와 위치 처리는 이 서버 변경으로 구현되거나 검증된 사항이 아니다.
+
+위치 사용이 불가능하고 검색 지역도 없다는 정보가 현재 입력에 있으면
+`clarification_request(field=useCurrentLocation)`로 위치나 지역만 확인한다. 현재 명령에는 지역
+인자가 없으므로 지역명이 주어진 경우에는 `assistant_message`로 앱의 지역 선택을 안내한다.
+`useCurrentLocation=false`의 검색 기준 위치와 지역 선택 상태는 앱이 결정하며, 모델이 임의
+좌표를 만들거나 지정한 지역을 현재 위치로 대체하지 않는다. 지역 선택·전달 계약은 후속 작업이다.
+
+명시적인 예약 요청에는 기존 `searchNearbyReservablePlaces`를 사용한다. “내일 두 명 예약할 곳
+찾아줘”에 포함된 날짜·인원을 유지하고 필수 시간대 등 누락 조건만 질문한다.
+상대 날짜 해석을 위해 서버는 Gemini system instruction에 요청 시점의 현재 날짜와
+`Asia/Seoul` 시간대를 제공한다. 사용자 발화에 없는 날짜·시간·인원은 추정하지 않는다.
+
+### 맥락 전달과 선택 장소 제한
+
+요청 DTO는 기존 `text`와 `requestId`이며, 공급자에 전달하는 사용자 입력도 현재 `text` 하나이다.
+현재 입력에 포함된 대화·조건은 활용하지만 서버가 이전 발화를 별도로 조회하거나 유지하지 않는다.
+대화 이력·구조화된 예약 조건·위치 사용 상태·도구 조회 결과·앱이 검증한 선택 장소 및 availability
+전달 계약은 없다. 여러 차례 대화에서 조건을 유지하려면 별도 계약을 정의해야 한다.
+
+“여기로 예약해 줘”는 앱이 검증한 선택 `placeId`·`availabilityId`가 있어야 예약 초안으로 이어질
+수 있다. 현재 입력 계약에는 검증된 선택이 제공되지 않으므로 모델은 앱에서 장소를 선택하도록
+안내한다. 사용자 텍스트의 숫자 ID를 앱 검증으로 취급하거나 ID를 추측하지 않는다.
+조회되지 않은 현재 영업 여부·평점·가격·통화·취소 조건을 단정하지 않는다.
+예약 Mutation과 최종 사용자 확인은 기존 앱 흐름의 책임이다.
+
+### 호환성과 완료 검증
+
+구형 앱 parser는 새 명령을 거부할 수 있으므로 서버 지침 활성화 전에 앱의 지원 버전과
+반영 순서를 확인해야 한다. 공개 OpenAPI의 `ProviderEnvelopeV1`과 앱의 parser·Registry·생성 타입을
+비교한다. 배포 후 인증된 요청으로 일반 탐색·카테고리 탐색·위치 미사용·예약 조건 유지·빈 결과를
+검증하고 실제 앱 장소 카드와 최종 확인 전 예약 Mutation 0회를 확인한다.
+스키마/validator/요청 구성 단위 테스트는 실제 Gemini 의미 분류나 배포된 응답을 증명하지 않는다.
 
 ## API
 
