@@ -53,3 +53,11 @@ PostgreSQL API 테스트로 순서·국가 필터·조회수·답글·숨김 부
 - `git diff --check`: 통과.
 
 전체 통합 테스트 실행에서는 작업 범위 밖의 예약 OpenAPI nullable 검증과 GeminiVoiceClient 테스트 빈 누락 실패도 관찰했다. 위 결과는 전체 통합 테스트 통과를 의미하지 않는다. 해당 영역의 코드는 변경하지 않았다.
+
+## 마이그레이션 검증 보완
+
+V138 적용은 성공했지만 `FlywayMigrationIntegrationTest`의 최신 버전 기대값이 V137에 머물러 스모크 테스트가 실패했다. 최신 버전을 V138로 갱신하고 업그레이드 적용 개수를 `최신 버전 - 시작 버전`으로 계산하도록 변경했다. 빈 DB와 기존 DB 업그레이드에서 커뮤니티 필드·이미지·댓글 좋아요 테이블도 확인한다.
+
+Hibernate 스키마 검증 테스트는 기존 CONCURRENTLY 인덱스와 Flyway 트랜잭션 잠금의 충돌로 대기했다. 다른 PostgreSQL 테스트와 동일하게 세션 잠금 설정(`spring.flyway.postgresql.transactional-lock=false`)을 적용했다. V138 SQL 및 운영 DB는 변경하지 않았다.
+
+보완 후 `./gradlew migrationSmokeTest migrationTest --no-daemon`: 스모크 1개, 전체 마이그레이션 25개 모두 통과했다. 테스트 종료 시 DB 컨테이너 정리 이후 스케줄러의 연결 거절 로그가 있었으며, 테스트 실패는 0개다.
