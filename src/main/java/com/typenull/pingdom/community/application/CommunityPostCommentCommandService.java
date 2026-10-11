@@ -31,11 +31,19 @@ public class CommunityPostCommentCommandService {
     public CommunityPostCommentCreateResponse create(long postId, long userId, CommunityPostCommentCreateRequest request) {
         CommunityPost post = communityPostRepository.findByIdAndHiddenFalse(postId)
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
+        if (request.parentCommentId() != null) {
+            CommunityPostComment parent = communityPostCommentRepository
+                    .findByIdAndCommunityPost_IdAndHiddenFalseAndCommunityPost_HiddenFalse(request.parentCommentId(), postId)
+                    .orElseThrow(() -> new CommunityException(CommunityErrorCode.INVALID_PARENT_COMMENT));
+            if (parent.getParentCommentId() != null)
+                throw new CommunityException(CommunityErrorCode.INVALID_PARENT_COMMENT);
+        }
         CommunityPostComment comment = communityPostCommentRepository.save(CommunityPostComment.create(
                 post,
                 userId,
                 request.content().trim()
         ));
-        return new CommunityPostCommentCreateResponse(comment.getId(), post.getId(), comment.getContent());
+        comment.replyTo(request.parentCommentId());
+        return new CommunityPostCommentCreateResponse(comment.getId(), post.getId(), comment.getContent(), comment.getParentCommentId());
     }
 }

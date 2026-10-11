@@ -145,6 +145,19 @@ public class S3ObjectStorage {
         }
     }
 
+    /** DB에 먼저 등록한 신규 UUID key로만 업로드해 실패·프로세스 종료 시에도 정리 이력을 유지합니다. */
+    public S3PutResult putAtKey(byte[] bytes, String contentType, String key) {
+        try {
+            S3Client client = s3Client();
+            client.putObject(PutObjectRequest.builder().bucket(bucket).key(key)
+                    .contentType(contentType).contentLength((long) bytes.length).build(), RequestBody.fromBytes(bytes));
+            return new S3PutResult(key, client.utilities().getUrl(
+                    GetUrlRequest.builder().bucket(bucket).key(key).build()).toExternalForm());
+        } catch (SdkException exception) {
+            throw new S3StorageException(S3StorageError.S3_ERROR, "S3 image upload failed.", exception);
+        }
+    }
+
     /** 공백 key는 무시하고 나머지는 DeleteObject로 제거. S3 응답 오류와 SDK 연결 오류를 구분해 전파. */
     public void delete(String key) {
         if (!StringUtils.hasText(key)) {

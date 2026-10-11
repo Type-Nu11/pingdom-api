@@ -46,7 +46,7 @@ public class CommunityPostCommentController {
     private final CommunityPostQueryService communityPostQueryService;
 
     @GetMapping
-    @Operation(summary = "커뮤니티 게시글 댓글 목록 조회", description = "게시글 본문 아래에 표시할 댓글을 최신 댓글순으로 조회합니다.")
+    @Operation(summary = "커뮤니티 게시글 댓글 목록 조회", description = "댓글·답글을 최신순 평탄 목록으로 조회합니다. parentCommentId 지정 시 해당 부모의 답글만 페이지 조회하며 숨김 부모의 답글은 제외합니다.")
     @ApiResponses({
             @ApiResponse(responseCode = "200", description = "댓글 목록 조회 성공", useReturnTypeSchema = true),
             @ApiResponse(responseCode = "404", description = "게시글을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
@@ -54,9 +54,11 @@ public class CommunityPostCommentController {
     public ResponseEntity<CommunityPostCommentListResponse> findAll(
             @PathVariable long postId,
             @RequestParam(defaultValue = "1") @Min(1) int page,
-            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit
+            @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit,
+            @CurrentUser JwtAuthenticatedUser user,
+            @RequestParam(required = false) @jakarta.validation.constraints.Positive Long parentCommentId
     ) {
-        return ResponseEntity.ok(communityPostQueryService.findComments(postId, page, limit));
+        return ResponseEntity.ok(communityPostQueryService.findComments(postId, page, limit, user == null ? null : user.userId(), parentCommentId));
     }
 
     @PostMapping

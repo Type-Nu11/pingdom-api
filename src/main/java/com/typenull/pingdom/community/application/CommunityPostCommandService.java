@@ -29,6 +29,7 @@ public class CommunityPostCommandService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostPlaceRepository communityPostPlaceRepository;
     private final MapPlaceRepository mapPlaceRepository;
+    private final CommunityPostImageService imageService;
 
     /**
      * 활성 카테고리와 연결 장소를 검증한 뒤 제목·본문의 앞뒤 공백을 제거해 게시글과 장소 연결을 저장하고 ID를 반환.
@@ -38,6 +39,7 @@ public class CommunityPostCommandService {
     public CommunityPostCreateResponse create(long userId, CommunityPostCreateRequest request) {
         CommunityPostCategory category = CommunityPostCategory.findEnabledById(request.categoryId())
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.INVALID_CATEGORY));
+        CommunityCountryCodes.validate(request.countryCode());
         List<Long> placeIds = normalizePlaceIds(request.placeIds());
         validatePlaceSelection(category, placeIds);
         List<MapPlace> places = findPlaces(placeIds);
@@ -48,6 +50,9 @@ public class CommunityPostCommandService {
                 request.content().trim(),
                 userId
         ));
+        communityPost.describeLocation(request.countryCode(),
+                request.region() == null || request.region().isBlank() ? null : request.region().trim());
+        imageService.attach(userId, communityPost.getId(), request.imageIds());
         communityPostPlaceRepository.saveAll(places.stream()
                 .map(place -> CommunityPostPlace.connect(communityPost, place))
                 .toList());
