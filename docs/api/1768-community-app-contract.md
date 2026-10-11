@@ -61,3 +61,9 @@ V138 적용은 성공했지만 `FlywayMigrationIntegrationTest`의 최신 버전
 Hibernate 스키마 검증 테스트는 기존 CONCURRENTLY 인덱스와 Flyway 트랜잭션 잠금의 충돌로 대기했다. 다른 PostgreSQL 테스트와 동일하게 세션 잠금 설정(`spring.flyway.postgresql.transactional-lock=false`)을 적용했다. V138 SQL 및 운영 DB는 변경하지 않았다.
 
 보완 후 `./gradlew migrationSmokeTest migrationTest --no-daemon`: 스모크 1개, 전체 마이그레이션 25개 모두 통과했다. 테스트 종료 시 DB 컨테이너 정리 이후 스케줄러의 연결 거절 로그가 있었으며, 테스트 실패는 0개다.
+
+## CI 빌드 게이트 보완
+
+CI의 Migration/OpenAPI 검증은 통과했지만 `NaverDirectionsTransportTest`의 소켓 종료 관측 테스트 1개가 실패해 fast-test 게이트가 빌드를 차단했다. 기존 테스트 서버가 쓰기의 SocketException을 무시하는 경로를 보완했다. 읽기 EOF/reset뿐 아니라 쓰기 reset/broken pipe도 실제 연결 종료 증거로 인정하고, 그때 서버 소켓을 정리해 대기 중인 읽기와 다음 요청 수락을 진행시킨다. interrupt로 인한 정리 예외는 종료 증거로 인정하지 않는다. 운영 전송 코드와 timeout 값은 변경하지 않았다.
+
+`./gradlew --no-daemon --build-cache --configuration-cache test bootJar`: 1,233개 테스트 및 JAR 빌드 통과. Linux/Java 21 컨테이너에서 deadline 취소·다음 요청 성공과 interrupt 취소 검증을 번갈아 총 20회 실행해 모두 통과했다.
