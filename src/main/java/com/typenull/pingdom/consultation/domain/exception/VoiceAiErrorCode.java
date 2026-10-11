@@ -12,6 +12,8 @@ public enum VoiceAiErrorCode implements ErrorCode {
     SESSION_FORBIDDEN(HttpStatus.FORBIDDEN, "다른 사용자의 음성 AI 세션에는 접근할 수 없습니다."),
     SESSION_EXPIRED(HttpStatus.GONE, "음성 AI 세션이 만료되었거나 종료되었습니다."),
     REPLAY_CONFLICT(HttpStatus.CONFLICT, "같은 요청 ID에 다른 메시지를 사용할 수 없습니다."),
+    CHAT_REQUEST_INVALID(HttpStatus.BAD_REQUEST, "AI chat 요청 계약이 올바르지 않습니다."),
+    TOOL_CALL_INVALID(HttpStatus.BAD_REQUEST, "등록되지 않은 도구이거나 도구 인자가 schema와 일치하지 않습니다."),
     PROVIDER_UNAVAILABLE(HttpStatus.BAD_GATEWAY, "AI provider를 사용할 수 없습니다."),
     PROVIDER_RESPONSE_INVALID(HttpStatus.BAD_GATEWAY, "AI provider 응답이 계약에 맞지 않습니다.");
 
