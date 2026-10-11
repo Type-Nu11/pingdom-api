@@ -16,6 +16,8 @@ public record CommunityPostCreateRequest(
         @Schema(description = "게시글 본문", example = "즐거운 경험이었습니다.")
         @NotBlank @Size(max = 5000) String content,
         @Schema(description = "연결할 장소 ID 목록. 장소 카테고리에서는 1개 이상 필수입니다.", example = "[1, 2]")
-        List<@NotNull @Positive Long> placeIds
+        List<@NotNull @Positive Long> placeIds,
+        @Schema(description = "본인이 업로드한 임시 사진 ID. 요청 순서대로 표시하며 생략 시 사진 없음. 최대 10장")
+        @Size(max = 10) List<@NotNull @Positive Long> imageIds
 ) {
 }
