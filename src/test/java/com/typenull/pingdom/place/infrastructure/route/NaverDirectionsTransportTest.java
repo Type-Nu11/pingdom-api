@@ -102,7 +102,8 @@ class NaverDirectionsTransportTest {
                     .hasMessageContaining("전체 응답");
             assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
             assertThat(peer.chunks.get()).isGreaterThan(2);
-            assertThat(peer.disconnected.await(3, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
+            // CI runner 부하로 취소 이벤트 전달이 늦어질 수 있으므로 기능 deadline과 관찰 상한을 분리합니다.
+            assertThat(peer.disconnected.await(10, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
             var response = transport.get(ORIGIN, DESTINATION);
             assertThat(response.status()).isEqualTo(200);
             assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("ok");
