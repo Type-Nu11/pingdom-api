@@ -3,6 +3,8 @@ package com.typenull.pingdom.community.application;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
+import static org.mockito.ArgumentMatchers.anyBoolean;
+import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.mock;
 import static org.mockito.Mockito.never;
 import static org.mockito.Mockito.verify;
@@ -16,6 +18,9 @@ import com.typenull.pingdom.community.domain.CommunityPostComment;
 import com.typenull.pingdom.community.domain.CommunityPostPlace;
 import com.typenull.pingdom.community.domain.exception.CommunityException;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostRepository;
+import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostMediaRepository;
+import com.typenull.pingdom.community.infrastructure.persistence.CommunityCommentLikeRepository;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceAdministrativeRegionRepository;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostPlaceRepository;
 import com.typenull.pingdom.community.infrastructure.persistence.CommunityPostCommentRepository;
 import com.typenull.pingdom.identity.domain.User;
@@ -38,7 +43,8 @@ class CommunityPostQueryServiceTest {
             communityPostRepository,
             communityPostPlaceRepository,
             communityPostCommentRepository,
-            userRepository
+            userRepository, mock(CommunityPostMediaRepository.class), mock(CommunityCommentLikeRepository.class),
+            mock(PlaceAdministrativeRegionRepository.class)
     );
 
     /**
@@ -46,20 +52,24 @@ class CommunityPostQueryServiceTest {
      */
     @Test
     void returnsCategoryPostPage() {
-        List<CommunityPostListResponse.Item> items = List.of(
-                new CommunityPostListResponse.Item(2L, "두 번째 게시글"),
-                new CommunityPostListResponse.Item(1L, "첫 번째 게시글")
-        );
-        when(communityPostRepository.findListItemsByCategoryId(any(), any()))
-                .thenReturn(new PageImpl<>(items, PageRequest.of(0, 20), 22));
-
-        CommunityPostListResponse response = service.findByCategory("TRAVEL", 1, 20);
-
-        assertThat(response.posts()).containsExactlyElementsOf(items);
+        CommunityPostRepository.ListItem first = mock(CommunityPostRepository.ListItem.class);
+        CommunityPostRepository.ListItem second = mock(CommunityPostRepository.ListItem.class);
+        when(first.getPostId()).thenReturn(2L);
+        when(first.getTitle()).thenReturn("두 번째 게시글");
+        when(first.getContent()).thenReturn("본문\n  미리보기");
+        when(first.getCountry()).thenReturn("한국");
+        when(first.getCategoryId()).thenReturn("TRAVEL");
+        when(second.getPostId()).thenReturn(1L);
+        when(communityPostRepository.findListItems(any(), anyBoolean(), any(), any()))
+                .thenReturn(new PageImpl<>(List.of(first, second), PageRequest.of(0, 20), 22));
+        CommunityPostListResponse response = service.findByCategory("TRAVEL", 1, 20, null);
+        assertThat(response.posts()).extracting(CommunityPostListResponse.Item::postId).containsExactly(2L, 1L);
+        assertThat(response.posts().getFirst().preview()).isEqualTo("본문 미리보기");
+        assertThat(response.posts().getFirst().country()).isEqualTo("KR");
         assertThat(response.totalCount()).isEqualTo(22);
         assertThat(response.totalPages()).isEqualTo(2);
         assertThat(response.hasNext()).isTrue();
-        verify(communityPostRepository).findListItemsByCategoryId(any(), any());
+
     }
 
     /**
@@ -67,11 +77,11 @@ class CommunityPostQueryServiceTest {
      */
     @Test
     void rejectsUnsupportedQueryCategory() {
-        assertThatThrownBy(() -> service.findByCategory("UNKNOWN", 1, 20))
+        assertThatThrownBy(() -> service.findByCategory("UNKNOWN", 1, 20, null))
                 .isInstanceOf(CommunityException.class)
                 .hasMessage("사용할 수 없는 게시글 카테고리입니다.");
 
-        verify(communityPostRepository, never()).findListItemsByCategoryId(any(), any());
+        verify(communityPostRepository, never()).findListItems(any(), anyBoolean(), any(), any());
     }
 
     /**
@@ -95,7 +105,7 @@ class CommunityPostQueryServiceTest {
 
         assertThat(response.title()).isEqualTo("게시글 제목");
         assertThat(response.content()).isEqualTo("게시글 본문");
-        assertThat(response.places()).containsExactly(new CommunityPostDetailResponse.Place(7L, "대소고", false));
+        assertThat(response.places()).containsExactly(new CommunityPostDetailResponse.Place(7L, "대소고", false, null, null, null));
         verify(communityPostPlaceRepository).findAllWithMapPlaceByCommunityPostId(10L);
     }
 
@@ -131,7 +141,7 @@ class CommunityPostQueryServiceTest {
         CommunityPostDetailResponse response = service.findDetail(10L);
 
         assertThat(response.places())
-                .containsExactly(new CommunityPostDetailResponse.Place(7L, "삭제된 장소입니다", true));
+                .containsExactly(new CommunityPostDetailResponse.Place(7L, "삭제된 장소입니다", true, null, null, null));
     }
 
     /**
@@ -150,16 +160,16 @@ class CommunityPostQueryServiceTest {
         when(comment.getCreatedAt()).thenReturn(createdAt);
         when(author.getId()).thenReturn(7L);
         when(author.getUsername()).thenReturn("pingdom");
-        when(communityPostCommentRepository.findByCommunityPost_IdAndHiddenFalse(any(), any()))
+        when(communityPostCommentRepository.findVisibleComments(anyLong(), anyBoolean(), any()))
                 .thenReturn(new PageImpl<>(List.of(comment), PageRequest.of(0, 20), 1));
         when(userRepository.findAllById(List.of(7L))).thenReturn(List.of(author));
 
-        CommunityPostCommentListResponse response = service.findComments(10L, 1, 20);
+        CommunityPostCommentListResponse response = service.findComments(10L, 1, 20, 7L, false);
 
         assertThat(response.comments()).containsExactly(
-                new CommunityPostCommentListResponse.Item(20L, "댓글 내용", 7L, "pingdom", createdAt)
+                new CommunityPostCommentListResponse.Item(20L, "댓글 내용", 7L, "pingdom", createdAt, null, 0, false)
         );
-        verify(communityPostCommentRepository).findByCommunityPost_IdAndHiddenFalse(any(), any());
+        verify(communityPostCommentRepository).findVisibleComments(anyLong(), anyBoolean(), any());
         verify(userRepository).findAllById(List.of(7L));
     }
     @Test
