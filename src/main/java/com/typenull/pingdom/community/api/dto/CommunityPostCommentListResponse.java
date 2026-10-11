@@ -21,9 +21,12 @@ public record CommunityPostCommentListResponse(
             @Schema(description = "작성자 ID", example = "7") Long authorId,
             @Schema(description = "작성자 표시 이름", example = "pingdom") String authorName,
             @Schema(description = "댓글 작성 시각") LocalDateTime createdAt,
-            @Schema(nullable = true, description = "부모 댓글 ID. 최상위 댓글은 null") Long parentCommentId,
-            @Schema(description = "댓글 좋아요 수") long likeCount,
-            @Schema(description = "현재 사용자의 댓글 좋아요 여부") boolean liked
+            @Schema(description = "최상위 댓글이면 null, 대댓글이면 부모 ID") Long parentCommentId,
+            long likeCount,
+            @Schema(description = "현재 인증 사용자 좋아요 여부") boolean liked
     ) {
+        public Item(Long id, String content, Long authorId, String authorName, LocalDateTime createdAt) {
+            this(id, content, authorId, authorName, createdAt, null, 0, false);
+        }
     }
 }

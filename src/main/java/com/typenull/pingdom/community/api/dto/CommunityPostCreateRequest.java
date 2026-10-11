@@ -17,7 +17,14 @@ public record CommunityPostCreateRequest(
         @NotBlank @Size(max = 5000) String content,
         @Schema(description = "연결할 장소 ID 목록. 장소 카테고리에서는 1개 이상 필수입니다.", example = "[1, 2]")
         List<@NotNull @Positive Long> placeIds,
-        @Schema(description = "본인이 업로드한 임시 사진 ID. 요청 순서대로 표시하며 생략 시 사진 없음. 최대 10장")
-        @Size(max = 10) List<@NotNull @Positive Long> imageIds
+        @Schema(description = "업로드한 본인 이미지 ID. 입력 순서대로 표시하며 최대 10장")
+        @Size(max = 10) List<@NotNull @Positive Long> imageIds,
+        @Schema(description = "ISO 3166-1 alpha-2 국가 코드. 미설정은 null", example = "KR")
+        @jakarta.validation.constraints.Pattern(regexp = "^[A-Z]{2}$") String countryCode,
+        @Schema(description = "작성자가 지정한 표시 지역. 미설정은 null", example = "서울")
+        @Size(max = 100) String region
 ) {
+    public CommunityPostCreateRequest(String categoryId, String title, String content, List<Long> placeIds) {
+        this(categoryId, title, content, placeIds, null, null, null);
+    }
 }

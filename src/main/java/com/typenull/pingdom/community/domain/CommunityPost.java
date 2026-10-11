@@ -8,10 +8,10 @@ import jakarta.persistence.Id;
 import jakarta.persistence.Table;
 import java.time.LocalDateTime;
 import java.util.Objects;
+import org.hibernate.annotations.CreationTimestamp;
 import lombok.AccessLevel;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
-import org.hibernate.annotations.CreationTimestamp;
 
 /**
  * 커뮤니티 게시글의 제목·본문·작성자와 관리자 숨김 이력을 보관.
@@ -41,8 +41,17 @@ public class CommunityPost {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "country_code", length = 2)
+    private String countryCode;
+    @Column(name = "region", length = 100)
+    private String region;
     @Column(name = "view_count", nullable = false)
     private long viewCount;
+
+    public void describeLocation(String countryCode, String region) {
+        this.countryCode = countryCode;
+        this.region = region;
+    }
 
     @Column(name = "hidden", nullable = false)
     private boolean hidden;

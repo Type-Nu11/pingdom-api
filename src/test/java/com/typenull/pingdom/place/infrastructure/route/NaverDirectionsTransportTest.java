@@ -102,7 +102,8 @@ class NaverDirectionsTransportTest {
                     .hasMessageContaining("전체 응답");
             assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
             assertThat(peer.chunks.get()).isGreaterThan(2);
-            assertThat(peer.disconnected.await(3, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
+            // CI runner 부하로 취소 이벤트 전달이 늦어질 수 있으므로 기능 deadline과 관찰 상한을 분리합니다.
+            assertThat(peer.disconnected.await(10, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
             var response = transport.get(ORIGIN, DESTINATION);
             assertThat(response.status()).isEqualTo(200);
             assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("ok");
@@ -184,7 +185,8 @@ class NaverDirectionsTransportTest {
     }
 
     /**
-     * 취소 후 작은 응답 쓰기가 언제 실패하는지 대신, 연결 읽기의 EOF/reset을 직접 관측한다.
+     * 연결 종료는 읽기의 EOF/reset 또는 쓰기의 reset/broken pipe로 관측한다.
+     * Linux에서는 동시에 읽고 쓰는 소켓의 reset이 쓰기 스레드에 먼저 전달될 수 있다.
      * chunked 응답은 계속 진행하므로 전체 timeout이나 interrupt가 소켓을 닫아야 검증이 끝난다.
      */
     private final class TricklingHttpPeer implements AutoCloseable {
@@ -227,8 +229,16 @@ class NaverDirectionsTransportTest {
                                     started.countDown();
                                     pause(50);
                                 }
+                            } catch (SocketException reset) {
+                                // 실제 reset 확인 후 읽기도 깨워 다음 요청을 수락할 수 있게 정리한다.
+                                try {
+                                    socket.close();
+                                } catch (IOException ignored) {
+                                    // 이미 끊어진 소켓의 정리 실패는 연결 종료 관측 결과를 바꾸지 않는다.
+                                }
+                                disconnected.countDown();
                             } catch (IOException ignored) {
-                                // 쓰기 실패는 종료 판단에 사용하지 않는다. 읽기에서 실제 EOF/reset을 확인한다.
+                                // pause의 interrupt 등 정리 과정의 예외는 연결 종료 증거로 사용하지 않는다.
                             }
                         });
                         try {

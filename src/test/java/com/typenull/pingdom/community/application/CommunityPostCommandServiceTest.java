@@ -27,7 +27,7 @@ class CommunityPostCommandServiceTest {
     private final CommunityPostCommandService service = new CommunityPostCommandService(
             communityPostRepository,
             communityPostPlaceRepository,
-            mapPlaceRepository, mock(CommunityPostMediaService.class)
+            mapPlaceRepository, mock(CommunityPostImageService.class)
     );
 
     /**
@@ -39,8 +39,6 @@ class CommunityPostCommandServiceTest {
         MapPlace firstPlace = mock(MapPlace.class);
         MapPlace secondPlace = mock(MapPlace.class);
         when(savedPost.getId()).thenReturn(10L);
-        when(firstPlace.getId()).thenReturn(1L);
-        when(secondPlace.getId()).thenReturn(2L);
         when(communityPostRepository.save(any(CommunityPost.class))).thenReturn(savedPost);
         when(mapPlaceRepository.findAllById(List.of(1L, 2L))).thenReturn(List.of(firstPlace, secondPlace));
 
@@ -108,6 +106,6 @@ class CommunityPostCommandServiceTest {
      * 카테고리와 장소 목록만 바꾸어 생성 규칙을 검사하도록 고정 제목·본문의 요청을 생성.
      */
     private CommunityPostCreateRequest request(String categoryId, List<Long> placeIds) {
-        return new CommunityPostCreateRequest(categoryId, "게시글 제목", "게시글 본문", placeIds, null);
+        return new CommunityPostCreateRequest(categoryId, "게시글 제목", "게시글 본문", placeIds);
     }
 }

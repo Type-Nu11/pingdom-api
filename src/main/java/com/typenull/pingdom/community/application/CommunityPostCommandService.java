@@ -29,7 +29,7 @@ public class CommunityPostCommandService {
     private final CommunityPostRepository communityPostRepository;
     private final CommunityPostPlaceRepository communityPostPlaceRepository;
     private final MapPlaceRepository mapPlaceRepository;
-    private final CommunityPostMediaService communityPostMediaService;
+    private final CommunityPostImageService imageService;
 
     /**
      * 활성 카테고리와 연결 장소를 검증한 뒤 제목·본문의 앞뒤 공백을 제거해 게시글과 장소 연결을 저장하고 ID를 반환.
@@ -39,6 +39,7 @@ public class CommunityPostCommandService {
     public CommunityPostCreateResponse create(long userId, CommunityPostCreateRequest request) {
         CommunityPostCategory category = CommunityPostCategory.findEnabledById(request.categoryId())
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.INVALID_CATEGORY));
+        CommunityCountryCodes.validate(request.countryCode());
         List<Long> placeIds = normalizePlaceIds(request.placeIds());
         validatePlaceSelection(category, placeIds);
         List<MapPlace> places = findPlaces(placeIds);
@@ -49,13 +50,12 @@ public class CommunityPostCommandService {
                 request.content().trim(),
                 userId
         ));
-        // 저장소 반환 순서에 의존하지 않고 작성 요청의 첫 장소를 일관된 지역 기준으로 유지한다.
-        java.util.Map<Long, MapPlace> placesById = places.stream().collect(
-                java.util.stream.Collectors.toMap(MapPlace::getId, java.util.function.Function.identity()));
-        communityPostPlaceRepository.saveAll(placeIds.stream().map(placesById::get)
+        communityPost.describeLocation(request.countryCode(),
+                request.region() == null || request.region().isBlank() ? null : request.region().trim());
+        imageService.attach(userId, communityPost.getId(), request.imageIds());
+        communityPostPlaceRepository.saveAll(places.stream()
                 .map(place -> CommunityPostPlace.connect(communityPost, place))
                 .toList());
-        communityPostMediaService.connect(userId, communityPost, request.imageIds());
 
         return new CommunityPostCreateResponse(communityPost.getId(), placeIds);
     }

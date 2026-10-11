@@ -1,16 +1,17 @@
 package com.typenull.pingdom.community.api;
 
+import com.typenull.pingdom.shared.config.swagger.ApiAudience;
+import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
+
 import com.typenull.pingdom.community.api.dto.CommunityPostCreateRequest;
 import com.typenull.pingdom.community.api.dto.CommunityPostCreateResponse;
 import com.typenull.pingdom.community.application.CommunityPostCommandService;
 import com.typenull.pingdom.identity.domain.exception.AuthErrorCode;
 import com.typenull.pingdom.identity.domain.exception.AuthException;
-import com.typenull.pingdom.shared.api.dto.ErrorResponse;
-import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
-import com.typenull.pingdom.shared.config.swagger.ApiAudience;
-import com.typenull.pingdom.shared.config.swagger.SwaggerTagCatalog;
 import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
+import com.typenull.pingdom.shared.api.dto.ValidationErrorResponse;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -37,16 +38,13 @@ public class CommunityPostController {
     private final CommunityPostCommandService communityPostCommandService;
 
     @PostMapping
-    @Operation(summary = "커뮤니티 게시글 등록", description = "인증된 사용자가 카테고리, 제목, 본문, 연결 장소 ID와 선택적인 imageIds(최대 10장)로 게시글을 등록합니다. 사진은 본인 소유의 미만료·미연결 업로드만 요청 순서대로 연결합니다.")
+    @Operation(summary = "커뮤니티 게시글 등록", description = "인증된 사용자가 카테고리, 제목, 본문, 연결 장소 ID 목록으로 게시글을 등록합니다.")
     @SecurityRequirement(name = "bearerAuth")
     @ApiResponses({
             @ApiResponse(responseCode = "201", description = "커뮤니티 게시글 등록 성공", useReturnTypeSchema = true),
             @ApiResponse(responseCode = "400", description = "카테고리, 입력값 또는 장소 선택이 올바르지 않음", content = @Content(schema = @Schema(oneOf = {ErrorResponse.class, ValidationErrorResponse.class}))),
             @ApiResponse(responseCode = "401", description = "인증되지 않은 요청", useReturnTypeSchema = true),
-            @ApiResponse(responseCode = "403", description = "다른 사용자의 사진", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "409", description = "이미 연결된 사진", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "410", description = "만료된 사진", content = @Content(schema = @Schema(implementation = ErrorResponse.class))),
-            @ApiResponse(responseCode = "404", description = "연결할 장소 또는 사진을 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
+            @ApiResponse(responseCode = "404", description = "연결할 장소를 찾을 수 없음", content = @Content(schema = @Schema(implementation = ErrorResponse.class)))
     })
     public ResponseEntity<CommunityPostCreateResponse> create(
             @Valid @RequestBody CommunityPostCreateRequest request,
