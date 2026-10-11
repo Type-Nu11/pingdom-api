@@ -83,7 +83,7 @@ class CommunityApiFlowIntegrationTest {
         String postResponse = mockMvc.perform(post("/community/posts")
                         .header(HttpHeaders.AUTHORIZATION, bearer).contentType(MediaType.APPLICATION_JSON)
                         .content(objectMapper.writeValueAsString(new CommunityPostCreateRequest(
-                                "PLACE", "장소가 재밌네요", "다녀온 후기입니다.", java.util.List.of(place.getId())))))
+                                "PLACE", "장소가 재밌네요", "다녀온 후기입니다.", java.util.List.of(place.getId()), null))))
                 .andExpect(status().isCreated()).andExpect(jsonPath("$.placeIds[0]").value(place.getId()))
                 .andReturn().getResponse().getContentAsString();
         long postId = objectMapper.readTree(postResponse).path("postId").asLong();
@@ -95,7 +95,7 @@ class CommunityApiFlowIntegrationTest {
 
         mockMvc.perform(post("/community/posts/{postId}/comments", postId)
                         .header(HttpHeaders.AUTHORIZATION, bearer).contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CommunityPostCommentCreateRequest("좋은 장소네요"))))
+                        .content(objectMapper.writeValueAsString(new CommunityPostCommentCreateRequest("좋은 장소네요", null))))
                 .andExpect(status().isCreated());
         mockMvc.perform(get("/community/posts/{postId}/comments", postId).header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.comments[0].content").value("좋은 장소네요"));
@@ -108,13 +108,13 @@ class CommunityApiFlowIntegrationTest {
     @Test
     void returnsCommunityRequestErrors() throws Exception {
         mockMvc.perform(post("/community/posts").contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CommunityPostCreateRequest("PLACE", "제목", "본문", java.util.List.of()))))
+                        .content(objectMapper.writeValueAsString(new CommunityPostCreateRequest("PLACE", "제목", "본문", java.util.List.of(), null))))
                 .andExpect(status().isUnauthorized());
 
         User author = userRepository.saveAndFlush(user("community-error-author"));
         mockMvc.perform(post("/community/posts").header(HttpHeaders.AUTHORIZATION, bearerToken(author))
                         .contentType(MediaType.APPLICATION_JSON)
-                        .content(objectMapper.writeValueAsString(new CommunityPostCreateRequest("PLACE", "제목", "본문", java.util.List.of()))))
+                        .content(objectMapper.writeValueAsString(new CommunityPostCreateRequest("PLACE", "제목", "본문", java.util.List.of(), null))))
                 .andExpect(status().isBadRequest()).andExpect(jsonPath("$.code").value("PLACE_REQUIRED"));
         mockMvc.perform(get("/community/posts/{postId}", Long.MAX_VALUE)
                         .header(HttpHeaders.AUTHORIZATION, bearerToken(author)))
