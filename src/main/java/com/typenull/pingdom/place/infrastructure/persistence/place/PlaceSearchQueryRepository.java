@@ -20,6 +20,7 @@ import org.springframework.data.repository.query.Param;
 
 /**
  * 일반 검색은 공개·운영 상태와 좌표 범위를 적용하고 선택적 PostGIS 반경 검색을 수행.
+ * 메뉴는 공개 목록과 동일한 상태만 검색하며 EXISTS로 여러 메뉴 일치 시 장소·총 건수 중복을 방지.
  * 거리 단위는 미터이며 POPULAR는 사진 수, NEAREST는 거리, 마지막 동률은 장소 ID 내림차순.
  */
 public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
@@ -63,7 +64,13 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.road_address) LIKE :keywordPattern ESCAPE '\\'
-                           OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\')
+                           OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\'
+                           OR EXISTS (
+                               SELECT 1 FROM place_menu menu
+                               WHERE menu.place_id = mp.map_place_id
+                                 AND menu.status IN ('AVAILABLE', 'SOLD_OUT')
+                                 AND LOWER(menu.name) LIKE :keywordPattern ESCAPE '\\'
+                           ))
                       AND (CAST(:category AS text) IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (CAST(:touristCategory AS text) IS NULL OR EXISTS (
                           SELECT 1
@@ -105,7 +112,13 @@ public interface PlaceSearchQueryRepository extends Repository<MapPlace, Long> {
                            OR LOWER(mp.english_name) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.address) LIKE :keywordPattern ESCAPE '\\'
                            OR LOWER(mp.road_address) LIKE :keywordPattern ESCAPE '\\'
-                           OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\')
+                           OR LOWER(mp.jibun_address) LIKE :keywordPattern ESCAPE '\\'
+                           OR EXISTS (
+                               SELECT 1 FROM place_menu menu
+                               WHERE menu.place_id = mp.map_place_id
+                                 AND menu.status IN ('AVAILABLE', 'SOLD_OUT')
+                                 AND LOWER(menu.name) LIKE :keywordPattern ESCAPE '\\'
+                           ))
                       AND (CAST(:category AS text) IS NULL OR (mp.category IS NOT NULL AND LOWER(TRIM(mp.category)) = :category))
                       AND (CAST(:touristCategory AS text) IS NULL OR EXISTS (
                           SELECT 1
