@@ -37,6 +37,21 @@ class GlobalExceptionHandlerTest {
         handler = new GlobalExceptionHandler(authMetrics);
     }
 
+    @Test
+    void mapsMultipartSizeFailureToPayloadTooLarge() {
+        ResponseEntity<ErrorResponse> response = handler.handleUploadTooLarge(new org.springframework.web.multipart.MaxUploadSizeExceededException(10));
+        assertThat(response.getStatusCode().value()).isEqualTo(413);
+        assertThat(response.getBody().code()).isEqualTo("UPLOAD_TOO_LARGE");
+    }
+
+    @Test
+    void mapsMissingMultipartFileToBadRequest() {
+        ResponseEntity<ErrorResponse> response = handler.handleInvalidRequestParameter(
+                new org.springframework.web.multipart.support.MissingServletRequestPartException("file"));
+        assertThat(response.getStatusCode().value()).isEqualTo(400);
+        assertThat(response.getBody().code()).isEqualTo("INVALID_REQUEST_PARAMETER");
+    }
+
     /**
      * INVALID_TOKEN 도메인 예외의 상태·ErrorResponse와 controller_advice 출처 인증 실패 메트릭을 확인.
      */

@@ -11,6 +11,7 @@ public enum CommonErrorCode implements ErrorCode {
     VALIDATION_FAILED(HttpStatus.BAD_REQUEST, "입력값을 확인해주세요."),
     INVALID_REQUEST_BODY(HttpStatus.BAD_REQUEST, "요청 본문 형식이 올바르지 않습니다."),
     INVALID_REQUEST_PARAMETER(HttpStatus.BAD_REQUEST, "요청 파라미터가 올바르지 않습니다."),
+    UPLOAD_TOO_LARGE(HttpStatus.PAYLOAD_TOO_LARGE, "업로드 요청의 크기 제한을 초과했습니다."),
     ACCESS_DENIED(HttpStatus.FORBIDDEN, "관리자 권한이 필요합니다."),
     RATE_LIMIT_EXCEEDED(HttpStatus.TOO_MANY_REQUESTS, "요청이 너무 많습니다. 잠시 후 다시 시도해주세요."),
     RATE_LIMIT_UNAVAILABLE(HttpStatus.SERVICE_UNAVAILABLE, "요청 처리에 필요한 제한 서비스를 사용할 수 없습니다. 잠시 후 다시 시도해주세요."),

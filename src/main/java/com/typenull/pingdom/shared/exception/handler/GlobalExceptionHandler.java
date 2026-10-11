@@ -89,9 +89,15 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.INVALID_REQUEST_BODY);
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class,
+            org.springframework.web.multipart.support.MissingServletRequestPartException.class})
     public ResponseEntity<ErrorResponse> handleInvalidRequestParameter(Exception exception) {
         return errorResponse(CommonErrorCode.INVALID_REQUEST_PARAMETER);
+    }
+
+    @ExceptionHandler(org.springframework.web.multipart.MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge(org.springframework.web.multipart.MaxUploadSizeExceededException exception) {
+        return errorResponse(CommonErrorCode.UPLOAD_TOO_LARGE);
     }
 
     /** 제약 위반의 property path를 키로 사용하고 같은 경로는 처음 수집한 메시지를 유지. */

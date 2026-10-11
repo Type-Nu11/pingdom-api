@@ -56,7 +56,8 @@ spring:
   servlet:
     multipart:
       max-file-size: 10MB
-      max-request-size: 10MB
+      # 파일당 10MiB 경계에서도 multipart 헤더가 요청 크기 제한에 걸리지 않게 한다.
+      max-request-size: 11MB
   cloud:
     aws:
       s3:
