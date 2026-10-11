@@ -20,7 +20,10 @@ public record CommunityPostCommentListResponse(
             @Schema(description = "댓글 내용", example = "저도 가보고 싶네요!") String content,
             @Schema(description = "작성자 ID", example = "7") Long authorId,
             @Schema(description = "작성자 표시 이름", example = "pingdom") String authorName,
-            @Schema(description = "댓글 작성 시각") LocalDateTime createdAt
+            @Schema(description = "댓글 작성 시각") LocalDateTime createdAt,
+            @Schema(nullable = true, description = "부모 댓글 ID. 최상위 댓글은 null") Long parentCommentId,
+            @Schema(description = "댓글 좋아요 수") long likeCount,
+            @Schema(description = "현재 사용자의 댓글 좋아요 여부") boolean liked
     ) {
     }
 }
