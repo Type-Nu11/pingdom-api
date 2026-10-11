@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "137";
+    private static final String LATEST_MIGRATION_VERSION = "138";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -77,7 +77,7 @@ class FlywayMigrationIntegrationTest {
     }
 
     /**
-     * 빈 PostGIS 스키마에 전체 137개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
+     * 빈 PostGIS 스키마에 전체 138개 마이그레이션을 적용해 성공·최신 버전을 확인하고 후속 스키마 계약을 검사.
      */
     @Test
     @Tag("migration-smoke")
@@ -86,7 +86,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(137);
+        assertThat(result.migrationsExecuted).isEqualTo(138);
 
         assertPostMigrationSchema();
     }
@@ -553,7 +553,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(48);
+        assertThat(result.migrationsExecuted).isEqualTo(49);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -662,7 +662,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(135);
+        assertThat(result.migrationsExecuted).isEqualTo(136);
 
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
@@ -783,7 +783,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(110);
+        assertThat(result.migrationsExecuted).isEqualTo(111);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1023,7 +1023,7 @@ class FlywayMigrationIntegrationTest {
 
         assertThat(result.success).isTrue();
         assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
-        assertThat(result.migrationsExecuted).isEqualTo(82);
+        assertThat(result.migrationsExecuted).isEqualTo(83);
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, """
@@ -1560,6 +1560,28 @@ class FlywayMigrationIntegrationTest {
                     FROM place_recommendation_conversion
                     WHERE place_recommendation_feature_log_id IS NULL
                     """)).isTrue();
+        }
+    }
+
+    /** V137 데이터가 보존되고 새 연결·부모 관계·좋아요의 DB 제약이 적용되는지 검증. */
+    @Test
+    void upgradesCommunityScreenContractWithoutLosingExistingData() throws Exception {
+        migrateTo("137");
+        try (Connection connection = postgres.createConnection(""); Statement statement = connection.createStatement()) {
+            statement.executeUpdate("INSERT INTO community_post (community_post_id,category_id,title,content,user_id) VALUES (176801,'TRAVEL','기존 글','본문',1),(176802,'TRAVEL','다른 글','본문',1)");
+            statement.executeUpdate("INSERT INTO community_post_comment (community_post_comment_id,community_post_id,user_id,content) VALUES (176801,176801,1,'기존 댓글')");
+        }
+        migrate(false);
+        try (Connection connection = postgres.createConnection(""); Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, "SELECT view_count = 0 AND title = '기존 글' FROM community_post WHERE community_post_id = 176801")).isTrue();
+            assertThat(queryBoolean(statement, "SELECT parent_comment_id IS NULL FROM community_post_comment WHERE community_post_comment_id = 176801")).isTrue();
+            assertThatThrownBy(() -> statement.executeUpdate("INSERT INTO community_post_comment (community_post_id,user_id,content,parent_comment_id) VALUES (176802,1,'다른 글 부모',176801)"))
+                    .hasMessageContaining("fk_community_comment_parent");
+            statement.executeUpdate("INSERT INTO community_comment_like (community_post_comment_id,user_id) VALUES (176801,1)");
+            assertThatThrownBy(() -> statement.executeUpdate("INSERT INTO community_comment_like (community_post_comment_id,user_id) VALUES (176801,1)"))
+                    .hasMessageContaining("uk_community_comment_like_comment_user");
+            assertThatThrownBy(() -> statement.executeUpdate("INSERT INTO community_post_media (user_id,s3_key,image_url,content_type,file_size,status,expires_at,community_post_id,display_order,connected_at,created_at) VALUES (1,'bad','url','image/png',1,'CONNECTED',CURRENT_TIMESTAMP,176801,NULL,CURRENT_TIMESTAMP,CURRENT_TIMESTAMP)"))
+                    .hasMessageContaining("ck_community_post_media_connection");
         }
     }
 
