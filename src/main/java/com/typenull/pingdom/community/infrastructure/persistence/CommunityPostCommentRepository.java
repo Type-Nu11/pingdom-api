@@ -1,6 +1,7 @@
 package com.typenull.pingdom.community.infrastructure.persistence;
 
 import com.typenull.pingdom.community.domain.CommunityPostComment;
+import jakarta.persistence.LockModeType;
 import java.util.Optional;
 import org.springframework.data.domain.Page;
 import org.springframework.data.domain.Pageable;
@@ -8,7 +9,6 @@ import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Lock;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
-import jakarta.persistence.LockModeType;
 
 public interface CommunityPostCommentRepository extends JpaRepository<CommunityPostComment, Long> {
 
@@ -23,7 +23,30 @@ public interface CommunityPostCommentRepository extends JpaRepository<CommunityP
     @Query("select comment from CommunityPostComment comment where comment.id = :commentId")
     Optional<CommunityPostComment> findByIdForUpdate(@Param("commentId") Long commentId);
 
-    Page<CommunityPostComment> findByCommunityPost_IdAndHiddenFalse(Long postId, Pageable pageable);
+    @Query(value = """
+            select comment from CommunityPostComment comment left join fetch comment.parentComment parent
+            where comment.communityPost.id = :postId and comment.hidden = false
+              and (parent is null or parent.hidden = false)
+              and (:rootOnly = false or parent is null)
+            """, countQuery = """
+            select count(comment) from CommunityPostComment comment left join comment.parentComment parent
+            where comment.communityPost.id = :postId and comment.hidden = false
+              and (parent is null or parent.hidden = false)
+              and (:rootOnly = false or parent is null)
+            """)
+    Page<CommunityPostComment> findVisibleComments(@Param("postId") long postId,
+            @Param("rootOnly") boolean rootOnly, Pageable pageable);
+
+    Page<CommunityPostComment> findByCommunityPost_IdAndParentComment_IdAndHiddenFalse(
+            long postId, long parentId, Pageable pageable);
+
+    @Query("""
+            select comment from CommunityPostComment comment left join comment.parentComment parent
+            where comment.id = :commentId and comment.communityPost.id = :postId
+              and comment.hidden = false and comment.communityPost.hidden = false
+              and (parent is null or parent.hidden = false)
+            """)
+    Optional<CommunityPostComment> findVisibleComment(@Param("postId") long postId, @Param("commentId") long commentId);
 
     @Query("""
             select comment from CommunityPostComment comment

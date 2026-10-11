@@ -2,6 +2,7 @@ package com.typenull.pingdom.community.domain;
 
 import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.GeneratedValue;
 import jakarta.persistence.GenerationType;
 import jakarta.persistence.Id;
@@ -37,6 +38,10 @@ public class CommunityPostComment {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "parent_comment_id")
+    private CommunityPostComment parentComment;
+
     @Column(name = "content", nullable = false, length = 1000)
     private String content;
 
@@ -61,6 +66,12 @@ public class CommunityPostComment {
 
     public static CommunityPostComment create(CommunityPost communityPost, Long userId, String content) {
         return new CommunityPostComment(communityPost, userId, content);
+    }
+
+    public static CommunityPostComment reply(CommunityPost post, Long userId, String content, CommunityPostComment parent) {
+        CommunityPostComment comment = new CommunityPostComment(post, userId, content);
+        comment.parentComment = Objects.requireNonNull(parent);
+        return comment;
     }
 
     public void hide(Long adminUserId, LocalDateTime hiddenAt) {

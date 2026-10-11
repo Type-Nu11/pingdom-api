@@ -43,7 +43,7 @@ class CommunityPostCommentCommandServiceTest {
         CommunityPostCommentCreateResponse response = service.create(
                 10L,
                 7L,
-                new CommunityPostCommentCreateRequest("댓글 내용")
+                new CommunityPostCommentCreateRequest("댓글 내용", null)
         );
 
         assertThat(response.commentId()).isEqualTo(20L);
@@ -58,7 +58,7 @@ class CommunityPostCommentCommandServiceTest {
     void rejectsCommentForMissingPost() {
         when(communityPostRepository.findByIdAndHiddenFalse(10L)).thenReturn(Optional.empty());
 
-        assertThatThrownBy(() -> service.create(10L, 7L, new CommunityPostCommentCreateRequest("댓글 내용")))
+        assertThatThrownBy(() -> service.create(10L, 7L, new CommunityPostCommentCreateRequest("댓글 내용", null)))
                 .isInstanceOf(CommunityException.class)
                 .hasMessage("게시글을 찾을 수 없습니다.");
 
