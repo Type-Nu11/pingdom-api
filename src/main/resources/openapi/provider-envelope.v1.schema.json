@@ -6,6 +6,33 @@
     {
       "type": "object",
       "additionalProperties": false,
+      "required": ["schemaVersion", "id", "kind", "command", "args"],
+      "properties": {
+        "schemaVersion": { "const": 1 },
+        "id": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 128,
+          "pattern": "^[A-Za-z0-9][A-Za-z0-9._:-]{0,127}$"
+        },
+        "kind": { "const": "command_request" },
+        "command": { "const": "searchNearbyPlaces" },
+        "args": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["useCurrentLocation"],
+          "properties": {
+            "useCurrentLocation": { "type": "boolean" },
+            "touristCategory": {
+              "enum": ["K_POP", "BEAUTY", "FASHION", "CAFE", "FOOD", "POP_UP", "EXHIBITION", "NIGHTLIFE", "OTHER"]
+            }
+          }
+        }
+      }
+    },
+    {
+      "type": "object",
+      "additionalProperties": false,
       "required": [
         "schemaVersion",
         "id",

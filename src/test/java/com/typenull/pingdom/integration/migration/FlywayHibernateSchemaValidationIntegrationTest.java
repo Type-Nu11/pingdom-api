@@ -20,6 +20,8 @@ import org.testcontainers.utility.DockerImageName;
 @SpringBootTest(properties = {
         "spring.docker.compose.enabled=false",
         "spring.flyway.enabled=true",
+        // CONCURRENTLY 인덱스가 Flyway 트랜잭션 잠금을 기다리지 않도록 세션 잠금을 사용한다.
+        "spring.flyway.postgresql.transactional-lock=false",
         "spring.flyway.baseline-on-migrate=false",
         "spring.flyway.validate-on-migrate=true",
         "spring.jpa.hibernate.ddl-auto=validate",

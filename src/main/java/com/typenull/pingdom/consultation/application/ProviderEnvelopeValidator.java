@@ -17,7 +17,7 @@ import org.springframework.stereotype.Component;
 public class ProviderEnvelopeValidator {
     private static final Set<String> COMMON = Set.of("schemaVersion", "id", "kind");
     private static final Set<String> COMMANDS = Set.of(
-            "searchNearbyReservablePlaces", "getPlaceDetails", "getAvailabilities",
+            "searchNearbyPlaces", "searchNearbyReservablePlaces", "getPlaceDetails", "getAvailabilities",
             "prepareReservation", "cancelVoiceSession"
     );
     private static final Set<String> CLARIFICATION_FIELDS = Set.of(
@@ -52,6 +52,12 @@ public class ProviderEnvelopeValidator {
         JsonNode args = node.path("args");
         if (!COMMANDS.contains(command) || !args.isObject()) invalid("unsupported_command_or_args");
         switch (command) {
+            case "searchNearbyPlaces" -> {
+                allowedFields(args, Set.of("useCurrentLocation", "touristCategory"));
+                required(args, "useCurrentLocation");
+                if (!args.path("useCurrentLocation").isBoolean()) invalid("search_arguments");
+                if (args.has("touristCategory") && !CATEGORIES.contains(args.path("touristCategory").asText())) invalid("tourist_category");
+            }
             case "searchNearbyReservablePlaces" -> {
                 allowedFields(args, Set.of("touristCategory", "date", "startTime", "endTime", "quantity", "useCurrentLocation"));
                 required(args, "date", "startTime", "endTime", "quantity", "useCurrentLocation");

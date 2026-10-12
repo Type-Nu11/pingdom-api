@@ -41,6 +41,18 @@ public class CommunityPost {
     @Column(name = "user_id", nullable = false)
     private Long userId;
 
+    @Column(name = "country_code", length = 2)
+    private String countryCode;
+    @Column(name = "region", length = 100)
+    private String region;
+    @Column(name = "view_count", nullable = false)
+    private long viewCount;
+
+    public void describeLocation(String countryCode, String region) {
+        this.countryCode = countryCode;
+        this.region = region;
+    }
+
     @Column(name = "hidden", nullable = false)
     private boolean hidden;
 

@@ -23,6 +23,7 @@ public final class SwaggerTagCatalog {
     public static final String EVENT = "행사·팝업";
     public static final String NOTIFICATION = "알림";
     public static final String ANALYSIS = "상권 분석";
+    public static final String AI_CHAT = "AI 대화";
     public static final String BUSINESS = "사업자 정보";
     public static final String TEAM = "팀 관리";
     public static final String APPLICATION = "장소 등록 신청";
@@ -88,6 +89,7 @@ public final class SwaggerTagCatalog {
             new Section(Group.APP, EVENT, "행사 및 팝업 캠페인 탐색"),
             new Section(Group.APP, NOTIFICATION, "알림 수신 설정 및 기기 토큰 관리"),
             new Section(Group.APP, ANALYSIS, "상권 분석 보고서 생성·조회·다운로드"),
+            new Section(Group.APP, AI_CHAT, "앱 제공 도구와 실행 결과를 사용하는 AI 대화"),
             new Section(Group.MERCHANT, BUSINESS, "사업자 프로필 등록 및 조회·변경"),
             new Section(Group.MERCHANT, TEAM, "장소 팀원 초대 및 권한 관리"),
             new Section(Group.MERCHANT, APPLICATION, "장소 등록 신청 및 첨부 자료 관리"),

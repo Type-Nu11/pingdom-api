@@ -801,6 +801,10 @@ class OpenApiDocumentationValidationTest {
 
         JsonNode listPlacesOperation = appDocument.at("/paths/~1places/get");
         assertThat(listPlacesOperation.isMissingNode()).isFalse();
+        assertThat(listPlacesOperation.path("description").asText())
+                .contains("등록된 공개 메뉴명", "AVAILABLE/SOLD_OUT", "한 번만", "totalCount=0");
+        assertThat(parameter(listPlacesOperation, "keyword").path("description").asText())
+                .contains("공개 메뉴명", "문자 그대로");
         assertThat(parameter(listPlacesOperation, "touristCategory").path("example").asText()).isEqualTo("K_POP");
         assertThat(parameter(listPlacesOperation, "sort").path("description").asText())
                 .contains("LATEST", "NEAREST", "POPULAR");

@@ -59,7 +59,7 @@ class VoiceAiContractIntegrationTest {
     @MockBean GeminiGenerateContentClient provider;
 
     /**
-     * 음성 메시지의 ProviderEnvelopeV1 참조·8개 union·추가 필드 금지·버전/ID 조건과 operation별 오류·필수 세션 필드·인증을 검증.
+     * 음성 메시지의 ProviderEnvelopeV1 참조·9개 union·추가 필드 금지·버전/ID 조건과 operation별 오류·필수 세션 필드·인증을 검증.
      * 만료 오프셋 문자열의 실제 직렬화는 다른 테스트가 담당.
      */
     @Test
@@ -71,7 +71,13 @@ class VoiceAiContractIntegrationTest {
         assertThat(send.at("/responses/200/content/application~1json/schema/$ref").asText())
                 .isEqualTo("#/components/schemas/ProviderEnvelopeV1");
         JsonNode union = api.at("/components/schemas/ProviderEnvelopeV1/oneOf");
-        assertThat(union.size()).isEqualTo(8);
+        assertThat(union.size()).isEqualTo(9);
+        JsonNode generalSearch = java.util.stream.StreamSupport.stream(union.spliterator(), false)
+                .filter(node -> node.at("/properties/command/enum/0").asText().equals("searchNearbyPlaces"))
+                .findFirst().orElseThrow();
+        assertThat(generalSearch.at("/properties/args/required").toString()).isEqualTo("[\"useCurrentLocation\"]");
+        assertThat(generalSearch.at("/properties/args/properties").size()).isEqualTo(2);
+        assertThat(generalSearch.at("/properties/args/additionalProperties").asBoolean(true)).isFalse();
         for (JsonNode variant : union) {
             assertThat(variant.path("additionalProperties").asBoolean(true)).isFalse();
             assertThat(variant.at("/properties/schemaVersion/enum/0").asInt()).isEqualTo(1);

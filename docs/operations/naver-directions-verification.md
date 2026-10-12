@@ -2,6 +2,43 @@
 
 이 문서는 #1756의 `POST /routes` 503을 설정·공급자·앱 API 단계로 분리해 확인하는 절차다. 키를 생성·변경하거나 운영 배포를 수행하지 않는다.
 
+## #1765 운영 조사 결과 (2026-10-08 KST)
+
+실제 운영 서버를 조회해 아래 내용을 확인했다. 아래는 설정 반영 전 조사 결과이며, 이후 반영 결과는 별도 절에 기록한다.
+
+- 2026-10-07 04:55~05:00 UTC 로그 구간(앱 재현 04:57:01 UTC 포함)에서 다음 실패 분류를 확인했다. 요청별 trace ID 일치는 별도 확인이 필요하다.
+
+  ```text
+  Route provider failure provider=naver outcome=configuration enabled=false clientIdPresent=false clientSecretPresent=false
+  ```
+
+- 실행 중인 `pingdom-app-1`의 `NAVER_DIRECTIONS_ENABLED`, `NAVER_DIRECTIONS_CLIENT_ID`, `NAVER_DIRECTIONS_CLIENT_SECRET` 환경변수가 모두 없었다.
+- 배포 디렉터리 `/home/ubuntu/Pingdom_Backend/.env`에도 Directions 관련 항목이 없었다.
+- `compose.yaml`의 app 서비스는 `PINGDOM_ENV_FILE`(기본 `.env`)을 `env_file`로 주입한다. 코드의 기본값은 기능 비활성·빈 키이므로 공급자 호출 전에 503을 반환한다.
+
+따라서 확인된 실패는 **운영 설정 누락**이다. 해당 요청에서 공급자 인증·쿼터·네트워크 실패가 발생했다고 판단할 근거는 없다. Java 기본값을 강제로 활성화하거나 다른 네이버 상품의 키를 재사용하는 것으로 해결하지 않는다.
+
+### 남은 복구와 완료 조건
+
+1. Directions 5 권한이 있는 서버 전용 키를 확보해 실제 배포 환경 파일에 등록한다. 키 원문은 Git·명령행 인자·로그에 넣지 않는다.
+2. `NAVER_DIRECTIONS_ENABLED=true`를 설정하고 배포에 사용하는 동일한 `PINGDOM_ENV_FILE`과 이미지로 app 컨테이너를 재생성한다. 단순 `restart`는 변경한 환경변수를 반영하지 않는다.
+3. 아래 존재 여부 확인 명령으로 활성화·키 주입을 확인하고 공급자 응답을 검증한다.
+4. 로그인된 실제 Android 앱에서 외부 HTTPS `POST /routes`의 200, `mode=car`, `provider=naver`, 서로 다른 유효 경로 좌표 2개 이상, 거리(m)·시간(초), 경로선 표시를 확인한다. 프록시 인증 정책도 포함하므로 JWT만 사용하는 직접 요청 성공으로 앱 검증을 대체하지 않는다.
+
+### 운영 설정 반영 결과 (2026-10-08 KST)
+
+- 전달받은 키로 Directions 5 HTTP 200·`code=0`을 확인한 후 운영 `.env`에 `NAVER_DIRECTIONS_ENABLED=true`와 Directions 전용 변수명의 Client ID/Secret을 등록했다. 키 원문은 저장소에 기록하지 않았다.
+- 기존 `.env`는 배포 디렉터리 밖의 접근 제한된 백업 파일로 보관했다. 기존 이미지 `735cfe6920c497564529101ff937ab62af02b9b8`와 포트 바인딩을 유지하고 app만 `--no-deps --force-recreate`로 재생성했다.
+- 재생성된 컨테이너에서 `enabled=true`, Client ID/Secret 존재 여부를 확인했고 `/actuator/health/readiness`는 `UP`이었다.
+- 운영 호스트에서 컨테이너에 주입된 키로 공급자를 직접 호출한 결과다. 응답 시간·교통 상황에 따라 거리·소요시간은 달라질 수 있다.
+
+  | 경로 | HTTP / code | 서로 다른 경로점 | 거리(m) | 시간(ms) |
+  | --- | --- | --- | --- | --- |
+  | 서울시청 → 강남 | 200 / 0 | 313 | 9964 | 1539739 |
+  | 잠실 → 여의도 | 200 / 0 | 458 | 22333 | 2488677 |
+
+설정 등록·app 재생성·공급자 호출 검증은 완료했다. **외부 HTTPS의 인증된 `POST /routes` 및 실제 Android 앱의 경로선·거리·시간 표시 검증은 미완료**다. 공급자 직접 호출과 readiness 성공으로 #1765를 종료하지 않는다.
+
 ## 원인 판별
 
 `ROUTE_PROVIDER_UNAVAILABLE`은 다음을 하나의 공개 오류로 정규화한다. 서버 로그와 컨테이너 환경 상태로만 구분하며 키, JWT, 실제 사용자 좌표는 출력·이슈·PR에 기록하지 않는다.

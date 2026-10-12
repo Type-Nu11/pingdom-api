@@ -6,6 +6,10 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record CommunityPostCommentCreateResponse(
         @Schema(description = "댓글 ID", example = "1") Long commentId,
         @Schema(description = "대상 게시글 ID", example = "1") Long postId,
-        @Schema(description = "저장된 댓글 내용", example = "저도 가보고 싶네요!") String content
+        @Schema(description = "저장된 댓글 내용", example = "저도 가보고 싶네요!") String content,
+        @Schema(description = "대댓글 부모 ID. 최상위 댓글이면 null") Long parentCommentId
 ) {
+    public CommunityPostCommentCreateResponse(Long id, Long postId, String content) {
+        this(id, postId, content, null);
+    }
 }

@@ -159,7 +159,15 @@ public class PlaceController {
     }
 
     @GetMapping
-    @Operation(summary = "장소 목록 조회", description = "앱에서 사용할 장소 목록을 조회합니다.")
+    @Operation(summary = "장소 목록 조회", description = """
+            장소명·영문명·주소 또는 등록된 공개 메뉴명에 검색어가 부분 일치하는 장소를 조회합니다.
+            메뉴 상태 AVAILABLE/SOLD_OUT만 검색하며 숨김·비활성 메뉴와 메뉴 설명은 검색하지 않습니다.
+            여러 메뉴가 일치해도 장소는 한 번만 반환합니다. 카테고리는 검색어와 함께 적용하는 선택 필터입니다.
+            검색어를 생략하거나 빈 값·공백만 전달하면 일반 장소 탐색을 유지하며 예약 날짜·시간·인원은 필요하지 않습니다.
+            위치·반경과 검색 조건을 적용한 뒤 sort로 정렬하고 limit(1~100)으로 페이지를 제한합니다.
+            주변 거리순 검색은 latitude/longitude/radiusKm와 sort=NEAREST를 전달하며, 앱은 limit=3을 사용할 수 있습니다.
+            결과가 없으면 200과 빈 places, totalCount=0을 반환합니다.
+            """)
     @ApiResponses({
             @ApiResponse(
                     responseCode = "200",
@@ -189,7 +197,7 @@ public class PlaceController {
             @Min(value = 1, message = "limit는 1 이상이어야 합니다.")
             @Max(value = 100, message = "limit는 100 이하여야 합니다.")
             @RequestParam(defaultValue = "20") int limit,
-            @Parameter(description = "장소명 또는 주소 검색어", example = "카페")
+            @Parameter(description = "장소명·영문명·주소 또는 공개 메뉴명 부분 검색어. 앞뒤 공백은 제거하며 %, _, 역슬래시는 문자 그대로 검색합니다.", example = "갈비탕")
             @RequestParam(required = false) String keyword,
             @Parameter(description = "카테고리 필터", example = "카페")
             @RequestParam(required = false) String category,

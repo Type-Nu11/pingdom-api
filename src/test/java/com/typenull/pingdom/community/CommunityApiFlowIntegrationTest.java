@@ -3,6 +3,7 @@ package com.typenull.pingdom.community;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
+import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.multipart;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -50,6 +51,16 @@ class CommunityApiFlowIntegrationTest {
     @Autowired private CommunityPostLikeRepository likeRepository;
     @Autowired private CommunityPostPlaceRepository postPlaceRepository;
     @Autowired private CommunityPlaceDailyViewRepository dailyViewRepository;
+
+    /** file 누락이 S3 업로드 전 공통 400 응답으로 처리되는지 기존 JWT 경로에서 검증. */
+    @Test
+    void rejectsMissingCommunityImagePart() throws Exception {
+        User author = userRepository.saveAndFlush(user("missing-community-image"));
+        mockMvc.perform(multipart("/community/images").header(HttpHeaders.AUTHORIZATION, bearerToken(author)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.code").value("INVALID_REQUEST_PARAMETER"));
+    }
+
 
     /**
      * 일일 조회·댓글·좋아요·장소 연결을 먼저 지우고 게시글·장소·사용자를 정리해 통합 흐름의 데이터를 제거.
