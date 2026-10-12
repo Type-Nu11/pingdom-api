@@ -103,12 +103,29 @@ class NaverDirectionsTransportTest {
             assertThat(Duration.ofNanos(System.nanoTime() - start)).isLessThan(Duration.ofSeconds(3));
             assertThat(peer.chunks.get()).isGreaterThan(2);
             // CI runner 부하로 취소 이벤트 전달이 늦어질 수 있으므로 기능 deadline과 관찰 상한을 분리합니다.
-            assertThat(peer.disconnected.await(10, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
+            assertThat(peer.awaitDisconnect(10, TimeUnit.SECONDS)).as("deadline cancels socket I/O").isTrue();
             var response = transport.get(ORIGIN, DESTINATION);
             assertThat(response.status()).isEqualTo(200);
             assertThat(new String(response.body(), StandardCharsets.UTF_8)).isEqualTo("ok");
             peer.serving.get(2, TimeUnit.SECONDS);
             assertThat(peer.calls.get()).isEqualTo(2);
+        }
+    }
+
+    @Test
+    void observesDisconnectAfterHeaderReadTimeoutHasElapsed() throws Exception {
+        try (var peer = new TricklingHttpPeer(1);
+                var socket = new Socket("127.0.0.1", peer.listener.getLocalPort())) {
+            var output = socket.getOutputStream();
+            output.write("GET / HTTP/1.1\r\nHost: localhost\r\n\r\n".getBytes(StandardCharsets.US_ASCII));
+            output.flush();
+            assertThat(peer.started.await(2, TimeUnit.SECONDS)).isTrue();
+            // 헤더 제한이 지난 뒤에도 관측이 살아 있고, 실제 클라이언트 EOF로만 완료되는지 확인한다.
+            assertThat(peer.awaitDisconnect(5_100, TimeUnit.MILLISECONDS)).isFalse();
+            assertThat(peer.serving.isDone()).isFalse();
+            socket.shutdownOutput();
+            assertThat(peer.awaitDisconnect(2, TimeUnit.SECONDS)).isTrue();
+            peer.serving.get(2, TimeUnit.SECONDS);
         }
     }
 
@@ -175,7 +192,7 @@ class NaverDirectionsTransportTest {
                 caller.join(2000);
                 assertThat(caller.isAlive()).isFalse();
                 assertThat(interrupted).isTrue();
-                assertThat(peer.disconnected.await(3, TimeUnit.SECONDS)).as("interrupt cancels socket I/O").isTrue();
+                assertThat(peer.awaitDisconnect(3, TimeUnit.SECONDS)).as("interrupt cancels socket I/O").isTrue();
                 peer.serving.get(2, TimeUnit.SECONDS);
             } finally {
                 caller.interrupt();
@@ -210,6 +227,8 @@ class NaverDirectionsTransportTest {
                         String line;
                         while ((line = input.readLine()) != null && !line.isEmpty()) { }
                         if (line == null) throw new IOException("HTTP 요청 헤더가 완료되지 않았습니다.");
+                        // 종료 관측은 호출자의 await 상한과 close()로 제한하며 헤더 읽기 제한을 적용하지 않는다.
+                        socket.setSoTimeout(0);
                         var output = socket.getOutputStream();
                         if (calls.incrementAndGet() > 1) {
                             output.write("HTTP/1.1 200 OK\r\nContent-Length: 2\r\nConnection: close\r\n\r\nok"
@@ -256,6 +275,12 @@ class NaverDirectionsTransportTest {
 
         private String baseUrl() {
             return "http://127.0.0.1:" + listener.getLocalPort();
+        }
+
+        private boolean awaitDisconnect(long timeout, TimeUnit unit) throws Exception {
+            boolean observed = disconnected.await(timeout, unit);
+            if (!observed && serving.isDone()) serving.get();
+            return observed;
         }
 
         @Override
