@@ -67,3 +67,10 @@ Hibernate 스키마 검증 테스트는 기존 CONCURRENTLY 인덱스와 Flyway 
 CI의 Migration/OpenAPI 검증은 통과했지만 `NaverDirectionsTransportTest`의 소켓 종료 관측 테스트 1개가 실패해 fast-test 게이트가 빌드를 차단했다. 기존 테스트 서버가 쓰기의 SocketException을 무시하는 경로를 보완했다. 읽기 EOF/reset뿐 아니라 쓰기 reset/broken pipe도 실제 연결 종료 증거로 인정하고, 그때 서버 소켓을 정리해 대기 중인 읽기와 다음 요청 수락을 진행시킨다. interrupt로 인한 정리 예외는 종료 증거로 인정하지 않는다. 운영 전송 코드와 timeout 값은 변경하지 않았다.
 
 `./gradlew --no-daemon --build-cache --configuration-cache test bootJar`: 1,233개 테스트 및 JAR 빌드 통과. Linux/Java 21 컨테이너에서 deadline 취소·다음 요청 성공과 interrupt 취소 검증을 번갈아 총 20회 실행해 모두 통과했다.
+
+## multipart 요청 경계 보완
+
+필수 `file` 파트가 누락되면 `400 INVALID_REQUEST_PARAMETER`를 반환한다. Servlet multipart 제한을
+초과하면 `413 UPLOAD_TOO_LARGE`이며 업로드 OpenAPI에도 해당 오류를 명시한다. 파일 제한은
+10MiB, 전체 요청 제한은 파일 경계에서 multipart 헤더가 허용되도록 11MiB로 설정한다.
+실제 이미지 검증 실패에는 기존 `IMAGE_FILE_INVALID` 계약을 사용한다.

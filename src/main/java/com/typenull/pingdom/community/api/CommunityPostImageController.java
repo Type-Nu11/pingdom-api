@@ -6,6 +6,9 @@ import com.typenull.pingdom.shared.security.annotation.CurrentUser;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticatedUser;
 import com.typenull.pingdom.identity.domain.exception.*;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import com.typenull.pingdom.shared.api.dto.ErrorResponse;
 import io.swagger.v3.oas.annotations.responses.*;
 import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import org.springframework.http.*;
@@ -21,7 +24,8 @@ public class CommunityPostImageController {
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Operation(summary = "게시글 이미지 업로드", description = "JPEG/PNG 10MiB 이하. 검증 후 메타데이터를 제거해 저장하며 최대 10개의 본인 imageId를 게시글에 입력 순서대로 연결합니다. 미사용 이미지는 24시간 후 삭제 Outbox로 정리합니다.")
     @ApiResponses({@ApiResponse(responseCode="201",description="이미지 ID·URL 및 만료 시각"),
-        @ApiResponse(responseCode="400",description="IMAGE_FILE_INVALID: 빈 파일·크기·실제 형식 오류"),
+        @ApiResponse(responseCode="400",description="IMAGE_FILE_INVALID: 빈 파일·크기·실제 형식 오류. INVALID_REQUEST_PARAMETER: file 누락"),
+        @ApiResponse(responseCode="413",description="UPLOAD_TOO_LARGE: multipart 파일·요청 크기 제한 초과", content=@Content(schema=@Schema(implementation=ErrorResponse.class))),
         @ApiResponse(responseCode="503",description="IMAGE_UPLOAD_UNAVAILABLE: 저장소 사용 불가")})
     public ResponseEntity<CommunityImageUploadResponse> upload(@RequestPart("file") MultipartFile file,
             @CurrentUser JwtAuthenticatedUser user) {

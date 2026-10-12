@@ -28,6 +28,8 @@ import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 import org.springframework.web.method.annotation.MethodArgumentTypeMismatchException;
+import org.springframework.web.multipart.MaxUploadSizeExceededException;
+import org.springframework.web.multipart.support.MissingServletRequestPartException;
 import org.springframework.web.servlet.resource.NoResourceFoundException;
 import org.springframework.web.server.ResponseStatusException;
 
@@ -89,9 +91,15 @@ public class GlobalExceptionHandler {
         return errorResponse(CommonErrorCode.INVALID_REQUEST_BODY);
     }
 
-    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class})
+    @ExceptionHandler({MethodArgumentTypeMismatchException.class, MissingServletRequestParameterException.class,
+            MissingServletRequestPartException.class})
     public ResponseEntity<ErrorResponse> handleInvalidRequestParameter(Exception exception) {
         return errorResponse(CommonErrorCode.INVALID_REQUEST_PARAMETER);
+    }
+
+    @ExceptionHandler(MaxUploadSizeExceededException.class)
+    public ResponseEntity<ErrorResponse> handleUploadTooLarge(MaxUploadSizeExceededException exception) {
+        return errorResponse(CommonErrorCode.UPLOAD_TOO_LARGE);
     }
 
     /** 제약 위반의 property path를 키로 사용하고 같은 경로는 처음 수집한 메시지를 유지. */

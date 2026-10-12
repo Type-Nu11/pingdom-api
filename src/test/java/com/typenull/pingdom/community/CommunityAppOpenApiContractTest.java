@@ -35,5 +35,7 @@ class CommunityAppOpenApiContractTest {
         assertThat(doc.at("/components/schemas/CommunityPostDetailResponse/properties/images/items/$ref").asText())
                 .endsWith("CommunityPostImageItem");
         assertThat(doc.at("/paths/~1community~1images/post/requestBody/content").has("multipart/form-data")).isTrue();
+        assertThat(doc.at("/paths/~1community~1images/post/responses/413/description").asText())
+                .contains("UPLOAD_TOO_LARGE");
     }
 }
