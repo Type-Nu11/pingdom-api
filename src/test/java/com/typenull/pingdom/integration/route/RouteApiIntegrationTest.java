@@ -11,6 +11,7 @@ import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteResponse;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.ratelimit.exception.RateLimitException;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
 import com.typenull.pingdom.shared.security.access.UserAccessStatusService;
@@ -37,6 +38,7 @@ class RouteApiIntegrationTest {
     @Autowired private ObjectMapper mapper;
     @Autowired private JwtTokenProvider tokens;
     @MockBean private NaverDirectionsClient provider;
+    @MockBean private TmapTransitClient transitProvider;
     @MockBean private UserAccessStatusService accessStatus;
     @MockBean private RateLimitStore limits;
 

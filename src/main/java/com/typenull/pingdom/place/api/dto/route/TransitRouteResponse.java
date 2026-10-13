@@ -8,7 +8,7 @@ public record TransitRouteResponse(
         @Schema(example = "transit") String mode,
         @Schema(example = "tmap") String provider,
         List<Itinerary> itineraries
-) {
+) implements RouteResult {
     public record Itinerary(long totalTimeSeconds, long totalDistanceMeters, int transferCount,
             long totalWalkDistanceMeters, long totalWalkTimeSeconds, long totalFare, List<Leg> legs) { }
 

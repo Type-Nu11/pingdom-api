@@ -12,4 +12,4 @@ public record RouteResponse(
         @Schema(description = "예상 소요시간(초), 공급자 밀리초를 올림하여 변환", minimum = "0", example = "1800", requiredMode = Schema.RequiredMode.REQUIRED) long durationSeconds,
         @ArraySchema(minItems = 2, arraySchema = @Schema(description = "출발→도착 순서의 도로 형상 전체. 직선 대체·끝점 덮어쓰기를 하지 않습니다.", requiredMode = Schema.RequiredMode.REQUIRED))
         List<RouteCoordinate> path
-) { }
+) implements RouteResult { }

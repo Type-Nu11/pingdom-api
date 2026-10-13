@@ -6,6 +6,6 @@ import io.swagger.v3.oas.annotations.media.Schema;
 public record RouteRequest(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) RouteCoordinate origin,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) RouteCoordinate destination,
-        @Schema(description = "car만 지원. walk/transit/bike는 422, 그 밖의 값은 400", example = "car", requiredMode = Schema.RequiredMode.REQUIRED)
+        @Schema(description = "car 또는 transit 지원. walk/bike는 422, 그 밖의 값은 400", example = "transit", requiredMode = Schema.RequiredMode.REQUIRED)
         String mode
 ) { }
