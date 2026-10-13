@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteResponse;
 import com.typenull.pingdom.place.application.service.route.RouteQueryService;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import com.typenull.pingdom.shared.exception.handler.GlobalExceptionHandler;
@@ -43,6 +44,7 @@ import org.springframework.web.bind.support.WebDataBinderFactory;
 class RouteControllerTest {
     private static final String REQUEST = "{\"origin\":{\"latitude\":37.5665,\"longitude\":126.978},\"destination\":{\"latitude\":37.4979,\"longitude\":127.0276},\"mode\":\"car\"}";
     private NaverDirectionsClient provider;
+    private TmapTransitClient transitProvider;
     private AbuseRateLimitService limiter;
     private MockMvc mvc;
     private JwtAuthenticatedUser user;
@@ -50,9 +52,10 @@ class RouteControllerTest {
     @BeforeEach
     void setUp() {
         provider = mock(NaverDirectionsClient.class);
+        transitProvider = mock(TmapTransitClient.class);
         limiter = mock(AbuseRateLimitService.class);
         user = new JwtAuthenticatedUser(7L, "route-user");
-        var controller = new RouteController(new RouteQueryService(provider));
+        var controller = new RouteController(new RouteQueryService(provider, transitProvider));
         var factory = new AspectJProxyFactory(controller);
         factory.setProxyTargetClass(true);
         factory.addAspect(new RateLimitAspect(limiter, mock(RefreshTokenCookieService.class)));
@@ -108,6 +111,17 @@ class RouteControllerTest {
         mvc.perform(post("/routes").contentType(MediaType.APPLICATION_JSON).content(REQUEST.replace("car", "walk")))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("UNSUPPORTED_ROUTE_MODE"));
         verifyNoInteractions(provider);
+    }
+
+    @Test
+    void delegatesTransitWithoutCallingCarProvider() throws Exception {
+        when(transitProvider.findRoute(any(), any())).thenReturn(
+                new com.typenull.pingdom.place.api.dto.route.TransitRouteResponse("transit", "tmap", List.of()));
+        mvc.perform(post("/routes").contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST.replace("car", "transit")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("tmap"));
+        verifyNoInteractions(provider);
+        verify(transitProvider).findRoute(any(), any());
     }
 
     @Test

@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteRequest;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.util.stream.Stream;
@@ -18,7 +19,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 
 class RouteQueryServiceTest {
     private final NaverDirectionsClient client = mock(NaverDirectionsClient.class);
-    private final RouteQueryService service = new RouteQueryService(client);
+    private final TmapTransitClient transitClient = mock(TmapTransitClient.class);
+    private final RouteQueryService service = new RouteQueryService(client, transitClient);
     private static final RouteCoordinate START = new RouteCoordinate(37.5, 127.0);
     private static final RouteCoordinate END = new RouteCoordinate(37.6, 127.1);
 
@@ -28,8 +30,15 @@ class RouteQueryServiceTest {
         verify(client).findRoute(START, END);
     }
 
+    @Test
+    void delegatesTransitOnlyToTmapProvider() {
+        service.findRoute(new RouteRequest(START, END, "transit"));
+        verify(transitClient).findRoute(START, END);
+        verifyNoInteractions(client);
+    }
+
     @ParameterizedTest
-    @ValueSource(strings = {"walk", "transit", "bike"})
+    @ValueSource(strings = {"walk", "bike"})
     void neverFallsBackToCarForUnsupportedMode(String mode) {
         assertFailure(new RouteRequest(START, END, mode), MapErrorCode.UNSUPPORTED_ROUTE_MODE);
     }
@@ -63,6 +72,6 @@ class RouteQueryServiceTest {
     private void assertFailure(RouteRequest request, MapErrorCode code) {
         assertThatThrownBy(() -> service.findRoute(request)).isInstanceOfSatisfying(MapException.class,
                 exception -> org.assertj.core.api.Assertions.assertThat(exception.getErrorCode()).isEqualTo(code));
-        verifyNoInteractions(client);
+        verifyNoInteractions(client, transitClient);
     }
 }
