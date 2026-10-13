@@ -11,6 +11,7 @@ import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
+import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
 
@@ -62,6 +63,26 @@ class TmapTransitClientTest {
 
         assertThatThrownBy(() -> client.findRoute(START, END)).isInstanceOfSatisfying(MapException.class,
                 exception -> assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.ROUTE_NOT_FOUND));
+    }
+
+    @Test
+    void mapsProviderStatusToRouteErrors() throws Exception {
+        TmapTransitTransport transport = mock(TmapTransitTransport.class);
+        when(transport.post(START, END)).thenReturn(new TmapTransitTransport.ProviderResponse(400, new byte[0]));
+        var client = new TmapTransitClient(transport, properties(true), new ObjectMapper(), new SimpleMeterRegistry());
+
+        assertThatThrownBy(() -> client.findRoute(START, END)).isInstanceOfSatisfying(MapException.class,
+                exception -> assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.INVALID_ROUTE_REQUEST));
+    }
+
+    @Test
+    void timeoutIsMappedToProviderTimeout() throws Exception {
+        TmapTransitTransport transport = mock(TmapTransitTransport.class);
+        when(transport.post(START, END)).thenThrow(new SocketTimeoutException());
+        var client = new TmapTransitClient(transport, properties(true), new ObjectMapper(), new SimpleMeterRegistry());
+
+        assertThatThrownBy(() -> client.findRoute(START, END)).isInstanceOfSatisfying(MapException.class,
+                exception -> assertThat(exception.getErrorCode()).isEqualTo(MapErrorCode.ROUTE_PROVIDER_TIMEOUT));
     }
 
     private TmapTransitClient.Properties properties(boolean enabled) {
