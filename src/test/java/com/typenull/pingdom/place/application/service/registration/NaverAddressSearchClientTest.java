@@ -66,6 +66,13 @@ class NaverAddressSearchClientTest {
         server.verify();
     }
 
+    @Test
+    void defaultsToCurrentMapsEndpoint() {
+        var properties = new NaverAddressSearchClient.Properties(true, "id", "secret", null, null, null);
+
+        assertThat(properties.baseUrl()).isEqualTo("https://maps.apigw.ntruss.com");
+    }
+
     /** 테스트별 활성 상태와 인증값으로 주소 검색 클라이언트를 생성합니다. */
     private NaverAddressSearchClient client(boolean enabled, String clientId, String clientSecret) {
         return new NaverAddressSearchClient(
