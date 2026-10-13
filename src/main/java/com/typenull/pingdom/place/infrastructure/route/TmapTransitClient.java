@@ -43,10 +43,12 @@ public class TmapTransitClient {
         String outcome = "unavailable";
         try {
             var response = transport.post(origin, destination);
+            if (response.status() == 400) throw new MapException(MapErrorCode.INVALID_ROUTE_REQUEST);
+            if (response.status() == 404) throw new MapException(MapErrorCode.ROUTE_NOT_FOUND);
             if (response.status() == 401 || response.status() == 403 || response.status() == 429) throw unavailable();
             if (response.status() >= 500) throw unavailable();
+            if (response.status() >= 400) throw unavailable();
             JsonNode body = mapper.readTree(response.body());
-            if (response.status() == 400) throw new MapException(MapErrorCode.INVALID_ROUTE_REQUEST);
             JsonNode itineraries = body.path("metaData").path("plan").path("itineraries");
             if (!itineraries.isArray() || itineraries.isEmpty()) {
                 outcome = "not_found";
@@ -142,6 +144,11 @@ public class TmapTransitClient {
             connectTimeout = connectTimeout == null ? Duration.ofSeconds(2) : connectTimeout;
             readTimeout = readTimeout == null ? Duration.ofSeconds(8) : readTimeout;
             requestTimeout = requestTimeout == null ? Duration.ofSeconds(10) : requestTimeout;
+            if (connectTimeout.isNegative() || connectTimeout.isZero()
+                    || readTimeout.isNegative() || readTimeout.isZero()
+                    || requestTimeout.isNegative() || requestTimeout.isZero()) {
+                throw new IllegalArgumentException("TMAP 대중교통 timeout은 0보다 커야 합니다.");
+            }
             URI uri = URI.create(baseUrl);
             if (!"https".equals(uri.getScheme()) || uri.getHost() == null || uri.getUserInfo() != null
                     || uri.getQuery() != null || uri.getFragment() != null) {
