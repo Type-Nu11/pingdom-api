@@ -101,7 +101,7 @@ public class NaverAddressSearchClient {
             clientSecret = normalize(clientSecret);
             baseUrl = normalize(baseUrl);
             if (baseUrl == null) {
-                baseUrl = "https://naveropenapi.apigw.ntruss.com";
+                baseUrl = "https://maps.apigw.ntruss.com";
             }
             if (connectTimeout == null || !connectTimeout.isPositive()) {
                 connectTimeout = Duration.ofSeconds(2);

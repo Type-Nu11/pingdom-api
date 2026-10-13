@@ -4,8 +4,8 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.time.Duration;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
-import org.springframework.http.client.SimpleClientHttpRequestFactory;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
@@ -19,12 +19,12 @@ public class NaverPlaceSearchClient {
     private final RestClient restClient;
     private final Properties properties;
 
-    public NaverPlaceSearchClient(Properties properties) {
+    public NaverPlaceSearchClient(
+            @Qualifier("naverPlaceSearchRestClient") RestClient naverPlaceSearchRestClient,
+            Properties properties
+    ) {
         this.properties = properties;
-        SimpleClientHttpRequestFactory factory = new SimpleClientHttpRequestFactory();
-        factory.setConnectTimeout(properties.connectTimeout());
-        factory.setReadTimeout(properties.readTimeout());
-        this.restClient = RestClient.builder().baseUrl(properties.baseUrl()).requestFactory(factory).build();
+        this.restClient = naverPlaceSearchRestClient;
     }
 
     /**
@@ -34,10 +34,11 @@ public class NaverPlaceSearchClient {
     public JsonNode search(String query) {
         if (!properties.isConfigured()) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_UNAVAILABLE);
         try {
-            JsonNode response = restClient.get().uri(uri -> uri.path("/v1/search/local.json")
-                    .queryParam("query", query).queryParam("display", 5).build())
-                    .header("X-Naver-Client-Id", properties.clientId())
-                    .header("X-Naver-Client-Secret", properties.clientSecret())
+            JsonNode response = restClient.get().uri(uri -> uri.path("/search/v1/local")
+                    .queryParam("query", query).queryParam("display", 5)
+                    .queryParam("format", "json").build())
+                    .header("X-NCP-APIGW-API-KEY-ID", properties.clientId())
+                    .header("X-NCP-APIGW-API-KEY", properties.clientSecret())
                     .retrieve().body(JsonNode.class);
             if (response == null) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_FAILED);
             return response.path("items");
@@ -51,7 +52,7 @@ public class NaverPlaceSearchClient {
         public Properties {
             enabled = Boolean.TRUE.equals(enabled);
             clientId = normalized(clientId); clientSecret = normalized(clientSecret);
-            baseUrl = normalized(baseUrl); if (baseUrl == null) baseUrl = "https://openapi.naver.com";
+            baseUrl = normalized(baseUrl); if (baseUrl == null) baseUrl = "https://naverapihub.apigw.ntruss.com";
             if (connectTimeout == null || !connectTimeout.isPositive()) connectTimeout = Duration.ofSeconds(2);
             if (readTimeout == null || !readTimeout.isPositive()) readTimeout = Duration.ofSeconds(3);
         }
