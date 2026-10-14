@@ -315,6 +315,13 @@ place:
       connect-timeout: ${NAVER_DIRECTIONS_CONNECT_TIMEOUT:2s}
       read-timeout: ${NAVER_DIRECTIONS_READ_TIMEOUT:8s}
       request-timeout: ${NAVER_DIRECTIONS_REQUEST_TIMEOUT:10s}
+    tmap-transit:
+      enabled: ${TMAP_TRANSIT_ENABLED:false}
+      app-key: ${TMAP_TRANSIT_APP_KEY:}
+      base-url: ${TMAP_TRANSIT_BASE_URL:https://apis.openapi.sk.com}
+      connect-timeout: ${TMAP_TRANSIT_CONNECT_TIMEOUT:2s}
+      read-timeout: ${TMAP_TRANSIT_READ_TIMEOUT:8s}
+      request-timeout: ${TMAP_TRANSIT_REQUEST_TIMEOUT:10s}
   registration:
     naver-search:
       enabled: ${NAVER_PLACE_SEARCH_ENABLED:false}
