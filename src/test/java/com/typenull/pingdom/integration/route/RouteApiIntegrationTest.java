@@ -10,6 +10,7 @@ import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteResponse;
+import com.typenull.pingdom.place.api.dto.route.TransitRouteResponse;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
 import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.ratelimit.exception.RateLimitException;
@@ -34,6 +35,7 @@ import org.springframework.test.web.servlet.MockMvc;
 @AutoConfigureMockMvc
 class RouteApiIntegrationTest {
     private static final String REQUEST = "{\"origin\":{\"latitude\":37.5665,\"longitude\":126.978},\"destination\":{\"latitude\":37.4979,\"longitude\":127.0276},\"mode\":\"car\"}";
+    private static final String TRANSIT_REQUEST = REQUEST.replace("\"car\"", "\"transit\"");
     @Autowired private MockMvc mvc;
     @Autowired private ObjectMapper mapper;
     @Autowired private JwtTokenProvider tokens;
@@ -74,6 +76,19 @@ class RouteApiIntegrationTest {
     }
 
     @Test
+    void acceptsTransitRequestWithJwtAndKeepsCarProviderIsolated() throws Exception {
+        when(transitProvider.findRoute(any(), any())).thenReturn(
+                new TransitRouteResponse("transit", "tmap", List.of()));
+
+        mvc.perform(post("/routes").header(HttpHeaders.AUTHORIZATION, bearer())
+                        .contentType(MediaType.APPLICATION_JSON).content(TRANSIT_REQUEST))
+                .andExpect(status().isOk()).andExpect(header().string("Cache-Control", "no-store"))
+                .andExpect(jsonPath("$.mode").value("transit")).andExpect(jsonPath("$.provider").value("tmap"));
+        verify(transitProvider).findRoute(any(), any());
+        verifyNoInteractions(provider);
+    }
+
+    @Test
     void limitsRequestsBeforeProviderCall() throws Exception {
         doThrow(new RateLimitException("limit")).when(limits).acquire(anyString(), anyCollection(), anyCollection());
         mvc.perform(post("/routes").header(HttpHeaders.AUTHORIZATION, bearer())
@@ -93,6 +108,10 @@ class RouteApiIntegrationTest {
             assertThat(operation.path("responses").has(status)).as(status).isTrue();
         }
         assertThat(app.at("/components/schemas/RouteResponse/properties/durationSeconds/description").asText()).contains("초");
+        assertThat(app.at("/components/schemas/RouteRequest/properties/mode/enum"))
+                .extracting(JsonNode::asText).containsExactly("car", "transit");
+        assertThat(operation.at("/responses/200/content/application~1json/schema/oneOf").isArray()).isTrue();
+        assertThat(app.at("/components/schemas/TransitRouteResponse/properties/itineraries/type").asText()).isEqualTo("array");
         assertThat(app.at("/components/schemas/RouteCoordinate/properties/latitude/type").asText()).isEqualTo("number");
         JsonNode common = mapper.readTree(mvc.perform(get("/v3/api-docs/common")).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray());
