@@ -25,7 +25,6 @@ import com.typenull.pingdom.place.application.service.recommendation.explanation
 import com.typenull.pingdom.place.application.service.place.PlaceQueryService;
 import com.typenull.pingdom.place.application.service.place.PlaceSearchCondition;
 import com.typenull.pingdom.place.application.service.place.NearbyReservablePlaceCondition;
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import java.time.LocalDateTime;
 import org.springframework.format.annotation.DateTimeFormat;
 import com.typenull.pingdom.place.application.service.place.PlaceMediaService;
@@ -99,8 +98,6 @@ public class PlaceController {
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime to,
             @Parameter(description = "예약 인원", example = "2")
             @RequestParam(required = false) @Min(1) Integer quantity,
-            @Parameter(description = "예약 상품 유형", example = "TICKET")
-            @RequestParam(required = false) AvailabilityProductType productType,
             @Parameter(description = "장소 카테고리", example = "테마파크")
             @RequestParam(required = false) String category,
             @Parameter(description = "관광 카테고리", example = "ATTRACTION")
@@ -110,7 +107,7 @@ public class PlaceController {
             @RequestParam(defaultValue = "NEAREST") String sort
     ) {
         return ResponseEntity.ok(placeQueryService.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(
-                page, limit, latitude, longitude, radiusKm, from, to, quantity, productType, category, touristCategory, sort)));
+                page, limit, latitude, longitude, radiusKm, from, to, quantity, category, touristCategory, sort)));
     }
 
     @GetMapping("/map")
