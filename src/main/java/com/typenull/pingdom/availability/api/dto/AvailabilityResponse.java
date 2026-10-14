@@ -1,6 +1,5 @@
 package com.typenull.pingdom.availability.api.dto;
 
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.AvailabilityStatus;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -12,14 +11,6 @@ public record AvailabilityResponse(
         Long id,
         @Schema(example = "70069", requiredMode = Schema.RequiredMode.REQUIRED)
         Long placeId,
-        @Schema(description = "GENERAL은 null이며 TICKET/CLASS는 상품 ID입니다.", example = "12",
-                nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
-        Long productId,
-        @Schema(description = "예약 대상 유형", example = "TICKET", requiredMode = Schema.RequiredMode.REQUIRED)
-        AvailabilityProductType productType,
-        @Schema(description = "GENERAL은 null이며 TICKET/CLASS는 상품명입니다.", example = "이월드 오후 입장권",
-                nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
-        String productName,
         @Schema(format = "date-time", example = "2026-09-10T14:00:00", requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime startsAt,
         @Schema(format = "date-time", example = "2026-09-10T17:00:00", requiredMode = Schema.RequiredMode.REQUIRED)
@@ -30,16 +21,15 @@ public record AvailabilityResponse(
         int remainingCapacity,
         @Schema(example = "ACTIVE", requiredMode = Schema.RequiredMode.REQUIRED)
         AvailabilityStatus status,
-        @Schema(description = "가격·취소 조건 변경 버전. 조건이 미설정이어도 반환합니다.", example = "1", minimum = "0",
+        @Schema(description = "시간대·취소 조건 변경 버전. 조건이 미설정이어도 반환합니다.", example = "1", minimum = "0",
                 requiredMode = Schema.RequiredMode.REQUIRED)
         long conditionsVersion,
-        @Schema(description = "저장된 가격·취소 조건. null은 미설정이며 무료 또는 취소 불가를 뜻하지 않습니다.",
+        @Schema(description = "저장된 시간대·취소 조건. null은 미설정이며 취소 불가를 뜻하지 않습니다.",
                 nullable = true, requiredMode = Schema.RequiredMode.REQUIRED)
         ReservationTermsResponse reservationTerms
 ) {
-    public static AvailabilityResponse from(PlaceAvailability availability, String productName) {
-        return new AvailabilityResponse(availability.getId(), availability.getPlaceId(), availability.getProductId(),
-                availability.getProductType(), productName,
+    public static AvailabilityResponse from(PlaceAvailability availability) {
+        return new AvailabilityResponse(availability.getId(), availability.getPlaceId(),
                 availability.getStartsAt(),
                 availability.getEndsAt(), availability.getTotalCapacity(), availability.getRemainingCapacity(),
                 availability.getStatus(), availability.getConditionsVersion(),
