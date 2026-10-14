@@ -35,12 +35,12 @@ public class AdminReservationController {
     @Operation(summary = "관리자 예약 심사 목록 조회")
     public AdminReservationPageResponse list(@RequestParam(required = false) ReservationStatus status,
             @RequestParam(required = false) Long placeId, @RequestParam(required = false) Long merchantOwnerUserId,
-            @RequestParam(required = false) Long touristUserId, @RequestParam(required = false) Long productId,
+            @RequestParam(required = false) Long touristUserId,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime reservationFrom,
             @RequestParam(required = false) @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime reservationTo,
             @RequestParam(defaultValue = "1") @Min(1) int page,
             @RequestParam(defaultValue = "20") @Min(1) @Max(100) int limit) {
-        return service.listForAdmin(status, placeId, merchantOwnerUserId, touristUserId, productId, reservationFrom,
+        return service.listForAdmin(status, placeId, merchantOwnerUserId, touristUserId, reservationFrom,
                 reservationTo, page, limit);
     }
 
