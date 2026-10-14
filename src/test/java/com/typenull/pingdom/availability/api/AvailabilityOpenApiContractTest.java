@@ -26,9 +26,6 @@ class AvailabilityOpenApiContractTest {
     private static final List<String> AVAILABILITY_REQUIRED_FIELDS = List.of(
             "id",
             "placeId",
-            "productId",
-            "productType",
-            "productName",
             "startsAt",
             "endsAt",
             "totalCapacity",
@@ -44,29 +41,20 @@ class AvailabilityOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /**
-     * merchant OpenAPI의 상품 생성 스키마가 TICKET·CLASS만 열거하고 장소·유형·이름을 필수로 표시하는지 검증.
-     * 등록할 수 없는 GENERAL 유형이 API 문서에 노출되는 회귀를 방지.
-     */
+    /** 종료된 예약 상품 경로와 상품 입력 필드가 OpenAPI에 노출되지 않는지 검증. */
     @Test
-    void documentsSupportedProductTypes() throws Exception {
-        JsonNode merchantDocument = readApiDocs("/v3/api-docs/merchant");
-        JsonNode requestSchema = merchantDocument.at(
-                "/components/schemas/ReservableProductCreateRequest"
-        );
-        JsonNode productTypeSchema = resolveSchema(
-                merchantDocument,
-                requestSchema.at("/properties/productType")
-        );
-
-        assertThat(textValues(productTypeSchema.path("enum")))
-                .containsExactly("TICKET", "CLASS");
-        assertThat(textValues(requestSchema.path("required")))
-                .contains("placeId", "productType", "name");
+    void removesReservableProductContract() throws Exception {
+        JsonNode merchant = readApiDocs("/v3/api-docs/merchant");
+        assertThat(merchant.path("paths").has("/merchant-owner/reservable-products")).isFalse();
+        assertThat(merchant.path("paths").has("/merchant-owner/reservable-products/{productId}/activate")).isFalse();
+        assertThat(merchant.path("paths").has("/merchant-owner/reservable-products/{productId}/deactivate")).isFalse();
+        var input = merchant.at("/components/schemas/AvailabilityUpsertRequest/properties");
+        assertThat(input.has("productId")).isFalse();
+        assertThat(input.has("productType")).isFalse();
     }
 
     /**
-     * app과 merchant OpenAPI 양쪽에 동일한 예약 슬롯 응답의 필수 필드·상품 null 허용 계약이 적용되는지 검증.
+     * app과 merchant OpenAPI 양쪽에 동일한 예약 슬롯 응답의 필수 필드·취소 정책 계약이 적용되는지 검증.
      */
     @Test
     void documentsAvailabilityAcrossGroups()
@@ -78,29 +66,23 @@ class AvailabilityOpenApiContractTest {
         assertAvailabilityResponseContract(merchantDocument);
     }
 
-    /**
-     * 예약 슬롯의 필수 필드 전체와 상품 ID·이름의 nullable 여부를 확인.
-     * 상품명 타입·유형별 설명·GENERAL/TICKET/CLASS 열거값까지 점검해 두 API 그룹의 문서 계약을 고정.
-     */
+    /** 예약 슬롯에 상품·금액 필드가 없고 시간대·취소 조건만 제공되는지 검증. */
     private void assertAvailabilityResponseContract(JsonNode document) {
         JsonNode schema = document.at("/components/schemas/AvailabilityResponse");
 
         assertThat(textValues(schema.path("required")))
                 .containsExactlyInAnyOrderElementsOf(AVAILABILITY_REQUIRED_FIELDS);
-        assertThat(schema.at("/properties/productId/nullable").asBoolean()).isTrue();
-        assertThat(schema.at("/properties/productName/nullable").asBoolean()).isTrue();
-        assertThat(schema.at("/properties/productName/type").asText()).isEqualTo("string");
-        assertThat(schema.at("/properties/productName/description").asText())
-                .contains("GENERAL", "TICKET/CLASS");
-        assertThat(textValues(schema.at("/properties/productType/enum")))
-                .containsExactly("GENERAL", "TICKET", "CLASS");
+        assertThat(schema.path("properties").has("productId")).isFalse();
+        assertThat(schema.path("properties").has("productName")).isFalse();
+        assertThat(schema.path("properties").has("productType")).isFalse();
         assertThat(schema.at("/properties/reservationTerms/nullable").asBoolean()).isTrue();
         JsonNode termsSchema = resolveSchema(document, schema.at("/properties/reservationTerms"));
         assertThat(textValues(termsSchema.path("required"))).containsExactlyInAnyOrder(
-                "unitAmountMinor", "additionalAmountMinor", "currency", "timezone", "cancellable",
+                "timezone", "cancellable",
                 "cancellationCutoffMinutes");
-        assertThat(termsSchema.at("/properties/unitAmountMinor/minimum").asText()).isEqualTo("0");
-        assertThat(termsSchema.at("/properties/additionalAmountMinor/minimum").asText()).isEqualTo("0");
+        assertThat(termsSchema.path("properties").has("unitAmountMinor")).isFalse();
+        assertThat(termsSchema.path("properties").has("additionalAmountMinor")).isFalse();
+        assertThat(termsSchema.path("properties").has("currency")).isFalse();
         assertThat(termsSchema.at("/properties/cancellationCutoffMinutes/nullable").asBoolean()).isTrue();
     }
 
