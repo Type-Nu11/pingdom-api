@@ -3,7 +3,6 @@ package com.typenull.pingdom.integration.concurrency;
 import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityErrorCode;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
@@ -484,9 +483,7 @@ class CouponBookingConcurrencyIntegrationTest {
      */
     private PlaceAvailability availability(MerchantContext merchant, int capacity) {
         LocalDateTime now = now();
-        return availabilityRepository.saveAndFlush(PlaceAvailability.create(
-                merchant.user().getId(), merchant.place().getId(), AvailabilityProductType.GENERAL,
-                now.plusHours(1), now.plusHours(2), capacity, now));
+        return availabilityRepository.saveAndFlush(PlaceAvailability.create(merchant.user().getId(), merchant.place().getId(), now.plusHours(1), now.plusHours(2), capacity, now));
     }
 
     /**
