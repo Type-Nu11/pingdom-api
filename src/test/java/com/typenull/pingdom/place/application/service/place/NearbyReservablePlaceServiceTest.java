@@ -7,7 +7,6 @@ import static org.mockito.ArgumentMatchers.eq;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.place.api.dto.place.reservable.NearbyReservablePlaceResponse;
 import com.typenull.pingdom.place.infrastructure.persistence.place.NearbyReservablePlaceQueryRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.NearbyReservablePlaceQueryRepository.NearbyReservablePlaceProjection;
@@ -41,7 +40,7 @@ class NearbyReservablePlaceServiceTest {
     private PlaceQueryServiceImpl service;
 
     /**
-     * 반경 km를 m로 변환하고 인원·상품·정렬·기준 시각을 저장소에 전달하며 거리 반올림과 상품명을 응답에 반영하는지 확인.
+     * 반경 km를 m로 변환하고 인원·정렬·기준 시각을 저장소에 전달하며 거리 반올림과 예약 가능 시간을 응답에 반영하는지 확인.
      */
     @Test
     void mapsNearbyReservablePlace() {
@@ -55,23 +54,18 @@ class NearbyReservablePlaceServiceTest {
         when(projection.getAvailableStartsAt()).thenReturn(now.plusDays(1));
         when(projection.getAvailableEndsAt()).thenReturn(now.plusDays(1).plusHours(1));
         when(projection.getRemainingCapacity()).thenReturn(42);
-        when(projection.getProductType()).thenReturn(AvailabilityProductType.TICKET);
-        when(projection.getProductId()).thenReturn(12L);
-        when(projection.getProductName()).thenReturn("이월드 오후 입장권");
         when(repository.findNearbyReservablePlaces(
-                eq(35.8714d), eq(128.6014d), eq(3_000d), eq(null), eq(null), eq(2), eq("TICKET"),
+                eq(35.8714d), eq(128.6014d), eq(3_000d), eq(null), eq(null), eq(2),
                 eq(null), eq(null), eq("NEAREST"), eq(now), any(Pageable.class)))
                 .thenReturn(new PageImpl<>(List.of(projection)));
 
-        NearbyReservablePlaceResponse response = service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(
-                1, 20, 35.8714d, 128.6014d, 3.0d, null, null, 2,
-                AvailabilityProductType.TICKET, null, null, "NEAREST"));
+        NearbyReservablePlaceResponse response = service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(1, 20, 35.8714d, 128.6014d, 3.0d, null, null, 2, null, null, "NEAREST"));
 
         assertThat(response.places()).hasSize(1);
         assertThat(response.places().getFirst().distanceMeters()).isEqualTo(430L);
-        assertThat(response.places().getFirst().productName()).isEqualTo("이월드 오후 입장권");
+        assertThat(response.places().getFirst().availabilityId()).isEqualTo(77L);
         verify(repository).findNearbyReservablePlaces(
-                eq(35.8714d), eq(128.6014d), eq(3_000d), eq(null), eq(null), eq(2), eq("TICKET"),
+                eq(35.8714d), eq(128.6014d), eq(3_000d), eq(null), eq(null), eq(2),
                 eq(null), eq(null), eq("NEAREST"), eq(now), any(Pageable.class));
     }
 
@@ -80,15 +74,10 @@ class NearbyReservablePlaceServiceTest {
      */
     @Test
     void rejectsInvalidPagingAndDateRange() {
-        assertThatThrownBy(() -> service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(
-                0, 20, 35.8714d, 128.6014d, 3.0d, null, null, 1,
-                null, null, null, "NEAREST")))
+        assertThatThrownBy(() -> service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(0, 20, 35.8714d, 128.6014d, 3.0d, null, null, 1, null, null, "NEAREST")))
                 .isInstanceOf(MapException.class);
 
-        assertThatThrownBy(() -> service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(
-                1, 101, 35.8714d, 128.6014d, 3.0d,
-                LocalDateTime.of(2026, 9, 3, 12, 0), LocalDateTime.of(2026, 9, 3, 11, 0), 1,
-                null, null, null, "NEAREST")))
+        assertThatThrownBy(() -> service.listNearbyReservablePlaces(new NearbyReservablePlaceCondition(1, 101, 35.8714d, 128.6014d, 3.0d, LocalDateTime.of(2026, 9, 3, 12, 0), LocalDateTime.of(2026, 9, 3, 11, 0), 1, null, null, "NEAREST")))
                 .isInstanceOf(MapException.class);
     }
 }
