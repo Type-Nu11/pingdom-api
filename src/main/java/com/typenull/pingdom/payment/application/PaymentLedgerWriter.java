@@ -1,7 +1,5 @@
 package com.typenull.pingdom.payment.application;
 
-import com.typenull.pingdom.availability.domain.PlaceAvailability;
-import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.User;
 import com.typenull.pingdom.identity.domain.UserRole;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
@@ -12,7 +10,6 @@ import com.typenull.pingdom.payment.domain.*;
 import com.typenull.pingdom.payment.domain.exception.*;
 import com.typenull.pingdom.payment.infrastructure.*;
 import com.typenull.pingdom.reservation.domain.Reservation;
-import com.typenull.pingdom.reservation.domain.ReservationStatus;
 import com.typenull.pingdom.reservation.infrastructure.ReservationRepository;
 import java.time.Clock;
 import java.time.LocalDateTime;
@@ -30,13 +27,12 @@ public class PaymentLedgerWriter {
     private final PaymentTransactionRepository paymentRepository;
     private final SettlementLedgerRepository ledgerRepository;
     private final ReservationRepository reservationRepository;
-    private final PlaceAvailabilityRepository availabilityRepository;
     private final UserRepository userRepository;
     private final Clock clock;
 
     /**
-     * 사용자별 멱등 키의 예약·사업자가 같은지 검사하고 신규 요청이면 PROCESSING 거래를 생성.
-     * 예약별 PROCESSING 또는 PAID 거래가 이미 있으면 거절. 결제 가능성은 아래 명시된 상태 검사 범위로 제한됨.
+     * 기존 멱등 키의 예약·사업자가 같은지 검사하고 완료 결과 또는 진행 중 승인 복구 정보를 반환.
+     * 새 예약 계약의 신규 결제 요청은 거절하며 기존 원장과 환불 흐름은 유지.
      */
     @Transactional
     public PaymentPreparation prepare(Long userId, PaymentCreateRequest request) {
@@ -61,27 +57,8 @@ public class PaymentLedgerWriter {
         if (!reservation.getTouristUserId().equals(userId)) {
             throw new PaymentException(PaymentErrorCode.PAYMENT_FORBIDDEN);
         }
-        if (reservation.getStatus() == ReservationStatus.CANCELED) {
-            throw new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE);
-        }
-        if (reservation.getConfirmation() != null && !reservation.getConfirmation().paymentRequired()) {
-            throw new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE);
-        }
-        if (paymentRepository.findFirstByReservationIdAndStatusIn(reservation.getId(),
-                java.util.List.of(PaymentStatus.PROCESSING, PaymentStatus.PAID)).isPresent()) {
-            throw new PaymentException(PaymentErrorCode.PAYMENT_ALREADY_EXISTS);
-        }
-        PlaceAvailability availability = availabilityRepository.findById(reservation.getAvailabilityId())
-                .orElseThrow(() -> new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE));
-        LocalDateTime now = LocalDateTime.now(clock);
-        try {
-            PaymentTransaction saved = paymentRepository.save(PaymentTransaction.processing(
-                    reservation.getId(), userId, availability.getMerchantOwnerUserId(), request.provider(),
-                    request.idempotencyKey(), now));
-            return preparation(saved, reservation);
-        } catch (IllegalArgumentException exception) {
-            throw new PaymentException(PaymentErrorCode.INVALID_PAYMENT_INPUT);
-        }
+        // 새 예약 계약에는 결제 금액이 없다. 기존 키의 결과 복구만 허용하고 신규 승인 거래는 만들지 않는다.
+        throw new PaymentException(PaymentErrorCode.RESERVATION_NOT_PAYABLE);
     }
 
     /**
@@ -93,9 +70,9 @@ public class PaymentLedgerWriter {
         PaymentTransaction payment = findForUpdate(paymentId);
         if (payment.getStatus() != PaymentStatus.PROCESSING) return PaymentResponse.from(payment);
         Reservation reservation = reservationRepository.findById(payment.getReservationId()).orElse(null);
-        if (reservation != null && reservation.getConfirmation() != null
-                && (reservation.getConfirmation().totalAmountMinor() != result.amountMinor()
-                || !reservation.getConfirmation().currency().equals(result.currency()))) {
+        if (reservation != null && reservation.getLegacyConfirmation() != null
+                && (legacyAmount(reservation) != result.amountMinor()
+                || !legacyCurrency(reservation).equals(result.currency()))) {
             // 공급자는 승인했을 수 있으므로 FAILED나 PAID로 확정하지 않고 PROCESSING을 유지해 새 결제를 차단.
             throw new PaymentException(PaymentErrorCode.PAYMENT_QUOTE_MISMATCH);
         }
@@ -204,9 +181,25 @@ public class PaymentLedgerWriter {
     }
 
     private PaymentPreparation preparation(PaymentTransaction payment, Reservation reservation) {
-        var confirmation = reservation.getConfirmation();
+        var legacy = reservation.getLegacyConfirmation();
         return new PaymentPreparation(payment.getId(), payment.getReservationId(), payment.getStatus(),
-                confirmation == null ? null : confirmation.totalAmountMinor(),
-                confirmation == null ? null : confirmation.currency());
+                legacy == null ? null : legacyAmount(reservation),
+                legacy == null ? null : legacyCurrency(reservation));
+    }
+
+    private long legacyAmount(Reservation reservation) {
+        var amount = reservation.getLegacyConfirmation().path("totalAmountMinor");
+        if (!amount.isIntegralNumber() || !amount.canConvertToLong() || amount.longValue() < 0) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_QUOTE_MISMATCH);
+        }
+        return amount.longValue();
+    }
+
+    private String legacyCurrency(Reservation reservation) {
+        var currency = reservation.getLegacyConfirmation().path("currency");
+        if (!currency.isTextual() || currency.textValue().isBlank()) {
+            throw new PaymentException(PaymentErrorCode.PAYMENT_QUOTE_MISMATCH);
+        }
+        return currency.textValue();
     }
 }
