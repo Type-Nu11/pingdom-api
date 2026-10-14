@@ -10,7 +10,6 @@ import static org.mockito.Mockito.*;
 import com.typenull.pingdom.availability.application.AvailabilityAccessPolicy;
 import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.*;
 import com.typenull.pingdom.identity.domain.merchant.MerchantOwnerPlace;
@@ -42,9 +41,7 @@ class ReservationServiceTest {
     @Test
     void storesAcceptedConfirmationAndReplaysSuccessBeforeRevalidatingExpiredQuote() {
         ReservationQuoteService quotes = mock(ReservationQuoteService.class);
-        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService,
-                availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, null,
-                conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
+        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService, availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
         var snapshot = mock(com.typenull.pingdom.reservation.domain.ReservationConfirmation.class);
         var request = new ReservationCreateRequest(9L, "confirmed-1", 2, "이름", "01012345678", null,
                 "11111111-1111-1111-1111-111111111111");
@@ -68,9 +65,7 @@ class ReservationServiceTest {
     @Test
     void finalQuoteRejectionDoesNotReserveOrPublish() {
         ReservationQuoteService quotes = mock(ReservationQuoteService.class);
-        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService,
-                availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, null,
-                conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
+        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService, availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
         var request = new ReservationCreateRequest(9L, "confirmed-1", 2, "이름", "01012345678", null,
                 "11111111-1111-1111-1111-111111111111");
         when(quotes.verify(1L, request)).thenThrow(new com.typenull.pingdom.reservation.domain.exception.ConfirmedReservationRejectedException(ReservationErrorCode.QUOTE_EXPIRED));
@@ -93,47 +88,39 @@ class ReservationServiceTest {
         when(userRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(tourist));
         when(reservationRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
-        when(availabilityService.reserve(anyLong(), anyInt())).thenReturn(PlaceAvailability.create(
-                7L, 11L, AvailabilityProductType.GENERAL,
-                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
+        when(availabilityService.reserve(anyLong(), anyInt())).thenReturn(PlaceAvailability.create(7L, 11L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
     }
 
     /**
-     * 수량 2 예약 생성이 슬롯 정원 차감·예약 저장·장소 전환 이벤트 발행을 호출하고 PENDING·GENERAL 응답을 반환하는지 검증.
+     * 수량 2 예약 생성이 슬롯 정원 차감·예약 저장·장소 전환 이벤트 발행을 호출하고 PENDING 응답을 반환하는지 검증.
      */
     @Test
     void createsPendingReservation() {
         var response = service.create(1L, new ReservationCreateRequest(9L, "request-1", 2));
 
         assertThat(response.status()).isEqualTo(ReservationStatus.PENDING);
-        assertThat(response.productType()).isEqualTo(AvailabilityProductType.GENERAL);
         verify(availabilityService).reserve(9L, 2);
         verify(reservationRepository).save(any(Reservation.class));
         verify(conversionEventService).publish(eq(1L), eq(11L), any(), isNull(), any());
     }
 
     /**
-     * 티켓 슬롯의 상품 ID·유형·시작/종료 시각과 예약자 이름·전화·요청사항이 응답에 반영되고, 저장 대상의 상품 유형이 TICKET인지 검증.
+     * 슬롯의 시작/종료 시각과 예약자 이름·전화·요청사항을 예약에 저장하는지 검증.
      */
     @Test
-    void snapshotsTicketReservationDetails() {
+    void snapshotsReservationDetails() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
-        when(availabilityService.reserve(9L, 2)).thenReturn(PlaceAvailability.create(
-                7L, 11L, 31L, AvailabilityProductType.TICKET,
-                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
+        when(availabilityService.reserve(9L, 2)).thenReturn(PlaceAvailability.create(7L, 11L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now));
 
         var response = service.create(1L, new ReservationCreateRequest(
-                9L, "ticket-request", 2, "홍길동", "010-1234-5678", "창가 자리 부탁드립니다."));
+                9L, "detail-request", 2, "홍길동", "010-1234-5678", "창가 자리 부탁드립니다."));
 
-        assertThat(response.productType()).isEqualTo(AvailabilityProductType.TICKET);
-        assertThat(response.productId()).isEqualTo(31L);
         assertThat(response.reservationStartsAt()).isEqualTo(now.plusDays(1));
         assertThat(response.reservationEndsAt()).isEqualTo(now.plusDays(1).plusHours(1));
         assertThat(response.bookerName()).isEqualTo("홍길동");
         assertThat(response.bookerPhone()).isEqualTo("010-1234-5678");
         assertThat(response.requestNote()).isEqualTo("창가 자리 부탁드립니다.");
-        verify(reservationRepository).save(argThat(reservation ->
-                reservation.getProductType() == AvailabilityProductType.TICKET));
+        verify(reservationRepository).save(any(Reservation.class));
     }
 
     /**
@@ -192,9 +179,7 @@ class ReservationServiceTest {
     @Test
     void rejectsIdempotentBookerMismatch() {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 13, 0);
-        Reservation existing = Reservation.create(1L, 9L, null, AvailabilityProductType.GENERAL,
-                "request-1", 2, now.plusDays(1), now.plusDays(1).plusHours(1),
-                "홍길동", "010-1234-5678", null, now);
+        Reservation existing = Reservation.create(1L, 9L, "request-1", 2, now.plusDays(1), now.plusDays(1).plusHours(1), "홍길동", "010-1234-5678", null, now);
         when(reservationRepository.findByTouristUserIdAndIdempotencyKey(1L, "request-1"))
                 .thenReturn(Optional.of(existing));
 
@@ -254,14 +239,12 @@ class ReservationServiceTest {
      */
     @Test
     void disablesAbsentReservationPeriodFilters() {
-        when(reservationRepository.findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
-                isNull(), eq(false), isNull(), eq(false), isNull(), any()))
+        when(reservationRepository.findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(), eq(false), isNull(), eq(false), isNull(), any()))
                 .thenReturn(Page.empty());
 
-        service.listForAdmin(ReservationStatus.PENDING, null, null, null, null, null, null, 1, 10);
+        service.listForAdmin(ReservationStatus.PENDING, null, null, null, null, null, 1, 10);
 
-        verify(reservationRepository).findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(),
-                isNull(), eq(false), isNull(), eq(false), isNull(), any());
+        verify(reservationRepository).findAllForAdmin(eq(ReservationStatus.PENDING), isNull(), isNull(), isNull(), eq(false), isNull(), eq(false), isNull(), any());
     }
 
     /**
