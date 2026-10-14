@@ -9,7 +9,6 @@ import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityReposit
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.payment.infrastructure.PaymentTransactionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
 import com.typenull.pingdom.reservation.api.dto.ReservationCreateRequest;
 import com.typenull.pingdom.reservation.domain.*;
 import com.typenull.pingdom.reservation.domain.exception.*;
@@ -52,9 +51,7 @@ class ReservationQuoteTransactionTest {
         var quotes = mock(ReservationQuoteRepository.class);
         when(quotes.findByIdForUpdate(quote.getId())).thenReturn(Optional.of(quote));
         when(quotes.findByTouristUserIdAndIdempotencyKey(1L, "intent")).thenReturn(Optional.of(quote));
-        var target = new ReservationQuoteService(quotes, mock(PlaceAvailabilityRepository.class),
-                mock(ReservableProductRepository.class), mock(MapPlaceRepository.class), mock(UserRepository.class),
-                mock(PaymentTransactionRepository.class), new ObjectMapper().findAndRegisterModules(), clock);
+        var target = new ReservationQuoteService(quotes, mock(PlaceAvailabilityRepository.class), mock(MapPlaceRepository.class), mock(UserRepository.class), mock(PaymentTransactionRepository.class), new ObjectMapper().findAndRegisterModules(), clock);
         var proxy = new ProxyFactory(target);
         proxy.addAdvice(new TransactionInterceptor(manager, new AnnotationTransactionAttributeSource()));
         service = (ReservationQuoteService) proxy.getProxy();

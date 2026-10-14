@@ -48,14 +48,4 @@ class NearbyReservablePlaceControllerTest {
                 .andExpect(jsonPath("$.code").value(CommonErrorCode.INVALID_REQUEST_PARAMETER.getCode()));
     }
 
-    /** 유효한 좌표와 정의되지 않은 상품 유형을 보내 enum 바인딩 실패가 400으로 변환되는지 확인. */
-    @Test
-    void rejectsUnknownProductType() throws Exception {
-        mockMvc.perform(get("/places/nearby-reservable")
-                        .param("latitude", "35.8714")
-                        .param("longitude", "128.6014")
-                        .param("productType", "UNKNOWN"))
-                .andExpect(status().isBadRequest())
-                .andExpect(jsonPath("$.code").value(CommonErrorCode.INVALID_REQUEST_PARAMETER.getCode()));
-    }
 }

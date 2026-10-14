@@ -7,15 +7,11 @@ import static org.mockito.Mockito.*;
 
 import com.typenull.pingdom.availability.api.dto.AvailabilityResponse;
 import com.typenull.pingdom.availability.api.dto.AvailabilityUpsertRequest;
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.AvailabilityStatus;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityErrorCode;
 import com.typenull.pingdom.availability.domain.exception.AvailabilityException;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
-import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
-import com.typenull.pingdom.product.domain.ReservableProduct;
-import com.typenull.pingdom.product.domain.ReservableProductStatus;
 import java.sql.SQLException;
 import java.time.Clock;
 import java.time.Instant;
@@ -31,7 +27,6 @@ import org.springframework.dao.DataIntegrityViolationException;
 class PlaceAvailabilityServiceTest {
     private final PlaceAvailabilityRepository repository = mock(PlaceAvailabilityRepository.class);
     private final AvailabilityAccessPolicy accessPolicy = mock(AvailabilityAccessPolicy.class);
-    private final ReservableProductRepository productRepository = mock(ReservableProductRepository.class);
     private PlaceAvailabilityService service;
 
     @Test
@@ -39,15 +34,15 @@ class PlaceAvailabilityServiceTest {
         var slot = PlaceAvailability.create(7L, 11L, LocalDateTime.of(2026, 7, 21, 13, 0),
                 LocalDateTime.of(2026, 7, 21, 14, 0), 10, LocalDateTime.of(2026, 7, 20, 13, 0));
         when(repository.findByIdForUpdate(9L)).thenReturn(java.util.Optional.of(slot));
-        var terms = new com.typenull.pingdom.availability.api.dto.ReservationTermsRequest(0L, 0L, "KRW", "Asia/Seoul", false, null);
-        assertThat(service.updateReservationTerms(7L, 9L, terms).unitAmountMinor()).isZero();
+        var terms = new com.typenull.pingdom.availability.api.dto.ReservationTermsRequest("Asia/Seoul", false, null);
+        assertThat(service.updateReservationTerms(7L, 9L, terms).timezone()).isEqualTo("Asia/Seoul");
         assertThat(slot.getConditionsVersion()).isEqualTo(1);
         assertThat(slot.getRemainingCapacity()).isEqualTo(10);
         assertThatThrownBy(() -> service.updateReservationTerms(8L, 9L, terms))
                 .isInstanceOfSatisfying(AvailabilityException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(AvailabilityErrorCode.PLACE_NOT_OWNED));
         assertThatThrownBy(() -> service.updateReservationTerms(7L, 9L,
-                new com.typenull.pingdom.availability.api.dto.ReservationTermsRequest(0L, 0L, "KRW", "UTC", true, null)))
+                new com.typenull.pingdom.availability.api.dto.ReservationTermsRequest("UTC", true, null)))
                 .isInstanceOfSatisfying(AvailabilityException.class,
                         exception -> assertThat(exception.getErrorCode()).isEqualTo(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT));
     }
@@ -57,8 +52,7 @@ class PlaceAvailabilityServiceTest {
      */
     @BeforeEach
     void setUp() {
-        service = new PlaceAvailabilityService(repository, accessPolicy, productRepository,
-                Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC));
+        service = new PlaceAvailabilityService(repository, accessPolicy, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC));
     }
 
     /**
@@ -76,7 +70,7 @@ class PlaceAvailabilityServiceTest {
     }
 
     /**
-     * 상점주 재접속 후에도 저장된 무료·취소 불가 조건과 미설정 상태를 구분해 편집 화면에 전달한다.
+     * 상점주 재접속 후에도 저장된 취소 불가 조건과 미설정 상태를 구분해 편집 화면에 전달한다.
      * 조건 버전은 조건이 없는 신규 슬롯에도 포함해 이후 변경 감지 기준으로 사용한다.
      */
     @Test
@@ -84,8 +78,7 @@ class PlaceAvailabilityServiceTest {
         LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
         PlaceAvailability configured = PlaceAvailability.create(
                 7L, 3L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
-        configured.updateReservationTerms(new com.typenull.pingdom.availability.domain.ReservationTerms(
-                0, 0, "KRW", "Asia/Seoul", false, null), now);
+        configured.updateReservationTerms(new com.typenull.pingdom.availability.domain.ReservationTerms("Asia/Seoul", false, null), now);
         PlaceAvailability unconfigured = PlaceAvailability.create(
                 7L, 3L, now.plusDays(2), now.plusDays(2).plusHours(1), 10, now);
         when(repository.findAllCurrentlyOwned(7L)).thenReturn(List.of(configured, unconfigured));
@@ -94,42 +87,12 @@ class PlaceAvailabilityServiceTest {
 
         assertThat(responses.get(0).conditionsVersion()).isEqualTo(1);
         assertThat(responses.get(0).reservationTerms())
-                .extracting("unitAmountMinor", "additionalAmountMinor", "cancellable", "cancellationCutoffMinutes")
-                .containsExactly(0L, 0L, false, null);
+                .extracting("timezone", "cancellable", "cancellationCutoffMinutes")
+                .containsExactly("Asia/Seoul", false, null);
         assertThat(responses.get(1).conditionsVersion()).isZero();
         assertThat(responses.get(1).reservationTerms()).isNull();
     }
 
-    /**
-     * GENERAL·TICKET·CLASS 슬롯 조회에서 상품명이 null·티켓명·클래스명 순으로 반환되는지 검증.
-     * 상품 ID 집합의 일괄 조회와 단건 조회 미호출을 확인해 슬롯별 추가 조회를 방지.
-     */
-    @Test
-    void batchLoadsPublicProductNames() {
-        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
-        PlaceAvailability general = PlaceAvailability.create(
-                7L, 3L, now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
-        PlaceAvailability ticket = PlaceAvailability.create(
-                7L, 3L, 31L, AvailabilityProductType.TICKET,
-                now.plusDays(2), now.plusDays(2).plusHours(1), 20, now);
-        PlaceAvailability clazz = PlaceAvailability.create(
-                7L, 3L, 32L, AvailabilityProductType.CLASS,
-                now.plusDays(3), now.plusDays(3).plusHours(1), 8, now);
-        ReservableProduct ticketProduct = product(31L, AvailabilityProductType.TICKET, "Museum ticket");
-        ReservableProduct classProduct = product(32L, AvailabilityProductType.CLASS, "Pottery class");
-        when(repository.findPublicByPlaceId(eq(3L), eq(AvailabilityStatus.ACTIVE), any(LocalDateTime.class)))
-                .thenReturn(List.of(general, ticket, clazz));
-        when(productRepository.findAllById(Set.of(31L, 32L)))
-                .thenReturn(List.of(ticketProduct, classProduct));
-
-        List<AvailabilityResponse> responses = service.listPublic(3L);
-
-        assertThat(responses)
-                .extracting(AvailabilityResponse::productName)
-                .containsExactly(null, "Museum ticket", "Pottery class");
-        verify(productRepository).findAllById(Set.of(31L, 32L));
-        verify(productRepository, never()).findById(anyLong());
-    }
 
     /**
      * 슬롯 고유 제약 위반으로 생성 저장이 실패하면 AVAILABILITY_ALREADY_EXISTS로 변환되는지 검증.
@@ -176,127 +139,9 @@ class PlaceAvailabilityServiceTest {
                                 .isEqualTo(AvailabilityErrorCode.AVAILABILITY_ALREADY_EXISTS));
     }
 
-    /**
-     * 상품 ID와 유형을 생략한 기존 방식 수정 요청이 TICKET 유형을 유지하는지 검증.
-     * 선택 항목 누락이 기존 상품 유형을 GENERAL로 초기화하는 회귀를 방지.
-     */
-    @Test
-    void preservesOmittedProductType() {
-        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
-        PlaceAvailability availability = PlaceAvailability.create(
-                7L, 3L, AvailabilityProductType.TICKET,
-                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
-        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
-        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
-                3L,
-                null,
-                null,
-                LocalDateTime.of(2026, 7, 22, 10, 0),
-                LocalDateTime.of(2026, 7, 22, 11, 0),
-                10
-        );
 
-        service.update(7L, 9L, request);
 
-        org.assertj.core.api.Assertions.assertThat(availability.getProductType())
-                .isEqualTo(AvailabilityProductType.TICKET);
-    }
 
-    /**
-     * 상품 ID를 생략하고 기존 TICKET 상품과 다른 CLASS 유형을 요청하면 INVALID_AVAILABILITY_INPUT인지 검증.
-     * 기존 유형이 유지되고 flush가 호출되지 않는지도 확인해 불일치 상태의 저장을 방지.
-     */
-    @Test
-    void rejectsPreservedProductTypeMismatch() {
-        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
-        PlaceAvailability availability = PlaceAvailability.create(
-                7L, 3L, 31L, AvailabilityProductType.TICKET,
-                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
-        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
-        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
-                3L,
-                null,
-                AvailabilityProductType.CLASS,
-                LocalDateTime.of(2026, 7, 22, 10, 0),
-                LocalDateTime.of(2026, 7, 22, 11, 0),
-                10
-        );
-        ReservableProduct product = product(31L, AvailabilityProductType.TICKET, "Museum ticket");
-        when(productRepository.findByIdAndPlaceIdAndStatus(
-                31L, 3L, ReservableProductStatus.ACTIVE)).thenReturn(java.util.Optional.of(product));
-
-        assertThatThrownBy(() -> service.update(7L, 9L, request))
-                .isInstanceOfSatisfying(AvailabilityException.class, exception ->
-                        org.assertj.core.api.Assertions.assertThat(exception.getErrorCode())
-                                .isEqualTo(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT));
-
-        org.assertj.core.api.Assertions.assertThat(availability.getProductType())
-                .isEqualTo(AvailabilityProductType.TICKET);
-        verify(repository, never()).flush();
-    }
-
-    /**
-     * 상품 정보를 생략한 수정에서도 기존 상품의 장소와 ACTIVE 상태를 재조회하는지 검증.
-     * 상품 ID·유형 유지, 응답 상품명 및 flush 호출을 확인해 생략 필드가 상품 연결을 끊는 회귀를 방지.
-     */
-    @Test
-    void revalidatesPreservedActiveProduct() {
-        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
-        PlaceAvailability availability = PlaceAvailability.create(
-                7L, 3L, 31L, AvailabilityProductType.TICKET,
-                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
-        ReservableProduct product = product(31L, AvailabilityProductType.TICKET, "Museum ticket");
-        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
-        when(productRepository.findByIdAndPlaceIdAndStatus(
-                31L, 3L, ReservableProductStatus.ACTIVE)).thenReturn(java.util.Optional.of(product));
-        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
-                3L,
-                null,
-                null,
-                LocalDateTime.of(2026, 7, 22, 10, 0),
-                LocalDateTime.of(2026, 7, 22, 11, 0),
-                10
-        );
-
-        AvailabilityResponse response = service.update(7L, 9L, request);
-
-        assertThat(availability.getProductId()).isEqualTo(31L);
-        assertThat(availability.getProductType()).isEqualTo(AvailabilityProductType.TICKET);
-        assertThat(response.productName()).isEqualTo("Museum ticket");
-        verify(productRepository).findByIdAndPlaceIdAndStatus(
-                31L, 3L, ReservableProductStatus.ACTIVE);
-        verify(repository).flush();
-    }
-
-    /**
-     * 수정할 슬롯의 기존 상품이 활성 상품 조회에서 사라지면 INVALID_AVAILABILITY_INPUT인지 검증.
-     * flush 미호출을 확인해 비활성 상품 연결을 그대로 저장하는 것을 방지.
-     */
-    @Test
-    void rejectsInactivePreservedProduct() {
-        LocalDateTime now = LocalDateTime.of(2026, 7, 20, 5, 0);
-        PlaceAvailability availability = PlaceAvailability.create(
-                7L, 3L, 31L, AvailabilityProductType.TICKET,
-                now.plusDays(1), now.plusDays(1).plusHours(1), 10, now);
-        when(repository.findByIdAndMerchantOwnerUserId(9L, 7L)).thenReturn(java.util.Optional.of(availability));
-        when(productRepository.findByIdAndPlaceIdAndStatus(
-                31L, 3L, ReservableProductStatus.ACTIVE)).thenReturn(java.util.Optional.empty());
-        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
-                3L,
-                null,
-                null,
-                LocalDateTime.of(2026, 7, 22, 10, 0),
-                LocalDateTime.of(2026, 7, 22, 11, 0),
-                10
-        );
-
-        assertThatThrownBy(() -> service.update(7L, 9L, request))
-                .isInstanceOfSatisfying(AvailabilityException.class, exception ->
-                        assertThat(exception.getErrorCode())
-                                .isEqualTo(AvailabilityErrorCode.INVALID_AVAILABILITY_INPUT));
-
-        verify(repository, never()).flush();
-    }
 
     /**
      * 예약 가능한 슬롯의 잠금 조회가 비어 있으면 AVAILABILITY_NOT_FOUND가 발생하는지 검증.
@@ -313,44 +158,7 @@ class PlaceAvailabilityServiceTest {
                                 .isEqualTo(AvailabilityErrorCode.AVAILABILITY_NOT_FOUND));
     }
 
-    /**
-     * 같은 장소의 활성 TICKET 상품을 조회한 뒤 슬롯을 생성하면 해당 상품 ID·유형으로 저장되는지 검증.
-     */
-    @Test
-    void createsActiveProductSlot() {
-        ReservableProduct product = mock(ReservableProduct.class);
-        when(product.getId()).thenReturn(31L);
-        when(product.getProductType()).thenReturn(AvailabilityProductType.TICKET);
-        when(productRepository.findByIdAndPlaceIdAndStatus(
-                31L, 3L, ReservableProductStatus.ACTIVE)).thenReturn(java.util.Optional.of(product));
-        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
-                3L, 31L, AvailabilityProductType.TICKET,
-                LocalDateTime.of(2026, 7, 22, 10, 0),
-                LocalDateTime.of(2026, 7, 22, 11, 0), 10);
-        when(repository.saveAndFlush(any())).thenAnswer(invocation -> invocation.getArgument(0));
 
-        service.create(7L, request);
-
-        verify(repository).saveAndFlush(argThat(availability ->
-                availability.getProductId().equals(31L)
-                        && availability.getProductType() == AvailabilityProductType.TICKET));
-    }
-
-    /**
-     * 상품 ID 없이 TICKET 슬롯을 생성하면 AvailabilityException이 발생하고 저장이 호출되지 않는지 검증.
-     */
-    @Test
-    void rejectsTicketWithoutProduct() {
-        AvailabilityUpsertRequest request = new AvailabilityUpsertRequest(
-                3L, null, AvailabilityProductType.TICKET,
-                LocalDateTime.of(2026, 7, 22, 10, 0),
-                LocalDateTime.of(2026, 7, 22, 11, 0), 10);
-
-        assertThatThrownBy(() -> service.create(7L, request))
-                .isInstanceOf(AvailabilityException.class);
-
-        verify(repository, never()).saveAndFlush(any());
-    }
 
     /**
      * 슬롯 고유 제약 이름을 담은 Hibernate 예외를 Spring 무결성 예외로 감쌈.
@@ -362,14 +170,4 @@ class PlaceAvailabilityServiceTest {
         return new DataIntegrityViolationException("duplicate", constraint);
     }
 
-    /**
-     * 주어진 ID·상품 유형·상품명을 반환하는 상품 mock을 만들어 연결 유지와 응답 매핑을 검증.
-     */
-    private ReservableProduct product(Long id, AvailabilityProductType productType, String name) {
-        ReservableProduct product = mock(ReservableProduct.class);
-        when(product.getId()).thenReturn(id);
-        when(product.getProductType()).thenReturn(productType);
-        when(product.getName()).thenReturn(name);
-        return product;
-    }
 }

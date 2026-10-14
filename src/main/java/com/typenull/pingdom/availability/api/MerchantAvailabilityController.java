@@ -29,14 +29,14 @@ public class MerchantAvailabilityController {
     private final PlaceAvailabilityService service;
 
     @PutMapping("/{availabilityId}/reservation-terms")
-    @Operation(summary = "예약 가격·취소 조건 설정", description = "가격은 통화의 최소 단위 정수입니다. 추가 비용은 예약당 한 번 적용합니다. 취소 정책은 명시적 취소 불가 또는 기한 내 수수료 0·전액 환불입니다. 기존 예약의 수락 조건은 변경하지 않습니다.")
+    @Operation(summary = "예약 시간대·취소 조건 설정", description = "취소 정책은 명시적 취소 불가 또는 시작 전 지정 기한까지 취소 가능입니다. 기존 예약의 수락 조건은 변경하지 않습니다. unitAmountMinor, additionalAmountMinor, currency를 보내면 null이어도 400 INVALID_REQUEST_BODY로 거절합니다.")
     public ReservationTermsResponse updateTerms(@PathVariable Long availabilityId,
             @Valid @RequestBody ReservationTermsRequest request, @CurrentUser JwtAuthenticatedUser user) {
         return service.updateReservationTerms(user.userId(), availabilityId, request);
     }
 
     @PostMapping
-    @Operation(summary = "예약 가능 시간 등록")
+    @Operation(summary = "예약 가능 시간 등록", description = "productId, productType을 보내면 null이어도 400 INVALID_REQUEST_BODY로 거절합니다. 상품 필드를 제거한 단일 예약 슬롯 본문을 사용하세요.")
     @ApiResponse(responseCode = "201", description = "예약 가능 시간 등록 성공")
     public ResponseEntity<AvailabilityResponse> create(@Valid @RequestBody AvailabilityUpsertRequest request,
             @CurrentUser JwtAuthenticatedUser user) {
@@ -44,7 +44,7 @@ public class MerchantAvailabilityController {
     }
 
     @PutMapping("/{availabilityId}")
-    @Operation(summary = "예약 가능 시간 수정")
+    @Operation(summary = "예약 가능 시간 수정", description = "productId, productType을 보내면 null이어도 400 INVALID_REQUEST_BODY로 거절합니다. 상품 필드를 제거한 단일 예약 슬롯 본문을 사용하세요.")
     public AvailabilityResponse update(@PathVariable Long availabilityId,
             @Valid @RequestBody AvailabilityUpsertRequest request,
             @CurrentUser JwtAuthenticatedUser user) {

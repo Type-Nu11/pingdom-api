@@ -191,7 +191,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
         }
         Page<NearbyReservablePlaceProjection> places = nearbyReservablePlaceQueryRepository.findNearbyReservablePlaces(
                 condition.latitude(), condition.longitude(), radiusKm * 1_000d, condition.from(), condition.to(), quantity,
-                condition.productType() == null ? null : condition.productType().name(), normalizeCategory(condition.category()),
+                normalizeCategory(condition.category()),
                 touristCategory == null ? null : touristCategory.name(), sort.name(), now,
                 PageRequest.of(condition.page() - 1, condition.limit()));
 
@@ -202,8 +202,7 @@ public class PlaceQueryServiceImpl implements PlaceQueryService {
     private NearbyReservablePlaceItem toNearbyReservablePlaceItem(NearbyReservablePlaceProjection place) {
         return new NearbyReservablePlaceItem(place.getPlaceId(), place.getName(), place.getCategory(), place.getLatitude(),
                 place.getLongitude(), place.getAddress(), place.getImageUrl(), Math.round(place.getDistanceMeters()),
-                place.getAvailabilityId(), place.getAvailableStartsAt(), place.getAvailableEndsAt(), place.getRemainingCapacity(),
-                place.getProductType(), place.getProductId(), place.getProductName());
+                place.getAvailabilityId(), place.getAvailableStartsAt(), place.getAvailableEndsAt(), place.getRemainingCapacity());
     }
 
     /** 후보를 제한한 뒤 이름·주소·거리 우선순위로 자동완성 결과를 정렬. */

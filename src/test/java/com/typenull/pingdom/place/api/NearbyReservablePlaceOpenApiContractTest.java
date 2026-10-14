@@ -29,7 +29,7 @@ class NearbyReservablePlaceOpenApiContractTest {
     @Autowired
     private ObjectMapper objectMapper;
 
-    /** app 명세의 인증, 필수 좌표, 정렬 enum, 페이지 필수 필드와 nullable 상품 필드 계약을 확인. */
+    /** app 명세의 인증, 필수 좌표, 정렬 enum, 페이지 필수 필드와 상품 필드 제거 계약을 확인. */
     @Test
     void documentsNearbyReservableContract() throws Exception {
         JsonNode document = readApiDocs();
@@ -48,9 +48,11 @@ class NearbyReservablePlaceOpenApiContractTest {
                 .containsExactlyInAnyOrder(
                         "places", "page", "limit", "totalElements", "totalPages", "hasNext", "queriedAt");
         JsonNode item = document.at("/components/schemas/NearbyReservablePlaceItem");
-        assertThat(textValues(item.path("required"))).contains("placeId", "availabilityId", "productId", "productName");
-        assertThat(item.at("/properties/productId/nullable").asBoolean()).isTrue();
-        assertThat(item.at("/properties/productName/nullable").asBoolean()).isTrue();
+        assertThat(textValues(item.path("required"))).contains("placeId", "availabilityId", "remainingCapacity");
+        assertThat(item.path("properties").has("productId")).isFalse();
+        assertThat(item.path("properties").has("productName")).isFalse();
+        assertThat(item.path("properties").has("productType")).isFalse();
+        assertThat(parameter(operation, "productType").isMissingNode()).isTrue();
     }
 
     /** 이름이 같은 operation 파라미터를 찾고 없으면 missing node를 반환해 후속 assertion에서 실패하게 함. */

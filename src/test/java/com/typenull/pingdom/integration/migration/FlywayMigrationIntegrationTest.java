@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "138";
+    private static final String LATEST_MIGRATION_VERSION = "139";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -1560,6 +1560,97 @@ class FlywayMigrationIntegrationTest {
                     FROM place_recommendation_conversion
                     WHERE place_recommendation_feature_log_id IS NULL
                     """)).isTrue();
+        }
+    }
+
+    /** 상품/유료 슬롯을 신규 예약에서 제외하고 원문·예약·결제 이력 및 재고를 보존한다. */
+    @Test
+    void simplifiesReservationContractsWithoutDeletingLegacyHistory() throws Exception {
+        migrateTo("138");
+        try (Connection connection = postgres.createConnection(""); Statement statement = connection.createStatement()) {
+            statement.executeUpdate("""
+                    INSERT INTO users (id, username, email, email_verified, password, birth_year,
+                        language, country, created_at, updated_at, role, banned)
+                    VALUES (990001, 'legacy-owner', 'legacy-owner@example.com', true, 'test', 1990,
+                        'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'MERCHANT_OWNER', false),
+                        (990002, 'legacy-tourist', 'legacy-tourist@example.com', true, 'test', 1990,
+                        'ko', 'KR', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, 'USER', false);
+                    INSERT INTO map_place (map_place_id, place_name, address, latitude, longitude, registrant, photo_count)
+                    VALUES (990001, '기존 장소', '서울', 37.5, 127.0, 'legacy-owner', 0);
+                    INSERT INTO merchant_owner_profile (user_id, business_name, display_name, contact_email,
+                        contact_phone, status, created_at, updated_at)
+                    VALUES (990001, '기존 상점', '점주', 'legacy-owner@example.com', '010-0000-0001',
+                        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                    INSERT INTO reservable_product (id, merchant_owner_user_id, place_id, product_type,
+                        name, status, created_at, updated_at)
+                    VALUES (990001, 990001, 990001, 'TICKET', '기존 상품', 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                    INSERT INTO place_availability (id, merchant_owner_user_id, place_id, product_id, product_type,
+                        starts_at, ends_at, total_capacity, remaining_capacity, status, created_at, updated_at, reservation_terms)
+                    VALUES (990001, 990001, 990001, NULL, 'GENERAL', '2099-01-01 10:00', '2099-01-01 11:00',
+                        10, 8, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                        '{"unitAmountMinor":0,"additionalAmountMinor":0,"currency":"KRW","timezone":"Asia/Seoul","cancellable":true,"cancellationCutoffMinutes":60}'),
+                        (990002, 990001, 990001, NULL, 'GENERAL', '2099-01-02 10:00', '2099-01-02 11:00',
+                        10, 8, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP,
+                        '{"unitAmountMinor":1000,"additionalAmountMinor":50,"currency":"KRW","timezone":"Asia/Seoul","cancellable":true,"cancellationCutoffMinutes":60}'),
+                        (990003, 990001, 990001, 990001, 'TICKET', '2099-01-03 10:00', '2099-01-03 11:00',
+                        10, 8, 'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP, NULL);
+                    INSERT INTO reservation_quote (id, tourist_user_id, confirmation, created_at, idempotency_key, request_fingerprint)
+                    VALUES ('11111111-1111-1111-1111-111111111111', 990002,
+                        '{"placeId":990001,"placeName":"기존 장소","availabilityId":990002,"productType":"GENERAL","productId":null,"productName":null,"startsAt":"2099-01-02T19:00:00+09:00","endsAt":"2099-01-02T20:00:00+09:00","quantity":2,"timezone":"Asia/Seoul","unitAmountMinor":1000,"additionalAmountMinor":50,"totalAmountMinor":2050,"currency":"KRW","currencyFractionDigits":0,"paymentRequired":true,"cancellable":true,"cancellationDeadline":"2099-01-02T18:00:00+09:00","cancellationFeeMinor":0,"refundableAmountMinor":2050,"conditionsVersion":0,"productVersion":null,"expiresAt":"2099-01-02T00:00:00Z"}',
+                        CURRENT_TIMESTAMP, 'legacy-booking', REPEAT('f', 64));
+                    INSERT INTO reservation_quote (id, tourist_user_id, confirmation, created_at)
+                    SELECT '22222222-2222-2222-2222-222222222222', tourist_user_id, confirmation, created_at
+                    FROM reservation_quote WHERE id = '11111111-1111-1111-1111-111111111111';
+                    INSERT INTO reservation (id, tourist_user_id, availability_id, idempotency_key, quantity, status,
+                        created_at, updated_at, confirmation_token, confirmation)
+                    SELECT 990001, tourist_user_id, 990002, 'legacy-booking', 2, 'PENDING', CURRENT_TIMESTAMP,
+                        CURRENT_TIMESTAMP, id, confirmation FROM reservation_quote
+                    WHERE id = '11111111-1111-1111-1111-111111111111';
+                    INSERT INTO payment_transaction (id, reservation_id, tourist_user_id, merchant_owner_user_id,
+                        provider, idempotency_key, status, created_at, updated_at)
+                    VALUES (990001, 990001, 990002, 990001, 'TEST', 'legacy-payment', 'PROCESSING',
+                        CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                    """);
+        }
+
+        MigrateResult result = migrate(false);
+        assertThat(result.targetSchemaVersion).isEqualTo("139");
+        try (Connection connection = postgres.createConnection(""); Statement statement = connection.createStatement()) {
+            assertThat(queryBoolean(statement, "SELECT NOT booking_retired FROM place_availability WHERE id = 990001")).isTrue();
+            assertThat(queryBoolean(statement, "SELECT bool_and(booking_retired) FROM place_availability WHERE id IN (990002, 990003)")).isTrue();
+            assertThat(queryBoolean(statement, "SELECT bool_and(remaining_capacity = 8 AND status = 'ACTIVE') FROM place_availability")).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT reservation_terms = '{"timezone":"Asia/Seoul","cancellable":true,"cancellationCutoffMinutes":60}'::jsonb
+                        AND (legacy_reservation_terms->>'unitAmountMinor')::bigint = 1000
+                    FROM place_availability WHERE id = 990002
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT (legacy_confirmation->>'totalAmountMinor')::bigint = 2050
+                        AND legacy_confirmation->>'currency' = 'KRW'
+                        AND NOT (confirmation ?| ARRAY['productId','productType','productName','totalAmountMinor','currency','paymentRequired'])
+                        AND confirmation->>'cancellable' = 'true'
+                    FROM reservation WHERE id = 990001
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, """
+                    SELECT count(*) = 2 AND bool_and(contract_version = 1)
+                        AND bool_and(legacy_confirmation->>'totalAmountMinor' = '2050')
+                    FROM reservation_quote
+                    """)).isTrue();
+            assertThat(queryBoolean(statement, "SELECT count(*) = 1 FROM reservable_product WHERE id = 990001")).isTrue();
+            assertThat(queryBoolean(statement, "SELECT status = 'PROCESSING' FROM payment_transaction WHERE id = 990001")).isTrue();
+            // 종료된 유료 슬롯과 같은 시간에 독립 슬롯을 등록해도 기존 예약 참조는 유지된다.
+            statement.executeUpdate("""
+                    INSERT INTO place_availability (id, merchant_owner_user_id, place_id, starts_at, ends_at,
+                        total_capacity, remaining_capacity, status, created_at, updated_at)
+                    VALUES (990004, 990001, 990001, '2099-01-02 10:00', '2099-01-02 11:00', 10, 10,
+                        'ACTIVE', CURRENT_TIMESTAMP, CURRENT_TIMESTAMP);
+                    INSERT INTO reservation_quote (id, tourist_user_id, confirmation, created_at)
+                    SELECT '33333333-3333-3333-3333-333333333333', tourist_user_id, confirmation, CURRENT_TIMESTAMP
+                    FROM reservation_quote WHERE id = '11111111-1111-1111-1111-111111111111';
+                    """);
+            assertThat(queryBoolean(statement, "SELECT NOT booking_retired AND product_id IS NULL FROM place_availability WHERE id = 990004")).isTrue();
+            assertThat(queryBoolean(statement, "SELECT availability_id = 990002 FROM reservation WHERE id = 990001")).isTrue();
+            assertThat(queryBoolean(statement, "SELECT contract_version = 2 FROM reservation_quote WHERE id = '33333333-3333-3333-3333-333333333333'")).isTrue();
         }
     }
 

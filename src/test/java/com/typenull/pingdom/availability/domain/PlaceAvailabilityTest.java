@@ -62,31 +62,7 @@ class PlaceAvailabilityTest {
                 .isInstanceOf(IllegalStateException.class);
     }
 
-    /**
-     * 예약이 없는 슬롯을 CLASS 유형으로 수정하면 변경된 유형을 보유하는지 검증.
-     */
-    @Test
-    void changesUnreservedProductType() {
-        PlaceAvailability availability = slot(10);
 
-        availability.update(AvailabilityProductType.CLASS, now.plusHours(1), now.plusHours(3), 10, now);
-
-        assertThat(availability.getProductType()).isEqualTo(AvailabilityProductType.CLASS);
-    }
-
-    /**
-     * 1명을 예약한 슬롯의 상품 유형을 TICKET으로 바꾸면 IllegalStateException이 발생하는지 검증.
-     * 기존 예약이 다른 유형의 상품으로 바뀌는 것을 방지.
-     */
-    @Test
-    void rejectsReservedProductTypeChange() {
-        PlaceAvailability availability = slot(10);
-        availability.reserve(1, now);
-
-        assertThatThrownBy(() -> availability.update(
-                AvailabilityProductType.TICKET, now.plusHours(1), now.plusHours(3), 10, now))
-                .isInstanceOf(IllegalStateException.class);
-    }
 
     /**
      * 1명을 예약한 슬롯의 시작 시간을 바꾸면 IllegalStateException이 발생하는지 검증.
@@ -112,6 +88,19 @@ class PlaceAvailabilityTest {
 
         assertThatThrownBy(() -> availability.reserve(1, now.plusHours(1)))
                 .isInstanceOf(IllegalStateException.class);
+    }
+
+    @Test
+    void retiredSlotRejectsNewBookingsAndEditsButRestoresExistingCapacity() {
+        var availability = slot(10);
+        availability.reserve(2, now);
+        org.springframework.test.util.ReflectionTestUtils.setField(availability, "bookingRetired", true);
+        assertThatThrownBy(() -> availability.reserve(1, now)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> availability.activate(now)).isInstanceOf(IllegalStateException.class);
+        assertThatThrownBy(() -> availability.update(now.plusHours(1), now.plusHours(2), 10, now))
+                .isInstanceOf(IllegalStateException.class);
+        availability.release(2, now);
+        assertThat(availability.getRemainingCapacity()).isEqualTo(10);
     }
 
     /**
