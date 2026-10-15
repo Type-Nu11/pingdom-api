@@ -3,6 +3,7 @@ package com.typenull.pingdom.place.application.service.route;
 import com.typenull.pingdom.place.api.dto.route.RouteRequest;
 import com.typenull.pingdom.place.api.dto.route.RouteResult;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapPedestrianClient;
 import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -12,13 +13,16 @@ import org.springframework.stereotype.Service;
 /** 입력과 지원 이동수단을 검증하고 공급자 조회에 위임합니다. 경로 저장·대체 경로 생성은 하지 않습니다. */
 @Service
 public class RouteQueryService {
-    private static final Set<String> UNSUPPORTED_MODES = Set.of("walk", "bike");
+    private static final Set<String> UNSUPPORTED_MODES = Set.of("bike");
     private final NaverDirectionsClient naverClient;
     private final TmapTransitClient tmapClient;
+    private final TmapPedestrianClient pedestrianClient;
 
-    public RouteQueryService(NaverDirectionsClient naverClient, TmapTransitClient tmapClient) {
+    public RouteQueryService(NaverDirectionsClient naverClient, TmapTransitClient tmapClient,
+            TmapPedestrianClient pedestrianClient) {
         this.naverClient = naverClient;
         this.tmapClient = tmapClient;
+        this.pedestrianClient = pedestrianClient;
     }
 
     public RouteResult findRoute(RouteRequest request) {
@@ -34,6 +38,7 @@ public class RouteQueryService {
         return switch (request.mode()) {
             case "car" -> naverClient.findRoute(request.origin(), request.destination());
             case "transit" -> tmapClient.findRoute(request.origin(), request.destination());
+            case "walk" -> pedestrianClient.findRoute(request.origin(), request.destination());
             default -> throw new MapException(MapErrorCode.INVALID_ROUTE_REQUEST);
         };
     }
