@@ -15,10 +15,12 @@ import java.time.Duration;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.concurrent.TimeUnit;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.context.properties.ConfigurationProperties;
 import org.springframework.stereotype.Component;
 
 @Component
+@Slf4j
 public class TmapPedestrianClient {
     private final TmapPedestrianTransport transport;
     private final Properties properties;
@@ -34,14 +36,42 @@ public class TmapPedestrianClient {
     }
 
     public WalkingRouteResponse findRoute(RouteCoordinate origin, RouteCoordinate destination) {
-        if (!properties.isConfigured()) throw new MapException(MapErrorCode.ROUTE_PROVIDER_UNAVAILABLE);
+        if (!properties.isConfigured()) {
+            log.warn("Route provider failure provider=tmap routeType=pedestrian outcome=configuration enabled={} appKeyPresent={}",
+                    properties.enabled(), properties.appKey() != null && !properties.appKey().isBlank());
+            throw new MapException(MapErrorCode.ROUTE_PROVIDER_UNAVAILABLE);
+        }
         long started = System.nanoTime();
-        String outcome = "unavailable";
+        String outcome = "communication";
+        int status = -1;
         try {
             var response = transport.post(origin, destination);
-            if (response.status() == 400) throw new MapException(MapErrorCode.INVALID_ROUTE_REQUEST);
-            if (response.status() == 404) throw new MapException(MapErrorCode.ROUTE_NOT_FOUND);
-            if (response.status() >= 400) throw unavailable();
+            status = response.status();
+            if (status == 400) {
+                outcome = "invalid_request";
+                throw new MapException(MapErrorCode.INVALID_ROUTE_REQUEST);
+            }
+            if (status == 404) {
+                outcome = "not_found";
+                throw new MapException(MapErrorCode.ROUTE_NOT_FOUND);
+            }
+            if (status == 401 || status == 403) {
+                outcome = "authentication";
+                throw unavailable();
+            }
+            if (status == 429) {
+                outcome = "quota";
+                throw unavailable();
+            }
+            if (status >= 500) {
+                outcome = "provider_error";
+                throw unavailable();
+            }
+            if (status >= 400) {
+                outcome = "provider_rejection";
+                throw unavailable();
+            }
+            outcome = "invalid_response";
             WalkingRouteResponse result = mapResponse(mapper.readTree(response.body()));
             outcome = "success";
             return result;
@@ -56,6 +86,10 @@ public class TmapPedestrianClient {
         } catch (IOException exception) {
             throw unavailable();
         } finally {
+            if (!"success".equals(outcome)) {
+                log.warn("Route provider failure provider=tmap routeType=pedestrian outcome={} httpStatus={}",
+                        outcome, status);
+            }
             metrics.timer("pingdom.route.provider.duration", "provider", "tmap", "outcome", outcome)
                     .record(System.nanoTime() - started, TimeUnit.NANOSECONDS);
         }
