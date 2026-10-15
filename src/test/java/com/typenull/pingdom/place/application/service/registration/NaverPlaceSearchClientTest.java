@@ -11,6 +11,7 @@ import static org.springframework.test.web.client.response.MockRestResponseCreat
 
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.nio.charset.StandardCharsets;
 import java.time.Duration;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -51,6 +52,30 @@ class NaverPlaceSearchClientTest {
 
         assertThat(client(true, "test-client-id", "test-client-secret").search("핑덤 카페"))
                 .hasSize(1);
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"text/plain", "text/plain;charset=UTF-8", "application/json"})
+    void parsesUtf8JsonRegardlessOfContentType(String contentType) {
+        byte[] body = "{\"items\":[{\"title\":\"롯데월드\",\"address\":\"서울 송파구\"}]}"
+                .getBytes(StandardCharsets.UTF_8);
+        server.expect(requestTo(REQUEST_URL))
+                .andRespond(withSuccess(body, MediaType.parseMediaType(contentType)));
+
+        var items = client(true, "test-client-id", "test-client-secret").search("핑덤 카페");
+
+        assertThat(items.get(0).path("title").asText()).isEqualTo("롯데월드");
+        assertThat(items.get(0).path("address").asText()).isEqualTo("서울 송파구");
+        server.verify();
+    }
+
+    @ParameterizedTest
+    @ValueSource(strings = {"", " ", "not-json", "{", "null"})
+    void mapsInvalidPlainTextResponseToSearchFailure(String body) {
+        server.expect(requestTo(REQUEST_URL)).andRespond(withSuccess(body, MediaType.TEXT_PLAIN));
+
+        assertFailure(client(true, "test-client-id", "test-client-secret"), MapErrorCode.NAVER_PLACE_SEARCH_FAILED);
         server.verify();
     }
 
