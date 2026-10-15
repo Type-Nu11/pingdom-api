@@ -8,6 +8,7 @@ import static org.mockito.Mockito.verifyNoInteractions;
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteRequest;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapPedestrianClient;
 import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -20,7 +21,8 @@ import org.junit.jupiter.params.provider.ValueSource;
 class RouteQueryServiceTest {
     private final NaverDirectionsClient client = mock(NaverDirectionsClient.class);
     private final TmapTransitClient transitClient = mock(TmapTransitClient.class);
-    private final RouteQueryService service = new RouteQueryService(client, transitClient);
+    private final TmapPedestrianClient pedestrianClient = mock(TmapPedestrianClient.class);
+    private final RouteQueryService service = new RouteQueryService(client, transitClient, pedestrianClient);
     private static final RouteCoordinate START = new RouteCoordinate(37.5, 127.0);
     private static final RouteCoordinate END = new RouteCoordinate(37.6, 127.1);
 
@@ -34,13 +36,19 @@ class RouteQueryServiceTest {
     void delegatesTransitOnlyToTmapProvider() {
         service.findRoute(new RouteRequest(START, END, "transit"));
         verify(transitClient).findRoute(START, END);
-        verifyNoInteractions(client);
+        verifyNoInteractions(client, pedestrianClient);
     }
 
-    @ParameterizedTest
-    @ValueSource(strings = {"walk", "bike"})
-    void neverFallsBackToCarForUnsupportedMode(String mode) {
-        assertFailure(new RouteRequest(START, END, mode), MapErrorCode.UNSUPPORTED_ROUTE_MODE);
+    @Test
+    void delegatesWalkOnlyToTmapPedestrianProvider() {
+        service.findRoute(new RouteRequest(START, END, "walk"));
+        verify(pedestrianClient).findRoute(START, END);
+        verifyNoInteractions(client, transitClient);
+    }
+
+    @Test
+    void neverFallsBackToCarForUnsupportedBikeMode() {
+        assertFailure(new RouteRequest(START, END, "bike"), MapErrorCode.UNSUPPORTED_ROUTE_MODE);
     }
 
     @ParameterizedTest
@@ -72,6 +80,6 @@ class RouteQueryServiceTest {
     private void assertFailure(RouteRequest request, MapErrorCode code) {
         assertThatThrownBy(() -> service.findRoute(request)).isInstanceOfSatisfying(MapException.class,
                 exception -> org.assertj.core.api.Assertions.assertThat(exception.getErrorCode()).isEqualTo(code));
-        verifyNoInteractions(client, transitClient);
+        verifyNoInteractions(client, transitClient, pedestrianClient);
     }
 }
