@@ -1,6 +1,5 @@
 package com.typenull.pingdom.reservation.api.dto;
 
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.reservation.domain.Reservation;
 import com.typenull.pingdom.reservation.domain.ReservationStatus;
 import io.swagger.v3.oas.annotations.media.Schema;
@@ -11,13 +10,6 @@ public record ReservationResponse(
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long id,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long touristUserId,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) Long availabilityId,
-        @Schema(
-                nullable = true,
-                requiredMode = Schema.RequiredMode.REQUIRED,
-                description = "상품 스냅샷이 없는 예약에서는 null입니다."
-        )
-        Long productId,
-        @Schema(requiredMode = Schema.RequiredMode.REQUIRED) AvailabilityProductType productType,
         @Schema(requiredMode = Schema.RequiredMode.REQUIRED) int quantity,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime reservationStartsAt,
         @Schema(nullable = true, requiredMode = Schema.RequiredMode.REQUIRED) LocalDateTime reservationEndsAt,
@@ -49,7 +41,7 @@ public record ReservationResponse(
 ) {
     public static ReservationResponse from(Reservation reservation) {
         return new ReservationResponse(reservation.getId(), reservation.getTouristUserId(),
-                reservation.getAvailabilityId(), reservation.getProductId(), reservation.getProductType(),
+                reservation.getAvailabilityId(),
                 reservation.getQuantity(), reservation.getReservationStartsAt(), reservation.getReservationEndsAt(),
                 reservation.getBookerName(), reservation.getBookerPhone(), reservation.getRequestNote(),
                 reservation.getStatus(),

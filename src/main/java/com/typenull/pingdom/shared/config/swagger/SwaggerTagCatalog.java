@@ -29,7 +29,6 @@ public final class SwaggerTagCatalog {
     public static final String PLACE_MANAGEMENT = "장소 정보 관리";
     public static final String MENU_NOTICE = "메뉴·운영 공지";
     public static final String REVIEW_MANAGEMENT = "리뷰 관리";
-    public static final String PRODUCT = "예약 상품";
     public static final String AVAILABILITY = "예약 가능 시간";
     public static final String MERCHANT_RESERVATION = "예약 관리";
     public static final String MERCHANT_PAYMENT = "결제";
@@ -94,7 +93,6 @@ public final class SwaggerTagCatalog {
             new Section(Group.MERCHANT, PLACE_MANAGEMENT, "장소 정보·미디어·운영 상태 및 재검증 응답"),
             new Section(Group.MERCHANT, MENU_NOTICE, "메뉴와 장소 운영 공지 관리"),
             new Section(Group.MERCHANT, REVIEW_MANAGEMENT, "장소 리뷰 확인 및 삭제 심사 요청"),
-            new Section(Group.MERCHANT, PRODUCT, "예약 상품 등록 및 활성 상태 관리"),
             new Section(Group.MERCHANT, AVAILABILITY, "예약 가능 시간 등록·변경 및 활성 상태 관리"),
             new Section(Group.MERCHANT, MERCHANT_RESERVATION, "사업자 예약 조회 및 취소"),
             new Section(Group.MERCHANT, MERCHANT_PAYMENT, "사업자 결제·정산 조회 및 환불"),

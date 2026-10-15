@@ -51,8 +51,12 @@ class ReservationPaymentOpenApiContractTest {
         assertThat(request.path("properties").has("confirmationToken")).isTrue();
         assertThat(request.path("required").toString()).doesNotContain("confirmationToken");
         var confirmation = app.at("/components/schemas/ReservationConfirmation");
-        assertThat(confirmation.path("required").toString()).contains("totalAmountMinor", "currency", "paymentRequired", "cancellable", "expiresAt");
-        assertThat(confirmation.at("/properties/productId/nullable").asBoolean()).isTrue();
+        assertThat(confirmation.path("required").toString()).contains("startsAt", "endsAt", "quantity", "cancellable", "expiresAt");
+        for (String removed : List.of("productType", "productId", "productName", "productVersion", "unitAmountMinor",
+                "additionalAmountMinor", "totalAmountMinor", "currency", "currencyFractionDigits", "paymentRequired",
+                "cancellationFeeMinor", "refundableAmountMinor")) {
+            assertThat(confirmation.path("properties").has(removed)).as(removed).isFalse();
+        }
         assertThat(confirmation.at("/properties/cancellationDeadline/nullable").asBoolean()).isTrue();
         assertThat(app.at("/components/schemas/ReservationResponse/properties/confirmation/nullable").asBoolean()).isTrue();
         var merchant = readApiDocs("/v3/api-docs/merchant");
@@ -114,13 +118,15 @@ class ReservationPaymentOpenApiContractTest {
                 appDocument,
                 "ReservationResponse",
                 List.of(
-                        "id", "touristUserId", "availabilityId", "productId", "productType", "quantity",
+                        "id", "touristUserId", "availabilityId", "quantity",
                         "reservationStartsAt", "reservationEndsAt", "bookerName", "bookerPhone", "requestNote",
                         "status", "createdAt", "confirmedAt", "canceledAt", "updatedAt", "confirmation"
                 ),
-                List.of("productId", "reservationStartsAt", "reservationEndsAt", "bookerName", "bookerPhone",
+                List.of("reservationStartsAt", "reservationEndsAt", "bookerName", "bookerPhone",
                         "requestNote", "confirmedAt", "canceledAt", "confirmation")
         );
+        assertThat(appDocument.at("/components/schemas/ReservationResponse/properties").has("productId")).isFalse();
+        assertThat(appDocument.at("/components/schemas/ReservationResponse/properties").has("productType")).isFalse();
         assertResponseSchema(
                 appDocument,
                 "PaymentResponse",

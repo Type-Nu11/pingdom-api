@@ -60,18 +60,7 @@ class ReservationRepositoryPostgreSqlIntegrationTest {
      */
     @Test
     void queriesWithoutOptionalPeriodFilters() {
-        var result = reservationRepository.findAllForAdmin(
-                ReservationStatus.PENDING,
-                null,
-                null,
-                null,
-                null,
-                false,
-                null,
-                false,
-                null,
-                PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id")))
-        );
+        var result = reservationRepository.findAllForAdmin(ReservationStatus.PENDING, null, null, null, false, null, false, null, PageRequest.of(0, 10, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
 
         assertThat(result.getContent()).isEmpty();
     }

@@ -10,9 +10,6 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.payment.domain.PaymentStatus;
 import com.typenull.pingdom.payment.infrastructure.PaymentTransactionRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.product.domain.ReservableProduct;
-import com.typenull.pingdom.product.domain.ReservableProductStatus;
-import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
 import com.typenull.pingdom.reservation.api.dto.*;
 import com.typenull.pingdom.reservation.domain.*;
 import com.typenull.pingdom.reservation.domain.exception.*;
@@ -38,7 +35,6 @@ public class ReservationQuoteService {
     private static final long CLEANUP_BUDGET_NANOS = Duration.ofSeconds(2).toNanos();
     private final ReservationQuoteRepository quotes;
     private final PlaceAvailabilityRepository availabilities;
-    private final ReservableProductRepository products;
     private final MapPlaceRepository places;
     private final UserRepository users;
     private final PaymentTransactionRepository payments;
@@ -58,15 +54,13 @@ public class ReservationQuoteService {
                 .orElseThrow(() -> new ReservationException(RESERVATION_SLOT_NOT_FOUND));
         ReservationErrorCode error = slotError(slot, quantity);
         if (error != null) throw new ReservationException(error);
-        ReservableProduct product = product(slot);
-        if (!validProduct(slot, product)) throw new ReservationException(RESERVATION_PRODUCT_UNAVAILABLE);
         if (availabilities.findReservableByIdForUpdate(availabilityId, LocalDateTime.now(clock)).isEmpty()) {
             throw new ReservationException(RESERVATION_SLOT_INACTIVE);
         }
         Instant expiration = clock.instant().plusSeconds(300);
         Instant startsAt = slot.getStartsAt().atZone(clock.getZone()).toInstant();
         if (startsAt.isBefore(expiration)) expiration = startsAt;
-        ReservationConfirmation confirmation = snapshot(slot, product, quantity, expiration);
+        ReservationConfirmation confirmation = snapshot(slot, quantity, expiration);
         ReservationQuote quote = quotes.save(ReservationQuote.issue(userId, confirmation, clock.instant()));
         return ReservationQuoteResponse.from(quote, slot.getRemainingCapacity());
     }
@@ -112,6 +106,7 @@ public class ReservationQuoteService {
         }
         if (quote.getRejectionCode() != null) throw new ConfirmedReservationRejectedException(quote.getRejectionCode());
         quote.bind(request.idempotencyKey(), fingerprint);
+        if (quote.getContractVersion() != 2) reject(quote, QUOTE_CONDITIONS_CHANGED);
         ReservationConfirmation confirmed = quote.getConfirmation();
         if (!confirmed.availabilityId().equals(request.availabilityId()) || confirmed.quantity() != request.quantity()) {
             reject(quote, QUOTE_REQUEST_MISMATCH);
@@ -121,35 +116,33 @@ public class ReservationQuoteService {
         if (slot == null) reject(quote, RESERVATION_SLOT_NOT_FOUND);
         ReservationErrorCode error = slotError(slot, request.quantity());
         if (error != null) reject(quote, error);
-        ReservableProduct product = product(slot);
-        if (!validProduct(slot, product)) reject(quote, RESERVATION_PRODUCT_UNAVAILABLE);
         if (availabilities.findReservableByIdForUpdate(slot.getId(), LocalDateTime.now(clock)).isEmpty()) {
             reject(quote, RESERVATION_SLOT_INACTIVE);
         }
         if (slot.getReservationTerms() == null) reject(quote, QUOTE_TERMS_UNAVAILABLE);
         try {
-            if (!confirmed.equals(snapshot(slot, product, request.quantity(), confirmed.expiresAt()))) {
+            if (!confirmed.equals(snapshot(slot, request.quantity(), confirmed.expiresAt()))) {
                 reject(quote, QUOTE_CONDITIONS_CHANGED);
             }
         } catch (ReservationException exception) {
             if (exception instanceof ConfirmedReservationRejectedException) throw exception;
             reject(quote, (ReservationErrorCode) exception.getErrorCode());
         }
-        // 슬롯·상품 잠금 및 조건 조회 대기 중 만료된 토큰으로 재고를 차감하지 않음.
+        // 슬롯 잠금 및 조건 조회 대기 중 만료된 토큰으로 재고를 차감하지 않음.
         if (!clock.instant().isBefore(confirmed.expiresAt())) reject(quote, QUOTE_EXPIRED);
         return confirmed;
     }
 
     public void requireCancellationAllowed(Reservation reservation) {
+        // 기존 결제 처리 결과와 환불을 확인하기 전에는 취소 성공으로 노출하지 않는다.
+        if (payments.findFirstByReservationIdAndStatusIn(reservation.getId(),
+                List.of(PaymentStatus.PROCESSING, PaymentStatus.PAID, PaymentStatus.REFUND_PROCESSING)).isPresent()) {
+            throw new ReservationException(RESERVATION_REFUND_REQUIRED);
+        }
         ReservationConfirmation confirmation = reservation.getConfirmation();
         if (confirmation == null) return;
         if (!confirmation.cancellable() || !clock.instant().isBefore(confirmation.cancellationDeadline().toInstant())) {
             throw new ReservationException(CANCELLATION_NOT_ALLOWED);
-        }
-        // 공급자 환불은 별도의 명시적 동작. 처리 중 결제나 미환불 결제를 취소 성공으로 노출하지 않음.
-        if (payments.findFirstByReservationIdAndStatusIn(reservation.getId(),
-                List.of(PaymentStatus.PROCESSING, PaymentStatus.PAID, PaymentStatus.REFUND_PROCESSING)).isPresent()) {
-            throw new ReservationException(RESERVATION_REFUND_REQUIRED);
         }
     }
 
@@ -159,7 +152,7 @@ public class ReservationQuoteService {
     }
 
     private ReservationErrorCode slotError(PlaceAvailability slot, int quantity) {
-        if (slot.getStatus() != AvailabilityStatus.ACTIVE || !slot.getStartsAt().isAfter(LocalDateTime.now(clock))) {
+        if (slot.isBookingRetired() || slot.getStatus() != AvailabilityStatus.ACTIVE || !slot.getStartsAt().isAfter(LocalDateTime.now(clock))) {
             return RESERVATION_SLOT_INACTIVE;
         }
         if (quantity < 1) return INVALID_RESERVATION_INPUT;
@@ -167,17 +160,7 @@ public class ReservationQuoteService {
         return null;
     }
 
-    private ReservableProduct product(PlaceAvailability slot) {
-        return slot.getProductId() == null ? null : products.findByIdForUpdate(slot.getProductId()).orElse(null);
-    }
-
-    private boolean validProduct(PlaceAvailability slot, ReservableProduct product) {
-        if (slot.getProductType() == AvailabilityProductType.GENERAL) return slot.getProductId() == null;
-        return product != null && product.getStatus() == ReservableProductStatus.ACTIVE
-                && product.getPlaceId().equals(slot.getPlaceId()) && product.getProductType() == slot.getProductType();
-    }
-
-    private ReservationConfirmation snapshot(PlaceAvailability slot, ReservableProduct product, int quantity, Instant expiration) {
+    private ReservationConfirmation snapshot(PlaceAvailability slot, int quantity, Instant expiration) {
         ReservationTerms terms = slot.getReservationTerms();
         if (terms == null) throw new ReservationException(QUOTE_TERMS_UNAVAILABLE);
         var place = places.findById(slot.getPlaceId()).orElseThrow(() -> new ReservationException(RESERVATION_SLOT_NOT_FOUND));
@@ -190,15 +173,11 @@ public class ReservationQuoteService {
             }
             OffsetDateTime start = slot.getStartsAt().atZone(clock.getZone()).withZoneSameInstant(timezone).toOffsetDateTime();
             OffsetDateTime end = slot.getEndsAt().atZone(clock.getZone()).withZoneSameInstant(timezone).toOffsetDateTime();
-            long total = terms.totalAmountMinor(quantity);
-            return new ReservationConfirmation(slot.getPlaceId(), place.getName(), slot.getId(), slot.getProductType(),
-                    slot.getProductId(), product == null ? null : product.getName(), start, end, quantity,
-                    terms.timezone(), terms.unitAmountMinor(), terms.additionalAmountMinor(), total, terms.currency(),
-                    Currency.getInstance(terms.currency()).getDefaultFractionDigits(), total > 0, terms.cancellable(),
+            return new ReservationConfirmation(slot.getPlaceId(), place.getName(), slot.getId(), start, end, quantity,
+                    terms.timezone(), terms.cancellable(),
                     terms.cancellable() ? start.minusMinutes(terms.cancellationCutoffMinutes()) : null,
-                    0, terms.cancellable() ? total : 0, slot.getConditionsVersion(),
-                    product == null ? null : product.getVersion(), expiration);
-        } catch (ArithmeticException | DateTimeException exception) {
+                    slot.getConditionsVersion(), expiration);
+        } catch (DateTimeException exception) {
             throw new ReservationException(QUOTE_TERMS_UNAVAILABLE);
         }
     }

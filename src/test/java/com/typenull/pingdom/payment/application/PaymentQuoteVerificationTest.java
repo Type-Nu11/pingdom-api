@@ -4,8 +4,6 @@ import static org.assertj.core.api.Assertions.*;
 import static org.mockito.ArgumentMatchers.*;
 import static org.mockito.Mockito.*;
 
-import com.typenull.pingdom.availability.domain.PlaceAvailability;
-import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.*;
 import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.payment.api.dto.PaymentCreateRequest;
@@ -23,23 +21,20 @@ class PaymentQuoteVerificationTest {
     private final PaymentTransactionRepository payments = mock(PaymentTransactionRepository.class);
     private final SettlementLedgerRepository ledger = mock(SettlementLedgerRepository.class);
     private final ReservationRepository reservations = mock(ReservationRepository.class);
-    private final PlaceAvailabilityRepository slots = mock(PlaceAvailabilityRepository.class);
     private final UserRepository users = mock(UserRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-30T00:00:00Z"), ZoneOffset.UTC);
-    private final PaymentLedgerWriter writer = new PaymentLedgerWriter(payments, ledger, reservations, slots, users, clock);
+    private final PaymentLedgerWriter writer = new PaymentLedgerWriter(payments, ledger, reservations, users, clock);
     private Reservation reservation;
     private PaymentTransaction payment;
-    private ReservationConfirmation confirmation;
+    private com.fasterxml.jackson.databind.node.ObjectNode legacyConfirmation;
 
     @BeforeEach
     void setup() {
         reservation = Reservation.create(1L, 9L, "booking", 2, LocalDateTime.now(clock));
         org.springframework.test.util.ReflectionTestUtils.setField(reservation, "id", 10L);
-        confirmation = mock(ReservationConfirmation.class);
-        when(confirmation.totalAmountMinor()).thenReturn(2050L);
-        when(confirmation.currency()).thenReturn("KRW");
-        when(confirmation.paymentRequired()).thenReturn(true);
-        reservation.acceptConfirmation("11111111-1111-1111-1111-111111111111", confirmation);
+        legacyConfirmation = new com.fasterxml.jackson.databind.ObjectMapper().createObjectNode()
+                .put("totalAmountMinor", 2050L).put("currency", "KRW");
+        org.springframework.test.util.ReflectionTestUtils.setField(reservation, "legacyConfirmation", legacyConfirmation);
         payment = PaymentTransaction.processing(10L, 1L, 7L, "TEST", "payment", LocalDateTime.now(clock));
         org.springframework.test.util.ReflectionTestUtils.setField(payment, "id", 100L);
         when(payments.findByIdForUpdate(100L)).thenReturn(Optional.of(payment));
@@ -72,18 +67,23 @@ class PaymentQuoteVerificationTest {
     }
 
     @Test
-    void preparationPropagatesAcceptedAmountAndFreeBookingsDoNotCharge() {
+    void existingProcessingPaymentPropagatesLegacyAmountAndNewPaymentsAreDisabled() {
         when(users.findByIdForUpdate(1L)).thenReturn(Optional.of(User.builder().role(UserRole.USER).status(UserStatus.ACTIVE).build()));
-        PlaceAvailability slot = mock(PlaceAvailability.class);
-        when(slot.getMerchantOwnerUserId()).thenReturn(7L);
-        when(slots.findById(9L)).thenReturn(Optional.of(slot));
-        when(payments.save(any())).thenAnswer(call -> call.getArgument(0));
         PaymentCreateRequest request = new PaymentCreateRequest(10L, "TEST", "token", "payment");
+        when(payments.findByTouristUserIdAndIdempotencyKey(1L, "payment")).thenReturn(Optional.of(payment));
         var prepared = writer.prepare(1L, request);
         assertThat(prepared.expectedAmountMinor()).isEqualTo(2050L);
         assertThat(prepared.expectedCurrency()).isEqualTo("KRW");
-        when(confirmation.paymentRequired()).thenReturn(false);
+        when(payments.findByTouristUserIdAndIdempotencyKey(1L, "payment")).thenReturn(Optional.empty());
         assertThatThrownBy(() -> writer.prepare(1L, request)).isInstanceOfSatisfying(PaymentException.class,
                 exception -> assertThat(exception.getErrorCode()).isEqualTo(PaymentErrorCode.RESERVATION_NOT_PAYABLE));
+        verify(payments, never()).save(any());
+        verifyNoInteractions(ledger);
+    }
+
+    @Test
+    void malformedLegacyAmountDoesNotBecomePaid() {
+        legacyConfirmation.remove("totalAmountMinor");
+        rejects(new PaymentProviderResult("provider", 2050L, 0L, "KRW"));
     }
 }

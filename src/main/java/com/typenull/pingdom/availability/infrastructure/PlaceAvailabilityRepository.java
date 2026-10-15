@@ -13,7 +13,7 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 
 /**
- * 현재 점주 자격과 상품 참조의 일관성을 확인하는 슬롯 조회 제공.
+ * 현재 점주 자격과 계약 종료 여부를 확인하는 슬롯 조회 제공.
  * 공개 목록은 종료 전·잔여량 양수 조건만 적용하므로 이미 시작한 슬롯도 포함 가능. 실제 예약의 시각·재고 검사는 도메인 책임.
  */
 public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailability, Long> {
@@ -22,6 +22,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
     @Query("""
             select availability from PlaceAvailability availability
             where availability.merchantOwnerUserId = :ownerId
+              and availability.bookingRetired = false
               and exists (
                   select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
                   where ownerPlace.placeId = availability.placeId
@@ -40,13 +41,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
-              and ((availability.productId is null and availability.productType = com.typenull.pingdom.availability.domain.AvailabilityProductType.GENERAL) or exists (
-                  select product.id from ReservableProduct product
-                  where product.id = availability.productId
-                    and product.placeId = availability.placeId
-                    and product.productType = availability.productType
-                    and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
-              ))
+              and availability.bookingRetired = false
               and exists (
                   select profile.userId from MerchantOwnerProfile profile
                   where profile.userId = availability.merchantOwnerUserId
@@ -84,13 +79,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
-              and ((availability.productId is null and availability.productType = com.typenull.pingdom.availability.domain.AvailabilityProductType.GENERAL) or exists (
-                  select product.id from ReservableProduct product
-                  where product.id = availability.productId
-                    and product.placeId = availability.placeId
-                    and product.productType = availability.productType
-                    and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
-              ))
+              and availability.bookingRetired = false
               and exists (
                   select profile.userId from MerchantOwnerProfile profile
                   where profile.userId = availability.merchantOwnerUserId
@@ -131,13 +120,7 @@ public interface PlaceAvailabilityRepository extends JpaRepository<PlaceAvailabi
                   where ownerPlace.placeId = availability.placeId
                     and ownerPlace.merchantOwnerUserId = availability.merchantOwnerUserId
               )
-              and ((availability.productId is null and availability.productType = com.typenull.pingdom.availability.domain.AvailabilityProductType.GENERAL) or exists (
-                  select product.id from ReservableProduct product
-                  where product.id = availability.productId
-                    and product.placeId = availability.placeId
-                    and product.productType = availability.productType
-                    and product.status = com.typenull.pingdom.product.domain.ReservableProductStatus.ACTIVE
-              ))
+              and availability.bookingRetired = false
               and exists (
                   select profile.userId from MerchantOwnerProfile profile
                   where profile.userId = availability.merchantOwnerUserId

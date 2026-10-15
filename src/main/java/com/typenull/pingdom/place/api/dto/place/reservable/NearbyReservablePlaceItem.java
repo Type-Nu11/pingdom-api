@@ -1,6 +1,5 @@
 package com.typenull.pingdom.place.api.dto.place.reservable;
 
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import io.swagger.v3.oas.annotations.media.Schema;
 import java.time.LocalDateTime;
 
@@ -32,14 +31,6 @@ public record NearbyReservablePlaceItem(
                 requiredMode = Schema.RequiredMode.REQUIRED)
         LocalDateTime availableEndsAt,
         @Schema(example = "42", requiredMode = Schema.RequiredMode.REQUIRED)
-        int remainingCapacity,
-        @Schema(example = "TICKET", requiredMode = Schema.RequiredMode.REQUIRED)
-        AvailabilityProductType productType,
-        @Schema(description = "GENERAL은 null입니다.", example = "12", nullable = true,
-                requiredMode = Schema.RequiredMode.REQUIRED)
-        Long productId,
-        @Schema(description = "GENERAL은 null입니다.", example = "이월드 오후 입장권", nullable = true,
-                requiredMode = Schema.RequiredMode.REQUIRED)
-        String productName
+        int remainingCapacity
 ) {
 }

@@ -2,7 +2,6 @@ package com.typenull.pingdom.reservation.application;
 
 import com.typenull.pingdom.availability.application.AvailabilityAccessPolicy;
 import com.typenull.pingdom.availability.application.PlaceAvailabilityService;
-import com.typenull.pingdom.availability.domain.AvailabilityProductType;
 import com.typenull.pingdom.availability.domain.PlaceAvailability;
 import com.typenull.pingdom.availability.infrastructure.PlaceAvailabilityRepository;
 import com.typenull.pingdom.identity.domain.User;
@@ -21,8 +20,6 @@ import com.typenull.pingdom.place.application.service.conversion.PlaceConversion
 import com.typenull.pingdom.place.domain.conversion.PlaceConversionEventType;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.product.domain.ReservableProduct;
-import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
 import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
 import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
@@ -49,7 +46,6 @@ public class ReservationService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
     private final MapPlaceRepository mapPlaceRepository;
-    private final ReservableProductRepository reservableProductRepository;
     private final AdminAuditLogService adminAuditLogService;
     private final PlaceConversionEventService conversionEventService;
     private final Clock clock;
@@ -61,7 +57,7 @@ public class ReservationService {
             PlaceAvailabilityRepository availabilityRepository, PlaceAvailabilityService availabilityService,
             AvailabilityAccessPolicy availabilityAccessPolicy, MerchantOwnerPlaceRepository ownerPlaceRepository,
             UserRepository userRepository, MapPlaceRepository mapPlaceRepository,
-            ReservableProductRepository reservableProductRepository, AdminAuditLogService adminAuditLogService,
+            AdminAuditLogService adminAuditLogService,
             PlaceConversionEventService conversionEventService, Clock clock, ReservationQuoteService quoteService) {
         this.reservationRepository = reservationRepository;
         this.reservationStatusHistoryRepository = reservationStatusHistoryRepository;
@@ -71,7 +67,6 @@ public class ReservationService {
         this.ownerPlaceRepository = ownerPlaceRepository;
         this.userRepository = userRepository;
         this.mapPlaceRepository = mapPlaceRepository;
-        this.reservableProductRepository = reservableProductRepository;
         this.adminAuditLogService = adminAuditLogService;
         this.conversionEventService = conversionEventService;
         this.clock = clock;
@@ -92,7 +87,6 @@ public class ReservationService {
         this.ownerPlaceRepository = ownerPlaceRepository;
         this.userRepository = userRepository;
         this.mapPlaceRepository = null;
-        this.reservableProductRepository = null;
         this.adminAuditLogService = null;
         this.conversionEventService = conversionEventService;
         this.clock = clock;
@@ -129,8 +123,7 @@ public class ReservationService {
         LocalDateTime now = LocalDateTime.now(clock);
         PlaceAvailability availability = availabilityService.reserve(request.availabilityId(), request.quantity());
         try {
-            Reservation reservation = Reservation.create(userId, request.availabilityId(), availability.getProductId(),
-                            availability.getProductType(), request.idempotencyKey(), request.quantity(),
+            Reservation reservation = Reservation.create(userId, request.availabilityId(), request.idempotencyKey(), request.quantity(),
                             availability.getStartsAt(), availability.getEndsAt(), request.bookerName(),
                             request.bookerPhone(), request.requestNote(), now);
             if (confirmation != null) reservation.acceptConfirmation(request.confirmationToken(), confirmation);
@@ -217,18 +210,18 @@ public class ReservationService {
     }
 
     /**
-     * 상태·장소·점주·예약자·상품·예약 기간으로 예약을 조회하고 관련 이름과 상태 이력을 포함한 관리자 페이지를 반환.
+     * 상태·장소·점주·예약자·예약 기간으로 예약을 조회하고 관련 이름과 상태 이력을 포함한 관리자 페이지를 반환.
      * 기간 양 끝이 있으면 시작이 종료보다 앞서야 하며 누락된 경계는 저장소 필터를 비활성화.
      */
     @Transactional(readOnly = true)
     public AdminReservationPageResponse listForAdmin(ReservationStatus status, Long placeId, Long ownerId,
-            Long touristUserId, Long productId, LocalDateTime reservationFrom, LocalDateTime reservationTo,
+            Long touristUserId, LocalDateTime reservationFrom, LocalDateTime reservationTo,
             int page, int limit) {
         if (reservationFrom != null && reservationTo != null && !reservationFrom.isBefore(reservationTo)) {
             throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
         }
         Page<Reservation> reservations = reservationRepository.findAllForAdmin(status, placeId, ownerId, touristUserId,
-                productId, reservationFrom != null, reservationFrom, reservationTo != null, reservationTo,
+                reservationFrom != null, reservationFrom, reservationTo != null, reservationTo,
                 pageRequest(page, limit));
         return new AdminReservationPageResponse(reservations.getContent().stream().map(this::toAdminResponse).toList(),
                 page, limit, reservations.getTotalElements(), reservations.getTotalPages(), reservations.hasNext());
@@ -295,12 +288,10 @@ public class ReservationService {
         User tourist = userRepository.findById(reservation.getTouristUserId()).orElse(null);
         User owner = userRepository.findById(availability.getMerchantOwnerUserId()).orElse(null);
         MapPlace place = mapPlaceRepository.findById(availability.getPlaceId()).orElse(null);
-        ReservableProduct product = reservation.getProductId() == null ? null
-                : reservableProductRepository.findById(reservation.getProductId()).orElse(null);
         return AdminReservationResponse.of(reservation, tourist == null ? null : tourist.getUsername(),
                 availability.getMerchantOwnerUserId(), owner == null ? null : owner.getUsername(), availability.getPlaceId(),
                 place == null ? null : place.getName(),
-                product == null ? null : product.getName(), reservationStatusHistoryRepository
+                reservationStatusHistoryRepository
                         .findAllByReservationIdOrderByChangedAtAscIdAsc(reservation.getId()).stream()
                         .map(AdminReservationStatusHistoryResponse::from).toList());
     }

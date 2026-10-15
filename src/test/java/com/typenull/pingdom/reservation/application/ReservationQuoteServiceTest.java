@@ -12,8 +12,6 @@ import com.typenull.pingdom.identity.domain.repository.UserRepository;
 import com.typenull.pingdom.payment.infrastructure.PaymentTransactionRepository;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.product.domain.*;
-import com.typenull.pingdom.product.infrastructure.ReservableProductRepository;
 import com.typenull.pingdom.reservation.api.dto.*;
 import com.typenull.pingdom.reservation.domain.*;
 import com.typenull.pingdom.reservation.domain.exception.*;
@@ -28,12 +26,11 @@ import static com.typenull.pingdom.reservation.domain.exception.ReservationError
 class ReservationQuoteServiceTest {
     private final ReservationQuoteRepository quotes = mock(ReservationQuoteRepository.class);
     private final PlaceAvailabilityRepository slots = mock(PlaceAvailabilityRepository.class);
-    private final ReservableProductRepository products = mock(ReservableProductRepository.class);
     private final MapPlaceRepository places = mock(MapPlaceRepository.class);
     private final UserRepository users = mock(UserRepository.class);
     private final PaymentTransactionRepository payments = mock(PaymentTransactionRepository.class);
     private final Clock clock = Clock.fixed(Instant.parse("2026-09-30T00:00:00Z"), ZoneOffset.UTC);
-    private final ReservationQuoteService service = new ReservationQuoteService(quotes, slots, products, places,
+    private final ReservationQuoteService service = new ReservationQuoteService(quotes, slots, places,
             users, payments, new ObjectMapper().findAndRegisterModules(), clock);
     private final Map<String, ReservationQuote> saved = new HashMap<>();
     private PlaceAvailability slot;
@@ -46,7 +43,7 @@ class ReservationQuoteServiceTest {
         slot = PlaceAvailability.create(7L, 11L, LocalDateTime.now(clock).plusDays(1),
                 LocalDateTime.now(clock).plusDays(1).plusHours(1), 10, LocalDateTime.now(clock));
         ReflectionTestUtils.setField(slot, "id", 9L);
-        slot.updateReservationTerms(new ReservationTerms(1000, 50, "KRW", "Asia/Seoul", true, 60), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms("Asia/Seoul", true, 60), LocalDateTime.now(clock));
         when(slots.findByIdForUpdate(9L)).thenReturn(Optional.of(slot));
         when(slots.findReservableByIdForUpdate(eq(9L), any())).thenReturn(Optional.of(slot));
         MapPlace place = mock(MapPlace.class);
@@ -73,19 +70,12 @@ class ReservationQuoteServiceTest {
     }
 
     @Test
-    void providesPaidGeneralQuoteWithoutTakingCapacity() {
+    void providesReservationConditionsWithoutTakingCapacity() {
         var response = issue();
         var quote = response.confirmation();
-        assertThat(quote.productId()).isNull();
-        assertThat(quote.productName()).isNull();
         assertThat(quote.placeName()).isEqualTo("확인 가능한 장소");
-        assertThat(quote.totalAmountMinor()).isEqualTo(2050);
-        assertThat(quote.paymentRequired()).isTrue();
-        assertThat(quote.currencyFractionDigits()).isZero();
         assertThat(quote.startsAt().toInstant()).isEqualTo(clock.instant().plusSeconds(86400));
         assertThat(quote.startsAt().getOffset()).isEqualTo(ZoneOffset.ofHours(9));
-        assertThat(quote.cancellationFeeMinor()).isZero();
-        assertThat(quote.refundableAmountMinor()).isEqualTo(2050);
         assertThat(quote.cancellationDeadline()).isEqualTo(quote.startsAt().minusHours(1));
         assertThat(slot.getRemainingCapacity()).isEqualTo(10);
         assertThat(service.verify(1L, request(response.confirmationToken()))).isEqualTo(quote);
@@ -101,13 +91,45 @@ class ReservationQuoteServiceTest {
     }
 
     @Test
-    void distinguishesExplicitFreeAndNonCancellableFromUnconfigured() {
-        slot.updateReservationTerms(new ReservationTerms(0, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+    void legacyJsonCanBeReadWithoutReexposingProductOrFinancialFields() throws Exception {
+        var mapper = new ObjectMapper().findAndRegisterModules();
+        var current = issue().confirmation();
+        var legacy = (com.fasterxml.jackson.databind.node.ObjectNode) mapper.valueToTree(current);
+        legacy.put("productType", "TICKET").put("productId", 31).put("productName", "기존 상품")
+                .put("unitAmountMinor", 1000).put("additionalAmountMinor", 50)
+                .put("totalAmountMinor", 2050).put("currency", "KRW")
+                .put("currencyFractionDigits", 0).put("paymentRequired", true)
+                .put("cancellationFeeMinor", 0).put("refundableAmountMinor", 2050).put("productVersion", 1);
+        var restored = mapper.treeToValue(legacy, ReservationConfirmation.class);
+        assertThat(restored).isEqualTo(current);
+        var booking = Reservation.create(1L, 9L, "legacy", 2, LocalDateTime.now(clock));
+        booking.acceptConfirmation("11111111-1111-1111-1111-111111111111", restored);
+        ReflectionTestUtils.setField(booking, "legacyConfirmation", legacy);
+        var response = mapper.valueToTree(ReservationResponse.from(booking));
+        assertThat(response.has("productId")).isFalse();
+        assertThat(response.has("productType")).isFalse();
+        assertThat(response.has("legacyConfirmation")).isFalse();
+        assertThat(response.path("confirmation").size()).isEqualTo(11);
+        for (String removed : List.of("productType", "productId", "productName", "productVersion", "unitAmountMinor",
+                "additionalAmountMinor", "totalAmountMinor", "currency", "currencyFractionDigits", "paymentRequired",
+                "cancellationFeeMinor", "refundableAmountMinor")) {
+            assertThat(response.path("confirmation").has(removed)).as(removed).isFalse();
+        }
+    }
+
+    @Test
+    void legacyPaidReservationWithoutConfirmationStillRequiresRefundBeforeCancellation() {
+        var booking = Reservation.create(1L, 9L, "legacy", 2, LocalDateTime.now(clock));
+        when(payments.findFirstByReservationIdAndStatusIn(isNull(), any()))
+                .thenReturn(Optional.of(mock(com.typenull.pingdom.payment.domain.PaymentTransaction.class)));
+        rejects(() -> service.requireCancellationAllowed(booking), RESERVATION_REFUND_REQUIRED);
+    }
+
+    @Test
+    void distinguishesNonCancellableFromUnconfigured() {
+        slot.updateReservationTerms(new ReservationTerms("UTC", false, null), LocalDateTime.now(clock));
         var quote = issue().confirmation();
-        assertThat(quote.paymentRequired()).isFalse();
-        assertThat(quote.totalAmountMinor()).isZero();
         assertThat(quote.cancellationDeadline()).isNull();
-        assertThat(quote.refundableAmountMinor()).isZero();
         ReflectionTestUtils.setField(slot, "reservationTerms", null);
         rejects(this::issue, QUOTE_TERMS_UNAVAILABLE);
     }
@@ -115,7 +137,7 @@ class ReservationQuoteServiceTest {
     @Test
     void rejectsExpiryAtBoundaryAndReplaysFinalRejection() {
         var response = issue();
-        var expired = new ReservationQuoteService(quotes, slots, products, places, users, payments,
+        var expired = new ReservationQuoteService(quotes, slots, places, users, payments,
                 new ObjectMapper().findAndRegisterModules(), Clock.fixed(response.confirmation().expiresAt(), ZoneOffset.UTC));
         var request = request(response.confirmationToken());
         rejects(() -> expired.verify(1L, request), QUOTE_EXPIRED);
@@ -124,40 +146,20 @@ class ReservationQuoteServiceTest {
         rejects(() -> service.checkPriorResult(1L, new ReservationCreateRequest(9L, "intent-1", 2)), IDEMPOTENCY_KEY_REUSED);
     }
 
-    @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.ValueSource(booleans = {false, true})
-    void rejectsExpiryWhileWaitingForSlotOrProductLock(boolean waitsForProduct) {
-        if (waitsForProduct) {
-            slot = PlaceAvailability.create(7L, 11L, 31L, AvailabilityProductType.TICKET,
-                    LocalDateTime.now(clock).plusDays(1), LocalDateTime.now(clock).plusDays(1).plusHours(1),
-                    10, LocalDateTime.now(clock));
-            ReflectionTestUtils.setField(slot, "id", 9L);
-            slot.updateReservationTerms(new ReservationTerms(1000, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
-            when(slots.findByIdForUpdate(9L)).thenReturn(Optional.of(slot));
-            when(slots.findReservableByIdForUpdate(eq(9L), any())).thenReturn(Optional.of(slot));
-            when(products.findByIdForUpdate(31L)).thenReturn(Optional.of(ReservableProduct.create(
-                    7L, 11L, AvailabilityProductType.TICKET, "상품", LocalDateTime.now(clock))));
-        }
+
+    @Test
+    void rejectsExpiryWhileWaitingForSlotLock() {
         var response = issue();
-        java.util.concurrent.atomic.AtomicReference<Instant> now = new java.util.concurrent.atomic.AtomicReference<>(
-                response.confirmation().expiresAt().minusNanos(1));
-        Clock advancingClock = mock(Clock.class);
-        when(advancingClock.getZone()).thenReturn(ZoneOffset.UTC);
-        when(advancingClock.instant()).thenAnswer(call -> now.get());
-        var verifier = new ReservationQuoteService(quotes, slots, products, places, users, payments,
-                new ObjectMapper().findAndRegisterModules(), advancingClock);
-        if (waitsForProduct) {
-            var product = products.findByIdForUpdate(31L).orElseThrow();
-            when(products.findByIdForUpdate(31L)).thenAnswer(call -> {
-                now.set(response.confirmation().expiresAt());
-                return Optional.of(product);
-            });
-        } else {
-            when(slots.findByIdForUpdate(9L)).thenAnswer(call -> {
-                now.set(response.confirmation().expiresAt());
-                return Optional.of(slot);
-            });
-        }
+        var instant = new java.util.concurrent.atomic.AtomicReference<>(response.confirmation().expiresAt().minusNanos(1));
+        Clock advancing = mock(Clock.class);
+        when(advancing.getZone()).thenReturn(ZoneOffset.UTC);
+        when(advancing.instant()).thenAnswer(call -> instant.get());
+        var verifier = new ReservationQuoteService(quotes, slots, places, users, payments,
+                new ObjectMapper().findAndRegisterModules(), advancing);
+        when(slots.findByIdForUpdate(9L)).thenAnswer(call -> {
+            instant.set(response.confirmation().expiresAt());
+            return Optional.of(slot);
+        });
         var request = request(response.confirmationToken());
         rejects(() -> verifier.verify(1L, request), QUOTE_EXPIRED);
         rejects(() -> service.checkPriorResult(1L, request), QUOTE_EXPIRED);
@@ -165,10 +167,27 @@ class ReservationQuoteServiceTest {
     }
 
     @Test
+    void oldContractTokenRequiresReconfirmationWithoutTakingCapacity() {
+        var response = issue();
+        ReflectionTestUtils.setField(saved.get(response.confirmationToken()), "contractVersion", 1);
+        rejects(() -> service.verify(1L, request(response.confirmationToken())), QUOTE_CONDITIONS_CHANGED);
+        rejects(() -> service.checkPriorResult(1L, request(response.confirmationToken())), QUOTE_CONDITIONS_CHANGED);
+        assertThat(slot.getRemainingCapacity()).isEqualTo(10);
+    }
+
+    @Test
+    void retiredSlotCannotIssueOrConsumeQuote() {
+        var response = issue();
+        ReflectionTestUtils.setField(slot, "bookingRetired", true);
+        rejects(this::issue, RESERVATION_SLOT_INACTIVE);
+        rejects(() -> service.verify(1L, request(response.confirmationToken())), RESERVATION_SLOT_INACTIVE);
+    }
+
+    @Test
     void rejectsHourlyLimitBeforeLockingSlotOrWritingQuote() {
         when(quotes.countByTouristUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(60L);
         rejects(this::issue, QUOTE_RATE_LIMITED);
-        verifyNoInteractions(slots, products);
+        verifyNoInteractions(slots);
         verify(quotes, never()).save(any());
     }
 
@@ -177,7 +196,7 @@ class ReservationQuoteServiceTest {
         when(quotes.countByTouristUserIdAndCreatedAtAfter(eq(1L), any())).thenReturn(59L);
         when(quotes.countByTouristUserIdAndIdempotencyKeyIsNull(1L)).thenReturn(120L);
         rejects(this::issue, QUOTE_RATE_LIMITED);
-        verifyNoInteractions(slots, products);
+        verifyNoInteractions(slots);
         verify(quotes, never()).save(any());
     }
 
@@ -231,7 +250,7 @@ class ReservationQuoteServiceTest {
     @Test
     void changedTermsAndSlotTimeInvalidateQuote() {
         var first = issue();
-        slot.updateReservationTerms(new ReservationTerms(1100, 50, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms("UTC", false, null), LocalDateTime.now(clock));
         rejects(() -> service.verify(1L, request(first.confirmationToken())), QUOTE_CONDITIONS_CHANGED);
         var next = issue();
         slot.update(slot.getStartsAt().plusHours(1), slot.getEndsAt().plusHours(1), 10, LocalDateTime.now(clock));
@@ -260,26 +279,6 @@ class ReservationQuoteServiceTest {
         rejects(() -> service.verify(1L, request(full.confirmationToken())), RESERVATION_CAPACITY_EXCEEDED);
     }
 
-    @org.junit.jupiter.params.ParameterizedTest
-    @org.junit.jupiter.params.provider.EnumSource(value = AvailabilityProductType.class, names = {"TICKET", "CLASS"})
-    void realProductRejectsInactiveOrForeignProduct(AvailabilityProductType type) {
-        slot = PlaceAvailability.create(7L, 11L, 31L, type, LocalDateTime.now(clock).plusDays(1),
-                LocalDateTime.now(clock).plusDays(1).plusHours(1), 10, LocalDateTime.now(clock));
-        ReflectionTestUtils.setField(slot, "id", 9L);
-        slot.updateReservationTerms(new ReservationTerms(1000, 0, "USD", "UTC", false, null), LocalDateTime.now(clock));
-        when(slots.findByIdForUpdate(9L)).thenReturn(Optional.of(slot));
-        when(slots.findReservableByIdForUpdate(eq(9L), any())).thenReturn(Optional.of(slot));
-        var product = ReservableProduct.create(7L, 11L, type, "실제 상품", LocalDateTime.now(clock));
-        when(products.findByIdForUpdate(31L)).thenReturn(Optional.of(product));
-        var response = issue();
-        assertThat(response.confirmation().productName()).isEqualTo("실제 상품");
-        assertThat(response.confirmation().currencyFractionDigits()).isEqualTo(2);
-        product.changeStatus(false, LocalDateTime.now(clock));
-        rejects(() -> service.verify(1L, request(response.confirmationToken())), RESERVATION_PRODUCT_UNAVAILABLE);
-        product.changeStatus(true, LocalDateTime.now(clock));
-        ReflectionTestUtils.setField(product, "placeId", 12L);
-        rejects(this::issue, RESERVATION_PRODUCT_UNAVAILABLE);
-    }
 
     @Test
     void oneTokenCannotCreateMultipleIntents() {
@@ -294,15 +293,10 @@ class ReservationQuoteServiceTest {
         var response = issue();
         Reservation reservation = Reservation.create(1L, 9L, "intent-1", 2, LocalDateTime.now(clock));
         reservation.acceptConfirmation(response.confirmationToken(), response.confirmation());
-        slot.updateReservationTerms(new ReservationTerms(0, 0, "KRW", "UTC", false, null), LocalDateTime.now(clock));
+        slot.updateReservationTerms(new ReservationTerms("UTC", false, null), LocalDateTime.now(clock));
         service.requireCancellationAllowed(reservation);
         when(payments.findFirstByReservationIdAndStatusIn(isNull(), any())).thenReturn(Optional.of(mock(com.typenull.pingdom.payment.domain.PaymentTransaction.class)));
         rejects(() -> service.requireCancellationAllowed(reservation), RESERVATION_REFUND_REQUIRED);
     }
 
-    @Test
-    void overflowingPriceIsNotPublished() {
-        slot.updateReservationTerms(new ReservationTerms(Long.MAX_VALUE, 1, "USD", "UTC", false, null), LocalDateTime.now(clock));
-        rejects(this::issue, QUOTE_TERMS_UNAVAILABLE);
-    }
 }

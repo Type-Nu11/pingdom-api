@@ -21,6 +21,8 @@ public class ReservationQuote {
     @Column(name = "tourist_user_id", nullable = false) private Long touristUserId;
     @JdbcTypeCode(SqlTypes.JSON)
     @Column(nullable = false, columnDefinition = "jsonb") private ReservationConfirmation confirmation;
+    // 새 견적은 버전 2. 변경 전 토큰은 소유권·멱등 검사 후 재확인을 요구.
+    @Column(name = "contract_version", nullable = false) private int contractVersion = 2;
     @Column(name = "created_at", nullable = false) private Instant createdAt;
     @Column(name = "idempotency_key", length = 100) private String idempotencyKey;
     @Column(name = "request_fingerprint", length = 64) private String requestFingerprint;
