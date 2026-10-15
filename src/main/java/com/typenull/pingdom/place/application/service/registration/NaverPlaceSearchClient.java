@@ -1,8 +1,10 @@
 package com.typenull.pingdom.place.application.service.registration;
 
 import com.fasterxml.jackson.databind.JsonNode;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
+import java.io.IOException;
 import java.time.Duration;
 import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.boot.context.properties.ConfigurationProperties;
@@ -18,6 +20,7 @@ import org.springframework.web.client.RestClientException;
 public class NaverPlaceSearchClient {
     private final RestClient restClient;
     private final Properties properties;
+    private final ObjectMapper objectMapper = new ObjectMapper();
 
     public NaverPlaceSearchClient(
             @Qualifier("naverPlaceSearchRestClient") RestClient naverPlaceSearchRestClient,
@@ -34,16 +37,19 @@ public class NaverPlaceSearchClient {
     public JsonNode search(String query) {
         if (!properties.isConfigured()) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_UNAVAILABLE);
         try {
-            JsonNode response = restClient.get().uri(uri -> uri.path("/search/v1/local")
+            byte[] body = restClient.get().uri(uri -> uri.path("/search/v1/local")
                     .queryParam("query", query).queryParam("display", 5)
                     .queryParam("format", "json").build())
                     .header("X-NCP-APIGW-API-KEY-ID", properties.clientId())
                     .header("X-NCP-APIGW-API-KEY", properties.clientSecret())
-                    .retrieve().body(JsonNode.class);
-            if (response == null) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_FAILED);
+                    .retrieve().body(byte[].class);
+            // API HUB가 text/plain으로 반환하는 JSON도 UTF-8 원본 바이트로 파싱.
+            if (body == null || body.length == 0) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_FAILED);
+            JsonNode response = objectMapper.readTree(body);
+            if (response == null || response.isMissingNode() || response.isNull()) throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_FAILED);
             return response.path("items");
         } catch (MapException exception) { throw exception;
-        } catch (RestClientException exception) { throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_FAILED); }
+        } catch (RestClientException | IOException exception) { throw new MapException(MapErrorCode.NAVER_PLACE_SEARCH_FAILED); }
     }
 
     @ConfigurationProperties(prefix = "place.registration.naver-search")
