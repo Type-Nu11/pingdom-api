@@ -9,8 +9,10 @@ import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.
 
 import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteResponse;
+import com.typenull.pingdom.place.api.dto.route.WalkingRouteResponse;
 import com.typenull.pingdom.place.application.service.route.RouteQueryService;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapPedestrianClient;
 import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
@@ -45,6 +47,7 @@ class RouteControllerTest {
     private static final String REQUEST = "{\"origin\":{\"latitude\":37.5665,\"longitude\":126.978},\"destination\":{\"latitude\":37.4979,\"longitude\":127.0276},\"mode\":\"car\"}";
     private NaverDirectionsClient provider;
     private TmapTransitClient transitProvider;
+    private TmapPedestrianClient pedestrianProvider;
     private AbuseRateLimitService limiter;
     private MockMvc mvc;
     private JwtAuthenticatedUser user;
@@ -53,9 +56,10 @@ class RouteControllerTest {
     void setUp() {
         provider = mock(NaverDirectionsClient.class);
         transitProvider = mock(TmapTransitClient.class);
+        pedestrianProvider = mock(TmapPedestrianClient.class);
         limiter = mock(AbuseRateLimitService.class);
         user = new JwtAuthenticatedUser(7L, "route-user");
-        var controller = new RouteController(new RouteQueryService(provider, transitProvider));
+        var controller = new RouteController(new RouteQueryService(provider, transitProvider, pedestrianProvider));
         var factory = new AspectJProxyFactory(controller);
         factory.setProxyTargetClass(true);
         factory.addAspect(new RateLimitAspect(limiter, mock(RefreshTokenCookieService.class)));
@@ -108,7 +112,7 @@ class RouteControllerTest {
 
     @Test
     void distinguishesUnsupportedMode() throws Exception {
-        mvc.perform(post("/routes").contentType(MediaType.APPLICATION_JSON).content(REQUEST.replace("car", "walk")))
+        mvc.perform(post("/routes").contentType(MediaType.APPLICATION_JSON).content(REQUEST.replace("car", "bike")))
                 .andExpect(status().isUnprocessableEntity()).andExpect(jsonPath("$.code").value("UNSUPPORTED_ROUTE_MODE"));
         verifyNoInteractions(provider);
     }
@@ -122,6 +126,19 @@ class RouteControllerTest {
                 .andExpect(status().isOk()).andExpect(jsonPath("$.provider").value("tmap"));
         verifyNoInteractions(provider);
         verify(transitProvider).findRoute(any(), any());
+    }
+
+    @Test
+    void delegatesWalkWithoutCallingOtherProviders() throws Exception {
+        when(pedestrianProvider.findRoute(any(), any())).thenReturn(
+                new WalkingRouteResponse("walk", "tmap", 500, 420,
+                        List.of(new RouteCoordinate(37.56, 126.97), new RouteCoordinate(37.55, 126.98)), List.of()));
+        mvc.perform(post("/routes").contentType(MediaType.APPLICATION_JSON)
+                        .content(REQUEST.replace("car", "walk")))
+                .andExpect(status().isOk()).andExpect(jsonPath("$.mode").value("walk"))
+                .andExpect(jsonPath("$.distanceMeters").value(500));
+        verify(pedestrianProvider).findRoute(any(), any());
+        verifyNoInteractions(provider, transitProvider);
     }
 
     @Test

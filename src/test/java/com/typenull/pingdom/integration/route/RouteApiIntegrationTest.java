@@ -12,6 +12,7 @@ import com.typenull.pingdom.place.api.dto.route.RouteCoordinate;
 import com.typenull.pingdom.place.api.dto.route.RouteResponse;
 import com.typenull.pingdom.place.api.dto.route.TransitRouteResponse;
 import com.typenull.pingdom.place.infrastructure.route.NaverDirectionsClient;
+import com.typenull.pingdom.place.infrastructure.route.TmapPedestrianClient;
 import com.typenull.pingdom.place.infrastructure.route.TmapTransitClient;
 import com.typenull.pingdom.shared.ratelimit.exception.RateLimitException;
 import com.typenull.pingdom.shared.ratelimit.store.RateLimitStore;
@@ -41,6 +42,7 @@ class RouteApiIntegrationTest {
     @Autowired private JwtTokenProvider tokens;
     @MockBean private NaverDirectionsClient provider;
     @MockBean private TmapTransitClient transitProvider;
+    @MockBean private TmapPedestrianClient pedestrianProvider;
     @MockBean private UserAccessStatusService accessStatus;
     @MockBean private RateLimitStore limits;
 
@@ -109,9 +111,10 @@ class RouteApiIntegrationTest {
         }
         assertThat(app.at("/components/schemas/RouteResponse/properties/durationSeconds/description").asText()).contains("초");
         assertThat(app.at("/components/schemas/RouteRequest/properties/mode/enum"))
-                .extracting(JsonNode::asText).containsExactly("car", "transit");
-        assertThat(operation.at("/responses/200/content/application~1json/schema/oneOf").isArray()).isTrue();
+                .extracting(JsonNode::asText).containsExactly("car", "transit", "walk");
+        assertThat(operation.at("/responses/200/content/*~1*/schema/oneOf").isArray()).isTrue();
         assertThat(app.at("/components/schemas/TransitRouteResponse/properties/itineraries/type").asText()).isEqualTo("array");
+        assertThat(app.at("/components/schemas/WalkingRouteResponse/properties/path/type").asText()).isEqualTo("array");
         assertThat(app.at("/components/schemas/RouteCoordinate/properties/latitude/type").asText()).isEqualTo("number");
         JsonNode common = mapper.readTree(mvc.perform(get("/v3/api-docs/common")).andExpect(status().isOk())
                 .andReturn().getResponse().getContentAsByteArray());
