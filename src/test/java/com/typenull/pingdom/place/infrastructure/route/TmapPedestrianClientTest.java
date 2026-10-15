@@ -14,7 +14,11 @@ import io.micrometer.core.instrument.simple.SimpleMeterRegistry;
 import java.net.SocketTimeoutException;
 import java.nio.charset.StandardCharsets;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.api.extension.ExtendWith;
+import org.springframework.boot.test.system.CapturedOutput;
+import org.springframework.boot.test.system.OutputCaptureExtension;
 
+@ExtendWith(OutputCaptureExtension.class)
 class TmapPedestrianClientTest {
     private static final RouteCoordinate START = new RouteCoordinate(37.55677, 126.92365);
     private static final RouteCoordinate END = new RouteCoordinate(37.55279, 126.92432);
@@ -56,6 +60,24 @@ class TmapPedestrianClientTest {
     }
 
     @Test
+    void logsConfigurationStateWithoutAppKeyOrCoordinates(CapturedOutput output) {
+        TmapPedestrianTransport transport = mock(TmapPedestrianTransport.class);
+        var properties = new TmapPedestrianClient.Properties(true, "sensitive-app-key",
+                "https://apis.openapi.sk.com", null, null, null);
+        var missingKey = new TmapPedestrianClient.Properties(true, " ",
+                "https://apis.openapi.sk.com", null, null, null);
+        var client = new TmapPedestrianClient(transport, missingKey, new ObjectMapper(), new SimpleMeterRegistry());
+
+        assertError(client, MapErrorCode.ROUTE_PROVIDER_UNAVAILABLE);
+
+        assertThat(output).contains("provider=tmap routeType=pedestrian outcome=configuration")
+                .contains("enabled=true appKeyPresent=false")
+                .doesNotContain(properties.appKey())
+                .doesNotContain(String.valueOf(START.latitude()))
+                .doesNotContain(String.valueOf(START.longitude()));
+    }
+
+    @Test
     void emptyFeaturesIsRouteNotFound() throws Exception {
         TmapPedestrianTransport transport = mock(TmapPedestrianTransport.class);
         when(transport.post(START, END)).thenReturn(new TmapPedestrianTransport.ProviderResponse(200,
@@ -85,6 +107,20 @@ class TmapPedestrianClientTest {
 
         when(transport.post(START, END)).thenThrow(new SocketTimeoutException());
         assertError(client, MapErrorCode.ROUTE_PROVIDER_TIMEOUT);
+    }
+
+    @Test
+    void logsProviderFailureClassificationWithoutBody(CapturedOutput output) throws Exception {
+        TmapPedestrianTransport transport = mock(TmapPedestrianTransport.class);
+        String body = "sensitive-provider-response";
+        when(transport.post(START, END)).thenReturn(new TmapPedestrianTransport.ProviderResponse(403,
+                body.getBytes(StandardCharsets.UTF_8)));
+        var client = new TmapPedestrianClient(transport, properties(true), new ObjectMapper(), new SimpleMeterRegistry());
+
+        assertError(client, MapErrorCode.ROUTE_PROVIDER_UNAVAILABLE);
+
+        assertThat(output).contains("provider=tmap routeType=pedestrian outcome=authentication httpStatus=403")
+                .doesNotContain(body);
     }
 
     private void assertError(TmapPedestrianClient client, MapErrorCode code) {
