@@ -33,7 +33,7 @@ class PlaceReviewServiceTest {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
-        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, Clock.systemUTC());
+        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, mock(com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository.class), Clock.systemUTC());
         MapPlace place = mock(MapPlace.class);
         when(place.getId()).thenReturn(10L);
         when(placeRepository.findById(10L)).thenReturn(java.util.Optional.of(place));
@@ -63,7 +63,7 @@ class PlaceReviewServiceTest {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
-        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, Clock.systemUTC());
+        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, mock(com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository.class), Clock.systemUTC());
         when(placeRepository.existsById(1L)).thenReturn(true);
         when(reviewRepository.findAllByPlace_IdAndVisibilityStatus(eq(1L), eq(PlaceReviewVisibilityStatus.VISIBLE), any()))
                 .thenReturn(new PageImpl<PlaceReview>(java.util.List.of()));
@@ -82,7 +82,7 @@ class PlaceReviewServiceTest {
         MapPlaceRepository placeRepository = mock(MapPlaceRepository.class);
         PlaceReviewRepository reviewRepository = mock(PlaceReviewRepository.class);
         PlaceReviewMediaService reviewMediaService = mock(PlaceReviewMediaService.class);
-        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, Clock.systemUTC());
+        PlaceReviewService service = new PlaceReviewService(placeRepository, reviewRepository, reviewMediaService, mock(com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository.class), Clock.systemUTC());
         when(reviewRepository.findAllByUserIdAndVisibilityStatusIn(eq(7L), any(), any()))
                 .thenReturn(new PageImpl<>(List.of(), org.springframework.data.domain.PageRequest.of(1, 20), 23));
 

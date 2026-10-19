@@ -46,6 +46,7 @@ public enum MapErrorCode implements ErrorCode {
     PLACE_OPERATING_NOTICE_ALREADY_ACTIVE(HttpStatus.CONFLICT, "이미 활성 또는 예약된 상점 운영 상태 공지가 있습니다."),
     PLACE_OPERATING_SCHEDULE_INVALID_REQUEST(HttpStatus.BAD_REQUEST, "장소 영업시간 요청이 올바르지 않습니다."),
     PLACE_REVIEW_NOT_FOUND(HttpStatus.NOT_FOUND, "장소 리뷰를 찾을 수 없습니다."),
+    PLACE_REVIEW_UPDATE_PENDING_DELETION(HttpStatus.CONFLICT, "삭제 심사 중인 리뷰는 수정할 수 없습니다."),
     PLACE_REVIEW_MANAGEMENT_FORBIDDEN(HttpStatus.FORBIDDEN, "해당 장소의 리뷰를 관리할 권한이 없습니다."),
     PLACE_REVIEW_DELETION_REQUEST_NOT_FOUND(HttpStatus.NOT_FOUND, "리뷰 삭제 신청을 찾을 수 없습니다."),
     PLACE_REVIEW_DELETION_REQUEST_ALREADY_PENDING(HttpStatus.CONFLICT, "이미 처리 대기 중인 리뷰 삭제 신청이 있습니다."),
