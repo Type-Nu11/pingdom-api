@@ -16,8 +16,12 @@ import com.typenull.pingdom.shared.support.S3ObjectStorage;
 import com.typenull.pingdom.shared.support.S3ObjectStorage.S3StorageException;
 import java.time.Clock;
 import java.time.LocalDateTime;
+import java.util.ArrayList;
 import java.util.HashSet;
+import java.util.LinkedHashMap;
 import java.util.List;
+import java.util.Map;
+import java.util.TreeSet;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.data.domain.PageRequest;
@@ -79,7 +83,7 @@ public class PlaceReviewMediaService {
     }
 
     /**
-     * 최대 3개의 중복 없는 업로드 ID를 요청 순서대로 잠가 본인·같은 장소·미연결·미만료 여부를 확인한 뒤 리뷰에 연결.
+     * 최대 3개의 중복 없는 업로드 ID를 오름차순으로 잠가 본인·같은 장소·미연결·미만료 여부를 확인한 뒤 리뷰에 연결.
      * null·빈 목록은 건너뛰고 표시 순서는 0부터 부여. 하나라도 거절되면 호출 트랜잭션의 연결 변경 전체가 실패.
      */
     @Transactional
@@ -87,25 +91,91 @@ public class PlaceReviewMediaService {
         if (reviewMediaIds == null || reviewMediaIds.isEmpty()) {
             return;
         }
-        if (reviewMediaIds.size() > 3 || reviewMediaIds.size() != new HashSet<>(reviewMediaIds).size()) {
-            throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_INVALID_REQUEST);
-        }
-
+        validateMediaIds(reviewMediaIds);
+        Map<Long, PlaceReviewMediaUpload> mediaById = lockMedia(reviewMediaIds);
         LocalDateTime now = LocalDateTime.now(clock);
+        for (Long id : reviewMediaIds) {
+            validateAvailableMedia(userId, placeId, mediaById.get(id), null, now);
+        }
         for (int displayOrder = 0; displayOrder < reviewMediaIds.size(); displayOrder++) {
-            PlaceReviewMediaUpload media = mediaRepository.findByIdForUpdate(reviewMediaIds.get(displayOrder))
-                    .orElseThrow(() -> new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_NOT_FOUND));
-            if (!media.isOwnedBy(userId, placeId)) {
-                throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_FORBIDDEN);
-            }
-            if (media.getStatus() == PlaceReviewMediaUploadStatus.CONNECTED) {
-                throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_ALREADY_CONNECTED);
-            }
-            if (media.isExpiredAt(now)) {
-                throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_EXPIRED);
-            }
+            PlaceReviewMediaUpload media = mediaById.get(reviewMediaIds.get(displayOrder));
             media.connect(review, displayOrder, now);
             review.addMediaUpload(media);
+        }
+    }
+
+    /** 모든 사진을 검증한 뒤 기존 순서를 임시 음수로 옮겨 UNIQUE 충돌 없이 교체. 삭제 outbox도 같은 트랜잭션에 포함. */
+    @Transactional
+    public void replace(Long userId, Long placeId, PlaceReview review, List<Long> reviewMediaIds) {
+        if (reviewMediaIds == null) {
+            return;
+        }
+        validateMediaIds(reviewMediaIds);
+        List<PlaceReviewMediaUpload> previous = List.copyOf(review.getMediaUploads());
+        List<Long> allIds = new ArrayList<>(reviewMediaIds);
+        allIds.addAll(previous.stream().map(PlaceReviewMediaUpload::getId).toList());
+        Map<Long, PlaceReviewMediaUpload> mediaById = lockMedia(allIds);
+        LocalDateTime now = LocalDateTime.now(clock);
+        for (Long id : reviewMediaIds) {
+            validateAvailableMedia(userId, placeId, mediaById.get(id), review, now);
+        }
+
+        for (int index = 0; index < previous.size(); index++) {
+            previous.get(index).changeDisplayOrder(-index - 1);
+        }
+        if (!previous.isEmpty()) {
+            mediaRepository.flush();
+        }
+
+        for (PlaceReviewMediaUpload removed : previous) {
+            if (!reviewMediaIds.contains(removed.getId())) {
+                deletePublisher.publish(removed.getS3Key(), "PLACE_REVIEW_MEDIA", String.valueOf(removed.getId()), "REVIEW_UPDATED");
+                mediaRepository.delete(removed);
+            }
+        }
+        List<PlaceReviewMediaUpload> finalMedia = new ArrayList<>();
+        for (int index = 0; index < reviewMediaIds.size(); index++) {
+            PlaceReviewMediaUpload media = mediaById.get(reviewMediaIds.get(index));
+            if (media.getStatus() == PlaceReviewMediaUploadStatus.UPLOADED) {
+                media.connect(review, index, now);
+            } else {
+                media.changeDisplayOrder(index);
+            }
+            finalMedia.add(media);
+        }
+        review.replaceMediaUploads(finalMedia);
+    }
+
+    private void validateMediaIds(List<Long> ids) {
+        if (ids.size() > 3 || ids.size() != new HashSet<>(ids).size()
+                || ids.stream().anyMatch(id -> id == null || id <= 0)) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_INVALID_REQUEST);
+        }
+    }
+
+    /** 생성·수정이 공유하는 미디어 잠금 순서를 ID 오름차순으로 고정. */
+    private Map<Long, PlaceReviewMediaUpload> lockMedia(List<Long> ids) {
+        Map<Long, PlaceReviewMediaUpload> media = new LinkedHashMap<>();
+        for (Long id : new TreeSet<>(ids)) {
+            media.put(id, mediaRepository.findByIdForUpdate(id)
+                    .orElseThrow(() -> new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_NOT_FOUND)));
+        }
+        return media;
+    }
+
+    private void validateAvailableMedia(Long userId, Long placeId, PlaceReviewMediaUpload media,
+            PlaceReview existingReview, LocalDateTime now) {
+        if (!media.isOwnedBy(userId, placeId)) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_FORBIDDEN);
+        }
+        if (media.getStatus() == PlaceReviewMediaUploadStatus.CONNECTED) {
+            if (existingReview != null && media.isConnectedTo(existingReview)) {
+                return;
+            }
+            throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_ALREADY_CONNECTED);
+        }
+        if (media.isExpiredAt(now)) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_MEDIA_EXPIRED);
         }
     }
 
@@ -137,7 +207,7 @@ public class PlaceReviewMediaService {
         LocalDateTime now = LocalDateTime.now(clock);
         for (int batch = 0; batch < MAX_CLEANUP_BATCHES; batch++) {
             List<PlaceReviewMediaUpload> expired = mediaRepository
-                    .findAllByStatusAndExpiresAtLessThanEqualOrderByExpiresAtAscIdAsc(
+                    .findExpiredForUpdate(
                             PlaceReviewMediaUploadStatus.UPLOADED, now, PageRequest.of(0, CLEANUP_BATCH_SIZE));
             if (expired.isEmpty()) {
                 break;

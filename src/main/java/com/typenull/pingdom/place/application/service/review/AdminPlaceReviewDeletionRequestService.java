@@ -8,6 +8,7 @@ import com.typenull.pingdom.place.api.dto.review.AdminPlaceReviewDeletionRequest
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewDeletionRequestReviewRequest;
 import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequest;
 import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequestStatus;
+import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -90,7 +91,8 @@ public class AdminPlaceReviewDeletionRequestService {
         LocalDateTime now = LocalDateTime.now(clock);
         try {
             deletionRequest.review(adminUserId, request.decision(), request.reviewNote(), now);
-            if (request.decision() == PlaceReviewDeletionRequestStatus.APPROVED) {
+            if (request.decision() == PlaceReviewDeletionRequestStatus.APPROVED
+                    && review.getVisibilityStatus() != PlaceReviewVisibilityStatus.DELETED) {
                 review.markDeleted(now);
             }
         } catch (IllegalStateException exception) {

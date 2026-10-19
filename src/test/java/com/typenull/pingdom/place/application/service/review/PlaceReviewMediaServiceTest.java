@@ -4,7 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.mockito.ArgumentMatchers.any;
 import static org.mockito.ArgumentMatchers.eq;
-import static org.mockito.Mockito.mock;
+import static org.mockito.Mockito.*;
 import static org.mockito.Mockito.verify;
 import static org.mockito.Mockito.when;
 
@@ -112,6 +112,67 @@ class PlaceReviewMediaServiceTest {
                 .isInstanceOf(MapException.class)
                 .extracting(exception -> ((MapException) exception).getErrorCode())
                 .isEqualTo(MapErrorCode.PLACE_REVIEW_MEDIA_ALREADY_CONNECTED);
+    }
+
+
+    @Test
+    void checksExpirationAfterWaitingForMediaLock() {
+        var repository = mock(PlaceReviewMediaUploadRepository.class);
+        var now = new java.util.concurrent.atomic.AtomicReference<>(Instant.parse("2026-09-16T01:00:00Z"));
+        Clock clock = mock(Clock.class);
+        when(clock.getZone()).thenReturn(ZoneOffset.UTC);
+        when(clock.instant()).thenAnswer(invocation -> now.get());
+        var service = new PlaceReviewMediaService(mock(MapPlaceRepository.class), repository,
+                mock(ImageUploadProcessor.class), mock(S3ObjectStorage.class), mock(S3ObjectDeleteOutboxPublisher.class), clock);
+        PlaceReviewMediaUpload expiredDuringLock = PlaceReviewMediaUpload.upload(10L, 7L, "expiry", "https://cdn.test/expiry", "image/jpeg", 10,
+                LocalDateTime.of(2026, 9, 16, 1, 0, 1), LocalDateTime.of(2026, 9, 16, 1, 0));
+        when(repository.findByIdForUpdate(1L)).thenAnswer(invocation -> {
+            now.set(Instant.parse("2026-09-16T01:00:02Z"));
+            return Optional.of(expiredDuringLock);
+        });
+        assertThatThrownBy(() -> service.connect(7L, 10L, review(), List.of(1L)))
+                .isInstanceOf(MapException.class).extracting(e -> ((MapException) e).getErrorCode())
+                .isEqualTo(MapErrorCode.PLACE_REVIEW_MEDIA_EXPIRED);
+        assertThat(expiredDuringLock.getStatus()).isEqualTo(PlaceReviewMediaUploadStatus.UPLOADED);
+    }
+
+    @Test
+    void locksCreateMediaInAscendingIdOrderBeforeConnecting() {
+        PlaceReviewMediaUploadRepository repository = mock(PlaceReviewMediaUploadRepository.class);
+        var service = service(mock(MapPlaceRepository.class), repository, mock(ImageUploadProcessor.class), mock(S3ObjectStorage.class));
+        PlaceReviewMediaUpload first = upload(10L, 7L, "first");
+        PlaceReviewMediaUpload second = upload(10L, 7L, "second");
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(first));
+        when(repository.findByIdForUpdate(2L)).thenReturn(Optional.of(second));
+        service.connect(7L, 10L, review(), List.of(2L, 1L));
+        var order = inOrder(repository);
+        order.verify(repository).findByIdForUpdate(1L);
+        order.verify(repository).findByIdForUpdate(2L);
+        assertThat(first.getDisplayOrder()).isEqualTo(1);
+        assertThat(second.getDisplayOrder()).isZero();
+    }
+
+    @Test
+    void replacementValidationFailureDoesNotChangeExistingOrNewMedia() {
+        PlaceReviewMediaUploadRepository repository = mock(PlaceReviewMediaUploadRepository.class);
+        var service = service(mock(MapPlaceRepository.class), repository, mock(ImageUploadProcessor.class), mock(S3ObjectStorage.class));
+        PlaceReview review = review();
+        org.springframework.test.util.ReflectionTestUtils.setField(review, "id", 10L);
+        PlaceReviewMediaUpload existing = upload(10L, 7L, "existing");
+        org.springframework.test.util.ReflectionTestUtils.setField(existing, "id", 1L);
+        existing.connect(review, 0, LocalDateTime.now(FIXED_CLOCK));
+        review.addMediaUpload(existing);
+        PlaceReviewMediaUpload fresh = upload(10L, 7L, "fresh");
+        PlaceReviewMediaUpload foreign = upload(10L, 99L, "foreign");
+        when(repository.findByIdForUpdate(1L)).thenReturn(Optional.of(existing));
+        when(repository.findByIdForUpdate(2L)).thenReturn(Optional.of(fresh));
+        when(repository.findByIdForUpdate(3L)).thenReturn(Optional.of(foreign));
+        assertThatThrownBy(() -> service.replace(7L, 10L, review, List.of(2L, 3L))).isInstanceOf(MapException.class);
+        assertThat(existing.getDisplayOrder()).isZero();
+        assertThat(fresh.getStatus()).isEqualTo(PlaceReviewMediaUploadStatus.UPLOADED);
+        assertThat(review.getMediaUploads()).containsExactly(existing);
+        verify(repository, never()).flush();
+        verify(repository, never()).delete(any());
     }
 
     /**
