@@ -12,7 +12,7 @@ public record CommunityPostCategoryListResponse(
     public record Item(
             @Schema(description = "저장과 요청에 사용할 카테고리 식별자", example = "PLACE")
             String categoryId,
-            @Schema(description = "화면 표시용 카테고리 이름", example = "장소")
+            @Schema(description = "화면 표시용 카테고리 이름", example = "스팟")
             String categoryName
     ) {
     }
