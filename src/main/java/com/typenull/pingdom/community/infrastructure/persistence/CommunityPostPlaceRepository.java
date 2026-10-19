@@ -8,6 +8,10 @@ import org.springframework.data.repository.query.Param;
 
 public interface CommunityPostPlaceRepository extends JpaRepository<CommunityPostPlace, Long> {
 
+    @org.springframework.data.jpa.repository.Modifying
+    @Query("delete from CommunityPostPlace link where link.communityPost.id = :postId")
+    void deleteAllByPostId(@Param("postId") long postId);
+
     boolean existsByCommunityPost_IdAndMapPlace_Id(Long communityPostId, Long mapPlaceId);
 
     /** 게시글 상세에 필요한 연결 장소를 한 번에 조회해 N+1 조회를 방지. */
