@@ -16,12 +16,13 @@ public record CommunityPostDetailResponse(
         @Schema(description = "표시 순서대로 정렬된 게시글 사진. position은 0부터 시작") List<Image> images,
         @Schema(description = "ISO alpha-2 국가 코드. 기존 미설정 글은 null") String countryCode,
         @Schema(description = "작성자가 지정한 표시 지역. 미설정은 null") String region,
-        @Schema(description = "정상 상세 요청 횟수. 사용자별 고유 조회가 아님") long viewCount
+        @Schema(description = "정상 상세 요청 횟수. 사용자별 고유 조회가 아님") long viewCount,
+        @Schema(description = "마지막 본인 수정 시각. 수정 이력이 없으면 null", nullable = true) LocalDateTime updatedAt
 ) {
 
     public CommunityPostDetailResponse(Long id, String title, String content, List<Place> places,
             Author author, Category category, LocalDateTime createdAt) {
-        this(id, title, content, places, author, category, createdAt, List.of(), null, null, 0);
+        this(id, title, content, places, author, category, createdAt, List.of(), null, null, 0, null);
     }
     @Schema(name = "CommunityPostImageItem")
     public record Image(Long imageId, String imageUrl, int position) {}
