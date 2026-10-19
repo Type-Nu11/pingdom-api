@@ -66,6 +66,12 @@ public class CommunityPost {
     @Column(name = "created_at", nullable = false, updatable = false)
     private LocalDateTime createdAt;
 
+    @Column(name = "updated_at")
+    private LocalDateTime updatedAt;
+
+    @Column(name = "deleted_at")
+    private LocalDateTime deletedAt;
+
     private CommunityPost(String categoryId, String title, String content, Long userId) {
         this.categoryId = Objects.requireNonNull(categoryId, "categoryId must not be null");
         this.title = Objects.requireNonNull(title, "title must not be null");
@@ -83,5 +89,23 @@ public class CommunityPost {
             this.hiddenByAdminUserId = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
             this.hiddenAt = Objects.requireNonNull(hiddenAt, "hiddenAt must not be null");
         }
+    }
+
+    public boolean isDeleted() {
+        return deletedAt != null;
+    }
+
+    public void update(String categoryId, String title, String content, LocalDateTime updatedAt) {
+        this.categoryId = Objects.requireNonNull(categoryId);
+        this.title = Objects.requireNonNull(title);
+        this.content = Objects.requireNonNull(content);
+        this.updatedAt = Objects.requireNonNull(updatedAt);
+    }
+
+    /** 신고·댓글 FK와 관리자 숨김 이력을 보존하면서 사용자 노출을 영구 차단한다. */
+    public void delete(LocalDateTime deletedAt) {
+        this.deletedAt = Objects.requireNonNull(deletedAt);
+        // 구버전으로 롤백해도 hidden=false 기반 조회가 삭제 글을 다시 노출하지 않게 한다.
+        this.hidden = true;
     }
 }

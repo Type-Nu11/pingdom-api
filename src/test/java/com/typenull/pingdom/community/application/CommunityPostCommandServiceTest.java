@@ -27,7 +27,7 @@ class CommunityPostCommandServiceTest {
     private final CommunityPostCommandService service = new CommunityPostCommandService(
             communityPostRepository,
             communityPostPlaceRepository,
-            mapPlaceRepository, mock(CommunityPostImageService.class)
+            mapPlaceRepository, mock(CommunityPostImageService.class), java.time.Clock.systemUTC()
     );
 
     /**

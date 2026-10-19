@@ -123,4 +123,16 @@ public class PlaceReviewMediaUpload {
         this.status = PlaceReviewMediaUploadStatus.CONNECTED;
         this.connectedAt = Objects.requireNonNull(now);
     }
+
+    public boolean isConnectedTo(PlaceReview review) {
+        return status == PlaceReviewMediaUploadStatus.CONNECTED && this.review != null && review.getId() != null
+                && Objects.equals(this.review.getId(), review.getId());
+    }
+
+    public void changeDisplayOrder(int displayOrder) {
+        if (status != PlaceReviewMediaUploadStatus.CONNECTED) {
+            throw new IllegalStateException("연결된 리뷰 사진만 순서를 변경할 수 있습니다.");
+        }
+        this.displayOrder = displayOrder;
+    }
 }

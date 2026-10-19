@@ -42,6 +42,29 @@ class CommunityPostQueryServiceTest {
             mock(com.typenull.pingdom.place.infrastructure.persistence.place.PlaceAdministrativeRegionRepository.class)
     );
 
+    @Test void ownListIncludesHiddenStateAndUsesOnlyAuthenticatedOwnerQueries() {
+        var item = new CommunityPostListResponse.Item(10L, "내 글");
+        var summary = mock(CommunityPostRepository.Summary.class);
+        when(summary.getPostId()).thenReturn(10L);
+        when(summary.getCategoryId()).thenReturn("TRAVEL");
+        when(summary.getHidden()).thenReturn(true);
+        when(summary.getContentPreview()).thenReturn("미리보기");
+        when(communityPostRepository.findOwnListItems(org.mockito.ArgumentMatchers.eq(7L), any()))
+                .thenReturn(new PageImpl<>(List.of(item), PageRequest.of(0, 2), 5));
+        when(communityPostRepository.findOwnSummaries(List.of(10L), 7L)).thenReturn(List.of(summary));
+
+        var response = service.findOwnPosts(7L, 1, 2);
+
+        assertThat(response.totalElements()).isEqualTo(5);
+        assertThat(response.hasNext()).isTrue();
+        assertThat(response.posts().getFirst().hidden()).isTrue();
+        assertThat(response.posts().getFirst().contentPreview()).isEqualTo("미리보기");
+        verify(communityPostRepository).findOwnListItems(7L, PageRequest.of(0, 2,
+                org.springframework.data.domain.Sort.by(org.springframework.data.domain.Sort.Order.desc("createdAt"),
+                        org.springframework.data.domain.Sort.Order.desc("id"))));
+        verify(communityPostRepository, never()).findSummaries(any());
+    }
+
     /**
      * 카테고리 조회가 저장소의 ID·제목 목록과 전체 수·페이지 수·다음 페이지 여부를 응답에 반영하는지 검증.
      */

@@ -4,9 +4,12 @@ import com.typenull.pingdom.place.api.dto.review.MyPlaceReviewPageResponse;
 import com.typenull.pingdom.place.api.dto.review.MyPlaceReviewResponse;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewCreateRequest;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewResponse;
+import com.typenull.pingdom.place.api.dto.review.PlaceReviewUpdateRequest;
 import com.typenull.pingdom.place.domain.review.PlaceReview;
 import com.typenull.pingdom.place.domain.review.PlaceReviewRecommendReason;
 import com.typenull.pingdom.place.domain.review.PlaceReviewVisibilityStatus;
+import com.typenull.pingdom.place.domain.review.PlaceReviewDeletionRequestStatus;
+import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewDeletionRequestRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
 import com.typenull.pingdom.place.infrastructure.persistence.place.PlaceReviewRepository;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
@@ -37,6 +40,7 @@ public class PlaceReviewService {
     private final MapPlaceRepository placeRepository;
     private final PlaceReviewRepository reviewRepository;
     private final PlaceReviewMediaService reviewMediaService;
+    private final PlaceReviewDeletionRequestRepository deletionRequestRepository;
     private final Clock clock;
 
     /**
@@ -64,6 +68,48 @@ public class PlaceReviewService {
         ));
         reviewMediaService.connect(userId, placeId, review, request.reviewMediaIds());
         return PlaceReviewResponse.from(review);
+    }
+
+    @Transactional
+    public PlaceReviewResponse update(Long userId, Long placeId, Long reviewId, PlaceReviewUpdateRequest request) {
+        PlaceReview review = findOwnReviewForUpdate(userId, placeId, reviewId);
+        if (review.getVisibilityStatus() == PlaceReviewVisibilityStatus.DELETED) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_NOT_FOUND);
+        }
+        if (deletionRequestRepository.existsByReview_IdAndStatus(reviewId, PlaceReviewDeletionRequestStatus.PENDING)) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_UPDATE_PENDING_DELETION);
+        }
+        reviewMediaService.replace(userId, placeId, review, request.reviewMediaIds());
+        if (request.recommendReasons() != null || request.recommendReason() != null) {
+            // UNIQUE(review_id, reason) 때문에 기존 태그를 먼저 삭제한 뒤 새 순서로 저장한다.
+            review.clearRecommendReasons();
+            reviewRepository.flush();
+            List<PlaceReviewRecommendReason> reasons = request.recommendReasons() == null
+                    ? List.of() : request.recommendReasons();
+            review.updateRecommendReasons(reasons.isEmpty() ? request.recommendReason() : reasons.getFirst().name(), reasons);
+        }
+        if (request.content() != null) {
+            review.updateContent(request.content());
+        }
+        return PlaceReviewResponse.from(review);
+    }
+
+    /** 리뷰·사진·심사 이력과 독립적인 방문 인증 사실을 보존하는 논리 삭제. 본인 반복 요청은 성공. */
+    @Transactional
+    public void delete(Long userId, Long placeId, Long reviewId) {
+        PlaceReview review = findOwnReviewForUpdate(userId, placeId, reviewId);
+        if (review.getVisibilityStatus() != PlaceReviewVisibilityStatus.DELETED) {
+            review.markDeleted(LocalDateTime.now(clock));
+        }
+    }
+
+    private PlaceReview findOwnReviewForUpdate(Long userId, Long placeId, Long reviewId) {
+        PlaceReview review = reviewRepository.findByIdAndPlaceIdForUpdate(reviewId, placeId)
+                .orElseThrow(() -> new MapException(MapErrorCode.PLACE_REVIEW_NOT_FOUND));
+        if (!review.getUserId().equals(userId)) {
+            throw new MapException(MapErrorCode.PLACE_REVIEW_NOT_FOUND);
+        }
+        return review;
     }
 
     /**

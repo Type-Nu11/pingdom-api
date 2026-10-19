@@ -1,6 +1,7 @@
 package com.typenull.pingdom.community.application;
 
 import com.typenull.pingdom.community.api.dto.CommunityPostListResponse;
+import com.typenull.pingdom.community.api.dto.MyCommunityPostListResponse;
 import com.typenull.pingdom.community.api.dto.CommunityPostDetailResponse;
 import com.typenull.pingdom.community.api.dto.CommunityPostCommentListResponse;
 import com.typenull.pingdom.community.domain.CommunityPost;
@@ -99,7 +100,33 @@ public class CommunityPostQueryService {
                 category == null ? null : new CommunityPostDetailResponse.Category(category.getId(), category.getDisplayName()),
                 post.getCreatedAt(), imageRepository.findByPostIdOrderByPositionAsc(postId).stream()
                         .map(image -> new CommunityPostDetailResponse.Image(image.getId(), image.getImageUrl(), image.getPosition()))
-                        .toList(), post.getCountryCode(), post.getRegion(), post.getViewCount());
+                        .toList(), post.getCountryCode(), post.getRegion(), post.getViewCount(), post.getUpdatedAt());
+    }
+
+    @Transactional(readOnly = true)
+    public MyCommunityPostListResponse findOwnPosts(long userId, int page, int limit) {
+        Page<CommunityPostListResponse.Item> result = communityPostRepository.findOwnListItems(userId,
+                PageRequest.of(page - 1, limit, Sort.by(Sort.Order.desc("createdAt"), Sort.Order.desc("id"))));
+        if (result.isEmpty()) {
+            return new MyCommunityPostListResponse(List.of(), page, limit, result.getTotalElements(),
+                    result.getTotalPages(), result.hasNext());
+        }
+        Map<Long, CommunityPostRepository.Summary> summaries = communityPostRepository.findOwnSummaries(
+                result.getContent().stream().map(CommunityPostListResponse.Item::postId).toList(), userId).stream()
+                .collect(java.util.stream.Collectors.toMap(CommunityPostRepository.Summary::getPostId, Function.identity()));
+        List<MyCommunityPostListResponse.Item> posts = result.getContent().stream()
+                .filter(item -> summaries.containsKey(item.postId()))
+                .map(item -> {
+                    var summary = summaries.get(item.postId());
+                    var category = CommunityPostCategory.findEnabledById(summary.getCategoryId()).orElse(null);
+                    return new MyCommunityPostListResponse.Item(item.postId(), item.title(), summary.getContentPreview(),
+                            summary.getImageUrl(), summary.getImageCount(), summary.getCountryCode(), summary.getRegion(),
+                            summary.getCreatedAt(), summary.getUpdatedAt(), summary.getViewCount(), summary.getLikeCount(),
+                            summary.getCommentCount(), category == null ? null : new CommunityPostDetailResponse.Category(
+                                    category.getId(), category.getDisplayName()), summary.getHidden());
+                }).toList();
+        return new MyCommunityPostListResponse(posts, page, limit, result.getTotalElements(),
+                result.getTotalPages(), result.hasNext());
     }
 
     @Transactional(readOnly = true)

@@ -66,6 +66,27 @@ public class PlaceReview {
         imageUrls.add(mediaUpload.getImageUrl());
     }
 
+    public void updateContent(String content) {
+        this.content = content.trim();
+    }
+
+    /** 태그 순서 교체 전 기존 UNIQUE(review_id, reason) 행을 먼저 비워야 함. */
+    public void clearRecommendReasons() {
+        recommendReasons.clear();
+    }
+
+    public void updateRecommendReasons(String legacyReason, List<PlaceReviewRecommendReason> reasons) {
+        recommendReason = legacyReason.trim();
+        recommendReasons.addAll(reasons);
+    }
+
+    public void replaceMediaUploads(List<PlaceReviewMediaUpload> media) {
+        mediaUploads.clear();
+        mediaUploads.addAll(media);
+        imageUrls.clear();
+        imageUrls.addAll(media.stream().map(PlaceReviewMediaUpload::getImageUrl).toList());
+    }
+
     public void hide(LocalDateTime now) {
         if (visibilityStatus == PlaceReviewVisibilityStatus.DELETED) {
             throw new IllegalStateException("삭제된 리뷰는 숨김 처리할 수 없습니다.");

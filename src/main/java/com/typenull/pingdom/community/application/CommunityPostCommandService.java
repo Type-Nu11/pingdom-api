@@ -2,6 +2,8 @@ package com.typenull.pingdom.community.application;
 
 import com.typenull.pingdom.community.api.dto.CommunityPostCreateRequest;
 import com.typenull.pingdom.community.api.dto.CommunityPostCreateResponse;
+import com.typenull.pingdom.community.api.dto.CommunityPostUpdateRequest;
+import com.typenull.pingdom.community.api.dto.CommunityPostUpdateResponse;
 import com.typenull.pingdom.community.domain.CommunityPost;
 import com.typenull.pingdom.community.domain.CommunityPostCategory;
 import com.typenull.pingdom.community.domain.CommunityPostPlace;
@@ -14,6 +16,8 @@ import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepos
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Set;
+import java.time.Clock;
+import java.time.LocalDateTime;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -30,6 +34,7 @@ public class CommunityPostCommandService {
     private final CommunityPostPlaceRepository communityPostPlaceRepository;
     private final MapPlaceRepository mapPlaceRepository;
     private final CommunityPostImageService imageService;
+    private final Clock clock;
 
     /**
      * 활성 카테고리와 연결 장소를 검증한 뒤 제목·본문의 앞뒤 공백을 제거해 게시글과 장소 연결을 저장하고 ID를 반환.
@@ -58,6 +63,55 @@ public class CommunityPostCommandService {
                 .toList());
 
         return new CommunityPostCreateResponse(communityPost.getId(), placeIds);
+    }
+
+    @Transactional
+    public CommunityPostUpdateResponse update(long userId, long postId, CommunityPostUpdateRequest request) {
+        CommunityPost post = requireOwnPost(userId, postId, false);
+        String categoryId = request.getCategoryId() == null ? post.getCategoryId() : request.getCategoryId();
+        CommunityPostCategory category = CommunityPostCategory.findEnabledById(categoryId)
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.INVALID_CATEGORY));
+        if (request.isCountryCodeSpecified()) CommunityCountryCodes.validate(request.getCountryCode());
+
+        List<Long> placeIds = request.getPlaceIds() == null
+                ? communityPostPlaceRepository.findAllWithMapPlaceByCommunityPostId(postId).stream()
+                        .map(CommunityPostPlace::getMapPlaceId).toList()
+                : normalizePlaceIds(request.getPlaceIds());
+        validatePlaceSelection(category, placeIds);
+        List<MapPlace> replacementPlaces = request.getPlaceIds() == null ? List.of() : findPlaces(placeIds);
+
+        // 게시글 잠금 후 모든 이미지 행을 ID 순서로 잠가 사진 교체·삭제가 부분 적용되지 않게 한다.
+        if (request.getImageIds() != null) imageService.replace(userId, postId, request.getImageIds());
+        if (request.getPlaceIds() != null) {
+            communityPostPlaceRepository.deleteAllByPostId(postId);
+            communityPostPlaceRepository.saveAll(replacementPlaces.stream()
+                    .map(place -> CommunityPostPlace.connect(post, place)).toList());
+        }
+        post.describeLocation(request.isCountryCodeSpecified() ? request.getCountryCode() : post.getCountryCode(),
+                request.isRegionSpecified() ? normalizeRegion(request.getRegion()) : post.getRegion());
+        LocalDateTime updatedAt = LocalDateTime.now(clock);
+        post.update(categoryId, request.getTitle() == null ? post.getTitle() : request.getTitle().trim(),
+                request.getContent() == null ? post.getContent() : request.getContent().trim(), updatedAt);
+        return new CommunityPostUpdateResponse(postId, updatedAt);
+    }
+
+    @Transactional
+    public void delete(long userId, long postId) {
+        CommunityPost post = requireOwnPost(userId, postId, true);
+        imageService.deleteForPost(postId);
+        communityPostPlaceRepository.deleteAllByPostId(postId);
+        post.delete(LocalDateTime.now(clock));
+    }
+
+    private CommunityPost requireOwnPost(long userId, long postId, boolean allowHidden) {
+        return communityPostRepository.findByIdForUpdate(postId)
+                .filter(post -> post.getUserId().equals(userId) && !post.isDeleted()
+                        && (allowHidden || !post.isHidden()))
+                .orElseThrow(() -> new CommunityException(CommunityErrorCode.POST_NOT_FOUND));
+    }
+
+    private String normalizeRegion(String region) {
+        return region == null || region.isBlank() ? null : region.trim();
     }
 
     private List<Long> normalizePlaceIds(List<Long> requestedPlaceIds) {
