@@ -61,4 +61,57 @@ class CommunityPostImageServiceTest {
         assertThatThrownBy(() -> service.attach(1L,10L,List.of(7L,8L))).isInstanceOf(CommunityException.class);
         assertThat(own.getPostId()).isNull();assertThat(other.getPostId()).isNull();
     }
+
+    @Test void replacementKeepsReordersAddsAndRemovesImagesAfterValidation() {
+        CommunityPostImage kept = uploaded(7L, 1L, true), removed = uploaded(8L, 1L, true);
+        CommunityPostImage added = uploaded(9L, 1L, false);
+        kept.attach(10L, 0); removed.attach(10L, 1);
+        when(images.findByPostIdOrderByPositionAsc(10L)).thenReturn(List.of(kept, removed));
+        when(images.findAllByIdForUpdate(List.of(7L, 8L, 9L))).thenReturn(List.of(kept, removed, added));
+        doAnswer(call -> {
+            assertThat(kept.getPostId()).isNull();
+            assertThat(removed.getPostId()).isNull();
+            assertThat(added.getPostId()).isNull();
+            return null;
+        }).when(images).flush();
+        service.replace(1L, 10L, List.of(9L, 7L));
+        assertThat(added.getPostId()).isEqualTo(10L);
+        assertThat(added.getPosition()).isZero();
+        assertThat(kept.getPosition()).isEqualTo(1);
+        verify(deletes).publish("community/1/8.png", "COMMUNITY_IMAGE", "8", "POST_UPDATE");
+        verify(images).delete(removed);
+        verify(images, never()).delete(kept);
+    }
+
+    @Test void invalidReplacementPreservesOriginalImagesAndDoesNotPublishDeletes() {
+        CommunityPostImage kept = uploaded(7L, 1L, true), otherPost = uploaded(9L, 1L, false);
+        kept.attach(10L, 0); otherPost.attach(20L, 0);
+        when(images.findByPostIdOrderByPositionAsc(10L)).thenReturn(List.of(kept));
+        when(images.findAllByIdForUpdate(any())).thenReturn(List.of(kept, otherPost));
+        assertThatThrownBy(() -> service.replace(1L, 10L, List.of(9L, 7L))).isInstanceOf(CommunityException.class);
+        assertThat(kept.getPostId()).isEqualTo(10L);
+        assertThat(kept.getPosition()).isZero();
+        verify(images, never()).flush();
+        verify(images, never()).delete(any());
+        verifyNoInteractions(deletes);
+    }
+
+    @Test void rejectsForeignExpiredDuplicateAndMissingReplacementImages() {
+        for (CommunityPostImage rejected : List.of(uploaded(9L, 2L, false), uploaded(9L, 1L, true))) {
+            when(images.findAllByIdForUpdate(any())).thenReturn(List.of(rejected));
+            assertThatThrownBy(() -> service.replace(1L, 10L, List.of(9L))).isInstanceOf(CommunityException.class);
+        }
+        when(images.findAllByIdForUpdate(any())).thenReturn(List.of());
+        assertThatThrownBy(() -> service.replace(1L, 10L, List.of(9L))).isInstanceOf(CommunityException.class);
+        assertThatThrownBy(() -> service.replace(1L, 10L, List.of(9L, 9L))).isInstanceOf(CommunityException.class);
+        verifyNoInteractions(deletes);
+    }
+
+    private CommunityPostImage uploaded(long id, long userId, boolean expired) {
+        CommunityPostImage image = CommunityPostImage.pending(userId, "community/" + userId + "/" + id + ".png",
+                LocalDateTime.now(clock).plusHours(expired ? -1 : 1));
+        image.uploaded("https://example.invalid/" + id);
+        ReflectionTestUtils.setField(image, "id", id);
+        return image;
+    }
 }

@@ -72,6 +72,45 @@ public class CommunityPostImageService {
             byId.get(requestedIds.get(position)).attach(postId, position);
     }
 
+    /** 호출자가 게시글 행을 잠근 상태에서 기존 사진 유지·교체·정렬을 같은 트랜잭션으로 반영한다. */
+    @Transactional
+    public void replace(long userId, long postId, List<Long> requestedIds) {
+        if (requestedIds.size() > 10 || new HashSet<>(requestedIds).size() != requestedIds.size()
+                || requestedIds.stream().anyMatch(id -> id == null || id <= 0)) invalid();
+        Set<Long> lockIds = new TreeSet<>(requestedIds);
+        images.findByPostIdOrderByPositionAsc(postId).forEach(image -> lockIds.add(image.getId()));
+        if (lockIds.isEmpty()) return;
+        List<CommunityPostImage> locked = images.findAllByIdForUpdate(List.copyOf(lockIds));
+        Map<Long, CommunityPostImage> byId = new HashMap<>();
+        locked.forEach(image -> byId.put(image.getId(), image));
+        LocalDateTime now = LocalDateTime.now(clock);
+        // 모든 요청을 먼저 검증해 실패 시 사진 순서나 삭제 원장을 일부만 바꾸지 않는다.
+        for (Long id : requestedIds) {
+            CommunityPostImage image = byId.get(id);
+            if (image == null || !image.getUserId().equals(userId) || image.getImageUrl() == null) invalid();
+            if (image.getPostId() != null && image.getPostId() != postId) invalid();
+            if (image.getPostId() == null && !image.getExpiresAt().isAfter(now)) invalid();
+        }
+        List<CommunityPostImage> previous = locked.stream()
+                .filter(image -> Objects.equals(image.getPostId(), postId)).toList();
+        // 동일 position 유일 제약 때문에 기존 슬롯을 먼저 비운다. 변경은 커밋 전까지 외부에 보이지 않는다.
+        previous.forEach(CommunityPostImage::detachForReordering);
+        images.flush();
+        previous.stream().filter(image -> !requestedIds.contains(image.getId()))
+                .forEach(image -> remove(image, "POST_UPDATE"));
+        for (int position = 0; position < requestedIds.size(); position++)
+            byId.get(requestedIds.get(position)).attach(postId, position);
+    }
+
+    @Transactional
+    public void deleteForPost(long postId) {
+        List<Long> ids = images.findByPostIdOrderByPositionAsc(postId).stream().map(CommunityPostImage::getId).toList();
+        if (ids.isEmpty()) return;
+        for (CommunityPostImage image : images.findAllByIdForUpdate(ids)) {
+            if (Objects.equals(image.getPostId(), postId)) remove(image, "POST_DELETE");
+        }
+    }
+
     @Transactional
     public void delete(long userId, long imageId) {
         List<CommunityPostImage> found = images.findAllByIdForUpdate(List.of(imageId));
