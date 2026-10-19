@@ -19,9 +19,14 @@ public interface PlaceReviewMediaUploadRepository extends JpaRepository<PlaceRev
     Optional<PlaceReviewMediaUpload> findByIdForUpdate(@Param("mediaId") Long mediaId);
 
     @Lock(LockModeType.PESSIMISTIC_WRITE)
-    List<PlaceReviewMediaUpload> findAllByStatusAndExpiresAtLessThanEqualOrderByIdAsc(
-            PlaceReviewMediaUploadStatus status,
-            LocalDateTime expiresAt,
+    @Query("""
+            SELECT media FROM PlaceReviewMediaUpload media
+            WHERE media.status = :status AND media.expiresAt <= :expiresAt
+            ORDER BY media.id ASC
+            """)
+    List<PlaceReviewMediaUpload> findExpiredForUpdate(
+            @Param("status") PlaceReviewMediaUploadStatus status,
+            @Param("expiresAt") LocalDateTime expiresAt,
             Pageable pageable
     );
 }

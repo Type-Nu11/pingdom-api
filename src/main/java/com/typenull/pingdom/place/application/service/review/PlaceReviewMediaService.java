@@ -207,7 +207,7 @@ public class PlaceReviewMediaService {
         LocalDateTime now = LocalDateTime.now(clock);
         for (int batch = 0; batch < MAX_CLEANUP_BATCHES; batch++) {
             List<PlaceReviewMediaUpload> expired = mediaRepository
-                    .findAllByStatusAndExpiresAtLessThanEqualOrderByIdAsc(
+                    .findExpiredForUpdate(
                             PlaceReviewMediaUploadStatus.UPLOADED, now, PageRequest.of(0, CLEANUP_BATCH_SIZE));
             if (expired.isEmpty()) {
                 break;
