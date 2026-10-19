@@ -13,7 +13,7 @@ import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
 
 @Tag("integration")
-@SpringBootTest(properties="pingdom.dev-profile.enabled=true")
+@SpringBootTest(properties={"pingdom.dev-profile.enabled=true", "pingdom.openapi.public-access.enabled=true"})
 @AutoConfigureMockMvc @ActiveProfiles("dev")
 class CommunityAppOpenApiContractTest {
     @Autowired MockMvc mvc;
@@ -37,5 +37,29 @@ class CommunityAppOpenApiContractTest {
         assertThat(doc.at("/paths/~1community~1images/post/requestBody/content").has("multipart/form-data")).isTrue();
         assertThat(doc.at("/paths/~1community~1images/post/responses/413/description").asText())
                 .contains("UPLOAD_TOO_LARGE");
+    }
+
+    @Test void appDocumentsOwnPostListAndPatchDeleteContracts() throws Exception {
+        JsonNode doc = mapper.readTree(mvc.perform(get("/v3/api-docs/app")).andExpect(status().isOk())
+                .andReturn().getResponse().getContentAsString());
+        assertThat(doc.at("/paths/~1users~1me~1community~1posts/get").isMissingNode()).isFalse();
+        assertThat(doc.at("/paths/~1community~1posts~1{postId}/patch/requestBody/content/application~1json/schema/$ref").asText())
+                .endsWith("CommunityPostUpdateRequest");
+        for (String code : List.of("200", "400", "401", "404"))
+            assertThat(doc.at("/paths/~1community~1posts~1{postId}/patch/responses").has(code)).as(code).isTrue();
+        assertThat(doc.at("/paths/~1community~1posts~1{postId}/delete/responses").has("204")).isTrue();
+        JsonNode update = doc.at("/components/schemas/CommunityPostUpdateRequest");
+        assertThat(update.path("required").isMissingNode()).isTrue();
+        assertThat(update.path("properties").has("changeRequested")).isFalse();
+        assertThat(update.path("properties").has("countryCodeSpecified")).isFalse();
+        assertThat(update.path("properties").path("imageIds").path("maxItems").asInt()).isEqualTo(10);
+        assertThat(update.path("properties").path("countryCode").path("nullable").asBoolean()).isTrue();
+        assertThat(update.path("properties").path("region").path("nullable").asBoolean()).isTrue();
+        JsonNode own = doc.at("/components/schemas/MyCommunityPostSummary/properties");
+        for (String field : List.of("postId", "title", "contentPreview", "imageUrl", "imageCount", "category",
+                "createdAt", "updatedAt", "region", "viewCount", "likeCount", "commentCount", "hidden"))
+            assertThat(own.has(field)).as(field).isTrue();
+        assertThat(doc.at("/components/schemas/MyCommunityPostListResponse/properties").has("totalElements")).isTrue();
+        assertThat(doc.at("/components/schemas/CommunityPostDetailResponse/properties").has("updatedAt")).isTrue();
     }
 }
