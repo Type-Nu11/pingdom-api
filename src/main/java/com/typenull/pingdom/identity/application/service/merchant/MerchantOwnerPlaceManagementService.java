@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.application.service.merchant;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaOrderUpdateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaCreateRequest;
 import com.typenull.pingdom.identity.api.dto.merchant.MerchantOwnerMediaResponse;
@@ -61,7 +62,7 @@ import org.springframework.util.StringUtils;
 @RequiredArgsConstructor
 public class MerchantOwnerPlaceManagementService {
 
-    private static final long MAX_UPLOAD_SIZE = 10_485_760L;
+    private static final long MAX_UPLOAD_SIZE = ImageUploadLimits.MAX_FILE_SIZE_BYTES;
     private static final Set<String> ALLOWED_CONTENT_TYPES = Set.of("image/jpeg", "image/png", "image/webp");
 
     private final MapPlaceRepository mapPlaceRepository;
@@ -184,7 +185,7 @@ public class MerchantOwnerPlaceManagementService {
     }
 
     /**
-     * 편집 권한과 장소를 확인하고 지원 확장자·MIME 및 최대 10MiB 크기 조건을 검사해 S3 업로드 URL을 발급.
+     * 편집 권한과 장소를 확인하고 지원 확장자·MIME 및 최대 20MiB 크기 조건을 검사해 S3 업로드 URL을 발급.
      * 발급 키·요청자·장소·만료 시각을 등록용 기록에 저장하고 URL 정보를 반환하며 미디어 행 생성은 이 단계의 처리 범위에서 제외.
      */
     @Transactional

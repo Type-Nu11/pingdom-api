@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.application.service.review;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import com.typenull.pingdom.place.api.dto.review.PlaceReviewMediaUploadResponse;
 import com.typenull.pingdom.place.domain.review.PlaceReview;
 import com.typenull.pingdom.place.domain.review.PlaceReviewMediaUpload;
@@ -33,7 +34,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Slf4j
 public class PlaceReviewMediaService {
 
-    private static final long MAX_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
+    private static final long MAX_FILE_SIZE_BYTES = ImageUploadLimits.MAX_FILE_SIZE_BYTES;
     private static final int CLEANUP_BATCH_SIZE = 100;
     private static final int MAX_CLEANUP_BATCHES = 10;
     private static final String S3_PREFIX = "place-reviews";

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.verification.application;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
 import java.time.Duration;
@@ -8,7 +9,7 @@ import org.springframework.validation.annotation.Validated;
 
 /**
  * 증빙 보관 및 정리 배치 설정.
- * retention 기본값은 30일, maxFileSizeBytes는 10MiB이며 업로드 입력과 재인코딩 결과 모두에 적용.
+ * retention 기본값은 30일, maxFileSizeBytes는 20MiB이며 업로드 입력과 재인코딩 결과 모두에 적용.
  * 정리는 기본 10건씩 최대 10회이며 배치 크기 상한 10은 Bean Validation에서 적용.
  */
 @Validated
@@ -16,7 +17,7 @@ import org.springframework.validation.annotation.Validated;
 public record VisitEvidenceProperties(Duration retention, @Min(1) Long maxFileSizeBytes,
         @Min(1) @Max(MAX_CLEANUP_BATCH_SIZE) Integer cleanupBatchSize, @Min(1) Integer maxCleanupBatches) {
     private static final Duration DEFAULT_RETENTION = Duration.ofDays(30);
-    private static final long DEFAULT_MAX_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
+    private static final long DEFAULT_MAX_FILE_SIZE_BYTES = ImageUploadLimits.MAX_FILE_SIZE_BYTES;
     public static final int MAX_CLEANUP_BATCH_SIZE = 10;
     private static final int DEFAULT_CLEANUP_BATCH_SIZE = MAX_CLEANUP_BATCH_SIZE;
     private static final int DEFAULT_MAX_CLEANUP_BATCHES = 10;

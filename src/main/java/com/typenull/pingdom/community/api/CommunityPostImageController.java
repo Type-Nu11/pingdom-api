@@ -22,7 +22,7 @@ import lombok.RequiredArgsConstructor;
 public class CommunityPostImageController {
     private final CommunityPostImageService service;
     @PostMapping(consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
-    @Operation(summary = "게시글 이미지 업로드", description = "JPEG/PNG 10MiB 이하. 검증 후 메타데이터를 제거해 저장하며 최대 10개의 본인 imageId를 게시글에 입력 순서대로 연결합니다. 미사용 이미지는 24시간 후 삭제 Outbox로 정리합니다.")
+    @Operation(summary = "게시글 이미지 업로드", description = "JPEG/PNG 20MiB 이하. 검증 후 메타데이터를 제거해 저장하며 최대 10개의 본인 imageId를 게시글에 입력 순서대로 연결합니다. 미사용 이미지는 24시간 후 삭제 Outbox로 정리합니다.")
     @ApiResponses({@ApiResponse(responseCode="201",description="이미지 ID·URL 및 만료 시각"),
         @ApiResponse(responseCode="400",description="IMAGE_FILE_INVALID: 빈 파일·크기·실제 형식 오류. INVALID_REQUEST_PARAMETER: file 누락"),
         @ApiResponse(responseCode="413",description="UPLOAD_TOO_LARGE: multipart 파일·요청 크기 제한 초과", content=@Content(schema=@Schema(implementation=ErrorResponse.class))),

@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.application.command;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import com.typenull.pingdom.identity.domain.exception.UsersErrorCode;
 import com.typenull.pingdom.identity.domain.exception.UsersException;
 import java.awt.Color;
@@ -21,14 +22,14 @@ import org.springframework.web.multipart.MultipartFile;
 @Component
 public class ProfileImageFileValidator {
 
-    private static final long MAX_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
+    private static final long MAX_FILE_SIZE_BYTES = ImageUploadLimits.MAX_FILE_SIZE_BYTES;
     private static final int MAX_WIDTH = 8_000;
     private static final int MAX_HEIGHT = 8_000;
     private static final long MAX_PIXEL_COUNT = 36_000_000L;
 
     /**
      * JPEG·PNG의 선언 MIME과 파일 시그니처를 대조하고 디코딩 후 다시 인코딩한 바이트를 반환.
-     * 입력·변환 결과는 10MiB 이하, 각 변은 8,000px 이하, 총 픽셀은 3,600만 이하로 제한.
+     * 입력·변환 결과는 20MiB 이하, 각 변은 8,000px 이하, 총 픽셀은 3,600만 이하로 제한.
      */
     public ValidatedProfileImage validate(MultipartFile file) {
         if (file == null || file.isEmpty()) {

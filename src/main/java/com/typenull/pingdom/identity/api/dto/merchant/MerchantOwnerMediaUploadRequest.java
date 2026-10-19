@@ -1,5 +1,6 @@
 package com.typenull.pingdom.identity.api.dto.merchant;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import io.swagger.v3.oas.annotations.media.Schema;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.NotBlank;
@@ -7,7 +8,7 @@ import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Positive;
 
 /**
- * 탐색 이미지의 업로드 URL 발급 요청. fileSize의 단위는 바이트이며 최대 10MiB.
+ * 탐색 이미지의 업로드 URL 발급 요청. fileSize의 단위는 바이트이며 최대 20MiB.
  * 이 선언값 외에 등록 단계에서 S3 객체의 실제 메타데이터를 다시 검사.
  */
 @Schema(description = "Merchant Owner 탐색 미디어 업로드 URL 요청")
@@ -18,7 +19,7 @@ public record MerchantOwnerMediaUploadRequest(
         String contentType,
         @NotNull(message = "파일 크기는 필수입니다.")
         @Positive(message = "파일 크기는 양수여야 합니다.")
-        @Max(value = 10_485_760, message = "파일은 10MB 이하여야 합니다.")
+        @Max(value = ImageUploadLimits.MAX_FILE_SIZE_BYTES, message = "파일은 20MiB 이하여야 합니다.")
         Long fileSize
 ) {
 }
