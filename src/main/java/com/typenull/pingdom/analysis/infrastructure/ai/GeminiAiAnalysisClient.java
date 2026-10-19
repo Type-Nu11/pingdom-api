@@ -13,11 +13,14 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportErrorCode;
 import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.analysis.infrastructure.mcp.McpAnalysisProperties;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.MediaType;
 import org.springframework.util.StringUtils;
 import org.springframework.web.client.RestClient;
 import org.springframework.web.client.RestClientException;
 import org.springframework.web.client.RestClientResponseException;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 /** Gemini Interactions API에 Remote MCP를 등록하고 최종 분석 결과만 받는 클라이언트. */
 @Slf4j
@@ -25,6 +28,7 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
 
     private static final String MCP_NAME = "pingdom_mcp";
     private static final String MCP_TOOL = "recommend_location";
+    private static final String BEARER_PREFIX = "Bearer ";
 
     private final RestClient restClient;
     private final AiAnalysisProperties properties;
@@ -86,11 +90,31 @@ public class GeminiAiAnalysisClient implements AiAnalysisClient {
         ObjectNode allowedTools = mcp.putArray("allowed_tools").addObject();
         allowedTools.put("mode", "any");
         allowedTools.putArray("tools").add(MCP_TOOL);
+        ObjectNode headers = objectMapper.createObjectNode();
         if (StringUtils.hasText(mcpProperties.authToken())) {
-            mcp.putObject("headers")
-                    .put("Authorization", "Bearer " + mcpProperties.authToken());
+            headers.put("mcp-token", mcpProperties.authToken());
+        }
+        String authorization = currentRequestAuthorization();
+        if (authorization != null) {
+            headers.put(HttpHeaders.AUTHORIZATION, authorization);
+        }
+        if (!headers.isEmpty()) {
+            mcp.set("headers", headers);
         }
         return tools;
+    }
+
+    private String currentRequestAuthorization() {
+        if (!(RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes)) {
+            return null;
+        }
+        // L7의 사용자 인증용 JWT는 현재 요청에서만 읽고, MCP 자체 토큰과 별도로 전달.
+        String authorization = attributes.getRequest().getHeader(HttpHeaders.AUTHORIZATION);
+        if (authorization == null || !authorization.startsWith(BEARER_PREFIX)
+                || !StringUtils.hasText(authorization.substring(BEARER_PREFIX.length()))) {
+            return null;
+        }
+        return authorization;
     }
 
     private JsonNode requestInteractions(ObjectNode request) {
