@@ -1,5 +1,6 @@
 package com.typenull.pingdom.post.infrastructure.storage.image;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.awt.Color;
@@ -27,7 +28,7 @@ import org.springframework.web.multipart.MultipartFile;
 @Component
 public class ImageUploadProcessor {
 
-    private static final long MAX_FILE_SIZE_BYTES = 10L * 1024L * 1024L;
+    private static final long MAX_FILE_SIZE_BYTES = ImageUploadLimits.MAX_FILE_SIZE_BYTES;
     private static final int MAX_WIDTH = 8_000;
     private static final int MAX_HEIGHT = 8_000;
     private static final long MAX_PIXEL_COUNT = 36_000_000L;
@@ -36,7 +37,7 @@ public class ImageUploadProcessor {
     private static final float JPEG_QUALITY = 0.9f;
 
     /**
-     * 신고된 파일 크기 10MiB 이하, 가로·세로 각각 8,000px 이하, 총 3,600만 픽셀 이하의 JPEG·PNG를 받음.
+     * 신고된 파일 크기 20MiB 이하, 가로·세로 각각 8,000px 이하, 총 3,600만 픽셀 이하의 JPEG·PNG를 받음.
      * 완전 디코딩 전 헤더 크기를 검사하고 재인코딩으로 메타데이터를 제거.
      * 썸네일은 비율을 유지해 최대 512px로 축소하며 작은 이미지의 크기는 유지.
      */
@@ -82,6 +83,9 @@ public class ImageUploadProcessor {
             byte[] bytes = file.getBytes();
             if (bytes.length == 0) {
                 throw new MapException(MapErrorCode.IMAGE_FILE_EMPTY);
+            }
+            if (bytes.length > MAX_FILE_SIZE_BYTES) {
+                throw new MapException(MapErrorCode.IMAGE_FILE_TOO_LARGE);
             }
             return bytes;
         } catch (IOException exception) {

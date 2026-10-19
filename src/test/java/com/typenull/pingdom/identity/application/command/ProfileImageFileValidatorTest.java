@@ -7,8 +7,11 @@ import com.typenull.pingdom.identity.domain.exception.UsersException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
+import java.util.Arrays;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockMultipartFile;
 
 class ProfileImageFileValidatorTest {
@@ -52,6 +55,27 @@ class ProfileImageFileValidatorTest {
                 .isInstanceOf(UsersException.class)
                 .extracting(exception -> ((UsersException) exception).getErrorCode().getCode())
                 .isEqualTo("PROFILE_IMAGE_FILE_EMPTY");
+    }
+
+    /** 커뮤니티에도 쓰는 검증기가 10MiB 초과 및 정확히 20MiB인 JPEG를 정규화해 받는지 확인. */
+    @ParameterizedTest
+    @ValueSource(ints = {10_485_761, 20_971_520})
+    void acceptsCameraJpegUpToTwentyMiB(int size) throws IOException {
+        byte[] content = Arrays.copyOf(jpeg(), size);
+
+        var result = validator.validate(new MockMultipartFile("file", "camera.jpg", "image/jpeg", content));
+
+        assertThat(result.contentType()).isEqualTo("image/jpeg");
+        assertThat(result.bytes()).isNotEmpty().hasSizeLessThan(size);
+    }
+
+    @Test
+    void rejectsJpegAboveTwentyMiB() {
+        assertThatThrownBy(() -> validator.validate(new MockMultipartFile(
+                "file", "camera.jpg", "image/jpeg", new byte[20_971_521])))
+                .isInstanceOf(UsersException.class)
+                .extracting(exception -> ((UsersException) exception).getErrorCode().getCode())
+                .isEqualTo("PROFILE_IMAGE_FILE_TOO_LARGE");
     }
 
     /**

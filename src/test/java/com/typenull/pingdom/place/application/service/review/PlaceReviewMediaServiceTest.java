@@ -45,7 +45,7 @@ class PlaceReviewMediaServiceTest {
         ImageUploadProcessor processor = mock(ImageUploadProcessor.class);
         S3ObjectStorage objectStorage = mock(S3ObjectStorage.class);
         PlaceReviewMediaService service = service(placeRepository, mediaRepository, processor, objectStorage);
-        MockMultipartFile file = new MockMultipartFile("file", "review.jpg", "image/jpeg", new byte[] {1, 2, 3});
+        MockMultipartFile file = new MockMultipartFile("file", "review.jpg", "image/jpeg", new byte[20_971_520]);
         ProcessedImageUpload processed = new ProcessedImageUpload(
                 new byte[] {9, 8, 7}, "review-processed.jpg", "image/jpeg",
                 new byte[] {1}, "review-thumbnail.jpg", "image/jpeg", 100, 50, 100, 50);

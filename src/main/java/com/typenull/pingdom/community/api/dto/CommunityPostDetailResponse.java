@@ -37,7 +37,7 @@ public record CommunityPostDetailResponse(
     @Schema(description = "게시글 카테고리 표시 정보")
     public record Category(
             @Schema(description = "카테고리 식별자", example = "TRAVEL") String categoryId,
-            @Schema(description = "카테고리 표시 이름", example = "여행") String categoryName
+            @Schema(description = "카테고리 표시 이름", example = "다이어리") String categoryName
     ) {
     }
 

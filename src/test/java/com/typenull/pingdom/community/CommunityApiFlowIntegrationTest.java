@@ -89,7 +89,13 @@ class CommunityApiFlowIntegrationTest {
         String bearer = bearerToken(author);
 
         mockMvc.perform(get("/community/categories").header(HttpHeaders.AUTHORIZATION, bearer))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.categories[0].categoryId").value("PLACE"));
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.categories[0].categoryId").value("PLACE"))
+                .andExpect(jsonPath("$.categories[0].categoryName").value("스팟"))
+                .andExpect(jsonPath("$.categories[1].categoryId").value("TRAVEL"))
+                .andExpect(jsonPath("$.categories[1].categoryName").value("다이어리"))
+                .andExpect(jsonPath("$.categories[2].categoryId").value("MONEY"))
+                .andExpect(jsonPath("$.categories[2].categoryName").value("가계부"));
 
         String postResponse = mockMvc.perform(post("/community/posts")
                         .header(HttpHeaders.AUTHORIZATION, bearer).contentType(MediaType.APPLICATION_JSON)
@@ -102,7 +108,8 @@ class CommunityApiFlowIntegrationTest {
         mockMvc.perform(get("/community/categories/PLACE/posts").header(HttpHeaders.AUTHORIZATION, bearer))
                 .andExpect(status().isOk()).andExpect(jsonPath("$.posts[0].postId").value(postId));
         mockMvc.perform(get("/community/posts/{postId}", postId).header(HttpHeaders.AUTHORIZATION, bearer))
-                .andExpect(status().isOk()).andExpect(jsonPath("$.places[0].placeId").value(place.getId()));
+                .andExpect(status().isOk()).andExpect(jsonPath("$.places[0].placeId").value(place.getId()))
+                .andExpect(jsonPath("$.category.categoryName").value("스팟"));
 
         mockMvc.perform(post("/community/posts/{postId}/comments", postId)
                         .header(HttpHeaders.AUTHORIZATION, bearer).contentType(MediaType.APPLICATION_JSON)
@@ -152,7 +159,7 @@ class CommunityApiFlowIntegrationTest {
                 .andExpect(jsonPath("$.author.authorName").value(author.getUsername()))
                 .andExpect(jsonPath("$.author.profileImageUrl").value("https://example.com/profile.png"))
                 .andExpect(jsonPath("$.category.categoryId").value("TRAVEL"))
-                .andExpect(jsonPath("$.category.categoryName").value("여행"))
+                .andExpect(jsonPath("$.category.categoryName").value("다이어리"))
                 .andExpect(jsonPath("$.createdAt").isString())
                 .andReturn().getResponse().getContentAsString(StandardCharsets.UTF_8);
 

@@ -83,7 +83,7 @@ class PlaceMediaServiceTest {
         when(placeMediaRepository.findMaxDisplayOrder(1L, PlaceMediaPurpose.EXPLORATION)).thenReturn(2);
         when(placeMediaRepository.save(any())).thenAnswer(invocation -> invocation.getArgument(0));
         when(s3ObjectStorage.headObject("places/1/exploration/7/issued.jpg"))
-                .thenReturn(new S3ObjectMetadata(1_024L, "image/jpeg"));
+                .thenReturn(new S3ObjectMetadata(20_971_520L, "image/jpeg"));
         when(s3ObjectStorage.publicUrl("places/1/exploration/7/issued.jpg"))
                 .thenReturn("https://s3.pingdom.test/places/1/exploration/7/issued.jpg");
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
@@ -125,13 +125,13 @@ class PlaceMediaServiceTest {
     }
 
     /**
-     * HEAD 메타데이터가 10MiB를 1바이트 넘으면 요청을 거절하고 미디어를 저장하지 않는지 확인.
+     * HEAD 메타데이터가 20MiB를 1바이트 넘으면 요청을 거절하고 미디어를 저장하지 않는지 확인.
      */
     @Test
     void rejectsOversizedExplorationObject() {
         when(mapPlaceRepository.findByIdForUpdate(1L)).thenReturn(Optional.of(place(1L, 7L)));
         when(s3ObjectStorage.headObject("places/1/exploration/7/oversized.jpg"))
-                .thenReturn(new S3ObjectMetadata(10L * 1024 * 1024 + 1, "image/jpeg"));
+                .thenReturn(new S3ObjectMetadata(20L * 1024 * 1024 + 1, "image/jpeg"));
         PlaceMediaCreateRequest request = new PlaceMediaCreateRequest(
                 null,
                 "places/1/exploration/7/oversized.jpg",
