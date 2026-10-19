@@ -182,7 +182,7 @@ class CommunityPostQueryServiceTest {
 
         assertThat(response.author()).isEqualTo(new CommunityPostDetailResponse.Author(
                 7L, "여행자", "https://example.com/profile.png"));
-        assertThat(response.category()).isEqualTo(new CommunityPostDetailResponse.Category("TRAVEL", "여행"));
+        assertThat(response.category()).isEqualTo(new CommunityPostDetailResponse.Category("TRAVEL", "다이어리"));
         assertThat(response.createdAt()).isEqualTo(createdAt);
     }
 

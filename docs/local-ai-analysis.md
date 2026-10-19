@@ -53,6 +53,11 @@ AI_MODEL=qwen2.5:7b \
 | `AI_CONNECT_TIMEOUT` | 연결 제한 시간 |
 | `AI_READ_TIMEOUT` | 응답 제한 시간 |
 | `MCP_SERVER_URL` | Gemini가 접근할 수 있는 Pingdom Remote MCP Streamable HTTP 주소 |
-| `MCP_AUTH_TOKEN` | MCP 인증 토큰. 설정 시 Gemini 요청의 Bearer 헤더로 전달 |
+| `MCP_AUTH_TOKEN` | MCP 인증 토큰. 설정 시 Gemini의 Remote MCP 설정 `tools[].headers["mcp-token"]`에 원문으로 전달(`Bearer ` 접두사 없음) |
+
+보고서 생성 요청의 `Authorization: Bearer <사용자 JWT>`는 Gemini의 Remote MCP 설정
+`tools[].headers.Authorization`에도 전달합니다. L7 사용자 인증과 MCP 자체 토큰 인증을 각각 통과하기 위한 값이며,
+사용자 JWT는 현재 HTTP 요청에서만 읽고 환경변수나 클라이언트 필드에 보관하지 않습니다.
+Bearer 헤더 또는 HTTP 요청 컨텍스트가 없으면 `Authorization`은 생략합니다.
 
 Gemini 무료 티어의 모델별 한도와 요금은 Google 공식 가격·제한 문서를 확인해야 합니다.

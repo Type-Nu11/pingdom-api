@@ -4,6 +4,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import static org.assertj.core.api.Assertions.assertThatThrownBy;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.jsonPath;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.method;
+import static org.springframework.test.web.client.match.MockRestRequestMatchers.headerDoesNotExist;
 import static org.springframework.test.web.client.match.MockRestRequestMatchers.requestTo;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withBadRequest;
@@ -16,13 +17,25 @@ import com.typenull.pingdom.analysis.domain.exception.AnalysisReportException;
 import com.typenull.pingdom.analysis.infrastructure.mcp.McpAnalysisProperties;
 import java.time.LocalDate;
 import java.time.Duration;
+import org.junit.jupiter.api.AfterEach;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
+import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpMethod;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
+import org.springframework.mock.web.MockHttpServletRequest;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 class GeminiAiAnalysisClientTest {
+
+    @AfterEach
+    void clearRequestContext() {
+        RequestContextHolder.resetRequestAttributes();
+    }
 
     /**
      * Gemini interactions 요청이 모델·프롬프트·generation_config의 tool_choice와 MCP URL·허용 도구·인증 헤더를 올바르게 담는지 검증.
@@ -30,6 +43,7 @@ class GeminiAiAnalysisClientTest {
      */
     @Test
     void registersMcpAndParsesOutput() {
+        bindAuthorization("Bearer user-jwt");
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -45,8 +59,10 @@ class GeminiAiAnalysisClientTest {
                 .andExpect(jsonPath("$.tools[0].url").value("https://mcp.test/mcp"))
                 .andExpect(jsonPath("$.tools[0].allowed_tools[0].mode").value("any"))
                 .andExpect(jsonPath("$.tools[0].allowed_tools[0].tools[0]").value("recommend_location"))
-                .andExpect(jsonPath("$.tools[0].headers.Authorization")
-                        .value("Bearer mcp-secret"))
+                .andExpect(jsonPath("$.tools[0].headers['mcp-token']")
+                        .value("mcp-secret"))
+                .andExpect(jsonPath("$.tools[0].headers.Authorization").value("Bearer user-jwt"))
+                .andExpect(headerDoesNotExist(HttpHeaders.AUTHORIZATION))
                 .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
 
         AiAnalysisProperties properties = new AiAnalysisProperties(
@@ -66,6 +82,78 @@ class GeminiAiAnalysisClientTest {
 
         assertThat(response.reportName()).isEqualTo("입지 분석");
         assertThat(response.analysisBasisDate()).isEqualTo(LocalDate.of(2026, 8, 18));
+        server.verify();
+    }
+
+    /** 같은 클라이언트를 재사용해도 사용자 JWT를 다음 요청에 보관하거나 재사용하지 않는지 검증. */
+    @Test
+    void resolvesMcpAuthorizationForEachRequest() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        for (String authorization : new String[]{"Bearer first-user-jwt", "Bearer second-user-jwt"}) {
+            server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
+                    .andExpect(jsonPath("$.tools[0].headers.Authorization").value(authorization))
+                    .andExpect(jsonPath("$.tools[0].headers['mcp-token']").value("mcp-secret"))
+                    .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
+        }
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
+                .andExpect(jsonPath("$.tools[0].headers.Authorization").doesNotExist())
+                .andExpect(jsonPath("$.tools[0].headers['mcp-token']").value("mcp-secret"))
+                .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", "mcp-secret"),
+                new ObjectMapper()
+        );
+        AiAnalysisPrompt prompt = new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18));
+
+        bindAuthorization("Bearer first-user-jwt");
+        client.analyze(prompt);
+        bindAuthorization("Bearer second-user-jwt");
+        client.analyze(prompt);
+        RequestContextHolder.resetRequestAttributes();
+        client.analyze(prompt);
+
+        server.verify();
+    }
+
+    /** MCP 자체 토큰이 미설정이어도 현재 요청의 L7 인증용 JWT는 유지하는지 검증. */
+    @Test
+    void forwardsUserAuthorizationWithoutMcpToken() {
+        bindAuthorization("Bearer user-jwt");
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
+                .andExpect(jsonPath("$.tools[0].headers.Authorization").value("Bearer user-jwt"))
+                .andExpect(jsonPath("$.tools[0].headers['mcp-token']").doesNotExist())
+                .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", ""),
+                new ObjectMapper()
+        );
+
+        client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18)));
+
+        server.verify();
+    }
+
+    /** Bearer 이외의 인증 정보와 빈 Bearer 값은 외부 MCP 설정으로 전달하지 않는지 검증. */
+    @ParameterizedTest
+    @ValueSource(strings = {"Basic other-credentials", "Bearer ", "Bearer    "})
+    void omitsNonBearerOrEmptyAuthorization(String authorization) {
+        bindAuthorization(authorization);
+        RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
+        MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
+        server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
+                .andExpect(jsonPath("$.tools[0].headers.Authorization").doesNotExist())
+                .andExpect(jsonPath("$.tools[0].headers['mcp-token']").value("mcp-secret"))
+                .andRespond(withSuccess(interactionResponse(), MediaType.APPLICATION_JSON));
+        GeminiAiAnalysisClient client = new GeminiAiAnalysisClient(
+                builder.build(), properties(), new McpAnalysisProperties("https://mcp.test/mcp", "mcp-secret"),
+                new ObjectMapper()
+        );
+
+        client.analyze(new AiAnalysisPrompt("prompt", LocalDate.of(2026, 8, 18)));
+
         server.verify();
     }
 
@@ -107,7 +195,7 @@ class GeminiAiAnalysisClientTest {
      * MCP 토큰이 빈 문자열이면 도구 설정의 headers 필드 자체를 보내지 않는지 검증.
      */
     @Test
-    void omitsBlankMcpAuthorization() {
+    void omitsBlankMcpTokenHeader() {
         RestClient.Builder builder = RestClient.builder().baseUrl("http://gemini.test/v1beta/");
         MockRestServiceServer server = MockRestServiceServer.bindTo(builder).build();
         server.expect(requestTo("http://gemini.test/v1beta/interactions?key=test-key"))
@@ -249,6 +337,12 @@ class GeminiAiAnalysisClientTest {
                 "gemini", "http://gemini.test/v1beta", null, "test-key",
                 Duration.ofSeconds(1), Duration.ofSeconds(2)
         );
+    }
+
+    private void bindAuthorization(String authorization) {
+        MockHttpServletRequest request = new MockHttpServletRequest();
+        request.addHeader(HttpHeaders.AUTHORIZATION, authorization);
+        RequestContextHolder.setRequestAttributes(new ServletRequestAttributes(request));
     }
 
     /**

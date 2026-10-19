@@ -5,6 +5,7 @@ import static org.assertj.core.api.Assertions.assertThat;
 import com.typenull.pingdom.analysis.application.ai.LocationAnalysisContent;
 import java.time.LocalDate;
 import java.util.List;
+import java.util.stream.IntStream;
 import org.junit.jupiter.api.Test;
 
 class LocationAnalysisHtmlComposerTest {
@@ -80,5 +81,47 @@ class LocationAnalysisHtmlComposerTest {
         );
 
         assertThat(html).contains("행동 지표", "18.5 시");
+    }
+
+    /** 경쟁점이 여섯 곳을 넘더라도 편의·교통시설이 각각 두 곳씩 표시되는지 검증. */
+    @Test
+    void reservesRowsForEveryFacilityType() {
+        String html = renderFacilities(facilities("경쟁", 7), facilities("편의", 3), facilities("교통", 3));
+
+        assertThat(html).contains("경쟁1", "경쟁2", "편의1", "편의2", "교통1", "교통2");
+        assertThat(html).doesNotContain("경쟁3", "경쟁7", "편의3", "교통3");
+        assertThat(html).contains("유형별 최대 2건씩 총 6건", "전체 건수: 13건");
+    }
+
+    /** 한 유형의 남는 공간 때문에 다른 유형의 한도를 늘리지 않고 실제 표시 건수를 안내. */
+    @Test
+    void reportsActualDisplayedCountWhenFacilityTypesHaveFewerRows() {
+        String html = renderFacilities(facilities("경쟁", 7), List.of(), facilities("교통", 1));
+
+        assertThat(html).contains("경쟁1", "경쟁2", "교통1", "유형별 최대 2건씩 총 3건", "전체 건수: 8건");
+        assertThat(html).doesNotContain("경쟁3");
+    }
+
+    private String renderFacilities(
+            List<LocationAnalysisContent.Facility> competitors,
+            List<LocationAnalysisContent.Facility> convenience,
+            List<LocationAnalysisContent.Facility> transport
+    ) {
+        return composer.compose("report-1", "잠실 카페 분석", LocalDate.of(2026, 10, 19), LocalDate.of(2026, 10, 19),
+                new LocationAnalysisContent(
+                        "잠실 카페 분석", null, null, null, null,
+                        new LocationAnalysisContent.NearbyFacilities(
+                                "주변 시설", List.of(), competitors, convenience, transport, List.of()),
+                        new LocationAnalysisContent.CompetitionAnalysis(
+                                "경쟁 환경", competitors.size(), null, null, null, competitors, List.of()),
+                        null, null, List.of(), null, List.of(), List.of()
+                ));
+    }
+
+    private List<LocationAnalysisContent.Facility> facilities(String prefix, int count) {
+        return IntStream.rangeClosed(1, count)
+                .mapToObj(index -> new LocationAnalysisContent.Facility(
+                        prefix + index, "OTHER", (double) index, "서울 송파구", "공개 장소"))
+                .toList();
     }
 }

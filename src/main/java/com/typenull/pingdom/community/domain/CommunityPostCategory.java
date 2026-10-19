@@ -11,9 +11,9 @@ import java.util.Optional;
  * <p>카테고리 식별자는 게시글 저장 시 사용할 안정적인 값이며, 화면에는 displayName만 노출.</p>
  */
 public enum CommunityPostCategory {
-    PLACE("PLACE", "장소", 1, true),
-    TRAVEL("TRAVEL", "여행", 2, true),
-    MONEY("MONEY", "돈", 3, true);
+    PLACE("PLACE", "스팟", 1, true),
+    TRAVEL("TRAVEL", "다이어리", 2, true),
+    MONEY("MONEY", "가계부", 3, true);
 
     private final String id;
     private final String displayName;

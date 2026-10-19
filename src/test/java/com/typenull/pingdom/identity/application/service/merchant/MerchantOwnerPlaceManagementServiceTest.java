@@ -76,7 +76,7 @@ class MerchantOwnerPlaceManagementServiceTest {
      */
     @Test
     void recordsMediaUploadIssuance() {
-        MerchantOwnerMediaUploadRequest request = new MerchantOwnerMediaUploadRequest("store.jpg", "image/jpeg", 1_024L);
+        MerchantOwnerMediaUploadRequest request = new MerchantOwnerMediaUploadRequest("store.jpg", "image/jpeg", 20_971_520L);
         LocalDateTime expiresAt = NOW.plusMinutes(10);
         when(mapPlaceRepository.findById(PLACE_ID)).thenReturn(Optional.of(place()));
         when(s3ObjectStorage.presignedPut(any(), any())).thenReturn(new S3ObjectStorage.PresignedPutResult(
@@ -106,7 +106,7 @@ class MerchantOwnerPlaceManagementServiceTest {
         );
         when(mapPlaceRepository.findByIdForUpdate(PLACE_ID)).thenReturn(Optional.of(place()));
         when(mediaUploadRepository.findByS3KeyForUpdate(s3Key)).thenReturn(Optional.of(upload));
-        when(s3ObjectStorage.headObject(s3Key)).thenReturn(new S3ObjectStorage.S3ObjectMetadata(1_024L, "image/jpeg"));
+        when(s3ObjectStorage.headObject(s3Key)).thenReturn(new S3ObjectStorage.S3ObjectMetadata(20_971_520L, "image/jpeg"));
         when(s3ObjectStorage.publicUrl(s3Key)).thenReturn("https://image");
         when(placeMediaRepository.findMaxDisplayOrder(PLACE_ID, PlaceMediaPurpose.EXPLORATION)).thenReturn(2);
         when(placeMediaRepository.save(any(PlaceMedia.class))).thenAnswer(invocation -> invocation.getArgument(0));

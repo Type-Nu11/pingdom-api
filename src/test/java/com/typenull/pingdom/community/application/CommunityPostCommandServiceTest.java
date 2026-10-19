@@ -57,7 +57,7 @@ class CommunityPostCommandServiceTest {
     void rejectsPlacePostWithoutLinks() {
         assertThatThrownBy(() -> service.create(7L, request("PLACE", List.of())))
                 .isInstanceOf(CommunityException.class)
-                .hasMessage("장소 카테고리 게시글은 연결 장소를 1개 이상 선택해야 합니다.");
+                .hasMessage("스팟 카테고리 게시글은 연결 장소를 1개 이상 선택해야 합니다.");
 
         verify(communityPostRepository, never()).save(any());
     }

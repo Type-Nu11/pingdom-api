@@ -23,7 +23,7 @@
 {"categoryId":"TRAVEL","title":"여행 후기","content":"본문","placeIds":[],"imageIds":[12,11],"countryCode":"KR","region":"서울"}
 ```
 
-- JPEG/PNG만 허용하며 선언 MIME·실제 형식 모두 검증한다. 파일·변환 결과 각 10MiB 이하, 각 변 8,000px 이하, 전체 3,600만 픽셀 이하. 디코딩·재인코딩으로 EXIF 등 메타데이터를 제거한다. 서버 multipart 제한 초과는 기존 전역 처리 규칙을 따른다.
+- JPEG/PNG만 허용하며 선언 MIME·실제 형식 모두 검증한다. 파일·변환 결과 각 20MiB 이하, 각 변 8,000px 이하, 전체 3,600만 픽셀 이하. 디코딩·재인코딩으로 EXIF 등 메타데이터를 제거한다. 서버 multipart 제한 초과는 기존 전역 처리 규칙을 따른다.
 - 한 게시글 최대 10장, ID 중복 불가. 본인·미사용·업로드 완료·미만료 파일만 연결한다. `imageIds` 입력 순서가 0부터 시작하는 `position`이다. 연결된 파일은 더 이상 만료되지 않는다.
 - 기존 작성 요청은 imageIds/countryCode/region 생략 가능하다. 임의 외부 URL/S3 key를 받지 않는다.
 - 업로드 실패는 `400 IMAGE_FILE_INVALID` 또는 `503 IMAGE_UPLOAD_UNAVAILABLE`. 게시글 연결 실패는 `400 INVALID_IMAGE`이며 게시글·장소·이미지 연결 전체가 롤백된다.
@@ -72,5 +72,5 @@ CI의 Migration/OpenAPI 검증은 통과했지만 `NaverDirectionsTransportTest`
 
 필수 `file` 파트가 누락되면 `400 INVALID_REQUEST_PARAMETER`를 반환한다. Servlet multipart 제한을
 초과하면 `413 UPLOAD_TOO_LARGE`이며 업로드 OpenAPI에도 해당 오류를 명시한다. 파일 제한은
-10MiB, 전체 요청 제한은 파일 경계에서 multipart 헤더가 허용되도록 11MiB로 설정한다.
+20MiB, 전체 요청 제한은 파일 경계에서 multipart 헤더가 허용되도록 25MiB로 설정한다.
 실제 이미지 검증 실패에는 기존 `IMAGE_FILE_INVALID` 계약을 사용한다.

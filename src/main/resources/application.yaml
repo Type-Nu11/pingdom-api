@@ -55,9 +55,9 @@ spring:
       transactional-lock: ${FLYWAY_POSTGRESQL_TRANSACTIONAL_LOCK:false}
   servlet:
     multipart:
-      max-file-size: 10MB
-      # 파일당 10MiB 경계에서도 multipart 헤더가 요청 크기 제한에 걸리지 않게 한다.
-      max-request-size: 11MB
+      max-file-size: 20MB
+      # 파일당 20MiB 경계에서도 multipart 헤더가 요청 크기 제한에 걸리지 않게 한다.
+      max-request-size: 25MB
   cloud:
     aws:
       s3:
@@ -458,7 +458,7 @@ verification:
     foreground-dwell-duration: PT30S
   visit-evidence:
     retention: P30D
-    max-file-size-bytes: 10485760
+    max-file-size-bytes: 20971520
     cleanup-batch-size: 10
     cleanup-enabled: true
     cleanup-delay: PT24H

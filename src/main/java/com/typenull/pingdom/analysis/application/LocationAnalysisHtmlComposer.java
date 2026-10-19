@@ -9,7 +9,7 @@ import org.springframework.stereotype.Component;
 
 /**
  * 구조화된 분석을 일곱 보고서 구역의 XHTML과 표·차트 표시값으로 조립.
- * 상위 추천은 다섯 곳, 주변 시설은 종류를 합쳐 여섯 곳까지 표시하며 실제 PDF 쪽수는 렌더링 결과에 따름.
+ * 상위 추천은 다섯 곳, 주변 시설은 유형별 두 곳씩 최대 여섯 곳까지 표시하며 실제 PDF 쪽수는 렌더링 결과에 따름.
  */
 @Component
 public class LocationAnalysisHtmlComposer {
@@ -279,24 +279,34 @@ public class LocationAnalysisHtmlComposer {
             LocationAnalysisContent.NearbyFacilities facilities
     ) {
         java.util.ArrayList<ContextFacility> entries = new java.util.ArrayList<>();
+        int totalFacilities = 0;
+        // 유형별 표시 한도를 따로 적용해 경쟁점이 많아도 편의·교통시설 행을 확보.
         if (competition != null) {
-            competition.keyCompetitors().forEach(facility -> entries.add(new ContextFacility("경쟁 업체", facility)));
+            totalFacilities += competition.keyCompetitors().size();
+            competition.keyCompetitors().stream().limit(MAX_FACILITY_ROWS)
+                    .forEach(facility -> entries.add(new ContextFacility("경쟁 업체", facility)));
         }
         if (facilities != null) {
-            facilities.convenienceFacilities().forEach(facility -> entries.add(new ContextFacility("주변 시설", facility)));
-            facilities.transportFacilities().forEach(facility -> entries.add(new ContextFacility("교통 시설", facility)));
+            totalFacilities += facilities.convenienceFacilities().size() + facilities.transportFacilities().size();
+            facilities.convenienceFacilities().stream().limit(MAX_FACILITY_ROWS)
+                    .forEach(facility -> entries.add(new ContextFacility("주변 시설", facility)));
+            facilities.transportFacilities().stream().limit(MAX_FACILITY_ROWS)
+                    .forEach(facility -> entries.add(new ContextFacility("교통 시설", facility)));
         }
         if (entries.isEmpty()) {
             return muted("주변 시설 및 경쟁업체 없음");
         }
-        String rows = entries.stream().limit(MAX_FACILITY_ROWS * 3).map(entry -> {
+        String rows = entries.stream().map(entry -> {
             LocationAnalysisContent.Facility facility = entry.facility();
             return "<tr><td>" + escape(entry.type()) + "</td><td>" + escape(text(facility.name())) + "</td><td>"
                     + escape(text(facility.category())) + "</td><td>" + escape(value(facility.distanceMeters())) + "m</td><td>"
                     + escape(text(facility.address())) + "</td></tr>";
         }).collect(Collectors.joining());
-        return "<table><tr><th>구분</th><th>시설명</th><th>분류</th><th>거리</th><th>주소</th></tr>" + rows + "</table>"
-                + truncationNotice(entries.size(), MAX_FACILITY_ROWS * 3, "주변 시설과 경쟁업체");
+        String notice = totalFacilities > entries.size()
+                ? muted("주변 시설과 경쟁업체는 유형별 최대 " + MAX_FACILITY_ROWS + "건씩 총 " + entries.size()
+                        + "건을 표시했습니다. 전체 건수: " + totalFacilities + "건")
+                : "";
+        return "<table><tr><th>구분</th><th>시설명</th><th>분류</th><th>거리</th><th>주소</th></tr>" + rows + "</table>" + notice;
     }
 
     private String sectionText(String value, String fallback) {

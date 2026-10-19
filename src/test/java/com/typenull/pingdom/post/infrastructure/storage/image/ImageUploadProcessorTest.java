@@ -8,8 +8,11 @@ import com.typenull.pingdom.shared.exception.MapErrorCode;
 import com.typenull.pingdom.shared.exception.MapException;
 import java.awt.image.BufferedImage;
 import java.io.ByteArrayOutputStream;
+import java.util.Arrays;
 import javax.imageio.ImageIO;
 import org.junit.jupiter.api.Test;
+import org.junit.jupiter.params.ParameterizedTest;
+import org.junit.jupiter.params.provider.ValueSource;
 import org.springframework.mock.web.MockMultipartFile;
 
 class ImageUploadProcessorTest {
@@ -104,6 +107,33 @@ class ImageUploadProcessorTest {
         MapException exception = assertThrows(MapException.class, () -> processor.process(file));
 
         assertEquals(MapErrorCode.IMAGE_RESOLUTION_TOO_LARGE, exception.getErrorCode());
+    }
+
+    /** JPEG 종료 뒤 패딩을 더해 이미지 디코딩 비용과 별개로 이전 상한 초과·새 상한 경계를 확인. */
+    @ParameterizedTest
+    @ValueSource(ints = {10_485_761, 20_971_520})
+    void acceptsJpegUpToTwentyMiB(int size) throws Exception {
+        byte[] content = Arrays.copyOf(imageBytes("jpg", 10, 10), size);
+
+        ProcessedImageUpload result = processor.process(new MockMultipartFile("file", "camera.jpg", "image/jpeg", content));
+
+        assertEquals(10, result.width());
+        assertEquals("image/jpeg", result.contentType());
+    }
+
+    /** 크기 선언이 실제 바이트보다 작아도 20MiB 초과 payload는 디코딩 전에 거절. */
+    @Test
+    void rejectsActualBytesAboveTwentyMiBEvenWhenReportedSizeIsSmaller() {
+        MockMultipartFile file = new MockMultipartFile("file", "large.jpg", "image/jpeg", new byte[20_971_521]) {
+            @Override
+            public long getSize() {
+                return 1L;
+            }
+        };
+
+        MapException exception = assertThrows(MapException.class, () -> processor.process(file));
+
+        assertEquals(MapErrorCode.IMAGE_FILE_TOO_LARGE, exception.getErrorCode());
     }
 
     /**

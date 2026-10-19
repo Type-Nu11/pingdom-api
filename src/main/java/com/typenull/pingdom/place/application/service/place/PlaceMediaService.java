@@ -1,5 +1,6 @@
 package com.typenull.pingdom.place.application.service.place;
 
+import com.typenull.pingdom.shared.support.ImageUploadLimits;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaCreateRequest;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaItem;
 import com.typenull.pingdom.place.api.dto.place.media.PlaceMediaResponse;
@@ -34,7 +35,7 @@ import org.springframework.util.StringUtils;
 @Service
 public class PlaceMediaService {
 
-    private static final long MAX_EXPLORATION_MEDIA_SIZE = 10L * 1024 * 1024;
+    private static final long MAX_EXPLORATION_MEDIA_SIZE = ImageUploadLimits.MAX_FILE_SIZE_BYTES;
     private static final List<String> ALLOWED_EXPLORATION_MEDIA_TYPES = List.of("image/jpeg", "image/png", "image/webp");
 
     private final MapPlaceRepository mapPlaceRepository;
