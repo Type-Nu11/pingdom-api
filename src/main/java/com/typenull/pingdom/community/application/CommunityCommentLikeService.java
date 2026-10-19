@@ -42,7 +42,8 @@ public class CommunityCommentLikeService {
 
     private void requireComment(long commentId) {
         var comment = comments.findById(commentId)
-                .filter(candidate -> !candidate.isHidden() && !candidate.getCommunityPost().isHidden())
+                .filter(candidate -> !candidate.isHidden() && !candidate.getCommunityPost().isHidden()
+                        && !candidate.getCommunityPost().isDeleted())
                 .orElseThrow(() -> new CommunityException(CommunityErrorCode.COMMENT_NOT_FOUND));
         // 부모가 숨겨진 답글도 공개 목록과 동일하게 좋아요 대상으로 노출하지 않습니다.
         if (comment.getParentCommentId() != null && comments.findById(comment.getParentCommentId())

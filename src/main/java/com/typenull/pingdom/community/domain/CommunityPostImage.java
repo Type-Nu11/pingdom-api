@@ -21,4 +21,6 @@ public class CommunityPostImage {
     }
     public void uploaded(String url) { this.imageUrl = url; }
     public void attach(long postId, int position) { this.postId = postId; this.position = position; }
+    /** 최종 재연결 전 UNIQUE(post_id, position) 슬롯을 같은 트랜잭션에서 비운다. */
+    public void detachForReordering() { this.postId = null; this.position = null; }
 }

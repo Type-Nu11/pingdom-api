@@ -27,7 +27,7 @@ import org.testcontainers.utility.DockerImageName;
 @Testcontainers
 class FlywayMigrationIntegrationTest {
 
-    private static final String LATEST_MIGRATION_VERSION = "139";
+    private static final String LATEST_MIGRATION_VERSION = "140";
 
     private static final DockerImageName POSTGIS_IMAGE = DockerImageName
             .parse("postgis/postgis:16-3.4")
@@ -1614,7 +1614,7 @@ class FlywayMigrationIntegrationTest {
         }
 
         MigrateResult result = migrate(false);
-        assertThat(result.targetSchemaVersion).isEqualTo("139");
+        assertThat(result.targetSchemaVersion).isEqualTo(LATEST_MIGRATION_VERSION);
         try (Connection connection = postgres.createConnection(""); Statement statement = connection.createStatement()) {
             assertThat(queryBoolean(statement, "SELECT NOT booking_retired FROM place_availability WHERE id = 990001")).isTrue();
             assertThat(queryBoolean(statement, "SELECT bool_and(booking_retired) FROM place_availability WHERE id IN (990002, 990003)")).isTrue();
@@ -1765,7 +1765,12 @@ class FlywayMigrationIntegrationTest {
     private void assertPostMigrationSchema() throws Exception {
         try (Connection connection = postgres.createConnection("");
              Statement statement = connection.createStatement()) {
-            // V138의 커뮤니티 계약도 빈 DB와 기존 스키마 업그레이드 경로에서 함께 확인한다.
+            // 커뮤니티 계약과 V140 본인 관리 상태를 빈 DB·기존 스키마 업그레이드에서 함께 확인한다.
+            assertThat(queryBoolean(statement, """
+                    SELECT count(*) = 2 FROM information_schema.columns
+                    WHERE table_name = 'community_post'
+                      AND column_name IN ('updated_at', 'deleted_at') AND is_nullable = 'YES'
+                    """)).isTrue();
             assertThat(queryBoolean(statement, """
                     SELECT count(*) = 3 FROM information_schema.columns
                     WHERE table_name = 'community_post'
