@@ -48,15 +48,27 @@ public interface ReservationRepository extends JpaRepository<Reservation, Long> 
                 where ownerPlace.placeId = availability.placeId
                   and ownerPlace.merchantOwnerUserId = :ownerId
             )
+              and (:status is null or reservation.status = :status)
+              and (:placeId is null or availability.placeId = :placeId)
+              and (:hasReservationFrom = false or reservation.reservationStartsAt >= :reservationFrom)
+              and (:hasReservationTo = false or reservation.reservationStartsAt < :reservationTo)
             """)
-    Page<Reservation> findAllOwned(@Param("ownerId") Long ownerId, Pageable pageable);
+    Page<Reservation> findAllOwned(@Param("ownerId") Long ownerId, @Param("status") ReservationStatus status,
+            @Param("placeId") Long placeId, @Param("hasReservationFrom") boolean hasReservationFrom,
+            @Param("reservationFrom") java.time.LocalDateTime reservationFrom,
+            @Param("hasReservationTo") boolean hasReservationTo,
+            @Param("reservationTo") java.time.LocalDateTime reservationTo, Pageable pageable);
 
     @Query("""
             select reservation from Reservation reservation
             join PlaceAvailability availability on availability.id = reservation.availabilityId
             where (:status is null or reservation.status = :status)
               and (:placeId is null or availability.placeId = :placeId)
-              and (:ownerId is null or availability.merchantOwnerUserId = :ownerId)
+              and (:ownerId is null or exists (
+                  select ownerPlace.placeId from MerchantOwnerPlace ownerPlace
+                  where ownerPlace.placeId = availability.placeId
+                    and ownerPlace.merchantOwnerUserId = :ownerId
+              ))
               and (:touristUserId is null or reservation.touristUserId = :touristUserId)
               and (:hasReservationFrom = false or reservation.reservationStartsAt >= :reservationFrom)
               and (:hasReservationTo = false or reservation.reservationStartsAt < :reservationTo)
