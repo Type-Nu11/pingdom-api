@@ -14,6 +14,23 @@ public class ReservationConfirmationOpenApiConfig {
     @Bean
     public GlobalOpenApiCustomizer reservationConfirmationContract() {
         return api -> {
+            if (api.getComponents() != null && api.getComponents().getSchemas() != null) {
+                Schema<?> response = api.getComponents().getSchemas().get("ReservationResponse");
+                if (response != null && response.getProperties() != null) {
+                    Schema<?> confirmation = response.getProperties().get("confirmation");
+                    if (confirmation != null) {
+                        // 중첩 DTO의 참조 해석 순서와 무관하게 구버전 예약의 null 계약을 유지한다.
+                        if (confirmation.get$ref() != null) {
+                            response.addProperty("confirmation", new ComposedSchema()
+                                    .addAllOfItem(new Schema<>().$ref(confirmation.get$ref()))
+                                    .nullable(true)
+                                    .description("실제 수락한 확인 조건. 구버전 예약이면 null"));
+                        } else {
+                            confirmation.setNullable(true);
+                        }
+                    }
+                }
+            }
             if (api.getPaths() == null) return;
             if (api.getPaths().get(QUOTE) != null) {
                 Operation quote = api.getPaths().get(QUOTE).getGet();
@@ -26,7 +43,7 @@ public class ReservationConfirmationOpenApiConfig {
                 Operation create = api.getPaths().get("/reservations").getPost();
                 if (create != null) {
                     create.setDescription("confirmationToken을 제공하면 확인한 대상·시간·인원·취소 정책을 원자적으로 검증합니다. "
-                            + "토큰 생략은 기존 터치 계약이며 확인 조건 보장은 없습니다. 성공은 예약 생성(PENDING)이며 관리자 확정을 의미하지 않습니다. "
+                            + "토큰 생략은 기존 터치 계약이며 확인 조건 보장은 없습니다. 성공은 예약 생성(PENDING)이며 상점주 승인 대기 상태입니다. "
                             + "응답 유실에는 동일 키·토큰·본문을 재전송하세요. 사용자별 키는 예약 또는 거절 기록이 보존되는 동안 만료하지 않습니다. "
                             + "동일 요청의 성공은 견적 만료 후에도 201로 복구하며, 확정 거절은 같은 오류로 복구합니다. "
                             + "timeout/5xx는 결과 불명이므로 실패로 확정하거나 새 키를 만들지 않습니다. 조건 재확인 후 새 의도는 새 토큰·키로 제출합니다.");
