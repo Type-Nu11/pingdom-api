@@ -1,11 +1,14 @@
 package com.typenull.pingdom.shared.security.config;
 
 import com.typenull.pingdom.shared.security.cors.CorsProperties;
+import com.typenull.pingdom.shared.security.handler.UnknownPathRedirectFilter;
 import com.typenull.pingdom.shared.security.jwt.JwtAccessDeniedHandler;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticationEntryPoint;
 import com.typenull.pingdom.shared.security.jwt.JwtAuthenticationFilter;
 
 import java.util.List;
+import org.springframework.beans.factory.ObjectProvider;
+import org.springframework.beans.factory.annotation.Qualifier;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.core.Ordered;
@@ -28,6 +31,7 @@ import org.springframework.security.web.util.matcher.RequestMatcher;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
+import org.springframework.web.servlet.mvc.method.annotation.RequestMappingHandlerMapping;
 import com.typenull.pingdom.identity.infrastructure.oauth.CustomOAuth2UserService;
 import com.typenull.pingdom.identity.infrastructure.oauth.CustomOidcUserService;
 import com.typenull.pingdom.identity.infrastructure.oauth.OAuth2FailureHandler;
@@ -87,7 +91,8 @@ public class SecurityConfig {
             JwtAuthenticationFilter jwtAuthenticationFilter,
             JwtAuthenticationEntryPoint jwtAuthenticationEntryPoint,
             JwtAccessDeniedHandler jwtAccessDeniedHandler,
-            ApiAuthorizationRules apiAuthorizationRules
+            ApiAuthorizationRules apiAuthorizationRules,
+            @Qualifier("requestMappingHandlerMapping") ObjectProvider<RequestMappingHandlerMapping> handlerMapping
     ) throws Exception {
         http
                 .cors(Customizer.withDefaults())
@@ -99,6 +104,8 @@ public class SecurityConfig {
                         .accessDeniedHandler(jwtAccessDeniedHandler)
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class)
+                // Security 체인 내부에만 등록해 서블릿 필터로 중복 실행되지 않도록 구성.
+                .addFilterBefore(new UnknownPathRedirectFilter(handlerMapping::getObject), JwtAuthenticationFilter.class)
                 .httpBasic(httpBasic -> httpBasic.disable())
                 .formLogin(form -> form.disable());
 
