@@ -20,9 +20,6 @@ import com.typenull.pingdom.place.application.service.conversion.PlaceConversion
 import com.typenull.pingdom.place.domain.conversion.PlaceConversionEventType;
 import com.typenull.pingdom.place.domain.place.core.MapPlace;
 import com.typenull.pingdom.place.infrastructure.persistence.place.MapPlaceRepository;
-import com.typenull.pingdom.moderation.application.service.audit.AdminAuditLogService;
-import com.typenull.pingdom.moderation.domain.audit.AdminAuditAction;
-import com.typenull.pingdom.moderation.domain.audit.AdminAuditTargetType;
 import java.time.Clock;
 import java.time.LocalDateTime;
 import org.springframework.data.domain.Page;
@@ -33,7 +30,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.transaction.annotation.Transactional;
 
 /**
- * 관광객 예약과 관리자 심사를 가용 재고·상태 이력·감사 기록에 연결.
+ * 관광객 예약과 상점주 심사를 가용 재고·상태 이력에 연결하고 관리자에게 조회를 제공.
  * 생성은 사용자 잠금으로 멱등 키를 검사하고, 상태 변경은 예약 잠금으로 직렬화. 결제 승인 검증은 처리 범위 외.
  */
 @Service
@@ -46,7 +43,6 @@ public class ReservationService {
     private final MerchantOwnerPlaceRepository ownerPlaceRepository;
     private final UserRepository userRepository;
     private final MapPlaceRepository mapPlaceRepository;
-    private final AdminAuditLogService adminAuditLogService;
     private final PlaceConversionEventService conversionEventService;
     private final Clock clock;
     private final ReservationQuoteService quoteService;
@@ -57,7 +53,6 @@ public class ReservationService {
             PlaceAvailabilityRepository availabilityRepository, PlaceAvailabilityService availabilityService,
             AvailabilityAccessPolicy availabilityAccessPolicy, MerchantOwnerPlaceRepository ownerPlaceRepository,
             UserRepository userRepository, MapPlaceRepository mapPlaceRepository,
-            AdminAuditLogService adminAuditLogService,
             PlaceConversionEventService conversionEventService, Clock clock, ReservationQuoteService quoteService) {
         this.reservationRepository = reservationRepository;
         this.reservationStatusHistoryRepository = reservationStatusHistoryRepository;
@@ -67,7 +62,6 @@ public class ReservationService {
         this.ownerPlaceRepository = ownerPlaceRepository;
         this.userRepository = userRepository;
         this.mapPlaceRepository = mapPlaceRepository;
-        this.adminAuditLogService = adminAuditLogService;
         this.conversionEventService = conversionEventService;
         this.clock = clock;
         this.quoteService = quoteService;
@@ -87,7 +81,6 @@ public class ReservationService {
         this.ownerPlaceRepository = ownerPlaceRepository;
         this.userRepository = userRepository;
         this.mapPlaceRepository = null;
-        this.adminAuditLogService = null;
         this.conversionEventService = conversionEventService;
         this.clock = clock;
         this.quoteService = null;
@@ -159,24 +152,32 @@ public class ReservationService {
     }
 
     @Transactional(readOnly = true)
-    // 활성 사업자 소유자가 관리하는 장소의 예약을 페이지로 조회.
-    public ReservationPageResponse listOwned(Long ownerId, int page, int limit) {
+    public ReservationPageResponse listOwned(Long ownerId, ReservationStatus status, Long placeId,
+            LocalDateTime reservationFrom, LocalDateTime reservationTo, int page, int limit) {
         availabilityAccessPolicy.requireActiveMerchantOwner(ownerId, LocalDateTime.now(clock));
-        return toPageResponse(reservationRepository.findAllOwned(ownerId, pageRequest(page, limit)), page, limit);
+        validatePeriod(reservationFrom, reservationTo);
+        return toPageResponse(reservationRepository.findAllOwned(ownerId, status, placeId,
+                reservationFrom != null, reservationFrom, reservationTo != null, reservationTo,
+                pageRequest(page, limit)), page, limit);
     }
 
-    /** HTTP 엔드포인트는 제거됐으며 기존 내부 호출 호환을 위해서만 유지. */
+    @Transactional(readOnly = true)
+    public MerchantReservationDetailResponse getOwned(Long ownerId, Long reservationId) {
+        Reservation reservation = find(reservationId);
+        PlaceAvailability availability = findAvailability(reservation.getAvailabilityId());
+        requireCurrentOwner(ownerId, ownerPlaceRepository.findById(availability.getPlaceId()).orElse(null));
+        MapPlace place = mapPlaceRepository.findById(availability.getPlaceId()).orElse(null);
+        return new MerchantReservationDetailResponse(ReservationResponse.from(reservation), availability.getPlaceId(),
+                place == null ? null : place.getName(), reservationStatusHistoryRepository
+                        .findAllByReservationIdOrderByChangedAtAscIdAsc(reservationId).stream()
+                        .map(ReservationStatusHistoryResponse::from).toList());
+    }
+
+    /** 기존 내부 호출도 심사자와 상태 이력을 기록하는 동일한 승인 경로를 사용한다. */
     @Deprecated
     @Transactional
     public ReservationResponse confirm(Long ownerId, Long reservationId) {
-        Reservation reservation = findForUpdate(reservationId);
-        requireAvailabilityOwner(ownerId, reservation.getAvailabilityId());
-        try {
-            reservation.confirm(LocalDateTime.now(clock));
-            return ReservationResponse.from(reservation);
-        } catch (IllegalStateException exception) {
-            throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_STATE);
-        }
+        return confirmOwned(ownerId, reservationId, null);
     }
 
     @Transactional
@@ -217,9 +218,7 @@ public class ReservationService {
     public AdminReservationPageResponse listForAdmin(ReservationStatus status, Long placeId, Long ownerId,
             Long touristUserId, LocalDateTime reservationFrom, LocalDateTime reservationTo,
             int page, int limit) {
-        if (reservationFrom != null && reservationTo != null && !reservationFrom.isBefore(reservationTo)) {
-            throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
-        }
+        validatePeriod(reservationFrom, reservationTo);
         Page<Reservation> reservations = reservationRepository.findAllForAdmin(status, placeId, ownerId, touristUserId,
                 reservationFrom != null, reservationFrom, reservationTo != null, reservationTo,
                 pageRequest(page, limit));
@@ -230,48 +229,37 @@ public class ReservationService {
     @Transactional(readOnly = true)
     public AdminReservationResponse getForAdmin(Long reservationId) { return toAdminResponse(find(reservationId)); }
 
-    /**
-     * 예약 행을 잠가 관리자 ID·사유로 확정하고 상태 이력과 변경 전후 상태의 감사 로그를 기록.
-     * 없는 예약·확정 불가 상태는 거절하며 관련 이름과 심사 이력을 포함한 관리자 응답을 반환.
-     */
+    /** 현재 장소 소유권을 잠금 확인하고 승인 결과와 이력을 같은 트랜잭션으로 저장한다. */
     @Transactional
-    public AdminReservationResponse confirmByAdmin(Long adminUserId, Long reservationId, String reason) {
+    public ReservationResponse confirmOwned(Long ownerId, Long reservationId, String reason) {
         Reservation reservation = findForUpdate(reservationId);
+        requireAvailabilityOwner(ownerId, reservation.getAvailabilityId());
         try {
             LocalDateTime now = LocalDateTime.now(clock);
-            ReservationStatus before = reservation.getStatus();
-            reservation.confirm(adminUserId, reason, now);
-            recordReview(adminUserId, reservation, before, reason, now, AdminAuditAction.RESERVATION_CONFIRMED);
-            return toAdminResponse(reservation);
+            reservation.confirm(ownerId, reason, now);
+            saveHistory(reservation.getId(), reservation.getStatus(), ownerId, reservation.getReviewReason(), now);
+            return ReservationResponse.from(reservation);
         } catch (IllegalStateException exception) {
             throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_STATE);
         }
     }
 
-    /**
-     * PENDING 예약을 사유와 함께 반려하고 선점한 재고를 반환한 뒤 상태 이력과 감사 기록을 남김.
-     * 이 과정의 DB 변경은 호출 트랜잭션에 참여하며, 반복 반려는 현재 상태 검사에서 거절.
-     */
+    /** 대기 예약만 반려하고 선점 재고 반환과 상태 이력 저장을 원자적으로 처리한다. */
     @Transactional
-    public AdminReservationResponse rejectByAdmin(Long adminUserId, Long reservationId, String reason) {
+    public ReservationResponse rejectOwned(Long ownerId, Long reservationId, String reason) {
         Reservation reservation = findForUpdate(reservationId);
+        requireAvailabilityOwner(ownerId, reservation.getAvailabilityId());
         try {
             LocalDateTime now = LocalDateTime.now(clock);
-            ReservationStatus before = reservation.getStatus();
-            reservation.reject(adminUserId, reason, now);
+            reservation.reject(ownerId, reason, now);
             availabilityService.release(reservation.getAvailabilityId(), reservation.getQuantity());
-            recordReview(adminUserId, reservation, before, reason, now, AdminAuditAction.RESERVATION_REJECTED);
-            return toAdminResponse(reservation);
-        } catch (IllegalStateException | IllegalArgumentException exception) {
+            saveHistory(reservation.getId(), reservation.getStatus(), ownerId, reservation.getReviewReason(), now);
+            return ReservationResponse.from(reservation);
+        } catch (IllegalStateException exception) {
             throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_STATE);
+        } catch (IllegalArgumentException exception) {
+            throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
         }
-    }
-
-    private void recordReview(Long adminUserId, Reservation reservation, ReservationStatus before, String reason,
-            LocalDateTime now, AdminAuditAction action) {
-        saveHistory(reservation.getId(), reservation.getStatus(), adminUserId, reason, now);
-        adminAuditLogService.record(adminUserId, action, AdminAuditTargetType.RESERVATION, reservation.getId(), reason,
-                java.util.Map.of("status", before), java.util.Map.of("status", reservation.getStatus()));
     }
 
     private void saveHistory(Long reservationId, ReservationStatus status, Long changedBy, String reason,
@@ -283,13 +271,14 @@ public class ReservationService {
     }
 
     private AdminReservationResponse toAdminResponse(Reservation reservation) {
-        PlaceAvailability availability = availabilityRepository.findById(reservation.getAvailabilityId())
-                .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+        PlaceAvailability availability = findAvailability(reservation.getAvailabilityId());
         User tourist = userRepository.findById(reservation.getTouristUserId()).orElse(null);
-        User owner = userRepository.findById(availability.getMerchantOwnerUserId()).orElse(null);
+        Long currentOwnerId = ownerPlaceRepository.findById(availability.getPlaceId())
+                .map(MerchantOwnerPlace::getMerchantOwnerUserId).orElse(null);
+        User owner = currentOwnerId == null ? null : userRepository.findById(currentOwnerId).orElse(null);
         MapPlace place = mapPlaceRepository.findById(availability.getPlaceId()).orElse(null);
         return AdminReservationResponse.of(reservation, tourist == null ? null : tourist.getUsername(),
-                availability.getMerchantOwnerUserId(), owner == null ? null : owner.getUsername(), availability.getPlaceId(),
+                currentOwnerId, owner == null ? null : owner.getUsername(), availability.getPlaceId(),
                 place == null ? null : place.getName(),
                 reservationStatusHistoryRepository
                         .findAllByReservationIdOrderByChangedAtAscIdAsc(reservation.getId()).stream()
@@ -317,16 +306,28 @@ public class ReservationService {
         }
     }
 
-    // 가용 상품의 장소 소유자이며 활성 사업자인지 검증.
+    // 예약 처리 중 소유권 이전과 경합하지 않도록 현재 장소 소유 매핑을 잠근다.
     private void requireAvailabilityOwner(Long ownerId, Long availabilityId) {
-        PlaceAvailability availability = availabilityRepository.findById(availabilityId)
-                .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
-        MerchantOwnerPlace ownerPlace = ownerPlaceRepository.findByPlaceIdForUpdate(availability.getPlaceId())
-                .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_FORBIDDEN));
-        if (!ownerPlace.getMerchantOwnerUserId().equals(ownerId)) {
+        PlaceAvailability availability = findAvailability(availabilityId);
+        requireCurrentOwner(ownerId, ownerPlaceRepository.findByPlaceIdForUpdate(availability.getPlaceId()).orElse(null));
+    }
+
+    private void requireCurrentOwner(Long ownerId, MerchantOwnerPlace ownerPlace) {
+        if (ownerPlace == null || !ownerPlace.getMerchantOwnerUserId().equals(ownerId)) {
             throw new ReservationException(ReservationErrorCode.RESERVATION_FORBIDDEN);
         }
         availabilityAccessPolicy.requireActiveMerchantOwner(ownerId, LocalDateTime.now(clock));
+    }
+
+    private PlaceAvailability findAvailability(Long availabilityId) {
+        return availabilityRepository.findById(availabilityId)
+                .orElseThrow(() -> new ReservationException(ReservationErrorCode.RESERVATION_NOT_FOUND));
+    }
+
+    private void validatePeriod(LocalDateTime from, LocalDateTime to) {
+        if (from != null && to != null && !from.isBefore(to)) {
+            throw new ReservationException(ReservationErrorCode.INVALID_RESERVATION_INPUT);
+        }
     }
 
     // 생성일과 ID 내림차순 페이지 요청을 생성.

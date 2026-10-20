@@ -41,7 +41,7 @@ class ReservationServiceTest {
     @Test
     void storesAcceptedConfirmationAndReplaysSuccessBeforeRevalidatingExpiredQuote() {
         ReservationQuoteService quotes = mock(ReservationQuoteService.class);
-        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService, availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
+        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService, availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
         var snapshot = mock(com.typenull.pingdom.reservation.domain.ReservationConfirmation.class);
         var request = new ReservationCreateRequest(9L, "confirmed-1", 2, "이름", "01012345678", null,
                 "11111111-1111-1111-1111-111111111111");
@@ -65,7 +65,7 @@ class ReservationServiceTest {
     @Test
     void finalQuoteRejectionDoesNotReserveOrPublish() {
         ReservationQuoteService quotes = mock(ReservationQuoteService.class);
-        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService, availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, null, conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
+        service = new ReservationService(reservationRepository, null, availabilityRepository, availabilityService, availabilityAccessPolicy, ownerPlaceRepository, userRepository, null, conversionEventService, Clock.fixed(Instant.parse("2026-07-20T05:00:00Z"), ZoneOffset.UTC), quotes);
         var request = new ReservationCreateRequest(9L, "confirmed-1", 2, "이름", "01012345678", null,
                 "11111111-1111-1111-1111-111111111111");
         when(quotes.verify(1L, request)).thenThrow(new com.typenull.pingdom.reservation.domain.exception.ConfirmedReservationRejectedException(ReservationErrorCode.QUOTE_EXPIRED));

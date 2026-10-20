@@ -126,11 +126,11 @@ public class Reservation {
      * PENDING 예약을 확정하고 심사자·사유·시각을 기록.
      * 결제나 가용 재고를 조회하지 않으므로 외부 조건이 필요하면 호출자가 별도로 검증해야 함.
      */
-    public void confirm(Long adminUserId, String reason, LocalDateTime now) {
+    public void confirm(Long reviewerUserId, String reason, LocalDateTime now) {
         if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 확정할 수 있습니다.");
         status = ReservationStatus.CONFIRMED;
         confirmedAt = Objects.requireNonNull(now, "now must not be null");
-        reviewedBy = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
+        reviewedBy = Objects.requireNonNull(reviewerUserId, "reviewerUserId must not be null");
         reviewedAt = now;
         reviewReason = normalizeReason(reason);
         updatedAt = now;
@@ -145,12 +145,12 @@ public class Reservation {
         updatedAt = now;
     }
 
-    public void reject(Long adminUserId, String reason, LocalDateTime now) {
+    public void reject(Long reviewerUserId, String reason, LocalDateTime now) {
         if (status != ReservationStatus.PENDING) throw new IllegalStateException("대기 중인 예약만 반려할 수 있습니다.");
         String normalizedReason = normalizeReason(reason);
         if (normalizedReason == null) throw new IllegalArgumentException("반려 사유가 필요합니다.");
         status = ReservationStatus.REJECTED;
-        reviewedBy = Objects.requireNonNull(adminUserId, "adminUserId must not be null");
+        reviewedBy = Objects.requireNonNull(reviewerUserId, "reviewerUserId must not be null");
         reviewedAt = Objects.requireNonNull(now, "now must not be null");
         reviewReason = normalizedReason;
         rejectedAt = now;
