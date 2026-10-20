@@ -52,7 +52,33 @@
 
 예시는 운영 기본값이 아니다. 앱은 ISO 날짜 문자열을 사용자에게 읽기 쉬운 날짜·시간으로 표시한다.
 
-토큰 생략 요청은 기존 터치 예약 호환 경로로 유지하며 응답의 `confirmation`은 null이다. 견적 확인 조건 보장은 적용되지 않는다. 예약 생성 성공(201, PENDING)은 관리자 확정을 의미하지 않는다.
+토큰 생략 요청은 기존 터치 예약 호환 경로로 유지하며 응답의 `confirmation`은 null이다. 견적 확인 조건 보장은 적용되지 않는다. 예약 생성 성공(201, PENDING)은 상점주 승인 대기이며 예약 확정을 의미하지 않는다.
+
+## 상점주 심사와 관리자 기록 조회
+
+예약 신청은 기존과 같이 `PENDING`으로 저장하며 해당 장소의 현재 상점주 목록에 나타난다. 별도 관리자 배정이나 신규 신청 푸시는 제공하지 않는다.
+
+| 대상 | API | 동작 |
+| --- | --- | --- |
+| 상점주 | `GET /merchant-owner/reservations` | 현재 소유 장소의 예약 목록 |
+| 상점주 | `GET /merchant-owner/reservations/{reservationId}` | 예약 상세와 처리 이력 |
+| 상점주 | `POST /merchant-owner/reservations/{reservationId}/confirm` | 대기 예약 승인 |
+| 상점주 | `POST /merchant-owner/reservations/{reservationId}/reject` | 대기 예약 반려 |
+| 상점주 | `POST /merchant-owner/reservations/{reservationId}/cancel` | 기존 정책에 따른 확정 예약 취소 |
+| 관리자 | `GET /admin/reservations` | 전체 예약 기록 검색 |
+| 관리자 | `GET /admin/reservations/{reservationId}` | 예약 상세와 처리 이력 |
+
+상점주 목록은 선택 필터 `status`, `placeId`, `reservationFrom`, `reservationTo`와 기존 `page`, `limit`를 받는다. 기간은 예약 시작 시각을 기준으로 시작 이상·종료 미만이며 양쪽 경계가 있으면 시작이 종료보다 앞서야 한다. 필터를 생략하면 현재 소유 장소의 모든 상태를 반환한다. `placeId`를 전달해도 소유 범위를 넓힐 수 없다.
+
+상점주 상세 응답은 `reservation`(기존 `ReservationResponse`), `placeId`, `placeName`, `statusHistory`로 구성한다. 이력 항목은 `id`, `status`, `changedBy`, `reason`, `changedAt`이며 생성·심사·취소 순서로 조회한다. 목록·승인·반려·취소의 기존 예약 응답 필드는 유지한다.
+
+승인은 본문 없이 요청할 수 있다. 사유를 보내면 `{ "reason": "확인 완료" }` 형식이며 빈 문자열은 허용하지 않는다. 반려는 같은 형식의 본문과 공백이 아닌 사유가 필수다. 사유는 최대 500자이고 저장 시 앞뒤 공백을 제거한다.
+
+조회·심사·취소는 현재 장소 소유자이면서 활성 프로필·승인된 본인/사업자 인증을 갖추고 탈퇴·정지되지 않은 상점주에게만 허용한다. 직원·매니저의 예약 심사 권한은 이 API에 연결하지 않는다. 소유권 이전 후에는 현재 점주가 기존 대기 예약을 심사하며 이전 점주는 처리할 수 없다. 관리자 검색의 `merchantOwnerUserId`와 응답의 점주 정보도 현재 소유자 기준이며 소유 매핑이 없으면 점주 정보는 null이다. 과거 실제 심사자는 `reviewedBy` 및 상태 이력의 `changedBy`로 별도 보존한다.
+
+신청 시 재고를 이미 선점하므로 승인은 재고를 추가 차감하지 않는다. 반려는 선점 수량을 한 번만 반환한다. 예약·현재 소유권 매핑을 잠금 확인하고 상태 변경·재고 반환·이력 저장은 하나의 트랜잭션으로 처리한다. 반복 심사와 승인·반려 경합은 현재 예약 상태 검사로 거절한다. 신규 상점주 처리는 `reservation_status_history`에 기록하고 기존 관리자 감사 로그는 보존한다.
+
+관리자 승인·반려 API는 제거한다. 관리자 화면은 조회 전용으로 전환하고 상점주 화면은 승인·반려와 대기 목록을 연결해야 한다. 상점주 처리 화면을 사용할 수 있는 시점에 서버 전환을 맞춰 심사 공백을 방지한다. 기존 DB 구조와 과거 예약·심사 기록은 유지하며 신규 마이그레이션은 필요하지 않다.
 
 ## 오류·재시도·취소
 
