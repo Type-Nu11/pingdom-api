@@ -81,7 +81,7 @@ class SwaggerFunctionalGroupingTest {
         config.adminApi().getOpenApiCustomizers().forEach(customizer -> customizer.customise(api));
         assertThat(api.getTags()).extracting(io.swagger.v3.oas.models.tags.Tag::getName)
                 .containsExactly(SwaggerTagCatalog.DASHBOARD, SwaggerTagCatalog.ADMIN_RESERVATION, SwaggerTagCatalog.OPERATIONS);
-        assertThat(api.getTags().get(1).getDescription()).isEqualTo("예약 조회 및 승인·거절");
+        assertThat(api.getTags().get(1).getDescription()).isEqualTo("예약 및 처리 이력 조회");
     }
 
     /**
