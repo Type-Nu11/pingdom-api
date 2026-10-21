@@ -36,38 +36,32 @@ public class AdminPlaceMapController {
     private final AdminPlaceMapQueryService service;
 
     @GetMapping
-    @Operation(summary = "관리자 지도 지역 집계 및 공간 그룹 조회", description = "zoom 0~8 SIDO, 9~11 SIGUNGU, 12~20 SPATIAL. "
-            + "지역은 화면 안 장소 기준으로 선택하며 count는 동일 필터의 지역 전체 수입니다. "
-            + "bounds는 행정 경계가 아닌 PLACE_EXTENT입니다. 지역 미연결 장소는 공간 그룹/마커로 반환합니다. "
-            + "viewportPlaceCount와 지역 count는 합산하지 않습니다. 초기 상한 200개(설정 가능)이며 초과 시 재집계합니다. EXPAND는 nextZoom 이상 확대합니다. clusterKey는 표시용 고정 키입니다. representative는 그룹 내 최소 ID 장소이며 아이콘은 대표 장소 좌표에 표시합니다. count는 대표를 포함하며 +N은 count-1입니다. "
-            + "안전 한도 초과는 complete=false, RESULT_BUDGET_EXCEEDED, ZOOM_IN으로 안내합니다. "
-            + "정상 0건은 빈 배열, viewportPlaceCount=0, complete=true입니다.")
-    @ApiResponses({@ApiResponse(responseCode = "200", description = "지역/공간 혼합 또는 빈 결과",
+    @Operation(summary = "관리자 지도 영역 전체 마커 및 확대 필요 상태 조회", description = "v2: 동일 경계·검색·필터의 유효 좌표 장소를 집계합니다. "
+            + "zoom·CSS 크기와 무관하게 0~displayLimit개면 MARKERS와 전체 개별 마커를, 초과하면 ZOOM_REQUIRED와 빈 마커 배열을 반환합니다. "
+            + "displayLimit 초기값은 100이며 클라이언트는 상향할 수 없습니다. viewportPlaceCount는 정확한 현재 영역 전체 수입니다. "
+            + "0건도 MARKERS, complete=true입니다. 초과는 HTTP 200, complete=false, RESULT_BUDGET_EXCEEDED, ZOOM_IN입니다. "
+            + "mode는 호환상 SPATIAL, regions/clusters는 항상 빈 배열입니다. 그룹·대표 장소는 생성하지 않습니다. "
+            + "같은 좌표의 서로 다른 ID를 합치지 않으며 목록 page/limit/sortParam과 독립적입니다. "
+            + "최대 확대에서도 초과하면 기존 장소 목록을 사용합니다. 인증·입력 검증·no-store·3초 SQL timeout은 유지합니다.")
+    @ApiResponses({@ApiResponse(responseCode = "200", description = "전체 마커, 정상 0건 또는 표시 한도 초과에 따른 확대 안내",
             content = @Content(schema = @Schema(implementation = AdminPlaceMapResponse.class), examples = {
-                @ExampleObject(name = "spatial", summary = "공간 그룹과 개별 장소", value = """
-                    {"mode":"SPATIAL","zoom":13,"regions":[],
-                     "clusters":[{"clusterKey":"v1:filterHash:resolution:x:y","clusterId":"opaque-token","count":24,
-                       "representative":{"id":1810,"name":"대표 카페","latitude":35.872,"longitude":128.602,
-                         "category":"CAFE","discoveryStatus":"VISIBLE","operatingStatus":"OPERATING"},
-                       "latitude":35.871,"longitude":128.601,
-                       "bounds":{"west":128.600,"south":35.870,"east":128.603,"north":35.873},
-                       "countScope":"VIEWPORT","action":"EXPAND","nextZoom":14}],
+                @ExampleObject(name = "markers", summary = "축소 상태에서도 영역 내 모든 개별 장소 표시", value = """
+                    {"mode":"SPATIAL","zoom":0,"regions":[],"clusters":[],
                      "markers":[{"id":1820,"name":"예시 카페","latitude":35.875,"longitude":128.610,
                        "category":"CAFE","discoveryStatus":"HIDDEN","operatingStatus":"OPERATING"}],
-                     "viewportPlaceCount":25,"complete":true,"incompleteReason":null,"recoveryAction":null}
+                     "viewportPlaceCount":1,"complete":true,"incompleteReason":null,"recoveryAction":null,
+                     "displayLimit":100,"displayStatus":"MARKERS"}
                     """),
-                @ExampleObject(name = "regional", summary = "지역 전체 수와 화면 내 수 구분", value = """
-                    {"mode":"SIGUNGU","zoom":10,
-                     "regions":[{"regionLevel":"SIGUNGU","regionCode":"27260","name":"대구광역시 수성구",
-                       "count":320,"countScope":"REGION","latitude":35.858,"longitude":128.631,
-                       "bounds":{"west":128.60,"south":35.80,"east":128.76,"north":35.90},
-                       "boundsSource":"PLACE_EXTENT","action":"EXPAND","nextZoom":12}],
-                     "clusters":[],"markers":[],"viewportPlaceCount":120,"complete":true,
-                     "incompleteReason":null,"recoveryAction":null}
+                @ExampleObject(name = "zoomRequired", summary = "101개 이상은 최대 확대에서도 마커 없이 확대 안내", value = """
+                    {"mode":"SPATIAL","zoom":20,"regions":[],"clusters":[],"markers":[],
+                     "viewportPlaceCount":101,"complete":false,
+                     "incompleteReason":"RESULT_BUDGET_EXCEEDED","recoveryAction":"ZOOM_IN",
+                     "displayLimit":100,"displayStatus":"ZOOM_REQUIRED"}
                     """),
                 @ExampleObject(name = "empty", summary = "정상 0건", value = """
                     {"mode":"SPATIAL","zoom":13,"regions":[],"clusters":[],"markers":[],
-                     "viewportPlaceCount":0,"complete":true,"incompleteReason":null,"recoveryAction":null}
+                     "viewportPlaceCount":0,"complete":true,"incompleteReason":null,"recoveryAction":null,
+                     "displayLimit":100,"displayStatus":"MARKERS"}
                     """)
             })),
             @ApiResponse(responseCode = "400", description = "잘못된 경계·zoom·크기·필터",
@@ -82,7 +76,8 @@ public class AdminPlaceMapController {
     }
 
     @GetMapping("/clusters/{clusterId}/places")
-    @Operation(summary = "관리자 지도 그룹 내부 장소 조회", description = "원래 필터·영역·격자를 유지한 ID 오름차순 페이지. "
+    @Operation(summary = "관리자 지도 그룹 내부 장소 조회", description = "v1에서 발급한 기존 토큰의 호환 조회이며 v2 지도 흐름에서는 호출하지 않습니다. "
+            + "v2 지도 조회는 새 그룹 토큰을 발급하지 않습니다. 원래 필터·영역·격자를 유지한 ID 오름차순 페이지. "
             + "page 1~1000000, limit 1~100. 토큰은 5분 유효하며 변조·만료·그룹 변경·정책 버전 변경은 409. "
             + "409 발생 시 지도 재조회 후 그룹을 다시 선택합니다. 각 요청에서 관리자 권한을 재검사합니다.")
     @ApiResponses({@ApiResponse(responseCode = "200", description = "그룹 내부 장소 페이지"),

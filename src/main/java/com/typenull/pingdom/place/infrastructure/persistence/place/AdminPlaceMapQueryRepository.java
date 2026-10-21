@@ -41,9 +41,13 @@ public class AdminPlaceMapQueryRepository {
             AND mp.location IS NOT NULL AND NOT ST_IsEmpty(mp.location)
             AND ST_X(mp.location) = mp.longitude AND ST_Y(mp.location) = mp.latitude
             """;
+    // bbox는 인덱스로 후보를 좁히고, 숫자 경계로 bbox 반올림에 따른 화면 밖 후보를 제외한다.
     private static final String VIEWPORT = """
             mp.location && ST_MakeEnvelope(:west, :south, :east, :north, 4326)
+            AND mp.longitude BETWEEN :west AND :east
+            AND mp.latitude BETWEEN :south AND :north
             """;
+    private static final String VIEWPORT_FILTER = FILTER + " AND " + VALID + " AND " + VIEWPORT;
     private static final String UNKNOWN_REGION = """
             AND NOT EXISTS (SELECT 1 FROM place_administrative_region r WHERE r.region_code = mp.region_code)
             """;
@@ -65,8 +69,16 @@ public class AdminPlaceMapQueryRepository {
     }
 
     public long countViewport(AdminPlaceMapCondition c) {
-        return jdbc.queryForObject("SELECT COUNT(*) FROM map_place mp WHERE " + FILTER + " AND " + VALID
-                + " AND " + VIEWPORT, params(c), Long.class);
+        return jdbc.queryForObject("SELECT COUNT(*) FROM map_place mp WHERE " + VIEWPORT_FILTER, params(c), Long.class);
+    }
+
+    /** 동일 스냅샷의 영역 집계가 표시 한도 이하일 때만 호출하며 순위·페이지 제한 없이 모두 반환한다. */
+    public List<Marker> findViewportMarkers(AdminPlaceMapCondition c) {
+        return jdbc.query("""
+                SELECT mp.map_place_id, mp.place_name, mp.latitude, mp.longitude,
+                       mp.category, mp.discovery_status, mp.operating_status
+                FROM map_place mp WHERE
+                """ + VIEWPORT_FILTER + " ORDER BY mp.map_place_id", params(c), (rs, row) -> marker(rs));
     }
 
     public List<Region> findRegions(AdminPlaceMapCondition c, String level, int limit) {
